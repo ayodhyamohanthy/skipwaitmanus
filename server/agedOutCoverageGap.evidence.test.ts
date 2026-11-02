@@ -15,19 +15,94 @@ const state = vi.hoisted(() => ({ rows: [] as FixtureRow[], queries: [] as Array
 
 const asDate = (value: unknown) => new Date(`${String(value).replace(" ", "T")}Z`);
 
-// Evaluates only the one query above, clause by clause, so the rows returned are what MySQL would return.
+// A bounded, generic reader of the SQL shape drizzle renders for a single-table select:
+//   select `c`, ... from `t` where <expr> order by `t`.`c` asc|desc, ... limit ?
+// where <expr> is built from and / or / parentheses over `t`.`c` (= | <> | != | < | <= | > | >=) ?,
+// `t`.`c` like ?, and `t`.`c` is [not] null. Placeholders bind in textual order, as drizzle numbers them.
+// It never compares the query's text to an expected string (the shape pin above does that, separately),
+// so a dropped, flipped or reordered clause is judged only by the rows it returns. Anything outside this
+// grammar throws "unsupported SQL" rather than guessing.
+type Cmp = "=" | "<>" | "!=" | "<" | "<=" | ">" | ">=";
+type Node = { and: Node[] } | { or: Node[] } | { col: string; cmp: Cmp; param: number } | { col: string; like: number } | { col: string; isNull: boolean };
+
+function tokenize(text: string): string[] {
+  const tokens = text.match(/`[^`]+`(?:\.`[^`]+`)?|<=|>=|<>|!=|[=<>?()]|[a-z]+/gi) ?? [];
+  if (tokens.join("").replace(/\s+/g, "") !== text.replace(/\s+/g, "")) throw new Error(`unsupported SQL: ${text}`);
+  return tokens;
+}
+const column = (token: string | undefined) => {
+  const match = token?.match(/^`[^`]+`\.`([^`]+)`$|^`([^`]+)`$/);
+  if (!match) throw new Error(`unsupported SQL near: ${token}`);
+  return match[1] ?? match[2];
+};
+
+function parseWhere(text: string, nextParam: () => number): Node {
+  const tokens = tokenize(text);
+  let at = 0;
+  const peek = () => tokens[at]?.toLowerCase();
+  const take = (expected?: string) => {
+    const token = tokens[at++];
+    if (expected && token?.toLowerCase() !== expected) throw new Error(`unsupported SQL: expected ${expected}, got ${token}`);
+    return token;
+  };
+  const factor = (): Node => {
+    if (peek() === "(") { take("("); const inner = expr(); take(")"); return inner; }
+    const col = column(take());
+    const op = take()?.toLowerCase();
+    if (op === "like") { take("?"); return { col, like: nextParam() }; }
+    if (op === "is") { const not = peek() === "not"; if (not) take("not"); take("null"); return { col, isNull: !not }; }
+    if (op && ["=", "<>", "!=", "<", "<=", ">", ">="].includes(op)) { take("?"); return { col, cmp: op as Cmp, param: nextParam() }; }
+    throw new Error(`unsupported SQL operator: ${op}`);
+  };
+  const term = (): Node => { const parts = [factor()]; while (peek() === "and") { take(); parts.push(factor()); } return parts.length === 1 ? parts[0] : { and: parts }; };
+  const expr = (): Node => { const parts = [term()]; while (peek() === "or") { take(); parts.push(term()); } return parts.length === 1 ? parts[0] : { or: parts }; };
+  const tree = expr();
+  if (at !== tokens.length) throw new Error(`unsupported SQL trailing: ${tokens.slice(at).join(" ")}`);
+  return tree;
+}
+
+// Row values against bound params: a Date column compares by instant (drizzle sends 'YYYY-MM-DD HH:MM:SS.mmm' UTC).
+const comparable = (value: unknown, sample: unknown) => sample instanceof Date ? asDate(value).getTime() : typeof sample === "number" ? Number(value) : String(value);
+function holds(node: Node, row: Record<string, unknown>, params: unknown[]): boolean {
+  if ("and" in node) return node.and.every(part => holds(part, row, params));
+  if ("or" in node) return node.or.some(part => holds(part, row, params));
+  if (!(node.col in row)) throw new Error(`unknown column: ${node.col}`);
+  const value = row[node.col];
+  if ("isNull" in node) return (value === null) === node.isNull;
+  if (value === null || value === undefined) return false; // SQL: a comparison with NULL is never true
+  if ("like" in node) {
+    const pattern = String(params[node.like]).replace(/[.*+^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".");
+    return new RegExp(`^${pattern}$`, "s").test(String(value));
+  }
+  const left = value instanceof Date ? value.getTime() : value as number | string;
+  const right = comparable(params[node.param], value);
+  switch (node.cmp) {
+    case "=": return left === right;
+    case "<>": case "!=": return left !== right;
+    case "<": return left < right;
+    case "<=": return left <= right;
+    case ">": return left > right;
+    case ">=": return left >= right;
+  }
+}
+
 function evaluate(sql: string, params: unknown[]) {
   state.queries.push({ sql, params });
-  if (sql !== PENDING_QUERY) throw new Error(`unexpected query: ${sql}`);
-  const [provider, status, eventPrefix, olderThan, newerThan, recheckBefore, limit] = params;
-  const prefix = String(eventPrefix).replace(/%$/, "");
-  return state.rows
-    .filter(row => row.provider === provider && row.status === status && row.providerEventId.startsWith(prefix))
-    .filter(row => row.createdAt.getTime() < asDate(olderThan).getTime() && row.createdAt.getTime() > asDate(newerThan).getTime())
-    .filter(row => row.lastCheckedAt === null || row.lastCheckedAt.getTime() < asDate(recheckBefore).getTime())
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id)
-    .slice(0, Number(limit))
-    .map(row => [row.id, row.providerHostedPageId, row.checkoutIntentId, row.amount, row.currency]);
+  const shape = sql.match(/^select (.+?) from `(\w+)` where (.+) order by (.+) limit \?$/s);
+  if (!shape) throw new Error(`unsupported SQL: ${sql}`);
+  const [, columnList, , where, orderList] = shape;
+  let bound = 0;
+  const tree = parseWhere(where, () => bound++);
+  const limit = Number(params[bound++]);
+  if (bound !== params.length) throw new Error(`placeholder count ${bound} != params ${params.length}`);
+  const columns = columnList.split(",").map(item => column(item.trim()));
+  const order = orderList.split(",").map(item => { const [col, dir = "asc"] = item.trim().split(/\s+/); if (!/^(asc|desc)$/i.test(dir)) throw new Error(`unsupported SQL order: ${item}`); return { col: column(col), sign: dir.toLowerCase() === "desc" ? -1 : 1 }; });
+  const key = (value: unknown) => value instanceof Date ? value.getTime() : value as number | string;
+  return (state.rows as unknown as Array<Record<string, unknown>>)
+    .filter(row => holds(tree, row, params))
+    .sort((a, b) => { for (const { col, sign } of order) { const x = key(a[col]); const y = key(b[col]); if (x !== y) return (x < y ? -1 : 1) * sign; } return 0; })
+    .slice(0, limit)
+    .map(row => columns.map(col => row[col]));
 }
 
 vi.mock("drizzle-orm/mysql2", async () => {
