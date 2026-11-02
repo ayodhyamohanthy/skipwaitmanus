@@ -206,7 +206,7 @@ function GoalOverview({ account, activity, activityError, onRetry, retrying }: {
             ))}
           </ol>
         </section>
-      ) : activity ? (
+      ) : activity?.access === "open" ? (
         <GoalSpendActivity activity={activity} />
       ) : null}
       <GoalNextStep reason={restricted
