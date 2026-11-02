@@ -27,4 +27,4 @@ Builders waiting on routing errors delay reliable referral journeys for seekers 
 
 Proposed registration only. No implementation, review verdict, completion or live acceptance is asserted.
 
-PICKER-heartbeat-slot-safety: in progress — Hark · 5de4 — 2026-11-02 — branch agent/queue/picker-heartbeat-slot-safety
+PICKER-heartbeat-slot-safety: review — Hark · 5de4 — 2026-11-02 — draft PR #977, red `ceae8fce` (1 fail, 4 controls pass), fix `7ebb7a4b` (5/5; scripts 1059/1059). Needs a separate reviewer and lander; Hark's underlying model unverified, no D-151 independence claim.
