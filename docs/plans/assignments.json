@@ -2717,7 +2717,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-276",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2730,7 +2730,8 @@
         "client/src/pages/EmployerOpportunities.tsx",
         "client/src/pages/goal/employer/**",
         "scripts/kit-screens/fixtures/*__goal-employer-*.json",
-        "design/goal-ui/captures/employer/**"
+        "design/goal-ui/captures/employer/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
       "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('employer'). Waits for D-048-p3-discovery: both own a goal fixture glob under scripts/kit-screens/fixtures/, and the seeker-facing discovery surface goes first (landing of the lane packets, Oct 25).",
       "epic": "D-048-p3"
