@@ -40,5 +40,10 @@
         ]
       }
     }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Sponsor this role"
+    }
   ]
 }

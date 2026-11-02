@@ -15,5 +15,10 @@
         "error": "We could not load your employer account"
       }
     }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=We could not load your employer account"
+    }
   ]
 }

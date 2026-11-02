@@ -15,5 +15,10 @@
         "opportunities": []
       }
     }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=No opportunities yet."
+    }
   ]
 }

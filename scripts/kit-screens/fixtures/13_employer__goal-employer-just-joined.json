@@ -40,5 +40,10 @@
         "spend": []
       }
     }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Get started"
+    }
   ]
 }
