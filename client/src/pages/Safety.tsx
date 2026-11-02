@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalSafety = lazy(() => import("./goal/support/GoalSafety"));
 import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
@@ -18,6 +20,10 @@ const ANSWERS: ReadonlyArray<readonly [string, ReactNode]> = [
 ];
 
 export default function Safety() {
+  return goalSurfaceOn("support") ? <Suspense fallback={null}><GoalSafety /></Suspense> : <KitSafety />;
+}
+
+function KitSafety() {
   return (
     <main data-skipwait-screen="safety" className="page-content">
       <div className="page-heading">
