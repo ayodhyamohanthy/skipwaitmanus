@@ -44,7 +44,7 @@ vi.mock("./useCompanySearch", async importOriginal => {
 
 import Explore from "../Explore";
 import * as companySearchModule from "./useCompanySearch";
-import { COMPANY_SEARCH_DEBOUNCE_MS, fetchCompanySearch, useCompanySearch } from "./useCompanySearch";
+import { COMPANY_SEARCH_DEBOUNCE_MS, fetchCompanySearch, isCompanySearchInvalid, useCompanySearch } from "./useCompanySearch";
 
 const company = (slug: string): PublicCompany => {
   const seed = LAUNCH_COMPANY_SEED.find(item => item.slug === slug);
@@ -57,10 +57,10 @@ const DIRECTORY: CompanyDirectoryResponse = { companies: LAUNCH_COMPANY_SEED.map
 const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, url: "", json: async () => body });
 
 type SearchAnswer = { status: number; body: unknown };
-function stub(search: (q: string) => SearchAnswer | Promise<SearchAnswer>) {
+function stub(search: (q: string) => SearchAnswer | Promise<SearchAnswer>, directory: () => SearchAnswer | Promise<SearchAnswer> = () => ({ status: 200, body: DIRECTORY })) {
   const fetchMock = vi.fn(async (input: string) => {
     const path = String(input);
-    if (path === "/api/companies") return json(200, DIRECTORY);
+    if (path === "/api/companies") { const answer = await directory(); return json(answer.status, answer.body); }
     if (path.startsWith("/api/companies/search?")) {
       const q = new URL(path, "http://x").searchParams.get("q") ?? "";
       const answer = await search(q);
@@ -406,5 +406,192 @@ describe("useCompanySearch states", () => {
     await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 50));
     expect(result.current.status).toBe("idle");
     expect(searchCalls(fetchMock)).toEqual([]);
+  });
+});
+
+// #974 review (2026-11-03): "unlisted" is decided by the query alone, never by the
+// active function chip; and the route's 400 (q over 80 characters, shared/companies.ts)
+// is invalid input, not a connection failure, so it never offers a retry.
+describe("switch on: the function chip never makes a company 'unlisted'", () => {
+  beforeEach(() => { flag.on = true; });
+  const settle = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
+
+  it("a query that matches directory rows the active chip hides is not 'unlisted': no paste-a-link, no no-match event, the filter empty state speaks", async () => {
+    stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.click(screen.getByRole("button", { name: "Product" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "Technology services" } });
+    await settle();
+    await settle();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(screen.queryByRole("link", { name: /job link to request a referral/ })).toBeNull();
+    expect(events).toEqual([]);
+    expect(screen.getByText("No matching companies yet")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Clear filters" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Product" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "All companies" }));
+    expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^2 companies$/);
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual([]);
+    expectNoAvailabilityText();
+  });
+
+  it("a suggestion the chip hides keeps the truthful filter empty state beside the suggestion", async () => {
+    stub(() => ({ status: 200, body: { companies: [searchRow("tcs")] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.click(screen.getByRole("button", { name: "Product" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "TCS" } });
+    await screen.findByRole("option", { name: "TCS" });
+    expect(screen.getByText("No matching companies yet")).toBeTruthy();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual(["journey_company_suggested"]);
+    expectNoQueryInEvents("TCS");
+  });
+
+  it("a real no-match under a chip (no directory row for the query at all) is still 'unlisted'", async () => {
+    stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.click(screen.getByRole("button", { name: "Product" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqx" } });
+    await screen.findByTestId("company-search-no-match");
+    expect(events).toEqual(["journey_company_no_match"]);
+    expectNoQueryInEvents("zzqx");
+  });
+});
+
+describe("switch on: directory guards on 'unlisted'", () => {
+  beforeEach(() => { flag.on = true; });
+  const settle = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
+
+  it("while the directory is still loading, an empty search answer is not 'unlisted'", async () => {
+    stub(() => ({ status: 200, body: { companies: [] } }), () => new Promise<SearchAnswer>(() => {}));
+    renderExplore();
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqx" } });
+    await settle();
+    await settle();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it("when the directory failed to load, an empty search answer is not 'unlisted' and the directory error speaks", async () => {
+    stub(() => ({ status: 200, body: { companies: [] } }), () => ({ status: 500, body: { error: "boom" } }));
+    renderExplore();
+    await screen.findByText("We couldn’t load companies.");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzqx" } });
+    await settle();
+    await settle();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(screen.getByText("We couldn’t load companies.")).toBeTruthy();
+    expect(events).toEqual([]);
+  });
+});
+
+describe("invalid input (route 400) is not a connection failure", () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client()}>{children}</QueryClientProvider>;
+  const LONG = "a".repeat(81);
+  const wait = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
+
+  it("fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable", async () => {
+    stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    const invalid = await fetchCompanySearch("wip").catch((error: unknown) => error);
+    expect(isCompanySearchInvalid(invalid)).toBe(true);
+    stub(() => ({ status: 503, body: {} }));
+    const failed = await fetchCompanySearch("wip").catch((error: unknown) => error);
+    expect(failed).toBeInstanceOf(Error);
+    expect(isCompanySearchInvalid(failed)).toBe(false);
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("network"); }));
+    const dropped = await fetchCompanySearch("wip").catch((error: unknown) => error);
+    expect(dropped).toBeInstanceOf(Error);
+    expect(isCompanySearchInvalid(dropped)).toBe(false);
+  });
+
+  it("the hook: a q the route contract refuses (over 80 characters after trim) is 'invalid' and sends nothing; 80 is sent", async () => {
+    const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
+    const { result, rerender } = renderHook(({ q }) => useCompanySearch(q, true), { wrapper, initialProps: { q: ` ${LONG} ` } });
+    await wait();
+    expect(result.current.status).toBe("invalid");
+    expect(result.current.noMatch).toBe(false);
+    expect(result.current.suggestions).toEqual([]);
+    expect(searchCalls(fetchMock)).toEqual([]);
+    rerender({ q: "a".repeat(80) });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(searchCalls(fetchMock)).toEqual([`/api/companies/search?q=${"a".repeat(80)}`]);
+  });
+
+  it("the hook: an actual 400 from the route is 'invalid', asked once, and never re-asked", async () => {
+    const fetchMock = stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    const { result } = renderHook(() => useCompanySearch("zeta", true), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("invalid"));
+    expect(result.current.noMatch).toBe(false);
+    await wait();
+    await wait();
+    expect(result.current.status).toBe("invalid");
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=zeta"]);
+  });
+
+  it("the hook: a dropped connection is the retryable error state", async () => {
+    let drop = true;
+    const fetchMock = vi.fn(async (input: string) => {
+      if (drop) throw new TypeError("network");
+      return json(200, { companies: [searchRow("wipro")] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useCompanySearch("wip", true), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    drop = false;
+    act(() => { result.current.retry(); });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("switch on, /explore: an actual 400 shows no retry line, no paste-a-link, no event, and the client filter keeps working", async () => {
+    flag.on = true;
+    const fetchMock = stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tcs" } });
+    await wait();
+    await wait();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByTestId("company-search-loading")).toBeNull();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^1 company$/);
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=tcs"]);
+    expect(events).toEqual([]);
+    expectNoQueryInEvents("tcs");
+  });
+
+  it("switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and the directory states its truthful empty filter", async () => {
+    flag.on = true;
+    const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: LONG } });
+    await wait();
+    await wait();
+    expect(searchCalls(fetchMock)).toEqual([]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByTestId("company-search-loading")).toBeNull();
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+    expect(screen.getByText("No matching companies yet")).toBeTruthy();
+    expect(events).toEqual([]);
+    expectNoQueryInEvents(LONG);
+  });
+
+  it("switch off: the same 81-character query keeps today's client filter and never calls the search route", async () => {
+    const fetchMock = stub(() => ({ status: 400, body: { error: "Invalid search" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search companies" }), { target: { value: LONG } });
+    await wait();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(searchCalls(fetchMock)).toEqual([]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("No matching companies yet")).toBeTruthy();
+    expect(events).toEqual([]);
   });
 });
