@@ -17,6 +17,7 @@ import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } fr
 import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 import { companyResponseSignalEnabled, loadCompanyResponseSignal } from "./companyResponseSignal";
+import { registerCompanyDemandRoutes } from "./companyDemandRoutes";
 import { listCompanyOpportunityPosts } from "./db";
 import type { CompanyResponseSignal } from "../shared/companyResponseSignal";
 
@@ -168,5 +169,15 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       record({ actorUserId: identity.account.id, action: "admin.company_updated", outcome: "success", resourceType: "company", resourceId: id });
       res.json({ company });
     } catch (error) { failure(res, error, "We could not update this company"); }
+  });
+
+  // D-086 demand list (switch only): its own /api/company-demand prefix, so no
+  // slug can shadow it. Both switches start false.
+  registerCompanyDemandRoutes(app, {
+    resolveIdentity: deps.resolveIdentity,
+    recordActivity: deps.recordActivity,
+    listCompanyDirectory: deps.listCompanyDirectory,
+    getCompanyDirectoryEntry: deps.getCompanyDirectoryEntry,
+    listAdminCompanies: deps.listAdminCompanies,
   });
 }
