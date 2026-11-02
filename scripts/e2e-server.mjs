@@ -54,6 +54,13 @@ async function resetDatabase(db, { drop }) {
   } finally { await connection.end(); }
 }
 
+/** Ruling 3: the reference database is scratch; it is dropped once compared. */
+async function dropDatabase(db) {
+  if (!/^[A-Za-z0-9_]+$/.test(db.name)) throw new Error(`unexpected e2e database name: ${db.name}`);
+  const connection = await mysql.createConnection({ host: db.host, port: db.port, user: db.user, password: db.password });
+  try { await connection.query(`DROP DATABASE IF EXISTS \`${db.name}\``); } finally { await connection.end(); }
+}
+
 function run(command, args, env = {}) {
   const result = spawnSync(command, args, { cwd: root, env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL, ...env }, encoding: "utf8" });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
@@ -171,7 +178,7 @@ async function prepare() {
     log(line.replace(/^- /, ""));
     summary(line);
   }
-  await resetDatabase(reference, { drop: true });
+  await dropDatabase(reference);
   if (verdict.status === "fail") throw new Error(verdict.summaryLines.find(line => line.includes("FAILED")) ?? "the migration gate failed");
 }
 
