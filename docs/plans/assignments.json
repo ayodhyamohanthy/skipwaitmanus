@@ -5006,6 +5006,73 @@
       "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases."
     },
     {
+      "id": "D-173-referral-words-goal-ui",
+      "title": "Buyer-facing 'referral' wording across the goal UI (PR #598): asks deliver to verified employees, no outcome promise",
+      "row": "D-173",
+      "packet": "docs/plans/D-173-referral-words-goal-ui.md",
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/ayo-referral-words",
+      "status": "in-review",
+      "dependsOn": [
+        "D-222-referral-count-shell"
+      ],
+      "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route.",
+      "syncedTo": "D-281",
+      "owns": [
+        "client/src/components/appShell.test.tsx",
+        "client/src/components/goal/GoalInfoNote.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/goal/goalComposites.test.tsx",
+        "client/src/components/goal/goalInfoNote.test.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/test/goalShellHarness.test.tsx",
+        "design/goal-ui/captures/alerts/default-1280.png",
+        "design/goal-ui/captures/alerts/default-390.png",
+        "design/goal-ui/captures/alerts/note-open-1280.png",
+        "design/goal-ui/captures/alerts/note-open-390.png"
+      ]
+    },
+    {
+      "id": "D-180-referral-words",
+      "title": "Referral-only wording sweep: shared money copy, plan-gate errors, goal nav and requests labels",
+      "row": "D-180",
+      "packet": "docs/plans/D-180-referral-words.md",
+      "epic": "D-180",
+      "tier": 1,
+      "lane": "referral-words",
+      "branch": "agent/queue/referral-words-sweep",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-held-ask-reconfirm",
+        "D-048-F-credits",
+        "D-099-bonus-pages",
+        "PRICING-banded-oct25",
+        "D-180-a-free-asks-chip",
+        "D-222-referral-count-shell",
+        "D-094-ai-in-ui.status-help",
+        "D-173-referral-words-goal-ui"
+      ],
+      "owns": [
+        "shared/moneyCopy.ts",
+        "shared/moneyCopy.test.ts",
+        "shared/moneyCopy.item7.test.ts",
+        "server/moneyCopy.test.ts",
+        "server/planGates.ts",
+        "server/planGates.test.ts",
+        "client/src/components/goal/nav.ts",
+        "client/src/pages/goal/onboarding/GoalOnboarding.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/components/goal/nav.test.ts",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/components/appShell.test.tsx",
+        "design/goal-ui/captures/referral-words/**"
+      ],
+      "note": "Presentation-only shared referral wording; original moneyCopy/planGates/GoalOnboarding scope preserved. My referrals changes nav and shell/page titles only, keeping id asks, /requests and request stages. Current packet documents exact ownership serialization after PRICING, D-180-a-free-asks-chip, D-222, D-173 and only the D-094 status-help piece. No existing queued row waits changed. Capture and test owns declared. No price, charge, eligibility, availability, release or implementation acceptance change."
+    },
+    {
       "id": "D-048-copy-goal-twins",
       "title": "Referral-only wording correction on the goal landed/share twins (6 retired-term lines)",
       "row": "D-048",
