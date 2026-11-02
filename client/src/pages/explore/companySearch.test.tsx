@@ -172,9 +172,12 @@ describe("switch on: typeahead on /explore", () => {
     expect(options[0].getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(box, { key: "ArrowDown" });
     expect(box.getAttribute("aria-activedescendant")).toBe(options[1].id);
-    fireEvent.keyDown(box, { key: "ArrowUp" });
-    fireEvent.keyDown(box, { key: "ArrowUp" });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
     expect(box.getAttribute("aria-activedescendant")).toBe(options[1].id);
+    fireEvent.keyDown(box, { key: "ArrowUp" });
+    fireEvent.keyDown(box, { key: "ArrowUp" });
+    expect(box.getAttribute("aria-activedescendant")).toBe(options[0].id);
+    fireEvent.keyDown(box, { key: "ArrowDown" });
     fireEvent.keyDown(box, { key: "Enter" });
     expect(go).toHaveBeenCalledWith("/explore/wipro");
     expect(events).toEqual(["journey_company_suggested"]);
