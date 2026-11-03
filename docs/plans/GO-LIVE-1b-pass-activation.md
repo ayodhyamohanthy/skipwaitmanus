@@ -24,9 +24,11 @@ Add or retain an evidence-only test showing that a paid checkout older than `PEN
 ## 3. Verification
 
 - Run the focused evidence test and record its exact result.
-- Run the checks required for the assigned Tier 2 task and ensure GitHub required CI is green on the exact PR head. No separate independent review or deployment is required for this Tier 2 test-only task (D-200).
+- Run the checks required for the assigned Tier 2 task and ensure GitHub required CI is green on the exact PR head. For this task, merging also needs a separate final-version review of the exact head against current `main`, with tests, and a distinct normal lander, with no admin bypass (coordinated merge grant, 2026-11-03; the D-284 waiver is not relied on). No deployment is required.
 - Report only what the test and CI prove; no live-payment or deployment claim.
 
 ## Status
 
 GO-LIVE-1b-agedout-evidence: in progress — Hark · 5de4 — 2026-11-02 — branch `agent/queue/agedout-evidence-test` (status here, not the shared §3b row "D-084", which `scope-check.mjs` keeps outside this row's owns; D-134).
+
+GO-LIVE-1b-agedout-evidence: review — Hark · 5de4 — 2026-11-03 — implementation head `a979e674` (merge of current `main` `fa462f69`). Evidence: `server/agedOutCoverageGap.evidence.test.ts` (one file, 8 tests: 3 evidence, 2 SQL-semantics, 3 boundary) passes 8/8, and 38/38 with the reconcile suite. Local red first at `59ea5254` (2 fail / 6 pass; a local run, not CI red), green at `bd8a44c6`. Required CI on `a979e674`: run 41548776666, 5/5. This status line is docs-only and changes no runtime or test. Still needed before merge: a separate final-version review of the exact head against current `main` with tests, and a distinct normal lander, with no admin bypass. Not landed and not done. Hark's underlying model is unverified; no D-151 independence claim.
