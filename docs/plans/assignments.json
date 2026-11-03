@@ -2747,8 +2747,8 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-285",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -4380,9 +4380,9 @@
       "lane": "docs-sync",
       "branch": "agent/queue/decision-sync-oct26",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-275",
       "dependsOn": [],
-      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
+      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200). Nov 3 bounded repair: prior landed/pass/completion claims are withdrawn. Instinct f77d recovered the quiet unblock stage through the ordinary picker, preserving all prior history; this branch carries the bounded advisory fixes and still needs current-main checks, separate final-head review and distinct normal landing. This row covers section 9 only; section 11 on #757 remains unfinished and must not be silently marked done or expanded here."
     },
     {
       "id": "D-174-job-sources-more",
