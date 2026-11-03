@@ -2,7 +2,7 @@ import { ArrowLeft, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { BetaNoticeLine } from "@/components/BetaNotice";
-import GoalSignIn from "@/pages/GoalSignIn";
+import GoalSignIn from "@/pages/goal/sign-in/GoalSignIn";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
