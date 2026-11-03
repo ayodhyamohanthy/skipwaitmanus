@@ -172,8 +172,11 @@ async function prepare() {
 
   // The reference database exists from here on: always attempt its cleanup, never touch the primary,
   // and never let a failed cleanup replace the gate's own failure (GATE-migration-cleanup, D-283).
+  // Whether something was thrown is tracked apart from what was thrown: a thrown `false`, `0`,
+  // `""`, `null` or `undefined` must still fail the run (FT-*). No current callee throws one.
   let verdict = null;
-  let gateError = null;
+  let gateCaught = false;
+  let gateError;
   try {
     referencePush = pushSchema(reference, join(root, "drizzle", "schema.ts"));
     if (referencePush.ok) comparison = compareSchemas(await snapshot(db, db.name), await snapshot(reference, reference.name));
@@ -185,22 +188,31 @@ async function prepare() {
       summary(line);
     }
   } catch (error) {
+    gateCaught = true;
     gateError = error;
   }
 
-  let cleanupError = null;
+  let cleanupCaught = false;
+  let cleanupError;
   try {
     await dropDatabase(reference);
   } catch (error) {
+    cleanupCaught = true;
     cleanupError = error;
   }
 
-  const failure = gateError ?? (verdict?.status === "fail" ? new Error(verdict.summaryLines.find(line => line.includes("FAILED")) ?? "the migration gate failed") : null);
-  if (failure) {
-    if (cleanupError) console.error(`[e2e-server] cleanup of ${reference.name} also failed: ${cleanupError?.message ?? cleanupError}`);
-    throw failure;
+  const gateFailed = gateCaught || verdict?.status === "fail";
+  if (gateFailed) {
+    if (cleanupCaught) console.error(`[e2e-server] cleanup of ${reference.name} also failed: ${describeThrown(cleanupError)}`);
+    if (gateCaught) throw gateError;
+    throw new Error(verdict.summaryLines.find(line => line.includes("FAILED")) ?? "the migration gate failed");
   }
-  if (cleanupError) throw cleanupError;
+  if (cleanupCaught) throw cleanupError;
+}
+
+/** A thrown value's message, or the value itself when it is not an Error (including falsy values). */
+function describeThrown(value) {
+  return value instanceof Error ? value.message : String(value?.message ?? value);
 }
 
 function serverEnv() {
@@ -272,7 +284,7 @@ async function start() {
 
 const mode = process.argv[2];
 if (mode === "prepare") {
-  prepare().then(() => log("database ready")).catch(error => { console.error(`[e2e-server] ${error.message}`); process.exit(1); });
+  prepare().then(() => log("database ready")).catch(error => { console.error(`[e2e-server] ${describeThrown(error)}`); process.exit(1); });
 } else if (mode === "start") {
   start().catch(error => { console.error(`[e2e-server] ${error.message}`); process.exit(1); });
 } else if (mode) {

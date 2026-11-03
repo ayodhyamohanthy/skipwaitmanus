@@ -464,7 +464,8 @@ V.rejected = facts => [
 ];
 V.secondaryCleanupLogged = facts => (facts.stderr.includes(`cleanup of ${REFERENCE} also failed`) && facts.stderr.includes(NEEDLE.dropError) ? [] : [`the cleanup failure is not logged as the secondary failure; stderr: ${facts.stderr.trim().slice(0, 200)}`]);
 V.gateValueRaised = facts => {
-  const last = facts.stderr.trim().split("\n").filter(line => line.startsWith("[e2e-server] ")).pop() ?? "";
+  // No trim: a raised "" prints as "[e2e-server] " and trimming would drop that last line.
+  const last = facts.stderr.split("\n").filter(line => line.startsWith("[e2e-server]")).pop() ?? "";
   return last.includes(NEEDLE.dropError) || last.includes("also failed") ? [`the cleanup error replaced the gate's own failure as the raised value; last line: ${last}`] : [];
 };
 for (const site of FT_SITES) {
