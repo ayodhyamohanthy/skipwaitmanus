@@ -31,6 +31,7 @@ const reply = (body: unknown, status = 200): Reply => ({ ok: status < 400, statu
 // (firstSkillKeywords) and experience coarsened ("6-10 years").
 const REF_A = "tal_nfAQM_mhMoW-xVAnLby9eKLM";
 const REF_B = "tal_sj50_1A9Gy4ztL3B_o7TbNls";
+const REF_C = "tal_Qw3rTy-uI0pAsDfGhJkLzXcV";
 const LOCKED = { displayRef: REF_A, headline: "Backend engineer", location: "Pune", skills: ["Go", "Postgres"], isUnlocked: false };
 const UNLOCKED = { displayRef: REF_B, headline: "Product designer", location: null, skills: ["Figma"], isUnlocked: true };
 const PROFILE = { headline: "Product designer", skills: ["Figma"], experience: "6-10 years", expertise: ["Design systems", "Figma"], unlockedAt: "2026-11-01T10:00:00.000Z", expiresAt: "2026-12-01T10:00:00.000Z" };
@@ -50,6 +51,7 @@ function stub(overrides: { talent?: Route; account?: Route; unlock?: Route; prof
 }
 const calls = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${url}`);
 const card = (ref: string) => screen.getByRole("listitem", { name: ref });
+const balanceText = () => screen.getByText(/Talent unlock balance/).querySelector("[data-testid='goal-num']")?.textContent ?? "";
 
 beforeEach(() => { go.mockReset(); toast.mockReset(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -224,7 +226,85 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     release(reply({ error: "Not enough unlock credits", credits: 3 }, 402));
     await waitFor(() => expect(go).toHaveBeenCalledWith("/employer/billing"));
     expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
-    expect(screen.getByText(/Talent unlock balance/).textContent).toContain("20");
+    // The 402 body's numeric `credits` (server/employerRoutes.ts) is the
+    // authoritative balance; the captured 20 is stale.
+    expect(balanceText()).toBe("3");
+  });
+
+  // Two locked rows: unlocks are serialized. While one is pending every other
+  // Unlock is inert and the handler ignores re-entry, so no second optimistic
+  // row, no shared pending guard to clear, and no stale rollback to race.
+  describe("two locked rows (serialized unlocks)", () => {
+    const LOCKED_C = { displayRef: REF_C, headline: "Data analyst", location: "Chennai", skills: ["SQL"], isUnlocked: false };
+    const twoLocked = () => reply({ talent: [LOCKED, LOCKED_C, UNLOCKED] });
+    const unlockButton = (ref: string) => within(card(ref)).getByRole("button", { name: /Unlock profile|Unlocking/ });
+    const unlockPosts = (fetchMock: ReturnType<typeof stub>) => calls(fetchMock).filter(line => line.endsWith("/unlock"));
+
+    it("blocks B while A is pending: B's Unlock is inert, a click sends nothing, and neither row offers profile or intro", async () => {
+      let releaseA: (value: Reply) => void = () => {};
+      const fetchMock = stub({ talent: twoLocked, unlock: () => new Promise<Reply>(resolve => { releaseA = resolve; }) });
+      render(<GoalEmployerTalent />);
+      await screen.findByRole("listitem", { name: REF_C });
+      fireEvent.click(unlockButton(REF_A));
+      await waitFor(() => expect(unlockPosts(fetchMock)).toEqual([`POST /api/employer/talent/${REF_A}/unlock`]));
+      expect(unlockButton(REF_C).getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(unlockButton(REF_C));
+      fireEvent.click(unlockButton(REF_A));
+      expect(unlockPosts(fetchMock)).toEqual([`POST /api/employer/talent/${REF_A}/unlock`]);
+      for (const ref of [REF_A, REF_C]) {
+        expect(within(card(ref)).getByText("Locked")).toBeTruthy();
+        expect(within(card(ref)).queryByRole("button", { name: /View profile/ })).toBeNull();
+        expect(within(card(ref)).queryByRole("button", { name: /Send intro request/ })).toBeNull();
+      }
+      expect(balanceText()).toBe("15");
+      releaseA(reply({ unlocked: true, remaining: 15 }, 201));
+      expect(await within(card(REF_A)).findByRole("button", { name: /View profile/ })).toBeTruthy();
+    });
+
+    it("keeps the guard until A settles, then B unlocks on its own request and the server's balance stands", async () => {
+      const releases: Array<(value: Reply) => void> = [];
+      const fetchMock = stub({ talent: twoLocked, unlock: () => new Promise<Reply>(resolve => { releases.push(resolve); }) });
+      render(<GoalEmployerTalent />);
+      await screen.findByRole("listitem", { name: REF_C });
+      fireEvent.click(unlockButton(REF_A));
+      await waitFor(() => expect(releases.length).toBe(1));
+      // Still pending after other renders: the guard has not been dropped.
+      fireEvent.change(screen.getByLabelText("Search talent"), { target: { value: "x" } });
+      expect(unlockButton(REF_C).getAttribute("aria-disabled")).toBe("true");
+      releases[0](reply({ error: "Not enough unlock credits", credits: 0 }, 402));
+      await waitFor(() => expect(within(card(REF_A)).getByText("Locked")).toBeTruthy());
+      await waitFor(() => expect(unlockButton(REF_C).getAttribute("aria-disabled")).not.toBe("true"));
+      expect(balanceText()).toBe("0");
+      fireEvent.click(unlockButton(REF_C));
+      await waitFor(() => expect(unlockPosts(fetchMock)).toEqual([`POST /api/employer/talent/${REF_A}/unlock`, `POST /api/employer/talent/${REF_C}/unlock`]));
+      expect(unlockButton(REF_A).getAttribute("aria-disabled")).toBe("true");
+      releases[1](reply({ unlocked: true, remaining: 5 }, 201));
+      expect(await within(card(REF_C)).findByRole("button", { name: /View profile/ })).toBeTruthy();
+      expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
+      expect(balanceText()).toBe("5");
+      expect(unlockButton(REF_A).getAttribute("aria-disabled")).not.toBe("true");
+    });
+
+    it("on a 402 with no numeric credits restores only that row and the captured balance", async () => {
+      stub({ talent: twoLocked, unlock: () => reply({ error: "Not enough unlock credits", credits: "3" }, 402) });
+      render(<GoalEmployerTalent />);
+      await screen.findByRole("listitem", { name: REF_C });
+      fireEvent.click(unlockButton(REF_A));
+      await waitFor(() => expect(go).toHaveBeenCalledWith("/employer/billing"));
+      expect(balanceText()).toBe("20");
+      expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
+      expect(within(card(REF_C)).getByText("Locked")).toBeTruthy();
+      expect(within(card(REF_B)).getByText("Unlocked")).toBeTruthy();
+    });
+  });
+
+  it("a non-array expertise value in the profile renders no Expertise line", async () => {
+    stub({ profile: () => reply({ profile: { headline: "Product designer", experience: "6-10 years", expertise: "Design systems" } }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await within(await screen.findByRole("listitem", { name: REF_B })).findByRole("button", { name: /View profile/ }));
+    const opened = await within(card(REF_B)).findByRole("group", { name: "Shared profile" });
+    expect(opened.textContent).toContain("6-10 years");
+    expect(opened.textContent).not.toMatch(/Expertise/);
   });
 
   it("shows a loading state without claiming an empty list", () => {
