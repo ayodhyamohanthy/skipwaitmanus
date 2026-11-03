@@ -11,6 +11,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
     "quality:gate": "pnpm check && pnpm vitest run --maxWorkers=1 && pnpm build",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },

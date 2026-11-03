@@ -97,3 +97,4 @@
      - *Unknown:* I don't know whether `RAZORPAY_KEY_ID` is set in production. The cheapest test is `wrangler secret list`, which only you can run.
   4. **Unchanged from this morning:** the D-018 and D-038 numbers before the Nov 2 day-14 review of D-015, and the seven owner-held rows.
 - **Cursor:** the next session rates D-041 to D-060, then every entry newer than D-233.
+- **Nov 3 merge note (#828 merged `main` `fa462f69`):** this pull request no longer changes any queue row. On `main`, `PRICING-banded-oct25` went to `todo` and was then parked at `owner` by D-266 (Nov 1), because its Tier 1 review gate cannot be handed to any session. FND-4 is `done` at `4762a1e2` (Hark · 3f68), so the BYOR ordering in actions 1 and 2 above is moot. The merge keeps `main`'s rows, plan line and FND-4 packet, so only this section remains. The ratings above are as of Oct 29 and are not re-rated here.

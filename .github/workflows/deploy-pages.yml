@@ -57,7 +57,17 @@ jobs:
     needs: release-gate
     runs-on: ubuntu-latest
     steps:
+      # Full history: the classifier diffs before..head and the API wait checks ancestry.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # REL-rollback-skew (D-212): does this push change what the API runs?
+      - name: Classify the push for API changes
+        id: api-changes
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: bash scripts/classify-api-changes.sh >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
 
@@ -77,6 +87,37 @@ jobs:
           VITE_GIT_COMMIT_SHA: ${{ github.sha }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_CLARITY_PROJECT_ID: ${{ secrets.VITE_CLARITY_PROJECT_ID }}
+
+      # REL-rollback-skew (D-212): new client code must not reach an API that is still
+      # rolling out (15 to 40 minutes). Wait until /api/health/ready reports this SHA or a
+      # descendant. Fail closed: no 200 `state: "ready"` answer within 45 minutes (a
+      # timeout, a 5xx, a 401, an HTML body) fails this step, so the Pages deploy below is
+      # skipped and the live web keeps the release its API is running.
+      - name: Wait for the live API to run this commit
+        id: api-wait
+        if: steps.api-changes.outputs.classification == 'runtime'
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          RELEASE_API_WAIT_MINUTES: "45"
+        run: node scripts/rollbackTarget.mjs wait-api
+
+      # The Deploy failed issue says why. The notify step below records the failed run on it.
+      - name: Record that the web was not deployed because the API did not converge
+        if: failure() && steps.api-wait.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+        run: |
+          msg="API did not converge on ${GITHUB_SHA} within 45 minutes; the web was NOT deployed (REL-rollback-skew). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          echo "::error::${msg}"
+          echo "### ${msg}" >> "$GITHUB_STEP_SUMMARY"
+          title="Deploy failed: ${WORKFLOW}"
+          gh label create incident --color B60205 >/dev/null 2>&1 || true
+          num=$(gh issue list --label incident --state open --limit 100 --json number,title | TITLE="$title" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const i=JSON.parse(s||"[]").find(x=>x.title===process.env.TITLE);process.stdout.write(i?String(i.number):"")})' || true)
+          if [ -n "$num" ]; then gh issue comment "$num" --body "$msg" || true
+          else gh issue create --title "$title" --label incident --body "$msg" || true
+          fi
 
       # Last look before the production write: CI may have been re-run red since
       # release-gate passed, or this job alone may be a re-run.
@@ -135,24 +176,37 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // REL-release-verify (D-212): one "Deploy failed: <workflow>" issue
+            // labelled incident, opened or updated on failure and closed on the
+            // next success, never a comment on whichever issue is newest.
+            // Notification must never fail the job: a missing permission only logs.
             const status = `${{ job.status }}`;
-            const msg = status === 'success' ? '✅ Sync succeeded' : '❌ Sync failed';
-            // Notification must never fail the job: wrap in try/catch so a
-            // missing issue or missing permissions only logs a warning.
+            const title = `Deploy failed: ${{ github.workflow }}`;
+            const { owner, repo } = context.repo;
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             try {
-              const issues = await github.rest.issues.listForRepo({
-                owner: context.repo.owner, repo: context.repo.repo, state: 'all', per_page: 1
-              });
-              if (issues.data.length > 0) {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issues.data[0].number,
-                  body: `${msg} — workflow: ${{ github.workflow }}, commit: ${{ github.sha }}`
-                });
-                console.log('Notification posted to issue #' + issues.data[0].number);
+              const open = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', labels: 'incident', per_page: 100 });
+              const existing = open.find(issue => issue.title === title && !issue.pull_request);
+              if (status === 'success') {
+                if (existing) {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body: `Deploy succeeded at ${{ github.sha }}: ${run}` });
+                  await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+                  console.log('Closed #' + existing.number);
+                }
               } else {
-                console.log('No issue found to notify — skipping (non-fatal).');
+                try {
+                  await github.rest.issues.createLabel({ owner, repo, name: 'incident', color: 'B60205' });
+                } catch (err) {
+                  if (err.status !== 422) throw err;
+                }
+                const body = `Deploy ${status} — workflow: ${{ github.workflow }}, commit: ${{ github.sha }}, run: ${run}`;
+                if (existing) {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+                  console.log('Updated #' + existing.number);
+                } else {
+                  const created = await github.rest.issues.create({ owner, repo, title, body, labels: ['incident'] });
+                  console.log('Opened #' + created.data.number);
+                }
               }
             } catch (err) {
               console.log('Notification skipped (non-fatal): ' + err.message);

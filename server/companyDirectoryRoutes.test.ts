@@ -17,6 +17,29 @@ function appWith(deps: Partial<CompanyDirectoryRouteDeps> = {}) {
   return { app, activity };
 }
 
+describe("GET /api/companies/search", () => {
+  const list = async () => ({ companies: [wipro, { ...wipro, slug: "tcs", name: "TCS", domains: ["tcs.com"] }], openCount: 2 });
+  it("is not swallowed by /:slug and finds TCS by alias", async () => {
+    const getCompanyDirectoryEntry = vi.fn(async () => undefined);
+    const { app } = appWith({ listCompanyDirectory: list, getCompanyDirectoryEntry });
+    const r = await request(app).get("/api/companies/search?q=tata");
+    expect(r.status).toBe(200);
+    expect(getCompanyDirectoryEntry).not.toHaveBeenCalled();
+    expect(r.headers["cache-control"]).toBe("public, max-age=60");
+    expect(r.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+  });
+  it("refuses unknown query keys", async () => {
+    const { app } = appWith({ listCompanyDirectory: list });
+    expect((await request(app).get("/api/companies/search?q=tcs&industry=x")).status).toBe(400);
+  });
+  it("carries no availability field", async () => {
+    const { app } = appWith({ listCompanyDirectory: list });
+    const r = await request(app).get("/api/companies/search?q=wipro");
+    expect(r.body.companies).toHaveLength(1);
+    expect(JSON.stringify(r.body)).not.toMatch(/openToReferrals|available/i);
+  });
+});
+
 describe("public company directory routes", () => {
   it("serves the listed directory with a public cache header", async () => {
     const { app } = appWith({ listCompanyDirectory: async () => ({ companies: [wipro], openCount: 1 }) });
