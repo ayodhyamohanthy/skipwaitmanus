@@ -24,7 +24,9 @@ describe("ForCompanies sales page", () => {
     render(<ForCompanies />);
     expect(screen.getByText(/Your best hires already/)).toBeTruthy();
     expect(await screen.findByText("Wipro")).toBeTruthy();
-    const chips = screen.getByText("PEOPLE OPEN TO REFERRALS AT LAUNCH").closest("section") as HTMLElement;
+    // D-176: the launch-chip label makes no availability claim.
+    const chips = screen.getByText("COMPANIES ON SKIPWAIT.ME").closest("section") as HTMLElement;
+    expect(screen.queryByText(/OPEN TO REFERRALS/i)).toBeNull();
     expect(Array.from(chips.querySelectorAll(".co-logos span")).map(node => node.textContent)).toEqual(["skipwait.me", "Wipro", "Neutrinos", "TCS", "Merkle"]);
     const nav = screen.getByRole("navigation", { name: "Company navigation" });
     expect(within(nav).getByRole("link", { name: "Plans" }).getAttribute("href")).toBe("/plans");

@@ -26,7 +26,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   LAND_SLOT, REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
-  mayReport, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
+  mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -89,15 +89,18 @@ async function github(repo, path) {
   return res.json();
 }
 
-/** Marker commits are empty: a commit that changes files is work, whatever its subject says. */
-function markersOn(ref) {
-  const raw = tryGit("log", "--reverse", "--no-merges", "--format=%x1e%s%x1f", "--name-only", `origin/main..${ref}`) ?? "";
-  return raw.split("\x1e").filter(Boolean).flatMap(rec => {
-    const [subject, files = ""] = rec.split("\x1f");
-    const m = files.trim() ? null : parseMarker(subject.trim());
-    return m ? [m] : [];
-  });
+/**
+ * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
+ * commit that changes files is work, whatever its subject says (D-190).
+ */
+function commitsOn(ref) {
+  return parseBranchLog(tryGit("log", "--reverse", "--no-merges", "--format=%x1e%s%x1f", "--name-only", `origin/main..${ref}`) ?? "");
 }
+
+const markersOn = commits => commits.flatMap(({ subject, files }) => {
+  const m = files.length ? null : parseMarker(subject);
+  return m ? [m] : [];
+});
 
 function loadBranches(tasks) {
   const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
@@ -110,7 +113,9 @@ function loadBranches(tasks) {
     if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
     const ref = `refs/remotes/origin/${name}`;
     const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, markers: markersOn(ref) });
+    const commits = commitsOn(ref);
+    // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
+    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markers: markersOn(commits) });
   }
   return branches;
 }

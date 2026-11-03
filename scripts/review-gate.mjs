@@ -22,9 +22,15 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { modelOf, parseMarker, reviewLockOf, slugOf } from "./nextTaskCore.mjs";
+import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
+
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 export const REVIEW_GATE_FAIL = "Tier 1: this head has no independent passing review (D-074, D-151). Run node scripts/next-task.mjs to get a review.";
+
+/** GATE-tier-floor (D-212): a declared Tier 2 row whose changed paths compute Tier 1 (money, sign-in, privacy). */
+export const TIER_FLOOR_FAIL = "Tier 1: this change touches";
+
 const SHA = /^[0-9a-f]{40}$/;
 const git = args => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
@@ -90,24 +96,39 @@ export function isStatusOnlyChange(files) {
  * lock's, oldest first, each verdict carrying `reviewed` (sha or null). `nonMergeCommitsSince(sha)`
  * lists the head's own non-merge commits after `sha` that are not on origin/main, or returns null
  * when `sha` is not in the head's history. `isStatusCommit(sha)` is true for the status commit a
- * landing makes (`isStatusOnlyChange`), which keeps the pass. Returns null to pass, or the failure message.
+ * landing makes (`isStatusOnlyChange`), which keeps the pass.
+ *
+ * GATE-tier-floor (D-212): when `tierOf(changedPaths)` is given, the gate guards the higher of the
+ * row's declared tier and the computed tier, so a money or sign-in change filed as Tier 2 still
+ * needs the independent pass. Returns null to pass, or the failure message.
  */
-export function reviewGateViolation({ task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince, isStatusCommit }) {
-  if (!task || Number(task.tier) !== 1) return null;
+export function reviewGateViolation({
+  task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince, isStatusCommit,
+  tierOf, tierReasonPaths = () => [], changedPaths = [],
+}) {
+  if (!task) return null;
+  // The row's declared tier, and the tier its changed paths compute (GATE-tier-floor, D-212).
+  const declared = Number(task.tier);
+  const computed = typeof tierOf === "function" ? Number(tierOf(changedPaths)) : 0;
+  if (declared !== 1 && computed !== 1) return null;
+  // The higher of the two, by path (D-212): the message says which paths raised it and the cure.
+  const raised = declared !== 1
+    ? `${TIER_FLOOR_FAIL} ${tierReasonPaths(changedPaths).map(path => `\`${path}\``).join(", ")}, which are Tier 1 (D-212). It needs an independent pass on its head; correct the row's tier in docs/plans/assignments.json (any session, D-200 (2)).`
+    : REVIEW_GATE_FAIL;
   const stage = lockMarkers.filter(m => m && m.id === task.id && m.verb !== "Heartbeat");
   const last = stage.at(-1);
-  if (!last) return fail(`Nobody has reviewed ${task.id} yet.`);
-  if (last.verb !== "Verdict" && last.verb !== "Land claim") return fail(`The review of ${task.id} stands at "${last.verb}", not a pass.`);
+  if (!last) return `${raised} Nobody has reviewed ${task.id} yet.`;
+  if (last.verb !== "Verdict" && last.verb !== "Land claim") return `${raised} The review of ${task.id} stands at "${last.verb}", not a pass.`;
   const verdict = [...stage].reverse().find(m => m.verb === "Verdict");
-  if (!verdict || verdict.verdict !== "pass") return fail(`The newest verdict on ${task.id} is ${verdict ? verdict.verdict : "missing"}, not a pass.`);
+  if (!verdict || verdict.verdict !== "pass") return `${raised} The newest verdict on ${task.id} is ${verdict ? verdict.verdict : "missing"}, not a pass.`;
 
   const reviewed = verdict.reviewed ?? null;
-  if (!reviewed) return fail(`The pass by ${verdict.who} was recorded before verdicts named their head: the reviewer re-records it on the current head (node scripts/next-task.mjs --verdict pass --task ${task.id} --as "<session name>"), and nothing is waived.`);
+  if (!reviewed) return `${raised} The pass by ${verdict.who} was recorded before verdicts named their head: the reviewer re-records it on the current head (node scripts/next-task.mjs --verdict pass --task ${task.id} --as "<session name>"), and nothing is waived.`;
   if (reviewed !== head) {
     const own = typeof nonMergeCommitsSince === "function" ? nonMergeCommitsSince(reviewed) : null;
-    if (own === null) return fail(`The reviewed commit ${reviewed.slice(0, 8)} is not in this head's history.`);
+    if (own === null) return `${raised} The reviewed commit ${reviewed.slice(0, 8)} is not in this head's history.`;
     const unreviewed = own.filter(sha => !(typeof isStatusCommit === "function" && isStatusCommit(sha)));
-    if (unreviewed.length) return fail(`${unreviewed.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main and the landing's status commit keep a pass).`);
+    if (unreviewed.length) return `${raised} ${unreviewed.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main and the landing's status commit keep a pass).`;
   }
 
   // D-151: the same sets the picker's did() reads — builders on the task branch, fixers on the lock.
@@ -115,7 +136,7 @@ export function reviewGateViolation({ task, head, workMarkers = [], lockMarkers 
   const builders = ofTask(workMarkers).filter(m => m.verb === "Claim" || m.verb === "Takeover").map(m => modelOf(m.who));
   const fixers = stage.filter(m => m.verb === "Fix claim" || m.verb === "Fixed").map(m => modelOf(m.who));
   const model = modelOf(verdict.who);
-  if (builders.includes(model) || fixers.includes(model)) return fail(`The pass is by ${model}, the model that ${builders.includes(model) ? "built" : "fixed"} this work; a review must come from another model (D-151).`);
+  if (builders.includes(model) || fixers.includes(model)) return `${raised} The pass is by ${model}, the model that ${builders.includes(model) ? "built" : "fixed"} this work; a review must come from another model (D-151).`;
   return null;
 }
 
@@ -142,6 +163,53 @@ function changesOf(sha) {
 /** True when `sha` is the status commit a landing makes; false on any doubt (the commit then counts as unreviewed). */
 function statusCommit(sha) {
   try { return isStatusOnlyChange(changesOf(sha)); } catch { return false; }
+}
+
+const DB_HUNK_START = /^@@ -(?:\d+)(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+const DECLARATION = /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z0-9_$]+)/;
+
+/** The name of the outermost function or declaration a hunk sits in, as `server/db.ts` names it. */
+export function enclosingName(line) {
+  const m = DECLARATION.exec(String(line ?? ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * What the head changed against its merge base with origin/main: the paths, and for `server/db.ts`
+ * each hunk's changed lines plus the function each hunk sits in (GATE-tier-floor, D-212).
+ */
+export function changedPathsOf(head) {
+  let base = "";
+  try { base = git(["merge-base", "origin/main", head]); } catch { base = ""; }
+  if (!base) return [];
+  const paths = git(["diff", "--name-only", "--no-renames", `${base}..${head}`]).split("\n").filter(Boolean);
+  if (!paths.includes("server/db.ts")) return paths;
+  const diff = git(["diff", "--no-renames", "-U0", `${base}..${head}`, "--", "server/db.ts"]).split("\n");
+  const hunks = [];
+  let hunk = null;
+  const close = () => { if (hunk) hunks.push({ added: hunk.added, removed: hunk.removed, context: hunk.context }); hunk = null; };
+  for (const line of diff) {
+    const start = DB_HUNK_START.exec(line);
+    if (start) {
+      close();
+      hunk = { at: Number(start[1]), added: [], removed: [], context: [] };
+      continue;
+    }
+    if (!hunk || /^[+-]{3}/.test(line)) continue;
+    if (line.startsWith("+")) hunk.added.push(line);
+    else if (line.startsWith("-")) hunk.removed.push(line);
+  }
+  close();
+  const file = (() => { try { return execFileSync("git", ["show", `${head}:server/db.ts`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] }); } catch { return ""; } })();
+  const lines = file.split("\n");
+  for (const h of hunks) {
+    h.context = [];
+    for (let i = Math.min(h.at, lines.length) - 1; i >= 0; i--) {
+      const name = enclosingName(lines[i]);
+      if (name) { h.context.push(name); break; }
+    }
+  }
+  return paths.flatMap(path => (path === "server/db.ts" ? hunks.map(h => ({ path, ...h })) : [path]));
 }
 
 /** Empty marker commits on `range`, oldest first, with each verdict's reviewed head. Commits that change files are work. */
@@ -186,10 +254,18 @@ export function runReviewGate({ local = false } = {}) {
     }
     const branch = process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]);
     const task = findGateRow(tasks, branch);
-    if (!task || Number(task.tier) !== 1) return 0;
+    if (!task) return 0;
 
     // In CI the checkout is GitHub's merge of the PR into main; the PR's own head is in the event.
     const head = pullRequestHead() ?? git(["rev-parse", "HEAD"]);
+    // GATE-tier-floor (D-212): the computed tier from the PR's own changed paths, plus the hunks of
+    // server/db.ts (a money line, or a function whose name names money).
+    const changedPaths = changedPathsOf(head);
+    const computed = classifyTier(changedPaths);
+    const tierOf = paths => (paths === changedPaths ? computed.tier : classifyTier(paths).tier);
+    if (Number(task.tier) !== 1 && computed.tier === 1) {
+      console.log(`review-gate: ${task.id} declares Tier ${task.tier} but its paths compute Tier 1 (${tierReasonPaths(changedPaths).join(", ")}).`);
+    }
     const lock = reviewLockOf(task);
     const lockMarkers = fetchBranch(lock) ? markersIn(`origin/main..refs/remotes/origin/${lock}`) : [];
     const workMarkers = markersIn(`origin/main..${head}`);
@@ -197,7 +273,11 @@ export function runReviewGate({ local = false } = {}) {
       try { git(["merge-base", "--is-ancestor", sha, head]); } catch { return null; }
       return git(["rev-list", "--no-merges", `${sha}..${head}`, "--not", "origin/main"]).split("\n").filter(Boolean);
     };
-    const violation = reviewGateViolation({ task, head, workMarkers, lockMarkers, nonMergeCommitsSince, isStatusCommit: statusCommit });
+    const violation = reviewGateViolation({
+      task, head, workMarkers, lockMarkers, nonMergeCommitsSince, isStatusCommit: statusCommit,
+      tierOf, tierReasonPaths, changedPaths,
+    });
+
     if (violation) {
       console.error(`review-gate: ${task.id} at ${head.slice(0, 8)}: ${violation}`);
       return 1;
