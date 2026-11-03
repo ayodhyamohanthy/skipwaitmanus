@@ -4,24 +4,29 @@
 //
 // What it pins: the DESIRED cleanup and error-preservation behaviour of
 // `node scripts/e2e-server.mjs prepare` for the scratch reference database
-// `skipwait_head`, as derived in CONTRACT.md (settled items only). Cases that
-// are red against the bound head are intended reds. Nothing here implements
-// the repair; the mutants below are deliberately WRONG fixes used as negative
-// controls, never a candidate implementation.
+// `skipwait_head`, as derived in CONTRACT.md (settled items only), plus the
+// FT-* falsy-throw regressions: a thrown `false`, `0`, `""`, `null` or
+// `undefined` at S1, S2, the summary write or the cleanup DROP must still
+// reject `prepare` (non-zero exit, no "database ready"). No current callee
+// throws a falsy value; FT-* pins a latent corner, not a live incident.
 //
 // How: the unmodified subject CLI is copied into a throwaway sandbox (so its
 // `e2e/.results` write lands outside the repository) and run in a child Node
 // process whose `mysql2/promise` and `node:child_process` imports resolve to
-// in-memory fakes (module.register resolve hook). No database, no network
-// (net.Socket#connect is trapped and recorded), no dependency install: this
-// file uses node:test and node:assert only.
+// in-memory fakes (module.register resolve hook); the falsy summary fault
+// patches `fs.appendFileSync` for the step-summary path only. No database, no
+// network (net.Socket#connect is trapped and recorded), no dependency install.
+// The test runner is vitest (`test` from "vitest"); assertions use node:assert.
+//
+// Not in this file: the H-2 bound-blob check and the K-M1..M8 control mutants
+// of the external candidate. They are external red-bound evidence (posted on
+// #982, comment 6592139597), not committed CI tests, and nothing below reads
+// their env switches.
 //
 // Run:  pnpm vitest run scripts/migrationGateCleanup.test.ts
 // Env:  SUBJECT_ROOT        checkout holding scripts/e2e-server.mjs (default: cwd)
 //       LANE_TMP            sandbox parent directory (default: os.tmpdir())
-//       LANE_REQUIRE_BOUND  "1" = H-2 asserts the subject is the bound blob pair
 //       LANE_OBSERVATIONS_OUT  write the subject's raw per-run observations here
-//       LANE_MUTANTS_OUT    write each control mutant's full source into this directory
 //       LANE_KEEP           "1" = keep sandboxes for inspection
 import { test } from "vitest";
 import assert from "node:assert/strict";
@@ -65,6 +70,9 @@ function laneFakeState(fs, proc) {
   const env = proc.env;
   const faults = new Set(String(env.LANE_FAULTS || "").split(",").filter(Boolean));
   const scenario = env.LANE_SCENARIO || "pass";
+  const falsyValues = { false: false, zero: 0, empty: "", null: null, undefined: undefined };
+  if (env.LANE_FALSY && !(env.LANE_FALSY in falsyValues)) throw new Error(`LANE_HARNESS: unknown falsy value ${env.LANE_FALSY}`);
+  const falsy = falsyValues[env.LANE_FALSY];
   let seq = 0;
   const record = event => {
     seq += 1;
@@ -84,6 +92,7 @@ function laneFakeState(fs, proc) {
     record,
     faults,
     scenario,
+    falsy,
     PRIMARY: env.LANE_PRIMARY,
     REFERENCE: env.LANE_REFERENCE,
     databases,
@@ -119,6 +128,10 @@ function laneFakeMysql(state) {
           }
           const existed = state.databases.has(name);
           state.record({ ev: "drop", database: name, existed });
+          if (name === state.REFERENCE && existed && state.faults.has("cleanup-drop-throws-falsy")) {
+            state.record({ ev: "fault", fault: "cleanup-drop-throws-falsy" });
+            throw state.falsy;
+          }
           if (name === state.REFERENCE && existed && state.faults.has("cleanup-drop-throws")) {
             state.record({ ev: "fault", fault: "cleanup-drop-throws" });
             throw fail("ER_LOCK_WAIT_TIMEOUT", `${"LANE_INJECTED_DROP_FAILURE"}: DROP DATABASE ${name} did not complete`);
@@ -129,6 +142,14 @@ function laneFakeMysql(state) {
         const schema = params[0];
         if (/information_schema\.TABLES/.test(text)) {
           state.record({ ev: "snapshot-read", database: schema });
+          if (schema === state.PRIMARY && state.faults.has("s1-throws-falsy")) {
+            state.record({ ev: "fault", fault: "s1-throws-falsy" });
+            throw state.falsy;
+          }
+          if (schema === state.REFERENCE && state.faults.has("s2-throws-falsy")) {
+            state.record({ ev: "fault", fault: "s2-throws-falsy" });
+            throw state.falsy;
+          }
           if (schema === state.PRIMARY && state.faults.has("s1-throws")) {
             state.record({ ev: "fault", fault: "s1-throws" });
             throw fail("PROTOCOL_CONNECTION_LOST", "LANE_INJECTED_S1_FAILURE: migrated-base snapshot read failed");
@@ -228,10 +249,22 @@ const FAKE_FILES = {
     ``,
   ].join("\n"),
   "preload.mjs": [
-    `import { register } from "node:module";`,
+    `import { register, syncBuiltinESMExports } from "node:module";`,
+    `import fs from "node:fs";`,
     `import net from "node:net";`,
     `import state from "./state.mjs";`,
     `register("./hooks.mjs", import.meta.url);`,
+    `if (state.faults.has("summary-throws-falsy")) {`,
+    `  const realAppend = fs.appendFileSync;`,
+    `  fs.appendFileSync = function laneSummaryAppend(file, ...rest) {`,
+    `    if (String(file) === process.env.GITHUB_STEP_SUMMARY) {`,
+    `      state.record({ ev: "fault", fault: "summary-throws-falsy" });`,
+    `      throw state.falsy;`,
+    `    }`,
+    `    return realAppend.call(this, file, ...rest);`,
+    `  };`,
+    `  syncBuiltinESMExports();`,
+    `}`,
     `net.Socket.prototype.connect = function laneNoNetwork() {`,
     `  state.record({ ev: "net-connect" });`,
     `  throw new Error("LANE_HARNESS: network is forbidden in this harness");`,
@@ -260,6 +293,32 @@ const RUNS = {
   R13: { scenario: "fail-drift", faults: ["cleanup-drop-throws"], note: "cleanup DROP throws, verdict fail (drift)" },
   R14: { scenario: "pass", faults: ["s1-throws", "cleanup-drop-throws"], note: "S1 throws, then the cleanup DROP throws" },
   R15: { scenario: "fail-deploy", faults: ["s2-throws"], note: "OBSERVE ONLY (U9): deploy failed, then S2 throws" },
+  // FT-*: falsy thrown values (latent corner: no current callee throws one).
+  "F-S1-false": { scenario: "pass", faults: ["s1-throws-falsy"], falsy: "false", note: "S1 throws a falsy value (false), verdict pass" },
+  "F-S1-zero": { scenario: "pass", faults: ["s1-throws-falsy"], falsy: "zero", note: "S1 throws a falsy value (zero), verdict pass" },
+  "F-S1-empty": { scenario: "pass", faults: ["s1-throws-falsy"], falsy: "empty", note: "S1 throws a falsy value (empty), verdict pass" },
+  "F-S1-null": { scenario: "pass", faults: ["s1-throws-falsy"], falsy: "null", note: "S1 throws a falsy value (null), verdict pass" },
+  "F-S1-undefined": { scenario: "pass", faults: ["s1-throws-falsy"], falsy: "undefined", note: "S1 throws a falsy value (undefined), verdict pass" },
+  "F-S2-false": { scenario: "pass", faults: ["s2-throws-falsy"], falsy: "false", note: "S2 throws a falsy value (false), verdict pass" },
+  "F-S2-zero": { scenario: "pass", faults: ["s2-throws-falsy"], falsy: "zero", note: "S2 throws a falsy value (zero), verdict pass" },
+  "F-S2-empty": { scenario: "pass", faults: ["s2-throws-falsy"], falsy: "empty", note: "S2 throws a falsy value (empty), verdict pass" },
+  "F-S2-null": { scenario: "pass", faults: ["s2-throws-falsy"], falsy: "null", note: "S2 throws a falsy value (null), verdict pass" },
+  "F-S2-undefined": { scenario: "pass", faults: ["s2-throws-falsy"], falsy: "undefined", note: "S2 throws a falsy value (undefined), verdict pass" },
+  "F-SUM-false": { scenario: "pass", faults: ["summary-throws-falsy"], falsy: "false", note: "SUM throws a falsy value (false), verdict pass" },
+  "F-SUM-zero": { scenario: "pass", faults: ["summary-throws-falsy"], falsy: "zero", note: "SUM throws a falsy value (zero), verdict pass" },
+  "F-SUM-empty": { scenario: "pass", faults: ["summary-throws-falsy"], falsy: "empty", note: "SUM throws a falsy value (empty), verdict pass" },
+  "F-SUM-null": { scenario: "pass", faults: ["summary-throws-falsy"], falsy: "null", note: "SUM throws a falsy value (null), verdict pass" },
+  "F-SUM-undefined": { scenario: "pass", faults: ["summary-throws-falsy"], falsy: "undefined", note: "SUM throws a falsy value (undefined), verdict pass" },
+  "F-DROP-false": { scenario: "pass", faults: ["cleanup-drop-throws-falsy"], falsy: "false", note: "DROP throws a falsy value (false), verdict pass" },
+  "F-DROP-zero": { scenario: "pass", faults: ["cleanup-drop-throws-falsy"], falsy: "zero", note: "DROP throws a falsy value (zero), verdict pass" },
+  "F-DROP-empty": { scenario: "pass", faults: ["cleanup-drop-throws-falsy"], falsy: "empty", note: "DROP throws a falsy value (empty), verdict pass" },
+  "F-DROP-null": { scenario: "pass", faults: ["cleanup-drop-throws-falsy"], falsy: "null", note: "DROP throws a falsy value (null), verdict pass" },
+  "F-DROP-undefined": { scenario: "pass", faults: ["cleanup-drop-throws-falsy"], falsy: "undefined", note: "DROP throws a falsy value (undefined), verdict pass" },
+  "F-S1DROP-false": { scenario: "pass", faults: ["s1-throws-falsy", "cleanup-drop-throws"], falsy: "false", note: "S1 throws a falsy value (false), then the cleanup DROP throws an Error" },
+  "F-S1DROP-zero": { scenario: "pass", faults: ["s1-throws-falsy", "cleanup-drop-throws"], falsy: "zero", note: "S1 throws a falsy value (zero), then the cleanup DROP throws an Error" },
+  "F-S1DROP-empty": { scenario: "pass", faults: ["s1-throws-falsy", "cleanup-drop-throws"], falsy: "empty", note: "S1 throws a falsy value (empty), then the cleanup DROP throws an Error" },
+  "F-S1DROP-null": { scenario: "pass", faults: ["s1-throws-falsy", "cleanup-drop-throws"], falsy: "null", note: "S1 throws a falsy value (null), then the cleanup DROP throws an Error" },
+  "F-S1DROP-undefined": { scenario: "pass", faults: ["s1-throws-falsy", "cleanup-drop-throws"], falsy: "undefined", note: "S1 throws a falsy value (undefined), then the cleanup DROP throws an Error" },
 };
 
 function writeSandbox(subjectSource, coreSource, run) {
@@ -295,6 +354,7 @@ function runSubject(subjectSource, coreSource, runId) {
       LANE_TRACE: box.trace,
       LANE_SCENARIO: run.scenario,
       LANE_FAULTS: run.faults.join(","),
+      LANE_FALSY: run.falsy ?? "",
       LANE_PRIMARY: PRIMARY,
       LANE_REFERENCE: REFERENCE,
     },
@@ -384,6 +444,39 @@ const SETTLED_CASES = [
   { id: "ER-7", run: "R09", title: "verdict fail + summary write throws: no false success, failed verdict visible", check: f => [...V.noFalseSuccess(f), ...V.shows(f, NEEDLE.deployReason, "the failed verdict")] },
 ];
 
+// FT-*: a falsy thrown value must reject `prepare` like any other throw. Each case
+// asserts the fault fired, a handled rejection (exit status exactly 1 from the CLI's
+// own catch, no TypeError or unhandled rejection), no "database ready", one cleanup
+// attempt and the primary kept. FT-P* also pins gate precedence: when the gate threw
+// (even a falsy value) and the cleanup DROP throws an Error, the cleanup failure is
+// logged as the secondary line and the gate's value is what is raised.
+const FALSY_VALUES = ["false", "zero", "empty", "null", "undefined"];
+const FT_SITES = [
+  { tag: "S1", fault: "s1-throws-falsy", what: "S1 (migrated-base snapshot)" },
+  { tag: "S2", fault: "s2-throws-falsy", what: "S2 (reference snapshot)" },
+  { tag: "SUM", fault: "summary-throws-falsy", what: "step-summary write" },
+  { tag: "DROP", fault: "cleanup-drop-throws-falsy", what: "cleanup DROP" },
+];
+V.rejected = facts => [
+  ...(facts.status === 1 ? [] : [`expected the CLI's handled rejection (exit 1), got exit ${facts.status} signal ${facts.signal}`]),
+  ...(/TypeError|Unhandled|unhandled/.test(facts.stderr) ? [`the rejection was not handled cleanly; stderr: ${facts.stderr.trim().slice(0, 200)}`] : []),
+  ...V.noFalseSuccess(facts),
+];
+V.secondaryCleanupLogged = facts => (facts.stderr.includes(`cleanup of ${REFERENCE} also failed`) && facts.stderr.includes(NEEDLE.dropError) ? [] : [`the cleanup failure is not logged as the secondary failure; stderr: ${facts.stderr.trim().slice(0, 200)}`]);
+V.gateValueRaised = facts => {
+  const last = facts.stderr.trim().split("\n").filter(line => line.startsWith("[e2e-server] ")).pop() ?? "";
+  return last.includes(NEEDLE.dropError) || last.includes("also failed") ? [`the cleanup error replaced the gate's own failure as the raised value; last line: ${last}`] : [];
+};
+for (const site of FT_SITES) {
+  for (const value of FALSY_VALUES) {
+    const run = `F-${site.tag}-${value}`;
+    SETTLED_CASES.push({ id: `FT-${site.tag}-${value}`, run, title: `${site.what} throws ${value === "empty" ? '""' : value === "zero" ? "0" : value}: prepare rejects, exit 1, no "database ready", one cleanup attempt, primary kept`, check: f => [...V.fired(f, site.fault), ...V.refCreated(f), ...V.cleanupExactlyOnce(f), ...V.primaryKept(f), ...V.rejected(f), ...(site.tag === "DROP" ? [] : V.referenceGone(f))] });
+  }
+}
+for (const value of FALSY_VALUES) {
+  SETTLED_CASES.push({ id: `FT-P-${value}`, run: `F-S1DROP-${value}`, title: `S1 throws ${value} and the cleanup DROP throws an Error: rejects, gate value wins, cleanup failure logged as secondary, one DROP, primary kept`, check: f => [...V.fired(f, "s1-throws-falsy"), ...V.fired(f, "cleanup-drop-throws"), ...V.cleanupExactlyOnce(f), ...V.primaryKept(f), ...V.rejected(f), ...V.secondaryCleanupLogged(f), ...V.gateValueRaised(f)] });
+}
+
 /** Direction each settled case is expected to take against the bound head, and why (see CONTRACT.md). */
 const EXPECTED_ON_BOUND_HEAD = {
   "CL-1": "red: head has no cleanup on the S1 exception path (drop is only reached after the verdict loop)",
@@ -470,18 +563,23 @@ function syntheticFacts(runId, overrides = {}) {
   const failed = run.scenario.startsWith("fail");
   const reason = run.scenario === "fail-drift" ? NEEDLE.driftReason : NEEDLE.deployReason;
   const events = [{ seq: 1, ev: "create", database: PRIMARY }, { seq: 2, ev: "create", database: REFERENCE }];
-  for (const fault of run.faults.filter(name => name !== "summary-eisdir" && name !== "cleanup-drop-throws")) events.push({ seq: events.length + 1, ev: "fault", fault });
+  for (const fault of run.faults.filter(name => name !== "summary-eisdir" && name !== "cleanup-drop-throws" && name !== "cleanup-drop-throws-falsy")) events.push({ seq: events.length + 1, ev: "fault", fault });
   events.push({ seq: events.length + 1, ev: "drop", database: REFERENCE, existed: true });
-  if (has("cleanup-drop-throws")) events.push({ seq: events.length + 1, ev: "fault", fault: "cleanup-drop-throws" });
-  const dbs = has("cleanup-drop-throws") ? [PRIMARY, REFERENCE] : [PRIMARY];
+  for (const fault of ["cleanup-drop-throws", "cleanup-drop-throws-falsy"].filter(has)) events.push({ seq: events.length + 1, ev: "fault", fault });
+  const dbs = has("cleanup-drop-throws") || has("cleanup-drop-throws-falsy") ? [PRIMARY, REFERENCE] : [PRIMARY];
   events.push({ seq: events.length + 1, ev: "exit", code: 0, databases: dbs.sort() });
   const errors = [has("s1-throws") && NEEDLE.s1Error, has("s2-throws") && NEEDLE.s2Error, has("summary-eisdir") && NEEDLE.summaryError, has("cleanup-drop-throws") && NEEDLE.dropError].filter(Boolean);
   const verdictLine = failed ? `- Migration gate: **FAILED** - ${reason}.` : "- Migration gate: passed.";
-  const hardFail = failed || has("s1-throws") || has("s2-throws") || has("summary-eisdir") || has("cleanup-drop-throws");
+  const falsyFault = run.faults.some(name => name.endsWith("-falsy"));
+  const hardFail = failed || falsyFault || has("s1-throws") || has("s2-throws") || has("summary-eisdir") || has("cleanup-drop-throws");
+  // A gate-side throw with a failed cleanup: the cleanup line is secondary, the gate's value is raised last.
+  const errorLines = falsyFault && has("cleanup-drop-throws")
+    ? [`[e2e-server] cleanup of ${REFERENCE} also failed: ${NEEDLE.dropError}`, `[e2e-server] ${run.falsy}`]
+    : [...errors.map(text => `[e2e-server] ${text}`), ...(falsyFault ? [`[e2e-server] ${run.falsy}`] : [])];
   return factsOf(runId, {
     status: hardFail ? 1 : 0,
     stdout: `${verdictLine}\n${hardFail ? "" : NEEDLE.ready}\n`,
-    stderr: [failed ? `[e2e-server] ${verdictLine} (FAILED)` : "", ...errors.map(text => `[e2e-server] ${text}`)].join("\n"),
+    stderr: [failed ? `[e2e-server] ${verdictLine} (FAILED)` : "", ...errorLines].join("\n"),
     summary: has("summary-eisdir") ? null : `${verdictLine}\n`,
     events,
     ...overrides,
