@@ -191,4 +191,4 @@ After each step, run `pnpm vitest run scripts/migrationGateCleanup.test.ts scrip
 - **Main drifts.** Run on `main`, the drift check reports a missing table or column. That is the `GATE-migration-apply` §10 stop: report it, do not baseline it.
 
 ## Status
-- GATE-migration-cleanup: review — agent/queue/gate-migration-cleanup — 8c89fa57 (Hark · 5de4, model unverified, no D-151 independence claim; needs a separate final-head reviewer and lander)
+- GATE-migration-cleanup: review — agent/queue/gate-migration-cleanup — 6772e8c8 (Hark · 5de4, model unverified, no D-151 independence claim; falsy-throw fix: red 3c92875b 25 fail / 34 pass → 59/59; needs a separate final-head reviewer against current main and a distinct lander)
