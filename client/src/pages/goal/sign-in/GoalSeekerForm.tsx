@@ -63,8 +63,11 @@ export function GoalSeekerForm({ returnTo }: { returnTo: string }) {
         {flow.remembered ? <ForgetEmail onForget={() => { flow.forget(); focusEmail(); }} /> : null}
         <FieldError id={ERROR_ID} message={flow.error} />
         <GoalButton type="submit" variant="primary" touch="large" className="w-full" busy={flow.busy} busyLabel="Sending code…">Send sign-in code</GoalButton>
-        {/* Keyboard and screen-reader route back to the email field, as the kit keeps it. */}
-        <button type="button" className="sr-only" onClick={focusEmail}>Continue with email</button>
+        {/* Keyboard and screen-reader route back to the email field, as the kit keeps it; it shows itself when focused, so no focus stop is invisible. */}
+        <button type="button" onClick={focusEmail}
+          className="sr-only focus-visible:not-sr-only focus-visible:justify-self-start focus-visible:text-g-meta focus-visible:text-g-ink focus-visible:underline focus-visible:underline-offset-[3px]">
+          Continue with email
+        </button>
       </form>
       <div className="mt-5 flex items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-g-hairline" />
