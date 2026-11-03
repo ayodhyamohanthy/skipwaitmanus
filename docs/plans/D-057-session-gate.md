@@ -137,7 +137,7 @@ The build edits exactly these paths: the no-conflict paths, then the four confli
 - `client/src/hooks/useReferrerAccess.ts`, `client/src/lib/threadApi.ts`, `client/src/components/referrer-home/referrerData.ts`, the new `client/src/lib/referrerStepUpApi.ts` and the new `client/src/components/goal/GoalWorkEmailStepUp.tsx`;
 - the eight surface files in §0b.6;
 - the new migration `drizzle/deploy/<next>_referrer_step_ups.sql`;
-- tests beside each file;
+- tests beside each file (with the alerts surface test narrowed to `client/src/pages/alerts.stepUp.test.tsx` per D-265, keeping `alerts.test.tsx` with `DECISION-COPY-oct26`);
 - docs: this packet, the AGENTS.md living-map rows for auth and the referrer gate, and the plan §3b row and §5.
 - the e2e session fixture paths `e2e/fixtures.ts` and `scripts/seed-test-accounts.ts`, limited as §0b.8a says (added Oct 31; nothing else under `e2e/` or `scripts/`).
 
@@ -248,3 +248,7 @@ A person who verified a work email is a verified referrer for every session they
 
 ## 8. Stop and ask if
 A referrer action route cannot be reached in a code session or after a step-up (for example, a link opened from email lands signed out): stop and describe the flow. Never weaken the gate. Any remaining conflict (ownership, a test the step-up cannot meet, a path not in §0b.8) is recorded precisely on this row's status line and reported blocked, never as a new overlapping task (D-245).
+
+## Status
+- Nov 1: D-265 (Antigravity · 88b9): owns narrowed from `client/src/pages/alerts*.test.tsx` to `client/src/pages/alerts.stepUp.test.tsx` (the test file introduced by this row), keeping `alerts.test.tsx` with `DECISION-COPY-oct26`.
+- Nov 1: **parked at `owner` by D-268** (DeepSeek V4.1 Flash Free · abdf). The Tier 1 pass is real and names head `e4fe0ae5` exactly (marker `fddd21e2`), and three of four required jobs are green there. The row still cannot land: the branch is 263 commits behind `main` and a normal merge of current `main` conflicts in this packet, so every landable head is a new commit needing a fresh independent review - and every such head ships `drizzle/deploy/0116_referrer_step_ups.sql`, which a push to `main` applies as a production migration (`migrate-db`). §0b/§1 line 49 and line 180 already require that migration applied and verified first, §8a item 7 records it exists only on the local e2e MySQL, and no recorded decision authorizes it. Waiting on the owner's one-line migration go; nothing is built, pushed or re-reviewed here, and no marker, pass or hold is changed.
