@@ -2221,50 +2221,6 @@
       "epic": "D-048-p3"
     },
     {
-      "id": "D-048-R1",
-      "title": "Release 1: the goal inbox goes live (inbox enters RELEASED), signed off against the doctrine checklist and captures",
-      "row": "D-048",
-      "packet": "docs/plans/D-048-phase-3-split.md",
-      "tier": 1,
-      "lane": "d048-release",
-      "branch": "agent/queue/d048-r1",
-      "status": "todo",
-      "dependsOn": [
-        "D-048-p3-inbox",
-        "D-048-F-credits",
-        "D-048-p3-live-review"
-      ],
-      "owns": [
-        "client/src/lib/goalSurfaces.ts"
-      ],
-      "note": "D-168 (2): registered as soon as every row it depends on is registered, so the inbox reaches users through the picker the moment it lands. Kit drift checked against #308 and #324. Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
-      "epic": "D-048-p3",
-      "syncedTo": "D-229"
-    },
-    {
-      "id": "D-048-R4",
-      "title": "Release 4, referrer: referrer, referrer-home, invite and post-opportunity go live (their ids enter RELEASED)",
-      "row": "D-048",
-      "packet": "docs/plans/D-048-phase-3-split.md",
-      "tier": 1,
-      "lane": "d048-release",
-      "branch": "agent/queue/d048-r4",
-      "status": "todo",
-      "dependsOn": [
-        "D-048-R1",
-        "D-048-p3-referrer",
-        "D-048-p3-referrer-home",
-        "D-048-p3-invite",
-        "D-048-p3-post"
-      ],
-      "owns": [
-        "client/src/lib/goalSurfaces.ts"
-      ],
-      "note": "D-168 (2): registered as soon as every row it depends on is registered. email-review rides the next release row after its own QA (split R4); the queue went live in place (D-149). Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
-      "epic": "D-048-p3",
-      "syncedTo": "D-229"
-    },
-    {
       "id": "D-048-P-money",
       "title": "D-048 phase 3 money lane packet: its cluster rows from the split, with owned paths",
       "row": "D-048",
@@ -5410,6 +5366,51 @@
         "scripts/migrationGateCleanup.test.ts"
       ],
       "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a non-Claude development session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
+    },
+    {
+      "id": "D-048-R4",
+      "title": "Release 4, referrer: referrer, referrer-home, invite and post-opportunity go live (their ids enter RELEASED)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r4",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-p3-referrer",
+        "D-048-p3-referrer-home",
+        "D-048-p3-invite",
+        "D-048-p3-post",
+        "D-048-p3-admin"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts"
+      ],
+      "note": "D-168 (2): registered as soon as every row it depends on is registered; it waits for D-048-p3-admin (which also edits goalSurfaces.ts and is older queued work) instead of R1, whose inbox is stuck. email-review rides the next release row after its own QA (split R4); the queue went live in place (D-149). Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
+      "epic": "D-048-p3",
+      "syncedTo": "D-284"
+    },
+    {
+      "id": "D-048-R1",
+      "title": "Release 1: the goal inbox goes live (inbox enters RELEASED), signed off against the doctrine checklist and captures",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r1",
+      "status": "todo",
+      "dependsOn": [
+        "D-048-p3-inbox",
+        "D-048-F-credits",
+        "D-048-p3-live-review",
+        "D-048-R4"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts"
+      ],
+      "note": "D-168 (2): registered as soon as every row it depends on is registered, so the inbox reaches users through the picker the moment it lands; it follows R4 because both edit the RELEASED block. Kit drift checked against #308 and #324. Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
+      "epic": "D-048-p3",
+      "syncedTo": "D-284"
     }
   ]
 }
