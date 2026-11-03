@@ -63,9 +63,12 @@ export const GOAL_SURFACES = {
 export type GoalSurfaceId = keyof typeof GOAL_SURFACES;
 
 // Production truth in code (D-097): one id per line. `home` renders today's
-// live V9 landing; every other id is off until its row's release edit.
+// live V9 landing; `sign-in` renders the goal /sign-in (D-285; its three
+// password and reviewer pages keep their kit bodies until their switches
+// land); every other id is off until its row's release edit.
 const RELEASED: readonly GoalSurfaceId[] = [
   "home",
+  "sign-in",
 ];
 
 export function releasedGoalSurfaces(): readonly GoalSurfaceId[] {

@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("goalSurfaces flag module", () => {
   it("releases only what RELEASED lists", () => {
-    expect(releasedGoalSurfaces()).toEqual(["home"]);
+    expect(releasedGoalSurfaces()).toEqual(["home", "sign-in"]);
     for (const id of releasedGoalSurfaces()) {
       expect(goalSurfaceIds()).toContain(id);
     }
@@ -57,6 +57,7 @@ describe("goalSurfaces flag module", () => {
   it("production renders the V9 landing from RELEASED, not from a workflow flag", () => {
     // The home id is released in code; a production build needs no env flag.
     expect(goalSurfaceDecision("home", "production", "")).toBe(true);
+    expect(goalSurfaceDecision("sign-in", "production", "")).toBe(true);
     expect(goalSurfaceDecision("inbox", "production", "")).toBe(false);
     // deploy-pages.yml must never pass the retired landing flags or
     // VITE_GOAL_SURFACES (D-097: production truth in code).
