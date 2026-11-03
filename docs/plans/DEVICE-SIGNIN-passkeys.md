@@ -80,7 +80,7 @@ owner (above). Do not pre-build them behind a flag.
 
 - D-030/D-049/D-057 unchanged: sign-in on skipwait.me, no authkit.app page, and
   the referrer plane keeps work-email code only. The login-rule pins
-  (`client/src/pages/loginRule.test.tsx`, `signIn.test.tsx`, `GoalSignIn.test.tsx`)
+  (`client/src/pages/loginRule.test.tsx`, `signIn.test.tsx`, `signInGoal.test.tsx`)
   stay green and gain a pin for "no passkey button on a referrer surface".
 - No forced biometric prompt can exist; never claim one. Copy says what the
   device actually did.
@@ -112,3 +112,8 @@ owner (above). Do not pre-build them behind a flag.
 - Registered by DeepSeek V4.1 Flash Free · 8c0f under D-209 (docs only). Build
   waits for the owner's answers to (a) and (b); the picker hands out no work on
   this row before then.
+- Re-synced to D-285 (Nov 3): the live `/sign-in` is now the goal page
+  (`client/src/pages/goal/sign-in/`). Phase B's "Use a passkey" action goes into
+  `GoalSeekerForm.tsx` (seeker only, never `GoalReferrerForm.tsx`), and
+  `client/src/pages/signInGoal.test.tsx` is the login-rule pin for that page.
+  `pages/GoalSignIn.tsx` and its test are no longer rendered.

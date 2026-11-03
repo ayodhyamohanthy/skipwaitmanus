@@ -54,7 +54,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/safety` | `pages/Safety` | `D-048-p3-support` | D-048-p3-support: to be added by its lane packet |
 | `/help` | `pages/Help` | `D-048-p3-support` | D-048-p3-support: to be added by its lane packet |
 | `/landed` | `pages/Landed` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
-| `/sign-in` | `pages/SignIn` | `D-048-p3-signin` | D-048-p3-signin: to be added by its lane packet |
+| `/sign-in` | `pages/SignIn` | `D-048-p3-signin` | moved by D-285 (goal page `pages/goal/sign-in/GoalSignIn`, released; Tier 1 review pending) |
 | `/reviewer-sign-in` | `pages/ReviewerSignIn` | `D-048-p3-signin` (D-167) | D-048-p3-signin: to be added by its lane packet |
 | `/report` | `pages/Report` | `D-048-p3-support` | D-048-p3-support: to be added by its lane packet |
 | `/suggest-company` | `pages/SuggestCompany` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
@@ -136,7 +136,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 | `PolicyPageShell.tsx` | 11 policy, about, contact, pricing and guide pages | `D-048-p3-policy` | The legal words stay the owner's (D-001's lasting rule) |
 | `app-states/SystemStates.tsx` | 15 pages and `App.tsx` | `D-048-p3-system` (the `/app-states` gallery) | Each page row swaps its own loading, error and empty use to `GoalStates`; `SystemStates` retires in `D-048-K-kit` |
 | `ActionErrorCard.tsx`, `LoadingSkeleton.tsx` | 3 pages each | none: replaced by `GoalStates` in each page row | Retire in `D-048-K-kit` |
-| `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx` | sign-in, the goal sign-in, `/referrer`, company claim | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`) |
+| `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx` | the kit sign-in, `/referrer`, company claim (the goal `/sign-in` renders its own kit-free twins, D-285) | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`, `signInGoal.test.tsx`) |
 | `WorkEmailSignIn.tsx` | `/email-review`, `/referrer` | `D-048-p3-verify` | Work-email code only (D-030) |
 | `ask/PinnedWorkPicker.tsx` | `/ask`, the drawer, the composer | `D-048-p3-live-review-find` | |
 | `OneTapShareActions.tsx` | `/wall`, `/referrer` | `D-048-p3-referrer` | `D-048-p3-discovery` adopts it after |
