@@ -2554,7 +2554,7 @@
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-284",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2567,9 +2567,12 @@
         "client/src/pages/AdminReview.tsx",
         "client/src/pages/goal/admin/**",
         "scripts/kit-screens/fixtures/*__goal-admin-*.json",
-        "design/goal-ui/captures/admin/**"
+        "design/goal-ui/captures/admin/**",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/components/goal/wrapper/appWrapper.goal.test.tsx"
       ],
-      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25).",
+      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin'); read-only: components/admin/adminApi.ts. Waits for D-048-p3-employer: same fixture-glob overlap; the internal admin surface goes last (landing of the lane packets, Oct 25). D-284 clears its boundary block: the boundary test, the flag module's /admin-review line and the wrapper route pin are now owned, and components/admin/adminApi.ts + reviewCases.ts are admitted to the D-241 audited list as behavior-only on the row's branch.",
       "epic": "D-048-p3"
     },
     {
@@ -2716,7 +2719,7 @@
       "tier": 2,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-276",
       "dependsOn": [
         "D-048-F-harness",
@@ -4583,18 +4586,180 @@
     },
     {
       "id": "D-174-seeker-journey-build",
-      "title": "Build the replacement seeker journey per D-174: company search, jobs, ask, pool routing",
+      "title": "Release the D-174 seeker journey: switch on company typeahead and the careers-site jobs list after QA, review and the CEO's sign-off",
       "row": "D-174",
-      "packet": null,
-      "tier": 2,
-      "lane": "d048-foundation",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey",
       "branch": "agent/queue/d174-seeker-journey",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "todo",
+      "syncedTo": "D-281",
       "dependsOn": [
-        "D-166-journey-decisions-sync"
+        "D-166-journey-decisions-sync",
+        "D-174-seeker-journey-build.door-neutral",
+        "D-174-seeker-journey-build.composer-neutral",
+        "D-174-seeker-journey-build.public-payload",
+        "D-174-seeker-journey-build.search",
+        "D-174-seeker-journey-build.jobs-list",
+        "D-174-seeker-journey-build.job-ask",
+        "D-174-company-search",
+        "D-174-ask-from-job"
       ],
-      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176."
+      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release; that move also changes the computed role from CDO to CTO (scripts/nextTaskCore.mjs ROLE_BY_LANE).",
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/useCompanySearch.ts (switch only)",
+        "client/src/pages/explore/companyJobsApi.ts (switch only)"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.door-neutral",
+      "title": "Company door, drawer and /ask show the same state for every company before sending (D-176 drift fix)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey-door",
+      "branch": "agent/queue/d174-journey-door",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-fix-post-binding",
+        "D-176-public-claims"
+      ],
+      "note": "Packet section 6.1, rulings 1, 3 and 4: no open/not-open header, one primary commit, one verified-mark line, the not-open block and its alert control removed, sent headline in D-180 words. No switch: the live door contradicts D-176. Re-pins only the listed D-176 assertions. Tier 1 at the existing machine floor: owns client/src/pages/Ask.tsx, listed in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/ExploreCompany.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/Ask.tsx",
+        "client/src/pages/explore/coverageNeutral.test.tsx",
+        "client/src/pages/explore.test.tsx",
+        "client/src/pages/exploreDrawer.test.tsx",
+        "client/src/pages/ask.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.composer-neutral",
+      "title": "The composer prices every company on the unknown-coverage line and says post-save which way the request went (D-176)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey-composer",
+      "branch": "agent/queue/d174-journey-composer",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-seeker-journey-build.door-neutral"
+      ],
+      "note": "Packet section 6.2, rulings 1 to 4: no openToReferrals read, askCostLine open:null, expectedCoverage never sent (server guard untouched), watch removed, post-save first clause only (expiry clauses stay for D-174-expiry-clock-removal). Money display: no amount, spend point, refund or key changes. Coordinator question 1 covers the D-132 flag-on re-pins.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/explore/coverageNeutral.test.tsx",
+        "client/src/pages/explore/ask.costQuote.test.tsx",
+        "client/src/pages/explore.test.tsx",
+        "client/src/pages/exploreDrawer.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.public-payload",
+      "title": "GET /api/companies stops sending openToReferrals and openCount; /plans coverage block reads only the seeker's own requests",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey-payload",
+      "branch": "agent/queue/d174-journey-payload",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-seeker-journey-build.composer-neutral",
+        "D-174-company-search"
+      ],
+      "note": "Packet section 6.3, ruling 5 (D-193 (5)): expand-then-contract, keys optional for one release, admin schema keeps availability, companyClaim reads an internal getter, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9). Tier 1 at the existing machine floor: owns client/src/components/plans/PlansKitSections.tsx, matched by client/src/components/plans/** in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "shared/companies.ts",
+        "server/companyDirectory.ts",
+        "server/companyDirectory.test.ts",
+        "server/companyDirectoryContract.test.ts",
+        "server/companyDirectoryRoutes.ts (switch only)",
+        "server/companyClaim.ts",
+        "server/companyClaim.test.ts",
+        "client/src/components/plans/PlansKitSections.tsx",
+        "client/src/components/plans/coverageBlock.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.search",
+      "title": "Company typeahead on /explore with a paste-a-link path for unlisted companies (switch off)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-journey-search",
+      "branch": "agent/queue/d174-journey-search",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-company-search"
+      ],
+      "note": "Packet section 6.4, ruling 8: COMPANY_TYPEAHEAD_ENABLED = false until the release row; switch off keeps today's filter byte-for-byte.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/explore/useCompanySearch.ts",
+        "client/src/pages/explore/companySearch.test.tsx"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.jobs-list",
+      "title": "The company door lists careers-site jobs with location, level and function filters and honest completeness states (switch off)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-journey-jobs",
+      "branch": "agent/queue/d174-journey-jobs",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-job-catalog",
+        "D-174-seeker-journey-build.door-neutral"
+      ],
+      "note": "Packet section 6.5, rulings 6 and 7: reads GET /api/companies/:slug/jobs; levels are JOB_LEVEL_LABELS (no band grouping until D-219's mapping is decided); employee posts first; COMPANY_JOBS_ENABLED = false until the release row.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/explore/companyJobsApi.ts",
+        "client/src/pages/explore/CompanyJobs.tsx",
+        "client/src/pages/explore/companyJobs.test.tsx",
+        "client/src/pages/ExploreCompany.tsx (switch only)"
+      ]
+    },
+    {
+      "id": "D-174-seeker-journey-build.job-ask",
+      "title": "A picked careers-site job locks the drawer and sends catalogJobId to both the quote and the send (behind COMPANY_JOBS_ENABLED)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey-composer",
+      "branch": "agent/queue/d174-journey-job-ask",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-ask-from-job",
+        "D-174-seeker-journey-build.jobs-list",
+        "D-174-seeker-journey-build.composer-neutral"
+      ],
+      "note": "Packet section 6.6: money path (quote equals charge, D-193 section 5.8); jobSelection mirrors postSelection after D-174-fix-post-binding; credit rules unchanged.",
+      "epic": "D-174-seeker-journey-build",
+      "owns": [
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/explore/askSend.ts",
+        "client/src/pages/explore/askSend.test.ts",
+        "client/src/hooks/useAskQuote.ts",
+        "client/src/pages/explore/jobAsk.test.tsx",
+        "client/src/pages/ExploreCompany.tsx (switch only)"
+      ]
     },
     {
       "id": "D-166-founder-decisions-sync",
@@ -4842,6 +5007,73 @@
         "server/moneyCopy.test.ts"
       ],
       "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases."
+    },
+    {
+      "id": "D-173-referral-words-goal-ui",
+      "title": "Buyer-facing 'referral' wording across the goal UI (PR #598): asks deliver to verified employees, no outcome promise",
+      "row": "D-173",
+      "packet": "docs/plans/D-173-referral-words-goal-ui.md",
+      "tier": 2,
+      "lane": "d048-foundation",
+      "branch": "agent/queue/ayo-referral-words",
+      "status": "in-review",
+      "dependsOn": [
+        "D-222-referral-count-shell"
+      ],
+      "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route.",
+      "syncedTo": "D-281",
+      "owns": [
+        "client/src/components/appShell.test.tsx",
+        "client/src/components/goal/GoalInfoNote.tsx",
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/goal/goalComposites.test.tsx",
+        "client/src/components/goal/goalInfoNote.test.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/test/goalShellHarness.test.tsx",
+        "design/goal-ui/captures/alerts/default-1280.png",
+        "design/goal-ui/captures/alerts/default-390.png",
+        "design/goal-ui/captures/alerts/note-open-1280.png",
+        "design/goal-ui/captures/alerts/note-open-390.png"
+      ]
+    },
+    {
+      "id": "D-180-referral-words",
+      "title": "Referral-only wording sweep: shared money copy, plan-gate errors, goal nav and requests labels",
+      "row": "D-180",
+      "packet": "docs/plans/D-180-referral-words.md",
+      "epic": "D-180",
+      "tier": 1,
+      "lane": "referral-words",
+      "branch": "agent/queue/referral-words-sweep",
+      "status": "todo",
+      "syncedTo": "D-281",
+      "dependsOn": [
+        "D-174-held-ask-reconfirm",
+        "D-048-F-credits",
+        "D-099-bonus-pages",
+        "PRICING-banded-oct25",
+        "D-180-a-free-asks-chip",
+        "D-222-referral-count-shell",
+        "D-094-ai-in-ui.status-help",
+        "D-173-referral-words-goal-ui"
+      ],
+      "owns": [
+        "shared/moneyCopy.ts",
+        "shared/moneyCopy.test.ts",
+        "shared/moneyCopy.item7.test.ts",
+        "server/moneyCopy.test.ts",
+        "server/planGates.ts",
+        "server/planGates.test.ts",
+        "client/src/components/goal/nav.ts",
+        "client/src/pages/goal/onboarding/GoalOnboarding.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/components/goal/nav.test.ts",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/components/appShell.test.tsx",
+        "design/goal-ui/captures/referral-words/**"
+      ],
+      "note": "Presentation-only shared referral wording; original moneyCopy/planGates/GoalOnboarding scope preserved. My referrals changes nav and shell/page titles only, keeping id asks, /requests and request stages. Current packet documents exact ownership serialization after PRICING, D-180-a-free-asks-chip, D-222, D-173 and only the D-094 status-help piece. No existing queued row waits changed. Capture and test owns declared. No price, charge, eligibility, availability, release or implementation acceptance change."
     },
     {
       "id": "D-048-copy-goal-twins",
@@ -5114,6 +5346,26 @@
         "e2e/report-from-conversation.e2e.ts"
       ],
       "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency done: #786 landed 99f8a1f2 and the seeker row is recorded done (seeker side, not moved; #963). Tier 1 (privacy/safety: the href decides when the block toggle and the referralRequestId evidence snapshot of message bodies attach to a safety report); declared above the computed Tier 2, which D-212 allows; needs an independent different-model review (D-151) at build time. Builder: a non-Claude development session through the picker (D-225)."
+    },
+    {
+      "id": "GATE-migration-cleanup",
+      "title": "After the drift reference database exists, an S1/S2 snapshot or step-summary failure still attempts its cleanup, the primary is never dropped, and a failed cleanup no longer hides a FAILED verdict (D-212, D-283)",
+      "row": "D-212",
+      "packet": "docs/plans/GATE-migration-cleanup.md",
+      "tier": 2,
+      "lane": "ci-checks",
+      "branch": "agent/queue/gate-migration-cleanup",
+      "status": "todo",
+      "syncedTo": "D-283",
+      "dependsOn": [
+        "GATE-migration-apply"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "scripts/e2e-server.mjs",
+        "scripts/migrationGateCleanup.test.ts"
+      ],
+      "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a non-Claude development session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
     }
   ]
 }
