@@ -11,7 +11,7 @@
 import React from "react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertGoalPage } from "@/test/goalPageContract";
 import GoalEmployerTalent, { GOAL_PAGE, TALENT_UNLOCK_COST } from "./GoalEmployerTalent";
@@ -283,6 +283,23 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
       expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
       expect(balanceText()).toBe("5");
       expect(unlockButton(REF_A).getAttribute("aria-disabled")).not.toBe("true");
+    });
+
+    it("the handler ignores re-entry: two clicks before React re-renders (A then B) send one request", async () => {
+      let releaseA: (value: Reply) => void = () => {};
+      const fetchMock = stub({ talent: twoLocked, unlock: () => new Promise<Reply>(resolve => { releaseA = resolve; }) });
+      render(<GoalEmployerTalent />);
+      await screen.findByRole("listitem", { name: REF_C });
+      const a = unlockButton(REF_A); const c = unlockButton(REF_C);
+      // Both clicks land inside one act(), so neither button is inert yet;
+      // only the handler's own guard can stop the second.
+      act(() => { a.click(); c.click(); a.click(); });
+      await waitFor(() => expect(unlockPosts(fetchMock).length).toBe(1));
+      expect(unlockPosts(fetchMock)).toEqual([`POST /api/employer/talent/${REF_A}/unlock`]);
+      expect(within(card(REF_C)).getByText("Locked")).toBeTruthy();
+      expect(balanceText()).toBe("15");
+      releaseA(reply({ unlocked: true, remaining: 15 }, 201));
+      expect(await within(card(REF_A)).findByRole("button", { name: /View profile/ })).toBeTruthy();
     });
 
     it("on a 402 with no numeric credits restores only that row and the captured balance", async () => {

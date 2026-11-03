@@ -7,7 +7,7 @@
 // Display copy names what the money buys (a talent unlock) and never says
 // "credit(s)" (rule 1a); internal field names stay unchanged.
 import { Send, Unlock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { GoalButton, GoalEmptyState, GoalErrorState, GoalNextStep, GoalNum, GoalSkeletonRows, GoalStatus } from "@/components/goal";
@@ -45,7 +45,12 @@ export default function GoalEmployerTalent() {
   const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Unlocks are serialized: one request at a time. The ref guards the handler
+  // against re-entry before React re-renders; the state drives the UI (the
+  // pending row shows Locked with no profile or intro action, every other
+  // Unlock is inert) until that one request settles.
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const unlockInFlight = useRef<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [openedProfile, setOpenedProfile] = useState<OpenedProfile | null>(null);
   const [introSentTo, setIntroSentTo] = useState<string | null>(null);
@@ -82,20 +87,24 @@ export default function GoalEmployerTalent() {
   }, []);
 
   const unlockTalent = async (row: TalentRow) => {
+    if (unlockInFlight.current !== null) return;
+    unlockInFlight.current = row.displayRef;
     setUnlockingId(row.displayRef);
     const previousBalance = balance;
     const previousUnlocked = row.isUnlocked;
-    const restore = () => {
-      setBalance(previousBalance);
+    // Row-only rollback. On a 402 the body's numeric `credits` is the server's
+    // balance; the captured one is used only when it carries no number.
+    const restore = (serverBalance?: unknown) => {
+      setBalance(typeof serverBalance === "number" && Number.isFinite(serverBalance) ? serverBalance : previousBalance);
       setTalent(current => current.map(item => item.displayRef === row.displayRef ? { ...item, isUnlocked: previousUnlocked } : item));
     };
     setBalance(current => (current === null ? current : Math.max(0, current - TALENT_UNLOCK_COST)));
     setTalent(current => current.map(item => item.displayRef === row.displayRef ? { ...item, isUnlocked: true } : item));
     try {
       const response = await fetch(`/api/employer/talent/${encodeURIComponent(row.displayRef)}/unlock`, { method: "POST", credentials: "include" });
-      const payload = await readApiJson<{ unlocked?: boolean; remaining?: number; error?: string }>(response, "We could not unlock this profile");
+      const payload = await readApiJson<{ unlocked?: boolean; remaining?: number; credits?: unknown; error?: string }>(response, "We could not unlock this profile");
       if (response.status === 402) {
-        restore();
+        restore(payload.credits);
         toast("Your talent unlock balance is too low. Top up for talent unlocks and sponsored roles to continue.");
         go("/employer/billing");
         return;
@@ -106,7 +115,7 @@ export default function GoalEmployerTalent() {
     } catch (unlockError) {
       restore();
       toast(unlockError instanceof Error ? unlockError.message : "We could not unlock this profile");
-    } finally { setUnlockingId(null); }
+    } finally { unlockInFlight.current = null; setUnlockingId(null); }
   };
 
   const openProfile = async (row: TalentRow) => {
@@ -164,7 +173,7 @@ export default function GoalEmployerTalent() {
           <ul className="grid gap-3 gdesk:grid-cols-2">
             {talent.map(row => {
               const opened = openedProfile && openedProfile.displayRef === row.displayRef ? openedProfile.profile : null;
-              const expertise = (opened?.expertise ?? []).filter(Boolean);
+              const expertise = Array.isArray(opened?.expertise) ? opened.expertise.filter(Boolean) : [];
               // While the optimistic unlock is pending the server has not
               // granted anything yet, so no profile or intro action is offered.
               const pending = unlockingId === row.displayRef;
@@ -196,7 +205,7 @@ export default function GoalEmployerTalent() {
                         </GoalButton>
                       </>
                     ) : (
-                      <GoalButton variant="outline" size="sm" leadingIcon={Unlock} busy={unlockingId === row.displayRef} busyLabel="Unlocking…" onClick={() => void unlockTalent(row)}>
+                      <GoalButton variant="outline" size="sm" leadingIcon={Unlock} busy={pending} busyLabel="Unlocking…" disabledReason={unlockingId !== null && !pending ? "Another unlock is in progress" : undefined} onClick={() => void unlockTalent(row)}>
                         {`Unlock profile · costs ${TALENT_UNLOCK_COST}`}
                       </GoalButton>
                     )}
