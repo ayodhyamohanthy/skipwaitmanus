@@ -71,7 +71,7 @@
   - **D-005, 3, superseded** by D-219.
   - **D-006, 9, active and frozen.** Referrers must trust that requests are not bought. D-196's paid priority is the first sanctioned exception and stays unsold until its routing is reviewed.
   - **D-007, 8, active.** Correct today. I don't know when registration becomes mandatory for this business (the turnover threshold, or USD export of services); a CA should confirm before revenue nears it.
-  - **D-008, 6, superseded** by D-068's same-push rule. As practised, docs drift anyway: D-212 (8), D-248 and D-233 closed five stale rows between them.
+  - **D-008, 6, superseded** by D-068's same-push rule. As practised, docs drift anyway: D-212 (8), #907 and D-233 closed five stale rows between them.
   - **D-009, 7, active** as the picker. One queue works, but its `in-review` blind spot left the revenue review idle for two days (D-233).
   - **D-010, 10, active.** The goal.
   - **D-011, 8, active**; its providers moved into D-049. Missing Apple sign-in (D-209 question) matters for iPhone-heavy seekers.
@@ -97,7 +97,7 @@
 - **Actions:**
   - D-233 (CEO remit) routes reviews of work built outside the picker: `builtBy`, D-151 by model family, `--avoid` instead of a block, and `in-review` only while a named session is landing the row.
   - Registered the build row `PICKER-review-identity` (Tier 2). At the Nov 3 merge-up it moved to the end of the queue under the owner's FIFO order (Oct 31). It also fixes the landed review gate (#836), and it waits for the older open picker rows that own the same files.
-  - Closed two rows on evidence: `D-048-doctrine-benefit-copy` and `D-179-ats-validation`. `main` closed three more first: `D-048-fix-start-ask-handoff` and `D-166-founder-decisions-sync` under D-212 (8), and `P1-release-gate-strict-compare` under D-248.
+  - Closed two rows on evidence: `D-048-doctrine-benefit-copy` and `D-179-ats-validation`. `main` closed three more first: `D-048-fix-start-ask-handoff` and `D-166-founder-decisions-sync` under D-212 (8), and `P1-release-gate-strict-compare` through #907 (Oct 31).
   - Corrected `docs/DELEGATION.md` §6 and the `AGENTS.md` queue row to the family rule. No price, flag, legal text or money path changed.
 - **Owner questions (rated, D-023):**
   1. **A route for CEO docs pull requests to reach an independent reviewer, 8/10.**
