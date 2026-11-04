@@ -1,0 +1,161 @@
+// @vitest-environment jsdom
+// D-048-p3-admin-money: the goal pages keep the money truthful. These pins bind
+// the *behaviour*, not the new exports: loading/empty/error states, the confirm
+// step before a refund or a grant, and the exact server call of every action
+// (packet §4.1, §5). Mutating any of those calls must turn a test red.
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PaymentReviewRequestBody } from "@shared/paymentReview";
+import GoalAdminPayments from "./GoalAdminPayments";
+import GoalAdminCatalogSync from "./GoalAdminCatalogSync";
+import GoalAdminTokenRecovery from "./GoalAdminTokenRecovery";
+
+const { auth, calls } = vi.hoisted(() => ({
+  auth: { signedIn: true },
+  calls: [] as { url: string; init?: RequestInit }[],
+}));
+
+vi.mock("@/_core/auth", () => ({
+  useAuth: () => ({ isLoaded: true, isSignedIn: auth.signedIn, getToken: async () => "test-token" }),
+  SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock("@/components/admin/PaymentReviewRow", () => ({
+  default: ({ payment, submit }: { payment: { id: number }; submit: (id: number, body: PaymentReviewRequestBody) => Promise<unknown> }) => (
+    <button type="button" onClick={() => { void submit(payment.id, { decision: "credited" }); }}>{`Decide ${payment.id}`}</button>
+  ),
+}));
+
+const reply = (payload: unknown, ok = true, status = 200) => ({ ok, status, url: "", json: async () => payload });
+const HASH = "a".repeat(64);
+const DRY_RUN = {
+  version: 1, site: "skipwait-test", environment: "test", checkedAt: "2026-11-04T00:00:00.000Z", planHash: HASH,
+  family: { id: null, action: "reuse", reason: "Family present" },
+  toCreate: [], correct: [], mismatched: [], blocked: [], extras: [], excluded: [],
+  counts: { desired: 0, correct: 0, mismatched: 0, blocked: 0, toCreate: 0, itemPricesToCreate: 0, extras: 0, excluded: 0 },
+};
+const EMPTY_PAYMENTS = { payments: [] };
+const PAYMENT = { id: 7, provider: "chargebee", userId: 3, role: "job_seeker", tokenCount: 3, amount: 499, currency: "INR", reconciliationReason: "Held", createdAt: "2026-11-04T00:00:00.000Z", userEmail: null, status: "credited" };
+
+beforeEach(() => {
+  auth.signedIn = true;
+  calls.length = 0;
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
+    if (url.includes("/catalog-sync/apply")) return reply({ outcome: "applied", site: "skipwait-test", environment: "test", planHash: HASH, created: [], failed: null, notAttempted: [], stoppedReason: null });
+    if (url.includes("/catalog-sync")) return reply(DRY_RUN);
+    if (url.includes("token-recovery/grants")) return reply({ grant: { tokenCount: 2, newBalance: 5 } });
+    if (url.includes("token-recovery/users")) return reply({ users: [{ id: 9, name: "Test Account", email: null }] });
+    if (url.includes("token-recovery/adjustments")) return reply({ adjustments: [] });
+    if (url.includes("revoke-credits")) return reply({});
+    if (url.includes("/payments/review") && init?.method === "POST") return reply({ payment: null });
+    return reply(EMPTY_PAYMENTS);
+  }));
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe("goal /admin/payments", () => {
+  it("shows an empty queue and an empty recent list when there is nothing to review", async () => {
+    render(<GoalAdminPayments />);
+    expect(await screen.findByText("Nothing needs review right now.")).toBeTruthy();
+    expect(screen.getByText("No completed payments yet.")).toBeTruthy();
+  });
+
+  it("shows the error state with a retry when the queue cannot load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => reply({ error: "Queue unavailable" }, false, 503)));
+    render(<GoalAdminPayments />);
+    expect(await screen.findByText("Queue unavailable")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("sends one decision to the exact payment-review endpoint with the exact body", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (init?.method === "POST") return reply({ payment: null });
+      return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [PAYMENT] });
+    }));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Decide 7" }));
+    await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST" && call.init.body === JSON.stringify({ decision: "credited" }))).toBe(true));
+  });
+
+  it("requires a confirm step before revoking credits, then calls the exact revoke path", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (url.includes("revoke-credits")) return reply({});
+      return url.includes("scope=credited") ? reply({ payments: [PAYMENT] }) : reply(EMPTY_PAYMENTS);
+    }));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke credits" }));
+    expect(screen.getByRole("dialog", { name: "Confirm credit revocation" })).toBeTruthy();
+    expect(calls.some(call => call.url.includes("revoke-credits"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm credit revocation" }));
+    await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7/revoke-credits" && call.init?.method === "POST" && call.init.body === "{}")).toBe(true));
+  });
+});
+
+describe("goal /admin/catalog-sync", () => {
+  it("reads the dry run and shows its site and plan", async () => {
+    render(<GoalAdminCatalogSync />);
+    expect(await screen.findByRole("heading", { name: "skipwait-test" })).toBeTruthy();
+    expect(screen.getByText(new RegExp(HASH.slice(0, 12)))).toBeTruthy();
+  });
+
+  it("shows the error state when the catalog cannot be read", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => reply({ error: "Catalog unavailable" }, false, 503)));
+    render(<GoalAdminCatalogSync />);
+    expect(await screen.findByText("Catalog unavailable")).toBeTruthy();
+  });
+
+  it("applies only after the site is typed, with the exact plan hash and confirm site", async () => {
+    render(<GoalAdminCatalogSync />);
+    await screen.findByRole("heading", { name: "skipwait-test" });
+    const apply = screen.getByRole("button", { name: "Apply the catalog plan" });
+    expect(apply.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.change(screen.getByRole("textbox", { name: "Type the site to confirm" }), { target: { value: "skipwait-test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply the catalog plan" }));
+    await waitFor(() => expect(calls.some(call => call.url === "/api/admin/billing/catalog-sync/apply" && call.init?.body === JSON.stringify({ planHash: HASH, confirmSite: "skipwait-test" }))).toBe(true));
+  });
+});
+
+describe("goal /admin/token-recovery", () => {
+  it("shows the audit-history empty state", async () => {
+    render(<GoalAdminTokenRecovery />);
+    expect(await screen.findByText("No recovery grants have been recorded.")).toBeTruthy();
+  });
+
+  it("refuses a grant until the account, reference, reason and confirmation are present", async () => {
+    render(<GoalAdminTokenRecovery />);
+    await screen.findByText("No recovery grants have been recorded.");
+    fireEvent.click(screen.getByRole("button", { name: "Record the recovery grant" }));
+    expect(calls.some(call => call.url.includes("token-recovery/grants"))).toBe(false);
+  });
+
+  it("records a reasoned grant with confirmed:true and the exact body", async () => {
+    render(<GoalAdminTokenRecovery />);
+    await screen.findByText("No recovery grants have been recorded.");
+    fireEvent.change(screen.getByRole("textbox", { name: "Find a user by name or email" }), { target: { value: "Test Account" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Test Account/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Payment or support reference" }), { target: { value: "CB-HP-123" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), { target: { value: "Duplicate charge" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Record the recovery grant" }));
+    await waitFor(() => expect(calls.some(call => {
+      if (!call.url.includes("token-recovery/grants")) return false;
+      const body = JSON.parse(String(call.init?.body)) as Record<string, unknown>;
+      return body.confirmed === true && body.recipientUserId === 9 && body.caseReference === "CB-HP-123" && body.reason === "Duplicate charge";
+    })).toBe(true));
+  });
+
+  it("never renders inline colour literals in the goal money-ops sources", async () => {
+    const files = ["GoalAdminPayments.tsx", "GoalAdminCatalogSync.tsx", "GoalAdminTokenRecovery.tsx", "AdminMoneyGoalFrame.tsx", "adminMoneyCopy.ts"];
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    for (const file of files) {
+      const source = readFileSync(resolve(process.cwd(), "client/src/pages/goal/admin-money", file), "utf8");
+      expect(/#[\da-fA-F]{3,8}\b/.test(source), `${file} has an inline hex literal`).toBe(false);
+      expect(/style=\{\{/.test(source), `${file} has inline styling`).toBe(false);
+    }
+  });
+});
