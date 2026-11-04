@@ -4698,7 +4698,7 @@
       "tier": 2,
       "lane": "d174-journey-search",
       "branch": "agent/queue/d174-journey-search",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-company-search"
