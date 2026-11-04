@@ -39,6 +39,10 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/conversation/601", go],
   useRoute: () => [true, { requestId: "601" }],
 }));
+// The decision-due probe reports only unexpected failures (a not-assigned 404
+// is the expected answer), so the tests can tell the two apart (#831 note).
+const { captureSpy } = vi.hoisted(() => ({ captureSpy: vi.fn() }));
+vi.mock("@/lib/sentry", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/sentry")>()), captureClientError: captureSpy }));
 
 beforeEach(() => {
   surfaces.on.clear();
@@ -46,6 +50,7 @@ beforeEach(() => {
   authState.isSignedIn = true;
   authState.getToken = vi.fn().mockResolvedValue("test-token");
   go.mockReset();
+  captureSpy.mockReset();
   meState.data = { id: 9 };
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -714,6 +719,36 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     const page = await screen.findByTestId("goal-referrer-conversation");
     expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
     expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+  });
+
+  it("treats the expected not-assigned answer as 'not mine' without reporting it (#831 note)", async () => {
+    goalOn();
+    stubFetch(pendingFetch(url => (url.endsWith("/api/company-referrals/601") ? fail(404, "This private request is not assigned to your verified employee account") : undefined)));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
+
+  it("reports an unexpected failure of the decision-due detail and keeps the preview (#831 note)", async () => {
+    goalOn();
+    stubFetch(pendingFetch(url => (url.endsWith("/api/company-referrals/601") ? fail(500, "We could not load this private referral request") : undefined)));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+    await waitFor(() => expect(captureSpy).toHaveBeenCalledWith(expect.any(Error), { source: "conversation.detail-probe", requestId: 601 }));
+  });
+
+  it("parses the claimed detail at the boundary: a malformed answer never sets a due time (#831 note)", async () => {
+    goalOn();
+    stubFetch(pendingFetch(url => (url.endsWith("/api/company-referrals/601") ? ok({ request: { status: "pending", referrerId: "9", decisionDueAt: 42 } }) : undefined)));
+    renderPage();
+    const page = await screen.findByTestId("goal-referrer-conversation");
+    expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+    await waitFor(() => expect(captureSpy).toHaveBeenCalledTimes(1));
   });
 
   it("opens the pass reasons as a bottom sheet on a phone, so the header and the ask stay unclipped (#831 F3)", async () => {
