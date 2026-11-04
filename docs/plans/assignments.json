@@ -2553,7 +2553,7 @@
       "tier": 2,
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-284",
       "dependsOn": [
         "D-048-F-harness",
@@ -2747,8 +2747,8 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-285",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -4698,7 +4698,7 @@
       "tier": 2,
       "lane": "d174-journey-search",
       "branch": "agent/queue/d174-journey-search",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-company-search"
@@ -4922,8 +4922,8 @@
       "tier": 2,
       "lane": "money-core",
       "branch": "agent/queue/d132-item5-correction",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-228",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -4940,8 +4940,8 @@
       "tier": 2,
       "lane": "payments",
       "branch": "agent/queue/agedout-evidence-test",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-285",
       "dependsOn": [],
       "owns": [
         "server/agedOutCoverageGap.evidence.test.ts"
