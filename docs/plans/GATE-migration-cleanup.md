@@ -2,7 +2,7 @@
 
 Tier 2 (declared, and *projected* from the row's `owns`: `scripts/e2e-server.mjs`, one new `scripts/` test and this packet, with nothing under `drizzle/**` or `.github/workflows/**`, which `classifyTier` would class as "Tier 2 paths" (GATE-tier-floor). No runtime diff exists yet, so this is a projection, not a computed tier; it is rechecked against the actual runtime diff, §9) · lane `ci-checks` (the same serialization as `GATE-migration-apply`) · branch `agent/queue/gate-migration-cleanup` · depends on `GATE-migration-apply` (done, merge commit `f305e2e3`, PR #967) · registered by D-283 · written on 2026-11-02 at `main` `a650b615`, checked against the register through D-283.
 
-**Author of record.** This packet, its D-283 entry and its queue row were written by one Claude Code session (cloud session `session_01X6drxy28JfPDsxa4yHiMNW`, branch `claude/affectionate-gates-gb3vt7`). That session is the author. It does not review, approve or land the registration pull request or the runtime row, and the authorship is not relabeled (for example as "preparer, not writer of record") to make a self-review or self-landing eligible (D-190). Under D-225 a non-Claude development session builds the runtime row through the picker.
+**Author of record.** This packet, its D-283 entry and its queue row were written by one Claude Code session (cloud session `session_01X6drxy28JfPDsxa4yHiMNW`, branch `claude/affectionate-gates-gb3vt7`). That session is the author. It does not review, approve or land the registration pull request or the runtime row, and the authorship is not relabeled (for example as "preparer, not writer of record") to make a self-review or self-landing eligible (D-190). Under D-225 a development session other than the Claude Code session builds the runtime row through the picker.
 
 Read [`docs/BRIEF.md`](../BRIEF.md), [`GATE-delivery.md`](GATE-delivery.md) "Rules for every task here" and [`GATE-migration-apply.md`](GATE-migration-apply.md) §4 first. Those rules bind this packet. Nothing here changes a ruling of `GATE-migration-apply`.
 
@@ -172,7 +172,7 @@ After each step, run `pnpm vitest run scripts/migrationGateCleanup.test.ts scrip
     - It re-runs `validateAssignments`, waits for every required check on that exact head, and lands with the merge-commit button.
     - If D-283 has been taken, it renumbers to the next free ID and gets a fresh delta review. It never keeps a placeholder.
 - **Runtime pull request (`agent/queue/gate-migration-cleanup`).**
-  - **Builder:** a non-Claude development session through the picker (D-225).
+  - **Builder:** a development session other than the Claude Code session through the picker (D-225).
   - **Reviewer:** a separate, eligible reviewer who neither built nor fixed the row, reviewing the exact final head before landing. Its scope is the source diff, the red-first and green evidence, the H-2/K output, the required-CI execution proof on that head, and currency with `main`. It reports a head-scoped conclusion. If the reviewer is read-only, a write-capable seat records it with the reviewer's original attribution.
   - **Lander:** a separate, write-capable session. It goes through the landing slot (`Land claim GATE-migration-cleanup: <name>` on `agent/queue/landing`), with the merge-commit button.
   - **The runtime floor.** It stays as recorded: Tier 2, projected from `owns`. It gets its own `classifyTier` check on the actual runtime diff at that time, and it is not relabeled to a blanket Tier 1.
