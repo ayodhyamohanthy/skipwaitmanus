@@ -4940,8 +4940,8 @@
       "tier": 2,
       "lane": "payments",
       "branch": "agent/queue/agedout-evidence-test",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-285",
       "dependsOn": [],
       "owns": [
         "server/agedOutCoverageGap.evidence.test.ts"
