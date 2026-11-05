@@ -352,3 +352,18 @@ describe("goal employer billing money-copy integrity (rule 1a)", () => {
     expect(readFileSync("client/src/pages/goal/employer-billing/employerBillingData.ts", "utf8")).toContain("Idempotency-Key");
   });
 });
+
+describe("goal employer billing at phone width (capture checklist)", () => {
+  // Measured in Chromium at 390px on 2026-11-06: a single-column grid whose
+  // track is left as `auto` takes its min-content width from a nowrap child
+  // (the truncated ledger label), so the page scrolled to 486px and the capture
+  // reported horizontalOverflowPx: 96. Declaring each grid's track as
+  // minmax(0, 1fr) — Tailwind's grid-cols-1 — keeps the page at 390px. The
+  // browser measurement lives in the PR; this pin stops the class being dropped.
+  it("every single-column grid declares its track so a long ledger label cannot widen the page", () => {
+    const source = readFileSync("client/src/pages/goal/employer-billing/GoalEmployerBilling.tsx", "utf8");
+    const grids = Array.from(source.matchAll(/className="([^"]*\bgrid\b[^"]*)"/g)).map(match => match[1]);
+    expect(grids.length).toBeGreaterThan(0);
+    expect(grids.every(classes => /\bgrid-cols-1\b/.test(classes))).toBe(true);
+  });
+});
