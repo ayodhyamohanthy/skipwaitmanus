@@ -5216,7 +5216,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-land",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PICKER-avoid-unblock"
