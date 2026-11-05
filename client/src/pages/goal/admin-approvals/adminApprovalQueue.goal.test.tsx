@@ -17,6 +17,11 @@ import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { assertGoalPage } from "@/test/goalPageContract";
 import GoalAdminApprovalQueue, { GOAL_PAGE } from "./GoalAdminApprovalQueue";
 
+// Owner-routed ruling (Nov 5, 23:42): these phrases claim server state the page
+// cannot know and must not appear anywhere under pages/goal/admin-approvals.
+// Assembled from parts so this file does not carry them literally.
+const BANNED_CLAIMS = new RegExp(["record un" + "changed", "un" + "changed", "no noti" + "fications", "nothing has been decided or noti" + "fied"].join("|"), "i");
+
 const { authState } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") } }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({
@@ -122,17 +127,42 @@ describe("goal /admin/approvals (D-048-p3-admin-approvals)", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Ref-PMT-1033" })).toBeTruthy();
   });
 
-  it("keeps the record in the queue when a decision fails and retries the same decision", async () => {
-    let count = 0;
-    const fetchMock = stub(undefined, () => { count += 1; return count === 1 ? reply({ error: "We could not record this approval decision" }, 500) : reply({ ok: true, status: "approved" }); });
+  // Owner-routed ruling (Nov 5, 23:42): a 409 follows an earlier successful
+  // decision (which may already have notified someone), so the page says only
+  // that this attempt was not recorded and asks for a reload; no blind retry.
+  it("on a 409 says this attempt was not recorded and offers a reload, never a retry", async () => {
+    const fetchMock = stub(undefined, () => reply({ error: "This record was already resolved" }, 409));
     render(<GoalAdminApprovalQueue />);
     await screen.findByRole("heading", { level: 3, name: "Ref-1501" });
     fireEvent.click(within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" }));
-    expect(await within(rowFor("Ref-1501")).findByText(/Decision failed to save/)).toBeTruthy();
-    expect(screen.getByText(/The record is unchanged and still in the queue. No notifications were sent./)).toBeTruthy();
-    fireEvent.click(within(rowFor("Ref-1501")).getByRole("button", { name: "Retry decision" }));
-    await waitFor(() => expect(within(rowFor("Ref-1501")).getByTestId("goal-status").textContent).toBe("Approved"));
-    expect(posts(fetchMock).map(call => call.init.body)).toEqual([JSON.stringify({ decision: "approved" }), JSON.stringify({ decision: "approved" })]);
+    const alert = await within(rowFor("Ref-1501")).findByRole("alert");
+    expect(alert.textContent).toMatch(/This attempt was not recorded — this record was already resolved\. Reload to see its current state\./);
+    expect(alert.textContent).not.toMatch(BANNED_CLAIMS);
+    expect(within(alert).queryByRole("button", { name: "Retry decision" })).toBeNull();
+    const reads = () => fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== "POST").length;
+    const before = reads();
+    fireEvent.click(within(alert).getByRole("button", { name: "Reload the queue" }));
+    await waitFor(() => expect(reads()).toBe(before + 1));
+    expect(posts(fetchMock).length).toBe(1);
+  });
+
+  it.each([
+    ["a 500", () => reply({ error: "We could not record this approval decision" }, 500)],
+    ["no response", () => { throw new TypeError("Failed to fetch"); }],
+  ] as const)("on %s says the decision may have been recorded and offers a reload, never a blind retry", async (_case, failure) => {
+    const fetchMock = stub(undefined, failure as (url: string, init?: RequestInit) => Reply);
+    render(<GoalAdminApprovalQueue />);
+    await screen.findByRole("heading", { level: 3, name: "Ref-1501" });
+    fireEvent.click(within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" }));
+    const alert = await within(rowFor("Ref-1501")).findByRole("alert");
+    expect(alert.textContent).toMatch(/The decision may not have been recorded\. Reload the queue before you retry\./);
+    expect(alert.textContent).not.toMatch(BANNED_CLAIMS);
+    expect(within(alert).queryByRole("button", { name: "Retry decision" })).toBeNull();
+    const reads = () => fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== "POST").length;
+    const before = reads();
+    fireEvent.click(within(alert).getByRole("button", { name: "Reload the queue" }));
+    await waitFor(() => expect(reads()).toBe(before + 1));
+    expect(posts(fetchMock).length).toBe(1);
   });
 
   it("says so honestly when the queue is clear", async () => {
@@ -156,6 +186,9 @@ describe("goal /admin/approvals (D-048-p3-admin-approvals)", () => {
     expect(await screen.findByText("We could not load the approval queue")).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
     expect(screen.queryByText("Queue clear")).toBeNull();
+    // Load-truthful: describe this load attempt and give reload guidance only.
+    expect(within(nextStep()).getByText("This list didn't load. Trying again only re-reads it.")).toBeTruthy();
+    expect(container.textContent).not.toMatch(BANNED_CLAIMS);
     fireEvent.click(within(nextStep()).getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
@@ -184,6 +217,13 @@ describe("goal admin-approvals sources", () => {
     const offenders = readdirSync(__dirname)
       .filter(name => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name))
       .filter(name => /#[0-9a-fA-F]{3,8}\b/.test(readFileSync(join(__dirname, name), "utf8")));
+    expect(offenders).toEqual([]);
+  });
+
+  it("carry no claim of server state the page cannot know (owner-routed ruling, Nov 5)", () => {
+    const offenders = readdirSync(__dirname)
+      .filter(name => /\.tsx?$/.test(name))
+      .filter(name => BANNED_CLAIMS.test(readFileSync(join(__dirname, name), "utf8")));
     expect(offenders).toEqual([]);
   });
 

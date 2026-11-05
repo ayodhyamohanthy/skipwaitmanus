@@ -14,6 +14,11 @@ import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { assertGoalPage } from "@/test/goalPageContract";
 import GoalAdminApprovalRecord, { GOAL_PAGE } from "./GoalAdminApprovalRecord";
 
+// Owner-routed ruling (Nov 5, 23:42): these phrases claim server state the page
+// cannot know and must not appear anywhere under pages/goal/admin-approvals.
+// Assembled from parts so this file does not carry them literally.
+const BANNED_CLAIMS = new RegExp(["record un" + "changed", "un" + "changed", "no noti" + "fications", "nothing has been decided or noti" + "fied"].join("|"), "i");
+
 const { authState, route } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }, route: { kind: "referral_request", id: "501" } }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({
@@ -112,16 +117,42 @@ describe("goal /admin/approvals/:kind/:id (D-048-p3-admin-approvals)", () => {
     await waitFor(() => expect(screen.getAllByText("Rejected by admin").length).toBeGreaterThan(0));
   });
 
-  it("shows the failed-decision copy and retries the same decision", async () => {
-    let count = 0;
-    const fetchMock = stub({ decision: () => { count += 1; return count === 1 ? reply({ error: "This record was already resolved" }, 500) : reply({ ok: true, status: "approved" }); } });
+  // Owner-routed ruling (Nov 5, 23:42): a 409 follows an earlier successful
+  // decision (which may already have notified someone), so the page says only
+  // that this attempt was not recorded and asks for a reload; no blind retry.
+  it("on a 409 says this attempt was not recorded and offers a reload, never a retry", async () => {
+    const fetchMock = stub({ decision: () => reply({ error: "This record was already resolved" }, 409) });
     render(<GoalAdminApprovalRecord />);
     await screen.findByRole("heading", { level: 2, name: "Ref-1501" });
     fireEvent.click(within(nextStep()).getByRole("button", { name: "Approve" }));
-    expect(await screen.findByText(/Decision failed to save — This record was already resolved\. The record is unchanged and still in the queue\. No notifications were sent\./)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Retry decision" }));
-    await waitFor(() => expect(posts(fetchMock).length).toBe(2));
-    expect(posts(fetchMock).map(call => call.init.body)).toEqual([JSON.stringify({ decision: "approved" }), JSON.stringify({ decision: "approved" })]);
+    const alert = await within(nextStep()).findByRole("alert");
+    expect(alert.textContent).toMatch(/This attempt was not recorded — this record was already resolved\. Reload to see its current state\./);
+    expect(alert.textContent).not.toMatch(BANNED_CLAIMS);
+    expect(within(alert).queryByRole("button", { name: "Retry decision" })).toBeNull();
+    const reads = () => fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== "POST").length;
+    const before = reads();
+    fireEvent.click(within(alert).getByRole("button", { name: "Reload this record" }));
+    await waitFor(() => expect(reads()).toBe(before + 2));
+    expect(posts(fetchMock).length).toBe(1);
+  });
+
+  it.each([
+    ["a 500", () => reply({ error: "We could not record this approval decision" }, 500)],
+    ["no response", () => { throw new TypeError("Failed to fetch"); }],
+  ] as const)("on %s says the decision may have been recorded and offers a reload, never a blind retry", async (_case, failure) => {
+    const fetchMock = stub({ decision: failure as (url: string, init?: RequestInit) => Reply });
+    render(<GoalAdminApprovalRecord />);
+    await screen.findByRole("heading", { level: 2, name: "Ref-1501" });
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Approve" }));
+    const alert = await within(nextStep()).findByRole("alert");
+    expect(alert.textContent).toMatch(/The decision may not have been recorded\. Reload this record before you retry\./);
+    expect(alert.textContent).not.toMatch(BANNED_CLAIMS);
+    expect(within(alert).queryByRole("button", { name: "Retry decision" })).toBeNull();
+    const reads = () => fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== "POST").length;
+    const before = reads();
+    fireEvent.click(within(alert).getByRole("button", { name: "Reload this record" }));
+    await waitFor(() => expect(reads()).toBe(before + 2));
+    expect(posts(fetchMock).length).toBe(1);
   });
 
   it("holds the decision on a resolved record", async () => {
@@ -178,6 +209,9 @@ describe("goal /admin/approvals/:kind/:id (D-048-p3-admin-approvals)", () => {
     expect(await screen.findByText("We could not load the record history")).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    // Load-truthful: describe this load attempt and give reload guidance only.
+    expect(within(nextStep()).getByText("This record didn't load. Trying again only re-reads it.")).toBeTruthy();
+    expect(container.textContent).not.toMatch(BANNED_CLAIMS);
     fireEvent.click(within(nextStep()).getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   });
