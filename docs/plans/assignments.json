@@ -4496,7 +4496,8 @@
         "PICKER-heartbeat-slot-safety",
         "PICKER-landed-marker-continuity",
         "PICKER-landing-wait-fallthrough",
-        "FIX-device-signin"
+        "FIX-device-signin",
+        "PICKER-review-only-red"
       ],
       "epic": "D-212",
       "owns": [
@@ -5366,6 +5367,27 @@
         "scripts/migrationGateCleanup.test.ts"
       ],
       "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a non-Claude development session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
+    },
+    {
+      "id": "PICKER-review-only-red",
+      "title": "Hand a Tier 1 head its REVIEW when the only red required job is the review gate naming that task and head (D-254 (5))",
+      "row": "D-254",
+      "packet": "docs/plans/PICKER-review-only-red.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-review-only-red",
+      "status": "todo",
+      "syncedTo": "D-284",
+      "dependsOn": [
+        "PICKER-landing-wait-fallthrough"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskReviewOnlyRed.test.ts"
+      ],
+      "note": "D-254 (5) first-part cure only. A declared Tier 1 todo row in its review stage (needs-review, or in-review) whose newest ci.yml run on the exact branch tip is red ONLY because the review gate refused that task at that head is treated as not red for that stage, and the existing review logic decides: the D-151 builder/fixer bar, the existing review-lock and head-holder continuity, and the normal claim flow are unchanged. Proof is job- and step-level from that run (including the API's run_attempt) plus exactly one review-gate line naming this task and head in the failed typecheck job's log; anything unknown, mixed, unreadable, stale, truncated or red for any other reason keeps today's hand-out, and run-level unknown CI never enters this path. D-258's must-clause (a review lock held by a builder model is not a lock) stays binding and is not waived; this row does not implement it, and it needs a separately qualified follow-up (packet R3). Also not in this row, each a separate named residual that this registration does not approve: the existing REVIEW hand-out on unknown CI (R2) and the FIX hand-out on a passed review whose last run is still red at the gate (R1). D-254, D-258 and R1 are not complete with this row. Tests in the row's own new file, not scripts/nextTask.test.ts (FIX-device-signin owns it). Registration also appends this row's id to the earlier PICKER-fullstack-lights row's dependsOn: a named FIFO inversion, justified only by that row's output need through FIX-device-signin and the validator's mandatory overlap ordering, and granting this row no queue promotion; no other existing row changes. No review-gate, scope-check, workflow, marker, verdict, tier, status or lock change on any other row; FIX-device-signin and every owner-parked D-254 member stay as they are. Landing is unchanged: a pass never lands red CI. Builder: a non-Claude development session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a distinct lander are required before landing (packet section 9; prose, not machine-enforced)."
     }
   ]
 }
