@@ -10,7 +10,8 @@ export function AdminMoneyGoalFrame({ screen, current, children }: { screen: str
   return (
     <div data-skipwait-screen={screen} data-goal-page="admin-money" className="g-scope min-h-dvh bg-g-canvas font-g-sans text-g-body text-g-ink">
       <header className="border-b border-g-hairline bg-g-surface">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 gdesk:px-5">
+        {/* Three long door labels need a second row on a phone (gdesk keeps the one-row bar). */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 gdesk:h-14 gdesk:flex-nowrap gdesk:gap-y-0 gdesk:py-0 gdesk:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <a href="/" aria-label="skipwait.me home" className="inline-flex shrink-0 items-center"><GoalBrandMark /></a>
             <span className="truncate text-g-meta text-g-ink-3 max-gdesk:hidden">Internal operations · money</span>
