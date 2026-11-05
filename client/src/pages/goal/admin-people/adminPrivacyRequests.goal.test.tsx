@@ -40,6 +40,7 @@ function stub(overrides: { list?: Reply | (() => Promise<Reply>); review?: (body
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 const nextStep = () => screen.getByRole("region", { name: "Your next step" });
+const row = (who: RegExp) => screen.getByRole("button", { name: who });
 const reviewCall = (fetchMock: ReturnType<typeof stub>, index = 0) => {
   const call = fetchMock.mock.calls.filter(([url]) => String(url).includes("/review"))[index] as [string, RequestInit] | undefined;
   return call ? { url: call[0], method: call[1].method, body: JSON.parse(String(call[1].body)) } : null;
@@ -49,17 +50,22 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true;
 
 describe("goal /admin/privacy-requests (D-048-p3-admin-people)", () => {
   it("opens with the people goal line and one next step over the queue", async () => {
+    stub();
     const { container } = renderPage(<GoalAdminPrivacyRequests />);
-    expect(await screen.findByText("avery@example.com")).toBeTruthy();
+    // The queue arrives: the requester line is "Avery Nair · avery@example.com"
+    // (the kit page's one line), so it is read off the row rather than as a lone node.
+    expect((await screen.findByRole("button", { name: /avery@example.com/ })).textContent).toContain("avery@example.com");
     assertGoalPage(container, GOAL_PAGE);
     expect(GOAL_PAGE.goalLine).toBe("Act on people requests.");
     expect(container.querySelector("[data-goal-page]")).toBeTruthy();
     expect(container.querySelector("[data-skipwait-screen='admin-privacy-requests']")).toBeTruthy();
+    expect(within(nextStep()).getByRole("button", { name: "Choose a request" }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("shows each request's state as dot + text", async () => {
+    stub();
     renderPage(<GoalAdminPrivacyRequests />);
-    await screen.findByText("avery@example.com");
+    await screen.findByRole("button", { name: /avery@example.com/ });
     const statuses = (await screen.findAllByTestId("goal-status")).map(node => node.textContent?.trim());
     expect(statuses).toContain("Requested");
     expect(statuses).toContain("In review");
@@ -75,7 +81,7 @@ describe("goal /admin/privacy-requests (D-048-p3-admin-people)", () => {
     fireEvent.click(within(nextStep()).getByRole("button", { name: "Start review" }));
     await waitFor(() => expect(reviewCall(fetchMock)).toBeTruthy());
     expect(reviewCall(fetchMock)).toEqual({ url: "/api/admin/privacy-requests/7/review", method: "POST", body: { status: "in_review", resolution: "Identity review started" } });
-    expect(await screen.findByText("In review")).toBeTruthy();
+    expect(await within(row(/avery@example.com/)).findByText("In review")).toBeTruthy();
   });
 
   it("sends only the status when the note is left blank", async () => {
@@ -88,6 +94,7 @@ describe("goal /admin/privacy-requests (D-048-p3-admin-people)", () => {
   });
 
   it("brings a request's recorded note back into the field, as the kit page did", async () => {
+    stub();
     renderPage(<GoalAdminPrivacyRequests />);
     fireEvent.click(await screen.findByRole("button", { name: /User 12/ }));
     const note = (await screen.findByLabelText("Internal resolution note")) as HTMLTextAreaElement;
@@ -100,7 +107,10 @@ describe("goal /admin/privacy-requests (D-048-p3-admin-people)", () => {
     renderPage(<GoalAdminPrivacyRequests />);
     fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
     await screen.findByRole("button", { name: "Start review" });
-    expect(screen.queryByRole("button", { name: /complet/i })).toBeNull();
+    // Every action control on the page, enumerated: starting a review is the only
+    // one, so nothing here can record an erasure as complete (the server refuses
+    // any status but in_review - server/privateReferralRoutes.ts:1683).
+    expect(screen.getAllByTestId("goal-button").map(node => node.textContent?.trim())).toEqual(["Start review"]);
     expect(screen.getByText("Completion is blocked until a verified erasure workflow records every resource step and any approved retained-data exception.")).toBeTruthy();
   });
 

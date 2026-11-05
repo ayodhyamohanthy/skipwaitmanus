@@ -38,32 +38,35 @@ function stub(overrides: { list?: Reply | (() => Promise<Reply>); suspend?: (url
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 const nextStep = () => screen.getByRole("region", { name: "Your next step" });
+const row = (who: RegExp) => screen.getByRole("button", { name: who });
 const posts = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.filter(([url], index) => String(url).includes("/suspend") && (fetchMock.mock.calls[index] as [string, RequestInit?])[1]?.method === "POST");
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true; });
 
 describe("goal /admin/users (D-048-p3-admin-people)", () => {
   it("opens with the goal line and one next step over the roster", async () => {
+    stub();
     const { container } = renderPage(<GoalAdminUsers />);
     expect(await screen.findByText("avery@example.com")).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
     expect(GOAL_PAGE.goalLine).toBe("Act on people requests.");
     expect(container.querySelector("[data-goal-page]")).toBeTruthy();
     expect(container.querySelector("[data-skipwait-screen='admin-users']")).toBeTruthy();
+    expect(within(nextStep()).getByRole("button", { name: "Choose an account" }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("shows every account's state as dot + text, never colour alone", async () => {
+    stub();
     renderPage(<GoalAdminUsers />);
     await screen.findByText("avery@example.com");
-    const statuses = (await screen.findAllByTestId("goal-status")).map(node => node.textContent?.trim());
-    expect(statuses).toContain("Suspended");
-    expect(statuses).toContain("Job Seeker");
-    expect(statuses).toContain("Referrer");
-    expect(statuses).toContain("No profile");
-    expect(screen.getByText("Work email verified")).toBeTruthy();
+    expect(within(row(/avery@example.com/)).getByText("Job Seeker")).toBeTruthy();
+    expect(within(row(/ravi@example.com/)).getByText("Suspended")).toBeTruthy();
+    expect(within(row(/ravi@example.com/)).getByText("Work email verified")).toBeTruthy();
+    expect(within(row(/User #15/)).getByText("No profile")).toBeTruthy();
   });
 
   it("filters the roster on the client, as the kit page did", async () => {
+    stub();
     renderPage(<GoalAdminUsers />);
     await screen.findByText("avery@example.com");
     fireEvent.change(screen.getByLabelText("Search users"), { target: { value: "ravi" } });
@@ -85,7 +88,7 @@ describe("goal /admin/users (D-048-p3-admin-people)", () => {
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(String(fetchMock.mock.calls.find(([url]) => String(url).includes("/suspend"))?.[0])).toBe("/api/admin/users/9/suspend");
     expect(JSON.parse(String((posts(fetchMock)[0] as [string, RequestInit])[1].body))).toEqual({ suspended: true });
-    expect(await screen.findByText("Suspended")).toBeTruthy();
+    expect(await within(row(/avery@example.com/)).findByText("Suspended")).toBeTruthy();
   });
 
   it("keeps the cancel step: closing the confirm sends nothing", async () => {
@@ -111,7 +114,7 @@ describe("goal /admin/users (D-048-p3-admin-people)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Unsuspend user" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String((posts(fetchMock)[0] as [string, RequestInit])[1].body))).toEqual({ suspended: false });
-    expect(await screen.findByText("Referrer")).toBeTruthy();
+    expect(await within(row(/ravi@example.com/)).findByText("Referrer")).toBeTruthy();
   });
 
   it("holds exactly one black commit: the confirm takes over from the page", async () => {
@@ -134,7 +137,7 @@ describe("goal /admin/users (D-048-p3-admin-people)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Suspend user" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Update failed — User suspension is unavailable right now. The account is unchanged.");
-    expect(screen.queryByText("Suspended")).toBeNull();
+    expect(within(row(/avery@example.com/)).queryByText("Suspended")).toBeNull();
     fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(2));
     expect(JSON.parse(String((posts(fetchMock)[1] as [string, RequestInit])[1].body))).toEqual({ suspended: true });
