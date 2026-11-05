@@ -139,6 +139,101 @@ export function parseBranchLog(raw) {
   });
 }
 
+/** D-237: the loader's `git log --format` for `origin/main..<ref>` (with --reverse --no-merges --name-only); parseBranchLog reads it. */
+export const BRANCH_LOG_FORMAT = "%x1e%s%x1f";
+
+/**
+ * PICKER-landed-marker-continuity S2: a branch is marker-only when it has at least one commit beyond main, no merge
+ * commit, and every commit changes no file AND parses as a picker marker. An empty commit with any other subject is
+ * not a marker merely because it is empty; a marker subject on a commit that changes files is work (D-190).
+ * commits: parseBranchLog of the loader's read (merges excluded); merges: the merge commits in the same range.
+ */
+export function markerOnlyOf(commits, merges) {
+  if (!Array.isArray(commits) || !commits.length || merges !== 0) return false;
+  return commits.every(c => c.files.length === 0 && parseMarker(c.subject) !== null);
+}
+
+/**
+ * PICKER-landed-marker-continuity: one closed pull request as landed evidence, checked against local git.
+ * merged: GitHub says it merged into main from this repository, its merge commit is on main, and for a normal
+ * (two-parent) merge the pull request's head is one of its parents; a one-parent merge commit is GitHub's squash or
+ * rebase merge, which only the merged pull request vouches for. unknown: the merge commit is missing from local
+ * history (never converted into done). none: anything else. A commit subject alone is never evidence.
+ * tryGit(...args) returns the output, or null when git fails.
+ */
+export function verifyMergedPull(pull, { repo, tryGit, mainRef = "origin/main" }) {
+  const none = { state: "none" };
+  const mergeSha = pull?.merge_commit_sha;
+  if (!pull?.merged_at || pull.base?.ref !== "main" || pull.head?.repo?.full_name !== repo || !pull.head?.sha || !mergeSha) return none;
+  if (!/^[0-9a-f]{40}$/.test(mergeSha) || tryGit("cat-file", "-e", `${mergeSha}^{commit}`) === null) {
+    return { state: "unknown", reason: `merge commit ${String(mergeSha).slice(0, 8)} of #${pull.number} is not in local history` };
+  }
+  if (tryGit("merge-base", "--is-ancestor", mergeSha, mainRef) === null) return none;
+  const parents = (tryGit("rev-list", "--parents", "-n", "1", mergeSha) ?? "").split(/\s+/).filter(Boolean).slice(1);
+  if (parents.length >= 2 && !parents.slice(1).includes(pull.head.sha)) return none;
+  if (!parents.length) return none;
+  return { state: "merged", number: pull.number, mergeSha };
+}
+
+const PAGE_SIZE = 100;
+
+/**
+ * PICKER-landed-marker-continuity S1: landed evidence for the candidate branches beyond the newest-100 closed window.
+ * Pages of closed pull requests (newest updated first) are read until every candidate has a merged pull request, a
+ * short page proves the list is complete, the page reaches back to a complete cache, a read fails, or maxPages.
+ * Merged pull requests never change, so they are cached; the cache is complete only after a full read, and a
+ * window that reaches back to its completeAt covers everything merged since. Per candidate: { state: "merged",
+ * number, mergeSha } | { state: "unknown", reason } | absent (no merged pull request: none). Unknown is never done,
+ * and evidence already found is kept when a later read fails.
+ */
+export async function collectLandedEvidence({ repo, candidates, firstPage, fetchPage, verify, cache = null, now, maxPages = 12 }) {
+  const usable = cache && cache.repo === repo && cache.completeAt && cache.merged && typeof cache.merged === "object" ? cache : null;
+  const found = new Map();
+  const add = (ref, entry) => {
+    const list = found.get(ref) ?? [];
+    if (!list.some(e => e.number === entry.number)) list.push(entry);
+    found.set(ref, list);
+  };
+  const cached = cache && cache.repo === repo && cache.merged && typeof cache.merged === "object" ? cache.merged : {};
+  for (const [ref, list] of Object.entries(cached)) {
+    for (const e of Array.isArray(list) ? list : []) if (e && Number.isSafeInteger(e.number) && e.headSha && e.mergeSha) add(ref, e);
+  }
+  const take = page => {
+    for (const p of page ?? []) {
+      if (!p?.merged_at || p.base?.ref !== "main" || p.head?.repo?.full_name !== repo || !p.head?.ref || !p.head?.sha || !p.merge_commit_sha) continue;
+      add(p.head.ref, { number: p.number, headSha: p.head.sha, mergeSha: p.merge_commit_sha });
+    }
+  };
+  const since = usable ? Date.parse(usable.completeAt) : NaN;
+  const covers = page => Number.isFinite(since) && (page ?? []).some(p => Date.parse(p.updated_at) <= since);
+  const want = [...new Set(candidates)];
+  const resolved = () => want.every(ref => found.has(ref));
+  let page = firstPage ?? [], read = 1, complete = page.length < PAGE_SIZE || covers(page), failed = null;
+  take(page);
+  while (!complete && !resolved() && read < maxPages) {
+    read++;
+    try { page = await fetchPage(read); } catch (e) { failed = e?.message ?? String(e); break; }
+    take(page);
+    if (!Array.isArray(page) || page.length < PAGE_SIZE || covers(page)) complete = true;
+  }
+  const evidence = new Map();
+  for (const ref of want) {
+    const list = found.get(ref);
+    if (list) {
+      const results = list.map(e => ({ number: e.number, mergeSha: e.mergeSha, ...verify({ number: e.number, merged_at: true, base: { ref: "main" }, head: { ref, sha: e.headSha, repo: { full_name: repo } }, merge_commit_sha: e.mergeSha }) }));
+      const hit = results.find(r => r.state === "merged");
+      if (hit) { evidence.set(ref, hit); continue; }
+      const unsure = results.find(r => r.state === "unknown");
+      if (unsure) { evidence.set(ref, unsure); continue; }
+    }
+    if (!complete) evidence.set(ref, { state: "unknown", reason: failed ? `closed pull requests unreadable: ${failed}` : `not in the newest ${read} pages of closed pull requests` });
+  }
+  const merged = {};
+  for (const [ref, list] of found) merged[ref] = list;
+  const prior = usable?.completeAt ?? null;
+  return { evidence, complete, pages: read, cache: { repo, completeAt: complete ? new Date(now).toISOString() : prior, merged } };
+}
+
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
 export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
@@ -432,7 +527,7 @@ const standingReport = (reports, holder) => {
 };
 
 /** One row per task with everything every decision reads. */
-function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
+function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence = new Map() }) {
   const byTask = reportsByTask(reports);
   return tasks.map((task, at) => {
     const id = task.id;
@@ -450,7 +545,12 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
     const pr = work ? openPrs.get(work) ?? null : null;
     const ci = pr ? prCi.get(work) ?? { state: "unknown" } : { state: "unknown" };
     // A squash merge leaves the branch unmerged in git; GitHub's merged pull request says it landed.
-    const landed = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
+    const landedBefore = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
+    // PICKER-landed-marker-continuity: a verified merged pull request from the row's branch keeps it landed when the
+    // branch is gone (S1) or was recreated with only this row's empty picker markers (S2). Unknown is never landed.
+    const continuity = landedEvidence?.get?.(task.branch)?.state === "merged"
+      && (!info || (work === task.branch && info.markerOnly === true && info.markers.every(m => m.id === id)));
+    const landed = landedBefore || continuity;
     const owner = holderOf(info, id);
     let said = standingReport(byTask.get(id) ?? [], owner);
     // A red report older than a green CI run on the pull request no longer holds anything.
@@ -516,7 +616,7 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
+export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
@@ -533,7 +633,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
 
-  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports });
+  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence });
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-134: dependsOn holds every kind of work on a task, not only a new build.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
@@ -799,13 +899,13 @@ function fixMainLocks(branches, now) {
 }
 
 /** D-085: what `--heartbeat` keeps alive, whatever main's CI says. mainSha: main's red commit, if any. */
-export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   if (mainSha) {
     const current = fixMainLockOf(mainSha);
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock };
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
   const own = ownWork(view, claimant);
   if (!own || own.kind !== "continue") return null;
   const { at, ...pick } = own;
@@ -816,14 +916,14 @@ export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads
  * D-134: every claim this agent holds (the fix-main lock first), so a heartbeat keeps all of them alive, not only
  * the first; that includes a claim on a task that waits for a dependency, which is nobody's work yet but stays its holder's.
  */
-export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   const out = [];
   if (mainSha) {
     const current = fixMainLockOf(mainSha);
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) out.push({ kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock });
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
   for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
   const slot = landingSlot(branches, now);
   if (slot.holder === claimant && !slot.quiet) {
@@ -931,9 +1031,9 @@ export function mayReport({ task, branches, claimant }) {
  * state, holder, quiet time and the latest report its team sent.
  * reports: [{ id, status, who, at, note }] from agent/reports/log, newest first.
  */
-export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), reports = [], now, register = null }) {
+export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, register = null }) {
   const HOUR = 60 * 60 * 1000;
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
   const byTask = reportsByTask(reports);
   const { workAt, archAt } = clock(branches, now);
   const doneIds = new Set(view.filter(v => v.done).map(v => v.task.id));
