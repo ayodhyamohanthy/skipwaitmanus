@@ -165,6 +165,64 @@ describe("goal /admin/approvals (D-048-p3-admin-approvals)", () => {
     expect(posts(fetchMock).length).toBe(1);
   });
 
+  // Coordinator review finding (Nov 6, 00:29): while a row shows a decision
+  // failure its Approve and Reject are held until the queue reload reconciles it.
+  describe("holds a row's decision after a failed decision until the reload reconciles it", () => {
+    const failures = [
+      ["a 409", () => reply({ error: "This record was already resolved" }, 409)],
+      ["a 500", () => reply({ error: "We could not record this approval decision" }, 500)],
+      ["no response", () => { throw new TypeError("Failed to fetch"); }],
+    ] as const;
+
+    it.each(failures)("after %s both row actions are aria-disabled and a click sends no second decision", async (_case, failure) => {
+      const fetchMock = stub(undefined, failure as (url: string, init?: RequestInit) => Reply);
+      render(<GoalAdminApprovalQueue />);
+      await screen.findByRole("heading", { level: 3, name: "Ref-1501" });
+      fireEvent.click(within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" }));
+      await within(rowFor("Ref-1501")).findByRole("alert");
+      const approve = within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" });
+      const reject = within(rowFor("Ref-1501")).getByRole("button", { name: "Reject" });
+      expect(approve.getAttribute("aria-disabled")).toBe("true");
+      expect(reject.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(approve);
+      fireEvent.click(reject);
+      expect(posts(fetchMock).length).toBe(1);
+    });
+
+    it("after a reload that finds the record resolved, shows it resolved and keeps both actions held", async () => {
+      let resolvedOnServer = false;
+      const fetchMock = stub(async () => reply({ items: [{ ...requestItem, status: resolvedOnServer ? "approved" : "under_review" }, enrollmentItem, paymentItem] }), () => { resolvedOnServer = true; return reply({ error: "This record was already resolved" }, 409); });
+      render(<GoalAdminApprovalQueue />);
+      await screen.findByRole("heading", { level: 3, name: "Ref-1501" });
+      fireEvent.click(within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" }));
+      const alert = await within(rowFor("Ref-1501")).findByRole("alert");
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload the queue" }));
+      await waitFor(() => expect(within(rowFor("Ref-1501")).queryByRole("alert")).toBeNull());
+      expect(within(rowFor("Ref-1501")).queryByText("Under review")).toBeNull();
+      const approve = within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" });
+      expect(approve.getAttribute("aria-disabled")).toBe("true");
+      expect(within(rowFor("Ref-1501")).getByRole("button", { name: "Reject" }).getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(approve);
+      expect(posts(fetchMock).length).toBe(1);
+    });
+
+    it("after a reload that finds the record still pending, offers the decision again", async () => {
+      let attempts = 0;
+      const fetchMock = stub(undefined, () => { attempts += 1; return attempts === 1 ? reply({ error: "We could not record this approval decision" }, 500) : reply({ ok: true, status: "approved" }); });
+      render(<GoalAdminApprovalQueue />);
+      await screen.findByRole("heading", { level: 3, name: "Ref-1501" });
+      fireEvent.click(within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" }));
+      const alert = await within(rowFor("Ref-1501")).findByRole("alert");
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload the queue" }));
+      await waitFor(() => expect(within(rowFor("Ref-1501")).queryByRole("alert")).toBeNull());
+      const approve = within(rowFor("Ref-1501")).getByRole("button", { name: "Approve" });
+      expect(approve.getAttribute("aria-disabled")).toBeNull();
+      expect(within(rowFor("Ref-1501")).getByRole("button", { name: "Reject" }).getAttribute("aria-disabled")).toBeNull();
+      fireEvent.click(approve);
+      await waitFor(() => expect(posts(fetchMock).length).toBe(2));
+    });
+  });
+
   it("says so honestly when the queue is clear", async () => {
     const { container } = (stub(reply({ items: [] })), render(<GoalAdminApprovalQueue />));
     expect(await screen.findByText("Queue clear")).toBeTruthy();

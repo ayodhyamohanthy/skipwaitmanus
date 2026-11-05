@@ -155,6 +155,66 @@ describe("goal /admin/approvals/:kind/:id (D-048-p3-admin-approvals)", () => {
     expect(posts(fetchMock).length).toBe(1);
   });
 
+  // Coordinator review finding (Nov 6, 00:29): the failure copy forbids a
+  // blind retry, so while a decision failure is shown Approve and Reject are
+  // held until the offered reload reconciles the record from the server.
+  describe("holds the decision after a failed decision until the reload reconciles it", () => {
+    const failures = [
+      ["a 409", () => reply({ error: "This record was already resolved" }, 409)],
+      ["a 500", () => reply({ error: "We could not record this approval decision" }, 500)],
+      ["no response", () => { throw new TypeError("Failed to fetch"); }],
+    ] as const;
+
+    it.each(failures)("after %s both actions are aria-disabled and a click sends no second decision", async (_case, failure) => {
+      const fetchMock = stub({ decision: failure as (url: string, init?: RequestInit) => Reply });
+      render(<GoalAdminApprovalRecord />);
+      await screen.findByRole("heading", { level: 2, name: "Ref-1501" });
+      fireEvent.click(within(nextStep()).getByRole("button", { name: "Approve" }));
+      await within(nextStep()).findByRole("alert");
+      const approve = within(nextStep()).getByRole("button", { name: "Approve" });
+      const reject = within(nextStep()).getByRole("button", { name: "Reject" });
+      expect(approve.getAttribute("aria-disabled")).toBe("true");
+      expect(reject.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(approve);
+      fireEvent.click(reject);
+      expect(posts(fetchMock).length).toBe(1);
+    });
+
+    it("after a reload that finds the record resolved, shows it resolved and keeps both actions held", async () => {
+      let resolvedOnServer = false;
+      const fetchMock = stub({ queue: async () => reply({ items: [{ ...requestItem, status: resolvedOnServer ? "approved" : "under_review" }] }), decision: () => { resolvedOnServer = true; return reply({ error: "This record was already resolved" }, 409); } });
+      render(<GoalAdminApprovalRecord />);
+      await screen.findByRole("heading", { level: 2, name: "Ref-1501" });
+      fireEvent.click(within(nextStep()).getByRole("button", { name: "Approve" }));
+      const alert = await within(nextStep()).findByRole("alert");
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload this record" }));
+      await waitFor(() => expect(within(nextStep()).queryByRole("alert")).toBeNull());
+      expect(screen.getByText("Already resolved")).toBeTruthy();
+      expect(screen.queryByText("Under review")).toBeNull();
+      const approve = within(nextStep()).getByRole("button", { name: "Approve" });
+      expect(approve.getAttribute("aria-disabled")).toBe("true");
+      expect(within(nextStep()).getByRole("button", { name: "Reject" }).getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(approve);
+      expect(posts(fetchMock).length).toBe(1);
+    });
+
+    it("after a reload that finds the record still pending, offers the decision again", async () => {
+      let attempts = 0;
+      const fetchMock = stub({ decision: () => { attempts += 1; return attempts === 1 ? reply({ error: "We could not record this approval decision" }, 500) : reply({ ok: true, status: "approved" }); } });
+      render(<GoalAdminApprovalRecord />);
+      await screen.findByRole("heading", { level: 2, name: "Ref-1501" });
+      fireEvent.click(within(nextStep()).getByRole("button", { name: "Approve" }));
+      const alert = await within(nextStep()).findByRole("alert");
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload this record" }));
+      await waitFor(() => expect(within(nextStep()).queryByRole("alert")).toBeNull());
+      const approve = within(nextStep()).getByRole("button", { name: "Approve" });
+      expect(approve.getAttribute("aria-disabled")).toBeNull();
+      expect(within(nextStep()).getByRole("button", { name: "Reject" }).getAttribute("aria-disabled")).toBeNull();
+      fireEvent.click(approve);
+      await waitFor(() => expect(posts(fetchMock).length).toBe(2));
+    });
+  });
+
   it("holds the decision on a resolved record", async () => {
     const fetchMock = stub({ items: [{ ...requestItem, status: "approved" }] });
     render(<GoalAdminApprovalRecord />);
