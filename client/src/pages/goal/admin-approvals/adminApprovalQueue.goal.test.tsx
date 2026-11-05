@@ -25,9 +25,9 @@ vi.mock("wouter", () => ({
   useSearch: () => "",
 }));
 
-const requestItem = { kind: "referral_request", id: 501, status: "under_review", companyDomain: "acme.example", createdAt: "Tue 2026-09-01 2:30 PM IST (UTC+05:30)", updatedAt: "Tue 2026-09-01 2:30 PM IST (UTC+05:30)", summary: "I led a measurable product design launch.", meta: { claimTime: "Tue 2026-09-01 2:30 PM IST (UTC+05:30)", seekerName: "Avery", targetRoleUrl: "https://careers.acme.example/jobs/design", tokenCount: 1, creditReserved: true } };
-const enrollmentItem = { kind: "referrer_enrollment", id: 77, status: "under_review", companyDomain: "acme.example", createdAt: "Tue 2026-09-01 1:30 PM IST (UTC+05:30)", updatedAt: "Tue 2026-09-01 1:30 PM IST (UTC+05:30)", summary: "Work email verified · awaiting a first referral action", meta: { otpTime: "Tue 2026-09-01 1:30 PM IST (UTC+05:30)", referrerName: "Blake", referrerEmail: "blake@acme.example" } };
-const paymentItem = { kind: "payment", id: 33, status: "requires_review", companyDomain: "", provider: "chargebee", amount: 39600, currency: "INR", createdAt: "Tue 2026-09-01 12:30 PM IST (UTC+05:30)", updatedAt: "Tue 2026-09-01 12:30 PM IST (UTC+05:30)", summary: "provider_page_mismatch", meta: { tokenCount: 4, reason: "provider_page_mismatch" } };
+const requestItem = { kind: "referral_request", id: 501, status: "under_review", companyDomain: "acme.example", createdAt: "2026-09-01T09:00:00.000Z", updatedAt: "2026-09-01T09:00:00.000Z", summary: "I led a measurable product design launch.", meta: { claimTime: "2026-09-01T09:00:00.000Z", seekerName: "Avery", targetRoleUrl: "https://careers.acme.example/jobs/design", tokenCount: 1, creditReserved: true } };
+const enrollmentItem = { kind: "referrer_enrollment", id: 77, status: "under_review", companyDomain: "acme.example", createdAt: "2026-09-01T08:00:00.000Z", updatedAt: "2026-09-01T08:00:00.000Z", summary: "Work email verified · awaiting a first referral action", meta: { otpTime: "2026-09-01T08:00:00.000Z", referrerName: "Blake", referrerEmail: "blake@acme.example" } };
+const paymentItem = { kind: "payment", id: 33, status: "requires_review", companyDomain: "", provider: "chargebee", amount: 39600, currency: "INR", createdAt: "2026-09-01T07:00:00.000Z", updatedAt: "2026-09-01T07:00:00.000Z", summary: "provider_page_mismatch", meta: { tokenCount: 4, reason: "provider_page_mismatch" } };
 const ITEMS = [requestItem, enrollmentItem, paymentItem];
 
 type Reply = { ok: boolean; status: number; url: string; json: () => Promise<unknown> };
