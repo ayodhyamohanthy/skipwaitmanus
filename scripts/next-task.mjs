@@ -183,7 +183,10 @@ function pushMarker(branch, parent, subject, body) {
 function keepClaim(pick, who, branches) {
   if (pick.of === "land") {
     const slot = landingSlot(branches, Date.now());
-    if (slot.holder !== who || slot.quiet) {
+    // PICKER-heartbeat-slot-safety: another lander's fresh slot is theirs. Renewing this holder's own LAND lease
+    // below never writes it; a free or quiet slot is taken as before (first push wins, a lost race fails closed).
+    const othersFresh = Boolean(slot.holder) && slot.holder !== who && !slot.quiet;
+    if (!othersFresh && (slot.holder !== who || slot.quiet)) {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
       const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who));
       if (!took) return false;
