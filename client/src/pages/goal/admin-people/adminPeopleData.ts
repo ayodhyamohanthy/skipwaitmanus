@@ -89,5 +89,9 @@ export function privacyStatus(request: PrivacyRequestRow): { status: GoalStatusV
 
 export const accountLabelOf = (user: AdminUserRow) => user.email || `User #${user.id}`;
 export const requesterLabelOf = (request: PrivacyRequestRow) => `${request.requesterName || "Account holder"} · ${request.requesterEmail || `User ${request.userId}`}`;
-export const joinedOn = (value: string) => `Joined ${new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-export const requestedOn = (value: string) => `Requested ${new Date(value).toLocaleString("en-US")}`;
+/** One date format for both people surfaces, with the locale pinned so a capture is reproducible. */
+export const onDate = (value: string) => new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+export const joinedOn = (value: string) => `Joined ${onDate(value)}`;
+/** One date-time format, with the locale pinned so a capture is reproducible. */
+export const stamp = (value: string) => new Date(value).toLocaleString("en-US");
+export const requestedOn = (value: string) => `Requested ${stamp(value)}`;
