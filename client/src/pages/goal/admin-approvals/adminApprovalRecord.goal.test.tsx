@@ -82,7 +82,8 @@ describe("goal /admin/approvals/:kind/:id (D-048-p3-admin-approvals)", () => {
     expect(screen.getByRole("heading", { level: 3, name: creditReservedPhrase(ASK_LEVEL_COST_CLIENT) })).toBeTruthy();
     expect(screen.getByText("Reserved when the request was created. Returned on withdraw, consumed on accept, never consumed on decline.")).toBeTruthy();
     const lines = within(history()).getAllByRole("listitem").map(item => item.querySelector("p")?.textContent);
-    expect(lines).toEqual(["Request created", `${creditReservedPhrase(ASK_LEVEL_COST_CLIENT)} (monthly)`, "Claimed by verified referrer"]);
+    // The kit order: the reservation line and the logged creation share a timestamp and keep push order (stable sort).
+    expect(lines).toEqual([`${creditReservedPhrase(ASK_LEVEL_COST_CLIENT)} (monthly)`, "Request created", "Claimed by verified referrer"]);
     expect(within(history()).getAllByText(/System/).length).toBeGreaterThan(0);
   });
 
