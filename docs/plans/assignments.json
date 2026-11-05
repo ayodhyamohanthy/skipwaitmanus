@@ -1959,6 +1959,7 @@
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
       "status": "todo",
+      "syncedTo": "D-285",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
