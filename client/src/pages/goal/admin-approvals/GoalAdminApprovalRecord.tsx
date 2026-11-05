@@ -219,7 +219,9 @@ export default function GoalAdminApprovalRecord() {
   }
 
   const resolved = isResolved(item.status);
-  const held = resolved ? "This record is already resolved" : undefined;
+  // A failed decision leaves the server state unknown: hold both actions until
+  // the offered reload reconciles the record (coordinator finding, Nov 6).
+  const held = resolved ? "This record is already resolved" : decisionError ? "Reload this record before you decide again" : undefined;
   const working = workingDecision !== null;
   return (
     <AdminGoalFrame screen="admin-approval-record">

@@ -45,7 +45,9 @@ function RecordFacts({ item }: { item: AdminApprovalQueueItem }) {
 
 function QueueRow({ item, working, reloading, error, onDecide, onReload }: { item: AdminApprovalQueueItem; working: boolean; reloading: boolean; error?: DecisionFailure; onDecide: (decision: ApprovalDecision) => void; onReload: () => void }) {
   const resolved = isResolved(item.status);
-  const held = resolved ? "Already resolved" : undefined;
+  // A failed decision leaves the server state unknown: hold both actions until
+  // the queue reload reconciles the row (coordinator finding, Nov 6).
+  const held = resolved ? "Already resolved" : error ? "Reload the queue before you decide again" : undefined;
   return (
     <li className="border-b border-g-hairline px-4 py-4 last:border-b-0 gdesk:px-5">
       <div className="flex items-start justify-between gap-3">
