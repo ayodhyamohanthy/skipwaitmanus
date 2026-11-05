@@ -490,6 +490,9 @@ function clock(branches, now) {
 }
 
 const PENDING_KINDS = new Set(["review", "fix", "green", "land", "takeover", "unblock"]);
+/** PICKER-avoid-land: the hand-outs of a red or blocked task whose lane stays held when the session avoids it. */
+const AVOID_HOLDS = new Set(["unblock", "green", "fix", "takeover"]);
+const redOrBlocked = v => v.open && (v.said?.status === "blocked" || v.said?.status === "red" || (Boolean(v.pr) && v.ci === "red"));
 
 /**
  * D-202: the newest register entry that names this task and sits after its `syncedTo`, or null.
@@ -697,7 +700,12 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // --avoid: a session that may not take a task (its own instruction or a missing tool) is handed something else;
     // the task is never reported blocked for that reason, and a red or blocked one still holds its lane (gate).
     let action = actionFor(view[i]);
-    if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) action = skip(view[i], "you asked to avoid it (--avoid)");
+    if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) {
+      // PICKER-avoid-land (D-109): avoiding a red or blocked task's hand-out (unblock, make green, fix, takeover)
+      // never frees its lane or its dependents for this session; it holds them as it would for anyone else.
+      if (AVOID_HOLDS.has(action.kind) && redOrBlocked(view[i])) { heldLanes.set(view[i].task.lane, view[i].task.id); heldIds.set(view[i].task.id, view[i].task.id); }
+      action = skip(view[i], "you asked to avoid it (--avoid)");
+    }
     actions[i] = action;
     if (!action) continue;
     if (action.kind === "gate") {
