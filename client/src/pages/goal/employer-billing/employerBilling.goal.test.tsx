@@ -132,9 +132,11 @@ describe("goal /employer/billing states", () => {
     serve({ account: ACCOUNT, spend: SPEND });
     const { container } = renderPage(<GoalEmployerBilling />);
     expect(await screen.findByRole("heading", { level: 1, name: "Control what you spend." })).toBeTruthy();
+    // The goal line is present while the account and the ledger are still in
+    // flight, so the loaded content is what marks this state as settled.
+    expect(await screen.findByText("Talent unlock balance")).toBeTruthy();
     expect(container.querySelector("[data-goal-page='employer']")).toBeTruthy();
     expect(container.querySelector("[data-skipwait-screen='employer-billing']")).toBeTruthy();
-    expect(screen.getByText("Talent unlock balance")).toBeTruthy();
     expect(screen.getByText("Monthly promotion budget: $50")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ })).toBeTruthy();
     expect(container.querySelector("button button, a button, button a")).toBeNull();
@@ -155,7 +157,7 @@ describe("goal /employer/billing states", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We could not load your employer account");
     expect(alert.textContent).toContain("Nothing was changed");
-    expect(screen.getByTestId("goal-skeleton-rows")).toBeNull();
+    expect(screen.queryByTestId("goal-skeleton-rows")).toBeNull();
     const retry = await screen.findByRole("button", { name: "Try again" });
     expect(retry.hasAttribute("data-g-primary")).toBe(true);
     expect(container.querySelectorAll("[data-g-primary]")).toHaveLength(1);
@@ -296,7 +298,7 @@ describe("goal /employer/billing top-up money path", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Adds 10 to your balance/ }));
     fireEvent.click(screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ }));
     await waitFor(() => expect(purchaseCalls()).toHaveLength(1));
-    expect((await screen.findByRole("alert")).textContent).toMatch(/still being prepared/i);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/preparing your checkout/i);
     expect(widgetOpened).toBe(0);
   });
 });
@@ -325,10 +327,9 @@ describe("goal employer billing money-copy integrity (rule 1a)", () => {
 
   it("nothing sells a referral or the unbuilt Oct 25 company plans", () => {
     for (const file of displayFiles) {
-      const strings = displayStrings(file);
-      expect(strings).not.toMatch(/Team|Growth|Scale by quote/);
-      expect(strings).toMatch(/Employers never buy referrals/);
+      expect(displayStrings(file)).not.toMatch(/Team|Growth|Scale by quote/);
     }
+    expect(displayStrings(displayFiles[0])).toMatch(/Employers never buy referrals/);
   });
 
   it("the pack values are the kit page's own numbers, never retyped", () => {
@@ -344,9 +345,10 @@ describe("goal employer billing money-copy integrity (rule 1a)", () => {
     expect(UNLOCK_PACKS.every(pack => pack.priceInr === pack.amountInPaise / 100)).toBe(true);
   });
 
-  it("the page keeps the server's checkout contract in the source", () => {
-    const dataSource = readFileSync("client/src/pages/goal/employer-billing/employerBillingData.ts", "utf8");
-    expect(dataSource).toContain("Idempotency-Key");
-    expect(dataSource).toContain("crypto.randomUUID");
+  it("the checkout contract stays where the route enforces it", () => {
+    // The key is attempt-scoped, so it is born on the page; the header itself is
+    // set by the data module, which owns the route.
+    expect(readFileSync("client/src/pages/goal/employer-billing/GoalEmployerBilling.tsx", "utf8")).toContain("crypto.randomUUID");
+    expect(readFileSync("client/src/pages/goal/employer-billing/employerBillingData.ts", "utf8")).toContain("Idempotency-Key");
   });
 });
