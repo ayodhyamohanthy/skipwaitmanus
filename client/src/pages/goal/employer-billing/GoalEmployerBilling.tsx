@@ -122,7 +122,7 @@ export default function GoalEmployerBilling() {
   if (!isSignedIn) {
     return (
       <Frame go={go}>
-        <div className="mx-auto mt-6 grid w-full max-w-xl gap-5">
+        <div className="mx-auto mt-6 grid grid-cols-1 w-full max-w-xl gap-5">
           <Intro />
           <GoalNextStep reason={NEVER_FOR_SALE}>
             <GoalButton variant="primary" touch="large" className="w-full" onClick={() => openSignIn()}>{SIGN_IN_LABEL}</GoalButton>
@@ -136,7 +136,7 @@ export default function GoalEmployerBilling() {
     const message = errorText(billingQuery.error, LOAD_ERROR_FALLBACK);
     return (
       <Frame go={go}>
-        <div className="mt-6 grid gap-5">
+        <div className="mt-6 grid grid-cols-1 gap-5">
           <Intro />
           <div role="alert" data-testid="goal-error-state" className="border border-g-hairline bg-g-surface px-5 py-6 max-gdesk:px-4">
             <p className="text-g-label text-g-ink">Nothing was changed.</p>
@@ -159,7 +159,7 @@ export default function GoalEmployerBilling() {
 
   return (
     <Frame go={go}>
-      <div className="mt-6 grid gap-4">
+      <div className="mt-6 grid grid-cols-1 gap-4">
         <Intro />
         {checkoutError ? (
           <div role="alert" data-testid="goal-checkout-error" className="border border-g-hairline bg-g-surface px-5 py-4 max-gdesk:px-4">
@@ -188,7 +188,7 @@ export default function GoalEmployerBilling() {
         )}
         <section aria-labelledby="goal-employer-billing-topup" className="border border-g-hairline bg-g-surface p-4 gdesk:p-5">
           <h2 id="goal-employer-billing-topup" className="text-g-label text-g-ink">{TOPUP_HEADING}</h2>
-          <div className="mt-3 grid gap-2">
+          <div className="mt-3 grid grid-cols-1 gap-2">
             {UNLOCK_PACKS.map(pack => (
               <button
                 key={pack.id}
@@ -263,7 +263,7 @@ function SpendRecord({ spend }: { spend: OpenSpend }) {
         <GoalEmptyState title={EMPTY_TITLE} body={EMPTY_BODY} className="px-0 py-3" />
       ) : (
         <>
-          <ul className="mt-3 grid gap-2">
+          <ul className="mt-3 grid grid-cols-1 gap-2">
             {spend.rows.map((row, index) => (
               <li key={`${row.kind}-${row.createdAt}-${index}`} data-testid="goal-employer-spend-row" className="flex items-center justify-between gap-3 border border-g-hairline bg-g-surface p-3.5">
                 <span className="flex min-w-0 items-center gap-2.5">
