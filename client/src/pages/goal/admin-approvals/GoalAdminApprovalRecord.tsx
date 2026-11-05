@@ -7,7 +7,7 @@
 // (creditLine), never a string of this page.
 import { useEffect, useState, type ReactNode } from "react";
 import { useRoute } from "wouter";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -111,7 +111,7 @@ function History({ events }: { events: HistoryEvent[] }) {
 }
 
 export default function GoalAdminApprovalRecord() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [match, params] = useRoute<{ kind: string; id: string }>("/admin/approvals/:kind/:id");
   const kind = (match ? params.kind : "") as AdminApprovalQueueKind;
   const itemId = Number(match ? params.id : 0);
@@ -158,9 +158,8 @@ export default function GoalAdminApprovalRecord() {
       <AdminGoalFrame screen="admin-approval-record-sign-in">
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="Sign in with an administrator account to view and decide this record." />
         <GoalNextStep>
-          <SignInButton>
-            <GoalButton variant="primary" className="mt-3">Sign in</GoalButton>
-          </SignInButton>
+          {/* SignInButton renders its own <button>; wrapping GoalButton in it nests buttons. */}
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminGoalFrame>
     );
@@ -225,8 +224,9 @@ export default function GoalAdminApprovalRecord() {
     <AdminGoalFrame screen="admin-approval-record">
       {back}
       <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body={BODY} />
+      {/* Phone order: the record (with any amount) first, then the decision, then the history. */}
       <div className="grid items-start gap-6 gdesk:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="grid min-w-0 gap-4">
+        <div className="grid min-w-0 gap-4 gdesk:col-start-1 gdesk:row-start-1">
           <section aria-labelledby="approval-record-title" className="border border-g-hairline bg-g-surface p-4 gdesk:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -238,9 +238,8 @@ export default function GoalAdminApprovalRecord() {
             </div>
           </section>
           <RecordBlocks item={item} />
-          <History events={events} />
         </div>
-        <div className="min-w-0 max-gdesk:order-first">
+        <div className="min-w-0 gdesk:col-start-2 gdesk:row-span-2 gdesk:row-start-1">
           <GoalNextStep reason="Record a decision on this item. The note is optional and recorded on the item.">
             {resolved ? <p className="mt-3"><GoalStatus status="withdrawn" label="Already resolved" /></p> : null}
             <label htmlFor="decision-note" className="mt-3 block text-g-label text-g-ink">Decision note (optional, recorded on the item)</label>
@@ -257,6 +256,9 @@ export default function GoalAdminApprovalRecord() {
               <GoalButton variant="ghost" className="text-g-crimson" busy={workingDecision === "rejected"} busyLabel="Saving…" disabledReason={held ?? (working && workingDecision !== "rejected" ? "A decision is being recorded" : undefined)} onClick={() => void decide("rejected")}>Reject</GoalButton>
             </div>
           </GoalNextStep>
+        </div>
+        <div className="min-w-0 gdesk:col-start-1 gdesk:row-start-2">
+          <History events={events} />
         </div>
       </div>
     </AdminGoalFrame>

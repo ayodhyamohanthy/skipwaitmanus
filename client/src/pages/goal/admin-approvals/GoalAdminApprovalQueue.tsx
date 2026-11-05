@@ -5,7 +5,7 @@
 // the presentation changes. Guardrail 3: the credit line on a seeker request
 // comes from shared/moneyCopy (creditLine), never a string of this page.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalEmptyState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -74,7 +74,7 @@ function QueueRow({ item, working, error, onDecide }: { item: AdminApprovalQueue
 }
 
 export default function GoalAdminApprovalQueue() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [items, setItems] = useState<AdminApprovalQueueItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
@@ -123,9 +123,8 @@ export default function GoalAdminApprovalQueue() {
       <AdminGoalFrame screen="admin-approvals-sign-in">
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="Sign in with an administrator account to triage pending referral requests, referrer enrollments, and credit-pack payments." />
         <GoalNextStep>
-          <SignInButton>
-            <GoalButton variant="primary" className="mt-3">Sign in</GoalButton>
-          </SignInButton>
+          {/* SignInButton renders its own <button>; wrapping GoalButton in it nests buttons. */}
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminGoalFrame>
     );
