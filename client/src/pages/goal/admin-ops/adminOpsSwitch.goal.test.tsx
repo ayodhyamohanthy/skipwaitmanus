@@ -38,12 +38,19 @@ const CASES = [
   ["AdminActivity", AdminActivity, ACTIVITY_PAGE, "Administrator activity"],
   ["AdminFlowHealth", AdminFlowHealth, FLOW_HEALTH_PAGE, "Admin Flow Health"],
   ["AdminSchema", AdminSchema, SCHEMA_PAGE, "Schema reconcile"],
-  ["AdminSmoke", AdminSmoke, SMOKE_PAGE, "Not found"],
+  ["AdminSmoke", AdminSmoke, SMOKE_PAGE, "Protected smoke fixture"],
   ["AdminPartners", AdminPartners, PARTNERS_PAGE, "Administrator sign-in required"],
 ] as const;
 
+// The fixture surface only shows a screen at all while it is enabled, so its
+// status route answers as an enabled fixture; every other route 404s, which
+// leaves the other four pages on their signed-out screens.
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) }) as unknown as Response));
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    void url;
+    if (String(url).includes("/smoke/status")) return { ok: true, status: 200, url: "http://localhost/api", json: async () => ({ enabled: true, active: false, csrf: "test-csrf" }) } as unknown as Response;
+    return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
+  }));
 });
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = false; flag.asked = []; auth.isSignedIn = false; });
