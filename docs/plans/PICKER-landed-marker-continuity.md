@@ -27,4 +27,6 @@ Builders waiting on routing errors delay reliable referral journeys for seekers 
 
 ## Status
 
+- PICKER-landed-marker-continuity: in progress — Hark · 5de4 — 2026-11-05 — branch agent/queue/picker-landed-marker-continuity
+
 Proposed registration only. No implementation, review verdict, completion or live acceptance is asserted.
