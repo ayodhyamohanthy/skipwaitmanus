@@ -15,7 +15,7 @@ import { GoalStatus } from "@/components/goal/GoalStatus";
 import { compactDateTime, formatAmount, itemTitle, type AdminApprovalQueueItem, type AdminApprovalQueueKind } from "@/lib/adminApproval";
 import { cn } from "@/lib/utils";
 import { AdminGoalFrame, AdminGoalHeading } from "../admin/AdminGoalFrame";
-import { ACCESS_MESSAGE, adminSignInHref, approvalStatus, creditLine, decisionLabel, DECISION_FALLBACK, isResolved, KIND_LABEL, loadApprovalRecord, postApprovalDecision, RECORD_LOAD_FALLBACK, statusAfter, tokenCountLine, type ApprovalDecision, type HistoryEvent } from "./approvalsData";
+import { ACCESS_MESSAGE, adminSignInHref, approvalStatus, creditLine, decisionFailureCopy, decisionFailureOf, decisionLabel, isResolved, KIND_LABEL, loadApprovalRecord, postApprovalDecision, RECORD_LOAD_FALLBACK, statusAfter, tokenCountLine, type ApprovalDecision, type DecisionFailure, type HistoryEvent } from "./approvalsData";
 
 export const GOAL_PAGE = { goalLine: "Decide this approval." } as const;
 const BODY = "Read the record and its history, then approve or reject it. The decision and its note are recorded on the item's audit trail.";
@@ -123,7 +123,7 @@ export default function GoalAdminApprovalRecord() {
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
   const [workingDecision, setWorkingDecision] = useState<ApprovalDecision | null>(null);
-  const [decisionError, setDecisionError] = useState<{ message: string; decision: ApprovalDecision } | null>(null);
+  const [decisionError, setDecisionError] = useState<DecisionFailure | null>(null);
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -133,6 +133,7 @@ export default function GoalAdminApprovalRecord() {
       if (result.denied) { setDenied(true); return; }
       setItem(result.item);
       setEvents(result.events);
+      setDecisionError(null);
       setLoaded(true);
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : RECORD_LOAD_FALLBACK); }
     finally { setLoading(false); }
@@ -147,7 +148,7 @@ export default function GoalAdminApprovalRecord() {
       const now = new Date();
       setItem(current => current ? { ...current, status: nextStatus, meta: { ...current.meta, approvalNote: note.trim() || current.meta.approvalNote } } : current);
       setEvents(current => [...current.filter(event => event.label !== decisionLabel(decision)), { id: `local-decision-${now.getTime()}`, label: decisionLabel(decision), actor: "You (administrator)", time: now, note: note.trim() || undefined }].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()));
-    } catch (resolveError) { setDecisionError({ message: resolveError instanceof Error ? resolveError.message : DECISION_FALLBACK, decision }); }
+    } catch (resolveError) { setDecisionError(decisionFailureOf(resolveError)); }
     finally { setWorkingDecision(null); }
   };
 
@@ -186,7 +187,7 @@ export default function GoalAdminApprovalRecord() {
       <AdminGoalFrame screen="admin-approval-record-error">
         {back}
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body={BODY} />
-        <GoalNextStep reason="Nothing is decided while the record failed to load.">
+        <GoalNextStep reason="This record didn't load. Trying again only re-reads it.">
           <p role="alert" className="mt-3 text-g-label text-g-ink">{error}</p>
           <GoalButton variant="primary" className="mt-3" busy={loading} busyLabel="Loading…" onClick={() => void load()}>Try again</GoalButton>
         </GoalNextStep>
@@ -247,8 +248,8 @@ export default function GoalAdminApprovalRecord() {
               className="mt-2 block w-full resize-none rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink placeholder:text-g-ink-3" />
             {decisionError ? (
               <div role="alert" className="mt-3 border-l-2 border-g-crimson pl-3">
-                <p className="text-g-meta text-g-crimson">{`Decision failed to save — ${decisionError.message}. The record is unchanged and still in the queue. No notifications were sent.`}</p>
-                <GoalButton size="sm" variant="outline" className="mt-2" disabledReason={working ? "A decision is being recorded" : undefined} onClick={() => void decide(decisionError.decision)}>Retry decision</GoalButton>
+                <p className="text-g-meta text-g-crimson">{decisionFailureCopy(decisionError, "this record")}</p>
+                <GoalButton size="sm" variant="outline" className="mt-2" busy={loading} busyLabel="Loading…" onClick={() => void load()}>Reload this record</GoalButton>
               </div>
             ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">

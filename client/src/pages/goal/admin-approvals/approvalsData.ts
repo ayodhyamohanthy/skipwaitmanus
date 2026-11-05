@@ -53,15 +53,43 @@ export async function loadApprovalRecord(getToken: TokenSource, kind: AdminAppro
 }
 
 /**
+ * Why a decision did not confirm (owner-routed ruling, Nov 5): only a 409 is
+ * known not to have been recorded - the record was already resolved, so an
+ * earlier decision stands (and may already have notified someone). Any other
+ * status, or no response at all, may have been recorded.
+ */
+export type DecisionFailure = "already_resolved" | "uncertain";
+export class ApprovalDecisionError extends Error {
+  constructor(message: string, readonly failure: DecisionFailure) { super(message); this.name = "ApprovalDecisionError"; }
+}
+export const decisionFailureOf = (error: unknown): DecisionFailure => (error instanceof ApprovalDecisionError ? error.failure : "uncertain");
+
+/** The goal copy for a decision that did not confirm; it claims nothing about server state beyond what the status proves. */
+export function decisionFailureCopy(failure: DecisionFailure, where: "the queue" | "this record") {
+  return failure === "already_resolved"
+    ? "This attempt was not recorded — this record was already resolved. Reload to see its current state."
+    : `The decision may not have been recorded. Reload ${where} before you retry.`;
+}
+
+/**
  * POST /api/admin/approval-queue/:kind/:id/decision. The queue sends
  * { decision }; the record sends { decision, note } with an empty note left
- * out (JSON.stringify drops undefined), exactly as the kit pages do.
+ * out (JSON.stringify drops undefined), exactly as the kit pages do. Only the
+ * reading of a failure differs: the status decides what the page may say.
  */
 export async function postApprovalDecision(getToken: TokenSource, kind: AdminApprovalQueueKind, id: number, body: { decision: ApprovalDecision; note?: string }): Promise<{ ok?: boolean; status?: string; error?: string }> {
   const token = await getToken();
-  const response = await fetch(`/api/admin/approval-queue/${kind}/${id}/decision`, { method: "POST", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
-  const payload = await readApiJson<{ ok?: boolean; status?: string; error?: string }>(response, DECISION_FALLBACK);
-  if (!response.ok) throw new Error(payload.error || DECISION_FALLBACK);
+  let response: Response;
+  try {
+    response = await fetch(`/api/admin/approval-queue/${kind}/${id}/decision`, { method: "POST", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
+  } catch (transport) {
+    throw new ApprovalDecisionError(transport instanceof Error ? transport.message : DECISION_FALLBACK, "uncertain");
+  }
+  const failure: DecisionFailure = response.status === 409 ? "already_resolved" : "uncertain";
+  let payload: { ok?: boolean; status?: string; error?: string };
+  try { payload = await readApiJson<{ ok?: boolean; status?: string; error?: string }>(response, DECISION_FALLBACK); }
+  catch (parse) { throw new ApprovalDecisionError(parse instanceof Error ? parse.message : DECISION_FALLBACK, failure); }
+  if (!response.ok) throw new ApprovalDecisionError(payload.error || DECISION_FALLBACK, failure);
   return payload;
 }
 

@@ -12,7 +12,7 @@ import { GoalEmptyState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalStatus } from "@/components/goal/GoalStatus";
 import { itemKey, itemTitle, openApprovalStatuses, type AdminApprovalQueueItem, type AdminApprovalQueueKind, type AdminApprovalQueueStatus } from "@/lib/adminApproval";
 import { AdminGoalFrame, AdminGoalHeading } from "../admin/AdminGoalFrame";
-import { ACCESS_MESSAGE, adminSignInHref, approvalStatus, creditLine, DECISION_FALLBACK, isResolved, KIND_LABEL, loadApprovalQueue, oldestOpen, postApprovalDecision, QUEUE_LOAD_FALLBACK, recordHref, rowContext, statusAfter, tokenCountLine, type ApprovalDecision } from "./approvalsData";
+import { ACCESS_MESSAGE, adminSignInHref, approvalStatus, creditLine, decisionFailureCopy, decisionFailureOf, isResolved, KIND_LABEL, loadApprovalQueue, oldestOpen, postApprovalDecision, QUEUE_LOAD_FALLBACK, recordHref, rowContext, statusAfter, tokenCountLine, type ApprovalDecision, type DecisionFailure } from "./approvalsData";
 
 export const GOAL_PAGE = { goalLine: "Decide this approval." } as const;
 const BODY = "Seeker requests under review, referrer enrollments awaiting a first action, and credit-pack payments needing reconciliation — one queue, one status vocabulary, one audit trail.";
@@ -43,7 +43,7 @@ function RecordFacts({ item }: { item: AdminApprovalQueueItem }) {
   );
 }
 
-function QueueRow({ item, working, error, onDecide }: { item: AdminApprovalQueueItem; working: boolean; error?: { message: string; decision: ApprovalDecision }; onDecide: (decision: ApprovalDecision) => void }) {
+function QueueRow({ item, working, reloading, error, onDecide, onReload }: { item: AdminApprovalQueueItem; working: boolean; reloading: boolean; error?: DecisionFailure; onDecide: (decision: ApprovalDecision) => void; onReload: () => void }) {
   const resolved = isResolved(item.status);
   const held = resolved ? "Already resolved" : undefined;
   return (
@@ -60,8 +60,8 @@ function QueueRow({ item, working, error, onDecide }: { item: AdminApprovalQueue
       <RecordFacts item={item} />
       {error ? (
         <div role="alert" className="mt-3 border-l-2 border-g-crimson pl-3">
-          <p className="text-g-meta text-g-crimson">{`Decision failed to save — ${error.message}. The record is unchanged and still in the queue. No notifications were sent.`}</p>
-          <GoalButton size="sm" variant="outline" className="mt-2" busy={working} busyLabel="Recording…" onClick={() => onDecide(error.decision)}>Retry decision</GoalButton>
+          <p className="text-g-meta text-g-crimson">{decisionFailureCopy(error, "the queue")}</p>
+          <GoalButton size="sm" variant="outline" className="mt-2" busy={reloading} busyLabel="Loading…" onClick={onReload}>Reload the queue</GoalButton>
         </div>
       ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -84,7 +84,7 @@ export default function GoalAdminApprovalQueue() {
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
-  const [rowErrors, setRowErrors] = useState<Record<string, { message: string; decision: ApprovalDecision }>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, DecisionFailure>>({});
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -93,6 +93,7 @@ export default function GoalAdminApprovalQueue() {
       const result = await loadApprovalQueue(getToken);
       if (result.denied) { setDenied(true); setItems([]); return; }
       setItems(result.items);
+      setRowErrors({});
       setLoaded(true);
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : QUEUE_LOAD_FALLBACK); }
     finally { setLoading(false); }
@@ -104,7 +105,7 @@ export default function GoalAdminApprovalQueue() {
     try {
       const payload = await postApprovalDecision(getToken, item.kind, item.id, { decision });
       setItems(current => current.map(row => row.kind === item.kind && row.id === item.id ? { ...row, status: statusAfter(decision, payload.status) } : row));
-    } catch (resolveError) { setRowErrors(current => ({ ...current, [key]: { message: resolveError instanceof Error ? resolveError.message : DECISION_FALLBACK, decision } })); }
+    } catch (resolveError) { setRowErrors(current => ({ ...current, [key]: decisionFailureOf(resolveError) })); }
     finally { setWorkingKey(null); }
   };
 
@@ -147,7 +148,7 @@ export default function GoalAdminApprovalQueue() {
   const oldest = oldestOpen(items);
   const showSkeleton = loading && !loaded;
   const nextStep = error ? (
-    <GoalNextStep reason="The queue is read-only until it loads — nothing has been decided or notified.">
+    <GoalNextStep reason="This list didn't load. Trying again only re-reads it.">
       <GoalButton variant="primary" className="mt-3" busy={loading} busyLabel="Loading…" onClick={() => void load()}>Try again</GoalButton>
     </GoalNextStep>
   ) : showSkeleton ? (
@@ -199,7 +200,7 @@ export default function GoalAdminApprovalQueue() {
             <ul>
               {filteredItems.map(item => {
                 const key = itemKey(item);
-                return <QueueRow key={key} item={item} working={workingKey === key} error={rowErrors[key]} onDecide={decision => void decide(item, decision)} />;
+                return <QueueRow key={key} item={item} working={workingKey === key} reloading={loading} error={rowErrors[key]} onDecide={decision => void decide(item, decision)} onReload={() => void load()} />;
               })}
             </ul>
           )}
