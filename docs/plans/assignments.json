@@ -1958,7 +1958,7 @@
       "tier": 1,
       "lane": "d048-assistants",
       "branch": "agent/queue/d048-assistants",
-      "status": "done",
+      "status": "todo",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1973,7 +1973,7 @@
         "design/goal-ui/captures/assistants/**",
         "client/src/components/goal/goalBoundary.test.ts"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes. Owns includes the phase-3 boundary guard: W5's /connect-assistant self-wrap of the goal shell requires the MOVED_SURFACES entry, same registration as 161eafc2 (#566)."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Scope amendment (Oct 23, whole-app goal-UI program, Linear AYO-9): /agents (SeekerAgents, the seeker agent-keys surface) has no split row; it belongs to the assistants family, so this row owns its switch and goal body too. Amended by the program coordinator with Main's direction; no other row changes. Owns includes the phase-3 boundary guard: W5's /connect-assistant self-wrap of the goal shell requires the MOVED_SURFACES entry, same registration as 161eafc2 (#566). Reopened Nov 5: next-step contract qualification at e7c70797 found real D-150 violations this row's packet never gated (no GOAL_PAGE export, so CI opt-in never checked it): assistants signed-out states put the commit outside any next-step block (GoalAssistants.tsx:124-131, GoalApprove.tsx:137-146, GoalConnectAssistant.tsx:196-201); GoalApprove renders a second h1 (:141,:161,:177); next-step blocks with no black commit (GoalApprove.tsx:150, GoalSeekerAgents.tsx:104, GoalApprovalCard.tsx:50). Grounded corrective reopen under D-200(2); owner's standing instruction is to fix goal-doctrine failures across every page/flow."
     },
     {
       "row": "D-048",
