@@ -5257,7 +5257,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-heartbeat-slot-safety",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-architect-landing",
