@@ -1,6 +1,6 @@
 # Packet SUPPORT-A: the kit `/support` page promises only what works today (D-153, D-277)
 
-Tier 2 (client copy only) · lane `support-promises` · branch `agent/queue/support-a` · waits for nothing · builder: a non-Claude development session through the picker (D-225) · registered by D-277 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276.
+Tier 2 (client copy only) · lane `support-promises` · branch `agent/queue/support-a` · waits for nothing · builder: a development session other than the Claude Code session through the picker (D-225) · registered by D-277 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276.
 
 Source: Half A of the packet proposal in PR #811 comment [6567956835](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-6567956835) (§1.1, §1.4 row 1, §2.2, §3 R1-R3 and A1-A8), requested by the coordinator handoff in #811 comment [6565673833](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-6565673833) and accepted for docs/registry publication in #811 comment [6567969738](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-6567969738). Half B of that proposal (`SUPPORT-B1`, `SUPPORT-B2`), the `D-090-BYOR` edge, every `server/db.ts` hunk and the §1.4 residuals (except that §9 lists two residuals, not fixed) are **not** part of this packet and are not adopted (D-277 (3)).
 
@@ -11,7 +11,7 @@ The kit `/support` page (`client/src/pages/Support.tsx`) is live and prerendered
 
 ## 2. Binding rules (quoted)
 - D-153 (FROZEN): "the promise has to match what actually works (no display promise without enforcement…)". Short form used in this packet: promise only what works today.
-- D-225: "Claude sessions handle intelligence/reasoning; other tools develop." The builder is a non-Claude development session handed this row by the picker.
+- D-225: "Claude sessions handle intelligence/reasoning; other tools develop." The builder is a development session other than the Claude Code session handed this row by the picker.
 - AGENTS rule 8: "for UI, captures at 1280 and 390 from a clean browser"; anything without proof is labelled "unverified".
 - Coordinator handoff 6565673833: "do not wait for an owner policy decision to remove unsupported operational promises"; no server change; no private finding published.
 

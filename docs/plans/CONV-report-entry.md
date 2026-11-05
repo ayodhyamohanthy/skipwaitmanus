@@ -1,6 +1,6 @@
 # Packet CONV-report-entry: the seeker conversation's "Report or block" link carries the ask only when it is accepted (D-278)
 
-Tier 1 (privacy/safety; declared above the Tier 2 that `scripts/tierClassifyCore.mjs` computes for the three owned paths, which GATE-tier-floor (D-212) allows, see §7.4) · lane `conv-report-entry` · branch `agent/queue/conv-report-entry` · waits for `D-048-p3-live-review-conversation` · builder: a non-Claude development session through the picker (D-225) · registered by D-278 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276 (D-277 is held by open PR #962).
+Tier 1 (privacy/safety; declared above the Tier 2 that `scripts/tierClassifyCore.mjs` computes for the three owned paths, which GATE-tier-floor (D-212) allows, see §7.4) · lane `conv-report-entry` · branch `agent/queue/conv-report-entry` · waits for `D-048-p3-live-review-conversation` · builder: a development session other than the Claude Code session through the picker (D-225) · registered by D-278 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276 (D-277 is held by open PR #962).
 
 Source and authority:
 - Route **R-B-min** and the corrected rule from correction **E** on #831, comment [6568171751](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/831#issuecomment-6568171751) (bound to `origin/main` `27dac5f9`, #831 head `d5c76594`). E is authoritative.
