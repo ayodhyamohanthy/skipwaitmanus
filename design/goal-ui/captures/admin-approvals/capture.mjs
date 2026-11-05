@@ -59,7 +59,7 @@ try {
       }
       await page.evaluate(() => document.fonts.ready);
       const file = `${state}-${label}.png`;
-      const buffer = await page.screenshot({ path: path.join(here, file), fullPage: false });
+      const buffer = await page.screenshot({ path: path.join(here, file), fullPage: Boolean(fixture.fullPage) });
       const dom = await page.evaluate(() => {
         const primaries = [...document.querySelectorAll("[data-g-primary]")];
         const regions = [...document.querySelectorAll('section[aria-labelledby="goal-next-step-heading"]')];
@@ -74,11 +74,15 @@ try {
           primaryBg: p0 ? getComputedStyle(p0).backgroundColor : null,
           fontLoaded: document.fonts.check('16px "Instrument Sans"'),
           bodyFont: getComputedStyle(document.body).fontFamily,
+          // Where each decision action sits in the document, so a capture can prove
+          // Approve/Reject are inside the frame it shows.
+          scrollHeight: document.documentElement.scrollHeight,
+          actions: [...document.querySelectorAll("button")].filter(b => ["Approve", "Reject"].includes(b.textContent.trim())).map(b => { const r = b.getBoundingClientRect(); return { name: b.textContent.trim(), docTop: Math.round(r.top + scrollY), docBottom: Math.round(r.bottom + scrollY), ariaDisabled: b.getAttribute("aria-disabled") }; }),
         };
       });
-      const entry = { file, state, route: fixture.route, cssWidth: width, cssHeight: height, dpr: scale, sha1: createHash("sha1").update(buffer).digest("hex"), takenAtUtc: new Date().toISOString(), head, fixture: `fixtures/${name}`, ...dom, calls, errors: errors.slice(0, 5) };
+      const entry = { file, state, route: fixture.route, cssWidth: width, cssHeight: height, dpr: scale, fullPage: Boolean(fixture.fullPage), sha1: createHash("sha1").update(buffer).digest("hex"), takenAtUtc: new Date().toISOString(), head, fixture: `fixtures/${name}`, ...dom, calls, errors: errors.slice(0, 5) };
       manifest.push(entry);
-      console.log(JSON.stringify({ file, sha1: entry.sha1, innerWidth: dom.innerWidth, dpr: dom.devicePixelRatio, overflowX: dom.overflowX, h1: dom.h1, primaries: dom.primaries, primaryInNextStep: dom.primaryInNextStep, primaryBg: dom.primaryBg, fontLoaded: dom.fontLoaded, calls, errors: errors.slice(0, 2) }));
+      console.log(JSON.stringify({ file, sha1: entry.sha1, innerWidth: dom.innerWidth, dpr: dom.devicePixelRatio, overflowX: dom.overflowX, h1: dom.h1, primaries: dom.primaries, primaryInNextStep: dom.primaryInNextStep, primaryBg: dom.primaryBg, fontLoaded: dom.fontLoaded, fullPage: Boolean(fixture.fullPage), scrollHeight: dom.scrollHeight, actions: dom.actions, calls, errors: errors.slice(0, 2) }));
       await page.close();
     }
   }
