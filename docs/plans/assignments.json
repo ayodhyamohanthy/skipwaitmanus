@@ -5355,7 +5355,7 @@
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-cleanup",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-283",
       "dependsOn": [
         "GATE-migration-apply"
