@@ -5,7 +5,7 @@
 // (guardrail 1). Fixtures in the tests are synthetic.
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, UsersRound } from "lucide-react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -20,7 +20,7 @@ export const GOAL_PAGE = { goalLine: "See where the referral flow needs work." }
 const BODY = "Requests, claims, decisions and company corridors without verified coverage. No candidate documents, request text, OTPs, or employee identities appear here.";
 
 export default function GoalAdminFlowHealth() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const report = useQuery({ queryKey: ["admin-flow-health"], enabled: Boolean(isSignedIn), retry: false, queryFn: () => loadFlowHealth(fetchToken) });
 
@@ -29,9 +29,8 @@ export default function GoalAdminFlowHealth() {
       <AdminGoalFrame screen="admin-flow-health-sign-in">
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="Sign in with the designated administrator account to view aggregate referral performance and privacy-safe coverage gaps." />
         <GoalNextStep>
-          <SignInButton>
-            <GoalButton variant="primary" className="mt-3">Sign in</GoalButton>
-          </SignInButton>
+          {/* SignInButton renders its own <button>; wrapping GoalButton in it nests buttons. */}
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminGoalFrame>
     );

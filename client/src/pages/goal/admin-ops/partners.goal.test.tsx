@@ -14,9 +14,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertGoalPage } from "@/test/goalPageContract";
 import GoalAdminPartners, { GOAL_PAGE } from "./GoalAdminPartners";
 
-const { authState } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") } }));
+const { authState } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() } }));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
+// SignInButton is deliberately absent: a page that wraps GoalButton in it nests
+// one <button> inside another, which only a real browser reports.
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }) }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/admin-partners", vi.fn()],
@@ -254,8 +256,14 @@ describe("goal /admin/partners (D-048-p3-admin-ops)", () => {
   it("asks a signed-out visitor to sign in and loads nothing", () => {
     authState.isSignedIn = false;
     const fetchMock = stub();
-    renderPage(<GoalAdminPartners />);
-    expect(screen.getByRole("button", { name: /Sign in/ })).toBeTruthy();
+    const { container } = renderPage(<GoalAdminPartners />);
+    const signIn = screen.getByRole("button", { name: /Sign in/ });
+    expect(signIn).toBeTruthy();
+    expect(signIn.closest("button")).toBe(signIn);
+    expect(container.querySelector("button button")).toBeNull();
+    authState.openSignIn.mockClear();
+    fireEvent.click(signIn);
+    expect(authState.openSignIn).toHaveBeenCalledTimes(1);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,7 @@
 // result replaces the snapshot exactly as AdminSchema.tsx does (guardrail 1).
 // Each statement's outcome reads as dot + text instead of a tinted chip.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -18,7 +18,7 @@ export const GOAL_PAGE = { goalLine: "Reconcile the database schema." } as const
 const BODY = "Runs the fixed, allowlisted ALTER/CREATE statements the app expects (missing columns and B2B tables). Only statements still missing are executed — the run is idempotent and safe to repeat. No free-form SQL can be submitted here.";
 
 export default function GoalAdminSchema() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
   const snapshot = useQuery({ queryKey: ["admin-schema-reconcile"], enabled: Boolean(isSignedIn), retry: false, queryFn: () => readSchemaReconcile(fetchToken) });
@@ -32,9 +32,8 @@ export default function GoalAdminSchema() {
       <AdminGoalFrame screen="admin-schema-sign-in">
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="Sign in with the designated administrator account to inspect and run the pending database schema reconciliation." />
         <GoalNextStep>
-          <SignInButton>
-            <GoalButton variant="primary" className="mt-3">Sign in</GoalButton>
-          </SignInButton>
+          {/* SignInButton renders its own <button>; wrapping GoalButton in it nests buttons. */}
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminGoalFrame>
     );

@@ -8,7 +8,7 @@
 // (D-048-admin.md §4.1: presentation only).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { ADMIN_ACCESS_MESSAGE, AdminAccessError } from "@/components/admin/adminApi";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalFilterChip } from "@/components/goal/GoalFilterChip";
@@ -57,7 +57,7 @@ const moduleMeta = (module: PartnerModule) => [module.partnerName, CATEGORY_LABE
 const sponsorshipMeta = (item: Sponsorship) => [item.companyDomain, item.sponsoredTier ? `Tier: ${item.sponsoredTier}` : null, item.sponsoredUntil ? `Until ${new Date(item.sponsoredUntil).toLocaleDateString()}` : null].filter(Boolean).join(" · ");
 
 export default function GoalAdminPartners() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"modules" | "sponsored">("modules");
@@ -112,9 +112,8 @@ export default function GoalAdminPartners() {
       <AdminGoalFrame screen="admin-partners-sign-in">
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="Sign in with an administrator account to manage partner modules and sponsored roles." />
         <GoalNextStep>
-          <SignInButton>
-            <GoalButton variant="primary" className="mt-3">Sign in</GoalButton>
-          </SignInButton>
+          {/* SignInButton renders its own <button>; wrapping GoalButton in it nests buttons. */}
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminGoalFrame>
     );

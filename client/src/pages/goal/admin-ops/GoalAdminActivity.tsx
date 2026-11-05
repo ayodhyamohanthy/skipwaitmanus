@@ -5,7 +5,7 @@
 // them (guardrail 1, D-048-admin.md §4) - only the presentation changes.
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -33,7 +33,7 @@ const OUTCOME_STATUS: Record<string, { status: GoalStatusValue; label: string }>
 };
 
 export default function GoalAdminActivity() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [actor, setActor] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -50,9 +50,8 @@ export default function GoalAdminActivity() {
       <AdminGoalFrame screen="admin-activity-sign-in">
         <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="Sign in with an administrator account to view privacy-safe operational diagnostics." />
         <GoalNextStep>
-          <SignInButton>
-            <GoalButton variant="primary" className="mt-3">Sign in</GoalButton>
-          </SignInButton>
+          {/* SignInButton renders its own <button>; wrapping GoalButton in it nests buttons. */}
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminGoalFrame>
     );
