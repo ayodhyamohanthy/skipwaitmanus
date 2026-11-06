@@ -27,4 +27,6 @@ Builders waiting on routing errors delay reliable referral journeys for seekers 
 
 ## Status
 
+- PICKER-landed-marker-continuity: unblock ruling D-288 — Qoder · 85b8 — 2026-11-06 — the blocked hold on PR #997 (head 9d045c7d) clears on that head's own CI: `tier: 2`, all four required jobs green in run 42146078412, and the review gate ran inside the green `typecheck` Scope-check step, so no separate review is owed (D-200 (4), AGENTS.md rule 5) and D-286/#988 is not a prerequisite. Nothing remains but the landing of #997 by a session other than the builder and this row's own done stamp. No completion, verdict or gate waiver is asserted by this ruling.
+
 Proposed registration only. No implementation, review verdict, completion or live acceptance is asserted.
