@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
 import { adminCompanyListResponseSchema } from "@shared/companies";
 import { ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { AdminShell, type AdminView } from "@/components/admin/AdminShell";
@@ -10,8 +10,14 @@ import { companyCoverageMetric, type LiveMetric, OverviewView } from "@/componen
 import { CompaniesView, ReportsView, UsersView, VerificationsView } from "@/components/admin/AdminSectionViews";
 import { AdminAccessError, adminKeys, adminRequest, adminRetry, flowHealthSchema, loadEnrollments, OPEN_ENROLLMENT_STATUSES, safetyReportsSchema, TERMINAL_CASE_STATUSES } from "@/components/admin/adminApi";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-admin: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin).
+const GoalAdminOverview = lazy(() => import("./goal/admin/GoalAdminOverview"));
 
 export default function AdminOverview() {
+  if (goalSurfaceOn("admin")) return <Suspense fallback={null}><GoalAdminOverview /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [view, setView] = useState<AdminView>("overview");
