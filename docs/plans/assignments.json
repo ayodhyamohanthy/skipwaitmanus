@@ -5153,6 +5153,24 @@
       ]
     },
     {
+      "id": "D-048-fix-referrer-home-ux",
+      "title": "/referrer-home goal page: capacity bar shows what remains, with an aria-label; Ref ID in the mobile metadata",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 2,
+      "lane": "d048-referrer-home",
+      "branch": "agent/queue/d048-fix-referrer-home-ux",
+      "status": "todo",
+      "syncedTo": "D-285",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx",
+        "client/src/pages/referrerHomeGoal.test.tsx"
+      ],
+      "note": "Fix row after D-048-p3-referrer-home (done), from the designer repair file: R1 the capacity bar states the remaining capacity and carries an aria-label; R2 the Ref ID shows in the mobile (390) metadata. Red-first pins in referrerHomeGoal.test.tsx; 1280/390 captures in the PR report. No shared helper unless the patch requires one (then an owns amendment first). Excluded: R3 (duplicate bell) is held on the D-231 shell-parts owner gate; the next-step-block finding was withdrawn (wrong comp) and is not part of this row.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-222-referral-count-shell",
       "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
       "row": "D-048",
