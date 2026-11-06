@@ -17,7 +17,7 @@
    - An empty result falls back to the whole lowercased model text, so it matches only itself.
    - Keep the table as one frozen object beside `modelOf`.
 3. **`did()` counts `builtBy`.** When `roles` includes `builders` or `fixers`, `did(v, roles)` also checks every name in `v.task.builtBy`. This covers both callers: the Tier 1 review hand-out ("needs a review, and you built or fixed it") and the landing after a passed review ("its review passed, and you built or fixed it"). The 2-hour quiet guard for outside builds (`:588-591`) keeps reading only the markers (`v.builders`), so a review still waits while someone is pushing.
-4. **The review pick names them.** The `review` action (`:592`) and its `continue` form (`:736`) carry `builtBy: v.task.builtBy ?? []`. `case "review"` in `scripts/nextTaskText.mjs` prints `built by <owner>, <builtBy...>` (or `unknown` when both are empty).
+4. **The review pick names them.** The `review` action (`:592`) and its `continue` form (`:736`) carry `builtBy: v.task.builtBy ?? []`. `case "review"` in `scripts/nextTaskText.mjs` prints `built by <owner>, <builtBy...>` (or `unknown` when both are empty). The review hand-out that `PICKER-gate-red-review-route` (D-286) adds, for a Tier 1 head whose only red is the review gate, carries `builtBy` the same way, and `did()` (What 3) bars a `builtBy` model from it as well.
 5. **`--avoid`, not blocked.** In the same sentence (`:261`), replace "if you find one, post no verdict and report it blocked to the CEO" with "if you find one, post no verdict and run this picker again with `--avoid <id>` (a model conflict is a reason of your own session, never a block, D-233)". Keep the phrases "No session of your model" and "A review or findings comment of your own model does not count", which `scripts/nextTaskReviewWording.test.ts` pins.
 6. **The board shows a stuck `in-review` row.** In `statusBoard`, an `in-review` row gets `quietHours` from the newest of its work branch tip, its review lock and its heartbeat. After 2 hours with no movement its health is `red`. When its work branch or pull request has merged, the board says `landed, mark done`. This is display only: no hand-out changes.
 7. **The review gate uses the same identity.** `PROCESS-review-gate` landed as #836, and `reviewGateViolation`, `scripts/review-gate.mjs:138-139` on `fa462f69` compares `modelOf` spellings. Switch it to `sameModel`, and add the row's `builtBy` to its builder set.
@@ -36,7 +36,8 @@
 - A Tier 1 row with an open pull request, green CI, no markers, quiet for 3 hours and `builtBy: ["Instinct", "Claude"]`:
   - `Claude Opus 5.5 · t1`, `Claude Code · t2` and `Instinct coordinator · t3` are not handed its review;
   - `Qoder · t4` is, and the rendered step lists `Instinct, Claude`;
-  - the same row passed by `Qoder · t4` is not handed for landing to `Claude Code · t5`.
+  - the same row passed by `Qoder · t4` is not handed for landing to `Claude Code · t5`;
+  - the same row with only its review gate red (the `PICKER-gate-red-review-route` hand-out) is not handed to `Claude Code · t2`, and is handed to `Qoder · t4` with the same `Instinct, Claude` line.
 - `validateAssignments` refuses `builtBy` that is not an array, empty, holding a non-string or empty string, holding a name with a control character, or longer than 8. It accepts a valid list, and still refuses any other unknown key.
 - The board:
   - an `in-review` row quiet for 3 hours shows `quietHours: 3` and health `red`;
@@ -60,7 +61,7 @@
 - The `AGENTS.md` system-map row and `docs/DELEGATION.md` §6 already state the D-233 rule (the D-233 pull request updated both), so this row edits neither.
 
 ## Owns
-`scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/review-gate.mjs`, `scripts/nextTaskReviewIdentity.test.ts`, this packet's Status section and the three rows' fields in `docs/plans/assignments.json`. It is queued last under the owner's FIFO order (Oct 31) and waits for `PICKER-landing-wait-fallthrough` and `PICKER-qa-stage`, and through them for every older open row that owns the same picker files; it never delays them.
+`scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/review-gate.mjs`, `scripts/nextTaskReviewIdentity.test.ts`, this packet's Status section and the three rows' fields in `docs/plans/assignments.json`. It is queued last under the owner's FIFO order (Oct 31) and waits for `PICKER-landing-wait-fallthrough`, `PICKER-qa-stage` and `PICKER-gate-red-review-route`, and through them for every older open row that changes the same picker files; it never delays them. `PICKER-gate-red-review-route` (D-286) declares no `owns` but changes `scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs` and `scripts/review-gate.mjs`, so this row names it in `dependsOn`.
 
 ## Definition of done
 - Red-first proof: each new test fails on `main` and passes on the branch, with the failing output in the pull request.
