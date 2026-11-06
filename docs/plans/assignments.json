@@ -2254,7 +2254,7 @@
         "D-132-plans-v2",
         "D-048-F-goal-check"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('plans'); land dark, independent Tier 1 review, no pricing/cost flag enable. The plans id is /billing only; no legacy /plans re-skin.",
+      "note": "D-134 money cluster. goalSurfaceOn('plans'); land dark, independent Tier 1 review, no pricing/cost flag enable. The plans id is /billing only; no legacy /plans re-skin. Nov 6: the '/plans' part of this line was session routing, not an owner freeze; /plans is reopened for a goal-focused repair by D-048-p3-plans-route.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Billing.tsx (switch only)",
@@ -5366,6 +5366,19 @@
         "scripts/migrationGateCleanup.test.ts"
       ],
       "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a development session other than the Claude Code session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
+    },
+    {
+      "id": "D-048-p3-plans-route",
+      "title": "Goal-focused UI/UX repair of /plans that preserves the frozen Oct 25 banded pricing content exactly",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-p3-plans-route.md",
+      "tier": 1,
+      "lane": "d048-money",
+      "branch": "agent/queue/d048-p3-plans-route",
+      "status": "architect",
+      "syncedTo": "D-285",
+      "dependsOn": [],
+      "note": "Reopens /plans for goal-focused UI/UX (not a reskin) under the owner design mandate (Oct 22, restated Oct 25), as the coordinator resolved it on Nov 6 from owner originals (IDs in the packet §1; not read by the registrant). The 'no legacy /plans re-skin' line on D-048-p3-plans was session routing (28e10546), not an owner freeze; the Oct 25 owner freeze covers pricing/plans/referrals content only, and that content is preserved exactly. No pricing, catalogue, checkout, flag or routing change and no redirect; /billing release work stays with D-048-p3-plans. Architect first (D-109): the packet settles the render path, owns, its relation to PRICING-banded-oct25 (shared PlansV2 files) and a red-first content-equality pin."
     }
   ]
 }
