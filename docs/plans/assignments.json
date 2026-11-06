@@ -5278,7 +5278,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-landed-marker-continuity",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-288",
       "dependsOn": [
         "PICKER-heartbeat-slot-safety",
         "PICKER-avoid-land"
