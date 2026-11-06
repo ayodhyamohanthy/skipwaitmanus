@@ -96,7 +96,8 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
                   <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-g-control border border-g-hairline text-g-meta text-g-ink">{company?.mark ?? (item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
                     <RequestTitle item={item} />
-                    <span className="block truncate text-g-meta text-g-ink-3">
+                    <span data-testid="goal-referrer-row-meta" className="block truncate text-g-meta text-g-ink-3">
+                      {item.jobTitle?.trim() ? <><span data-testid="goal-referrer-row-ref">Ref-<GoalNum>{1000 + item.id}</GoalNum></span> · </> : null}
                       {displayJobFunction(item.jobFunction) ?? companyName}
                       {fit ? ` · referral fit: ${fit}` : ""}
                       {files > 0 ? <> · <GoalNum>{files}</GoalNum> attached {files === 1 ? "file" : "files"}</> : null}
@@ -229,8 +230,8 @@ export default function GoalReferrerHome() {
               <section className="rounded-g-tile border border-g-hairline p-4">
                 <p><GoalNum>{view.left}</GoalNum><span className="text-g-meta text-g-ink-3"> / </span><GoalNum>{view.capacity}</GoalNum></p>
                 <p className="mt-1 text-g-meta text-g-ink-2">Monthly capacity remaining</p>
-                <div className="mt-2 h-1 rounded-full bg-g-hairline" role="progressbar" aria-label="Referral capacity used" aria-valuenow={view.used} aria-valuemin={0} aria-valuemax={view.capacity}>
-                  <span className="block h-full rounded-full bg-g-ink" style={{ width: `${view.capacity ? Math.min(100, (view.used / view.capacity) * 100) : 0}%` }} />
+                <div className="mt-2 h-1 rounded-full bg-g-hairline" role="progressbar" aria-label={`${view.left} of ${view.capacity} monthly referral capacity remaining`} aria-valuenow={view.left} aria-valuemin={0} aria-valuemax={view.capacity} aria-valuetext={`${view.left} of ${view.capacity} remaining`}>
+                  <span className="block h-full rounded-full bg-g-ink" style={{ width: `${view.capacity ? Math.min(100, (view.left / view.capacity) * 100) : 0}%` }} />
                 </div>
               </section>
             </div>
