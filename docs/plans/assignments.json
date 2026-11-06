@@ -2653,7 +2653,7 @@
       "tier": 2,
       "lane": "d048-admin-ops",
       "branch": "agent/queue/d048-p3-admin-ops",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
@@ -5277,8 +5277,8 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-landed-marker-continuity",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-288",
       "dependsOn": [
         "PICKER-heartbeat-slot-safety",
         "PICKER-avoid-land"
