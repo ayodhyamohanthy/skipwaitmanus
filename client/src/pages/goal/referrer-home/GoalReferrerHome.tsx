@@ -91,7 +91,7 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
             const companyName = company?.name ?? item.companyDomain;
             const fit = item.askStrength === "strong" ? "Strong" : item.askStrength === "good" ? "Good" : item.askStrength === "basic" ? "Basic" : null;
             return (
-              <li key={item.id}>
+              <li key={item.id} className="min-w-0">
                 <Link href={`/queue?request=${item.id}`} aria-label={`Private referral request · Ref-${1000 + item.id}`} className="flex min-h-14 items-center gap-3 rounded-g-tile border border-g-hairline p-4 transition-colors hover:border-g-control-edge">
                   <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-g-control border border-g-hairline text-g-meta text-g-ink">{company?.mark ?? (item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
