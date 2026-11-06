@@ -789,6 +789,13 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // blocked priority holds only its lane and its dependents (D-109). D-200: Claude Code builds too.
   const actions = [];
   let gateAt = -1, gateAction = null;
+  // PICKER-landing-wait-fallthrough: a pending landing that waits only for another session's landing slot is
+  // remembered, not returned at once: later eligible work is still handed out (the slot is never touched), but
+  // only work whose declared owns are provably disjoint from every waiting landing's. Unknown or overlapping
+  // ownership keeps the old landing wait (see `disjoint`: missing ownership never proves concurrent work is safe).
+  let landingWait = null;
+  const landingViews = [];
+  const clearOfLandings = v => landingViews.every(l => disjoint(l, v));
   const heldLanes = new Map(), heldIds = new Map();
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
   // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
@@ -814,13 +821,19 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       skip(view[i], action.reason);
       continue;
     }
-    if (action.kind === "wait") return action;
+    if (action.kind === "wait") {
+      if (action.landing) { landingWait ??= action; landingViews.push(view[i]); actions[i] = null; continue; }
+      return action;
+    }
     if (!PENDING_KINDS.has(action.kind)) continue;
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
+    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
+  // A pending landing above it that waits for the slot keeps the old wait: own work is not reordered by this fall-through.
   if (mine) {
+    if (landingWait) return landingWait;
     if (mine.of === "land" && slotBusyFor(claimant)) return waitLanding();
     const { at, ...pick } = mine;
     return withHold(pick);
@@ -828,8 +841,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
+    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(action);
   }
+  // Nothing else was eligible: the honest answer is the landing wait, with the slot holder and the reason.
+  if (landingWait) return landingWait;
   // A Claude Code session that raised a block waits like anyone else; it never gets the CEO review telling it to clear its own block.
   if (gateAt >= 0 && (!ceo || gateAction.blocked)) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
