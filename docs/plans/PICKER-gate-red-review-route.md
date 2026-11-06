@@ -49,4 +49,4 @@ Hard constraints:
 
 ## Status
 
-- `PICKER-gate-red-review-route`: registered by D-286 (2026-11-05) as a `todo` row appended to the shared order; no branch, no PR, not started.
+- `PICKER-gate-red-review-route`: in progress — Hark · 5de4 — 2026-11-07 — branch agent/queue/picker-gate-red-review-route
