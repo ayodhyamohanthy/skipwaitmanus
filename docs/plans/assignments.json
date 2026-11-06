@@ -2631,7 +2631,7 @@
       "lane": "d048-admin-approvals",
       "branch": "agent/queue/d048-p3-admin-approvals",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-287",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
