@@ -49,4 +49,4 @@ Hard constraints:
 
 ## Status
 
-- `PICKER-gate-red-review-route`: in progress — Hark · 5de4 — 2026-11-07 — branch agent/queue/picker-gate-red-review-route
+- `PICKER-gate-red-review-route`: in progress — Hark · 5de4 — 2026-11-07 — branch agent/queue/picker-gate-red-review-route; core classifier + ci.yml step done (red-first 9 failed/5 control -> 14/14, scripts/ 1216/1216), draft PR open. QUESTION (not widening silently): the picker only reads the failed run's jobs if scripts/next-task.mjs (`state()`, the prCi loop near :288) calls `gateOnlyRedFromJobs` and sets `gateOnly` on the red entry; that file is outside the five this packet names, so the live proof waits for a ruling on that one hunk.
