@@ -97,11 +97,21 @@ describe("PICKER-landing-wait-fallthrough", () => {
     const tasks = [
       task("L"),
       task("D", { dependsOn: ["L"] }),
-      task("S", { lane: "l" }),
+      task("S", { lane: "l", owns: [] }),
       task("F", { lane: "f", owns: ["scripts/l.mjs"] }),
     ];
     expect(pick(tasks, { branches: [built("L"), slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] }))
       .toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+  });
+
+  it("work with no declared owns (ownership unknown) is not proven disjoint: the landing wait is kept", () => {
+    const result = pick([task("L"), task("U", { owns: undefined })], { branches: [built("L"), slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] });
+    expect(result).toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+  });
+
+  it("work whose owns overlap the pending landing's is not handed out; the landing wait is kept", () => {
+    const result = pick([task("L"), task("O", { lane: "o", owns: ["scripts/l.mjs"] })], { branches: [built("L"), slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] });
+    expect(result).toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
   });
 
   it("keeps red-main precedence: a red main still returns its wait, not N", () => {
