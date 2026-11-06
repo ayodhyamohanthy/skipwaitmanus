@@ -2607,7 +2607,7 @@
       "tier": 1,
       "lane": "d048-admin-people",
       "branch": "agent/queue/d048-p3-admin-people",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
@@ -5355,7 +5355,7 @@
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-cleanup",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-283",
       "dependsOn": [
         "GATE-migration-apply"
