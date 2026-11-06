@@ -5153,6 +5153,50 @@
       ]
     },
     {
+      "id": "D-048-R1",
+      "title": "Release 1 (inbox)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r1",
+      "status": "todo",
+      "syncedTo": "D-285",
+      "dependsOn": [
+        "D-048-p3-inbox",
+        "D-048-F-credits",
+        "D-048-p3-live-review"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts"
+      ],
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md), registered exactly as the table defines it: a one-line release pull request that adds the wave's ids to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Pre-release gates: QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report (D-123). Registration only: no flag flip, code or status change to any other row lands with it. Per split line 185 this row is added (merged) only once its surfaces land. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only; turns on: inbox.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R4",
+      "title": "Release 4, referrer: referrer, referrer-home, invite, post-opportunity (email-review when its straggler lands; the queue went live in place, D-149)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r4",
+      "status": "todo",
+      "syncedTo": "D-285",
+      "dependsOn": [
+        "D-048-R1",
+        "D-048-p3-referrer",
+        "D-048-p3-referrer-home",
+        "D-048-p3-invite",
+        "D-048-p3-post"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts"
+      ],
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md), registered exactly as the table defines it: a one-line release pull request that adds the wave's ids to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Pre-release gates: QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report (D-123). Registration only: no flag flip, code or status change to any other row lands with it. Per split line 185 this row is added (merged) only once its surfaces land. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only; turns on the W4 ids.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-222-referral-count-shell",
       "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
       "row": "D-048",
