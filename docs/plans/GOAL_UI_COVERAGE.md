@@ -85,7 +85,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/referrer` | `pages/Referrer` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
 | `/referrer/impact` | `pages/ReferrerImpact` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
 | `/premium` | `pages/Premium` | `D-048-p3-premium` | D-048-p3-premium: to be added by its lane packet |
-| `/plans` | `?` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
+| `/plans` | `?` | `D-048-p3-plans-route` | D-048-p3-plans-route: architect |
 | `/billing` | `pages/Billing` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/privacy` | `pages/TrustPrivacy` | `D-048-p3-policy` | D-048-p3-policy: to be added by its lane packet |
 | `/terms` | `pages/Terms` | `D-048-p3-policy` | D-048-p3-policy: to be added by its lane packet |
