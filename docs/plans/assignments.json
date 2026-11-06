@@ -2553,7 +2553,7 @@
       "tier": 2,
       "lane": "d048-admin",
       "branch": "agent/queue/d048-p3-admin",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-284",
       "dependsOn": [
         "D-048-F-harness",
@@ -2607,7 +2607,7 @@
       "tier": 1,
       "lane": "d048-admin-people",
       "branch": "agent/queue/d048-p3-admin-people",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
@@ -2653,7 +2653,7 @@
       "tier": 2,
       "lane": "d048-admin-ops",
       "branch": "agent/queue/d048-p3-admin-ops",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
@@ -2747,8 +2747,8 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-285",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -4380,9 +4380,9 @@
       "lane": "docs-sync",
       "branch": "agent/queue/decision-sync-oct26",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-275",
       "dependsOn": [],
-      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200)."
+      "note": "D-221 (Oct 26): Markdown only. Fix each line in the audit's section 9 to the current rule (D-219 pricing and paused packs, D-176 availability, D-174 expiry as a runtime caveat only, D-147, D-200 landing and who builds, D-196/D-219 referrer-plan exception, D-080/D-163 sign-in order). The register keeps its history; other docs state the current rule. Leave the eight entry-doc banners to D-200-instructions-sync and the landing-route wording to D-212 if it lands first. Tier 3: lands on green required CI (D-200). Nov 3 bounded repair: prior landed/pass/completion claims are withdrawn. Instinct f77d recovered the quiet unblock stage through the ordinary picker, preserving all prior history; this branch carries the bounded advisory fixes and still needs current-main checks, separate final-head review and distinct normal landing. This row covers section 9 only; section 11 on #757 remains unfinished and must not be silently marked done or expanded here."
     },
     {
       "id": "D-174-job-sources-more",
@@ -4698,7 +4698,7 @@
       "tier": 2,
       "lane": "d174-journey-search",
       "branch": "agent/queue/d174-journey-search",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-company-search"
@@ -4922,8 +4922,8 @@
       "tier": 2,
       "lane": "money-core",
       "branch": "agent/queue/d132-item5-correction",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-228",
       "dependsOn": [
         "D-132-audit"
       ],
@@ -4940,8 +4940,8 @@
       "tier": 2,
       "lane": "payments",
       "branch": "agent/queue/agedout-evidence-test",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-285",
       "dependsOn": [],
       "owns": [
         "server/agedOutCoverageGap.evidence.test.ts"
@@ -5216,7 +5216,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-avoid-land",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "PICKER-avoid-unblock"
@@ -5257,7 +5257,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-heartbeat-slot-safety",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-237",
       "dependsOn": [
         "PICKER-architect-landing",
@@ -5277,8 +5277,8 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-landed-marker-continuity",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-288",
       "dependsOn": [
         "PICKER-heartbeat-slot-safety",
         "PICKER-avoid-land"
@@ -5325,7 +5325,7 @@
         "client/src/pages/support.promises.test.tsx",
         "artifacts/support-promises/**"
       ],
-      "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: apply the packet's byte-exact R1-R5 (L27, L28, L40, L64, L68); keep P1-P9 (L4, L20, L39, L41, PolicyPageShell.tsx:25) and L31 byte-for-byte; L17 and L29 are architect choices, not adopted (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residuals shared/publicRoutes.ts:48 (D-176-public-claims) and shared/landingContent.ts:63 (PRICING-banded-oct25) are not fixed. Builder: a non-Claude development session through the picker (D-225)."
+      "note": "D-277: Half A of the #811 packet proposal (comment 6567956835) only. Client copy only: apply the packet's byte-exact R1-R5 (L27, L28, L40, L64, L68); keep P1-P9 (L4, L20, L39, L41, PolicyPageShell.tsx:25) and L31 byte-for-byte; L17 and L29 are architect choices, not adopted (L41 legal/business hours are owner-only). Self-serve cards L14-17 out of scope: stop and report if one is false. No server, db.ts or shared file; SUPPORT-B1/B2 and the BYOR edge are not registered. Residuals shared/publicRoutes.ts:48 (D-176-public-claims) and shared/landingContent.ts:63 (PRICING-banded-oct25) are not fixed. Builder: a development session other than the Claude Code session through the picker (D-225)."
     },
     {
       "id": "CONV-report-entry",
@@ -5345,7 +5345,7 @@
         "client/src/pages/conversation/reportEntry.test.tsx",
         "e2e/report-from-conversation.e2e.ts"
       ],
-      "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency done: #786 landed 99f8a1f2 and the seeker row is recorded done (seeker side, not moved; #963). Tier 1 (privacy/safety: the href decides when the block toggle and the referralRequestId evidence snapshot of message bodies attach to a safety report); declared above the computed Tier 2, which D-212 allows; needs an independent different-model review (D-151) at build time. Builder: a non-Claude development session through the picker (D-225)."
+      "note": "D-278: correction E on #831 (comment 6568171751), route R-B-min, seeker side S only. Rule at SeekerConversation.tsx:223: href = (!passed && isAccepted(request)) ? \"/report?request=\" + request.id : \"/report\" (passed is always false on the seeker page), reusing threadModel.ts:36-38 (not edited). Packet A's referrerId !== null rule is rejected and not buildable. Acceptance (packet section 5): red-first reportEntry.test.tsx; e2e/report-from-conversation.e2e.ts targets its own ask id, reads e2e/.auth/seed.json itself (no e2e/fixtures.ts edit), block LAST; admin read of /api/admin/safety-reports proved red-first; K/G hrefs not asserted. No #831 edge, owns or status change; residuals S-g, R-f, S-l, R-k, block-stalls-accepted-ask and G pre-acceptance linkage not adopted. Dependency done: #786 landed 99f8a1f2 and the seeker row is recorded done (seeker side, not moved; #963). Tier 1 (privacy/safety: the href decides when the block toggle and the referralRequestId evidence snapshot of message bodies attach to a safety report); declared above the computed Tier 2, which D-212 allows; needs an independent different-model review (D-151) at build time. Builder: a development session other than the Claude Code session through the picker (D-225)."
     },
     {
       "id": "GATE-migration-cleanup",
@@ -5355,7 +5355,7 @@
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-cleanup",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-283",
       "dependsOn": [
         "GATE-migration-apply"
@@ -5365,7 +5365,7 @@
         "scripts/e2e-server.mjs",
         "scripts/migrationGateCleanup.test.ts"
       ],
-      "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a non-Claude development session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
+      "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a development session other than the Claude Code session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
     },
     {
       "id": "D-048-R4",
@@ -5388,7 +5388,7 @@
       ],
       "note": "D-168 (2): registered as soon as every row it depends on is registered; it waits for D-048-p3-admin (which also edits goalSurfaces.ts and is older queued work) instead of R1, whose inbox is stuck. email-review rides the next release row after its own QA (split R4); the queue went live in place (D-149). Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
       "epic": "D-048-p3",
-      "syncedTo": "D-284"
+      "syncedTo": "D-288"
     },
     {
       "id": "D-048-R1",
@@ -5410,7 +5410,7 @@
       ],
       "note": "D-168 (2): registered as soon as every row it depends on is registered, so the inbox reaches users through the picker the moment it lands; it follows R4 because both edit the RELEASED block. Kit drift checked against #308 and #324. Split section 6: an independent reviewer and the CEO sign off against docs/plans/GOAL_UI_COVERAGE.md section 1 and the 1280 and 390 captures after preview QA; kit-drift check; behaviour tests re-run with the ids on; the PR edits only the RELEASED block; after deploy, live-flow-audit, a signed-in check at 1280 and 390 and 24 h of Sentry watch on the routes; rollback is a revert of the line. The owner gets the captures in the report.",
       "epic": "D-048-p3",
-      "syncedTo": "D-284"
+      "syncedTo": "D-288"
     }
   ]
 }
