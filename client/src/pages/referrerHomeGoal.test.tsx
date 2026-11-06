@@ -207,11 +207,14 @@ describe("Goal /referrer-home", () => {
     expect(link.parentElement?.className).toMatch(/(^|\s)min-w-0(\s|$)/);
   });
 
-  it("R2: an untitled referral request names its Ref ID once, in the title", async () => {
+  it("R2: an untitled referral request also leads its metadata with the Ref ID, named once (390 truncates the title)", async () => {
     const now = Date.now();
     stubHome({ fresh: [ask(31, now - 2 * DAY)] });
     renderWithQuery(<ReferrerHome />);
     const link = await screen.findByRole("link", { name: /Private referral request · Ref-1031/ });
+    expect(link.querySelector("strong")?.textContent).toBe("Private referral request");
+    const meta = link.querySelector('[data-testid="goal-referrer-row-meta"]') as HTMLElement | null;
+    expect((meta?.textContent ?? "").startsWith("Ref-1031")).toBe(true);
     expect((link.textContent ?? "").match(/Ref-1031/g)?.length).toBe(1);
   });
 
