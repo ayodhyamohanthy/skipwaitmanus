@@ -201,6 +201,10 @@ describe("Goal /referrer-home", () => {
     for (let node: HTMLElement | null = ref; node && node !== link; node = node.parentElement) {
       expect(node.className).not.toMatch(/(^|\s)(hidden|sr-only)(\s|$)/);
     }
+    // The longer metadata line must truncate inside its column, never widen the row past it
+    // (seen in the 1280/390 captures): the grid item opts out of its min-content minimum.
+    expect(link.parentElement?.tagName).toBe("LI");
+    expect(link.parentElement?.className).toMatch(/(^|\s)min-w-0(\s|$)/);
   });
 
   it("R2: an untitled referral request names its Ref ID once, in the title", async () => {
