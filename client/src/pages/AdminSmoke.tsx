@@ -1,6 +1,11 @@
-import {useEffect,useState} from "react";
+import {useEffect,lazy,Suspense,useState} from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 type Status={enabled?:boolean;active?:boolean;role?:string;csrf?:string};
+// D-048-p3-admin-ops: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-ops).
+const GoalAdminSmoke = lazy(() => import("./goal/admin-ops/GoalAdminSmoke"));
 export default function AdminSmoke(){
+ if (goalSurfaceOn("admin-ops")) return <Suspense fallback={null}><GoalAdminSmoke /></Suspense>;
  const[status,setStatus]=useState<Status>({}),[data,setData]=useState<unknown>(),[error,setError]=useState("");
  const load=async()=>{const r=await fetch("/api/admin/smoke/status",{credentials:"include"});if(r.status===404){setStatus({});return}const s=await r.json();setStatus(s);if(s.active){const f=await fetch("/api/admin/smoke/snapshot",{credentials:"include"});if(f.ok)setData(await f.json())}};
  useEffect(()=>{const meta=document.createElement("meta");meta.name="robots";meta.content="noindex,nofollow,noarchive";document.head.appendChild(meta);void load();return()=>meta.remove()},[]);
