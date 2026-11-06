@@ -56,7 +56,8 @@ function Countdown({ label, urgent }: { label: string; urgent: boolean }) {
 
 function RequestTitle({ item }: { item: InboxRow }) {
   const title = item.jobTitle?.trim();
-  return <strong className="block truncate text-g-label text-g-ink">{title || <>Private referral request · Ref-<GoalNum>{1000 + item.id}</GoalNum></>}</strong>;
+  // The Ref ID always leads the metadata line (it survives the 390 truncation there), so the title never repeats it.
+  return <strong className="block truncate text-g-label text-g-ink">{title || "Private referral request"}</strong>;
 }
 
 function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
@@ -97,7 +98,7 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
                   <span className="min-w-0 flex-1">
                     <RequestTitle item={item} />
                     <span data-testid="goal-referrer-row-meta" className="block truncate text-g-meta text-g-ink-3">
-                      {item.jobTitle?.trim() ? <><span data-testid="goal-referrer-row-ref">Ref-<GoalNum>{1000 + item.id}</GoalNum></span> · </> : null}
+                      <span data-testid="goal-referrer-row-ref">Ref-<GoalNum>{1000 + item.id}</GoalNum></span>{" · "}
                       {displayJobFunction(item.jobFunction) ?? companyName}
                       {fit ? ` · referral fit: ${fit}` : ""}
                       {files > 0 ? <> · <GoalNum>{files}</GoalNum> attached {files === 1 ? "file" : "files"}</> : null}
