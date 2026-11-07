@@ -44,6 +44,19 @@ describe("goal share hub", () => {
     expect(commit.getAttribute("aria-disabled")).not.toBe("true");
   });
 
+  // Red-first for the main-red failure at affed40a: the header said "Your link is
+  // ready." whenever the load had finished without a code (a locked account answers
+  // 200 with invite:null), so the runner saw "ready" with no link behind it. The
+  // header now says "ready" only when a real code exists (D-153).
+  it("says the link is unavailable when the load answers without a code, never ready", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ invite: null, locked: true }) }) as Response));
+    render(<ShareHub />);
+    expect(await screen.findByTestId("goal-share-hub")).toBeTruthy();
+    expect(await screen.findByText(/Your personal link is unavailable/)).toBeTruthy();
+    expect(screen.queryByText(/Your link is ready/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Copy link" }).getAttribute("aria-disabled")).toBe("true");
+  });
+
   it("offers Try again when the link cannot be created", async () => {
     vi.stubGlobal("fetch", stubInvite("PAL-123", false));
     render(<ShareHub />);
