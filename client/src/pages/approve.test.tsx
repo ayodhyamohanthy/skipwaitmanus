@@ -145,8 +145,11 @@ describe("Approve page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Approve />);
     expect(await screen.findByText("Run this paid tool?")).toBeTruthy();
-    expect(screen.getByText("You have 112 · 109 after this")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Use 3 credits" }));
+    // AYO-20 honesty fix: no wallet-after math while the server moves no
+    // credits; the stated cost and the real balance still show.
+    expect(screen.getByText(/You have 112 credits/)).toBeTruthy();
+    expect(screen.queryByText(/after this/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     expect(await screen.findByText("Done")).toBeTruthy();
   });
 
