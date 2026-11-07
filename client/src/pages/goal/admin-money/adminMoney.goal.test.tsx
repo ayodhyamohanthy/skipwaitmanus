@@ -66,8 +66,21 @@ describe("goal /admin/payments", () => {
     render(<GoalAdminPayments />);
     expect(await screen.findByText("Queue unavailable")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
-    // One state wins: while the queue is not answering, the clear-queue empty state stays off.
+    // One state wins: while the payments are not answering, neither empty state renders.
     expect(screen.queryByText("Nothing needs review right now.")).toBeNull();
+    expect(screen.queryByText("No completed payments yet.")).toBeNull();
+  });
+
+  it("shows no empty state while the payments are still loading", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.stubGlobal("fetch", vi.fn(async () => { await gate; return reply(EMPTY_PAYMENTS); }));
+    render(<GoalAdminPayments />);
+    expect(screen.queryByText("Nothing needs review right now.")).toBeNull();
+    expect(screen.queryByText("No completed payments yet.")).toBeNull();
+    release();
+    expect(await screen.findByText("Nothing needs review right now.")).toBeTruthy();
+    expect(screen.getByText("No completed payments yet.")).toBeTruthy();
   });
 
   it("sends one decision to the exact payment-review endpoint with the exact body", async () => {
