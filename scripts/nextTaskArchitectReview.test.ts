@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { GATE_STEP, pickNextTask, statusBoard } from "./nextTaskCore.mjs";
+import { GATE_STEP, heldAllBy, pickNextTask, statusBoard } from "./nextTaskCore.mjs";
 import { renderPick } from "./nextTaskText.mjs";
 const NOW = Date.parse("2026-11-08T04:00:00+05:30"), HOUR = 3600000;
 const HEAD = "a".repeat(40), ARCH = "agent/architect/p", REVIEW = "agent/review/p", PR = "https://example.test/pr/1";
@@ -30,6 +30,11 @@ describe("PICKER-architect-review-route", () => {
   it("(f) respects active review and permits quiet review takeover", () => {
     expect(pick({ branches: new Map([[ARCH, arch], [REVIEW, lock([claim], 1000)]]) }).kind).not.toBe("review");
     expect(pick({ branches: new Map([[ARCH, arch], [REVIEW, lock([claim])]]) }).kind).toBe("review");
+  });
+  it("packet review holder continues and is included in normal heartbeat ownership", () => {
+    const extra = { claimant: "Other · 1", branches: new Map([[ARCH, arch], [REVIEW, lock([claim], 1000)]]) };
+    expect(pick(extra)).toMatchObject({ kind: "continue", of: "review", work: ARCH, lock: REVIEW, packet: true });
+    expect(heldAllBy(input(extra))).toContainEqual(expect.objectContaining({ of: "review", work: ARCH, lock: REVIEW, packet: true }));
   });
   it("(g) passed gate-only red skips for CI rerun, never architect or fix", () => {
     const got = pick({ branches: new Map([[ARCH, arch], [REVIEW, lock([claim, pass])]]) });

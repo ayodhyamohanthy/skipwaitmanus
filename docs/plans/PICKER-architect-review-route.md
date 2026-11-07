@@ -125,3 +125,5 @@ Drive `pickNext` through the same fixtures `scripts/nextTaskArchitectLanding.tes
 
 - `PICKER-architect-review-route`: in progress - Instinct · 09c7 - 2026-11-08 - branch agent/queue/picker-architect-review-route; ordinary picker claim db56b45a. Packet drafted by Hark · b06c, registered D-294.
 - Coordination: accidental D-100.otp-hmac review claim 0a6b1b7a/heartbeat96963710 is untouched, holds remain in force, no review/verdict or renewal; factual correction on PR #884. No release/unclaim command exists; normal quiet expiry applies. Exact comma-list avoid is corrected. Supported avoided-continuation routing selected this build; no review outcome or handoff claimed.
+
+- 2026-11-08 04:27 IST: bounded lifecycle omission found, not silently implemented. `ownStage` recognizes review ownership only for `v.open`, while packet rows have `v.open=false`. New red lifecycle regression reproduces `kind:none` instead of CONTINUE REVIEW and absent normal heartbeat ownership. Packet R1-R6 does not admit that change; coordinator clarification and independent inspection pending. Existing implementation is not ready to land.
