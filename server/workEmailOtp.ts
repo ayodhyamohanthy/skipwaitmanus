@@ -68,7 +68,7 @@ function legacyHashCode(email: string, code: string): string { return createHash
  * CODE_TTL_MS (10 minutes), so the legacy read dies on its own once this has passed; a later
  * row may delete it. Rows created at or after it must carry the HMAC.
  */
-export const OTP_HMAC_SINCE = "2026-11-06T00:00:00.000Z";
+export const OTP_HMAC_SINCE = "2026-12-01T00:00:00.000Z";
 const OTP_HMAC_SINCE_MS = Date.parse(OTP_HMAC_SINCE);
 function sameHex(a: string, b: string): boolean {
   const left = Buffer.from(a, "utf8"), right = Buffer.from(b, "utf8");
