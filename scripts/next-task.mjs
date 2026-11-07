@@ -291,6 +291,19 @@ async function state() {
       console.error(`next-task: ${e.message}`);
       for (const head of heads) prCi.set(head, { state: "error" });
     }
+    // PICKER-land-exact-head (D-293): find the tip's run when it has aged out of the newest 100 runs.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state === "error") continue;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!tipSha || ci?.sha === tipSha) continue;
+      try {
+        const runs = (await github(doc.repo, `/actions/workflows/ci.yml/runs?head_sha=${tipSha}&per_page=10`)).workflow_runs;
+        if (Array.isArray(runs) && runs.length) prCi.set(head, ciStateFromRuns(runs));
+      } catch (e) {
+        console.error(`next-task: ${e.message}`);
+      }
+    }
     // PICKER-gate-red-review-route (D-291): a red run on the branch's exact tip gets one read of its jobs, so a red
     // that is only the review gate's own step can be handed REVIEW. Fail closed: a missing run id, a run not on the
     // tip, or any fetch or parse error leaves gateOnly false and the picker keeps handing MAKE GREEN.
