@@ -294,7 +294,45 @@ export function ciStateFromRuns(runs) {
   const running = newest.status !== "completed";
   const state = running ? (red ? "running-after-red" : "running") : (red ? "red" : "green");
   const at = Date.parse(done.updated_at ?? "");
-  return { state, sha: done.head_sha, url: done.html_url, ...(Number.isFinite(at) ? { at } : {}) };
+  // PICKER-gate-red-review-route (D-291): the run id rides along so the picker can read a red run's jobs.
+  return { state, sha: done.head_sha, url: done.html_url, ...(Number.isSafeInteger(done.id) ? { runId: done.id } : {}), ...(Number.isFinite(at) ? { at } : {}) };
+}
+
+/**
+ * PICKER-gate-red-review-route (D-286): the step in the `typecheck` job that runs the review gate
+ * (`node scripts/review-gate.mjs`, the same script and exit code scope-check runs) under its own name,
+ * so a red that is nothing but the missing independent review can be told from every other red.
+ */
+export const GATE_STEP = "Review gate (independent Tier 1 pass)";
+const JOB_OK = new Set(["success", "skipped"]);
+
+/**
+ * True only on a positive identification: the failed run's job list (an array, or GitHub's `{ jobs }`)
+ * shows the `typecheck` job failed at exactly one step, the review gate step, and every other job and
+ * step finished `success` or `skipped`. An unreadable, empty, stepless or cancelled list is false, so the
+ * picker keeps handing MAKE GREEN (fail closed).
+ */
+export function gateOnlyRedFromJobs(jobs) {
+  const list = Array.isArray(jobs) ? jobs : Array.isArray(jobs?.jobs) ? jobs.jobs : null;
+  if (!list?.length) return false;
+  let failed = 0;
+  for (const job of list) {
+    if (!job || typeof job.name !== "string") return false;
+    if (JOB_OK.has(job.conclusion)) continue;
+    if (job.conclusion !== "failure" || job.name !== "typecheck") return false;
+    failed += 1;
+    const steps = job.steps;
+    if (!Array.isArray(steps) || !steps.length) return false;
+    let stepsFailed = 0;
+    for (const step of steps) {
+      if (!step || typeof step.name !== "string") return false;
+      if (JOB_OK.has(step.conclusion)) continue;
+      if (step.conclusion !== "failure" || step.name !== GATE_STEP) return false;
+      stepsFailed += 1;
+    }
+    if (stepsFailed !== 1) return false;
+  }
+  return failed === 1;
 }
 
 // D-202: the decision register is data too. A row is `| D-nnn | date | decision | ...`;
@@ -565,6 +603,8 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
       lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id), stageHolder: lockMarkers.at(-1)?.who ?? null,
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
+      // PICKER-gate-red-review-route: red CI that is only the review gate, read from this exact head's own run.
+      gateOnlyRed: ci.state === "red" && ci.gateOnly === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
       done: task.status === "done" || ((task.status === "todo" || packet) && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
       packet, writers: packet ? everyone(archMarkers, ["Claim", "Takeover"]) : [],
@@ -673,7 +713,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const tier1 = v => {
     const state = v.review;
     const lockQuiet = v.lock ? quiet(lockAt(v)) : false;
-    if (v.ci === "red") {
+    // D-286: a head whose only red is the review gate is waiting for the one stage that clears it, so it is not
+    // "red" here while its review is still to be done; the review hand-out below applies the same builder/fixer bar.
+    const gateOnlyWaiting = v.gateOnlyRed && (state === "needs-review" || (state === "in-review" && lockQuiet));
+    if (v.ci === "red" && !gateOnlyWaiting) {
       if (state === "fixing" && !lockQuiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.fixer} is on it`);
       // Red after a passed review: the change goes through a fix stage and is reviewed again, never landed as it is.
       const afterPass = state === "passed" || state === "landing";
@@ -867,7 +910,8 @@ function ownStage(v, claimant) {
     // A blocked task waits for another session or the owner; its holder keeps going on anything else it holds (D-085 (3), D-200).
     if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); a session that neither raised the block nor holds the task, or the owner, clears it (D-200)` };
     // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
-    if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) return null;
+    // D-286: a red that is only the review gate is not the builder's to make green; only a review clears it.
+    if (v.pr && v.task.tier === 1 && !(v.ci === "red" && !v.gateOnlyRed && ["needs-review", "in-review"].includes(v.review))) return null;
     return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
   }
   // D-190: the packet's lander (a Land claim on the lock, never its writer) continues the landing while CI is green.
