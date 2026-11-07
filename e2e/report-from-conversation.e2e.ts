@@ -83,7 +83,7 @@ test("seeker on accepted conversation reports with ask id, admin reads evidence,
 
   // 3. Admin read (§5.3), before any block: seeker files report with toggle off; expect 201
   const reportPost = seekerPage.waitForResponse(
-    r => r.method() === "POST" && r.url().includes("/api/safety-reports")
+    r => r.request().method() === "POST" && r.url().includes("/api/safety-reports")
   );
   await seekerPage.getByRole("button", { name: "Submit report" }).click();
   const reportRes = await reportPost;
@@ -132,10 +132,10 @@ test("seeker on accepted conversation reports with ask id, admin reads evidence,
   await expect(blockToggleOn).toHaveAttribute("aria-pressed", "true");
 
   const reportPost2 = seekerPage.waitForResponse(
-    r => r.method() === "POST" && r.url().includes("/api/safety-reports")
+    r => r.request().method() === "POST" && r.url().includes("/api/safety-reports")
   );
   const blockPost = seekerPage.waitForResponse(
-    r => r.method() === "POST" && r.url().includes("/api/blocks")
+    r => r.request().method() === "POST" && r.url().includes("/api/blocks")
   );
   await seekerPage.getByRole("button", { name: "Submit report" }).click();
   const reportRes2 = await reportPost2;
