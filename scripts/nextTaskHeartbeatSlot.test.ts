@@ -47,6 +47,7 @@ function setup(slot: Slot, { raceOnRead = false } = {}) {
   writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built\n");
   run(["commit", "-q", "-am", "B: the work"]);
   run(["push", "-q", "-u", "origin", "agent/queue/b"]);
+  const builtTip = run(["rev-parse", "agent/queue/b"]);
   run(["switch", "-q", "main"]);
   if (slot) {
     // The landing slot: one empty Land claim marker on main, fresh or older than LAND_IDLE_MS.
@@ -73,7 +74,7 @@ ${race}
 const response = body => ({ ok: true, status: 200, json: async () => body });
 globalThis.fetch = async input => {
   const url = String(input);
-  if (url.includes('/actions/workflows/ci.yml/runs')) return response({ workflow_runs: [] });
+  if (url.includes('/actions/workflows/ci.yml/runs')) return response({ workflow_runs: [{ id: 1, name: "CI", head_branch: "agent/queue/b", head_sha: "${builtTip}", status: "completed", conclusion: "success", html_url: "https://example.test/ci/1", created_at: new Date().toISOString() }] });
   if (url.includes('/pulls?state=open')) return response([{ head: { repo: { full_name: 'o/r' }, ref: 'agent/queue/b', sha: '${"0".repeat(40)}' }, html_url: 'https://example.test/pr/2' }]);
   if (url.includes('/pulls?state=closed')) { competingPush(); return response([]); }
   throw new Error('unexpected fetch: ' + url);
