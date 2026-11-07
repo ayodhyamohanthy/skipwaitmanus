@@ -294,7 +294,8 @@ export function ciStateFromRuns(runs) {
   const running = newest.status !== "completed";
   const state = running ? (red ? "running-after-red" : "running") : (red ? "red" : "green");
   const at = Date.parse(done.updated_at ?? "");
-  return { state, sha: done.head_sha, url: done.html_url, ...(Number.isFinite(at) ? { at } : {}) };
+  // PICKER-gate-red-review-route (D-291): the run id rides along so the picker can read a red run's jobs.
+  return { state, sha: done.head_sha, url: done.html_url, ...(Number.isSafeInteger(done.id) ? { runId: done.id } : {}), ...(Number.isFinite(at) ? { at } : {}) };
 }
 
 /**
