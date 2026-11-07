@@ -35,13 +35,52 @@ describe("goal share hub", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Help a friend find their next role." })).toBeTruthy();
     expect(await screen.findByText(/Your link is ready/)).toBeTruthy();
     expect(screen.getByText(/invite=PAL-123/)).toBeTruthy();
-    // Referral-only reward copy (D-180/D-055): the unit is a referral, and the
-    // reward is stated as pending until the next private referral request.
-    expect(screen.getByText(/you each get 1 extra referral/)).toBeTruthy();
-    expect(screen.getByText(/unlocks when you send your next private referral request/)).toBeTruthy();
+    // Referral-only reward copy (D-180/D-055): the unit is a referral request, and each
+    // party's reward is tied to that party's own request, never to one shared trigger.
+    expect(screen.getByText(/you each get 1 extra referral request/)).toBeTruthy();
+    expect(screen.getByText(/Yours unlocks when your next private referral request goes out/)).toBeTruthy();
+    expect(screen.getByText(/theirs unlocks when their first one goes out/)).toBeTruthy();
     expect(document.body.textContent ?? "").not.toMatch(/referral credit/i);
+    expect(document.body.textContent ?? "").not.toMatch(/it unlocks when you send/i);
     const commit = screen.getByRole("button", { name: "Copy link" });
     expect(commit.getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("tells the friend which request unlocks which reward in the sent message", async () => {
+    vi.stubGlobal("fetch", stubInvite());
+    render(<ShareHub />);
+    expect(await screen.findByText(/Your link is ready/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Friend email"), { target: { value: "friend@example.com" } });
+    const invite = screen.getByRole("link", { name: "Invite" });
+    const href = invite.getAttribute("href") ?? "";
+    expect(href.startsWith("mailto:friend@example.com")).toBe(true);
+    const body = decodeURIComponent(href.split("&body=")[1] ?? "");
+    // Each person's reward is unlocked by that person's own request.
+    expect(body).toContain("We each get 1 extra referral request");
+    expect(body).toContain("yours unlocks when your first referral request goes out");
+    expect(body).toContain("mine when my next one does");
+    // The retired single-trigger construction must not come back.
+    expect(body).not.toContain("it unlocks with your first referral request");
+    expect(body).not.toMatch(/referral credit/i);
+  });
+
+  it("sends the same per-party text through the X share intent", async () => {
+    vi.stubGlobal("fetch", stubInvite());
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    render(<ShareHub />);
+    expect(await screen.findByText(/Your link is ready/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "X" }));
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const target = String(openSpy.mock.calls[0][0]);
+    expect(target.startsWith("https://x.com/intent/post?text=")).toBe(true);
+    const text = decodeURIComponent(target.slice("https://x.com/intent/post?text=".length));
+    // Same rule as the mailto body: each side's own request unlocks its own reward.
+    expect(text).toContain("We each get 1 extra referral request");
+    expect(text).toContain("yours unlocks when your first referral request goes out");
+    expect(text).toContain("mine when my next one does");
+    expect(text).not.toContain("it unlocks with your first referral request");
+    expect(text).not.toMatch(/referral credit/i);
   });
 
   it("offers Try again when the link cannot be created", async () => {
