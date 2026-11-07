@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, Clock3, Inbox, ShieldCheck } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { lazy, Suspense, type ReactNode, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
@@ -8,6 +8,11 @@ import { AdminAccessError, ADMIN_ACCESS_MESSAGE, adminKeys, adminRequest, adminR
 import { ReviewCaseDetail } from "@/components/admin/ReviewCaseDetail";
 import { caseAge, companyCase, enrollmentCase, queueOrder, reportCase, type ReviewCase, statusLabel } from "@/components/admin/reviewCases";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-admin: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin).
+const GoalAdminReview = lazy(() => import("./goal/admin/GoalAdminReview"));
 
 const TABS = [["all", "All"], ["reports", "Reports"], ["verifications", "Verifications"], ["companies", "Companies"]] as const;
 type Tab = (typeof TABS)[number][0];
@@ -26,6 +31,7 @@ function GateCard({ screen, title = "Review queue.", body, children }: { screen:
 }
 
 export default function AdminReview() {
+  if (goalSurfaceOn("admin")) return <Suspense fallback={null}><GoalAdminReview /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
