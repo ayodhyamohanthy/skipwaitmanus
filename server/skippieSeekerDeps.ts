@@ -144,7 +144,10 @@ export function createSkippieSeekerDeps(overrides: {
       const cost = process.env.ASK_LEVEL_COST === "true" ? creditsForLevel(level) : 1;
       const summary = (await db.getTokenWallet(userId, "job_seeker")) as { totalAvailable?: unknown };
       const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : 0;
-      return { level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) };
+      // Coverage comes from the same read-only preview createAsk's decision is
+      // grounded in; a preview failure means unknown (null), never a guess.
+      const preview = await db.previewCompanyCoverageForTargetUrl(targetRoleUrl).catch(() => null);
+      return { level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable), covered: preview?.covered ?? null };
     },
     getOwnedResume: async (userId, attachmentId) => {
       try { return await db.getOwnedResumeAttachmentForPitch(userId, attachmentId); } catch { return undefined; }

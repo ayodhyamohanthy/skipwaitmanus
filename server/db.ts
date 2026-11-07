@@ -1523,6 +1523,33 @@ export function companyCoverageStatus(eligibleEmployeeCount: number) {
   return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
 }
 
+/**
+ * D-132 item 3: read-only coverage preview for pre-send quotes (Skippy). Uses
+ * the exact domain resolution and availability predicate of
+ * createCompanyReferralRequest's non-fastTrack path - verified employee of the
+ * resolved domain, unpaused, unsuspended, under monthly capacity via the same
+ * allocated-slot counts - so a quote can never disagree with the send-time
+ * charge decision. No locks and no writes: a preview can go stale, which is
+ * why the send path always re-quotes and createAsk remains the backstop.
+ * covered is null when the employer domain cannot be resolved from the link
+ * alone (createAsk would then need a confirmed domain); callers must treat
+ * null as unknown, never as free waiting.
+ */
+export async function previewCompanyCoverageForTargetUrl(targetRoleUrl: string): Promise<{ companyDomain: string | null; covered: boolean | null }> {
+  const db = await getDb();
+  if (!db) return { companyDomain: null, covered: null };
+  const companyDomain = await resolveEmployerDomainFromTargetUrl(targetRoleUrl);
+  if (!companyDomain) return { companyDomain: null, covered: null };
+  const candidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const eligible = candidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
+  // readAllocatedSlotCountsTx takes the ledger transaction type; a short
+  // read-only transaction keeps this preview on the same typed path.
+  const eligibleIds = eligible.map(profile => profile.userId);
+  const allocated = await db.transaction(async tx => readAllocatedSlotCountsTx(tx, eligibleIds));
+  const available = eligible.filter(profile => isOpenReferrer(profile, companyDomain, allocated.get(profile.userId) ?? 0));
+  return { companyDomain, covered: available.length > 0 };
+}
+
 export function fastTrackLinkMatchesCompany(linkCompanyDomain: string, resolvedCompanyDomain: string) {
   return linkCompanyDomain.trim().toLowerCase() === resolvedCompanyDomain.trim().toLowerCase();
 }
