@@ -5294,6 +5294,28 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-R4",
+      "title": "Release 4, referrer: referrer, referrer-home, invite, post-opportunity (email-review when its straggler lands; the queue went live in place, D-149)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r4",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer",
+        "D-048-p3-referrer-home",
+        "D-048-p3-invite",
+        "D-048-p3-post"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts"
+      ],
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names only the four surfaces whose output it releases (D-223 (1)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines; the kit dropped two D-176 strings the goal version never had; confirm-not-port, verify at build time); referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-222-referral-count-shell",
       "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
       "row": "D-048",
