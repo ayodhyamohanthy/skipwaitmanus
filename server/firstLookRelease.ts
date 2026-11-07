@@ -1,7 +1,7 @@
-// Scheduled job "first-look-release": the poster's 48-hour head start no
+// Scheduled job "first-look-release": the poster's 24-hour head start no
 // longer waits for anyone to read.
 //
-// D-022: an ask written from a post goes to the poster alone for 48 hours.
+// D-022: an ask written from a post goes to the poster alone for 24 hours.
 // When that window lapses without a decision, this job finds the lapsed asks
 // (pending, unclaimed, with an expired first look) in bounded oldest-first
 // batches and hands each to releaseFirstLookForRequest, which re-checks every
