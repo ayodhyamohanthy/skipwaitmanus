@@ -43,6 +43,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/plans/format.ts", kind: "behavior-only", reason: "price and date formatting, no UI" },
   { file: "components/plans/planCatalog.ts", kind: "behavior-only", reason: "plan catalogue data, no UI" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
+  { file: "components/employer/employerData.ts", kind: "behavior-only", reason: "employer REST contracts (zod schemas), fetchers and stats helpers, no UI; imported read-only by the goal employer pages (D-048-p3-employer, D-276)" },
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
   { file: "components/settings/settingsApi.ts", kind: "behavior-only", reason: "settings API fetchers, schemas and error constants, no UI" },
   { file: "components/settings/settingsQueries.ts", kind: "behavior-only", reason: "work-email access query hook, no UI" },
@@ -50,6 +51,8 @@ const AUDITED: AuditEntry[] = [
   { file: "components/developers/consoleMeta.ts", kind: "behavior-only", reason: "developer console app kinds, scopes and status metadata constants, no UI" },
   { file: "components/developers/consoleRoute.ts", kind: "behavior-only", reason: "developer console view and URL search query parser and serializer, no UI" },
   { file: "components/developers/mcpTools.ts", kind: "behavior-only", reason: "documented MCP tools list, endpoint constant and description pairs, no UI" },
+  { file: "components/admin/adminApi.ts", kind: "behavior-only", reason: "admin REST contracts (zod schemas) and fetchers, no UI; imported read-only by the goal admin pages (D-048-p3-admin, D-284)" },
+  { file: "components/admin/reviewCases.ts", kind: "behavior-only", reason: "review-queue case kinds, decisions and status helpers over adminApi types, no UI; imported read-only by the goal admin review page (D-048-p3-admin, D-284)" },
 ];
 
 type Read = (file: string) => string | null;
