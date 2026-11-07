@@ -43,5 +43,29 @@ export function NotificationBell() {
 
   if (!isSignedIn) return null;
   const countLabel = unreadCount > 9 ? "9+" : String(unreadCount);
-  return <button type="button" data-skipwait-notification-bell="true" onClick={() => go("/notifications")} aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"} title="Notifications" className="relative grid h-9 w-9 place-items-center rounded-full border border-[#e5e5e5] bg-white text-[#505050] transition hover:border-[#141414] hover:text-black focus:outline-none focus:ring-2 focus:ring-[#141414] focus:ring-offset-2"><Bell className="h-4 w-4" />{unreadCount ? <span data-skipwait-notification-count={String(unreadCount)} aria-hidden="true" className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#B91C1C] px-1 text-[9px] font-extrabold leading-none text-white">{countLabel}</span> : null}</button>;
+  // Goal system (D-048-F-shell-parts): the shell's icon-button geometry, and an
+  // ink unread badge - the moved goal surfaces mark "needs you" with ink
+  // (GoalAlerts), while trust blue and the status hues stay reserved inside the
+  // goal primitive tree (rules R2/R3 in scripts/designTokenAuditCore.mjs).
+  return (
+    <button
+      type="button"
+      data-skipwait-notification-bell="true"
+      onClick={() => go("/notifications")}
+      aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
+      title="Notifications"
+      className="g-hit relative grid size-9 place-items-center rounded-g-control text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover hover:text-g-ink max-gdesk:size-11"
+    >
+      <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
+      {unreadCount ? (
+        <span
+          data-skipwait-notification-count={String(unreadCount)}
+          aria-hidden="true"
+          className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-g-ink px-1 font-g-mono text-[10px] font-medium leading-none tracking-normal text-g-on-primary"
+        >
+          {countLabel}
+        </span>
+      ) : null}
+    </button>
+  );
 }
