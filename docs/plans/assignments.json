@@ -5522,7 +5522,7 @@
       "tier": 1,
       "lane": "conv-report-entry",
       "branch": "agent/queue/conv-report-entry",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-278",
       "dependsOn": [
         "D-048-p3-live-review-conversation"
