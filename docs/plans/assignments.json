@@ -4859,9 +4859,6 @@
       "branch": "agent/queue/d178-agent-portal",
       "status": "done",
       "syncedTo": "D-290",
-      "owns": [
-        "docs/plans/D-178-agent-portal-access.md"
-      ],
       "dependsOn": [
         "D-048-p3-assistants",
         "D-048-p3-agents"
