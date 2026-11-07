@@ -2,6 +2,10 @@
 // PICKER-gate-red-review-route (D-286): a Tier 1 pull request whose only red is the review gate's own failure is
 // handed its REVIEW, the one stage that can clear it, instead of MAKE GREEN. Every other red keeps today's answer.
 // The gate is untouched: the classifier only reads data (CI state + the failed run's job list) and fails closed.
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { GATE_STEP, gateOnlyRedFromJobs, pickNextTask } from "./nextTaskCore.mjs";
 
@@ -155,4 +159,132 @@ describe("PICKER-gate-red-review-route: reading the failed run's job list", () =
     expect(gateOnlyRedFromJobs({ jobs: gateOnlyJobs() })).toBe(true);
     expect(gateOnlyRedFromJobs([job("production build", "failure", [bad(GATE_STEP)]), typecheck([ok("Typecheck")]), ...greenJobs().slice(0, 1)])).toBe(false);
   });
+});
+
+// D-291: the wiring. scripts/next-task.mjs reads the red tip run's jobs in state()'s prCi loop and sets ci.gateOnly,
+// driven here through the same mocked-fetch spawn harness scripts/nextTask.test.ts uses (no --claim: nothing is pushed).
+describe("PICKER-gate-red-review-route: next-task.mjs reads the red tip run's jobs (D-291)", () => {
+  const root = path.resolve(__dirname, "..");
+  const RUN_ID = 4242;
+  type Jobs = "gate-only" | "other" | "fail" | "malformed";
+  const jobsBody = (mode: Jobs) => {
+    const s = (name: string, conclusion: string) => ({ name, conclusion, status: "completed" });
+    const typecheckSteps = mode === "gate-only" ? [s("Typecheck", "success"), s(GATE_STEP, "failure")] : [s("Typecheck", "failure"), s(GATE_STEP, "skipped")];
+    return {
+      total_count: 4,
+      jobs: [
+        { name: "typecheck", conclusion: "failure", status: "completed", steps: typecheckSteps },
+        { name: "unit + component + route tests", conclusion: "success", status: "completed", steps: [s("Test", "success")] },
+        { name: "production build", conclusion: "success", status: "completed", steps: [s("Build", "success")] },
+        { name: "e2e journeys", conclusion: "success", status: "completed", steps: [s("E2E", "success")] },
+      ],
+    };
+  };
+
+  const setup = (opts: { jobs: Jobs; runOnOlderSha?: boolean }) => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "next-task-gate-red-"));
+    const work = path.join(fixture, "work");
+    const origin = path.join(fixture, "origin.git");
+    const mock = path.join(fixture, "mock.mjs");
+    const jobsHit = path.join(fixture, "jobs-hit");
+    // Commits dated three hours back, so the builder's claim is quiet and nothing reads as fresh work.
+    const old = new Date(Date.now() - 3 * HOUR).toISOString();
+    const env = { ...process.env, GIT_AUTHOR_DATE: old, GIT_COMMITTER_DATE: old };
+    const run = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8", env }).trim();
+    mkdirSync(work, { recursive: true });
+    execFileSync("git", ["init", "--bare", origin], { encoding: "utf8" });
+    run(["init", "-b", "main"]);
+    run(["config", "user.name", "Fixture"]);
+    run(["config", "user.email", "fixture@example.test"]);
+    run(["remote", "add", "origin", origin]);
+    mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
+    writeFileSync(path.join(work, "docs/DECISIONS.md"), [
+      "# Decisions", "", "| ID | Date | Decision | Evidence | Notes | Status |", "|---|---|---|---|---|---|",
+      "| D-001 | 2026-10-19 | **One** | e | — | adopted |", "",
+    ].join("\n"));
+    writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
+      version: 1, repo: "o/r",
+      tasks: [{ id: "A", title: "Fixture task", row: "A", packet: "docs/plans/test.md", tier: 1, lane: "process", branch: "agent/queue/a", status: "todo", dependsOn: [], syncedTo: "D-001" }],
+    }, null, 2) + "\n");
+    run(["add", "."]);
+    run(["commit", "-m", "root"]);
+    run(["push", "-u", "origin", "main"]);
+    run(["switch", "-c", "agent/queue/a"]);
+    run(["commit", "--allow-empty", "-m", "Claim A: Builder · b1"]);
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built\n");
+    run(["commit", "-am", "A: the work"]);
+    const older = run(["rev-parse", "HEAD"]);
+    writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built twice\n");
+    run(["commit", "-am", "A: more work"]);
+    run(["push", "-u", "origin", "agent/queue/a"]);
+    const head = run(["rev-parse", "HEAD"]);
+    run(["switch", "main"]);
+    const runSha = opts.runOnOlderSha ? older : head;
+    writeFileSync(mock, `
+import { writeFileSync } from "node:fs";
+const response = body => ({ ok: true, status: 200, json: async () => body });
+globalThis.fetch = async input => {
+  const url = String(input);
+  if (url.includes('/actions/runs/${RUN_ID}/jobs')) {
+    writeFileSync(${JSON.stringify(jobsHit)}, url);
+    if (${JSON.stringify(opts.jobs)} === 'fail') return { ok: false, status: 502, json: async () => ({}) };
+    if (${JSON.stringify(opts.jobs)} === 'malformed') return { ok: true, status: 200, json: async () => { throw new SyntaxError('bad json'); } };
+    return response(${JSON.stringify(jobsBody(opts.jobs))});
+  }
+  if (url.includes('/actions/workflows/ci.yml/runs?branch=main')) return response({ workflow_runs: [
+    { id: 1, status: 'completed', conclusion: 'success', head_sha: '${"a".repeat(40)}', head_branch: 'main', updated_at: '${old}', html_url: 'https://example.test/ci/main' },
+  ] });
+  if (url.includes('/actions/workflows/ci.yml/runs?per_page=100')) return response({ workflow_runs: [
+    { id: ${RUN_ID}, status: 'completed', conclusion: 'failure', head_sha: '${runSha}', head_branch: 'agent/queue/a', updated_at: '${old}', html_url: 'https://example.test/ci/run/${RUN_ID}' },
+  ] });
+  if (url.includes('/pulls?state=open')) return response([{ head: { repo: { full_name: 'o/r' }, ref: 'agent/queue/a', sha: '${head}' }, html_url: 'https://example.test/pr/1' }]);
+  if (url.includes('/pulls?state=closed')) return response([]);
+  throw new Error('unexpected fetch: ' + url);
+};
+`);
+    const picker = () => spawnSync(process.execPath, ["--import", mock, path.join(root, "scripts/next-task.mjs"), "--as", "Reviewer · r1"], {
+      cwd: work, encoding: "utf8", env: { ...process.env, GH_TOKEN: "fixture-not-real", NODE_USE_ENV_PROXY: "1" },
+    });
+    const jobsRead = () => (existsSync(jobsHit) ? readFileSync(jobsHit, "utf8") : null);
+    return { fixture, picker, jobsRead };
+  };
+
+  const handOut = (out: string) => /^NEXT: (?:CONTINUE: )?(MAKE GREEN|REVIEW) A\b/m.exec(out)?.[1] ?? null;
+  const withFixture = (opts: { jobs: Jobs; runOnOlderSha?: boolean }, check: (f: ReturnType<typeof setup>, out: string) => void) => {
+    const f = setup(opts);
+    try {
+      const res = f.picker();
+      check(f, `${res.stdout}\n--- stderr ---\n${res.stderr}`);
+    } finally {
+      rmSync(f.fixture, { recursive: true, force: true });
+    }
+  };
+
+  it("hands REVIEW, not MAKE GREEN, when only the review gate step failed on the tip's run", () => {
+    withFixture({ jobs: "gate-only" }, (f, out) => {
+      expect(f.jobsRead(), out).toContain(`/actions/runs/${RUN_ID}/jobs`);
+      expect(handOut(out), out).toBe("REVIEW");
+    });
+  }, 30_000);
+
+  it("keeps MAKE GREEN when another step failed", () => {
+    withFixture({ jobs: "other" }, (_f, out) => expect(handOut(out), out).toBe("MAKE GREEN"));
+  }, 30_000);
+
+  it("fails closed to MAKE GREEN when the jobs read fails or does not parse", () => {
+    for (const jobs of ["fail", "malformed"] as const) {
+      withFixture({ jobs }, (f, out) => {
+        expect(f.jobsRead(), out).toContain(`/actions/runs/${RUN_ID}/jobs`);
+        expect(handOut(out), out).toBe("MAKE GREEN");
+      });
+    }
+  }, 60_000);
+
+  it("keeps MAKE GREEN, and reads no jobs, when the red run is on an older sha than the tip", () => {
+    withFixture({ jobs: "gate-only", runOnOlderSha: true }, (f, out) => {
+      expect(f.jobsRead(), out).toBeNull();
+      expect(handOut(out), out).toBe("MAKE GREEN");
+    });
+  }, 30_000);
 });
