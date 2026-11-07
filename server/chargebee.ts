@@ -241,6 +241,46 @@ export function parseGiftEvent(payload: any): ParsedGiftEvent | undefined {
   };
 }
 
+/** Provider read for closeout-style decisions: one hosted-page fetch that keeps
+ * "page is gone" (404) apart from "provider could not be read" (auth failure,
+ * outage, timeout). Nothing is logged: errors collapse into the outcome and no
+ * response or credential material leaves this function. A page that reads as
+ * succeeded is re-checked through the full invoice-verified retrieve, because
+ * page state alone never proves money moved. */
+export type HostedPageProbe =
+  | { outcome: "found"; paid: boolean; pageState: string; expiresAtMs?: number }
+  | { outcome: "not_found" }
+  | { outcome: "fault" };
+
+export async function probeChargebeeHostedPage(hostedPageId: string, input: { site?: string; apiKey?: string } = {}): Promise<HostedPageProbe> {
+  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
+  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
+  if (!apiKey) return { outcome: "fault" };
+  const authorization = `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`;
+  let pageState: string;
+  let expiresAtMs: number | undefined;
+  try {
+    const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/${encodeURIComponent(hostedPageId)}`, { headers: { Authorization: authorization }, signal: AbortSignal.timeout(8_000) });
+    if (response.status === 404) return { outcome: "not_found" };
+    if (!response.ok) return { outcome: "fault" };
+    const hostedPage = (await response.json().catch(() => ({})))?.hosted_page;
+    if (!hostedPage || hostedPage.id !== hostedPageId) return { outcome: "fault" };
+    pageState = typeof hostedPage.state === "string" ? hostedPage.state.toLowerCase() : "unknown";
+    // Chargebee documents expires_at on the hosted page object: after it, the
+    // page URL can no longer be accessed (checkout URLs live 3 hours).
+    const expiresAt = Number(hostedPage.expires_at);
+    if (Number.isFinite(expiresAt) && expiresAt > 0) expiresAtMs = expiresAt * 1000;
+  } catch {
+    return { outcome: "fault" };
+  }
+  if (pageState === "succeeded" || pageState === "acknowledged") {
+    const verified = await retrieveChargebeeHostedPage(hostedPageId, input).catch(() => undefined);
+    if (!verified) return { outcome: "fault" };
+    return { outcome: "found", paid: verified.paid, pageState, expiresAtMs };
+  }
+  return { outcome: "found", paid: false, pageState, expiresAtMs };
+}
+
 export async function retrieveChargebeeHostedPage(hostedPageId: string, input: { site?: string; apiKey?: string } = {}): Promise<VerifiedChargebeeHostedPage | undefined> {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;

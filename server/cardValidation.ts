@@ -5,7 +5,7 @@
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { createCustomer, createManagePaymentSourcesPage, listPaymentSources } from "./chargebeeAccountApi";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
-import { getUserChargebeeCustomerId, markCardValidatedFromProvider, setUserChargebeeCustomerId } from "./db";
+import { getUserChargebeeCustomerId, markCardValidatedFromProvider, recordOperationalActivity, setUserChargebeeCustomerId } from "./db";
 
 /** The hosted page where the seeker adds a card for validation. The Chargebee
  * customer is created once per user and reused by later provider flows (#35). */
@@ -21,8 +21,12 @@ export async function createCardValidationPageForUser(input: { userId: number; e
     await setUserChargebeeCustomerId(input.userId, created);
     customerId = (await getUserChargebeeCustomerId(input.userId)) ?? created;
   }
-  const url = await createManagePaymentSourcesPage(runtime, { customerId, redirectUrl: `${input.origin}/plans?card-validation=return` });
-  return { url };
+  const page = await createManagePaymentSourcesPage(runtime, { customerId, redirectUrl: `${input.origin}/plans?card-validation=return` });
+  // Coverage: a card-validation page is a provider hosted page with no checkout
+  // intent or fulfillment row (no money moves here). Recording its id lets
+  // payment reconciliation tell these expected pages apart from anomalies.
+  void recordOperationalActivity({ actorUserId: input.userId, action: "billing.card_validation_page_created", outcome: "success", resourceType: "chargebee_hosted_page", resourceId: page.hostedPageId }).catch(() => undefined);
+  return { url: page.url };
 }
 
 /** Provider-truth re-read for the return path (webhook lag): a valid payment
