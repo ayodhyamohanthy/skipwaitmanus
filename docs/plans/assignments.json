@@ -3412,7 +3412,7 @@
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
       "status": "todo",
-      "syncedTo": "D-293",
+      "syncedTo": "D-298",
       "dependsOn": [
         "D-089.server",
         "D-089.ui"
@@ -5616,7 +5616,7 @@
       "lane": "request-inbox-server",
       "branch": "agent/queue/d089-server",
       "status": "todo",
-      "syncedTo": "D-293",
+      "syncedTo": "D-298",
       "dependsOn": [
         "D-090-BYOR",
         "D-086-demand-list",
@@ -5645,12 +5645,13 @@
       "lane": "request-inbox-ui",
       "branch": "agent/queue/d089-ui",
       "status": "todo",
-      "syncedTo": "D-293",
+      "syncedTo": "D-298",
       "dependsOn": [
         "D-089.server",
         "D-048-p3-links",
         "D-086.admit",
-        "D-048-fix-referrer-home-ux"
+        "D-048-fix-referrer-home-ux",
+        "D-048-fix-referrer-home-private-copy"
       ],
       "note": "D-289 packet §5.2 (Tier 1: renders the server payloads behind the switch; S-M). Builds the goal-native panel GoalReferralLinkPanel.tsx with referralLinkApi.ts through referrerData's shared fetch helpers (so the D-057 403 handling applies), mounts it once in GoalReferrerHome.tsx under the switch, adds the askedYouDirectly field to referrerData.ts, the 'Sent to you directly' dot-and-text marker on MyCompanyInbox.tsx queue rows, the §4.9 landing line in the D-048-p3-links goal landings and the switch-only FastTrackLink/VanityFastTrackLink pages, one GOAL_UI_COVERAGE.md component line, captures at 1280 and 390 (panel generated, named, editing, taken-name error, paused, step-up; landing with and without a name; queue row with the marker) into design/goal-ui/captures/request-inbox/, and the red-first tests U1-U7 of §5.2. Goal pages stay kit-import-free (D-241 boundary); Tier 1 is declared because MyCompanyInbox.tsx computes Tier 1 (declared-above-computed is not used to relax the review); not buildable until the D-089 (3) pre-build design/placement gate is met (packet §4.10) — release captures are not a waiver. Waits for D-048-fix-referrer-home-ux: both rows own GoalReferrerHome.tsx (this row switch-only), so the capacity-bar repair lands first (validateAssignments overlap rule).",
       "epic": "D-089-request-inbox",
