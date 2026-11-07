@@ -964,6 +964,11 @@ function ownStage(v, claimant) {
       if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red" && v.ci !== "no-tip-ci") return { ...base, of: "land", tier1: true };
     }
   }
+  // D-299 R7: packet reviewers use the existing lock lifecycle, never packet fix/land stages.
+  if (!v.open && v.packet && v.pr && v.task.tier === 1 && v.lock) {
+    const last = stageMarkers(v.lock, v.task.id).at(-1);
+    if (last?.who === claimant && last.verb === "Review claim") return { kind: "continue", of: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, builder: v.owner, packet: true, at: v.at };
+  }
   if (v.open && v.owner === claimant) {
     // A blocked task waits for another session or the owner; its holder keeps going on anything else it holds (D-085 (3), D-200).
     if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); a session that neither raised the block nor holds the task, or the owner, clears it (D-200)` };
