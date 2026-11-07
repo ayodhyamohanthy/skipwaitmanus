@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { GATE_STEP, heldAllBy, pickNextTask, statusBoard } from "./nextTaskCore.mjs";
+import { GATE_STEP, heldAllBy, leaseFor, pickNextTask, statusBoard } from "./nextTaskCore.mjs";
 import { renderPick } from "./nextTaskText.mjs";
 const NOW = Date.parse("2026-11-08T04:00:00+05:30"), HOUR = 3600000;
 const HEAD = "a".repeat(40), ARCH = "agent/architect/p", REVIEW = "agent/review/p", PR = "https://example.test/pr/1";
@@ -35,6 +35,14 @@ describe("PICKER-architect-review-route", () => {
     const extra = { claimant: "Other · 1", branches: new Map([[ARCH, arch], [REVIEW, lock([claim], 1000)]]) };
     expect(pick(extra)).toMatchObject({ kind: "continue", of: "review", work: ARCH, lock: REVIEW, packet: true });
     expect(heldAllBy(input(extra))).toContainEqual(expect.objectContaining({ of: "review", work: ARCH, lock: REVIEW, packet: true }));
+    expect(leaseFor(pick(extra), input(extra).branches, NOW)).toEqual({ ref: REVIEW, verb: "Heartbeat", id: "P", reclaim: false, retry: false });
+  });
+  it("(l) packet fix, pass and land markers never become review-lock continuations", () => {
+    for (const marker of [{ ...claim, verb: "Fix claim" }, pass, { ...claim, verb: "Land claim" }]) {
+      const extra = { claimant: "Other · 1", branches: new Map([[ARCH, arch], [REVIEW, lock([claim, marker], 1000)]]) };
+      expect(pick(extra).kind).not.toBe("continue");
+      expect(heldAllBy(input(extra))).not.toContainEqual(expect.objectContaining({ lock: REVIEW }));
+    }
   });
   it("(g) passed gate-only red skips for CI rerun, never architect or fix", () => {
     const got = pick({ branches: new Map([[ARCH, arch], [REVIEW, lock([claim, pass])]]) });
