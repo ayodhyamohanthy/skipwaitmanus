@@ -5304,6 +5304,28 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-R4",
+      "title": "Release 4, referrer: referrer, referrer-home, invite, post-opportunity (email-review when its straggler lands; the queue went live in place, D-149)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r4",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer",
+        "D-048-p3-referrer-home",
+        "D-048-p3-invite",
+        "D-048-p3-post"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts"
+      ],
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names only the four surfaces whose output it releases (D-223 (1)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines; the kit dropped two D-176 strings the goal version never had; confirm-not-port, verify at build time); referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-222-referral-count-shell",
       "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
       "row": "D-048",
@@ -5468,7 +5490,7 @@
       "tier": 2,
       "lane": "support-promises",
       "branch": "agent/queue/support-a",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-277",
       "dependsOn": [],
       "owns": [
@@ -5576,14 +5598,26 @@
         "D-086-demand-list",
         "D-174-pool-nudges"
       ],
-      "note": "D-289 packet §5.1 (Tier 1: referrer identity on a public payload and referrer inbox data; D-223 (3)). Builds shared/requestInboxLink.ts (switch REQUEST_INBOX_LINK_ENABLED=false, screenNameInputSchema strict, normalizeScreenName, isIdentifyingScreenName, publicReferralLinkSchema, inboxDirectFlagSchema, §4.3/§4.4/§4.9 copy; moves isSafeFastTrackAlias here, server/db.ts re-exports), server/referrerScreenName.ts (setReferrerScreenName: 409 from the unique index, never a pre-read race; mints a row first through getOrCreateReferrerFastTrackLink when absent), resumeReferrerFastTrackLink (verified employee only, fresh linkCode, alias kept - fixes the permanent-pause defect in §3.3), screenName in the two public resolvers under the switch (null while generated, so a seeker never sees ref-), askedYouDirectly in listCompanyReferralInboxByState (§4.7), PUT /me/screen-name and POST /me/resume added to D-057's gated list with its pin test, and the red-first tests T1-T8 of §5.1. db.ts ownership is only the named functions and the one inbox field, after D-174-pool-nudges; docs are the release row's. Red-first tests must fail on main for the stated reason (§5.1)."
+      "note": "D-289 packet §5.1 (Tier 1: referrer identity on a public payload and referrer inbox data; D-223 (3)). Builds shared/requestInboxLink.ts (switch REQUEST_INBOX_LINK_ENABLED=false, screenNameInputSchema strict, normalizeScreenName, isIdentifyingScreenName, publicReferralLinkSchema, inboxDirectFlagSchema, §4.3/§4.4/§4.9 copy; moves isSafeFastTrackAlias here, server/db.ts re-exports), server/referrerScreenName.ts (setReferrerScreenName: 409 from the unique index, never a pre-read race; mints a row first through getOrCreateReferrerFastTrackLink when absent), resumeReferrerFastTrackLink (verified employee only, fresh linkCode, alias kept - fixes the permanent-pause defect in §3.3), screenName in the two public resolvers under the switch (null while generated, so a seeker never sees ref-), askedYouDirectly in listCompanyReferralInboxByState (§4.7), PUT /me/screen-name and POST /me/resume added to D-057's gated list with its pin test, and the red-first tests T1-T12 of §5.1. db.ts ownership is only the named functions and the one inbox field, after D-174-pool-nudges; docs are the release row's. Red-first tests must fail on main for the stated reason (§5.1); the rename/alias paths carry the owner's recipient-stability contract (packet §4.4, tests T9-T12): a previously resolved name later reaches its original person or refuses, and a refusal creates no request, no spend and no notification — the builder stops and reports when durable protection needs schema, and no identity policy is adopted.",
+      "epic": "D-089-request-inbox",
+      "owns": [
+        "shared/requestInboxLink.ts",
+        "shared/requestInboxLink.test.ts",
+        "server/referrerScreenName.ts",
+        "server/referrerScreenName.test.ts",
+        "server/db.ts",
+        "server/privateReferralRoutes.ts",
+        "server/referrerFastTrackLinks.test.ts",
+        "server/privateReferralRoutes.requestInboxLink.test.ts",
+        "server/referrerSessionGate*.test.ts"
+      ]
     },
     {
       "id": "D-089.ui",
       "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): goal UI - link panel, inbox marker and landing line behind the switch",
       "row": "D-089",
       "packet": "docs/plans/D-089-request-inbox.md",
-      "tier": 2,
+      "tier": 1,
       "lane": "request-inbox-ui",
       "branch": "agent/queue/d089-ui",
       "status": "todo",
@@ -5591,9 +5625,40 @@
       "dependsOn": [
         "D-089.server",
         "D-048-p3-links",
-        "D-086.admit"
+        "D-086.admit",
+        "D-048-fix-referrer-home-ux"
       ],
-      "note": "D-289 packet §5.2 (Tier 2: renders the server payloads behind the switch; S-M). Builds the goal-native panel GoalReferralLinkPanel.tsx with referralLinkApi.ts through referrerData's shared fetch helpers (so the D-057 403 handling applies), mounts it once in GoalReferrerHome.tsx under the switch, adds the askedYouDirectly field to referrerData.ts, the 'Sent to you directly' dot-and-text marker on MyCompanyInbox.tsx queue rows, the §4.9 landing line in the D-048-p3-links goal landings and the switch-only FastTrackLink/VanityFastTrackLink pages, one GOAL_UI_COVERAGE.md component line, captures at 1280 and 390 (panel generated, named, editing, taken-name error, paused, step-up; landing with and without a name; queue row with the marker) into design/goal-ui/captures/request-inbox/, and the red-first tests U1-U7 of §5.2. Goal pages stay kit-import-free (D-241 boundary)."
+      "note": "D-289 packet §5.2 (Tier 1: renders the server payloads behind the switch; S-M). Builds the goal-native panel GoalReferralLinkPanel.tsx with referralLinkApi.ts through referrerData's shared fetch helpers (so the D-057 403 handling applies), mounts it once in GoalReferrerHome.tsx under the switch, adds the askedYouDirectly field to referrerData.ts, the 'Sent to you directly' dot-and-text marker on MyCompanyInbox.tsx queue rows, the §4.9 landing line in the D-048-p3-links goal landings and the switch-only FastTrackLink/VanityFastTrackLink pages, one GOAL_UI_COVERAGE.md component line, captures at 1280 and 390 (panel generated, named, editing, taken-name error, paused, step-up; landing with and without a name; queue row with the marker) into design/goal-ui/captures/request-inbox/, and the red-first tests U1-U7 of §5.2. Goal pages stay kit-import-free (D-241 boundary); Tier 1 is declared because MyCompanyInbox.tsx computes Tier 1 (declared-above-computed is not used to relax the review); not buildable until the D-089 (3) pre-build design/placement gate is met (packet §4.10) — release captures are not a waiver. Waits for D-048-fix-referrer-home-ux: both rows own GoalReferrerHome.tsx (this row switch-only), so the capacity-bar repair lands first (validateAssignments overlap rule).",
+      "epic": "D-089-request-inbox",
+      "owns": [
+        "client/src/components/referrer-home/GoalReferralLinkPanel.tsx",
+        "client/src/components/referrer-home/referralLinkApi.ts",
+        "client/src/components/referrer-home/goalReferralLinkPanel.test.tsx",
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx (switch only)",
+        "client/src/components/referrer-home/referrerData.ts",
+        "client/src/pages/MyCompanyInbox.tsx",
+        "client/src/pages/goal/links/**",
+        "client/src/pages/FastTrackLink.tsx (switch only)",
+        "client/src/pages/VanityFastTrackLink.tsx (switch only)",
+        "client/src/pages/requestInboxLanding.test.tsx",
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "design/goal-ui/captures/request-inbox/**"
+      ]
+    },
+    {
+      "id": "PICKER-architect-review-route",
+      "title": "A Tier 1 row's packet pull request whose only red is the review gate is handed its REVIEW by the picker, so a Tier 1 packet can reach the independent pass D-074 (3) and D-190 (3) require (D-294)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-architect-review-route.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-architect-review-route",
+      "status": "todo",
+      "syncedTo": "D-294",
+      "dependsOn": [
+        "REVIEW-GATE-fetch-parity"
+      ],
+      "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
     }
   ]
 }
