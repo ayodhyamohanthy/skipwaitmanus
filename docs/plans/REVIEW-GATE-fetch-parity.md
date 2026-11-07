@@ -128,4 +128,5 @@ Existing suites stay green as written: `scripts/reviewGate.test.ts`, `scripts/sc
 
 ## Status
 
-- `REVIEW-GATE-fetch-parity`: packet drafted by Hark · f114 on `agent/architect/review-gate-fetch-parity` (registered by D-292, 2026-11-07); draft pull request only. Direction: Instinct coordinator, 2026-11-07 (coordinator routing; no owner instruction on this packet).
+- `REVIEW-GATE-fetch-parity`: built — Hark · c3d7 — 2026-11-07 — branch `agent/queue/review-gate-fetch-parity`, PR #1016 (ready; Tier 2, a different session lands). Red-first e52e6f1a: (a)-(d) red with "could not run"; with the fix (f5090d15) 7/7 green. Packet drafted by Hark · f114 on `agent/architect/review-gate-fetch-parity` (registered by D-292). Direction: Instinct coordinator, 2026-11-07 (coordinator routing; no owner instruction on this packet). §8 live proof is owed after landing, by another session.
+- Incident (2026-11-07): #1013 landed without the verifier's report on record. Hark · 87ef verified head f8f2a288 (CI run 42344941484 all four jobs green, validateAssignments [], decision-id-check exit 0, packet claims match run 42339003779 evidence) and marked ready; its --report review was refused (row not yet on main; GitHub closed-pulls fetch failed) and a post-merge retry was lost to a sandbox reset. The late record does not retroactively satisfy the pre-landing report rule.
