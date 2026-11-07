@@ -27,7 +27,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
@@ -290,6 +290,18 @@ async function state() {
     } catch (e) {
       console.error(`next-task: ${e.message}`);
       for (const head of heads) prCi.set(head, { state: "error" });
+    }
+    // PICKER-gate-red-review-route (D-291): a red run on the branch's exact tip gets one read of its jobs, so a red
+    // that is only the review gate's own step can be handed REVIEW. Fail closed: a missing run id, a run not on the
+    // tip, or any fetch or parse error leaves gateOnly false and the picker keeps handing MAKE GREEN.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state !== "red") continue;
+      ci.gateOnly = false;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!Number.isSafeInteger(ci.runId) || !tipSha || ci.sha !== tipSha) continue;
+      try { ci.gateOnly = gateOnlyRedFromJobs(await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`)) === true; }
+      catch (e) { console.error(`next-task: ${e.message}`); }
     }
   }
   // Count main-only commits, not branch-only commits. Missing refs stay unknown,
