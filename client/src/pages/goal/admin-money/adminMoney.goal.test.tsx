@@ -10,9 +10,10 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaymentReviewRequestBody } from "@shared/paymentReview";
-import GoalAdminPayments from "./GoalAdminPayments";
-import GoalAdminCatalogSync from "./GoalAdminCatalogSync";
-import GoalAdminTokenRecovery from "./GoalAdminTokenRecovery";
+import { assertGoalPage } from "@/test/goalPageContract";
+import GoalAdminPayments, { GOAL_PAGE as PAYMENTS_PAGE } from "./GoalAdminPayments";
+import GoalAdminCatalogSync, { GOAL_PAGE as CATALOG_PAGE } from "./GoalAdminCatalogSync";
+import GoalAdminTokenRecovery, { GOAL_PAGE as RECOVERY_PAGE } from "./GoalAdminTokenRecovery";
 
 const { auth, calls } = vi.hoisted(() => ({
   auth: { signedIn: true },
@@ -56,31 +57,51 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("goal /admin/payments", () => {
   it("shows an empty queue and an empty recent list when there is nothing to review", async () => {
-    render(<GoalAdminPayments />);
+    const { container } = render(<GoalAdminPayments />);
     expect(await screen.findByText("Nothing needs review right now.")).toBeTruthy();
     expect(screen.getByText("No completed payments yet.")).toBeTruthy();
+    assertGoalPage(container, PAYMENTS_PAGE);
   });
 
   it("shows the error state with a retry when the queue cannot load", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => reply({ error: "Queue unavailable" }, false, 503)));
-    render(<GoalAdminPayments />);
+    const { container } = render(<GoalAdminPayments />);
     expect(await screen.findByText("Queue unavailable")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     // One state wins: while the payments are not answering, neither empty state renders.
     expect(screen.queryByText("Nothing needs review right now.")).toBeNull();
     expect(screen.queryByText("No completed payments yet.")).toBeNull();
+    assertGoalPage(container, PAYMENTS_PAGE);
   });
 
   it("shows no empty state while the payments are still loading", async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>(resolve => { release = resolve; });
     vi.stubGlobal("fetch", vi.fn(async () => { await gate; return reply(EMPTY_PAYMENTS); }));
-    render(<GoalAdminPayments />);
+    const { container } = render(<GoalAdminPayments />);
     expect(screen.queryByText("Nothing needs review right now.")).toBeNull();
     expect(screen.queryByText("No completed payments yet.")).toBeNull();
+    assertGoalPage(container, PAYMENTS_PAGE);
     release();
     expect(await screen.findByText("Nothing needs review right now.")).toBeTruthy();
     expect(screen.getByText("No completed payments yet.")).toBeTruthy();
+    assertGoalPage(container, PAYMENTS_PAGE);
+  });
+
+  it("keeps the goal contract on the signed-out screen", () => {
+    auth.signedIn = false;
+    const { container } = render(<GoalAdminPayments />);
+    assertGoalPage(container, PAYMENTS_PAGE);
+  });
+
+  it("puts the oldest flagged payment first: the one next step reveals it", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [PAYMENT] });
+    }));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review the oldest flagged payment" }));
+    expect(document.activeElement?.getAttribute("id")).toBe(`payment-note-${PAYMENT.id}`);
   });
 
   it("sends one decision to the exact payment-review endpoint with the exact body", async () => {
@@ -89,9 +110,10 @@ describe("goal /admin/payments", () => {
       if (init?.method === "POST") return reply({ payment: null });
       return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [PAYMENT] });
     }));
-    render(<GoalAdminPayments />);
+    const { container } = render(<GoalAdminPayments />);
     fireEvent.click(await screen.findByRole("button", { name: "Add 3 credits" }));
     await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST" && call.init.body === JSON.stringify({ decision: "credited" }))).toBe(true));
+    assertGoalPage(container, PAYMENTS_PAGE);
   });
 
   it("renders the queue row with goal controls, never the kit's coloured decision pills", async () => {
@@ -104,6 +126,7 @@ describe("goal /admin/payments", () => {
     await screen.findByRole("button", { name: "Add 3 credits" });
     // No kit colour literals reach the rendered row, at any width.
     expect(/#(?:15803d|b91c1c|b45309)/.test(container.innerHTML)).toBe(false);
+    assertGoalPage(container, PAYMENTS_PAGE);
   });
 
   it("requires a confirm step before keeping credits and closing, then calls the exact path", async () => {
@@ -115,7 +138,11 @@ describe("goal /admin/payments", () => {
     }));
     render(<GoalAdminPayments />);
     fireEvent.click(await screen.findByRole("button", { name: "Keep credits and close" }));
-    expect(screen.getByRole("dialog", { name: "Keep the credits and close?" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Keep the credits and close?" });
+    expect(dialog).toBeTruthy();
+    // The open confirm step owns the one black commit; the page's next step steps back.
+    expect(Array.from(document.querySelectorAll("[data-g-primary]")).map(node => node.textContent?.trim())).toEqual(["Confirm: keep credits and close"]);
+    expect(dialog.contains(document.querySelector("[data-g-primary]"))).toBe(true);
     expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Confirm: keep credits and close" }));
     await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST" && call.init.body === JSON.stringify({ decision: "keep_credits" }))).toBe(true));
@@ -129,7 +156,10 @@ describe("goal /admin/payments", () => {
     }));
     render(<GoalAdminPayments />);
     fireEvent.click(await screen.findByRole("button", { name: "Revoke credits" }));
-    expect(screen.getByRole("dialog", { name: "Confirm credit revocation" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Confirm credit revocation" });
+    expect(dialog).toBeTruthy();
+    expect(Array.from(document.querySelectorAll("[data-g-primary]")).map(node => node.textContent?.trim())).toEqual(["Confirm credit revocation"]);
+    expect(dialog.contains(document.querySelector("[data-g-primary]"))).toBe(true);
     expect(calls.some(call => call.url.includes("revoke-credits"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Confirm credit revocation" }));
     await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7/revoke-credits" && call.init?.method === "POST" && call.init.body === "{}")).toBe(true));
@@ -138,9 +168,10 @@ describe("goal /admin/payments", () => {
 
 describe("goal /admin/catalog-sync", () => {
   it("reads the dry run and shows its site and plan", async () => {
-    render(<GoalAdminCatalogSync />);
+    const { container } = render(<GoalAdminCatalogSync />);
     expect(await screen.findByRole("heading", { name: "skipwait-test" })).toBeTruthy();
     expect(screen.getByText(new RegExp(HASH.slice(0, 12)))).toBeTruthy();
+    assertGoalPage(container, CATALOG_PAGE);
   });
 
   it("reads the dry-run counts and the check time in plain words, not raw values", async () => {
@@ -153,8 +184,26 @@ describe("goal /admin/catalog-sync", () => {
 
   it("shows the error state when the catalog cannot be read", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => reply({ error: "Catalog unavailable" }, false, 503)));
-    render(<GoalAdminCatalogSync />);
+    const { container } = render(<GoalAdminCatalogSync />);
     expect(await screen.findByText("Catalog unavailable")).toBeTruthy();
+    assertGoalPage(container, CATALOG_PAGE);
+  });
+
+  it("keeps the goal contract while the dry run is still loading", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.stubGlobal("fetch", vi.fn(async () => { await gate; return reply(DRY_RUN); }));
+    const { container } = render(<GoalAdminCatalogSync />);
+    assertGoalPage(container, CATALOG_PAGE);
+    release();
+    expect(await screen.findByRole("heading", { name: "skipwait-test" })).toBeTruthy();
+    assertGoalPage(container, CATALOG_PAGE);
+  });
+
+  it("keeps the goal contract on the signed-out screen", () => {
+    auth.signedIn = false;
+    const { container } = render(<GoalAdminCatalogSync />);
+    assertGoalPage(container, CATALOG_PAGE);
   });
 
   it("applies only after the site is typed, with the exact plan hash and confirm site", async () => {
@@ -170,8 +219,22 @@ describe("goal /admin/catalog-sync", () => {
 
 describe("goal /admin/token-recovery", () => {
   it("shows the audit-history empty state", async () => {
-    render(<GoalAdminTokenRecovery />);
+    const { container } = render(<GoalAdminTokenRecovery />);
     expect(await screen.findByText("No recovery grants have been recorded.")).toBeTruthy();
+    assertGoalPage(container, RECOVERY_PAGE);
+  });
+
+  it("keeps the goal contract when the audit history cannot load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => reply({ error: "History unavailable" }, false, 503)));
+    const { container } = render(<GoalAdminTokenRecovery />);
+    expect(await screen.findByText("History unavailable")).toBeTruthy();
+    assertGoalPage(container, RECOVERY_PAGE);
+  });
+
+  it("keeps the goal contract on the signed-out screen", () => {
+    auth.signedIn = false;
+    const { container } = render(<GoalAdminTokenRecovery />);
+    assertGoalPage(container, RECOVERY_PAGE);
   });
 
   it("speaks of credits, not tokens, in the admin's own words", async () => {
