@@ -7,8 +7,9 @@
 | Row | `PICKER-land-exact-head` (Tier 2, lane `picker`) |
 | Branch | `agent/queue/picker-land-exact-head` |
 | Registered by | D-293 (2026-11-07), docs-only, on the architect lock `agent/architect/picker-land-exact-head` |
-| Decisions | D-082 (green CI on the exact commit before it reaches `main`), D-085 (one picker, every read known or unknown), D-109 (one CI read per pull request batch; an unreadable read is skipped, not a stop), D-286 (the review route), D-291 (the exact-tip comparison on the gate-only path), D-200 (any session registers rows and records rulings), D-032 (better approach with evidence; the owner decides), D-074 (packets) |
-| Synced to | D-293 |
+| Amended by | D-298 (2026-11-08), docs-only unblock ruling on the same lock: §6 admits five picker suites for fixture-data-only edits, §8 adds case (l), and the `ciOnTip` green-without-a-sha carve-out on PR #1028 is deleted. R1-R5 are unchanged. |
+| Decisions | D-082 (green CI on the exact commit before it reaches `main`), D-085 (one picker, every read known or unknown), D-109 (one CI read per pull request batch; an unreadable read is skipped, not a stop), D-286 (the review route), D-291 (the exact-tip comparison on the gate-only path), D-200 (any session registers rows and records rulings), D-032 (better approach with evidence; the owner decides), D-074 (packets), D-298 (the fixture-data-only admission and the deleted carve-out) |
+| Synced to | D-298 |
 
 ## 1. Goal
 
@@ -122,18 +123,19 @@ The measurements above match the coordinator's description.
 
 **R5. Bounds.** There is no new, renamed or removed required status check, no branch-protection or ruleset change, and no `.github/workflows/ci.yml` change. `ciStateFromRuns`'s own contract and `mainCi` (`:266`, main's push runs) are unchanged. `scripts/review-gate.mjs`, `scripts/scope-check.mjs` and `scripts/queue-gate.mjs` are not touched. The landing procedure (`landSteps`), the landing slot, D-151 independence and D-190 are unchanged. Nothing is waived, downgraded or skipped.
 
-## 6. Files
+## 6. Files (amended by D-298, 2026-11-08)
 
 In scope:
-- `scripts/nextTaskCore.mjs`: the R1 helper and its use at `:584`, the R2 branch in `actionFor` before `:783`, the R3 Tier 1 skip in `tier1(v)`, and the `continue` `of` at `:915`.
+- `scripts/nextTaskCore.mjs`: the R1 helper and its use at `:584`, the R2 branch in `actionFor` before `:783`, the R3 Tier 1 skip in `tier1(v)`, and the `continue` `of` at `:915`. R1 means what it says: a green state whose `sha` is not a string is `"no-tip-ci"`, never green. The `// Unit-test fixtures passing bare { state: "green" } without sha stay green.` carve-out at `:320-321` on PR #1028's head `ce23492f` is deleted (D-298 (2)): it is a production fail-open on a run payload with no `head_sha`, and it contradicts R1.
 - `scripts/next-task.mjs`: the single R4 hunk in `state()` after `:289`.
 - `scripts/nextTaskLandExactHead.test.ts` (new): §8.
+- **Fixture data only (D-298 (5)):** `scripts/nextTask.test.ts`, `scripts/nextTaskArchitectLanding.test.ts`, `scripts/nextTaskAvoidLand.test.ts`, `scripts/nextTaskHeartbeatSlot.test.ts`, `scripts/nextTaskLandingWaitFallthrough.test.ts`. Allowed: a `sha` on a green `prCi` entry equal to that branch's `tipSha`; a `tipSha` on a branch fixture that has none; an explicit `prCi` where a Tier 1 landing fixture omitted one; and, in the heartbeat harness's injected fetch, a completed successful `ci.yml` run whose `head_sha` is the disposable origin's real branch tip instead of `workflow_runs: []`. Forbidden: deleting, renaming, skipping, todo-ing or focusing a test; removing or loosening an assertion; changing any expected value, any `it`/`describe` title or any `PINNED_TESTS` entry; defaulting an omitted `prCi` to green (omitted must keep meaning `unknown`); and any edit that is not the CI/tip data the fixture always meant. Measured: with the carve-out deleted these five suites fail 37 cases, and with these data-only amendments all 287 cases in the ten `scripts/nextTask*.test.ts` files pass, `testIntegrityViolations` returns `[]`, and the 7 assertion lines touched in `nextTask.test.ts` keep their expectations byte-identical (D-298 (3)).
 
 Always allowed: `docs/plans/assignments.json` (this row's status at landing) and this packet's `## Status`.
 
-Out of scope, and not edited: `scripts/nextTaskText.mjs`, `scripts/review-gate.mjs`, `scripts/scope-check.mjs`, `scripts/queue-gate.mjs`, `.github/workflows/ci.yml`, `scripts/nextTask.test.ts` and the other existing picker suites (they must stay green as written), and anything under `server/`, `client/`, `shared/` or `drizzle/`. If a needed hunk falls outside this set, stop and `--report blocked` with the measured reason instead of widening (the D-291 precedent).
+Out of scope, and not edited: `scripts/nextTaskText.mjs`, `scripts/review-gate.mjs`, `scripts/scope-check.mjs`, `scripts/queue-gate.mjs`, `.github/workflows/ci.yml`, `scripts/nextTaskGateRedReview.test.ts` and `scripts/nextTaskLandedMarkerContinuity.test.ts` (both pass under strict R1 as written, measured), every other existing picker suite, and anything under `server/`, `client/`, `shared/` or `drizzle/`. If a needed hunk falls outside this set, stop and `--report blocked` with the measured reason instead of widening (the D-291 precedent).
 
-**No `owns` field (measured, not chosen).** `scripts/nextTaskCore.mjs` is already owned by the unstarted rows `PICKER-fullstack-lights`, `PICKER-qa-stage` and `PICKER-landing-wait-fallthrough` (and `scripts/next-task.mjs` by the first two). `validateAssignments` rejects two rows owning a path when neither waits on the other, and `dependsOn` edges to those rows would park this fix behind unstarted work. So, like `PICKER-gate-red-review-route` (D-286 (4)), the build serializes on the `picker` lane, and the files it may change are the three named here.
+**No `owns` field (measured, not chosen).** `scripts/nextTaskCore.mjs` is already owned by the unstarted rows `PICKER-fullstack-lights`, `PICKER-qa-stage` and `PICKER-landing-wait-fallthrough` (and `scripts/next-task.mjs` by the first two); `scripts/nextTask.test.ts` by the first two, and `scripts/nextTaskLandingWaitFallthrough.test.ts` by the third (D-298 (6)). `validateAssignments` rejects two rows owning a path when neither waits on the other, and `dependsOn` edges to those rows would park this fix behind unstarted work. So, like `PICKER-gate-red-review-route` (D-286 (4)), the build serializes on the `picker` lane, and the files it may change are the ones named here.
 
 ## 7. Dependencies
 
@@ -155,7 +157,9 @@ Core cases drive `pickNextTask` and `statusBoard` with fixtures in the style of 
 - (j) **Own-work continue.** The holder of the row in (a) gets `continue` with `of: "build"`, not `"land"`. *Red today.*
 - (k) **Wiring, tip run outside the batch.** The batch holds only a green run on `S_old`, and the `head_sha=<tip>` read answers a green completed run on the tip → LAND. That read answers `[]` → no LAND (*red today*). That read answers HTTP 500 → no LAND, with a `next-task:` error on stderr (*red today*). Each of these issues at most one `head_sha` read per head.
 
-Existing suites stay green as written: `scripts/nextTask.test.ts`, `scripts/nextTaskGateRedReview.test.ts`, `scripts/nextTaskAvoidLand.test.ts`, `scripts/nextTaskArchitectLanding.test.ts`, `scripts/nextTaskLandedMarkerContinuity.test.ts`, `scripts/nextTaskHeartbeatSlot.test.ts`.
+- (l) **Green with no sha string → `"no-tip-ci"` (D-298 (2), (5)).** `ciOnTip({ state: "green" }, S_tip)` and `ciOnTip({ state: "green", sha: undefined }, S_tip)` both return `state: "no-tip-ci"`, and a `pickNextTask` board whose open Tier 2 pull request carries that state is not handed `"land"` (quiet → `kind: "green"`, busy → the R2 wait skip). This pins the deleted carve-out: a completed non-red run whose payload has no `head_sha` must never read as landable. *Red on PR #1028's head `ce23492f`*, where `:320-321` returns it green; `ciOnTip` does not exist on `main` `8e1be413`, so this case is not part of the *red today* set.
+
+Existing suites stay green: `scripts/nextTaskGateRedReview.test.ts` and `scripts/nextTaskLandedMarkerContinuity.test.ts` as written (measured under strict R1), and `scripts/nextTask.test.ts`, `scripts/nextTaskAvoidLand.test.ts`, `scripts/nextTaskArchitectLanding.test.ts`, `scripts/nextTaskHeartbeatSlot.test.ts` and `scripts/nextTaskLandingWaitFallthrough.test.ts` with the fixture-data-only amendments §6 admits (D-298). Every assertion and every expected value in all seven stays as it is.
 
 ## 9. Definition of done
 
@@ -172,9 +176,16 @@ Existing suites stay green as written: `scripts/nextTask.test.ts`, `scripts/next
 
 ## 11. Stop and ask
 
-- If R1-R4 cannot be met inside the three files of §6, stop and `--report blocked` with the measured reason.
+- If R1-R4 cannot be met inside the files §6 admits, stop and `--report blocked` with the measured reason.
+- If one of the five admitted suites cannot be made green without changing an expected value, removing or loosening an assertion, or editing a title, stop and `--report blocked` naming that case (D-298 (5)): it would mean R1 changes behaviour the suite deliberately pins, and the owner decides (D-032). Do not edit the expectation to fit the fix.
 - If the live proof still shows a LAND hand for a pull request whose tip has no green run, stop. Do not widen the hand-out logic further.
 
 ## Status
 
 - `PICKER-land-exact-head`: blocked — Antigravity · 2651 — 2026-11-08 — R1-R4 cannot be met within the 3 files of §6: nextTaskHeartbeatSlot.test.ts lines 76, 131-174 mocks workflow_runs: [] and asserts Land claim on agent/queue/landing ("as today"), which D-293 R1/R3 stops; and nextTask.test.ts lines 428, 479, 1488 omit prCi for Tier 1 passed landings. Updating those mocks requires widening scope beyond §6 (the D-291 precedent). Branch agent/queue/picker-land-exact-head carries full R1-R4 implementation and 13/13 passing tests in nextTaskLandExactHead.test.ts.
+- `PICKER-land-exact-head`: packet drafted by Hark · ebcc on `agent/architect/picker-land-exact-head` (registered by D-293, 2026-11-07). Draft pull request only: no build and no LAND, and it is not ready for review until the coordinator confirms normal registration and build routing.
+- `PICKER-land-exact-head`: built by `Antigravity · 2651` on `agent/queue/picker-land-exact-head`, PR #1028 (draft), head `ce23492f`; reported blocked at `b06fcabb` because §6's three files could not carry R1 (CI run `42403183658`, job `128495186939`, seven failing cases).
+- `PICKER-land-exact-head`: block cleared by D-298 (2026-11-08), ruled by `Qoder · 9113` under D-200 on `agent/architect/picker-land-exact-head`. §6 now admits five picker suites for fixture-data-only edits, §8 adds case (l), and the `ciOnTip` carve-out at `scripts/nextTaskCore.mjs:320-321` on `ce23492f` is deleted. Measured on a disposable worktree at `ce23492f`: the deletion alone fails 37 picker cases; with the data-only amendments all 287 cases in the ten `scripts/nextTask*.test.ts` files pass and `testIntegrityViolations` returns `[]`. The row stays `todo`, Tier 2, lane `picker`, `dependsOn: []`, no `owns`; `syncedTo` is `D-298`. The holder continues on the same branch and PR #1028, which lands only on green required CI on its exact tip (D-082). No code is edited by the ruling.
+
+
+- `PICKER-land-exact-head`: resumed by Instinct · 09c7 through ordinary MAKE GREEN takeover e7e851c4 on 2026-11-08 02:20 IST. Read current main 702e4f48, D-293/D-298 and packet; prior ce23492f failure remains. Applying only registered fixture-data changes and strict R1 missing-sha rejection, preserving every assertion. Separate review and exact-head CI remain owed; no landing claim.
