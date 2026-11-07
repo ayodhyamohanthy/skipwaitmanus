@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-11-07T09:27:42.070Z",
+  "base": "http://localhost:5199",
+  "runs": [
+    {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1,
+      "url": "http://localhost:5199/support",
+      "status": 200,
+      "h1": "Contact support.",
+      "leaked": [],
+      "horizontalOverflow": false,
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at TRPCClientError2.from (<local>/<vite-dep>)\n    at <local>/<vite-dep>"
+      ],
+      "failedRequests": [],
+      "file": "support-promises-1280.png"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "dpr": 2,
+      "url": "http://localhost:5199/support",
+      "status": 200,
+      "h1": "Contact support.",
+      "leaked": [],
+      "horizontalOverflow": false,
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at TRPCClientError2.from (<local>/<vite-dep>)\n    at <local>/<vite-dep>"
+      ],
+      "failedRequests": [],
+      "file": "support-promises-390.png"
+    }
+  ]
+}
