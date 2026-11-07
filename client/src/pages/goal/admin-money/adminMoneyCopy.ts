@@ -16,3 +16,22 @@ export const MONEY_PAGE_BODY: Record<MoneyDoor, string> = {
   "/admin/catalog-sync": "Read the dry run, then apply the same plan by typing the site. Nothing is changed until you confirm.",
   "/admin/token-recovery": "Resolve a real payment or support case with a reasoned, audited grant. A support reference and your confirmation are required.",
 };
+
+// Catalog dry-run count keys arrive as the server's field names; the admin
+// reads plain words (design-review finding 3, 2026-11-05).
+export const CATALOG_COUNT_LABELS: Record<string, string> = {
+  desired: "Desired in the catalog",
+  correct: "Matching the sold catalog",
+  mismatched: "Not matching the sold catalog",
+  blocked: "Blocked from syncing",
+  toCreate: "To create",
+  itemPricesToCreate: "Item prices to create",
+  extras: "On the site but not for sale",
+  excluded: "Excluded from the sync",
+};
+
+export function catalogCountLabel(key: string): string {
+  if (CATALOG_COUNT_LABELS[key]) return CATALOG_COUNT_LABELS[key];
+  // Unknown key: split camelCase into words rather than show the raw name.
+  return key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, ch => ch.toUpperCase());
+}

@@ -29,7 +29,7 @@ export default function GoalAdminTokenRecovery() {
   const loadHistory = async () => { if (!isSignedIn) return; try { const payload = await authFetch("/api/admin/token-recovery/adjustments"); setHistory(payload.adjustments || []); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load recovery history"); } };
   useEffect(() => { void loadHistory(); }, [isSignedIn]);
   const searchUsers = async (event: FormEvent) => { event.preventDefault(); if (query.trim().length < 2) { setError("Enter at least two characters to find a user."); return; } setSearching(true); setError(""); setSuccess(""); try { const payload = await authFetch(`/api/admin/token-recovery/users?query=${encodeURIComponent(query.trim())}`); setUsers(payload.users || []); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not find user accounts"); } finally { setSearching(false); } };
-  const grant = async (event: FormEvent) => { event.preventDefault(); if (!selected) { setError("Choose the user who needs a token recovery grant."); return; } if (!confirmed) { setError("Confirm that you reviewed the payment or support issue first."); return; } setSaving(true); setError(""); setSuccess(""); try { const payload = await authFetch("/api/admin/token-recovery/grants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientUserId: selected.id, role, tokenCount, caseReference, reason, confirmed: true }) }); setSuccess(`${payload.grant.tokenCount} token${payload.grant.tokenCount === 1 ? "" : "s"} added. New ${role === "job_seeker" ? "Job Seeker" : "Referrer"} balance: ${payload.grant.newBalance}.`); setCaseReference(""); setReason(""); setConfirmed(false); await loadHistory(); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not create this recovery grant"); } finally { setSaving(false); } };
+  const grant = async (event: FormEvent) => { event.preventDefault(); if (!selected) { setError("Choose the user who needs a token recovery grant."); return; } if (!confirmed) { setError("Confirm that you reviewed the payment or support issue first."); return; } setSaving(true); setError(""); setSuccess(""); try { const payload = await authFetch("/api/admin/token-recovery/grants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientUserId: selected.id, role, tokenCount, caseReference, reason, confirmed: true }) }); setSuccess(`${payload.grant.tokenCount} credit${payload.grant.tokenCount === 1 ? "" : "s"} added. New ${role === "job_seeker" ? "Job Seeker" : "Referrer"} balance: ${payload.grant.newBalance}.`); setCaseReference(""); setReason(""); setConfirmed(false); await loadHistory(); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not create this recovery grant"); } finally { setSaving(false); } };
 
   if (!isSignedIn) {
     return (
@@ -75,8 +75,8 @@ export default function GoalAdminTokenRecovery() {
                 <option value="job_seeker">Job Seeker</option><option value="referrer">Referrer</option>
               </select>
             </label>
-            <label className="text-g-label text-g-ink">Tokens to add
-              <input aria-label="Tokens to add" value={tokenCount} onChange={event => setTokenCount(Math.max(1, Math.min(1000, Number(event.target.value) || 1)))} type="number" min="1" max="1000" inputMode="numeric" className="mt-2 block w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink" />
+            <label className="text-g-label text-g-ink">Credits to add
+              <input aria-label="Credits to add" value={tokenCount} onChange={event => setTokenCount(Math.max(1, Math.min(1000, Number(event.target.value) || 1)))} type="number" min="1" max="1000" inputMode="numeric" className="mt-2 block w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink" />
             </label>
           </div>
           <label className="text-g-label text-g-ink">Payment or support reference
@@ -87,7 +87,7 @@ export default function GoalAdminTokenRecovery() {
           </label>
           <label className="flex items-start gap-3 text-g-body text-g-ink">
             <input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-1 size-4 shrink-0 accent-g-ink" />
-            <span>I reviewed the payment or support issue. This grant adds tokens only; it never marks a payment as paid or bypasses the verified webhook record.</span>
+            <span>I reviewed the payment or support issue. This grant adds credits only; it never marks a payment as paid or bypasses the verified webhook record.</span>
           </label>
           <GoalButton type="submit" variant="primary" busy={saving} busyLabel="Recording…" disabledReason={saving ? undefined : !selected ? "Choose an account first." : !confirmed ? "Confirm you reviewed the case first." : !caseReference.trim() ? "Add the payment or support reference first." : !reason.trim() ? "Write the reason first." : undefined}>Record the recovery grant</GoalButton>
         </form>

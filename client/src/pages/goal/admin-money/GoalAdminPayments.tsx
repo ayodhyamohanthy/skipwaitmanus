@@ -2,9 +2,11 @@
 // copied verbatim from AdminPaymentsReview.tsx: load, one decision per parked
 // payment, and the credit-revocation refund. Only the presentation changes
 // (packet §4.1). Status is dot+text with goal tokens, never inline colour.
+// Design-review repairs (2026-11-05): the queue renders the goal review row
+// (GoalPaymentReviewRow) instead of the kit's coloured pills, and the error
+// state wins over the empty states while the queue is not answering.
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
-import PaymentReviewRow, { type ReviewQueuePayment, type ReviewSubmitResult } from "@/components/admin/PaymentReviewRow";
 import { compactDate, displayPaymentRef as displayRef, formatAmount } from "@/components/admin/paymentReviewCopy";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -12,7 +14,9 @@ import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalStatus } from "@/components/goal/GoalStatus";
 import { readApiJson } from "@/lib/apiResponse";
 import { paymentReviewOutcomeSchema, type PaymentReviewRequestBody } from "@shared/paymentReview";
+import type { ReviewQueuePayment, ReviewSubmitResult } from "@/components/admin/PaymentReviewRow";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
+import GoalPaymentReviewRow from "./GoalPaymentReviewRow";
 
 type ReviewPayment = { id: number; provider: string; providerHostedPageId: string | null; checkoutIntentId: string | null; userId: number; role: "job_seeker" | "referrer"; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: string | Date; userEmail: string | null; status?: "credited" | "refunded" | "requires_review" };
 
@@ -96,8 +100,8 @@ export default function GoalAdminPayments() {
           <GoalStatus status={payments.length ? "waiting" : "accepted"} label={payments.length ? `${payments.length} under review` : "Queue clear"} />
         </div>
         {loading ? <GoalSkeletonRows density="queue" count={3} className="p-4" /> : null}
-        {!loading && !payments.length ? <GoalEmptyState title="Nothing needs review right now." body="Reconciled rows move out of this queue." /> : null}
-        <ul>{payments.map(payment => <li key={payment.id} className="border-b border-g-hairline last:border-b-0"><PaymentReviewRow payment={payment} submit={submitReview} onReload={() => { void load(); }} /></li>)}</ul>
+        {!loading && !error && !payments.length ? <GoalEmptyState title="Nothing needs review right now." body="Reconciled rows move out of this queue." /> : null}
+        <ul>{payments.map(payment => <GoalPaymentReviewRow key={payment.id} payment={payment} submit={submitReview} onReload={() => { void load(); }} />)}</ul>
       </section>
       <section aria-label="Recent credited payments" className="mt-6 border border-g-hairline bg-g-surface">
         <h2 className="border-b border-g-hairline p-4 text-g-label text-g-ink">Recent credited payments</h2>

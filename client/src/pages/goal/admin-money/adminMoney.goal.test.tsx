@@ -3,6 +3,9 @@
 // the *behaviour*, not the new exports: loading/empty/error states, the confirm
 // step before a refund or a grant, and the exact server call of every action
 // (packet §4.1, §5). Mutating any of those calls must turn a test red.
+// Design-review repairs (Instinct pass, 2026-11-05): one state wins between
+// error and empty; the review queue renders the goal row, never the kit's
+// coloured pills; catalog counts and the money wording read in plain words.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,11 +23,8 @@ vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: auth.signedIn, getToken: async () => "test-token" }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-vi.mock("@/components/admin/PaymentReviewRow", () => ({
-  default: ({ payment, submit }: { payment: { id: number }; submit: (id: number, body: PaymentReviewRequestBody) => Promise<unknown> }) => (
-    <button type="button" onClick={() => { void submit(payment.id, { decision: "credited" }); }}>{`Decide ${payment.id}`}</button>
-  ),
-}));
+// The goal pages render the goal review row (GoalPaymentReviewRow), so no mock
+// stands in for it here: these tests click the row's real decision buttons.
 
 const reply = (payload: unknown, ok = true, status = 200) => ({ ok, status, url: "", json: async () => payload });
 const HASH = "a".repeat(64);
@@ -32,10 +32,10 @@ const DRY_RUN = {
   version: 1, site: "skipwait-test", environment: "test", checkedAt: "2026-11-04T00:00:00.000Z", planHash: HASH,
   family: { id: null, action: "reuse", reason: "Family present" },
   toCreate: [], correct: [], mismatched: [], blocked: [], extras: [], excluded: [],
-  counts: { desired: 0, correct: 0, mismatched: 0, blocked: 0, toCreate: 0, itemPricesToCreate: 0, extras: 0, excluded: 0 },
+  counts: { desired: 0, correct: 0, mismatched: 0, blocked: 0, toCreate: 0, itemPricesToCreate: 2, extras: 0, excluded: 0 },
 };
 const EMPTY_PAYMENTS = { payments: [] };
-const PAYMENT = { id: 7, provider: "chargebee", userId: 3, role: "job_seeker", tokenCount: 3, amount: 499, currency: "INR", reconciliationReason: "Held", createdAt: "2026-11-04T00:00:00.000Z", userEmail: null, status: "credited" };
+const PAYMENT = { id: 7, provider: "chargebee", providerHostedPageId: "hosted-7", checkoutIntentId: null, userId: 3, role: "job_seeker", tokenCount: 3, amount: 499, currency: "INR", reconciliationReason: "Held", createdAt: "2026-11-04T00:00:00.000Z", userEmail: null, reviewKind: "awaiting_credit" };
 
 beforeEach(() => {
   auth.signedIn = true;
@@ -66,6 +66,8 @@ describe("goal /admin/payments", () => {
     render(<GoalAdminPayments />);
     expect(await screen.findByText("Queue unavailable")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    // One state wins: while the queue is not answering, the clear-queue empty state stays off.
+    expect(screen.queryByText("Nothing needs review right now.")).toBeNull();
   });
 
   it("sends one decision to the exact payment-review endpoint with the exact body", async () => {
@@ -75,8 +77,35 @@ describe("goal /admin/payments", () => {
       return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [PAYMENT] });
     }));
     render(<GoalAdminPayments />);
-    fireEvent.click(await screen.findByRole("button", { name: "Decide 7" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add 3 credits" }));
     await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST" && call.init.body === JSON.stringify({ decision: "credited" }))).toBe(true));
+  });
+
+  it("renders the queue row with goal controls, never the kit's coloured decision pills", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (init?.method === "POST") return reply({ payment: null });
+      return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [PAYMENT] });
+    }));
+    const { container } = render(<GoalAdminPayments />);
+    await screen.findByRole("button", { name: "Add 3 credits" });
+    // No kit colour literals reach the rendered row, at any width.
+    expect(/#(?:15803d|b91c1c|b45309)/.test(container.innerHTML)).toBe(false);
+  });
+
+  it("requires a confirm step before keeping credits and closing, then calls the exact path", async () => {
+    const keepPayment = { ...PAYMENT, reviewKind: "refunded_after_credit" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (init?.method === "POST") return reply({ payment: null });
+      return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [keepPayment] });
+    }));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Keep credits and close" }));
+    expect(screen.getByRole("dialog", { name: "Keep the credits and close?" })).toBeTruthy();
+    expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm: keep credits and close" }));
+    await waitFor(() => expect(calls.some(call => call.url === "/api/admin/payments/review/7" && call.init?.method === "POST" && call.init.body === JSON.stringify({ decision: "keep_credits" }))).toBe(true));
   });
 
   it("requires a confirm step before revoking credits, then calls the exact revoke path", async () => {
@@ -101,6 +130,14 @@ describe("goal /admin/catalog-sync", () => {
     expect(screen.getByText(new RegExp(HASH.slice(0, 12)))).toBeTruthy();
   });
 
+  it("reads the dry-run counts and the check time in plain words, not raw values", async () => {
+    render(<GoalAdminCatalogSync />);
+    await screen.findByRole("heading", { name: "skipwait-test" });
+    expect(screen.getByText("Item prices to create")).toBeTruthy();
+    expect(screen.queryByText("itemPricesToCreate")).toBeNull();
+    expect(screen.queryByText(/checked 2026-11-04T00:00:00/)).toBeNull();
+  });
+
   it("shows the error state when the catalog cannot be read", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => reply({ error: "Catalog unavailable" }, false, 503)));
     render(<GoalAdminCatalogSync />);
@@ -122,6 +159,13 @@ describe("goal /admin/token-recovery", () => {
   it("shows the audit-history empty state", async () => {
     render(<GoalAdminTokenRecovery />);
     expect(await screen.findByText("No recovery grants have been recorded.")).toBeTruthy();
+  });
+
+  it("speaks of credits, not tokens, in the admin's own words", async () => {
+    render(<GoalAdminTokenRecovery />);
+    expect(await screen.findByText("No recovery grants have been recorded.")).toBeTruthy();
+    expect(screen.getByText("Credits to add")).toBeTruthy();
+    expect(screen.queryByText("Tokens to add")).toBeNull();
   });
 
   it("refuses a grant until the account, reference, reason and confirmation are present", async () => {
@@ -149,7 +193,7 @@ describe("goal /admin/token-recovery", () => {
   });
 
   it("never renders inline colour literals in the goal money-ops sources", async () => {
-    const files = ["GoalAdminPayments.tsx", "GoalAdminCatalogSync.tsx", "GoalAdminTokenRecovery.tsx", "AdminMoneyGoalFrame.tsx", "adminMoneyCopy.ts"];
+    const files = ["GoalAdminPayments.tsx", "GoalAdminCatalogSync.tsx", "GoalAdminTokenRecovery.tsx", "AdminMoneyGoalFrame.tsx", "adminMoneyCopy.ts", "GoalPaymentReviewRow.tsx"];
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     for (const file of files) {

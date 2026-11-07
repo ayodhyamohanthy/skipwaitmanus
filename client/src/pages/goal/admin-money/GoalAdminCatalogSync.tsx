@@ -11,6 +11,7 @@ import { GoalStatus } from "@/components/goal/GoalStatus";
 import { readApiJson } from "@/lib/apiResponse";
 import { catalogSyncApplyResponseSchema, catalogSyncDryRunSchema, type CatalogSyncApplyResponse, type CatalogSyncDryRun } from "@shared/catalogSync";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
+import { catalogCountLabel } from "./adminMoneyCopy";
 
 const DRY_RUN_PATH = "/api/admin/billing/catalog-sync";
 const APPLY_PATH = "/api/admin/billing/catalog-sync/apply";
@@ -111,14 +112,14 @@ export default function GoalAdminCatalogSync() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-g-hairline p-4">
             <div>
               <h2 className="text-g-label text-g-ink">{dryRun.site}</h2>
-              <p className="mt-1 text-g-meta text-g-ink-3">{dryRun.environment} · checked {dryRun.checkedAt}</p>
+              <p className="mt-1 text-g-meta text-g-ink-3">{dryRun.environment} · checked {new Date(dryRun.checkedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })} IST</p>
             </div>
             <GoalStatus status={dryRun.mismatched.length || dryRun.blocked.length ? "expired" : "accepted"} label={dryRun.mismatched.length || dryRun.blocked.length ? "Needs a decision" : "Matches the catalog"} />
           </div>
           <ul className="grid gap-2 p-4">
             {counts.map(([key, value]) => (
               <li key={key} className="flex items-center justify-between gap-3 text-g-body">
-                <span className="text-g-ink-2">{key}</span>
+                <span className="text-g-ink-2">{catalogCountLabel(key)}</span>
                 <GoalStatus status={Number(value) > 0 ? "waiting" : "accepted"} label={String(value)} />
               </li>
             ))}
