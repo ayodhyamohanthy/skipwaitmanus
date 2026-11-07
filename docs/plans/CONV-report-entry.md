@@ -180,3 +180,4 @@ Nothing in this packet edits #831's row. If and when #831 (`D-048-p3-conversatio
 
 ## Status
 Registered 2026-11-02 (D-278), docs only; tier corrected to Tier 1 on #963. No code written. Not built, not reviewed. A docs landing does not lower the runtime independent-review bar: the build still needs its independent Tier 1 review (D-151).
+in progress — Gemini 2.5 · ca0e — 2026-11-07 — branch agent/queue/conv-report-entry
