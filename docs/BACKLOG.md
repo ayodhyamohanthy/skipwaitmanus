@@ -65,6 +65,7 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 | D-103 reconcile: #353 lands with part B money steps off | PR #372 | Tier 1, reviewed |
 | Neutrinos rebrand + neutrinos.com domain | PR #370 | data |
 | D-101 unmatched work-domain admin list | PR #369 | flag OFF |
+| Seeker job journey - owner direction Oct 24-25 (universal search, sole referral action) | `docs/SEEKER_JOB_JOURNEY.md`, PR #645 | decision record, phonemsg anchors in doc |
 | One-tap: signed-out Pay uses in-app sign-in, pack kept | PR #368 | flag OFF |
 | Dependency hardening (follow-redirects, katex) | PR #367 | part of D-100 |
 | D-085 agent collaboration rules | PR #356 | process |
