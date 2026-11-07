@@ -123,4 +123,4 @@ Drive `pickNext` through the same fixtures `scripts/nextTaskArchitectLanding.tes
 
 ## Status
 
-- `PICKER-architect-review-route`: packet drafted by Hark · b06c on `agent/architect/picker-architect-review-route` (registered by D-294, 2026-11-07, coordinator routing); draft pull request only, waiting for the coordinator to confirm normal registration and build routing before it is marked ready or landed.
+- `PICKER-architect-review-route`: packet drafted by Hark · b06c on `agent/architect/picker-architect-review-route` (registered by D-294, 2026-11-07). Direction: Instinct coordinator, 2026-11-07 (coordinator routing confirmed; no owner instruction on this packet).
