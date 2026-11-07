@@ -16,7 +16,10 @@ import { readApiJson } from "@/lib/apiResponse";
 import { paymentReviewOutcomeSchema, type PaymentReviewRequestBody } from "@shared/paymentReview";
 import type { ReviewQueuePayment, ReviewSubmitResult } from "@/components/admin/PaymentReviewRow";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
+import { MONEY_GOAL_LINE } from "./adminMoneyCopy";
 import GoalPaymentReviewRow from "./GoalPaymentReviewRow";
+
+export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
 
 type ReviewPayment = { id: number; provider: string; providerHostedPageId: string | null; checkoutIntentId: string | null; userId: number; role: "job_seeker" | "referrer"; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: string | Date; userEmail: string | null; status?: "credited" | "refunded" | "requires_review" };
 
@@ -29,6 +32,8 @@ export default function GoalAdminPayments() {
   const [refundTarget, setRefundTarget] = useState<ReviewPayment | null>(null);
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState("");
+  // An open row confirm dialog owns the one black commit while it is open (D-150).
+  const [openRowDialogs, setOpenRowDialogs] = useState(0);
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -79,6 +84,24 @@ export default function GoalAdminPayments() {
 
   useEffect(() => { void load(); }, [isSignedIn]);
 
+  // The next step is the oldest flagged discrepancy: bring its row into view
+  // and focus its first control. The money decisions themselves stay in the row.
+  const revealOldest = () => {
+    const first = payments[0];
+    if (!first) return;
+    const row = document.getElementById(`payment-row-${first.id}`);
+    row?.scrollIntoView?.({ block: "center" });
+    row?.querySelector<HTMLElement>("input, button")?.focus();
+  };
+  const oldest = payments[0] ?? null;
+  const nextStep = error
+    ? { label: "Reload the queue", reason: "The review queue is not answering. Reload it before deciding anything.", onClick: () => { void load(); }, busy: false }
+    : oldest
+      ? { label: "Review the oldest flagged payment", reason: "The oldest flagged discrepancy comes first. Every decision keeps its confirm step and its audit trail.", onClick: revealOldest, busy: false }
+      : loading
+        ? { label: "Review the oldest flagged payment", reason: "Reading the review queue. Nothing is shown as clear until it loads.", onClick: () => {}, busy: true }
+        : { label: "Reload the queue", reason: "Nothing is waiting for a decision right now. Reload to check again.", onClick: () => { void load(); }, busy: false };
+
   if (!isSignedIn) {
     return (
       <AdminMoneyGoalFrame screen="admin-payments-sign-in" current="/admin/payments">
@@ -93,15 +116,18 @@ export default function GoalAdminPayments() {
   return (
     <AdminMoneyGoalFrame screen="admin-payments" current="/admin/payments">
       <AdminMoneyHeading current="/admin/payments" />
-      {error ? <GoalErrorState title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
-      <section aria-label="Payments under review" className="border border-g-hairline bg-g-surface">
+      <GoalNextStep reason={nextStep.reason}>
+        <GoalButton variant={refundTarget || openRowDialogs > 0 ? "ghost" : "primary"} className="mt-3" busy={nextStep.busy} busyLabel="Reading the queue…" onClick={nextStep.onClick}>{nextStep.label}</GoalButton>
+      </GoalNextStep>
+      {error ? <GoalErrorState className="mt-6" title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
+      <section aria-label="Payments under review" className="mt-6 border border-g-hairline bg-g-surface">
         <div className="flex items-center justify-between gap-3 border-b border-g-hairline p-4">
           <h2 className="text-g-label text-g-ink">Flagged discrepancies</h2>
           <GoalStatus status={payments.length ? "waiting" : "accepted"} label={payments.length ? `${payments.length} under review` : "Queue clear"} />
         </div>
         {loading ? <GoalSkeletonRows density="queue" count={3} className="p-4" /> : null}
         {!loading && !error && !payments.length ? <GoalEmptyState title="Nothing needs review right now." body="Reconciled rows move out of this queue." /> : null}
-        <ul>{payments.map(payment => <GoalPaymentReviewRow key={payment.id} payment={payment} submit={submitReview} onReload={() => { void load(); }} />)}</ul>
+        <ul>{payments.map(payment => <GoalPaymentReviewRow key={payment.id} payment={payment} submit={submitReview} onReload={() => { void load(); }} onConfirmingChange={open => setOpenRowDialogs(count => Math.max(0, count + (open ? 1 : -1)))} />)}</ul>
       </section>
       <section aria-label="Recent credited payments" className="mt-6 border border-g-hairline bg-g-surface">
         <h2 className="border-b border-g-hairline p-4 text-g-label text-g-ink">Recent credited payments</h2>

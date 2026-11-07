@@ -13,9 +13,9 @@ import { GoalStatus } from "@/components/goal/GoalStatus";
 import type { ReviewQueuePayment, ReviewSubmitResult } from "@/components/admin/PaymentReviewRow";
 
 type Failure = { message: string; decision: PaymentReviewDecision; credits?: number; retryable: boolean };
-type Props = { payment: ReviewQueuePayment; submit: (paymentId: number, body: PaymentReviewRequestBody) => Promise<ReviewSubmitResult>; onReload: () => void };
+type Props = { payment: ReviewQueuePayment; submit: (paymentId: number, body: PaymentReviewRequestBody) => Promise<ReviewSubmitResult>; onReload: () => void; onConfirmingChange?: (open: boolean) => void };
 
-export default function GoalPaymentReviewRow({ payment, submit, onReload }: Props) {
+export default function GoalPaymentReviewRow({ payment, submit, onReload, onConfirmingChange }: Props) {
   const kind = parsePaymentReviewKind(payment.reviewKind);
   const pack = payment.tokenCount;
   const countNote = takeBackCountNote(payment.reconciliationReason);
@@ -42,13 +42,14 @@ export default function GoalPaymentReviewRow({ payment, submit, onReload }: Prop
     setFailure({ message: result.message, decision, credits, retryable: result.status === 0 || result.status >= 500 });
   };
 
+  const setConfirm = (next: "revoke_unused" | "keep_credits" | null) => { setConfirming(next); onConfirmingChange?.(next !== null); };
   const open = (decision: PaymentReviewDecision) => {
-    if (decision === "revoke_unused") { setTakeBack(countNote ? "" : String(pack)); setConfirming(decision); return; }
-    if (decision === "keep_credits") { setConfirming(decision); return; }
+    if (decision === "revoke_unused") { setTakeBack(countNote ? "" : String(pack)); setConfirm(decision); return; }
+    if (decision === "keep_credits") { setConfirm(decision); return; }
     void decide(decision);
   };
 
-  return <li className="border-b border-g-hairline p-4 last:border-b-0">
+  return <li id={`payment-row-${payment.id}`} className="border-b border-g-hairline p-4 last:border-b-0">
     <div className="flex items-start justify-between gap-3">
       <h3 className="truncate text-g-label text-g-ink">{displayPaymentRef(payment.id)}</h3>
       {done ? <GoalStatus status="accepted" label="Recorded" /> : <GoalStatus status="waiting" label="Under review" />}
@@ -83,7 +84,7 @@ export default function GoalPaymentReviewRow({ payment, submit, onReload }: Prop
           <label htmlFor={`take-back-${payment.id}`} className="mt-3 block text-g-meta text-g-ink-3">Credits to take back (1 to {pack})</label>
           <input id={`take-back-${payment.id}`} type="number" inputMode="numeric" min={1} max={pack} step={1} value={takeBack} onChange={event => setTakeBack(event.target.value)} className="mt-1 block w-full rounded-g-control border border-g-control-edge bg-g-surface px-3 py-2.5 text-g-body text-g-ink" />
           <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <GoalButton variant="ghost" onClick={() => setConfirming(null)}>Cancel</GoalButton>
+            <GoalButton variant="ghost" onClick={() => setConfirm(null)}>Cancel</GoalButton>
             <GoalButton variant="primary" busy={working} busyLabel="Recording…" disabledReason={takeBackCount === null ? `Enter the credits to take back (1 to ${pack}).` : undefined} onClick={() => { if (takeBackCount !== null) void decide("revoke_unused", takeBackCount); }}>Take back credits</GoalButton>
           </div>
         </section>
@@ -95,7 +96,7 @@ export default function GoalPaymentReviewRow({ payment, submit, onReload }: Prop
           <h4 className="text-g-heading text-g-ink">Keep the credits and close?</h4>
           <p className="mt-2 text-g-body text-g-ink-2">Chargebee already returned this payment's money. Nothing is taken back from {who}'s wallet, and this payment closes for good: there is no undo.</p>
           <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <GoalButton variant="ghost" onClick={() => setConfirming(null)}>Cancel</GoalButton>
+            <GoalButton variant="ghost" onClick={() => setConfirm(null)}>Cancel</GoalButton>
             <GoalButton variant="primary" busy={working} busyLabel="Recording…" onClick={() => void decide("keep_credits")}>Confirm: keep credits and close</GoalButton>
           </div>
         </section>

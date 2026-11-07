@@ -11,7 +11,9 @@ import { GoalStatus } from "@/components/goal/GoalStatus";
 import { readApiJson } from "@/lib/apiResponse";
 import { catalogSyncApplyResponseSchema, catalogSyncDryRunSchema, type CatalogSyncApplyResponse, type CatalogSyncDryRun } from "@shared/catalogSync";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
-import { catalogCountLabel } from "./adminMoneyCopy";
+import { MONEY_GOAL_LINE, catalogCountLabel } from "./adminMoneyCopy";
+
+export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
 
 const DRY_RUN_PATH = "/api/admin/billing/catalog-sync";
 const APPLY_PATH = "/api/admin/billing/catalog-sync/apply";
@@ -104,11 +106,16 @@ export default function GoalAdminCatalogSync() {
   return (
     <AdminMoneyGoalFrame screen="admin-catalog-sync" current="/admin/catalog-sync">
       <AdminMoneyHeading current="/admin/catalog-sync" />
-      {error ? <GoalErrorState title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
-      {loading ? <GoalSkeletonRows density="queue" count={3} className="py-3" /> : null}
-      {!loading && !error && !dryRun ? <GoalEmptyState title="No dry run yet." body="A dry run classifies the configured site against the sold catalog. Nothing is changed by reading it." action={{ label: "Read the dry run", onClick: () => { void load(); } }} /> : null}
+      {!dryRun ? (
+        <GoalNextStep reason={error ? "The catalog did not answer. Reload the dry run before applying anything." : "Read the dry run first: it classifies the configured site against the sold catalog and changes nothing."}>
+          <GoalButton variant="primary" className="mt-3" busy={loading} busyLabel="Reading the dry run…" onClick={() => { void load(); }}>{error ? "Reload the dry run" : "Read the dry run"}</GoalButton>
+        </GoalNextStep>
+      ) : null}
+      {error ? <GoalErrorState className="mt-6" title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
+      {loading ? <GoalSkeletonRows density="queue" count={3} className="mt-6 py-3" /> : null}
+      {!loading && !error && !dryRun ? <GoalEmptyState title="No dry run yet." body="A dry run classifies the configured site against the sold catalog. Nothing is changed by reading it." /> : null}
       {dryRun ? (
-        <section aria-label="Catalog dry run" className="border border-g-hairline bg-g-surface">
+        <section aria-label="Catalog dry run" className="mt-6 border border-g-hairline bg-g-surface">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-g-hairline p-4">
             <div>
               <h2 className="text-g-label text-g-ink">{dryRun.site}</h2>

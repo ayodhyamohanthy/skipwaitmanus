@@ -9,6 +9,9 @@ import { GoalEmptyState, GoalErrorState } from "@/components/goal/GoalStates";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalStatus } from "@/components/goal/GoalStatus";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
+import { MONEY_GOAL_LINE } from "./adminMoneyCopy";
+
+export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
 
 type RecoveryUser = { id: number; name: string | null; email: string | null };
 type Adjustment = { id: number; recipientUserId: number; recipientName: string | null; recipientEmail: string | null; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string; createdAt: string };
