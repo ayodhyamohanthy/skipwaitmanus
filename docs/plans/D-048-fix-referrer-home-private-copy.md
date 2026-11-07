@@ -44,7 +44,7 @@ Evidence to carry into the R4 CEO delta:
 
 ## 5. Gates
 
-Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths), focused vitest with `VITE_GOAL_SURFACES=referrer-home`, the red-first pin, and 1280 and 390 captures. Then an independent non-writer review and a non-writer lander (D-190(3)).
+Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths), focused vitest with `VITE_GOAL_SURFACES=referrer-home`, the red-first pin, and 1280 and 390 captures. Then an independent non-writer review of the exact final version. This is a Tier 2 runtime PR: its eligible holder may land through the normal protected route after that review passes, all required checks on the exact head and current main are green, and current-main integration is verified. No admin bypass, squash, rebase or force push. D-190(3) applies to the separate packet-registration carrier, not this runtime PR.
 
 ## 6. Position and the R4 dependency (amendment, coordinator ruling 2026-11-07)
 
@@ -58,3 +58,5 @@ Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths
 D-048-fix-referrer-home-private-copy: in progress - Instinct · dd74 - 2026-11-07 - branch agent/queue/d048-fix-referrer-home-private-copy. Read receipt: main 027f1948; BRIEF, AGENTS, BUILD_CONTINUITY, DECISIONS D-151/D-176/D-190/D-223/D-295 and this packet; prior registration #1021 landed 027f1948, R4 #1020 held on B1. Goal: accurate private-delivery framing for new referrers. Owns only goal/referrer-home/GoalReferrerHome.tsx and referrerHomeGoal.test.tsx; no flag/auth/money change. Independent review and nonwriter landing remain required.
 
 D-048-fix-referrer-home-private-copy: review - PR #1022 - runtime bb6e8798. Red-first 6bbbfed0: 1 expected copy failure; fix: 22/22 goal-home/setup tests pass. Token audit, scope, whitespace, migration lint and deploy-trigger checks pass. Synthetic empty-state captures at 1280/390 inspected with zero overflow; no backend/login proof. Local typecheck default heap OOM134, larger heap retry timeout124; exact-tip CI pending. Independent nonwriter review and lander required; R4 stays held for B1 and distinct CEO delta. E1-E4 remain open.
+
+Landing-clause accuracy correction (2026-11-07): the original section 5 incorrectly imported D-190(3), a temporary nonwriter landing rule for packet-registration PRs, into this Tier 2 runtime row. AGENTS rule 5 and DELEGATION section 4 permit ordinary Tier 2 holder landing; the separate final-version review, exact required CI, current-main check and protected merge remain mandatory here. This corrects that citation and lander clause only, changes no tier, owns, order, runtime or product rule, and does not change Tier 1 D-151 independence.
