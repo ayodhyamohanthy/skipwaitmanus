@@ -2628,7 +2628,7 @@
       "title": "W6 /admin/approvals and /admin/approvals/:kind/:id (re-tier to 1 if identity or money decisions found)",
       "row": "D-048",
       "packet": "docs/plans/D-048-admin.md",
-      "tier": 2,
+      "tier": 1,
       "lane": "d048-admin-approvals",
       "branch": "agent/queue/d048-p3-admin-approvals",
       "status": "todo",
@@ -2643,7 +2643,7 @@
         "client/src/pages/goal/admin-approvals/**",
         "design/goal-ui/captures/admin-approvals/**"
       ],
-      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-approvals'); read-only: lib/adminApproval.ts; money-cost lines Tier 1 (F-flags amendment).",
+      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-approvals'); read-only: lib/adminApproval.ts; money-cost lines Tier 1 (F-flags amendment). Re-tiered 2 -> 1 under the row's own clause (money decisions found: credit-pack payment approval credits tokens to a wallet).",
       "epic": "D-048-p3"
     },
     {
