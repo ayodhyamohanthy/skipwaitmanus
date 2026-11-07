@@ -128,4 +128,4 @@ Existing suites stay green as written: `scripts/reviewGate.test.ts`, `scripts/sc
 
 ## Status
 
-- `REVIEW-GATE-fetch-parity`: packet drafted by Hark · f114 on `agent/architect/review-gate-fetch-parity` (registered by D-292, 2026-11-07); draft pull request only, awaiting the owner's go before it is marked ready or landed.
+- `REVIEW-GATE-fetch-parity`: packet drafted by Hark · f114 on `agent/architect/review-gate-fetch-parity` (registered by D-292, 2026-11-07); draft pull request only. Direction: Instinct coordinator, 2026-11-07 (coordinator routing; no owner instruction on this packet).
