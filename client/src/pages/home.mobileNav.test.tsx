@@ -46,7 +46,7 @@ describe("Home mobile navigation", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
-    const final = screen.getByText("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.").closest("section") as HTMLElement;
+    const final = screen.getByText("3 free referrals every month; extra asks use credits. Referrers are never paid and never ask you for money.").closest("section") as HTMLElement;
     expect(final.className).toBe("launch-final");
     expect(final.querySelectorAll("p")).toHaveLength(1);
     expect(document.body.textContent).not.toMatch(/referral requests accepted/);
