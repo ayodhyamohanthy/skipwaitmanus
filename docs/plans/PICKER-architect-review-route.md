@@ -79,7 +79,49 @@ In scope (the build may touch only these):
 - `scripts/nextTaskText.mjs`: R6 (packet review wording).
 - `scripts/nextTaskArchitectReview.test.ts` (new): §7.
 
-Always allowed: `docs/plans/assignments.json` (this row's status at landing) and this packet's `## Status
+Always allowed: `docs/plans/assignments.json` (this row's status at landing) and this packet's `## Status`.
+
+Not edited: `scripts/review-gate.mjs`, `scripts/scope-check.mjs`, `scripts/queue-gate.mjs`, `.github/workflows/ci.yml`, every existing test file (`scripts/nextTask.test.ts`, `scripts/nextTaskArchitectLanding.test.ts`, `scripts/nextTaskGateRedReview.test.ts` and the rest stay green as written), and anything under `server/`, `client/`, `shared/` or `drizzle/`. No `owns` is declared, for the reason D-286 (4) measured for this lane: `scripts/nextTaskCore.mjs` is already owned by other unstarted picker-lane rows, so serialisation falls to the `picker` lane (`laneBusy`). A hunk outside the in-scope set stops and reports through the picker (`--report blocked`) instead of widening.
+
+**Scope fence.** The fetch-parity fix (the named gate step fetching `origin/main`) is PR #1013's scope (`REVIEW-GATE-fetch-parity`, D-292), and the LAND exact-tip defect is the separate `PICKER-land-exact-head` packet. Neither is in scope here, and the build changes neither the green packet LAND at `:797-801` nor `scripts/review-gate.mjs`.
+
+## 7. Red-first tests (`scripts/nextTaskArchitectReview.test.ts`)
+
+Drive `pickNext` through the same fixtures `scripts/nextTaskArchitectLanding.test.ts` and `scripts/nextTaskGateRedReview.test.ts` use: a Tier 1 row with `status: "architect"`, its lock carrying a work commit and `Claim <id>: Writer · 1111`, an open pull request from the lock, and `prCi` for the lock with `{ state: "red", gateOnly: true, sha: <lock tip> }`. Each case must fail against `main` `8e1be413` where marked:
+
+- (a) A session of another model (`Reviewer · 2222`) is handed `kind: "review"` with `work` = the lock, `lock` = `agent/review/<slug>`, `packet: true`. *Red today:* it gets `architect`.
+- (b) A session of the writer's model (`Writer · 3333`), and a session of a model that took the packet over, are never handed that review. With no other eligible row they get no review of it.
+- (c) A model that fixed it (a `Fixed` marker on the review lock) is never handed the review.
+- (d) Fail closed: the same row with `gateOnly: false`, `gateOnly` missing, `sha` of an older commit, `state: "running"`, `"error"` or `"unknown"` gets exactly what it gets today (ARCHITECT, skip or the existing reason), never REVIEW.
+- (e) A Tier 2 packet with a gate-only red is untouched (no REVIEW).
+- (f) Review stage `in-review` held by a live reviewer is a skip; with a quiet review lock, it is handed to another eligible model.
+- (g) Review `passed` with a stale gate-only red tip run is a skip naming the re-run, not `green`, `fix` or `architect`. *Red today:* `architect`.
+- (h) Green CI after the pass still hands the existing packet LAND, never to a writer (unchanged; asserts the D-190 skip still fires).
+- (i) Unmet `dependsOn` or an out-of-sync `syncedTo` wins over the review (skip and `resync` respectively).
+- (j) Spawn harness (the mocked-fetch harness `scripts/nextTaskGateRedReview.test.ts:166` uses): `next-task.mjs --verdict pass` by the review-lock holder on a packet row whose task branch is not on origin records `reviewed <lock tip>`. *Red today:* fails with "is not on origin; there is no head to review".
+- (k) Spawn harness: a red tip run on the lock whose jobs show only the gate step failed prints `REVIEW <id>` for an eligible session, and the board line shows the review state.
+
+## 8. Definition of done
+
+- §7 red-first: the test commit without the change fails (a), (g), (j) and (k). With the change, all pass.
+- `pnpm check`, `LANG=en_US.UTF-8 pnpm vitest run scripts/`, `validateAssignments` → `[]`, `node scripts/decision-id-check.mjs` exit 0.
+- **Live proof, after REVIEW-GATE-fetch-parity has landed:** re-run CI on #878 (or the newest Tier 1 packet pull request red only for its review). Paste run and job ids showing that the only failed step is "Review gate (independent Tier 1 pass)", with Scope check `skipped`. Then show `node scripts/next-task.mjs` (preview, or `--status` for the board line) printing `REVIEW D-089-request-inbox` for a session whose model is not among #878's writers, where it printed ARCHITECT or a "writing its packet" skip before. The proof claims and records nothing: no `--claim`, no review marker and no verdict are pushed for the proof.
+- Not done: no Tier 1 packet lands from this row. Each still needs its own independent pass on its exact head and its own green-CI landing under D-190.
+
+## 9. Review checklist (Tier 2: no separate review is required, but a reader checks)
+
+1. `git diff --stat origin/main...` touches only §6's files, `assignments.json` and this packet's Status.
+2. R1 sits after `done`, the dependency check and re-sync, and before the ARCHITECT fallback. It cannot fire unless `tier === 1`, `gateOnlyRed` and a review-pending stage all hold.
+3. R2 uses `did(v, ["builders", "fixers"])` (model level), and the green packet LAND is byte-identical.
+4. No marker is pushed by anything except the existing claim and `--verdict` code paths. No `GATE_STEP`, `REVIEW_GATE_FAIL` or classifier change.
+5. Existing test files are byte-identical to `main`.
+
+## 10. Stop and ask
+
+- If the route needs any change to `scripts/review-gate.mjs`, `.github/workflows/ci.yml`, a required check, branch protection or the green packet LAND, stop and `--report blocked` with the measured reason.
+- If the live proof shows #878 red at more than the gate step, do not widen the classifier. Prove on another Tier 1 packet pull request or report.
+
+## Status
 
 - `PICKER-architect-review-route`: in progress - Instinct · 09c7 - 2026-11-08 - branch agent/queue/picker-architect-review-route; ordinary picker claim db56b45a. Packet drafted by Hark · b06c, registered D-294.
-- Coordination: accidental D-100.otp-hmac review claim 0a6b1b7a/heartbeat96963710 is untouched, holds remain in force, no review/verdict or renewal; factual correction on PR #884. No release/unclaim command exists; normal quiet expiry applies. Exact comma-list avoid is corrected. Supported avoided-continuation routing (nextTaskCore.mjs) selected this build; no review outcome or handoff is claimed.
+- Coordination: accidental D-100.otp-hmac review claim 0a6b1b7a/heartbeat96963710 is untouched, holds remain in force, no review/verdict or renewal; factual correction on PR #884. No release/unclaim command exists; normal quiet expiry applies. Exact comma-list avoid is corrected. Supported avoided-continuation routing selected this build; no review outcome or handoff claimed.
