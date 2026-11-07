@@ -116,6 +116,25 @@ const stubRazorpay = () => {
 const purchaseCalls = () => calls.filter(call => call.path === PURCHASE_PATH);
 const idempotencyKeys = () => purchaseCalls().map(call => call.headers["Idempotency-Key"]);
 
+/** Serve a checked-in capture fixture verbatim. The browser harness
+ * (scripts/kit-screens/capture.mjs) fulfils each route with the fixture's own
+ * `body`, so a fixture with the wrong envelope renders a state the page never
+ * claims; this helper makes that drift fail here instead of only in a capture. */
+const serveFixture = (name: string) => {
+  const fixture = JSON.parse(readFileSync(`design/goal-ui/captures/employer-billing/goal-employer-billing__${name}.json`, "utf8")) as {
+    routes: Array<{ method?: string; path: string; match?: string; status?: number; body?: unknown }>;
+  };
+  calls = [];
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+    const method = (init?.method ?? "GET").toUpperCase();
+    calls.push({ path, method, headers: (init?.headers ?? {}) as Record<string, string>, body: String(init?.body ?? "") });
+    const hit = fixture.routes.find(route => (route.method ?? "GET").toUpperCase() === method && (route.match === "prefix" ? path.startsWith(route.path) : path === route.path));
+    if (!hit) return json(404, { error: "not mocked" }, path);
+    return json(hit.status ?? 200, hit.body ?? {}, path);
+  }) as never);
+};
+
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 
 afterEach(() => {
@@ -200,6 +219,23 @@ describe("goal /employer/billing states", () => {
     expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     fireEvent.click(commit);
     expect(purchaseCalls()).toHaveLength(0);
+  });
+
+  it("the committed restricted fixture renders the account it carries, not the no-account state", async () => {
+    // The capture harness serves this fixture's bodies verbatim, so its account
+    // envelope must be the route's own `{ account }` (server/employerRoutes.ts:101).
+    serveFixture("restricted");
+    const { container } = renderPage(<GoalEmployerBilling />);
+    expect(await screen.findByText("Employer tools, including top-ups, are closed for this account.")).toBeTruthy();
+    expect(screen.getByText("Talent unlock balance")).toBeTruthy();
+    expect(screen.getByText("8")).toBeTruthy();
+    expect(screen.getByText("Employer access is under review")).toBeTruthy();
+    expect(screen.queryByText("No employer account yet.")).toBeNull();
+    const commit = screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ });
+    expect(commit.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(commit);
+    expect(purchaseCalls()).toHaveLength(0);
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
   });
 
   it("empty ledger: the honest empty state, not a fabricated record", async () => {
