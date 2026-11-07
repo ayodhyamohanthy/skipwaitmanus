@@ -5294,6 +5294,29 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-R4",
+      "title": "Release 4, referrer: referrer, referrer-home, invite, post-opportunity (email-review when its straggler lands; the queue went live in place, D-149)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r4",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer",
+        "D-048-p3-referrer-home",
+        "D-048-p3-invite",
+        "D-048-p3-post"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/lib/goalSurfaces.test.ts"
+      ],
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names only the four surfaces whose output it releases (D-223 (1)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines; the kit dropped two D-176 strings the goal version never had; confirm-not-port, verify at build time); referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only. Owns amendment (2026-11-07): adds client/src/lib/goalSurfaces.test.ts, because the RELEASED assertion in goalSurfaces.test.ts (releasedGoalSurfaces() equals exactly [\"home\"]) must change with the flip; the registered owns missed it.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-222-referral-count-shell",
       "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
       "row": "D-048",
@@ -5458,7 +5481,7 @@
       "tier": 2,
       "lane": "support-promises",
       "branch": "agent/queue/support-a",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-277",
       "dependsOn": [],
       "owns": [
@@ -5520,6 +5543,51 @@
       "syncedTo": "D-291",
       "dependsOn": [],
       "note": "D-286 (2026-11-05): registers the cure D-254 and D-273 named but held, because the Oct 31 'new rows paused' restriction they relied on turned out to be the coordinator's recommendation, not the owner's (docs/BUILD_CONTINUITY.md provenance correction, November 2; D-277, D-278 and D-283 each registered a row on November 2). Scope: in scripts/nextTaskCore.mjs tier1(v) (:573-595), when a Tier 1 pull request's CI is red and the red is confined to the review gate's own failure, hand kind review instead of falling through to green; every other red keeps today's behaviour. Fail closed on unknown CI, an unreadable job list or any other failed step. The gate itself is untouched: an independent pass naming the exact head by a model that neither built nor fixed the work is still required before CI goes green, D-151 still bars the builder and the fixer, and landing still needs green required CI. No new, renamed or removed required status check (branch-protection state is the owner's setting), no waiver, no reorder, no product or runtime change. Measured live instances on 2026-11-05: PR #952 (FIX-device-signin, head 76969eb7, run 41986076200, typecheck job 127106983943) and PR #986 (D-048-p3-admin-money, head dad31bcf, run 41982060943, typecheck job 127094188653), each red only at the gate with unit, build, e2e and Workers green. Do not land any parked row from this row: after it lands, #952, #815, #851, #850, #979, #986 and the D-086.count and D-174-job-sources-more rows still need their own independent review and their own green-CI landing. No `owns` is declared, measured rather than chosen: `validateAssignments` rejects two rows owning a path when neither waits on the other, and this row's `scripts/nextTaskCore.mjs` collides with `PICKER-fullstack-lights`, `PICKER-qa-stage`, `PICKER-landed-marker-continuity` and `PICKER-landing-wait-fallthrough`; `dependsOn` edges to those four would park the cure behind four unstarted rows, one of which (`PICKER-fullstack-lights`) already waits on `FIX-device-signin`, which is what this row exists to free. So the build serializes on the `picker` lane instead: `laneBusy` releases a lane only when both rows declare disjoint `owns`, so with none declared no picker-lane build runs beside an open or in-review picker-lane row. The files it may change are the five its packet names."
+    },
+    {
+      "id": "REVIEW-GATE-fetch-parity",
+      "title": "The named CI step \"Review gate (independent Tier 1 pass)\" fetches origin/main (and keeps fetching the review lock) so it evaluates instead of failing open, and a review-only red fails at that step for the D-286/D-291 picker classifier (D-292)",
+      "row": "D-200",
+      "packet": "docs/plans/REVIEW-GATE-fetch-parity.md",
+      "tier": 2,
+      "lane": "process",
+      "branch": "agent/queue/review-gate-fetch-parity",
+      "status": "todo",
+      "syncedTo": "D-292",
+      "dependsOn": [],
+      "owns": [
+        "scripts/review-gate.mjs",
+        "scripts/reviewGateFetchParity.test.ts"
+      ],
+      "note": "D-292 (2026-11-07, decided under D-200; cites D-286, D-291, D-032). Measured on PR #878 head e1128076, run 42339003779, typecheck job 128302286336: the named review-gate step printed 'could not run (… invalid object name origin/main) — not failing the branch' and passed, and the Scope check step's internal review-gate call (after queue-gate.mjs ensureOriginMainHistory fetched origin/main) failed the job, so gateOnlyRedFromJobs can never be true on a real run. Fix: a local copy of queue-gate.mjs:15-28 ensureOriginMainHistory in scripts/review-gate.mjs, called before its first origin/main read, keeping the existing review-lock fetch after it. Genuine fetch errors still fail open (scope-check's unchanged internal call is the backstop); definite verdicts fail closed. No change to .github/workflows/ci.yml, scripts/scope-check.mjs, scripts/queue-gate.mjs, any required check or branch protection. Red-first tests in scripts/reviewGateFetchParity.test.ts; live proof on a real gate-only-red Tier 1 PR (the failed step is the review gate alone and the picker prints REVIEW). Lands no parked row."
+    },
+    {
+      "id": "PICKER-land-exact-head",
+      "title": "The picker hands LAND only when a green required-checks CI run is on the pull request's current tip: a green run on an older sha, no run on the tip, or an unreadable tip gets no LAND (D-293)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-land-exact-head.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-land-exact-head",
+      "status": "todo",
+      "syncedTo": "D-293",
+      "dependsOn": [],
+      "note": "D-293 (2026-11-07, decided under D-200; cites D-082, D-085, D-286, D-291). Measured on PR #994 (D-048-p3-admin-approvals, Tier 2 on main): head 7aeaf8fb has no CI workflow run (GET /actions/runs?head_sha=7aeaf8fb total_count 0; only Workers Builds, not a gate), while ciStateFromRuns over the picker's newest-100 batch (scripts/next-task.mjs:289, filtered by head_branch only) reads green from run 42094576051 on 58e065cb, so the Tier 2 hand (scripts/nextTaskCore.mjs:783-786) offers LAND; --status shows the row GREEN · pr-green. The exact-tip comparison exists only on D-291's gate-only path (next-task.mjs:302, nextTaskCore.mjs:607). Fix: one pure helper in scripts/nextTaskCore.mjs applied where the view reads ci (:584) makes a state landable only when green and sha === info.tipSha; anything else is no-tip-ci and no LAND path (Tier 2, Tier 1, packet, continue) or board pr-green fires on it. Fail-closed hand: a quiet Tier 2 row gets the existing MAKE GREEN with a why asking for a two-parent sync push so CI runs on the exact head; a busy row waits; Tier 1 waits; continue becomes build; red is unchanged. scripts/next-task.mjs gets one hunk: one head_sha read for a head whose batch run is not on its tip, failing closed. New test scripts/nextTaskLandExactHead.test.ts, red-first; live proof that #994 is not offered LAND until CI runs on its tip. No owns, measured: scripts/nextTaskCore.mjs is owned by PICKER-fullstack-lights, PICKER-qa-stage and PICKER-landing-wait-fallthrough (all todo), so the build serializes on the picker lane like PICKER-gate-red-review-route (D-286 (4)). No nextTaskText.mjs, ci.yml, review-gate, scope-check or queue-gate change, no required-check or branch-protection change. Out of scope: the review-gate fetch-parity defect (REVIEW-GATE-fetch-parity, D-292, PR #1013). Lands no other row and changes nothing about #994's own holds."
+    },
+    {
+      "id": "PICKER-architect-review-route",
+      "title": "A Tier 1 row's packet pull request whose only red is the review gate is handed its REVIEW by the picker, so a Tier 1 packet can reach the independent pass D-074 (3) and D-190 (3) require (D-294)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-architect-review-route.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-architect-review-route",
+      "status": "todo",
+      "syncedTo": "D-294",
+      "dependsOn": [
+        "REVIEW-GATE-fetch-parity"
+      ],
+      "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
     }
   ]
 }
