@@ -5537,6 +5537,19 @@
         "scripts/reviewGateFetchParity.test.ts"
       ],
       "note": "D-292 (2026-11-07, decided under D-200; cites D-286, D-291, D-032). Measured on PR #878 head e1128076, run 42339003779, typecheck job 128302286336: the named review-gate step printed 'could not run (… invalid object name origin/main) — not failing the branch' and passed, and the Scope check step's internal review-gate call (after queue-gate.mjs ensureOriginMainHistory fetched origin/main) failed the job, so gateOnlyRedFromJobs can never be true on a real run. Fix: a local copy of queue-gate.mjs:15-28 ensureOriginMainHistory in scripts/review-gate.mjs, called before its first origin/main read, keeping the existing review-lock fetch after it. Genuine fetch errors still fail open (scope-check's unchanged internal call is the backstop); definite verdicts fail closed. No change to .github/workflows/ci.yml, scripts/scope-check.mjs, scripts/queue-gate.mjs, any required check or branch protection. Red-first tests in scripts/reviewGateFetchParity.test.ts; live proof on a real gate-only-red Tier 1 PR (the failed step is the review gate alone and the picker prints REVIEW). Lands no parked row."
+    },
+    {
+      "id": "PICKER-land-exact-head",
+      "title": "The picker hands LAND only when a green required-checks CI run is on the pull request's current tip: a green run on an older sha, no run on the tip, or an unreadable tip gets no LAND (D-293)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-land-exact-head.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-land-exact-head",
+      "status": "todo",
+      "syncedTo": "D-293",
+      "dependsOn": [],
+      "note": "D-293 (2026-11-07, decided under D-200; cites D-082, D-085, D-286, D-291). Measured on PR #994 (D-048-p3-admin-approvals, Tier 2 on main): head 7aeaf8fb has no CI workflow run (GET /actions/runs?head_sha=7aeaf8fb total_count 0; only Workers Builds, not a gate), while ciStateFromRuns over the picker's newest-100 batch (scripts/next-task.mjs:289, filtered by head_branch only) reads green from run 42094576051 on 58e065cb, so the Tier 2 hand (scripts/nextTaskCore.mjs:783-786) offers LAND; --status shows the row GREEN · pr-green. The exact-tip comparison exists only on D-291's gate-only path (next-task.mjs:302, nextTaskCore.mjs:607). Fix: one pure helper in scripts/nextTaskCore.mjs applied where the view reads ci (:584) makes a state landable only when green and sha === info.tipSha; anything else is no-tip-ci and no LAND path (Tier 2, Tier 1, packet, continue) or board pr-green fires on it. Fail-closed hand: a quiet Tier 2 row gets the existing MAKE GREEN with a why asking for a two-parent sync push so CI runs on the exact head; a busy row waits; Tier 1 waits; continue becomes build; red is unchanged. scripts/next-task.mjs gets one hunk: one head_sha read for a head whose batch run is not on its tip, failing closed. New test scripts/nextTaskLandExactHead.test.ts, red-first; live proof that #994 is not offered LAND until CI runs on its tip. No owns, measured: scripts/nextTaskCore.mjs is owned by PICKER-fullstack-lights, PICKER-qa-stage and PICKER-landing-wait-fallthrough (all todo), so the build serializes on the picker lane like PICKER-gate-red-review-route (D-286 (4)). No nextTaskText.mjs, ci.yml, review-gate, scope-check or queue-gate change, no required-check or branch-protection change. Out of scope: the review-gate fetch-parity defect (REVIEW-GATE-fetch-parity, D-292, PR #1013). Lands no other row and changes nothing about #994's own holds."
     }
   ]
 }
