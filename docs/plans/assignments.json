@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-01",
+  "updated": "2026-11-07",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -440,7 +440,8 @@
       "status": "todo",
       "syncedTo": "D-227",
       "dependsOn": [
-        "SKIPPY-fix"
+        "SKIPPY-fix",
+        "D-178.grant"
       ],
       "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>. D-221 (Oct 26): limits, re-quote and the shortfall path are stated in D-219 terms (referral level and spend source; a shortfall links to the banded extra referrals once sold, never to paused packs), with referral wording (D-180)."
     },
@@ -4852,12 +4853,12 @@
       "id": "D-178-agent-portal-access",
       "title": "External agents using the portal: user-scoped sign-in, approved payment, apply-for-referral (protocol TBD)",
       "row": "D-178",
-      "packet": null,
+      "packet": "docs/plans/D-178-agent-portal-access.md",
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/d178-agent-portal",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-290",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
       ],
@@ -4865,7 +4866,132 @@
         "D-048-p3-assistants",
         "D-048-p3-agents"
       ],
-      "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-189: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers."
+      "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-189: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers. D-290 (Nov 7): packet-only; the packet is adopted and its work moves to the rows D-178.gate, D-178.grant, D-178.read, D-178.screen and D-178.release, and SKIPPY-6 now depends on D-178.grant."
+    },
+    {
+      "id": "D-178.gate",
+      "title": "Agent access is gated by the Skippy agent switch and account allow-list, never by the Land plan; one call cap of 20 an hour for MCP (D-178, D-290 R2, R6; switch off)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-gate",
+      "branch": "agent/queue/d178-gate",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "server/agentPortalAccess.ts",
+        "server/agentPortalAccess.test.ts",
+        "server/mcpRoutes.ts",
+        "server/mcpRoutes.test.ts",
+        "server/oauthRoutes.test.ts",
+        "shared/assistant.ts",
+        "shared/assistant.test.ts",
+        "server/db.ts (hasAssistantAccess, assertAssistantAccess and its calls in connectAssistant and createAssistantToken only)",
+        "server/_core/index.ts (the assistant, MCP and OAuth registration lines only)"
+      ],
+      "dependsOn": [
+        "SKIPPY-fix",
+        "D-178-agent-portal-access"
+      ],
+      "note": "Packet section 5 row 1. shared/planEntitlements.ts is out of scope and stays byte-identical. No new env key."
+    },
+    {
+      "id": "D-178.grant",
+      "title": "OAuth connect creates the seeker's D-141 agent grant and returns its key; MCP and REST check the same grant, scope, expiry and pause (D-290 R1; no migration)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-grant",
+      "branch": "agent/queue/d178-grant",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "server/agentGrantAuth.ts",
+        "server/agentGrantAuth.test.ts",
+        "server/oauthRoutes.ts",
+        "server/oauthRoutes.test.ts",
+        "server/mcpRoutes.ts (bearer verification only)",
+        "server/mcpRoutes.test.ts",
+        "server/seekerAgentDeps.ts",
+        "server/_core/index.ts (verifyBearer and mintToken lines only)"
+      ],
+      "dependsOn": [
+        "D-178.gate"
+      ],
+      "note": "Packet section 5 row 2. Legacy sw_ tokens keep today's behaviour and never send."
+    },
+    {
+      "id": "D-178.read",
+      "title": "Agents read the seeker's own referral requests over REST, never a referrer's identity before acceptance (D-290 R9 parity)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-read",
+      "branch": "agent/queue/d178-read",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "server/seekerAgentRoutes.ts (one route)",
+        "shared/seekerAgents.ts (one view type)",
+        "server/seekerAgentRequests.test.ts"
+      ],
+      "dependsOn": [
+        "SKIPPY-6"
+      ],
+      "note": "Packet section 5 row 4."
+    },
+    {
+      "id": "D-178.screen",
+      "title": "One goal screen to grant, limit, pause and revoke agents; consent shows the self-declared name and the expiry; approval shows the referral's source (D-290 R1, R4, R7)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-screen",
+      "branch": "agent/queue/d178-screen",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "client/src/pages/goal/assistants/**",
+        "client/src/pages/SeekerAgents.tsx",
+        "client/src/pages/seekerAgents.test.tsx",
+        "client/src/pages/Assistants.tsx",
+        "client/src/pages/ConnectAssistant.tsx",
+        "client/src/pages/Approve.tsx",
+        "design/goal-ui/captures/assistants/**"
+      ],
+      "dependsOn": [
+        "D-178.grant",
+        "SKIPPY-6"
+      ],
+      "note": "Packet section 5 row 5. Captures at 1280 and 390."
+    },
+    {
+      "id": "D-178.release",
+      "title": "Release D-178: allow-listed test seeker end to end on skipwait_qa (connect, propose, approve, one debit, decline, revoke, shortfall); production is the owner's word",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-release",
+      "branch": "agent/queue/d178-release",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "docs/plans/D-178-agent-portal-access.md"
+      ],
+      "dependsOn": [
+        "D-178.gate",
+        "D-178.grant",
+        "SKIPPY-6",
+        "D-178.read",
+        "D-178.screen",
+        "SKIPPY-redteam"
+      ],
+      "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201)."
     },
     {
       "id": "D-180-terminology-docs-sync",
