@@ -5608,7 +5608,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-architect-review-route",
       "status": "todo",
-      "syncedTo": "D-294",
+      "syncedTo": "D-299",
       "dependsOn": [
         "REVIEW-GATE-fetch-parity"
       ],
