@@ -8,8 +8,8 @@
 | Branch | `agent/queue/picker-architect-review-route` |
 | Registered by | D-294 (2026-11-07), docs-only, on the architect lock `agent/architect/picker-architect-review-route` |
 | Depends on | `REVIEW-GATE-fetch-parity` (D-292, PR #1013) |
-| Decisions | D-074 (3) (independent Tier 1 review before `main`), D-151 (reviewer independence by model), D-190 (packet pull requests, never the writer, one at a time), D-286 and D-291 (the gate-only-red review route and its wiring), D-292 (the named gate step evaluates), D-202 (re-sync first), D-134 (no work while a dependency is open), D-200 (any session registers rows and records rulings), D-032 (better approach with evidence) |
-| Synced to | D-294 |
+| Decisions | D-074 (3) (independent Tier 1 review before `main`), D-151 (reviewer independence by model), D-190 (packet pull requests, never the writer, one at a time), D-286 and D-291 (the gate-only-red review route and its wiring), D-292 (the named gate step evaluates), D-202 (re-sync first), D-134 (no work while a dependency is open), D-200 (any session registers rows and records rulings), D-032 (better approach with evidence), D-299 (the R7 amendment) |
+| Synced to | D-299 |
 
 ## 1. Goal
 
