@@ -5588,6 +5588,27 @@
         "REVIEW-GATE-fetch-parity"
       ],
       "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
+    },
+    {
+      "id": "D-048-fix-referrer-home-private-copy",
+      "title": "/referrer-home goal page: the first-time empty state says referral requests reach you privately (D-176 port), not that people can find verified referrers",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-fix-referrer-home-private-copy.md",
+      "tier": 2,
+      "lane": "d048-referrer-home",
+      "branch": "agent/queue/d048-fix-referrer-home-private-copy",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer-home",
+        "D-048-fix-referrer-home-ux"
+      ],
+      "owns": [
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx",
+        "client/src/pages/referrerHomeGoal.test.tsx"
+      ],
+      "note": "Corrective fix row, release-blocking for D-048-R4 (PR #1020). The distinct CEO did not sign off effdfdde because of finding B1: GoalReferrerHome.tsx:85 restates the pre-D-176 availability claim ('People can find verified referrers'), which kit commit 7ee6da33 replaced with private delivery. Port only that decided wording and add one red-first regression pin (packet section 2); no flag flip, shared helper, or admin/money/auth change. dependsOn names the two done rows whose output this edits in the same files (PICKER-owns-scope). E1-E4 from the R4 review stay open, are not part of this row, and are not reported resolved (packet section 4).",
+      "epic": "D-048-p3"
     }
   ]
 }
