@@ -4859,7 +4859,8 @@
       "status": "architect",
       "syncedTo": "D-227",
       "owns": [
-        "docs/plans/D-178-agent-portal-access.md"
+        "docs/plans/D-178-agent-portal-access.md",
+        "docs/DECISIONS.md"
       ],
       "dependsOn": [
         "D-048-p3-assistants",
