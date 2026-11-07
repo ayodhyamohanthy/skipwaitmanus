@@ -3532,11 +3532,11 @@
       "lane": "security-otp",
       "branch": "agent/queue/d100-otp-hmac",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-297",
       "dependsOn": [
         "FIX-device-signin"
       ],
-      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151).",
+      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151). D-297: on this branch merge current main, move OTP_HMAC_SINCE to 2026-12-01T00:00:00.000Z (one line; every other reviewed line byte-identical), take a fresh independent Tier 1 review naming the new head, then land; never land 692e7c3c; if deploy cannot finish before 2026-12-01, move the constant and re-review.",
       "epic": "D-100",
       "owns": [
         "server/workEmailOtp.ts",
