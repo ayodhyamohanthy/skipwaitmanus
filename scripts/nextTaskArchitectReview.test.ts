@@ -85,7 +85,7 @@ function harness() {
 }
 describe("packet verdict and live-loader spawn contract", () => {
   it("(j) verdict names architect head when no task branch exists", () => {
-    const f = harness(); try { const r = f.run("--verdict", "pass", "--task", "P", "--as", "Reviewer · 2222"); expect(r.status, r.stderr).toBe(0); expect(f.git("show", "-s", "--format=%B", "refs/heads/" + REVIEW)).toContain("reviewed " + f.head); } finally { rmSync(f.dir, { recursive: true, force: true }); }
+    const f = harness(); try { const r = f.run("--verdict", "pass", "--task", "P", "--as", "Reviewer · 2222"); expect(r.status, r.stderr).toBe(0); expect(f.git("show", "-s", "--format=%B", "origin/" + REVIEW)).toContain("reviewed " + f.head); } finally { rmSync(f.dir, { recursive: true, force: true }); }
   }, 30000);
   it("(k) mocked GitHub gate-only exact lock run prints REVIEW and board state, no claim", () => {
     const f = harness(); try { // age the existing reviewer is quiet, so preview may offer another model
