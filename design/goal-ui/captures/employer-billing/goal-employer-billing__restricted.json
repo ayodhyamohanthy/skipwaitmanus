@@ -12,13 +12,15 @@
       "match": "prefix",
       "status": 200,
       "body": {
-        "id": 7,
-        "companyName": "Northwind Robotics",
-        "billingEmail": "hire@northwind.example",
-        "credits": 8,
-        "budgetMonthlyUsdCents": 5000,
-        "approvalStatus": "approved",
-        "decisionNote": "Employer access is under review"
+        "account": {
+          "id": 7,
+          "companyName": "Northwind Robotics",
+          "billingEmail": "hire@northwind.example",
+          "credits": 8,
+          "budgetMonthlyUsdCents": 5000,
+          "approvalStatus": "approved",
+          "decisionNote": "Employer access is under review"
+        }
       }
     },
     {
@@ -50,6 +52,15 @@
   "actions": [
     {
       "waitFor": "text=Employer tools, including top-ups, are closed"
+    },
+    {
+      "waitFor": "text=Talent unlock balance"
+    },
+    {
+      "waitFor": "text=8"
+    },
+    {
+      "waitFor": "text=Employer access is under review"
     }
   ]
 }

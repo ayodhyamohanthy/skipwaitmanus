@@ -91,6 +91,26 @@ const serve = (server: Server) => {
   }) as never);
 };
 
+// returns the checked-in capture route bodies so fixture tests exercise the API envelope.
+const fixtureFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const fixture = JSON.parse(readFileSync("design/goal-ui/captures/employer-billing/goal-employer-billing__restricted.json", "utf8")) as {
+    routes: Array<{ method: string; path: string; status: number; body: unknown }>;
+  };
+  const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+  const method = init?.method ?? "GET";
+  let route: { method: string; path: string; status: number; body: unknown } | undefined;
+  for (const candidate of fixture.routes) {
+    if (candidate.path === path && candidate.method === method) {
+      route = candidate;
+      break;
+    }
+  }
+  if (!route) return json(404, { error: "not mocked" }, path);
+  const headers = (init?.headers ?? {}) as Record<string, string>;
+  calls.push({ path, method, headers, body: String(init?.body ?? "") });
+  return json(route.status, route.body, path);
+};
+
 /** A distinct printable-ASCII key per crypto.randomUUID() call, so the page's
  * attempt-scoping is observable rather than accidentally identical. */
 let keySequence = 0;
@@ -197,6 +217,22 @@ describe("goal /employer/billing states", () => {
     const commit = screen.getByRole("button", { name: /Top up for talent unlocks/ });
     expect(commit.getAttribute("aria-disabled")).toBe("true");
     expect(screen.getByText("Top-ups open when your employer access is active")).toBeTruthy();
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+    fireEvent.click(commit);
+    expect(purchaseCalls()).toHaveLength(0);
+  });
+
+  // guards against a restricted capture silently losing its account payload.
+  it("the checked-in restricted capture preserves its balance and review note", async () => {
+    calls = [];
+    vi.stubGlobal("fetch", vi.fn(fixtureFetch) as never);
+    const { container } = renderPage(<GoalEmployerBilling />);
+    expect(await screen.findByText("8", { exact: true })).toBeTruthy();
+    expect(await screen.findByText("Employer access is under review")).toBeTruthy();
+    expect(screen.getByText("Employer tools, including top-ups, are closed for this account.")).toBeTruthy();
+    expect(screen.queryByText("No employer account yet.")).toBeNull();
+    const commit = screen.getByRole("button", { name: /Top up for talent unlocks/ });
+    expect(commit.getAttribute("aria-disabled")).toBe("true");
     expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     fireEvent.click(commit);
     expect(purchaseCalls()).toHaveLength(0);
