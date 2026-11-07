@@ -177,4 +177,4 @@ Existing suites stay green as written: `scripts/nextTask.test.ts`, `scripts/next
 
 ## Status
 
-- `PICKER-land-exact-head`: in progress — Antigravity · 2651 — 2026-11-07 — branch agent/queue/picker-land-exact-head
+- `PICKER-land-exact-head`: blocked — Antigravity · 2651 — 2026-11-08 — R1-R4 cannot be met within the 3 files of §6: nextTaskHeartbeatSlot.test.ts lines 76, 131-174 mocks workflow_runs: [] and asserts Land claim on agent/queue/landing ("as today"), which D-293 R1/R3 stops; and nextTask.test.ts lines 428, 479, 1488 omit prCi for Tier 1 passed landings. Updating those mocks requires widening scope beyond §6 (the D-291 precedent). Branch agent/queue/picker-land-exact-head carries full R1-R4 implementation and 13/13 passing tests in nextTaskLandExactHead.test.ts.

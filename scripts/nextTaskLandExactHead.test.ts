@@ -94,7 +94,8 @@ describe("PICKER-land-exact-head: core acceptance cases", () => {
     const freshBranch = built("T", S_TIP, 0.5); // pushed 30 mins ago (< 2h)
     const result = pick([task("T")], { ci: greenOldCi(101), branches: [freshBranch] });
     expect(result.kind).not.toBe("land");
-    expect((result as { reason?: string }).reason).toContain("waiting for CI on the tip");
+    const skipReason = "skipped" in result ? result.skipped.find(s => s.id === "T")?.reason : (result as { reason?: string }).reason;
+    expect(skipReason).toContain("waiting for CI on the tip");
   });
 
   // (f) Tier 1, passed review, stale CI -> no LAND
