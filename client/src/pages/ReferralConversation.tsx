@@ -8,13 +8,31 @@ import { ReferrerPanel } from "@/components/thread/ThreadDecisionPanels";
 import { ThreadMain } from "@/components/thread/ThreadMain";
 import { AppShell } from "@/components/AppShell";
 import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
+import { ReferrerConversation } from "./conversation/ReferrerConversation";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import { captureClientError } from "@/lib/sentry";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
+import { authedFetch, decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
 import { trpc } from "@/lib/trpc";
+import { z } from "zod";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
+
+// #831 F2: the unclaimed preview answers first and carries no decision-due
+// time, so the goal page reads the claimed detail (which only ever serves an
+// ask assigned to this account). The answer is parsed at the boundary, never
+// cast, and the one expected refusal — "not assigned to your verified employee
+// account" (404) — is the only failure that leaves the preview as it is.
+const NOT_ASSIGNED = "This private request is not assigned to your verified employee account";
+const claimedDetailProbe = z.object({
+  request: z.object({
+    status: z.string(),
+    referrerId: z.number().nullish(),
+    decisionDueAt: z.string().nullish(),
+  }),
+});
 
 export default function ReferralConversation({ framed = false }: { framed?: boolean } = {}) {
   const [, params] = useRoute("/conversation/:requestId");
@@ -38,12 +56,37 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
   const sendingRef = useRef(false);
 
   const profile = trpc.profile.mine.useQuery(undefined, { enabled: Boolean(isSignedIn) && role === "seeker", retry: false, staleTime: 60_000 });
+  // The signed-in account, the same auth.me the auth layer already holds: the
+  // referrer goal page offers a decision on a pending ask only when the ask is
+  // unassigned or assigned to this account (#831 F1).
+  // A partial tRPC client (the share-win harness) has no auth router; the
+  // client is fixed for the module's lifetime, so the hook order never changes.
+  const authMe = (trpc as { auth?: typeof trpc.auth }).auth?.me;
+  const me = authMe?.useQuery(undefined, { enabled: Boolean(isSignedIn) && role !== null && role !== "seeker", retry: false, staleTime: 60_000 });
+  const meId = (me?.data as { id?: unknown } | null | undefined)?.id;
+  const viewerId: number | null | undefined = typeof meId === "number" ? meId : me?.data === null ? null : undefined;
 
   const reload = useCallback(async () => {
     if (!isSignedIn || !validId) return;
     setLoading(true); setError("");
     try {
       const thread = await loadThread(requestId, fetchToken);
+      // #831 F2: the unclaimed preview answers first even for an ask allocated
+      // to this referrer, and it carries no decision-due time. On the goal page
+      // the claimed detail (which only ever serves an ask assigned to this
+      // account) supplies the server's decisionDueAt; a 404 means unassigned.
+      if (goalSurfaceOn("conversation") && thread.role === "referrer-pending" && !thread.request.decisionDueAt) {
+        try {
+          const parsed = claimedDetailProbe.safeParse(await authedFetch(`/api/company-referrals/${requestId}`, fetchToken));
+          if (!parsed.success) captureClientError(parsed.error, { source: "conversation.detail-probe", requestId });
+          else if (parsed.data.request.status === "pending" && typeof parsed.data.request.referrerId === "number") {
+            thread.request = { ...thread.request, referrerId: parsed.data.request.referrerId, decisionDueAt: parsed.data.request.decisionDueAt ?? null };
+          }
+        } catch (reason) {
+          // Only the expected not-assigned answer leaves the preview as it is.
+          if (!(reason instanceof Error && reason.message === NOT_ASSIGNED)) captureClientError(reason, { source: "conversation.detail-probe", requestId });
+        }
+      }
       setRole(thread.role); setRequest(thread.request);
       if (!canMessage(thread.role, thread.request)) { setMessages([]); return; }
       try {
@@ -107,6 +150,37 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
         onProgress={async status => { await recordProgress(request!.id, status, fetchToken); await reload(); }}
         onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request!.id, fetchToken); await reload(); }}
         extra={request && isAccepted(request) ? <div className="mt-6"><ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /></div> : null}
+      />
+    );
+  }
+
+  // The referrer's side is the goal page behind goalSurfaceOn("conversation")
+  // (D-048-p3-conversation); off, it stays the kit page below unchanged.
+  if (goalSurfaceOn("conversation")) {
+    return (
+      <ReferrerConversation
+        request={request}
+        role={role}
+        viewerId={viewerId}
+        failure={failure}
+        loading={loading}
+        onReload={() => { void reload(); }}
+        returnPath={returnPath}
+        passed={passed}
+        ownName={request && isAccepted(request) ? user?.fullName ?? null : null}
+        messages={messages}
+        messageError={messageError}
+        referenceId={referenceId}
+        canMessage={Boolean(request) && canMessage(role, request!)}
+        draft={draft}
+        setDraft={setDraft}
+        sending={sending}
+        onSend={() => { void send(); }}
+        onAccept={async () => { await decideReview(request!.id, "approved", undefined, fetchToken); await reload(); }}
+        onPass={async (reason, passReason) => { await decideReview(request!.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
+        onMarkReferred={async reference => { await recordProgress(request!.id, "intro_made", fetchToken, reference); await reload(); }}
+        onExtendReferredDeadline={async () => { await extendReferredDeadline(request!.id, fetchToken); await reload(); }}
+        onStepBack={async () => { await stepBackFromReferral(request!.id, fetchToken); await reload(); }}
       />
     );
   }
