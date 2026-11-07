@@ -177,4 +177,4 @@ Existing suites stay green as written: `scripts/nextTask.test.ts`, `scripts/next
 
 ## Status
 
-- `PICKER-land-exact-head`: packet drafted by Hark · ebcc on `agent/architect/picker-land-exact-head` (registered by D-293, 2026-11-07). Draft pull request only: no build and no LAND, and it is not ready for review until the coordinator confirms normal registration and build routing.
+- `PICKER-land-exact-head`: in progress — Antigravity · 2651 — 2026-11-07 — branch agent/queue/picker-land-exact-head
