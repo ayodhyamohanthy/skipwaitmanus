@@ -265,6 +265,21 @@
       "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue."
     },
     {
+      "id": "LAUNCH-packs-unavailable",
+      "title": "Every INR credit pack reports available:false while PRICING.md says packs are live",
+      "row": "LAUNCH",
+      "packet": "docs/plans/LAUNCH-oct25.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/launch-packs-unavailable",
+      "status": "owner",
+      "dependsOn": [],
+      "owns": [
+        "docs/PRICING.md"
+      ],
+      "note": "Found by LAUNCH-live-qa (Qoder · 6e99, Oct 26) on API 40e160e2 / web fb420761: live GET /api/plans/catalog answers 200 with every INR credit pack available:false on six polls 13:28-14:48Z (pack_2 Rs99, pack_25 Rs1199, pack_60 Rs2599, pack_150 Rs5999), and /plans shows 'Not on sale yet' at 1280 and 390, while docs/PRICING.md line 37 says credit packs are LIVE in INR and USD. Root cause established at the provider catalog level (issue #709, read-only Chargebee LIVE console read): the LIVE site skipwait.chargebee.com is the only site on the account, and the pack_2/5/25/60/150 items (with token_1/5/10 and live_session) were ARCHIVED on Oct 25 20:06-20:08 IST; the app resolves only skipwait_<pack>-<currency> (shared/planCatalog.ts:269), so available:false is the true provider state, not a missing-config fallback. Container billing env and the worker passthrough are settled (BILLING_ENV=live, CHARGEBEE_LIVE_SITE=skipwait, live key/secret present; src/worker.ts, Dockerfile and wrangler.jsonc are identical between 40e160e2 and origin/main). Still open: whether the archival was intended - restore or recreate the pack prices for launch, or correct PRICING.md, an owner decision; an item-price-level read of the four INR pack ids and pack_5 (USD); and runtime checkout refusal (no checkout POST without separate authority, D-065). No payment was attempted. Evidence: docs/qa/launch-live-qa-oct26.md, issue #709."
+    },
+    {
       "id": "SHELL-focus-clearance",
       "title": "On a phone, a focused field is never hidden behind the goal shell's bottom bar (#642)",
       "row": "D-048",
