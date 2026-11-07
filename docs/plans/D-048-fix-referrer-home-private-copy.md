@@ -45,3 +45,10 @@ Evidence to carry into the R4 CEO delta:
 ## 5. Gates
 
 Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths), focused vitest with `VITE_GOAL_SURFACES=referrer-home`, the red-first pin, and 1280 and 390 captures. Then an independent non-writer review and a non-writer lander (D-190(3)).
+
+## 6. Position and the R4 dependency (amendment, coordinator ruling 2026-11-07)
+
+- This row sits directly before D-048-R4 in `docs/plans/assignments.json`, and D-048-R4's `dependsOn` gains this row's id. No other row moves. R4's id, branch, owns and review claim are unchanged. No completed row is rewritten. No avoid entry and no forced hand is added.
+- Basis: D-223 (1) says dependsOn names only the output a task needs, and D-223 (3) says a release depends on all of its pieces. This row's output, the D-176 copy on a surface R4 releases, is such a piece. The distinct CEO held R4 head `effdfdde` on exactly this finding. The row is a missing prerequisite of a release already in flight, not unrelated work jumping the queue. D-223 (5) is respected: R4's in-flight scope (owns) is unchanged.
+- FIFO: the owner's standing rule is FIFO ("FIFO always", Oct 31). The coordinator lines up already-decided tasks under the Oct 26 and Oct 29 delegation. Appended at the end, this row came after PICKER-land-exact-head, so the release prerequisite would have waited behind unrelated picker work while R4 stayed held. Placing it before R4 keeps FIFO for every other row.
+- This is a coordinator ruling on placement, not owner approval of the exact ordering.
