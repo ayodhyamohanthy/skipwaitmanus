@@ -90,10 +90,39 @@ test("seeker on accepted conversation reports with ask id, admin reads evidence,
   expect(reportRes.status()).toBe(201);
   await expect(seekerPage.getByText("Thanks. We're on it.")).toBeVisible();
 
-  // Red-first step (§5.3): probe admin route before wiring seed.json admin cookie.
-  // Using the seeker session here proves the role check rejects unprivileged accounts (expecting 200 fails with 403).
-  const adminRes = await seekerPage.request.get("/api/admin/safety-reports");
+  // Admin read: read e2e/.auth/seed.json directly
+  const seedPath = join(dirname(fileURLToPath(import.meta.url)), ".auth", "seed.json");
+  const seed = JSON.parse(readFileSync(seedPath, "utf8")) as { accounts: Record<string, string> };
+  const adminCookie = seed.accounts["qa.admin@example.com"];
+  expect(adminCookie).toBeDefined();
+
+  // Non-admin assertion: non-admin is refused (403)
+  const nonAdminRes = await seekerPage.request.get("/api/admin/safety-reports");
+  expect(nonAdminRes.status()).toBe(403);
+
+  // Admin assertion: admin cookie is allowed (200)
+  const adminReq = await playwright.request.newContext({
+    baseURL: baseURL!,
+    extraHTTPHeaders: { Cookie: `app_session_id=${adminCookie}` },
+  });
+  const adminRes = await adminReq.get("/api/admin/safety-reports");
   expect(adminRes.status()).toBe(200);
+  const adminData = (await adminRes.json()) as {
+    reports: Array<{
+      referralRequestId: number | null;
+      evidence?: Array<{ sender: string; body: string }>;
+    }>;
+  };
+  const matchingReport = adminData.reports.find(r => r.referralRequestId === requestId);
+  expect(matchingReport).toBeDefined();
+  expect(matchingReport?.evidence).toBeDefined();
+  const evidenceMessages = matchingReport!.evidence!.map(e => ({ sender: e.sender, body: e.body }));
+  expect(evidenceMessages).toEqual(
+    expect.arrayContaining([
+      { sender: "reporter", body: "Hello from seeker" },
+      { sender: "other", body: "Hello from referrer" },
+    ])
+  );
 
   // 4. LAST: back on /report?request=<id>, seeker files again with "Also block this person" ON
   await seekerPage.goto(`/report?request=${requestId}`);
