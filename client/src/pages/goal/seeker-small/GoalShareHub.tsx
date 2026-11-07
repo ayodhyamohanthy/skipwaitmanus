@@ -13,13 +13,16 @@ export default function GoalShareHub() {
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  // D-153: "ready" is a promise about a link that exists. `settled` keeps the line honest
+  // between mount and the invite answer, and when the answer carries no code at all.
+  const [settled, setSettled] = useState(false);
   const [linkError, setLinkError] = useState("");
   const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
   const link = useMemo(() => inviteCode ? `${origin}/start?invite=${encodeURIComponent(inviteCode)}` : "", [inviteCode, origin]);
   const message = useMemo(() => link ? `You found an opportunity! Now help your friends do the same.\n\nJoin skipwait.me with my link. We each get 1 extra referral - it unlocks with your first referral request.\n\n${link}` : "", [link]);
   const emailInviteHref = useMemo(() => { const recipient = email.trim(); if (!link || !/^\S+@\S+\.\S+$/.test(recipient)) return ""; return `mailto:${recipient}?subject=${encodeURIComponent("You found an opportunity. Help a friend do the same.")}&body=${encodeURIComponent(message)}`; }, [email, link, message]);
 
-  const loadInvite = useCallback(() => { if (!isSignedIn) return; setLoading(true); setLinkError(""); void fetch("/api/personal-invites/me", { credentials: "include" }).then(async response => { if (!response.ok) throw new Error("Your personal invite link is temporarily unavailable. Please try again."); return readApiJson<{ invite?: { inviteCode?: string } }>(response, "Your personal invite link is temporarily unavailable. Please try again."); }).then(data => setInviteCode(data.invite?.inviteCode ?? "")).catch((reason: Error) => setLinkError(reason.message || "We could not create your personal link. Try again.")).finally(() => setLoading(false)); }, [isSignedIn]);
+  const loadInvite = useCallback(() => { if (!isSignedIn) return; setLoading(true); setSettled(false); setLinkError(""); void fetch("/api/personal-invites/me", { credentials: "include" }).then(async response => { if (!response.ok) throw new Error("Your personal invite link is temporarily unavailable. Please try again."); return readApiJson<{ invite?: { inviteCode?: string } }>(response, "Your personal invite link is temporarily unavailable. Please try again."); }).then(data => setInviteCode(data.invite?.inviteCode ?? "")).catch((reason: Error) => setLinkError(reason.message || "We could not create your personal link. Try again.")).finally(() => { setLoading(false); setSettled(true); }); }, [isSignedIn]);
   useEffect(() => { loadInvite(); }, [loadInvite]);
   const copyLink = async () => { if (!link) return; try { await navigator.clipboard.writeText(link); toast("Personal link copied."); } catch { toast("Copy is unavailable in this browser."); } };
   const share = (channel: "x" | "facebook" | "linkedin" | "medium" | "telegram") => { if (!link) return; if (channel === "x") return open(`https://x.com/intent/post?text=${encodeURIComponent(message)}`); if (channel === "facebook") return open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`); if (channel === "linkedin") return open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`); if (channel === "telegram") return open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`); void navigator.clipboard.writeText(message).then(() => toast("Invite copied. Paste it into a Medium story."), () => toast("Copy the personal link and paste it into Medium.")); open("https://medium.com/new-story"); };
@@ -43,7 +46,7 @@ export default function GoalShareHub() {
       <h1 className="text-g-display text-g-ink">Help a friend find their next role.</h1>
       <p className="mt-2 flex items-center gap-2 text-g-meta text-g-ink-2">
         <span aria-hidden="true" className={`size-(--g-dot) shrink-0 rounded-full ${linkError ? "bg-g-crimson" : "bg-g-ink"}`} />
-        <span>{linkError ? "We could not create your personal link." : loading ? "Creating your link…" : "Your link is ready."} When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.</span></p>
+        <span>{linkError ? "We could not create your personal link." : link ? "Your link is ready." : settled ? "Your personal link is unavailable." : "Creating your link…"} When a friend joins with it, you each get 1 extra referral - it unlocks when you send your next private referral request.</span></p>
     </header>
 
     <section aria-label="Your next step" className="mx-4 my-5 border border-g-hairline p-4 gdesk:mx-5" data-skipwait-share-content="true">
@@ -54,7 +57,7 @@ export default function GoalShareHub() {
       <div className="mt-4 flex flex-wrap items-center gap-4">
         {linkError
           ? <GoalButton variant="primary" onClick={() => loadInvite()}>Try again</GoalButton>
-          : <GoalButton variant="primary" disabledReason={link ? undefined : loading ? "Creating your link…" : "Link unavailable"} onClick={() => { void copyLink(); }}>Copy link</GoalButton>}
+          : <GoalButton variant="primary" disabledReason={link ? undefined : settled ? "Link unavailable" : "Creating your link…"} onClick={() => { void copyLink(); }}>Copy link</GoalButton>}
       </div>
     </section>
 

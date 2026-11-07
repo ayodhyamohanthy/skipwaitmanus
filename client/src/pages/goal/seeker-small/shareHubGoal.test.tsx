@@ -44,6 +44,18 @@ describe("goal share hub", () => {
     expect(commit.getAttribute("aria-disabled")).not.toBe("true");
   });
 
+  // P0 main red (D-153): the status line claimed "Your link is ready." on the very
+  // first render, before the invite request had answered, so the link never existed
+  // when a reader trusted it. A request that never answers pins that state.
+  it("never says the link is ready before the invite request answers", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    render(<ShareHub />);
+    expect(await screen.findByTestId("goal-share-hub")).toBeTruthy();
+    expect(screen.queryByText(/Your link is ready/)).toBeNull();
+    expect(screen.getAllByText(/Creating your link/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Copy link" }).getAttribute("aria-disabled")).toBe("true");
+  });
+
   it("offers Try again when the link cannot be created", async () => {
     vi.stubGlobal("fetch", stubInvite("PAL-123", false));
     render(<ShareHub />);
