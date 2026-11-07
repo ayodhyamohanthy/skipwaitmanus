@@ -1,12 +1,14 @@
 # W3 SPEC - money (Tier 1: every line is a truth claim) [re-created Oct 22 from my record]
 
+> **Current rules (DECISION-SYNC-oct26, Nov 1 2026).** D-219 superseded the D-132 (V2) model this spec gates (its code stays behind off flags, D-221) and paused the legacy packs (D-219 (6); runtime `CREDIT_PACKS_ON_SALE = true` until PR #666). The /premium "V2 OFF" pack copy, the "V2 ON" ladder and the ENABLE CHECKLIST (#416, which the D-221 audit section 7 recommends closing) are history: where this spec disagrees with D-219, D-219 and `docs/PRICING.md` win (D-202), and each activation needs the owner's word (D-123). The live money constants (`ASK_COST_SENTENCE` and the rest) stay in code until the D-173/D-180 wording sweep.
+
 Source of truth: shared/moneyCopy.ts + shared/planFamily.ts constants. No money sentence may be re-authored in a page - import the constant. Copy re-read is against the LIVE model; the D-132 (V2) model stays gated until the owner's enable word.
 
 ## Live-model truths pages must keep saying
 - 3 free credits every month; extra asks use credits (ASK_COST_SENTENCE).
 - Purchased credits NEVER expire (already live truth). Bonus/promo credits expire in 30 days and are used before monthly credits (Premium - keep verbatim).
 - Referrers are never paid and never ask for money (REFERRER_MONEY_SENTENCE).
-- CREDIT_RULE as shipped; a not-fixable pass releases the credit (D-035/D-052); a lapse returns it (D-038).
+- CREDIT_RULE as shipped; every employee decline keeps the credit spent, whatever the reason (D-147, superseding D-035 and D-052's decline release); a lapse returns it (D-038). One runtime edge, a pass made without a claim, is an open owner question (DECISION-AUDIT-oct26 section 8 (a)).
 - Referrer-role checkout refuses with 403 (D-067) - no purchase UI on referrer surfaces.
 
 ## Pages

@@ -130,3 +130,7 @@ export function isUnknownCompany(source: CompanyIdentitySource): boolean {
   const shown = companyIdentityOf(source).name.trim().toLowerCase().replace(/^www\./, "");
   return shown === "" || shown === "skipwait.me";
 }
+
+/** D-174 search: one `q`, no other keys; results carry no availability field (D-176). */
+export const companySearchQuerySchema = z.strictObject({ q: z.string().trim().max(80) });
+export const companySearchResponseSchema = z.object({ companies: z.array(publicCompanySchema.omit({ openToReferrals: true }).strict()).max(10) });

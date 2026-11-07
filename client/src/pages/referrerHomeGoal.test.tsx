@@ -135,6 +135,20 @@ describe("Goal /referrer-home", () => {
     expect(sampleText).not.toMatch(/credit|release|pass/i);
   });
 
+  it("says new referral requests reach verified referrers privately", async () => {
+    const fetchMock = stubHome({ fresh: [] });
+    const homeImplementation = fetchMock.getMockImplementation();
+    if (!homeImplementation) throw new Error("Expected the home stub implementation.");
+    // New by impact, but not the explicit sample state (hasEverReviewed=false).
+    fetchMock.mockImplementation((url, init) => String(url).endsWith("/referrer-impact/me")
+      ? Promise.resolve(ok({ summary: { reviewed: 0, approved: 0, introductions: 0, interviews: 0, offers: 0, repliedWithin3DaysPct: 0 } }))
+      : homeImplementation(url, init));
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Your first referral request will appear here.")).toBeTruthy();
+    expect(screen.getByTestId("goal-empty-state").textContent).toContain("Referral requests for Wipro now reach you privately. Share your profile when you are ready.");
+    expect(screen.queryByText(/People can find verified referrers/)).toBeNull();
+  });
+
   it("resumes a paused queue with a real preferences write", async () => {
     const fetchMock = stubHome({ paused: true });
     renderWithQuery(<ReferrerHome />);
@@ -169,6 +183,53 @@ describe("Goal /referrer-home", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText(HOME_GOAL.goalLine)).toBeTruthy();
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBeforeRetry);
+  });
+
+  it("R1: the capacity bar shows what remains and states it in its aria-label", async () => {
+    stubHome();
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Monthly capacity remaining")).toBeTruthy();
+    // Stub: capacity 3, one claimed approved referral in use, so 2 of 3 remain.
+    const bar = screen.getByRole("progressbar");
+    expect(bar.getAttribute("aria-label")).toBe("2 of 3 monthly referral capacity remaining");
+    expect(bar.getAttribute("aria-valuenow")).toBe("2");
+    expect(bar.getAttribute("aria-valuemin")).toBe("0");
+    expect(bar.getAttribute("aria-valuemax")).toBe("3");
+    expect(bar.getAttribute("aria-valuetext")).toBe("2 of 3 remaining");
+    const fill = bar.firstElementChild as HTMLElement | null;
+    expect(fill?.style.width).toBe(`${(2 / 3) * 100}%`);
+  });
+
+  it("R2: a titled referral request keeps its Ref ID first in the row metadata, visible at mobile width", async () => {
+    const now = Date.now();
+    stubHome({ fresh: [ask(31, now - 2 * DAY, { jobTitle: "Senior Product Designer", jobFunction: "design" })] });
+    renderWithQuery(<ReferrerHome />);
+    const link = await screen.findByRole("link", { name: /Private referral request · Ref-1031/ });
+    expect(link.textContent).toContain("Senior Product Designer");
+    const meta = link.querySelector('[data-testid="goal-referrer-row-meta"]') as HTMLElement | null;
+    expect(meta).toBeTruthy();
+    expect((meta?.textContent ?? "").startsWith("Ref-1031")).toBe(true);
+    // No responsive class may hide the Ref ID below the desktop breakpoint (390px).
+    const ref = meta?.querySelector('[data-testid="goal-referrer-row-ref"]') as HTMLElement | null;
+    expect(ref?.textContent).toBe("Ref-1031");
+    for (let node: HTMLElement | null = ref; node && node !== link; node = node.parentElement) {
+      expect(node.className).not.toMatch(/(^|\s)(hidden|sr-only)(\s|$)/);
+    }
+    // The longer metadata line must truncate inside its column, never widen the row past it
+    // (seen in the 1280/390 captures): the grid item opts out of its min-content minimum.
+    expect(link.parentElement?.tagName).toBe("LI");
+    expect(link.parentElement?.className).toMatch(/(^|\s)min-w-0(\s|$)/);
+  });
+
+  it("R2: an untitled referral request also leads its metadata with the Ref ID, named once (390 truncates the title)", async () => {
+    const now = Date.now();
+    stubHome({ fresh: [ask(31, now - 2 * DAY)] });
+    renderWithQuery(<ReferrerHome />);
+    const link = await screen.findByRole("link", { name: /Private referral request · Ref-1031/ });
+    expect(link.querySelector("strong")?.textContent).toBe("Private referral request");
+    const meta = link.querySelector('[data-testid="goal-referrer-row-meta"]') as HTMLElement | null;
+    expect((meta?.textContent ?? "").startsWith("Ref-1031")).toBe(true);
+    expect((link.textContent ?? "").match(/Ref-1031/g)?.length).toBe(1);
   });
 
   it("announces an offline connection after the page has loaded", async () => {
