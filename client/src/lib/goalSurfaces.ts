@@ -66,6 +66,10 @@ export type GoalSurfaceId = keyof typeof GOAL_SURFACES;
 // live V9 landing; every other id is off until its row's release edit.
 const RELEASED: readonly GoalSurfaceId[] = [
   "home",
+  "referrer",
+  "referrer-home",
+  "invite",
+  "post-opportunity",
 ];
 
 export function releasedGoalSurfaces(): readonly GoalSurfaceId[] {
