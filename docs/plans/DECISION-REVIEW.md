@@ -96,7 +96,7 @@
   - **D-123, 9.** It kept prices from going live without the owner's word.
 - **Actions:**
   - D-233 (CEO remit) routes reviews of work built outside the picker: `builtBy`, D-151 by model family, `--avoid` instead of a block, and `in-review` only while a named session is landing the row.
-  - Registered the build row `PICKER-review-identity` (Tier 2). At the Nov 3 merge-up it moved to the end of the queue under the owner's FIFO order (Oct 31). It also fixes the landed review gate (#836), and it waits for the older picker rows that change the same files (since Nov 7 these include the rows D-286, D-292 and D-293 registered).
+  - Registered the build row `PICKER-review-identity` (Tier 2). At the Nov 3 merge-up it moved to the end of the queue under the owner's FIFO order (Oct 31). It also fixes the landed review gate (#836), and it waits for the older picker rows that change the same files (since Nov 7 these include the rows D-286, D-292, D-293 and D-294 registered).
   - Closed two rows on evidence: `D-048-doctrine-benefit-copy` and `D-179-ats-validation`. `main` closed three more first: `D-048-fix-start-ask-handoff` and `D-166-founder-decisions-sync` under D-212 (8), and `P1-release-gate-strict-compare` through #907 (Oct 31).
   - Corrected `docs/DELEGATION.md` §6 and the `AGENTS.md` queue row to the family rule. No price, flag, legal text or money path changed.
 - **Owner questions (rated, D-023):**
