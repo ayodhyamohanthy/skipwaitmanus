@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { AdminNav } from "@/components/AdminNav";
 import { Brand } from "@/components/Brand";
@@ -12,6 +12,11 @@ import {
   type CatalogSyncApplyResponse,
   type CatalogSyncDryRun,
 } from "@shared/catalogSync";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-admin-money: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-money).
+const GoalAdminCatalogSync = lazy(() => import("./goal/admin-money/GoalAdminCatalogSync"));
 
 const DRY_RUN_PATH = "/api/admin/billing/catalog-sync";
 const APPLY_PATH = "/api/admin/billing/catalog-sync/apply";
@@ -56,6 +61,7 @@ function Section({ title, empty, children }: { title: string; empty: string; chi
 }
 
 export default function AdminCatalogSync() {
+  if (goalSurfaceOn("admin-money")) return <Suspense fallback={null}><GoalAdminCatalogSync /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [dryRun, setDryRun] = useState<CatalogSyncDryRun | null>(null);
   const [loading, setLoading] = useState(false);
