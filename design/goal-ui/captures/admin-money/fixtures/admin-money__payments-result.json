@@ -63,12 +63,11 @@
       "status": 200,
       "body": {
         "payment": {
-          "id": 7,
-          "decision": "credited",
+          "paymentId": 7,
           "tokenCount": 3,
-          "requested": 3,
-          "revoked": 0,
-          "unrecovered": 0
+          "userId": 3,
+          "role": "job_seeker",
+          "decision": "credited"
         }
       }
     }
