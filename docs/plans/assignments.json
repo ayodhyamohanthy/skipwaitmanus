@@ -5550,6 +5550,21 @@
       "syncedTo": "D-293",
       "dependsOn": [],
       "note": "D-293 (2026-11-07, decided under D-200; cites D-082, D-085, D-286, D-291). Measured on PR #994 (D-048-p3-admin-approvals, Tier 2 on main): head 7aeaf8fb has no CI workflow run (GET /actions/runs?head_sha=7aeaf8fb total_count 0; only Workers Builds, not a gate), while ciStateFromRuns over the picker's newest-100 batch (scripts/next-task.mjs:289, filtered by head_branch only) reads green from run 42094576051 on 58e065cb, so the Tier 2 hand (scripts/nextTaskCore.mjs:783-786) offers LAND; --status shows the row GREEN · pr-green. The exact-tip comparison exists only on D-291's gate-only path (next-task.mjs:302, nextTaskCore.mjs:607). Fix: one pure helper in scripts/nextTaskCore.mjs applied where the view reads ci (:584) makes a state landable only when green and sha === info.tipSha; anything else is no-tip-ci and no LAND path (Tier 2, Tier 1, packet, continue) or board pr-green fires on it. Fail-closed hand: a quiet Tier 2 row gets the existing MAKE GREEN with a why asking for a two-parent sync push so CI runs on the exact head; a busy row waits; Tier 1 waits; continue becomes build; red is unchanged. scripts/next-task.mjs gets one hunk: one head_sha read for a head whose batch run is not on its tip, failing closed. New test scripts/nextTaskLandExactHead.test.ts, red-first; live proof that #994 is not offered LAND until CI runs on its tip. No owns, measured: scripts/nextTaskCore.mjs is owned by PICKER-fullstack-lights, PICKER-qa-stage and PICKER-landing-wait-fallthrough (all todo), so the build serializes on the picker lane like PICKER-gate-red-review-route (D-286 (4)). No nextTaskText.mjs, ci.yml, review-gate, scope-check or queue-gate change, no required-check or branch-protection change. Out of scope: the review-gate fetch-parity defect (REVIEW-GATE-fetch-parity, D-292, PR #1013). Lands no other row and changes nothing about #994's own holds."
+    },
+    {
+      "id": "PICKER-architect-review-route",
+      "title": "A Tier 1 row's packet pull request whose only red is the review gate is handed its REVIEW by the picker, so a Tier 1 packet can reach the independent pass D-074 (3) and D-190 (3) require (D-294)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-architect-review-route.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-architect-review-route",
+      "status": "todo",
+      "syncedTo": "D-294",
+      "dependsOn": [
+        "REVIEW-GATE-fetch-parity"
+      ],
+      "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
     }
   ]
 }
