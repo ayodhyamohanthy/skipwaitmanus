@@ -1,10 +1,11 @@
 import { Handshake, Plus, Sparkles } from "lucide-react";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type PartnerModuleRow = { id: number; partnerName: string; category: "interview_prep" | "resume_vetting" | "skill_assessment" | "other"; headline: string; description: string | null; targetRoles: string | null; ctaLabel: string; ctaUrl: string; isActive: boolean; impressions: number; clicks: number };
 type SponsorshipRow = { id: number; companyDomain: string; roleTitle: string; sponsoredTier: string | null; sponsoredUntil: string | Date | null };
@@ -13,7 +14,12 @@ type Tab = "partners" | "sponsored";
 const emptyForm = { partnerName: "", category: "interview_prep", headline: "", description: "", targetRoles: "", ctaLabel: "Learn more", ctaUrl: "" };
 const categoryLabels: Record<PartnerModuleRow["category"], string> = { interview_prep: "Interview prep", resume_vetting: "Resume vetting", skill_assessment: "Skill assessment", other: "Other" };
 
+// D-048-p3-admin-ops: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-ops).
+const GoalAdminPartners = lazy(() => import("./goal/admin-ops/GoalAdminPartners"));
+
 export default function AdminPartners() {
+  if (goalSurfaceOn("admin-ops")) return <Suspense fallback={null}><GoalAdminPartners /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [tab, setTab] = useState<Tab>("partners");
   const [modules, setModules] = useState<PartnerModuleRow[]>([]);
