@@ -4858,10 +4858,6 @@
       "branch": "agent/queue/d178-agent-portal",
       "status": "architect",
       "syncedTo": "D-227",
-      "owns": [
-        "docs/plans/D-178-agent-portal-access.md",
-        "docs/DECISIONS.md"
-      ],
       "dependsOn": [
         "D-048-p3-assistants",
         "D-048-p3-agents"
