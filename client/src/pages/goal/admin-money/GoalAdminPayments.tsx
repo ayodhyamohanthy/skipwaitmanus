@@ -105,7 +105,8 @@ export default function GoalAdminPayments() {
       </section>
       <section aria-label="Recent credited payments" className="mt-6 border border-g-hairline bg-g-surface">
         <h2 className="border-b border-g-hairline p-4 text-g-label text-g-ink">Recent credited payments</h2>
-        {recent.length ? (
+        {loading ? <GoalSkeletonRows density="queue" count={2} className="p-4" /> : null}
+        {!loading && !error && recent.length ? (
           <ul>{recent.map(item => (
             <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-g-hairline p-4 last:border-b-0">
               <span className="min-w-0">
@@ -117,7 +118,8 @@ export default function GoalAdminPayments() {
               )}
             </li>
           ))}</ul>
-        ) : <GoalEmptyState title="No completed payments yet." body="Credited credit-pack payments appear here for refunds." />}
+        ) : null}
+        {!loading && !error && !recent.length ? <GoalEmptyState title="No completed payments yet." body="Credited credit-pack payments appear here for refunds." /> : null}
       </section>
       {refundTarget ? (
         <div role="dialog" aria-modal="true" aria-label="Confirm credit revocation" className="fixed inset-0 z-50 grid place-items-center bg-g-canvas/80 p-4">
