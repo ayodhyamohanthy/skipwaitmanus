@@ -116,7 +116,7 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
     expect(activity).toEqual([]);
   });
 
-  it.each([{ role: "job_seeker" }, {}])("still opens every checkout for the seeker role (%o), so a seeker who is also a referrer can buy", async roleField => {
+  it.each([{ role: "job_seeker" }, {}])("seeker checkouts follow the freeze (%o): passes open, new pack purchases paused, per-credit retired", async roleField => {
     const { app, spies } = harness();
     for (const { label, path, body } of PURCHASES) {
       const response = await request(app).post(path).send({ ...body, ...roleField });
@@ -127,12 +127,20 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
         expect(response.body.code).toBe("single_credit_retired");
         continue;
       }
+      // Oct 25 2026 freeze: NEW pack purchases are paused for everyone (shared/planCatalog
+      // LEGACY_PACK_SALES_PAUSED, real module value - the harness only overrides PASS_SALES_ENABLED).
+      if (label === "a kit credit pack") {
+        expect(response.status, path).toBe(409);
+        expect(response.body.code).toBe("legacy_pricing_paused");
+        expect(response.body.error).toContain("Nothing has been charged");
+        continue;
+      }
       expect(response.status, path).toBe(200);
       expect(typeof response.body.checkoutUrl).toBe("string");
     }
-    expect(spies.createPaymentIntent).toHaveBeenCalledTimes(1);
+    expect(spies.createPaymentIntent).not.toHaveBeenCalled();
     expect(spies.createSubscriptionIntent).toHaveBeenCalledTimes(2);
-    for (const [intent] of [...spies.createPaymentIntent.mock.calls, ...spies.createSubscriptionIntent.mock.calls]) expect(intent).toMatchObject({ userId: 7, role: "job_seeker" });
+    for (const [intent] of spies.createSubscriptionIntent.mock.calls) expect(intent).toMatchObject({ userId: 7, role: "job_seeker" });
   });
 });
 

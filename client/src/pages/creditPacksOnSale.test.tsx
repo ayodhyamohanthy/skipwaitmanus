@@ -18,35 +18,32 @@ const openChargebeeCheckout = vi.hoisted(() => vi.fn());
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn(async () => null), openSignIn: vi.fn() }) }));
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout }));
 
-// Credit packs reopened (legacy $1 / Rs 99 per-credit route) once credits had a verified spend: debit at send, return on withdraw or expiry.
-describe("credit packs are on sale", () => {
+// Oct 25 2026 freeze (shared/planCatalog.ts): new pack purchases are paused ahead of the
+// banded-plans replacement. The pre-pause on-sale behavior is still exercised under
+// deps/mocks in premium.promo, premium.totalLabel and premium.localPrice tests.
+describe("credit packs are paused", () => {
   afterEach(() => { cleanup(); window.history.replaceState({}, "", "/"); vi.unstubAllGlobals(); });
 
-  it("ships with the flag on", () => { expect(CREDIT_PACKS_ON_SALE).toBe(true); });
+  it("ships with the flag off", () => { expect(CREDIT_PACKS_ON_SALE).toBe(false); });
 
-  it("/premium shows the quantity picker and a pay button, not the paused state", async () => {
+  it("/premium shows the paused state: no quantity picker, no pay button, support link", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
     vi.stubGlobal("fetch", vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) })));
     render(<Premium />);
-    expect(await screen.findByLabelText("Number of credits to add")).toBeTruthy();
-    expect(screen.queryByText("Credit packs are paused.")).toBeNull();
-    expect(screen.getAllByRole("button", { name: /pay/i }).length).toBeGreaterThan(0);
+    expect(await screen.findByText("Credit packs are paused.")).toBeTruthy();
+    expect(screen.queryByLabelText("Number of credits to add")).toBeNull();
+    expect(screen.queryAllByRole("button", { name: /pay/i })).toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Contact Support" })).toBeTruthy();
   });
 
-  it("labels only the purchased bucket as pack credits and names the free monthly credits separately", async () => {
-    window.history.pushState({}, "", "/premium?role=job_seeker");
-    vi.stubGlobal("fetch", vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3, ledger: { buckets: { purchased: 0, cycle: 3 } } } }) })));
-    render(<Premium />);
-    expect(await screen.findByText(/in total, including your free monthly credits/)).toBeTruthy();
-    expect(document.body.textContent).toContain("You have 0 pack credits.");
-    expect(document.body.textContent).not.toContain("on top of your monthly");
-  });
-
-  it("the plans credits bar renders and the out-of-credits moment offers Add credits", () => {
-    const { container } = render(<CreditsSection summary={null} creditPrice={null} creditsHref="/premium" />);
-    expect(container.innerHTML).not.toBe("");
+  it("the out-of-credits moment offers no purchase while paused", () => {
     const summary = { plan: "free", ledger: { balance: 0, cycle: { used: 3 } }, slots: null } as never;
     const [moment] = upgradeMoments(summary, new Date(), "/premium");
-    expect(moment.cta).toEqual({ label: "Add credits", href: "/premium" });
+    expect(moment.cta).toBeNull();
+  });
+
+  it("the plans credits bar still renders the credit count when paused", () => {
+    const { container } = render(<CreditsSection summary={null} creditPrice={null} creditsHref="/premium" />);
+    expect(container.innerHTML).toBe("");
   });
 });
