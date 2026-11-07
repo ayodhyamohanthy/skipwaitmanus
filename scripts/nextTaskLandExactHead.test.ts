@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { pickNextTask, statusBoard } from "./nextTaskCore.mjs";
+import { ciOnTip, pickNextTask, statusBoard } from "./nextTaskCore.mjs";
 
 const NOW = Date.parse("2026-11-07T10:00:00+05:30");
 const HOUR = 3_600_000;
@@ -60,6 +60,12 @@ const pick = (tasks: ReturnType<typeof task>[], opts: { ci?: Ci; branches?: [str
   });
 
 describe("PICKER-land-exact-head: core acceptance cases", () => {
+  it("(l) a green payload without a sha string is never landable", () => {
+    expect(ciOnTip({ state: "green" }, S_TIP).state).toBe("no-tip-ci");
+    expect(ciOnTip({ state: "green", sha: undefined }, S_TIP).state).toBe("no-tip-ci");
+    expect(pick([task("T")], { ci: { state: "green" } }).kind).not.toBe("land");
+    expect(pick([task("T")], { ci: { state: "green" }, branches: [built("T", S_TIP, 0)] }).kind).not.toBe("land");
+  });
   // (a) Green run on a stale sha -> no LAND
   it("(a) green run on a stale sha does not hand LAND; hands MAKE GREEN with short tip and runId", () => {
     const result = pick([task("T")], { ci: greenOldCi(101), branches: [built("T", S_TIP, 3)] });
