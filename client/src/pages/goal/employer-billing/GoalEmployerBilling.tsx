@@ -154,7 +154,10 @@ export default function GoalEmployerBilling() {
 
   const restricted = data.spend.access === "restricted";
   const spend = data.spend;
-  const disabledReason = restricted ? RESTRICTED_REASON : data.account ? undefined : NO_ACCOUNT_REASON;
+  // The ledger's 403 follows from a missing account too (requireEmployer needs an
+  // approved one), so the missing account is the fact to name first; the
+  // restricted-tools notice only speaks for an account that exists.
+  const disabledReason = data.account ? (restricted ? RESTRICTED_REASON : undefined) : NO_ACCOUNT_REASON;
   const checkoutError = topUp.isError ? errorText(topUp.error, CHECKOUT_ERROR_FALLBACK) : "";
 
   return (
@@ -178,10 +181,10 @@ export default function GoalEmployerBilling() {
         ) : (
           <GoalEmptyState title={NO_ACCOUNT_TITLE} body={NO_ACCOUNT_BODY} className="border border-g-hairline bg-g-surface" />
         )}
-        {spend.access === "restricted" ? (
+        {data.account === null ? null : spend.access === "restricted" ? (
           <section className="border border-g-hairline bg-g-surface p-4 gdesk:p-5">
             <p className="text-g-label text-g-ink">{RESTRICTED_NOTICE}</p>
-            {data.account?.decisionNote ? <p className="mt-1 text-g-meta text-g-ink-2">{data.account.decisionNote}</p> : null}
+            {data.account.decisionNote ? <p className="mt-1 text-g-meta text-g-ink-2">{data.account.decisionNote}</p> : null}
           </section>
         ) : (
           <SpendRecord spend={spend} />

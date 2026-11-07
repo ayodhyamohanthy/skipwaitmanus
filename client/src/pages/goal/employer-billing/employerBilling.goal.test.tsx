@@ -70,9 +70,13 @@ const serve = (server: Server) => {
     const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
     if (path === PURCHASE_PATH) {
       const headers = (init?.headers ?? {}) as Record<string, string>;
-      calls.push({ path, method: init?.method ?? "GET", headers, body: String(init?.body ?? "") });
+      const body = String(init?.body ?? "");
+      calls.push({ path, method: init?.method ?? "GET", headers, body });
+      // The default reply describes the pack the request actually names, so a
+      // test cannot pass on an order that belongs to a different selection.
+      const requested = UNLOCK_PACKS.find(pack => pack.id === JSON.parse(body || "{}").pack) ?? UNLOCK_PACKS[0];
       const reply = server.purchase?.[Math.min(purchaseIndex, (server.purchase?.length ?? 1) - 1)]
-        ?? { status: 200, body: { orderId: "order_test_1", amount: 12900, currency: "INR", keyId: "rzp_test_key", pack: "growth", credits: 50 } };
+        ?? { status: 200, body: { orderId: "order_test_1", amount: requested.amountInPaise, currency: "INR", keyId: "rzp_test_key", pack: requested.id, credits: requested.adds } };
       purchaseIndex += 1;
       return json(reply.status, reply.body ?? { error: "We could not start the Razorpay checkout. Try again shortly." }, path);
     }
@@ -200,11 +204,16 @@ describe("goal /employer/billing states", () => {
   });
 
   it("no employer account yet: the commit is inert and says what must happen first", async () => {
-    serve({ account: null });
+    // The real server answer for a signed-in user with no employer account: the
+    // account route answers { account: null } and the approved-employer ledger
+    // answers 403 (server/employerRoutes.ts requireEmployer). The page must name
+    // the missing account, not the restricted-tools state that follows from it.
+    serve({ account: null, spendStatus: 403 });
     const { container } = renderPage(<GoalEmployerBilling />);
     const commit = await screen.findByRole("button", { name: /Top up for talent unlocks/ });
     expect(commit.getAttribute("aria-disabled")).toBe("true");
     expect(screen.getByText("Open your employer account first")).toBeTruthy();
+    expect(screen.queryByText("Employer tools, including top-ups, are closed for this account.")).toBeNull();
     expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     expect(purchaseCalls()).toHaveLength(0);
   });
@@ -336,6 +345,21 @@ describe("goal /employer/billing top-up money path", () => {
     await waitFor(() => expect(purchaseCalls()).toHaveLength(1));
     expect((await screen.findByRole("alert")).textContent).toMatch(/preparing your checkout/i);
     expect(widgetOpened).toBe(0);
+  });
+
+  it("the order the page opens belongs to the pack the employer selected", async () => {
+    serve({ account: ACCOUNT, spend: SPEND });
+    stubKeys();
+    stubRazorpay();
+    renderPage(<GoalEmployerBilling />);
+    fireEvent.click(await screen.findByRole("button", { name: /Adds 200 to your balance/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ }));
+    await waitFor(() => expect(widgetOpened).toBe(1));
+    const scale = UNLOCK_PACKS.find(pack => pack.id === "scale");
+    expect(scale).toBeTruthy();
+    expect(purchaseCalls()[0].body).toBe('{"pack":"scale"}');
+    expect(widgetOptions.amount).toBe(scale?.amountInPaise);
+    expect(widgetOptions.amount).toBe(39900);
   });
 });
 

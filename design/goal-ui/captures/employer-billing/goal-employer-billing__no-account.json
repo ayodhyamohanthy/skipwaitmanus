@@ -19,9 +19,9 @@
       "method": "GET",
       "path": "/api/employer/spend-history",
       "match": "prefix",
-      "status": 200,
+      "status": 403,
       "body": {
-        "spend": []
+        "error": "Employer access is required"
       }
     },
     {
