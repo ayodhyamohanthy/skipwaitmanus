@@ -44,7 +44,9 @@ Evidence to carry into the R4 CEO delta:
 
 ## 5. Gates
 
-Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths), focused vitest with `VITE_GOAL_SURFACES=referrer-home`, the red-first pin, and 1280 and 390 captures. Then an independent non-writer review and a non-writer lander (D-190(3)).
+Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths), focused vitest with `VITE_GOAL_SURFACES=referrer-home`, the red-first pin, and 1280 and 390 captures. Then an independent non-writer review of the final version. That review is kept. After it, an ordinary eligible holder lands this Tier 2 runtime PR once every required check is green on the exact head with current `main` merged in (AGENTS.md rule 5; docs/DELEGATION.md §4 step 7, Tier 2 or 3). It lands through the protected merge, with no admin bypass, squash, rebase or force-push. An Instinct holder also meets AGENTS.md's Instinct routine-merge boundary: a separate review passes on the final version, all required tests pass, and the work is checked against current `main`. D-190(3) applies only to the packet registration carrier (#1021), not to this runtime PR.
+
+Accuracy correction (2026-11-07, docs only): the registration of this packet (#1021) said "a non-writer lander (D-190(3))". D-190(3) is the temporary landing route for packet pull requests. It does not govern Tier 2 runtime PRs, and the original B1 registration request never asked for a non-writer runtime lander. The clause was imported from the registration route by mistake. This correction adds no decision ID and changes no policy, tier, owns, order or runtime. It does not weaken review, D-151 or CI.
 
 ## 6. Position and the R4 dependency (amendment, coordinator ruling 2026-11-07)
 
