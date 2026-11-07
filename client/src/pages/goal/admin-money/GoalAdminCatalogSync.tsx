@@ -3,7 +3,7 @@
 // typed-site confirmation. The ~40 inline hex colours of the legacy page do
 // not survive here: status is dot+text with goal tokens (packet §4.2).
 import { useEffect, useState } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
@@ -21,7 +21,7 @@ const LOAD_FALLBACK = "We could not read the Chargebee catalog.";
 const APPLY_FALLBACK = "We could not run the catalog sync.";
 
 export default function GoalAdminCatalogSync() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [dryRun, setDryRun] = useState<CatalogSyncDryRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -94,7 +94,7 @@ export default function GoalAdminCatalogSync() {
       <AdminMoneyGoalFrame screen="admin-catalog-sync-sign-in" current="/admin/catalog-sync">
         <AdminMoneyHeading current="/admin/catalog-sync" />
         <GoalNextStep reason="Sign in with the designated administrator account before reading the catalog dry run.">
-          <SignInButton><GoalButton variant="primary" className="mt-3">Sign in</GoalButton></SignInButton>
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminMoneyGoalFrame>
     );

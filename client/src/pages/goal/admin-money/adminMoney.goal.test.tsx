@@ -21,7 +21,7 @@ const { auth, calls } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isLoaded: true, isSignedIn: auth.signedIn, getToken: async () => "test-token" }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: auth.signedIn, getToken: async () => "test-token", openSignIn: () => {} }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 // The goal pages render the goal review row (GoalPaymentReviewRow), so no mock
@@ -92,6 +92,8 @@ describe("goal /admin/payments", () => {
     auth.signedIn = false;
     const { container } = render(<GoalAdminPayments />);
     assertGoalPage(container, PAYMENTS_PAGE);
+    // One goal button, never a button inside SignInButton's wrapper (capture 2026-11-08).
+    expect(container.querySelectorAll("button button, a button, button a").length).toBe(0);
   });
 
   it("puts the oldest flagged payment first: the one next step reveals it", async () => {
@@ -204,6 +206,7 @@ describe("goal /admin/catalog-sync", () => {
     auth.signedIn = false;
     const { container } = render(<GoalAdminCatalogSync />);
     assertGoalPage(container, CATALOG_PAGE);
+    expect(container.querySelectorAll("button button, a button, button a").length).toBe(0);
   });
 
   it("applies only after the site is typed, with the exact plan hash and confirm site", async () => {
@@ -235,6 +238,7 @@ describe("goal /admin/token-recovery", () => {
     auth.signedIn = false;
     const { container } = render(<GoalAdminTokenRecovery />);
     assertGoalPage(container, RECOVERY_PAGE);
+    expect(container.querySelectorAll("button button, a button, button a").length).toBe(0);
   });
 
   it("speaks of credits, not tokens, in the admin's own words", async () => {

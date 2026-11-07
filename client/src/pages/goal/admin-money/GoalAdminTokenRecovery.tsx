@@ -3,7 +3,7 @@
 // confirmed:true guard, the support reference and the audit history all stay.
 // Only the presentation changes (packet §4.1, §4.3).
 import { useEffect, useState, type FormEvent } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalEmptyState, GoalErrorState } from "@/components/goal/GoalStates";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
@@ -17,7 +17,7 @@ type RecoveryUser = { id: number; name: string | null; email: string | null };
 type Adjustment = { id: number; recipientUserId: number; recipientName: string | null; recipientEmail: string | null; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string; createdAt: string };
 
 export default function GoalAdminTokenRecovery() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [query, setQuery] = useState(""); const [users, setUsers] = useState<RecoveryUser[]>([]); const [selected, setSelected] = useState<RecoveryUser | null>(null);
   const [role, setRole] = useState<"job_seeker" | "referrer">("job_seeker"); const [tokenCount, setTokenCount] = useState(1); const [caseReference, setCaseReference] = useState(""); const [reason, setReason] = useState(""); const [confirmed, setConfirmed] = useState(false);
   const [history, setHistory] = useState<Adjustment[]>([]); const [searching, setSearching] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [success, setSuccess] = useState("");
@@ -39,7 +39,7 @@ export default function GoalAdminTokenRecovery() {
       <AdminMoneyGoalFrame screen="admin-token-recovery-sign-in" current="/admin/token-recovery">
         <AdminMoneyHeading current="/admin/token-recovery" />
         <GoalNextStep reason="Sign in with the designated administrator account to review payment-support cases and create audited recovery grants.">
-          <SignInButton><GoalButton variant="primary" className="mt-3">Sign in</GoalButton></SignInButton>
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminMoneyGoalFrame>
     );

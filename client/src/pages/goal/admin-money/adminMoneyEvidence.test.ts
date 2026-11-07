@@ -34,7 +34,7 @@ const ROUTES: Record<string, string> = {
   recovery: "/admin/token-recovery",
   "money-check": "/admin/money-check",
 };
-const routeOf = (state: string) => ROUTES[state.split("-")[0]];
+const routeOf = (state: string) => ROUTES[state.startsWith("money-check") ? "money-check" : state.split("-")[0]];
 
 // /admin/money-check is the one capture this row cannot move yet: packet §10
 // assigns its styling here, but assignments.json omits AdminMoneyCheck.tsx from

@@ -6,7 +6,7 @@
 // (GoalPaymentReviewRow) instead of the kit's coloured pills, and the error
 // state wins over the empty states while the queue is not answering.
 import { useEffect, useState } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { compactDate, displayPaymentRef as displayRef, formatAmount } from "@/components/admin/paymentReviewCopy";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -24,7 +24,7 @@ export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
 type ReviewPayment = { id: number; provider: string; providerHostedPageId: string | null; checkoutIntentId: string | null; userId: number; role: "job_seeker" | "referrer"; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: string | Date; userEmail: string | null; status?: "credited" | "refunded" | "requires_review" };
 
 export default function GoalAdminPayments() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [payments, setPayments] = useState<ReviewQueuePayment[]>([]);
   const [recent, setRecent] = useState<ReviewPayment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,7 +107,7 @@ export default function GoalAdminPayments() {
       <AdminMoneyGoalFrame screen="admin-payments-sign-in" current="/admin/payments">
         <AdminMoneyHeading current="/admin/payments" />
         <GoalNextStep reason="Sign in with the designated administrator account before reviewing payment decisions.">
-          <SignInButton><GoalButton variant="primary" className="mt-3">Sign in</GoalButton></SignInButton>
+          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
         </GoalNextStep>
       </AdminMoneyGoalFrame>
     );
