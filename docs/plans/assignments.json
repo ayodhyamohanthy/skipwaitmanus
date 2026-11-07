@@ -2595,9 +2595,10 @@
         "client/src/pages/AdminCatalogSync.tsx",
         "client/src/pages/AdminTokenRecovery.tsx",
         "client/src/pages/goal/admin-money/**",
-        "design/goal-ui/captures/admin-money/**"
+        "design/goal-ui/captures/admin-money/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-money'); read-only: components/admin/paymentReviewCopy.ts; also covers /admin/money-check styling (packet §10).",
+      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-money'); read-only: components/admin/paymentReviewCopy.ts; also covers /admin/money-check styling (packet §10). Nov 8 (PR #986 F1): owns gains client/src/test/goalPagesBoundary.test.ts so the packet's read-only paymentReviewCopy.ts can be admitted as behavior-only; D-048-p3-for-companies waits for this row because both edit that shared test (D-223).",
       "epic": "D-048-p3"
     },
     {
@@ -2798,7 +2799,8 @@
         "D-048-p3-employer",
         "D-107-claim-company",
         "D-048-F-goal-check",
-        "DECISION-COPY-oct26"
+        "DECISION-COPY-oct26",
+        "D-048-p3-admin-money"
       ],
       "owns": [
         "client/src/pages/ForCompanies.tsx",
@@ -5606,7 +5608,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-architect-review-route",
       "status": "todo",
-      "syncedTo": "D-294",
+      "syncedTo": "D-299",
       "dependsOn": [
         "REVIEW-GATE-fetch-parity"
       ],

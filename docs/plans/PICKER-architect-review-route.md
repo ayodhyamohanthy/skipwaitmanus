@@ -8,8 +8,8 @@
 | Branch | `agent/queue/picker-architect-review-route` |
 | Registered by | D-294 (2026-11-07), docs-only, on the architect lock `agent/architect/picker-architect-review-route` |
 | Depends on | `REVIEW-GATE-fetch-parity` (D-292, PR #1013) |
-| Decisions | D-074 (3) (independent Tier 1 review before `main`), D-151 (reviewer independence by model), D-190 (packet pull requests, never the writer, one at a time), D-286 and D-291 (the gate-only-red review route and its wiring), D-292 (the named gate step evaluates), D-202 (re-sync first), D-134 (no work while a dependency is open), D-200 (any session registers rows and records rulings), D-032 (better approach with evidence) |
-| Synced to | D-294 |
+| Decisions | D-074 (3) (independent Tier 1 review before `main`), D-151 (reviewer independence by model), D-190 (packet pull requests, never the writer, one at a time), D-286 and D-291 (the gate-only-red review route and its wiring), D-292 (the named gate step evaluates), D-202 (re-sync first), D-134 (no work while a dependency is open), D-200 (any session registers rows and records rulings), D-032 (better approach with evidence), D-299 (the R7 amendment) |
+| Synced to | D-299 |
 
 ## 1. Goal
 
@@ -71,13 +71,15 @@ It returns `{ kind: "review", task, work: v.archName, pr: v.pr, lock: v.lockName
 
 **R6. Board and text.** `scripts/nextTaskCore.mjs:1106` shows the review state for a Tier 1 packet pull request (drop `&& !v.packet` for `tier === 1` only), and the misleading comments at `:795` and `:1105` say "Tier 2/3 packets go the docs path; a Tier 1 packet needs its review (D-074 (3), D-294)". `scripts/nextTaskText.mjs` prints for `pick.packet` that the review is of the packet and its rows (not code), on `pick.work` (the lock), and ends with the re-run step from R3.
 
+**R7. Review-claim lifecycle (D-085).** `ownStage` (`scripts/nextTaskCore.mjs:945`) admits a packet row for a `of: "review"` continuation when the newest stage marker on the review lock is this session's `Review claim`, exactly as it does for a `todo` Tier 1 row, so the picker hands CONTINUE REVIEW, `heldAllBy` (`:1027`) lists the claim and `--heartbeat` keeps it alive (the generic `review` case of `leaseFor`, `:1062`, heartbeats the lock). The admission is Review-claim-only: `Fix claim`, `Verdict pass` and `Land claim` markers on a packet row keep today's behaviour - no fix or land continuation from this branch, and the packet's landing continuation stays the existing D-190 packet-lander branch (`:963`). Every other packet case keeps today's behaviour (R3).
+
 ## 6. Files
 
 In scope (the build may touch only these):
-- `scripts/nextTaskCore.mjs`: R1, R2, R3, R6 (board and comments).
+- `scripts/nextTaskCore.mjs`: R1, R2, R3, R6 (board and comments), R7 (`ownStage` review-continuation admission only).
 - `scripts/next-task.mjs`: R4 only.
 - `scripts/nextTaskText.mjs`: R6 (packet review wording).
-- `scripts/nextTaskArchitectReview.test.ts` (new): §7.
+- `scripts/nextTaskArchitectReview.test.ts` (new): §7, including (l).
 
 Always allowed: `docs/plans/assignments.json` (this row's status at landing) and this packet's `## Status`.
 
@@ -101,9 +103,11 @@ Drive `pickNext` through the same fixtures `scripts/nextTaskArchitectLanding.tes
 - (j) Spawn harness (the mocked-fetch harness `scripts/nextTaskGateRedReview.test.ts:166` uses): `next-task.mjs --verdict pass` by the review-lock holder on a packet row whose task branch is not on origin records `reviewed <lock tip>`. *Red today:* fails with "is not on origin; there is no head to review".
 - (k) Spawn harness: a red tip run on the lock whose jobs show only the gate step failed prints `REVIEW <id>` for an eligible session, and the board line shows the review state.
 
+- (l) Lifecycle: a packet row whose review lock's newest marker is this session's `Review claim` gets `ownStage` CONTINUE REVIEW, is listed by `heldAllBy` and gets a lock `Heartbeat` from `leaseFor`; the same row with a newest `Fix claim`, `Verdict pass` or `Land claim` marker gets no continuation from `ownStage`. *Red today (`main` `d6685c97`):* no continuation exists for any packet review claim.
+
 ## 8. Definition of done
 
-- §7 red-first: the test commit without the change fails (a), (g), (j) and (k). With the change, all pass.
+- §7 red-first: the test commit without the change fails (a), (g), (j), (k) and (l). With the change, all pass.
 - `pnpm check`, `LANG=en_US.UTF-8 pnpm vitest run scripts/`, `validateAssignments` → `[]`, `node scripts/decision-id-check.mjs` exit 0.
 - **Live proof, after REVIEW-GATE-fetch-parity has landed:** re-run CI on #878 (or the newest Tier 1 packet pull request red only for its review). Paste run and job ids showing that the only failed step is "Review gate (independent Tier 1 pass)", with Scope check `skipped`. Then show `node scripts/next-task.mjs` (preview, or `--status` for the board line) printing `REVIEW D-089-request-inbox` for a session whose model is not among #878's writers, where it printed ARCHITECT or a "writing its packet" skip before. The proof claims and records nothing: no `--claim`, no review marker and no verdict are pushed for the proof.
 - Not done: no Tier 1 packet lands from this row. Each still needs its own independent pass on its exact head and its own green-CI landing under D-190.
@@ -127,3 +131,8 @@ Drive `pickNext` through the same fixtures `scripts/nextTaskArchitectLanding.tes
 - Coordination: accidental D-100.otp-hmac review claim 0a6b1b7a/heartbeat96963710 is untouched, holds remain in force, no review/verdict or renewal; factual correction on PR #884. No release/unclaim command exists; normal quiet expiry applies. Exact comma-list avoid is corrected. Supported avoided-continuation routing selected this build; no review outcome or handoff claimed.
 
 - 2026-11-08 04:27 IST: bounded lifecycle omission found, not silently implemented. `ownStage` recognizes review ownership only for `v.open`, while packet rows have `v.open=false`. New red lifecycle regression reproduces `kind:none` instead of CONTINUE REVIEW and absent normal heartbeat ownership. Packet R1-R6 does not admit that change; coordinator clarification and independent inspection pending. Existing implementation is not ready to land.
+- `PICKER-architect-review-route`: packet drafted by Hark · b06c on `agent/architect/picker-architect-review-route` (registered by D-294, 2026-11-07). Direction: Instinct coordinator, 2026-11-07 (coordinator routing confirmed; no owner instruction on this packet).
+
+- Amendment R7 (Review-claim-only lifecycle continuation for packet rows) registered by D-299, 2026-11-08: successor-architect ruling under D-200/D-202 - the original architect session (Hark · b06c) ended 2026-11-07 12:57 IST and no task waits for one session. Defect measured on `main` `d6685c97` and reproduced by the independent reviewer (PR #1038 comment 6714302658; 11/11 focused, `nextTask` 299/299).
+
+- 2026-11-08 05:21 IST: D-299/R7 is effective on main6327ceae; merged normal scope re-sync, preserving historical red finding and amendment provenance. Narrow review-only implementation and final independent review pending.
