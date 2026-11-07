@@ -77,7 +77,7 @@
       "tier": 1,
       "lane": "auth-device",
       "branch": "agent/queue/fix-device-signin",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-286",
       "dependsOn": [],
       "note": "D-273 (2026-11-01): the closure deliverable is complete on PR #952 (head 48eb44df): status done plus the structural rewrite of the nextTask.test.ts:47-62 first-pick pin. That head is red only at the review gate - unit + component + route, production build and e2e journeys are all green on it - and the pass it needs cannot be issued: nextTaskCore.mjs:573-584 returns fix or green for every red CI and reaches review only below that guard (:586-592). The row also cannot be parked by a docs-only PR: the :47-62 pin asserts the live first pick IS this row, so any status other than todo moves it and fails the required unit job (measured on PR #953, run 41331510865). Sessions that cannot complete it should run the picker with --avoid FIX-device-signin rather than burn a run; it lands unchanged once the picker can hand its review, which D-286 registers as row PICKER-gate-red-review-route. Do not rebuild. Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner. D-272 (2026-11-01): the row is done and live (PR #655 merged 059ef908; PASS 084577f9 by GPT 2a58 on head 9237ac4e, an ancestor of main; 40/40 focused green). The board flip and the property rewrite of the nextTask.test.ts:47-62 first-pick pin ride agent/queue/fix-device-signin as an ordinary Tier 1 pull request - do not rebuild; one independent review, then landing.",
@@ -5294,6 +5294,27 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-fix-referrer-home-private-copy",
+      "title": "/referrer-home goal page: the first-time empty state says referral requests reach you privately (D-176 port), not that people can find verified referrers",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-fix-referrer-home-private-copy.md",
+      "tier": 2,
+      "lane": "d048-referrer-home",
+      "branch": "agent/queue/d048-fix-referrer-home-private-copy",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer-home",
+        "D-048-fix-referrer-home-ux"
+      ],
+      "owns": [
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx",
+        "client/src/pages/referrerHomeGoal.test.tsx"
+      ],
+      "note": "Corrective fix row, release-blocking for D-048-R4 (PR #1020). The distinct CEO did not sign off effdfdde because of finding B1: GoalReferrerHome.tsx:85 restates the pre-D-176 availability claim ('People can find verified referrers'), which kit commit 7ee6da33 replaced with private delivery. Port only that decided wording and add one red-first regression pin (packet section 2); no flag flip, shared helper, or admin/money/auth change. dependsOn names the two done rows whose output this edits in the same files (PICKER-owns-scope). E1-E4 from the R4 review stay open, are not part of this row, and are not reported resolved (packet section 4).",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-048-R4",
       "title": "Release 4, referrer: referrer, referrer-home, invite, post-opportunity (email-review when its straggler lands; the queue went live in place, D-149)",
       "row": "D-048",
@@ -5307,13 +5328,14 @@
         "D-048-p3-referrer",
         "D-048-p3-referrer-home",
         "D-048-p3-invite",
-        "D-048-p3-post"
+        "D-048-p3-post",
+        "D-048-fix-referrer-home-private-copy"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts",
         "client/src/lib/goalSurfaces.test.ts"
       ],
-      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names only the four surfaces whose output it releases (D-223 (1)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines; the kit dropped two D-176 strings the goal version never had; confirm-not-port, verify at build time); referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only. Owns amendment (2026-11-07): adds client/src/lib/goalSurfaces.test.ts, because the RELEASED assertion in goalSurfaces.test.ts (releasedGoalSurfaces() equals exactly [\"home\"]) must change with the flip; the registered owns missed it.",
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names the four surfaces whose output it releases plus the B1 corrective output D-048-fix-referrer-home-private-copy (D-223 (1)/(3)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines, kit commit 7ee6da33): the D-147 credit clause the kit dropped is already absent in the goal version, while the D-176 change from availability framing to private delivery has a semantic goal twin (GoalReferrerHome.tsx empty state, finding B1) that REQUIRES PORT, done under D-048-fix-referrer-home-private-copy; referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only. Owns amendment (2026-11-07): adds client/src/lib/goalSurfaces.test.ts, because the RELEASED assertion in goalSurfaces.test.ts (releasedGoalSurfaces() equals exactly [\"home\"]) must change with the flip; the registered owns missed it. Dependency correction (coordinator ruling on PR #1021, 2026-11-07, D-223 (1)/(3)): D-048-fix-referrer-home-private-copy is added to dependsOn because its output (the D-176 private-delivery copy on /referrer-home, finding B1) is a piece this release needs. The distinct CEO held effdfdde on it. This is an output edge, not an ordering-only edge; id, branch, owns and claim are unchanged.",
       "epic": "D-048-p3"
     },
     {
