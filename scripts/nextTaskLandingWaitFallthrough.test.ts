@@ -11,7 +11,7 @@ const HOUR = 3_600_000;
 const green = { state: "green", sha: "a".repeat(40), url: "https://ci/run/1" };
 
 type Marker = { verb: string; id: string; who: string; verdict?: string };
-type Branch = { tipMs: number; merged: boolean; markers: Marker[] };
+type Branch = { tipSha?: string; tipMs: number; merged: boolean; markers: Marker[] };
 const task = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
   title: `${id} title`,
@@ -31,9 +31,9 @@ const HOLDER = "Kimi · s1"; // holds the landing slot
 const ME = "Hark · me1";
 
 // A Tier 2 task built by BUILDER, idle for 3 hours, with a green open pull request: its next stage is LAND.
-const built = (id: string, hoursAgo = 3): [string, Branch] => [`agent/queue/${id.toLowerCase()}`, { tipMs: NOW - hoursAgo * HOUR, merged: false, markers: [{ verb: "Claim", id, who: BUILDER }] }];
+const built = (id: string, hoursAgo = 3): [string, Branch] => [`agent/queue/${id.toLowerCase()}`, { tipSha: "a".repeat(40), tipMs: NOW - hoursAgo * HOUR, merged: false, markers: [{ verb: "Claim", id, who: BUILDER }] }];
 const pr = (id: string): [string, string] => [`agent/queue/${id.toLowerCase()}`, `https://github.com/o/r/pull/${id.length + 100}`];
-const slotHeld = (id = "Z", who = HOLDER, hoursAgo = 0.1): [string, Branch] => ["agent/queue/landing", { tipMs: NOW - hoursAgo * HOUR, merged: false, markers: [{ verb: "Land claim", id, who }] }];
+const slotHeld = (id = "Z", who = HOLDER, hoursAgo = 0.1): [string, Branch] => ["agent/queue/landing", { tipSha: "a".repeat(40), tipMs: NOW - hoursAgo * HOUR, merged: false, markers: [{ verb: "Land claim", id, who }] }];
 
 const pick = (tasks: ReturnType<typeof task>[], opts: {
   branches?: [string, Branch][];
@@ -46,7 +46,7 @@ const pick = (tasks: ReturnType<typeof task>[], opts: {
   mainCi: opts.mainCi ?? green,
   branches: new Map(opts.branches ?? []),
   openPrs: new Map(opts.prs ?? []),
-  prCi: new Map((opts.prCi ?? []).map(([b, state]) => [b, { state }])),
+  prCi: new Map((opts.prCi ?? []).map(([b, state]) => [b, { state, ...(state === "green" ? { sha: "a".repeat(40) } : {}) }])),
   mergedHeads: new Map(),
   reports: [],
   now: NOW,
@@ -135,13 +135,13 @@ describe("PICKER-landing-wait-fallthrough", () => {
   });
 
   it("separate case: an own LAND waiting on the slot stays an honest WAIT even though N is eligible", () => {
-    const own: [string, Branch] = ["agent/queue/m", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: ME }] }];
+    const own: [string, Branch] = ["agent/queue/m", { tipSha: "a".repeat(40), tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: ME }] }];
     expect(pick([task("M"), task("N")], { branches: [own, slotHeld()], prs: [pr("M")], prCi: [greenPr("M")] }))
       .toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
   });
 
   it("own unfinished work ranked below a blocked pending landing is not reordered: still the landing wait", () => {
-    const own: [string, Branch] = ["agent/queue/m", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: ME }] }];
+    const own: [string, Branch] = ["agent/queue/m", { tipSha: "a".repeat(40), tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: ME }] }];
     expect(pick([task("L"), task("M"), task("N")], { branches: [built("L"), own, slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] }))
       .toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
   });

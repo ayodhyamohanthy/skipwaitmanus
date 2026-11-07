@@ -317,8 +317,8 @@ export function ciOnTip(rawCi, tipSha) {
         ...(typeof tipSha === "string" ? { tipSha } : {}),
       };
     }
-    // Unit-test fixtures passing bare `{ state: "green" }` without sha stay green.
-    return ci;
+    // Missing head_sha is unknown, never evidence that this tip passed.
+    return { ...ci, state: "no-tip-ci", ...(typeof tipSha === "string" ? { tipSha } : {}) };
   }
   return {
     ...ci,
