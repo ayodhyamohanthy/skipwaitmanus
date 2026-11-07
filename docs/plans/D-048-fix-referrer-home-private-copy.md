@@ -52,3 +52,7 @@ Tier 2, UI copy plus test. Gates: tsc, token audit, scope-check (two owned paths
 - Basis: D-223 (1) says dependsOn names only the output a task needs, and D-223 (3) says a release depends on all of its pieces. This row's output, the D-176 copy on a surface R4 releases, is such a piece. The distinct CEO held R4 head `effdfdde` on exactly this finding. The row is a missing prerequisite of a release already in flight, not unrelated work jumping the queue. D-223 (5) is respected: R4's in-flight scope (owns) is unchanged.
 - FIFO: the owner's standing rule is FIFO ("FIFO always", Oct 31). The coordinator lines up already-decided tasks under the Oct 26 and Oct 29 delegation. Appended at the end, this row came after PICKER-land-exact-head, so the release prerequisite would have waited behind unrelated picker work while R4 stayed held. Placing it before R4 keeps FIFO for every other row.
 - This is a coordinator ruling on placement, not owner approval of the exact ordering.
+
+## Status
+
+D-048-fix-referrer-home-private-copy: in progress - Instinct · dd74 - 2026-11-07 - branch agent/queue/d048-fix-referrer-home-private-copy. Read receipt: main 027f1948; BRIEF, AGENTS, BUILD_CONTINUITY, DECISIONS D-151/D-176/D-190/D-223/D-295 and this packet; prior registration #1021 landed 027f1948, R4 #1020 held on B1. Goal: accurate private-delivery framing for new referrers. Owns only goal/referrer-home/GoalReferrerHome.tsx and referrerHomeGoal.test.tsx; no flag/auth/money change. Independent review and nonwriter landing remain required.
