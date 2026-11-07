@@ -135,6 +135,20 @@ describe("Goal /referrer-home", () => {
     expect(sampleText).not.toMatch(/credit|release|pass/i);
   });
 
+  it("says new referral requests reach verified referrers privately", async () => {
+    const fetchMock = stubHome({ fresh: [] });
+    const homeImplementation = fetchMock.getMockImplementation();
+    if (!homeImplementation) throw new Error("Expected the home stub implementation.");
+    // New by impact, but not the explicit sample state (hasEverReviewed=false).
+    fetchMock.mockImplementation((url, init) => String(url).endsWith("/referrer-impact/me")
+      ? Promise.resolve(ok({ summary: { reviewed: 0, approved: 0, introductions: 0, interviews: 0, offers: 0, repliedWithin3DaysPct: 0 } }))
+      : homeImplementation(url, init));
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Your first referral request will appear here.")).toBeTruthy();
+    expect(screen.getByTestId("goal-empty-state").textContent).toContain("Referral requests for Wipro now reach you privately. Share your profile when you are ready.");
+    expect(screen.queryByText(/People can find verified referrers/)).toBeNull();
+  });
+
   it("resumes a paused queue with a real preferences write", async () => {
     const fetchMock = stubHome({ paused: true });
     renderWithQuery(<ReferrerHome />);
