@@ -12,8 +12,8 @@ export const JOB_CATALOG_ENABLED = false;
 
 export const JOB_CATALOG_PAGE_SIZE = 50;
 
-/** Providers this row covers. Greenhouse only; others join as their own rows. */
-export const jobCatalogProviderSchema = z.enum(["greenhouse"]);
+/** Supported providers (D-174-job-catalog, D-174-job-sources-more). */
+export const jobCatalogProviderSchema = z.enum(["greenhouse", "ashby", "lever"]);
 export type JobCatalogProvider = z.infer<typeof jobCatalogProviderSchema>;
 
 export const jobSourceStatusSchema = z.enum(["verified", "unverified", "failing"]);
