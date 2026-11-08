@@ -2,7 +2,7 @@ import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { creditReservedPhrase } from "@shared/moneyCopy";
 import { AlertCircle, ArrowLeft, CheckCircle2, History, Link2, LoaderCircle, ShieldCheck, WalletCards } from "lucide-react";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useRoute } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Brand } from "@/components/Brand";
@@ -10,6 +10,7 @@ import { AdminNav } from "@/components/AdminNav";
 import StatusBadge from "@/components/StatusBadge";
 import { approvalStatusLabels, compactDateTime, displayPaymentRef, displayRef, formatAmount, historyLabels, type AdminApprovalQueueItem, type AdminApprovalQueueKind } from "@/lib/adminApproval";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type ReviewDecision = "approved" | "rejected";
 type HistoryEvent = { id: string; label: string; actor: string; time: string | Date; note?: string };
@@ -48,7 +49,12 @@ function RecordBlock({ icon: Icon, eyebrow, title, children }: { icon: React.Com
   return <section className="rounded-xl border border-[#e5e5e5] bg-white p-4"><div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#f5f5f5] text-black"><Icon className="h-4 w-4" /></span><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#505050]">{eyebrow}</p><h2 className="text-sm font-bold text-black">{title}</h2></div></div><div className="mt-3 text-sm leading-6 text-[#505050]">{children}</div></section>;
 }
 
+// D-048-p3-admin-approvals: the goal reskin of this surface (switch only; the
+// goal implementation lives under pages/goal/admin-approvals).
+const GoalAdminApprovalRecord = lazy(() => import("./goal/admin-approvals/GoalAdminApprovalRecord"));
+
 export default function AdminApprovalRecord() {
+  if (goalSurfaceOn("admin-approvals")) return <Suspense fallback={null}><GoalAdminApprovalRecord /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [match, params] = useRoute<{ kind: string; id: string }>("/admin/approvals/:kind/:id");
   const kind = (match ? params.kind : "") as AdminApprovalQueueKind;

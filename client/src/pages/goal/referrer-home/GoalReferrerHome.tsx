@@ -82,7 +82,7 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
       ) : view.waiting.length === 0 ? (
         <GoalEmptyState
           title={view.isNew ? "Your first referral request will appear here." : "No referral requests right now."}
-          body={view.isNew ? `People can find verified referrers${company ? ` at ${company.name}` : ""}. Share your profile when you are ready.` : "Your queue is clear for now."}
+          body={view.isNew ? `Referral requests${company ? ` for ${company.name}` : ""} now reach you privately. Share your profile when you are ready.` : "Your queue is clear for now."}
         />
       ) : (
         <ul className="grid gap-2">
