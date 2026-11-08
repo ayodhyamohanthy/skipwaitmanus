@@ -1,0 +1,1026 @@
+{
+  "source": "129188d5a8256aba503d5bde2a659411291caefc",
+  "sourceTreeDirty": false,
+  "build": "VITE_GOAL_SURFACES=admin-money (local vite dev server, every /api call mocked in the browser)",
+  "command": "node design/goal-ui/captures/admin-money/capture.mjs",
+  "synthetic": true,
+  "clock": "2026-10-08T10:00:00+05:30 fixed",
+  "results": [
+    {
+      "file": "catalog-default-390.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/billing/catalog-sync -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "catalog-error-390.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/billing/catalog-sync -> 500",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "catalog-loading-390.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/billing/catalog-sync -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "catalog-signed-out-390.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-default-390.png",
+      "route": "/admin/money-check",
+      "screen": "kit-page (outside owns)",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Money check"
+      ],
+      "nextStepBlocks": 0,
+      "primaryCommits": 0,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-confirm-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": [
+          "{\"waitFor\":\"button:has-text(\\\"Take back unused credits\\\")\"}",
+          "{\"click\":\"button:has-text(\\\"Take back unused credits\\\")\"}",
+          "{\"waitFor\":\"[role=\\\"dialog\\\"]\"}",
+          "{\"wait\":400}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-default-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-empty-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-error-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 500",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "payments-loading-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-result-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200",
+          "POST /api/admin/payments/review/7 -> 200"
+        ],
+        "actions": [
+          "{\"waitFor\":\"button:has-text(\\\"Add 3 credits\\\")\"}",
+          "{\"click\":\"button:has-text(\\\"Add 3 credits\\\")\"}",
+          "{\"waitFor\":\"text=Added 3 credits to the wallet.\"}",
+          "{\"wait\":400}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-signed-out-390.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "recovery-default-390.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/token-recovery/adjustments -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "recovery-empty-390.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/token-recovery/adjustments -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "recovery-error-390.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/token-recovery/adjustments -> 500",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "recovery-signed-out-390.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "catalog-default-1280.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/billing/catalog-sync -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "catalog-error-1280.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/billing/catalog-sync -> 500",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "catalog-loading-1280.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/billing/catalog-sync -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "catalog-signed-out-1280.png",
+      "route": "/admin/catalog-sync",
+      "screen": "admin-catalog-sync-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-default-1280.png",
+      "route": "/admin/money-check",
+      "screen": "kit-page (outside owns)",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Money check"
+      ],
+      "nextStepBlocks": 0,
+      "primaryCommits": 0,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-confirm-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": [
+          "{\"waitFor\":\"button:has-text(\\\"Take back unused credits\\\")\"}",
+          "{\"click\":\"button:has-text(\\\"Take back unused credits\\\")\"}",
+          "{\"waitFor\":\"[role=\\\"dialog\\\"]\"}",
+          "{\"wait\":400}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-default-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-empty-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-error-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 500",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "payments-loading-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-result-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/payments/review -> 200",
+          "GET /api/account/preferences -> 200",
+          "POST /api/admin/payments/review/7 -> 200"
+        ],
+        "actions": [
+          "{\"waitFor\":\"button:has-text(\\\"Add 3 credits\\\")\"}",
+          "{\"click\":\"button:has-text(\\\"Add 3 credits\\\")\"}",
+          "{\"waitFor\":\"text=Added 3 credits to the wallet.\"}",
+          "{\"wait\":400}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "payments-signed-out-1280.png",
+      "route": "/admin/payments",
+      "screen": "admin-payments-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "recovery-default-1280.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/token-recovery/adjustments -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "recovery-empty-1280.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/token-recovery/adjustments -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "recovery-error-1280.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/admin/token-recovery/adjustments -> 500",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "recovery-signed-out-1280.png",
+      "route": "/admin/token-recovery",
+      "screen": "admin-token-recovery-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    }
+  ]
+}

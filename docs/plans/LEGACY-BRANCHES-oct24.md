@@ -55,4 +55,4 @@ Three pull requests from before the queue gate (D-166) fail CI only because thei
 
 ## Status
 - `D-048-fix-signin-click-loading`: review — agent/ayo7/signin-loading-click — 3f7ef2a3 (red-first: reverting the `openSignIn` guard change fails the two click-during-loading tests, 2/13; focused auth 182/182; full gate 521 files green; required CI green on `3f7ef2a3`; diff against `main` is exactly `auth.tsx` + `authCompat.test.ts`; fixed by Qoder · bbc5, D-151 needs a reviewer of another model).
-- `D-048-fix-send-ask-blocker`: registered by this packet's PR; waits for `D-132-audit`.
+- `D-048-fix-send-ask-blocker`: done — a24347ef

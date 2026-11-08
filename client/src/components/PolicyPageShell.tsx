@@ -5,6 +5,8 @@ import type { LucideIcon } from "lucide-react";
 import { applySeo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { breadcrumbsFor, publicRoute } from "@shared/publicRoutes";
+import { GOAL_SURFACES, goalSurfaceOn } from "@/lib/goalSurfaces";
+import { GoalPolicyPage } from "@/pages/goal/policy/GoalPolicyPage";
 
 /**
  * Kit v4 legal/reading layout (app/src/components/legal-page.tsx) shared by
@@ -128,6 +130,11 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
     // between policy screens inside the single-page app.
     if (canonicalPath) applySeo({ title: seoTitle, description: seoDescription, path: canonicalPath });
   }, [canonicalPath, seoDescription, seoTitle]);
+  // D-048-p3-policy: the goal frame, keyed by route - only the routes the
+  // `policy` surface owns (never /pricing or /support, which have their own rows).
+  if (canonicalPath && (GOAL_SURFACES.policy as readonly string[]).includes(canonicalPath) && goalSurfaceOn("policy")) {
+    return <GoalPolicyPage path={canonicalPath} screen={screen} title={title} updated={updated} draft={status === "draft"} intro={intro} summary={summary} sections={sections} footnote={footnote} supportEmail={SUPPORT_EMAIL}>{children}</GoalPolicyPage>;
+  }
   // The kit sets the closing full stop as the blue brand dot.
   const heading = title.endsWith(".") ? title.slice(0, -1) : title;
   // The live intro (including any acceptance clause) leads the reading column,

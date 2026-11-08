@@ -55,6 +55,15 @@ describe("GoalButton", () => {
     expect(link.getAttribute("data-g-primary")).toBe("true");
     expect(link.tagName).toBe("A");
   });
+
+  it("inert primary button never carries active or hover background styles", () => {
+    render(<GoalButton variant="primary" disabledReason="Waiting for input">Continue</GoalButton>);
+    const button = screen.getByTestId("goal-button");
+    expect(button.className).not.toContain("hover:not-active:bg-g-primary-hover");
+    expect(button.className).not.toContain("bg-g-primary");
+    expect(button.className).toContain("bg-transparent");
+    expect(button.className).toContain("hover:bg-transparent");
+  });
 });
 
 describe("GoalSearchInput", () => {

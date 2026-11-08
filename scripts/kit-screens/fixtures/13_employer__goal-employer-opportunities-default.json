@@ -1,0 +1,49 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/opportunities",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "opportunities": [
+          {
+            "id": 1,
+            "companyDomain": "northwind.example",
+            "kind": "hiring_now",
+            "roleTitle": "Battery engineer",
+            "location": "Pune",
+            "compensation": null,
+            "isActive": true,
+            "sponsoredTier": "featured",
+            "sponsoredUntil": null,
+            "isSponsored": true
+          },
+          {
+            "id": 2,
+            "companyDomain": "northwind.example",
+            "kind": "walk_in",
+            "roleTitle": "Controls intern",
+            "location": null,
+            "compensation": null,
+            "isActive": true,
+            "sponsoredTier": null,
+            "sponsoredUntil": null,
+            "isSponsored": false
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Sponsor this role"
+    }
+  ]
+}

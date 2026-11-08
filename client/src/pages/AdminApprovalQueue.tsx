@@ -2,7 +2,7 @@ import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { creditReservedPhrase } from "@shared/moneyCopy";
 import { AlertCircle, CheckSquare, ChevronDown, ListFilter, LoaderCircle, ShieldCheck } from "lucide-react";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Brand } from "@/components/Brand";
@@ -12,6 +12,7 @@ import { useSlowLoad } from "@/hooks/useSlowLoad";
 import StatusBadge from "@/components/StatusBadge";
 import { approvalStatusLabels, compactDate, compactDateTime, displayPaymentRef, displayRef, formatAmount, itemKey, openApprovalStatuses, type AdminApprovalQueueItem, type AdminApprovalQueueKind, type AdminApprovalQueueStatus } from "@/lib/adminApproval";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type StatusFilter = "all" | AdminApprovalQueueStatus;
 type KindFilter = "all" | AdminApprovalQueueKind;
@@ -32,7 +33,12 @@ function metaChips(item: AdminApprovalQueueItem) {
   return <><span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">{item.meta.tokenCount ?? 0} token{(item.meta.tokenCount ?? 0) === 1 ? "" : "s"}</span>{item.meta.reason ? <span className="rounded-full border border-[#b45309]/30 bg-[#b45309]/10 px-2.5 py-1 text-[10px] font-bold text-[#B45309]">{item.meta.reason}</span> : <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[10px] font-bold text-[#505050]">{item.meta.userEmail || `User #${item.id}`}</span>}</>;
 }
 
+// D-048-p3-admin-approvals: the goal reskin of this surface (switch only; the
+// goal implementation lives under pages/goal/admin-approvals).
+const GoalAdminApprovalQueue = lazy(() => import("./goal/admin-approvals/GoalAdminApprovalQueue"));
+
 export default function AdminApprovalQueue() {
+  if (goalSurfaceOn("admin-approvals")) return <Suspense fallback={null}><GoalAdminApprovalQueue /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [, navigate] = useLocation();
   const [items, setItems] = useState<AdminApprovalQueueItem[]>([]);

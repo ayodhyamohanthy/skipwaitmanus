@@ -1,0 +1,308 @@
+vite v7.3.6 building client environment for production...
+(!) %VITE_GIT_COMMIT_SHA% is not defined in env variables found in /index.html. Is the variable mistyped?
+(!) %VITE_ANALYTICS_ENDPOINT% is not defined in env variables found in /index.html. Is the variable mistyped?
+(!) %VITE_ANALYTICS_WEBSITE_ID% is not defined in env variables found in /index.html. Is the variable mistyped?
+transforming...
+Module "shared/shareImpactCard.ts" tried to import "design/goal-ui/content.json" with "type": "json" attributes, but it was already imported elsewhere with no attributes. Please ensure that import attributes for the same module are always consistent.
+../rel-webhook-auth-alarm/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../rel-webhook-auth-alarm/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../rel-webhook-auth-alarm/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../rel-webhook-auth-alarm/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 3881 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-greek-500-normal-JpySY46c.woff2          4.28 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-greek-700-normal-C6CZE3T8.woff2          4.30 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-cyrillic-700-normal-BWTpRfYl.woff2       5.34 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-cyrillic-500-normal-DmUKJPL_.woff2       5.36 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-vietnamese-700-normal-BDLVIk2r.woff      5.45 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-vietnamese-500-normal-DNRqzVM1.woff      5.48 kB
+../../../../../tmp/aw-dist-all/index.html                                                     5.59 kB │ gzip:   2.05 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-vietnamese-500-normal-C8zxqsMH.woff       5.62 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-vietnamese-400-normal-DDuiU_S-.woff       5.62 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-greek-700-normal-DEigVDxa.woff           5.70 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-greek-500-normal-D7SFKleX.woff           5.72 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-ext-500-normal-BIfNGwUT.woff     5.77 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-ext-400-normal-DMdlQ8Kv.woff     5.82 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-vietnamese-400-normal-BulugwFq.woff2      5.87 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-vietnamese-500-normal-DZ4AoWbu.woff2      6.04 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-700-normal-ClYbKGw-.woff2     6.78 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-400-normal-Q_nF8v4l.woff2     6.86 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-ext-400-normal-xuaO2J-f.woff2    6.91 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-600-normal-BsaQcF38.woff2     6.95 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-ext-500-normal-BqneJy0T.woff2    6.97 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-500-normal-CTEe1bJa.woff2     6.98 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-cyrillic-700-normal-CEoEElIJ.woff        7.02 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-cyrillic-500-normal-DJqRU3vO.woff        7.02 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-400-normal-CEL4l2ZJ.woff         7.20 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-500-normal-Ael50iVv.woff         7.21 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-ext-700-normal-CZipNAKV.woff2      7.47 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-ext-500-normal-Cut-4mMH.woff2      7.53 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-400-normal-BSMlKf0J.woff2        8.36 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-cyrillic-500-normal-Bq9vWWag.woff2        8.46 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-400-normal-r32jotim.woff      8.96 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-700-normal-BQc-7cTM.woff      8.96 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-500-normal-CAxz3nsc.woff      9.07 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-ext-600-normal-DMks36a2.woff      9.10 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-ext-700-normal-CxPITLHs.woff      10.30 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-ext-500-normal-ckzbgY84.woff      10.34 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-ext-400-normal-D3D2R8hC.woff       11.77 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-ext-500-normal-CZ70TYgx.woff       11.77 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff           13.14 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff           13.16 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-ext-400-normal-BmRBH3aV.woff2      13.35 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-ext-500-normal-CAhNIIs5.woff2      13.43 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2          14.71 kB
+../../../../../tmp/aw-dist-all/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2          14.89 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-400-normal-DRC__1Mx.woff2        16.86 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-700-normal-CYfAanHo.woff2        17.01 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-500-normal-Dk9ku72i.woff2        17.23 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-600-normal-B7fBEWYG.woff2        17.41 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-400-normal-D1W7dsQl.woff         21.24 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-700-normal-DfAjL1vF.woff         21.29 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-500-normal-Z6ESRlEs.woff         21.65 kB
+../../../../../tmp/aw-dist-all/assets/instrument-sans-latin-600-normal-B9e8oLYv.woff         21.68 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-500-normal-BWZEU5yA.woff2         21.83 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-700-normal-BYuf6tUa.woff2         21.91 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-500-normal-CJOVTJB7.woff          28.21 kB
+../../../../../tmp/aw-dist-all/assets/jetbrains-mono-latin-700-normal-D3wTyLJW.woff          28.21 kB
+../../../../../tmp/aw-dist-all/assets/index-CxDhjxnd.css                                    247.26 kB │ gzip:  52.66 kB
+../../../../../tmp/aw-dist-all/assets/alerts-BcdseBD7.js                                      0.03 kB │ gzip:   0.05 kB
+../../../../../tmp/aw-dist-all/assets/goalFlags-DxsgeO6s.js                                   0.03 kB │ gzip:   0.05 kB
+../../../../../tmp/aw-dist-all/assets/oneTap-CFcXQAcG.js                                      0.07 kB │ gzip:   0.09 kB
+../../../../../tmp/aw-dist-all/assets/iso-Z286JlUE.js                                         0.09 kB │ gzip:   0.11 kB
+../../../../../tmp/aw-dist-all/assets/coerce-CUW2QnKD.js                                      0.09 kB │ gzip:   0.11 kB
+../../../../../tmp/aw-dist-all/assets/referrerPurchases-DZG6zrMG.js                           0.10 kB │ gzip:   0.11 kB
+../../../../../tmp/aw-dist-all/assets/shareFlags-CPy7CLgw.js                                  0.11 kB │ gzip:   0.11 kB
+../../../../../tmp/aw-dist-all/assets/chevron-down-DOFKD-lz.js                                0.12 kB │ gzip:   0.14 kB
+../../../../../tmp/aw-dist-all/assets/chevron-left-DYem201k.js                                0.13 kB │ gzip:   0.14 kB
+../../../../../tmp/aw-dist-all/assets/chevron-right-pZNfDJlb.js                               0.13 kB │ gzip:   0.14 kB
+../../../../../tmp/aw-dist-all/assets/circle-CEF230h9.js                                      0.13 kB │ gzip:   0.13 kB
+../../../../../tmp/aw-dist-all/assets/arrow-left-Dw5LiG5H.js                                  0.16 kB │ gzip:   0.16 kB
+../../../../../tmp/aw-dist-all/assets/ban-ByHEXIyA.js                                         0.17 kB │ gzip:   0.16 kB
+../../../../../tmp/aw-dist-all/assets/gauge-CzW4cXSe.js                                       0.17 kB │ gzip:   0.17 kB
+../../../../../tmp/aw-dist-all/assets/circle-check-CsXGBdUQ.js                                0.17 kB │ gzip:   0.16 kB
+../../../../../tmp/aw-dist-all/assets/clock-B3EUyZu4.js                                       0.18 kB │ gzip:   0.17 kB
+../../../../../tmp/aw-dist-all/assets/clock-3-CKRhfNE-.js                                     0.18 kB │ gzip:   0.17 kB
+../../../../../tmp/aw-dist-all/assets/info-SpuYKTkv.js                                        0.20 kB │ gzip:   0.18 kB
+../../../../../tmp/aw-dist-all/assets/lock-CGE53vpm.js                                        0.20 kB │ gzip:   0.19 kB
+../../../../../tmp/aw-dist-all/assets/credit-card-Cw8X4Yq9.js                                 0.20 kB │ gzip:   0.18 kB
+../../../../../tmp/aw-dist-all/assets/circle-x-B0QtIzkV.js                                    0.20 kB │ gzip:   0.17 kB
+../../../../../tmp/aw-dist-all/assets/pause-CdWqndkn.js                                       0.21 kB │ gzip:   0.16 kB
+../../../../../tmp/aw-dist-all/assets/mail-BcTl2Axw.js                                        0.21 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/user-round-check-CrTzUmhd.js                            0.23 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/copy-B_ZmY_OF.js                                        0.23 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/history-CLn2rQll.js                                     0.23 kB │ gzip:   0.19 kB
+../../../../../tmp/aw-dist-all/assets/link-2-6cQyW5TJ.js                                      0.24 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/globe-BpB-SgYY.js                                       0.24 kB │ gzip:   0.19 kB
+../../../../../tmp/aw-dist-all/assets/heart-DE8rxay9.js                                       0.24 kB │ gzip:   0.21 kB
+../../../../../tmp/aw-dist-all/assets/twitter-CC5PMJ4z.js                                     0.24 kB │ gzip:   0.21 kB
+../../../../../tmp/aw-dist-all/assets/circle-alert-Btk2Xucz.js                                0.25 kB │ gzip:   0.18 kB
+../../../../../tmp/aw-dist-all/assets/external-link-DbXSMWxS.js                               0.25 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/users-round-BVwYydwP.js                                 0.25 kB │ gzip:   0.22 kB
+../../../../../tmp/aw-dist-all/assets/eye-foAzk26m.js                                         0.25 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/upload-CKh91lL2.js                                      0.25 kB │ gzip:   0.22 kB
+../../../../../tmp/aw-dist-all/assets/map-pin-CPNaKjmA.js                                     0.26 kB │ gzip:   0.22 kB
+../../../../../tmp/aw-dist-all/assets/download-Db7Ejcrn.js                                    0.26 kB │ gzip:   0.22 kB
+../../../../../tmp/aw-dist-all/assets/triangle-alert-BAyHSQwT.js                              0.26 kB │ gzip:   0.21 kB
+../../../../../tmp/aw-dist-all/assets/wallet-Bsjq4iIf.js                                      0.28 kB │ gzip:   0.20 kB
+../../../../../tmp/aw-dist-all/assets/linkedin-BYb6kAgb.js                                    0.29 kB │ gzip:   0.23 kB
+../../../../../tmp/aw-dist-all/assets/users-qcAEoN2o.js                                       0.30 kB │ gzip:   0.23 kB
+../../../../../tmp/aw-dist-all/assets/business-L1ZVLR41.js                                    0.31 kB │ gzip:   0.26 kB
+../../../../../tmp/aw-dist-all/assets/refresh-cw-D3s4CkHJ.js                                  0.32 kB │ gzip:   0.22 kB
+../../../../../tmp/aw-dist-all/assets/workItems-ChrQF0Uq.js                                   0.32 kB │ gzip:   0.24 kB
+../../../../../tmp/aw-dist-all/assets/bot-BaGI0hDe.js                                         0.33 kB │ gzip:   0.23 kB
+../../../../../tmp/aw-dist-all/assets/assistant-B1hx65NV.js                                   0.34 kB │ gzip:   0.27 kB
+../../../../../tmp/aw-dist-all/assets/pin-UJWkH52T.js                                         0.34 kB │ gzip:   0.24 kB
+../../../../../tmp/aw-dist-all/assets/shield-alert-Cf_eogQI.js                                0.35 kB │ gzip:   0.26 kB
+../../../../../tmp/aw-dist-all/assets/key-round-D9HlMd-C.js                                   0.35 kB │ gzip:   0.26 kB
+../../../../../tmp/aw-dist-all/assets/trash-2-D7yNM_Yl.js                                     0.35 kB │ gzip:   0.25 kB
+../../../../../tmp/aw-dist-all/assets/useOnlineStatus-B0KCs6G3.js                             0.36 kB │ gzip:   0.23 kB
+../../../../../tmp/aw-dist-all/assets/life-buoy-C-af0ZCy.js                                   0.38 kB │ gzip:   0.23 kB
+../../../../../tmp/aw-dist-all/assets/earth-1bM5yrpu.js                                       0.39 kB │ gzip:   0.26 kB
+../../../../../tmp/aw-dist-all/assets/GoalNextStep-uuS-qd3h.js                                0.39 kB │ gzip:   0.27 kB
+../../../../../tmp/aw-dist-all/assets/github-ClAq6q84.js                                      0.40 kB │ gzip:   0.29 kB
+../../../../../tmp/aw-dist-all/assets/eye-off-BMwa7Gr9.js                                     0.43 kB │ gzip:   0.27 kB
+../../../../../tmp/aw-dist-all/assets/status-pill-CgTbG_f-.js                                 0.46 kB │ gzip:   0.33 kB
+../../../../../tmp/aw-dist-all/assets/rememberedSignInEmail-CBR3_S4u.js                       0.47 kB │ gzip:   0.29 kB
+../../../../../tmp/aw-dist-all/assets/calendar-days-BXrEt8x9.js                               0.49 kB │ gzip:   0.26 kB
+../../../../../tmp/aw-dist-all/assets/sparkles-Deg6YLtI.js                                    0.51 kB │ gzip:   0.30 kB
+../../../../../tmp/aw-dist-all/assets/useSlowLoad-Crf2GUm_.js                                 0.52 kB │ gzip:   0.33 kB
+../../../../../tmp/aw-dist-all/assets/format-DMdEcScW.js                                      0.56 kB │ gzip:   0.35 kB
+../../../../../tmp/aw-dist-all/assets/GoalSearchInput-DEEezs3v.js                             0.61 kB │ gzip:   0.40 kB
+../../../../../tmp/aw-dist-all/assets/ThreadAlias-BpYpUBDq.js                                 0.61 kB │ gzip:   0.40 kB
+../../../../../tmp/aw-dist-all/assets/Brand-bwFVPVQV.js                                       0.64 kB │ gzip:   0.39 kB
+../../../../../tmp/aw-dist-all/assets/passReasons-BXVAAfML.js                                 0.64 kB │ gzip:   0.28 kB
+../../../../../tmp/aw-dist-all/assets/plansCatalogApi-CMcIbLt8.js                             0.68 kB │ gzip:   0.46 kB
+../../../../../tmp/aw-dist-all/assets/GoalFilterChip-BDmqjv14.js                              0.71 kB │ gzip:   0.46 kB
+../../../../../tmp/aw-dist-all/assets/GoalAppShell-DITcb41r.js                                0.74 kB │ gzip:   0.47 kB
+../../../../../tmp/aw-dist-all/assets/GoalIconButton-C_hOMKDx.js                              0.75 kB │ gzip:   0.49 kB
+../../../../../tmp/aw-dist-all/assets/paymentRoute-dIlHh46T.js                                0.90 kB │ gzip:   0.47 kB
+../../../../../tmp/aw-dist-all/assets/whyMe-BxPAI6Nu.js                                       0.90 kB │ gzip:   0.55 kB
+../../../../../tmp/aw-dist-all/assets/StatusBadge-gNTq0Bx4.js                                 0.91 kB │ gzip:   0.54 kB
+../../../../../tmp/aw-dist-all/assets/AdminSignInCta-ChaCxKeO.js                              0.92 kB │ gzip:   0.58 kB
+../../../../../tmp/aw-dist-all/assets/CompanyClaim-qnV9look.js                                0.96 kB │ gzip:   0.57 kB
+../../../../../tmp/aw-dist-all/assets/companyOpportunities-8GM-GKKj.js                        1.01 kB │ gzip:   0.55 kB
+../../../../../tmp/aw-dist-all/assets/VisibilityOptions-DheH-F57.js                           1.03 kB │ gzip:   0.61 kB
+../../../../../tmp/aw-dist-all/assets/LoadingSkeleton-B5Av-aX3.js                             1.04 kB │ gzip:   0.49 kB
+../../../../../tmp/aw-dist-all/assets/ActionErrorCard-BSyNDpju.js                             1.09 kB │ gzip:   0.51 kB
+../../../../../tmp/aw-dist-all/assets/askView-0K8nJVzO.js                                     1.09 kB │ gzip:   0.39 kB
+../../../../../tmp/aw-dist-all/assets/landedModel-Do-9135e.js                                 1.10 kB │ gzip:   0.68 kB
+../../../../../tmp/aw-dist-all/assets/GoalNotFound-DS4goPJo.js                                1.15 kB │ gzip:   0.61 kB
+../../../../../tmp/aw-dist-all/assets/highlighted-body-OFNGDK62-BrGwdgBY.js                   1.22 kB │ gzip:   0.66 kB
+../../../../../tmp/aw-dist-all/assets/GoalField-CgU0cE89.js                                   1.25 kB │ gzip:   0.63 kB
+../../../../../tmp/aw-dist-all/assets/GoalStates-jH5Bd0AN.js                                  1.34 kB │ gzip:   0.57 kB
+../../../../../tmp/aw-dist-all/assets/preview-kit-bjwsEjBr.js                                 1.39 kB │ gzip:   0.68 kB
+../../../../../tmp/aw-dist-all/assets/GoalStatus-B7NMSMno.js                                  1.42 kB │ gzip:   0.65 kB
+../../../../../tmp/aw-dist-all/assets/flowBaseline-CiuTBwNq.js                                1.42 kB │ gzip:   0.50 kB
+../../../../../tmp/aw-dist-all/assets/ProfileLinkSheet-BdVBIATC.js                            1.49 kB │ gzip:   0.80 kB
+../../../../../tmp/aw-dist-all/assets/button-Cn26d-GG.js                                      1.50 kB │ gzip:   0.70 kB
+../../../../../tmp/aw-dist-all/assets/openAskSlots-DMoZ2m3x.js                                1.56 kB │ gzip:   0.78 kB
+../../../../../tmp/aw-dist-all/assets/NotFound-DsQF6hJB.js                                    1.57 kB │ gzip:   0.75 kB
+../../../../../tmp/aw-dist-all/assets/adminApproval-DWgAP65Q.js                               1.57 kB │ gzip:   0.61 kB
+../../../../../tmp/aw-dist-all/assets/About-CZv0Ykh4.js                                       1.67 kB │ gzip:   0.85 kB
+../../../../../tmp/aw-dist-all/assets/requestsApi-BHrxohau.js                                 1.71 kB │ gzip:   0.82 kB
+../../../../../tmp/aw-dist-all/assets/companyOpportunities-Ci2OUqUW.js                        1.75 kB │ gzip:   0.75 kB
+../../../../../tmp/aw-dist-all/assets/GoalOffline-DS7h8Ivs.js                                 1.83 kB │ gzip:   0.89 kB
+../../../../../tmp/aw-dist-all/assets/AssistantLayout-CeeFt3oj.js                             1.84 kB │ gzip:   0.79 kB
+../../../../../tmp/aw-dist-all/assets/Contact-LwBhHI4l.js                                     1.95 kB │ gzip:   0.80 kB
+../../../../../tmp/aw-dist-all/assets/companyDirectory-BlLH-Lls.js                            2.02 kB │ gzip:   1.03 kB
+../../../../../tmp/aw-dist-all/assets/Offline-kYFdcfeE.js                                     2.03 kB │ gzip:   0.98 kB
+../../../../../tmp/aw-dist-all/assets/Safety-aWkzwL-p.js                                      2.10 kB │ gzip:   1.05 kB
+../../../../../tmp/aw-dist-all/assets/ShippingPolicy-Baq51NId.js                              2.11 kB │ gzip:   0.97 kB
+../../../../../tmp/aw-dist-all/assets/ReviewerSignIn-Dz0dOOYO.js                              2.22 kB │ gzip:   1.06 kB
+../../../../../tmp/aw-dist-all/assets/GoalLockedPanel-ItyO1cY9.js                             2.23 kB │ gzip:   0.94 kB
+../../../../../tmp/aw-dist-all/assets/Pricing-N1A3iOFT.js                                     2.26 kB │ gzip:   1.12 kB
+../../../../../tmp/aw-dist-all/assets/referralUrl-BONqrAJG.js                                 2.30 kB │ gzip:   1.03 kB
+../../../../../tmp/aw-dist-all/assets/OneTapShareActions-Ch5sLTtR.js                          2.33 kB │ gzip:   0.97 kB
+../../../../../tmp/aw-dist-all/assets/billingCatalog-Dc6uTfqT.js                              2.34 kB │ gzip:   1.06 kB
+../../../../../tmp/aw-dist-all/assets/resumeUpload-DjkkwoaM.js                                2.35 kB │ gzip:   1.10 kB
+../../../../../tmp/aw-dist-all/assets/AdminSmoke-CuRJag4S.js                                  2.36 kB │ gzip:   1.15 kB
+../../../../../tmp/aw-dist-all/assets/Guidelines-DSM5v3uz.js                                  2.39 kB │ gzip:   1.16 kB
+../../../../../tmp/aw-dist-all/assets/GoalDrawer-Ywv5CCdt.js                                  2.48 kB │ gzip:   1.03 kB
+../../../../../tmp/aw-dist-all/assets/adminApi-C5CyHg1q.js                                    2.59 kB │ gzip:   1.25 kB
+../../../../../tmp/aw-dist-all/assets/planEntitlements-BulRihLN.js                            2.65 kB │ gzip:   1.00 kB
+../../../../../tmp/aw-dist-all/assets/ForgotPassword-Cy4ENeW1.js                              2.80 kB │ gzip:   1.31 kB
+../../../../../tmp/aw-dist-all/assets/format-Hb8jCxK2.js                                      2.80 kB │ gzip:   1.19 kB
+../../../../../tmp/aw-dist-all/assets/ShareCard-DZGN-rla.js                                   2.83 kB │ gzip:   1.25 kB
+../../../../../tmp/aw-dist-all/assets/FastTrackLink-By8Sur9E.js                               3.48 kB │ gzip:   1.42 kB
+../../../../../tmp/aw-dist-all/assets/paymentReviewCopy-Dh1F89AZ.js                           3.48 kB │ gzip:   1.30 kB
+../../../../../tmp/aw-dist-all/assets/AdminNav-CbRRSgFU.js                                    3.54 kB │ gzip:   1.57 kB
+../../../../../tmp/aw-dist-all/assets/GoalListRow-CPxaNxjW.js                                 3.58 kB │ gzip:   1.32 kB
+../../../../../tmp/aw-dist-all/assets/VanityFastTrackLink-B0g9xii4.js                         3.59 kB │ gzip:   1.46 kB
+../../../../../tmp/aw-dist-all/assets/CancellationPolicy-Bd7aKAac.js                          3.68 kB │ gzip:   1.36 kB
+../../../../../tmp/aw-dist-all/assets/inboxThreads-D9DGEbFe.js                                3.92 kB │ gzip:   1.66 kB
+../../../../../tmp/aw-dist-all/assets/SeekerSignIn-CNaR4Yor.js                                4.09 kB │ gzip:   1.70 kB
+../../../../../tmp/aw-dist-all/assets/ReferrerOtpSignIn-BlU-E4TK.js                           4.31 kB │ gzip:   1.59 kB
+../../../../../tmp/aw-dist-all/assets/ResetPassword-Btkgs89x.js                               4.32 kB │ gzip:   1.78 kB
+../../../../../tmp/aw-dist-all/assets/TrustPrivacy-B1uhVp-q.js                                4.33 kB │ gzip:   1.79 kB
+../../../../../tmp/aw-dist-all/assets/AdminSkippie-Bd5ojuLI.js                                4.43 kB │ gzip:   1.79 kB
+../../../../../tmp/aw-dist-all/assets/alert-dialog-DR-X7cUa.js                                4.70 kB │ gzip:   1.70 kB
+../../../../../tmp/aw-dist-all/assets/index-DwC-NLAL.js                                       5.10 kB │ gzip:   1.95 kB
+../../../../../tmp/aw-dist-all/assets/Help-ElGTL4Dh.js                                        5.12 kB │ gzip:   2.26 kB
+../../../../../tmp/aw-dist-all/assets/Explore-C-QFzlhE.js                                     5.17 kB │ gzip:   2.38 kB
+../../../../../tmp/aw-dist-all/assets/WorkEmailSignIn-BwURWfSS.js                             5.17 kB │ gzip:   1.93 kB
+../../../../../tmp/aw-dist-all/assets/PolicyPageShell-Dp_xXgjn.js                             5.23 kB │ gzip:   1.92 kB
+../../../../../tmp/aw-dist-all/assets/SuggestCompany-DY6_87ba.js                              5.32 kB │ gzip:   2.26 kB
+../../../../../tmp/aw-dist-all/assets/EmailReviewAction-D_BWy3OC.js                           5.43 kB │ gzip:   2.03 kB
+../../../../../tmp/aw-dist-all/assets/Developers-CVd85RoL.js                                  5.45 kB │ gzip:   1.96 kB
+../../../../../tmp/aw-dist-all/assets/AdminPrivacyRequests-CITFCK8W.js                        5.53 kB │ gzip:   2.13 kB
+../../../../../tmp/aw-dist-all/assets/AdminMoneyCheck-CGDG-1Yn.js                             5.66 kB │ gzip:   2.13 kB
+../../../../../tmp/aw-dist-all/assets/GoalSuggestCompany-DooXnY-O.js                          5.79 kB │ gzip:   2.05 kB
+../../../../../tmp/aw-dist-all/assets/EmployerOpportunities-Bp-DaVYW.js                       5.90 kB │ gzip:   2.14 kB
+../../../../../tmp/aw-dist-all/assets/RefundPolicy-DTZUlwfz.js                                5.97 kB │ gzip:   2.25 kB
+../../../../../tmp/aw-dist-all/assets/Support-H3J2t_XN.js                                     5.98 kB │ gzip:   2.58 kB
+../../../../../tmp/aw-dist-all/assets/UnifiedInbox-BhOkFy6B.js                                6.32 kB │ gzip:   2.29 kB
+../../../../../tmp/aw-dist-all/assets/GoalShareHub-Ba9SnjV2.js                                6.35 kB │ gzip:   2.24 kB
+../../../../../tmp/aw-dist-all/assets/EmployerBilling-Di6EMzNu.js                             6.39 kB │ gzip:   2.48 kB
+../../../../../tmp/aw-dist-all/assets/AdminSchema-D9UdrIWa.js                                 6.45 kB │ gzip:   2.30 kB
+../../../../../tmp/aw-dist-all/assets/AdminActivity-E9Um6lJn.js                               6.47 kB │ gzip:   2.35 kB
+../../../../../tmp/aw-dist-all/assets/ForCompanies-DpGcvo0M.js                                6.78 kB │ gzip:   2.54 kB
+../../../../../tmp/aw-dist-all/assets/GoalStart-DkvJP1zf.js                                   6.79 kB │ gzip:   2.90 kB
+../../../../../tmp/aw-dist-all/assets/ReferrerWorkspace-CDkwLmiW.js                           6.96 kB │ gzip:   2.89 kB
+../../../../../tmp/aw-dist-all/assets/planCatalog-ix6UpOHi.js                                 7.18 kB │ gzip:   3.17 kB
+../../../../../tmp/aw-dist-all/assets/Terms-BrAyG5cL.js                                       7.22 kB │ gzip:   2.69 kB
+../../../../../tmp/aw-dist-all/assets/Profile-CkaqF3wr.js                                     7.41 kB │ gzip:   2.62 kB
+../../../../../tmp/aw-dist-all/assets/Emails-BehiZmO5.js                                      7.41 kB │ gzip:   2.73 kB
+../../../../../tmp/aw-dist-all/assets/AskDrawer-Dt-bBVP-.js                                   7.51 kB │ gzip:   2.69 kB
+../../../../../tmp/aw-dist-all/assets/GoalEmailReviewAction-Q44IOuLJ.js                       7.54 kB │ gzip:   2.58 kB
+../../../../../tmp/aw-dist-all/assets/GoalEmails-Bu_FSrrZ.js                                  7.59 kB │ gzip:   2.75 kB
+../../../../../tmp/aw-dist-all/assets/ReferrerImpact-B1BE2V8b.js                              7.68 kB │ gzip:   3.02 kB
+../../../../../tmp/aw-dist-all/assets/GoalAlerts-1cMM8oEJ.js                                  7.87 kB │ gzip:   2.76 kB
+../../../../../tmp/aw-dist-all/assets/ReferrerSetup-BVLxDLv8.js                               7.91 kB │ gzip:   3.08 kB
+../../../../../tmp/aw-dist-all/assets/Invite-CUGylv4e.js                                      7.92 kB │ gzip:   3.07 kB
+../../../../../tmp/aw-dist-all/assets/SignIn-BUUURw3-.js                                      7.96 kB │ gzip:   2.59 kB
+../../../../../tmp/aw-dist-all/assets/Onboarding-3vTC3rWt.js                                  8.11 kB │ gzip:   3.33 kB
+../../../../../tmp/aw-dist-all/assets/GoalLanded-CYq0nUT9.js                                  8.18 kB │ gzip:   2.61 kB
+../../../../../tmp/aw-dist-all/assets/Ask-CjK67cTy.js                                         8.44 kB │ gzip:   3.16 kB
+../../../../../tmp/aw-dist-all/assets/TalentDiscovery-DcEi000T.js                             8.45 kB │ gzip:   2.80 kB
+../../../../../tmp/aw-dist-all/assets/PublicProfile-Cse-yOlk.js                               8.54 kB │ gzip:   3.13 kB
+../../../../../tmp/aw-dist-all/assets/Report-DNcWSv2l.js                                      8.56 kB │ gzip:   3.07 kB
+../../../../../tmp/aw-dist-all/assets/GoalReferrerImpact-C5hxLF0y.js                          8.77 kB │ gzip:   2.77 kB
+../../../../../tmp/aw-dist-all/assets/ShareHub-BA2iWYPT.js                                    9.65 kB │ gzip:   3.30 kB
+../../../../../tmp/aw-dist-all/assets/GoalOnboarding-DIR_PgYP.js                              9.84 kB │ gzip:   3.36 kB
+../../../../../tmp/aw-dist-all/assets/JobExplorer-CAwpgIc-.js                                 9.87 kB │ gzip:   3.47 kB
+../../../../../tmp/aw-dist-all/assets/AdminUsers-eGJO37QB.js                                  9.91 kB │ gzip:   3.32 kB
+../../../../../tmp/aw-dist-all/assets/GoalInvite-BWceI5mG.js                                 10.05 kB │ gzip:   3.47 kB
+../../../../../tmp/aw-dist-all/assets/Billing-PLYdt0GD.js                                    10.07 kB │ gzip:   3.77 kB
+../../../../../tmp/aw-dist-all/assets/ClaimedReview-bokbXHW7.js                              10.14 kB │ gzip:   3.62 kB
+../../../../../tmp/aw-dist-all/assets/AppStates-Dm0hnic5.js                                  10.43 kB │ gzip:   3.56 kB
+../../../../../tmp/aw-dist-all/assets/GoalReferrerSetup-C62XsbmC.js                          10.78 kB │ gzip:   3.56 kB
+../../../../../tmp/aw-dist-all/assets/GoalPostOpportunity-XK1kDsnN.js                        11.02 kB │ gzip:   3.68 kB
+../../../../../tmp/aw-dist-all/assets/GoalBilling-BnXjQy8u.js                                11.08 kB │ gzip:   3.91 kB
+../../../../../tmp/aw-dist-all/assets/Work-S1a9Wbdd.js                                       11.09 kB │ gzip:   3.95 kB
+../../../../../tmp/aw-dist-all/assets/Landed-DgxSXFYU.js                                     11.16 kB │ gzip:   4.20 kB
+../../../../../tmp/aw-dist-all/assets/OpportunityWall-fUF3-cON.js                            11.23 kB │ gzip:   3.75 kB
+../../../../../tmp/aw-dist-all/assets/GoalAppStates-C6dc_XW5.js                              11.29 kB │ gzip:   3.09 kB
+../../../../../tmp/aw-dist-all/assets/AdminPartners-Cp0zWudz.js                              11.66 kB │ gzip:   3.24 kB
+../../../../../tmp/aw-dist-all/assets/Referrer-CrhvhzxD.js                                   11.82 kB │ gzip:   4.63 kB
+../../../../../tmp/aw-dist-all/assets/Skippy-BlZKCgJn.js                                     12.05 kB │ gzip:   3.62 kB
+../../../../../tmp/aw-dist-all/assets/AdminTokenRecovery-C1IKj9mM.js                         12.53 kB │ gzip:   3.95 kB
+../../../../../tmp/aw-dist-all/assets/MyRequests-FGqzBFb8.js                                 12.68 kB │ gzip:   4.32 kB
+../../../../../tmp/aw-dist-all/assets/EmployerDashboard-DRGS8G_i.js                          12.91 kB │ gzip:   4.39 kB
+../../../../../tmp/aw-dist-all/assets/Messages-DjaxIR0x.js                                   13.20 kB │ gzip:   4.46 kB
+../../../../../tmp/aw-dist-all/assets/ExploreCompany-DKZbVhMf.js                             13.38 kB │ gzip:   4.45 kB
+../../../../../tmp/aw-dist-all/assets/GoalReferrerHome-BOPv-MwX.js                           13.76 kB │ gzip:   4.35 kB
+../../../../../tmp/aw-dist-all/assets/AdminApprovalQueue-yjWdy0ra.js                         14.18 kB │ gzip:   4.05 kB
+../../../../../tmp/aw-dist-all/assets/Premium-CenA2frn.js                                    14.62 kB │ gzip:   4.44 kB
+../../../../../tmp/aw-dist-all/assets/Alerts-B1AqHsO-.js                                     14.67 kB │ gzip:   5.49 kB
+../../../../../tmp/aw-dist-all/assets/ProfileSetup-BssOoSZx.js                               14.71 kB │ gzip:   5.09 kB
+../../../../../tmp/aw-dist-all/assets/AdminReview-Birp0UVS.js                                14.86 kB │ gzip:   5.15 kB
+../../../../../tmp/aw-dist-all/assets/ReferrerHome-BnfN74Pg.js                               14.96 kB │ gzip:   5.34 kB
+../../../../../tmp/aw-dist-all/assets/AdminOverview-Bk9aFN2y.js                              15.11 kB │ gzip:   5.21 kB
+../../../../../tmp/aw-dist-all/assets/PlansV2Connected-CzCdTHGT.js                           16.03 kB │ gzip:   4.97 kB
+../../../../../tmp/aw-dist-all/assets/AdminApprovalRecord-DJsw46KL.js                        16.63 kB │ gzip:   4.96 kB
+../../../../../tmp/aw-dist-all/assets/AdminCatalogSync-CW0CINa3.js                           16.98 kB │ gzip:   4.94 kB
+../../../../../tmp/aw-dist-all/assets/AdminPaymentsReview-BVKJ8Y67.js                        17.05 kB │ gzip:   5.07 kB
+../../../../../tmp/aw-dist-all/assets/GuidePage-m_d-4sP0.js                                  18.60 kB │ gzip:   6.61 kB
+../../../../../tmp/aw-dist-all/assets/SeekerAgents-BGW7cXLn.js                               18.77 kB │ gzip:   5.25 kB
+../../../../../tmp/aw-dist-all/assets/DeveloperConsole-Y0Yi36bX.js                           18.91 kB │ gzip:   6.10 kB
+../../../../../tmp/aw-dist-all/assets/ConnectAssistant-BMQfz81U.js                           19.22 kB │ gzip:   4.93 kB
+../../../../../tmp/aw-dist-all/assets/MyCompanyInbox-BZTJmXsx.js                             19.44 kB │ gzip:   6.90 kB
+../../../../../tmp/aw-dist-all/assets/PostOpportunity-Ua74Bc4w.js                            19.93 kB │ gzip:   4.93 kB
+../../../../../tmp/aw-dist-all/assets/Approve-sOflDf8M.js                                    20.38 kB │ gzip:   6.01 kB
+../../../../../tmp/aw-dist-all/assets/AdminFlowHealth-Mal_4VNi.js                            20.76 kB │ gzip:   5.77 kB
+../../../../../tmp/aw-dist-all/assets/Assistants-DRroP-s6.js                                 23.86 kB │ gzip:   6.12 kB
+../../../../../tmp/aw-dist-all/assets/useAskComposer-DrGnCwvk.js                             25.27 kB │ gzip:   9.24 kB
+../../../../../tmp/aw-dist-all/assets/GoalReferrer-_MyMhdEO.js                               26.03 kB │ gzip:   7.91 kB
+../../../../../tmp/aw-dist-all/assets/Plans-Cw4-_Ck-.js                                      26.72 kB │ gzip:   8.52 kB
+../../../../../tmp/aw-dist-all/assets/Verify-BW577IrE.js                                     28.85 kB │ gzip:   7.97 kB
+../../../../../tmp/aw-dist-all/assets/Settings-DHcHwTXK.js                                   30.61 kB │ gzip:   9.49 kB
+../../../../../tmp/aw-dist-all/assets/ReferralConversation-DIaqbQwE.js                       38.44 kB │ gzip:  11.36 kB
+../../../../../tmp/aw-dist-all/assets/index-C0Lx2ZL9.js                                     680.16 kB │ gzip: 210.84 kB
+../../../../../tmp/aw-dist-all/assets/mermaid-GHXKKRXX-DSw_jhm8.js                          819.96 kB │ gzip: 247.48 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 17.27s
+EXIT 0
