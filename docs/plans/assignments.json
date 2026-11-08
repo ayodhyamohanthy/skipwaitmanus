@@ -5281,7 +5281,7 @@
       "tier": 1,
       "lane": "d048-foundation",
       "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-300",
       "dependsOn": [
         "FIX-share-hub-link-ready"
