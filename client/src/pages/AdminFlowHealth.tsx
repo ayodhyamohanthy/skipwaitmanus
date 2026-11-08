@@ -1,10 +1,11 @@
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Activity, AlertCircle, ArrowRight, BarChart3, CheckCircle2, FileText, Gauge, ShieldCheck, UsersRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, lazy, Suspense, useState } from "react";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
 import { BaselineMetricsPanel } from "@/components/admin/BaselineMetricsPanel";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { flowBaselineSchema, type FlowBaseline } from "@shared/flowBaseline";
 
 type FlowHealth = {
@@ -32,7 +33,12 @@ function MoneyCard({ icon: Icon, label, amount, currency, count, tone = "emerald
   return <article className="rounded-2xl border border-[#e5e5e5] bg-white p-5"><span className={`grid h-10 w-10 place-items-center rounded-xl ${iconTone}`}><Icon className="h-5 w-5" /></span><p className="mt-5 text-3xl font-semibold tracking-[-.04em] text-black">{formatRevenueTotal(amount, currency)}</p><p className="mt-1 text-sm font-bold text-black">{label}</p><p className="mt-1 text-xs leading-5 text-[#505050]">{count} payment{count === 1 ? "" : "s"}</p></article>;
 }
 
+// D-048-p3-admin-ops: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-ops).
+const GoalAdminFlowHealth = lazy(() => import("./goal/admin-ops/GoalAdminFlowHealth"));
+
 export default function AdminFlowHealth() {
+  if (goalSurfaceOn("admin-ops")) return <Suspense fallback={null}><GoalAdminFlowHealth /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [health, setHealth] = useState<FlowHealth>(emptyHealth);
   const [baseline, setBaseline] = useState<FlowBaseline | null>(null);
