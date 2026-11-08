@@ -2585,7 +2585,7 @@
       "lane": "d048-admin-money",
       "branch": "agent/queue/d048-p3-admin-money",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-300",
       "dependsOn": [
         "D-048-p3-admin",
         "D-048-F-goal-check"
