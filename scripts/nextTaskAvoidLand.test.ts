@@ -11,7 +11,7 @@ const HOUR = 3_600_000;
 const green = { state: "green", sha: "a".repeat(40), url: "https://ci/run/1" };
 
 type Marker = { verb: string; id: string; who: string; verdict?: string };
-type Branch = { tipMs: number; merged: boolean; markers: Marker[] };
+type Branch = { tipSha?: string; tipMs: number; merged: boolean; markers: Marker[] };
 const task = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
   title: `${id} title`,
@@ -32,7 +32,7 @@ const OTHER = "Kimi · o1";
 // Tier 1 M built by DeepSeek, green open PR, disjoint eligible N (the #744 reproduction).
 const M = (extra: Record<string, unknown> = {}) => task("M", { tier: 1, lane: "m", owns: ["scripts/m.mjs"], ...extra });
 const N = () => task("N", { lane: "n", owns: ["scripts/n.mjs"] });
-const builtM: [string, Branch] = ["agent/queue/m", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: BUILDER }] }];
+const builtM: [string, Branch] = ["agent/queue/m", { tipSha: "a".repeat(40), tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: BUILDER }] }];
 const lockM = (hoursAgo: number, ...extra: Marker[]): [string, Branch] => ["agent/review/m", {
   tipMs: NOW - hoursAgo * HOUR,
   merged: false,
@@ -55,7 +55,7 @@ const pick = (tasks: ReturnType<typeof task>[], opts: {
   mainCi: green,
   branches: new Map(opts.branches ?? []),
   openPrs: new Map(opts.prs ?? [prM]),
-  prCi: new Map((opts.prCi ?? [["agent/queue/m", "green"]]).map(([b, state]) => [b, { state }])),
+  prCi: new Map((opts.prCi ?? [["agent/queue/m", "green"]]).map(([b, state]) => [b, { state, ...(state === "green" ? { sha: "a".repeat(40) } : {}) }])),
   mergedHeads: new Map(),
   reports: opts.reports ?? [],
   now: NOW,
@@ -108,7 +108,7 @@ describe("PICKER-avoid-land", () => {
   });
 
   it("keeps the landing-slot exclusion: a slot held by another session still makes a land wait", () => {
-    const slot: [string, Branch] = ["agent/queue/landing", { tipMs: NOW - 0.1 * HOUR, merged: false, markers: [{ verb: "Land claim", id: "Q", who: OTHER }] }];
+    const slot: [string, Branch] = ["agent/queue/landing", { tipSha: "a".repeat(40), tipMs: NOW - 0.1 * HOUR, merged: false, markers: [{ verb: "Land claim", id: "Q", who: OTHER }] }];
     expect(pick([M(), N()], { branches: [builtM, freshPass, slot], claimant: REVIEWER }))
       .toMatchObject({ kind: "wait", landing: true, holder: OTHER });
     expect(pick([M(), N()], { branches: [builtM, freshPass, slot], claimant: REVIEWER, avoid: ["M"] }))
@@ -116,7 +116,7 @@ describe("PICKER-avoid-land", () => {
   });
 
   it("keeps the review exclusion: avoiding another task never hands the builder its own review", () => {
-    const needsReview: [string, Branch] = ["agent/review/m", { tipMs: NOW - 3 * HOUR, merged: false, markers: [] }];
+    const needsReview: [string, Branch] = ["agent/review/m", { tipSha: "a".repeat(40), tipMs: NOW - 3 * HOUR, merged: false, markers: [] }];
     const result = pick([M(), N(), task("Z")], { branches: [builtM, needsReview], claimant: BUILDER, avoid: ["Z"] });
     expect(result).toMatchObject({ kind: "build", task: { id: "N" } });
   });
@@ -148,7 +148,7 @@ describe("PICKER-avoid-land", () => {
 // task's (unblock, make green, fix, takeover); any other avoided hand-out releases nothing it did not hold.
 describe("PICKER-avoid-land condition pins (#976 review)", () => {
   const L = () => task("L", { lane: "m", owns: ["scripts/l.mjs"] });
-  const builtL: [string, Branch] = ["agent/queue/l", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "L", who: "Qwen · l1" }] }];
+  const builtL: [string, Branch] = ["agent/queue/l", { tipSha: "a".repeat(40), tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "L", who: "Qwen · l1" }] }];
   const prL: [string, string] = ["agent/queue/l", "https://github.com/o/r/pull/10"];
   const landsL = { kind: "land", task: { id: "L" }, tier1: false };
   const STALE_REGISTER = [
@@ -157,7 +157,7 @@ describe("PICKER-avoid-land condition pins (#976 review)", () => {
   ];
 
   it("red fix holds: an avoided Tier 1 fix on red CI after a failed review keeps L's lane held (honest none)", () => {
-    const failed: [string, Branch] = ["agent/review/m", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: REVIEWER }, { verb: "Verdict", id: "M", who: REVIEWER, verdict: "fail" }] }];
+    const failed: [string, Branch] = ["agent/review/m", { tipSha: "a".repeat(40), tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Review claim", id: "M", who: REVIEWER }, { verb: "Verdict", id: "M", who: REVIEWER, verdict: "fail" }] }];
     const opts = { branches: [builtM, failed, builtL], prs: [prM, prL], prCi: [["agent/queue/m", "red"], ["agent/queue/l", "green"]] as [string, string][], claimant: OTHER };
     expect(pick([M(), L()], opts)).toMatchObject({ kind: "fix", task: { id: "M" } });
     expectHonestNone(pick([M(), L()], { ...opts, avoid: ["M"] }), [{ id: "M", reason: AVOIDED }, { id: "L", reason: HELD_BY_M }]);
