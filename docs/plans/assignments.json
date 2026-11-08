@@ -2794,7 +2794,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
       "status": "todo",
-      "syncedTo": "D-296",
+      "syncedTo": "D-303",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
@@ -2808,7 +2808,7 @@
         "design/goal-ui/captures/for-companies/**",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file). D-296 clears its boundary block: goalPagesBoundary.test.ts is added to owns, so components/employer/employerPlans.ts can be admitted as behavior-only on the row's branch.",
+      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file). D-296 clears its boundary block: goalPagesBoundary.test.ts is added to owns, so components/employer/employerPlans.ts can be admitted as behavior-only on the row's branch. D-302 records ordering: the scripts/nextTask.test.ts:175 oracle repair lands green on main before this row lands (no owns change).",
       "epic": "D-048-p3"
     },
     {
