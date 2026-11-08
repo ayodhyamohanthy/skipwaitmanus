@@ -183,12 +183,14 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 
 **That finding held (D-239).** On `main` the journal step always falls back to `drizzle-kit push`; see CI run 41260983242 and its `0017_careful_ricochet.sql` warning. This row's packet is now [`GATE-migration-apply.md`](GATE-migration-apply.md), written 2026-11-01. It uses the base revision's `schema.ts` instead of a production dump, so it needs no owner item or production access. The reasons are in that packet's §3 and §4. GATE-e2e-journeys' done line below says the job builds the schema "from empty". In fact only its fallback `push` does; it is left unedited as that row's record.
 
-## PICKER-oracle-kind-repair: derive expected outcome from oracle in nextTask.test.ts:175 (lane `picker`, Tier 2, D-302, D-304)
+## PICKER-oracle-kind-repair: derive expected outcome from oracle in nextTask.test.ts:175 (lane `picker-oracle-test`, Tier 2, D-302, D-304)
 **Why.** D-302 orders that `scripts/nextTask.test.ts:175` must land green on `main` before `D-048-p3-for-companies` lands. `PICKER-fullstack-lights` and `PICKER-qa-stage` are withheld under D-134 due to upstream unmet dependencies (`BRANCH-HYGIENE-2` etc.). Under D-223 and D-200, this row carries the narrow one-line test repair.
 
 **What.** At `scripts/nextTask.test.ts:175`, replace the hardcoded `{ kind: "build", id: firstId }` with `{ kind: oracle.kind, id: firstId }`, deriving the expected outcome from the independent oracle on `:176` while preserving the ten-assertion count pin and 14 mutant boards.
 
 **Owned paths.** `scripts/nextTask.test.ts`.
+
+**File-cluster lane qualification (D-305, applying D-134 (2), D-223 (1), (5), (6)).** This unclaimed one-file carrier uses the dedicated `picker-oracle-test` lane. The already-open `PROCESS-session-continuation-docs` row retains its id, branch, scope, review and `picker` lane; its exact runtime allowlist and current diff do not include `scripts/nextTask.test.ts`. No two active rows may edit the same file. The fullstack -> repair dependency and QA transitive dependency remain unchanged, so their broader ownership still waits for this repair. This is a disjoint-file decomposition, not an avoid-based lane release or a new dependency expressing only an ordering preference. Verify the actual open runtime diff again before claiming or landing; an overlap stops this qualification. No gate or model-independence condition is waived.
 
 **Done:**
 - Tests pass (`pnpm vitest run scripts/nextTask.test.ts` 177 passed).
