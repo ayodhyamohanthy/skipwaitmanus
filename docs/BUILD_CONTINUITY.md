@@ -10,6 +10,12 @@ Sources: `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY`, `phonemsg-01M68A28FYPYGJSQ7X9FBV
 
 This newer FIFO instruction supersedes D-009's conflicting discretionary P0 / in-progress / lowest-unblocked selection order, retaining D-010's goal and all authorization/eligibility holds. The owner's 11:56 autonomy reaffirmation asks for ordinary questions, handoffs, testing and continuation to be handled without manual founder relay wherever possible, within FIFO and existing authority (sources in `docs/DECISIONS.md`). It adds no production, security, spending or representation grant.
 
+## Queue freshness: owner's November 8 continuation
+
+At 10:18 IST the owner said "Make use of hark" and "And make sure the queue doesnt have old work , but only updated work" (sources: `phonemsg-01M6WQRFM4EB1G24GRBB90W98X`, `phonemsg-01M6WQSANS32DQZNGXNXBXBAKQ`). Use available free Hark capacity on current eligible work, not an old chat's completed task. This adds no paid-plan approval and does not change FIFO, holds, ownership or independent review.
+
+Before repeating a queue action, compare its current packet and repo-only outcome with actual PR state, current main ancestry, final-head reviews/checks and the owner's latest decisions. Correct outdated carrier or handoff notes through the normal docs path. A merged implementation is not completed acceptance; an old unfinished bug is not obsolete merely because of its date. Preserve owner-parked work and useful history. Do not delete rows, mark work done, revive an old UI/component or start a duplicate branch on age, a stale prompt or a marker title alone. Name the unfinished current goal and the actual existing carrier in the handoff.
+
 ## Before claiming or changing a task
 1. Fetch current `origin/main`. Record its SHA. Read current `docs/BRIEF.md`, `AGENTS.md`, `docs/DECISIONS.md` and the task's current packet, not just the checkout's old copies. Do not reset a shared worktree or discard anyone's work. Reconcile your branch with current main through the normal merge process.
 2. Read the previous session's **repo-only outcome**: its packet status, branch/commit, PR and review/test results. Follow actual artifact links and inspect the content. A chat title, remembered summary or instruction to "read the last chat" is not evidence of a read. Never publish raw private chat/session logs or private sources. If there was no prior session, record that with the current task state; do not invent a handoff.
