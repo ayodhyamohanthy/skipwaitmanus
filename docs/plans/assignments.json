@@ -4500,7 +4500,8 @@
         "PICKER-heartbeat-slot-safety",
         "PICKER-landed-marker-continuity",
         "PICKER-landing-wait-fallthrough",
-        "FIX-device-signin"
+        "FIX-device-signin",
+        "PICKER-heartbeat-land-claim"
       ],
       "epic": "D-212",
       "owns": [
@@ -5613,6 +5614,26 @@
         "REVIEW-GATE-fetch-parity"
       ],
       "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
+    },
+    {
+      "id": "PICKER-heartbeat-land-claim",
+      "title": "--heartbeat never acquires a fresh LAND slot claim on a quiet or free slot without a fresh picker hand-out, and a release is a real marker verb",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-heartbeat-land-claim.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-heartbeat-land-claim",
+      "status": "todo",
+      "syncedTo": "D-285",
+      "dependsOn": [
+        "PICKER-landing-wait-fallthrough"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskHeartbeatLandClaim.test.ts"
+      ],
+      "note": "Bug registration only (D-200, docs-only); no build asserted. Measured 2026-11-06 07:20 IST on main 34e93fff: --heartbeat --as \"Hark · 5de4\" pushed Land claim 4d5d7635 (D-048-p3-admin-approvals) and 1dbe39c4 (PICKER-landed-marker-continuity) on agent/queue/landing because keepClaim (next-task.mjs:183-193) writes a fresh Land claim whenever the slot is free or quiet (LAND_IDLE_MS 30 min, nextTaskCore.mjs:98), with no fresh hand-out. The append-only release 72f7dd13 parses as verb 'Land claim', id 'released' (MARKER, nextTaskCore.mjs:91), because only 'Landed' frees the slot (landingSlot, :153), so a release takes effect only by the 30-minute lapse. Depends on PICKER-landing-wait-fallthrough (and through it PICKER-landed-marker-continuity) because all three edit the picker core; PICKER-fullstack-lights now waits on this row. Interim rule until it lands: never run --heartbeat while holding a LAND pick on a row under a coordination hold."
     }
   ]
 }
