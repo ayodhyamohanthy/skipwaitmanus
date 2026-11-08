@@ -44,6 +44,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/plans/planCatalog.ts", kind: "behavior-only", reason: "plan catalogue data, no UI" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
   { file: "components/employer/employerData.ts", kind: "behavior-only", reason: "employer REST contracts (zod schemas), fetchers and stats helpers, no UI; imported read-only by the goal employer pages (D-048-p3-employer, D-276)" },
+  { file: "components/employer/employerPlans.ts", kind: "behavior-only", reason: "employer plan catalogue types and price-formatting helper, no UI; imported read-only by the goal /for-companies page (D-048-p3-for-companies, D-296)" },
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
   { file: "components/settings/settingsApi.ts", kind: "behavior-only", reason: "settings API fetchers, schemas and error constants, no UI" },
   { file: "components/settings/settingsQueries.ts", kind: "behavior-only", reason: "work-email access query hook, no UI" },

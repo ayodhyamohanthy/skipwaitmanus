@@ -2794,7 +2794,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
       "status": "todo",
-      "syncedTo": "D-303",
+      "syncedTo": "D-304",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
@@ -4486,7 +4486,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-oracle-kind-repair",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-304",
       "dependsOn": [],
       "epic": "D-212",
