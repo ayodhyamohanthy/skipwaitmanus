@@ -291,6 +291,19 @@ async function state() {
       console.error(`next-task: ${e.message}`);
       for (const head of heads) prCi.set(head, { state: "error" });
     }
+    // PICKER-land-exact-head (D-293): find the tip's run when it has aged out of the newest 100 runs.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state === "error") continue;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!tipSha || ci?.sha === tipSha) continue;
+      try {
+        const runs = (await github(doc.repo, `/actions/workflows/ci.yml/runs?head_sha=${tipSha}&per_page=10`)).workflow_runs;
+        if (Array.isArray(runs) && runs.length) prCi.set(head, ciStateFromRuns(runs));
+      } catch (e) {
+        console.error(`next-task: ${e.message}`);
+      }
+    }
     // PICKER-gate-red-review-route (D-291): a red run on the branch's exact tip gets one read of its jobs, so a red
     // that is only the review gate's own step can be handed REVIEW. Fail closed: a missing run id, a run not on the
     // tip, or any fetch or parse error leaves gateOnly false and the picker keeps handing MAKE GREEN.
@@ -364,7 +377,7 @@ async function main() {
   const args = argsOf(process.argv.slice(2));
   const date = new Date().toLocaleDateString("en-CA");
   if (args.verdict || args.fixed) {
-    const { doc, branches } = await state();
+    const { doc, branches, openPrs } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
     const lockName = reviewLockOf(task), lock = branches.get(lockName);
     const stage = reviewStateOf(lock, task.id);
@@ -378,7 +391,9 @@ async function main() {
     if (args.fixed) requireSynced(doc, branches, args.as);
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
     // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
-    const reviewed = args.verdict ? (onOrigin(task.branch) ? tip(task.branch) : fail(`${task.branch} is not on origin; there is no head to review`)) : null;
+    const architect = architectLockOf(task);
+    const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
+    const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
     if (!pushMarker(lockName, tip(lockName), subject, reviewed ? `reviewed ${reviewed}` : undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
     console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}`);
     return;

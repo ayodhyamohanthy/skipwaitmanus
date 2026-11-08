@@ -299,6 +299,35 @@ export function ciStateFromRuns(runs) {
 }
 
 /**
+ * PICKER-land-exact-head (D-293): LAND requires green CI on the exact tip.
+ * Fails closed: green on an older sha, unknown with an open pull request, or a missing tipSha
+ * becomes "no-tip-ci". Red, running, running-after-red and error are returned unchanged.
+ */
+export function ciOnTip(rawCi, tipSha) {
+  const ci = rawCi ?? { state: "unknown" };
+  if (ci.state === "red" || ci.state === "running" || ci.state === "running-after-red" || ci.state === "error") {
+    return ci;
+  }
+  if (ci.state === "green") {
+    if (typeof ci.sha === "string") {
+      if (Boolean(tipSha) && ci.sha === tipSha) return ci;
+      return {
+        ...ci,
+        state: "no-tip-ci",
+        ...(typeof tipSha === "string" ? { tipSha } : {}),
+      };
+    }
+    // Missing head_sha is unknown, never evidence that this tip passed.
+    return { ...ci, state: "no-tip-ci", ...(typeof tipSha === "string" ? { tipSha } : {}) };
+  }
+  return {
+    ...ci,
+    state: "no-tip-ci",
+    ...(typeof tipSha === "string" ? { tipSha } : {}),
+  };
+}
+
+/**
  * PICKER-gate-red-review-route (D-286): the step in the `typecheck` job that runs the review gate
  * (`node scripts/review-gate.mjs`, the same script and exit code scope-check runs) under its own name,
  * so a red that is nothing but the missing independent review can be told from every other red.
@@ -581,7 +610,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
     const work = packet ? archName : workBranchOf(task, branches);
     const info = work ? branches.get(work) : null;
     const pr = work ? openPrs.get(work) ?? null : null;
-    const ci = pr ? prCi.get(work) ?? { state: "unknown" } : { state: "unknown" };
+    const ci = pr ? ciOnTip(prCi.get(work) ?? { state: "unknown" }, info?.tipSha) : { state: "unknown" };
     // A squash merge leaves the branch unmerged in git; GitHub's merged pull request says it landed.
     const landedBefore = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
     // PICKER-landed-marker-continuity: a verified merged pull request from the row's branch keeps it landed when the
@@ -598,6 +627,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
     return {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
       slug: slugOf(task.branch), owner, pr, ci: ci.state, said,
+      ciSha: ci.sha ?? null, ciRunId: ci.runId ?? null, tipSha: info?.tipSha ?? null,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
       reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
@@ -742,6 +772,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
     }
     if ((state === "passed" || state === "landing") && lockQuiet) {
+      if (v.ci === "no-tip-ci") {
+        const tip8 = (v.tipSha ?? v.info?.tipSha ?? "").slice(0, 8);
+        return skip(v, `waiting for CI on the tip ${tip8} of ${v.pr}`);
+      }
       if (did(v, ["builders", "fixers"])) return skip(v, "its review passed, and you built or fixed it");
       if (slotBusyFor(claimant)) return waitLanding();
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.lander ?? v.reviewer };
@@ -780,6 +814,19 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         return v.pr ? green(v, reportWhy(said)) : { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), why: reportWhy(said) };
       }
       if (v.pr && (v.ci === "running" || v.ci === "running-after-red")) return skip(v, `CI is running on ${v.pr}`);
+      if (v.pr && v.ci === "no-tip-ci") {
+        const tip8 = (v.tipSha ?? v.info?.tipSha ?? "").slice(0, 8);
+        if (!idle) return skip(v, `waiting for CI on the tip ${tip8} of ${v.pr}`);
+        const runPart = v.ciRunId && v.ciSha
+          ? `the newest completed run ${v.ciRunId} is on ${v.ciSha.slice(0, 8)}`
+          : v.ciSha
+          ? `the newest completed run is on ${v.ciSha.slice(0, 8)}`
+          : v.ciRunId
+          ? `the newest completed run ${v.ciRunId} was found`
+          : "none was found";
+        const why = `CI has not run on the tip ${tip8} of ${v.pr} (${runPart}): bring the branch up to date with main with a two-parent merge, never a rebase, and push it so required CI runs on that exact head; do not land on an older run (D-082, D-293)`;
+        return green(v, why);
+      }
       if (v.pr) {
         if (!idle) return skip(v, `${v.owner ?? "its builder"} is landing ${v.pr}`);
         if (slotBusyFor(claimant)) return waitLanding();
@@ -792,7 +839,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // that waits for the owner stays with the owner.
     const stale = staleOf(v);
     if (stale && v.task.status !== "owner") return resync(v);
-    // D-190: a packet's pull request with green CI lands through the slot (the docs path: no Tier 1 review),
+    // D-190: Tier 2/3 packets go the docs path; Tier 1 packets need their review (D-074 (3), D-294).
+    // A packet's pull request with green CI lands through the slot,
     // by any session but a writer of the packet; anything else about it stays with the packet stage below.
     if (v.packet && v.pr && v.ci === "green") {
       if (claimant && v.writers.includes(claimant)) return skip(v, "its packet pull request is green, and you wrote the packet; another session lands it (D-190)");
@@ -801,6 +849,15 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, from: v.packetLander ?? v.owner };
     }
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
+    // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
+    if (v.packet && v.pr && Number(v.task.tier) === 1 && v.gateOnlyRed) {
+      if (v.review === "passed") return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      if (v.review === "in-review" && !quiet(lockAt(v))) return skip(v, `under review by ${v.reviewer}`);
+      if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v)))) {
+        if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you wrote or fixed its packet");
+        return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
+      }
+    }
     if (v.task.status === "architect") {
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
@@ -903,8 +960,14 @@ function ownStage(v, claimant) {
       if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
       if (last.verb === "Fix claim") return { ...base, of: "fix" };
       // A passed review whose CI went red is not landed: it goes to a fix stage (pickNextTask), never back to its lander.
-      if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") return { ...base, of: "land", tier1: true };
+      // PICKER-land-exact-head (D-293): continue landing only when CI is green on the exact tip.
+      if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red" && v.ci !== "no-tip-ci") return { ...base, of: "land", tier1: true };
     }
+  }
+  // D-299 R7: packet reviewers use the existing lock lifecycle, never packet fix/land stages.
+  if (!v.open && v.packet && v.pr && v.task.tier === 1 && v.lock) {
+    const last = stageMarkers(v.lock, v.task.id).at(-1);
+    if (last?.who === claimant && last.verb === "Review claim") return { kind: "continue", of: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, builder: v.owner, packet: true, at: v.at };
   }
   if (v.open && v.owner === claimant) {
     // A blocked task waits for another session or the owner; its holder keeps going on anything else it holds (D-085 (3), D-200).
@@ -912,7 +975,7 @@ function ownStage(v, claimant) {
     // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
     // D-286: a red that is only the review gate is not the builder's to make green; only a review clears it.
     if (v.pr && v.task.tier === 1 && !(v.ci === "red" && !v.gateOnlyRed && ["needs-review", "in-review"].includes(v.review))) return null;
-    return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
+    return { kind: "continue", of: v.pr ? (v.ci === "green" ? "land" : v.ci === "red" ? "green" : "build") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
   }
   // D-190: the packet's lander (a Land claim on the lock, never its writer) continues the landing while CI is green.
   if (v.packet && v.pr && v.packetLander === claimant && v.ci === "green" && !v.writers.includes(claimant)) return { kind: "continue", of: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, at: v.at };
@@ -1102,8 +1165,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
     const archHeld = task.status === "architect" && Boolean(v.arch);
     const activeAt = archHeld ? archAt(v) : v.open ? workAt(v) : null;
     const quiet = activeAt !== null && now - activeAt > IDLE_MS;
-    // D-190: a packet pull request goes the docs path, never through a Tier 1 review.
-    const review = pr && task.tier === 1 && !v.packet ? v.review : null;
+    // D-190/D-294: Tier 2/3 packets go the docs path; Tier 1 packets need their review.
+    const review = pr && task.tier === 1 ? v.review : null;
     // D-202: an out-of-sync task shows the decision that holds it, not its old state.
     const stale = outOfSyncOf(v, register);
     let state;

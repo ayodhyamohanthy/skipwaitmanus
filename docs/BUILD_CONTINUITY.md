@@ -10,6 +10,12 @@ Sources: `phonemsg-01M68A1QZGARZGJNSVWG9NEBZY`, `phonemsg-01M68A28FYPYGJSQ7X9FBV
 
 This newer FIFO instruction supersedes D-009's conflicting discretionary P0 / in-progress / lowest-unblocked selection order, retaining D-010's goal and all authorization/eligibility holds. The owner's 11:56 autonomy reaffirmation asks for ordinary questions, handoffs, testing and continuation to be handled without manual founder relay wherever possible, within FIFO and existing authority (sources in `docs/DECISIONS.md`). It adds no production, security, spending or representation grant.
 
+## Queue freshness: owner's November 8 continuation
+
+At 10:18 IST the owner said "Make use of hark" and "And make sure the queue doesnt have old work , but only updated work" (sources: `phonemsg-01M6WQRFM4EB1G24GRBB90W98X`, `phonemsg-01M6WQSANS32DQZNGXNXBXBAKQ`). Use available free Hark capacity on current eligible work, not an old chat's completed task. This adds no paid-plan approval and does not change FIFO, holds, ownership or independent review.
+
+Before repeating a queue action, compare its current packet and repo-only outcome with actual PR state, current main ancestry, final-head reviews/checks and the owner's latest decisions. Correct outdated carrier or handoff notes through the normal docs path. A merged implementation is not completed acceptance; an old unfinished bug is not obsolete merely because of its date. Preserve owner-parked work and useful history. Do not delete rows, mark work done, revive an old UI/component or start a duplicate branch on age, a stale prompt or a marker title alone. Name the unfinished current goal and the actual existing carrier in the handoff.
+
 ## Before claiming or changing a task
 1. Fetch current `origin/main`. Record its SHA. Read current `docs/BRIEF.md`, `AGENTS.md`, `docs/DECISIONS.md` and the task's current packet, not just the checkout's old copies. Do not reset a shared worktree or discard anyone's work. Reconcile your branch with current main through the normal merge process.
 2. Read the previous session's **repo-only outcome**: its packet status, branch/commit, PR and review/test results. Follow actual artifact links and inspect the content. A chat title, remembered summary or instruction to "read the last chat" is not evidence of a read. Never publish raw private chat/session logs or private sources. If there was no prior session, record that with the current task state; do not invent a handoff.
@@ -23,6 +29,15 @@ Claude sessions provide intelligence/reasoning and bounded decisions/handoffs. O
 
 ## Publication is not machine enforcement
 This document is a required session-start instruction, not a process running on the owner's computer. Repository prompts cannot prove that every client read them. The picker now enforces the decision half (`PICKER-decision-sync`, landed `86559ba7`): it reads the register, withholds a task whose `syncedTo` trails an entry naming it, prints that row as `re-sync (D-nnn)`, and opens every pick with the newest decisions. What it cannot prove is that a session read them, so the actual read receipt and the reviewer check stay required evidence. Do not report every agent synced without its receipt.
+
+## Automatic next task after a handoff (D-235)
+Owner, October 29, 2026, 23:56:55 IST (`phonemsg-01M64EMG1951BVCWNH60D5Q9E2`): sessions start the next task in the queue instead of ending, so the owner no longer types `build` again on every platform. This amends only the forced session-end clauses, D-074 (2) and D-085 (10); their historical text stays in the register.
+
+After each bounded handoff (a Tier 1 draft pull request, a landing or a reported block), report the actual outcome with `--report`, push your own work, rerun the current-instruction preflight (`docs/BUILD_CONTINUITY.md`) and take the next task the picker hands you that your role may take (D-225), without waiting for another `build`. One packet at a time, not one packet per session. Never take your own review, and never bypass a held lane, missing authentication or approval, a platform session or usage limit, or a free-only limit. Stop only for a real blocker, no eligible work, an explicit stop or a session limit, and report that exact reason instead of asking the owner to choose routine work.
+
+Write the handoff record described below at every handoff, not only when a session stops. Independent review, ownership, required CI, free-only limits and every hold stay exactly as before. Keep your picker identity: a fresh context reads the repo-safe handoff, but your identity, your earlier build or fix participation and your held work carry forward, so you never become eligible to review your own work. After a claim race, read the current holder before one bounded retry; never retry in a loop. Missing GitHub authentication is a write blocker, not permission to use another transport or forge a marker; only disjoint read-only preparation continues until the authorized route works.
+
+These instructions apply only inside an active session. They install no scheduler, cannot reopen a closed app and never bypass a platform approval prompt or usage cap. Until its owning row changes `scripts/nextTaskText.mjs`, the picker's printed Tier 1 step still ends with "end the session (one packet per session, D-074)"; read that step as amended by D-235.
 
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
