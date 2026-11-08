@@ -104,6 +104,14 @@ jobs:
       # broken tool never blocks a real fix - but a definite change outside `owns` fails.
       # A verified empty diff has no files to judge and no queue row to read (marker
       # branches never merge), so the classifier is the only thing that may skip it.
+      # PICKER-gate-red-review-route (D-286): the review gate under its own step name. It is the same script and
+      # exit code scope-check runs next (scope-check calls it again and gets the same answer), so nothing is
+      # added, waived or reordered in what must pass; the name only lets the picker tell "red because the Tier 1
+      # review is still to be done" from every other red, and hand that head its REVIEW. The step name is read by
+      # scripts/nextTaskCore.mjs (GATE_STEP); keep the two identical. The job and its required-check name are unchanged.
+      - name: Review gate (independent Tier 1 pass)
+        if: ${{ github.event_name == 'pull_request' && steps.classify.outputs.marker_only != 'true' }}
+        run: node scripts/review-gate.mjs
       - name: Scope check (declared file ownership)
         if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: node scripts/scope-check.mjs --branch
@@ -202,3 +210,96 @@ jobs:
         run: pnpm build
         env:
           VITE_GOAL_SURFACES: all
+
+  # GATE-e2e-journeys (D-212, docs/plans/GATE-delivery.md): the core journeys in
+  # a real browser against the built server and a real MySQL, on every pull
+  # request and every push to main. Not a required check until it has been green
+  # on main for 3 days and the owner adds it (D-212 (6)). No `paths:` filter: a
+  # docs-only change exits green in the first step instead.
+  #
+  # GATE-migration-apply (D-212): the schema step proves what a pull request's
+  # deploy migrations do on the database `main` already has. It pushes the base
+  # revision's drizzle/schema.ts, applies drizzle/deploy/*.sql twice (the second
+  # run must apply nothing), then compares the result with the PR's own
+  # schema.ts: a table or column no deploy migration creates fails here, not in
+  # production's migrate-db. It reads repository files only - no production
+  # database, dump or secret. A base revision it cannot resolve or push falls
+  # back to the head schema and warns, so a broken tool never reddens a pull
+  # request for a reason that is not a breach.
+  e2e:
+    name: e2e journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: e2e
+          MYSQL_DATABASE: skipwait
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pe2e"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      E2E_DATABASE_URL: mysql://root:e2e@127.0.0.1:3306/skipwait
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Docs-only change exits green
+        id: docs
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # Fails open: an unreadable diff runs the journeys.
+          files=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA" 2>/dev/null) || { echo "docs_only=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -Ev '^docs/|\.md$' >/dev/null; then
+            echo "Only docs/** and *.md changed; the journeys do not run."
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+      - uses: actions/setup-node@v4
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        run: pnpm install --frozen-lockfile
+      - name: Cache the Playwright browser
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chromium
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        run: pnpm build
+      - name: Base schema, deploy migrations applied twice, drift check
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        env:
+          MIGRATION_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/e2e-server.mjs prepare
+      - name: Journeys
+        if: ${{ steps.docs.outputs.docs_only != 'true' }}
+        run: pnpm e2e
+      - name: Upload the Playwright trace and screenshots
+        if: ${{ failure() && steps.docs.outputs.docs_only != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-journeys-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            e2e/.results
+            e2e/.report
+          retention-days: 14
+          if-no-files-found: ignore

@@ -1,0 +1,66 @@
+
+ RUN  v4.1.11 /workspace/work/skipwaitmanus-wt/d048-f-app-wrapper
+
+stdout | client/src/components/goal/wrapper/appWrapperBoundary.test.ts
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+
+ ❯ client/src/components/goal/wrapper/appWrapperBoundary.test.ts (4 tests | 1 failed) 23ms
+     × has the goal wrapper modules this row adds 11ms
+     ✓ no wrapper module reaches kit, ui, SystemStates or kit.css through any import 2ms
+     ✓ no wrapper module carries a shadcn token class or a kit.css class 2ms
+     ✓ negative control: the walk and the scans catch today's legacy StatusBanner and ErrorScreen 7ms
+stdout | client/src/components/goal/wrapper/appWrapper.goal.test.tsx
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+
+ ❯ client/src/components/goal/wrapper/appWrapper.goal.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  client/src/components/goal/wrapper/appWrapper.goal.test.tsx [ client/src/components/goal/wrapper/appWrapper.goal.test.tsx ]
+Error: Failed to resolve import "./routeSurface" from "client/src/components/goal/wrapper/appWrapper.goal.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /workspace/work/skipwaitmanus-wt/d048-f-app-wrapper/client/src/components/goal/wrapper/appWrapper.goal.test.tsx:11:0
+  6  |  const __vi_import_3__ = await import("@/components/ErrorBoundary");
+  7  |  const __vi_import_4__ = await import("@/components/PwaStatus");
+  8  |  const __vi_import_5__ = await import("./routeSurface");
+     |                                       ^
+  9  |  
+  10 |  
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  client/src/components/goal/wrapper/appWrapperBoundary.test.ts > app wrapper goal boundary > has the goal wrapper modules this row adds
+AssertionError: expected [] to deeply equal [ 'GoalErrorFallback.tsx', …(3) ]
+
+- Expected
++ Received
+
+- [
+-   "GoalErrorFallback.tsx",
+-   "GoalNotice.tsx",
+-   "goalToaster.ts",
+-   "routeSurface.ts",
+- ]
++ []
+
+ ❯ client/src/components/goal/wrapper/appWrapperBoundary.test.ts:78:19
+     76|   it("has the goal wrapper modules this row adds", () => {
+     77|     const names = wrapperModules().map(file => relative(WRAPPER_DIR, f…
+     78|     expect(names).toEqual(["GoalErrorFallback.tsx", "GoalNotice.tsx", …
+       |                   ^
+     79|   });
+     80|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  1 failed | 3 passed (4)
+   Start at  16:56:52
+   Duration  4.20s (transform 120ms, setup 174ms, import 48ms, tests 23ms, environment 2.63s)
+
