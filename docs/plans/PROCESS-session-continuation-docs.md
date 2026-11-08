@@ -6,11 +6,31 @@ D-235 records the owner request that active sessions continue to the next eligib
 
 ## Bounded scope
 
-This is one bounded amendment on the existing #833 carrier, prepared from current `main` `04b6f4d1`. No new carrier, no new decision ID, no policy or gate weakening.
+This is one bounded amendment on the existing #833 carrier, prepared from current `main` `04b6f4d1`. No new carrier, no new decision ID, no duplicate task row, no policy or gate weakening.
 
-**Docs scope (this amendment).** `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `START_HERE.md`, `SkipWait-START-HERE.md`, `docs/BRIEF.md`, `docs/BUILD_CONTINUITY.md`, `docs/DELEGATION.md`, `docs/plans/D-048-auth.md`, `docs/DECISIONS.md`, this packet, and the `docs/plans/assignments.json` registration. Change only forced session-ending wording and current preflight/continuation guidance. Preserve D-225 roles, D-151 independent review, required CI, frozen choices, native usage caps, free-only limits and all account, API, money, release and retention holds.
+### Two stages, one row, one decision ID
 
-**Runtime scope (named here, not written here).** The printed-text follow-through rides this row, not `PICKER-architect-landing`:
+The row `PROCESS-session-continuation-docs` carries both stages. Only stage 1 is written here.
+
+**Stage 1 — docs-only scope registration (this PR #833, branch `agent/queue/process-session-continuation-docs`).** The docs listed below plus this packet and the `assignments.json` registration. No runtime source change.
+
+**Stage 2 — bounded runtime follow-through (branch `agent/queue/process-session-continuation-runtime`, pre-registered in this amendment, NOT created).** Created only after stage 1 has independent final-head review, required green CI and a protected merge, and only then assigned by the normal picker. No runtime branch and no runtime pull request exist at the time of this amendment.
+
+**Why the runtime branch is distinct.** The picker would otherwise never hand out the runtime work. Replayed against current `main` with green main and no open docs pull request:
+
+| row state | picker result |
+|---|---|
+| same row `in-review` on the merged docs branch | `none` — "being landed by its reviewer" |
+| same row `todo` on that same merged branch | `none` — "done" |
+| same row `todo` with the distinct pre-registered runtime branch absent | **`build`** for `PROCESS-session-continuation-docs` |
+
+So changing `in-review` to `todo` on the closed docs carrier would not solve it. The distinct branch is the mechanism, and the replay above is measured, not assumed.
+
+**What enforces the stage order.** `scripts/next-task.mjs` reads the row list from `origin/main` (`LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main"`, line 45). Until stage 1 merges, `main` has no such row, so no session can be handed the runtime build at all. The merge is the gate, not a promise.
+
+**Docs scope (stage 1).** `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `START_HERE.md`, `SkipWait-START-HERE.md`, `docs/BRIEF.md`, `docs/BUILD_CONTINUITY.md`, `docs/DELEGATION.md`, `docs/plans/D-048-auth.md`, `docs/DECISIONS.md`, this packet, and the `docs/plans/assignments.json` registration. Change only forced session-ending wording and current preflight/continuation guidance. Preserve D-225 roles, D-151 independent review, required CI, frozen choices, native usage caps, free-only limits and all account, API, money, release and retention holds.
+
+**Runtime scope (stage 2, named here, not written here).** The printed-text follow-through rides this row, not `PICKER-architect-landing`:
 
 - `scripts/nextTaskCore.mjs` — the narrow avoid-first-of-two-owned-continuations hunk only.
 - `scripts/nextTaskAvoidLand.test.ts` — four tests (control, avoid-first-continues-second, avoid-both-falls-through, blockedOwn guard).
@@ -47,12 +67,14 @@ Evidence already reproduced against current `main` by the preparing session and 
 
 - Keep D-074 (2) and D-085 (10) as historical decisions, explicitly amending only their forced-end clauses.
 - After an actual bounded handoff push owned work, report the actual outcome, repeat the BUILD_CONTINUITY preflight and choose the next role-permitted eligible task. Real STOP, WAIT, missing approval, native caps and no eligible work remain honest pauses, not loops or completion claims.
-- Run the eight focused native suites: briefContract, registerShape, queueGate, goalUiCoverage, nextTask, nextTaskReviewWording, d048Split, register520Packets. Also run `validateAssignments`, `node scripts/decision-id-check.mjs`, `scripts/queue-gate.mjs` and `scripts/scope-check.mjs --branch`, and report the scope check as skipped, never as passing.
+- **Before this amendment is published**, confirm `agent/queue/process-session-continuation-runtime` exists in no ref, locally or on `origin`, and that no other row already uses its slug. A pre-registered branch that already exists would make the picker read work that is not there.
+- Run the eight focused native suites: briefContract, registerShape, queueGate, goalUiCoverage, nextTask, nextTaskReviewWording, d048Split, register520Packets. Also run `validateAssignments` with the full dependency graph, `node scripts/decision-id-check.mjs`, `scripts/queue-gate.mjs` and `scripts/scope-check.mjs --branch`, and report the scope check as skipped, never as passing.
+- **Include a lifecycle replay of this exact revised row**, not an assumed later fix: with green main, the docs branch merged and no open docs pull request, the pre-registered row must make `pickNextTask` return `build` for `PROCESS-session-continuation-docs`, while the same row `in-review` on the merged branch returns `none` ("being landed by its reviewer") and `todo` on that same merged branch returns `none` ("done").
 - Validate assignments and the owned diff explicitly. A missing-main-row warning is not a pass: this candidate is not done until protected merge.
-- Independent reviewer checks the exact delta, the source decision, the `blockedOwn` distinction and overlap with the picker-file owners; do not import unmerged policy. Required exact-head CI and the normal protected landing procedure remain. No self-review or self-merge.
+- Independent reviewer checks the exact delta, the source decision, the two-stage lifecycle, the `blockedOwn` distinction and overlap with the picker-file owners; do not import unmerged policy. Required exact-head CI and the normal protected landing procedure remain. No self-review or self-merge.
 
 ## Status and read receipt
 
-Prepared from `origin/main` `04b6f4d1` on 2026-11-08, superseding the earlier `99f8a1f2` draft body. Read current AGENTS, decisions, BUILD_CONTINUITY, assignments, picker source and the carrier's four conflict paths (`AGENTS.md`, `docs/BRIEF.md`, `docs/DECISIONS.md`, `docs/plans/assignments.json`). D-233, D-234 and D-235 are absent from `main` while D-236 is present, so D-235 is a genuine gap and this is the carrier's existing ID, not a new number. This packet is not a claim marker, review verdict, merge or runner readiness statement.
+Prepared from `origin/main` `04b6f4d1` on 2026-11-08, superseding the earlier `99f8a1f2` draft body and the `fd7fbaf4` single-stage revision. Read current AGENTS, decisions, BUILD_CONTINUITY, assignments, picker source and the carrier's four conflict paths (`AGENTS.md`, `docs/BRIEF.md`, `docs/DECISIONS.md`, `docs/plans/assignments.json`). D-233, D-234 and D-235 are absent from `main` while D-236 is present, so D-235 is a genuine gap and this is the carrier's existing ID, not a new number. This packet is not a claim marker, review verdict, merge or runner readiness statement.
 
-Sequence: this docs-only amendment lands first through normal independent review, required CI and protected merge. No runtime commit is made before that merge. Registration status is `in-review` and is not a completion claim; unattended-controller acceptance remains distinct.
+Sequence: stage 1 (this docs-only amendment) lands first through independent final-head review, required CI and protected merge. Only then does the normal picker assign stage 2 on the pre-registered runtime branch, and only that stage may touch runtime source. No runtime commit, branch creation or pull request exists before the stage 1 merge. Row status is `todo` because the row's work is not finished; it is not a completion claim, and unattended-controller acceptance remains distinct.
