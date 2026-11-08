@@ -2771,7 +2771,7 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-billing",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-employer",
@@ -5246,7 +5246,7 @@
       "tier": 1,
       "lane": "d048-foundation",
       "branch": "agent/queue/fix-main-eb0fd8cd",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-300",
       "dependsOn": [],
       "note": "Main CI flake: shareHubGoal.test.tsx 'opens on the goal with the copy commit once the link is ready' failed on eb0fd8cd (run 40467542914) and dc7f71a8; GoalShareHub started with loading=false so the link could render as ready before it existed. PR #734 was started by Claude (initial head 5149e8af); continue its existing registered carrier agent/queue/fix-main-eb0fd8cd, not a new duplicate. Current repo-only outcome checked Nov 8: Hark fix adb1f490, status head 40ef157b, still open/unlanded. Registered post-hoc by the coordinator: the D-166 queue gate refused the unregistered branch; the owner-direct label was NOT used and no gate bypass was granted. Tier 1: one independent D-151 review of the final current-main-composed head by a model that is neither Claude (builder) nor Hark (fixer), then landing on fresh exact-head green required CI. Sources: PR #734 comments 6521693293 and 6537465659; the Hark fix was outside the picker, so marker-only provenance is insufficient. Owns overlaps D-048-copy-goal-twins-trigger-fix, which now waits on this row and merges main forward after it lands.",
@@ -5613,6 +5613,19 @@
         "REVIEW-GATE-fetch-parity"
       ],
       "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
+    },
+    {
+      "id": "PROCESS-session-continuation-docs",
+      "title": "Record automatic next eligible session continuation without changing safety gates",
+      "row": "D-235",
+      "packet": "docs/plans/PROCESS-session-continuation-docs.md",
+      "tier": 1,
+      "lane": "picker",
+      "branch": "agent/queue/process-session-continuation-runtime",
+      "status": "todo",
+      "syncedTo": "D-301",
+      "dependsOn": [],
+      "note": "Two-stage follow-through carrier, one task row and one decision ID (D-235). STAGE 1 (this PR #833, branch agent/queue/process-session-continuation-docs): docs-only scope registration, no runtime. STAGE 2 (branch agent/queue/process-session-continuation-runtime, pre-registered here, NOT created): the bounded runtime follow-through, created only after this docs amendment has independent final-head review, required green CI and protected merge, then assigned by the normal picker. Why the branch differs: a merged row left in-review reads \"being landed by its reviewer\" and a merged row set todo on its own merged branch reads \"done\", so neither would ever hand out the runtime work; a distinct not-yet-created branch makes the picker hand BUILD after the merge. Docs scope: AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, START_HERE.md, SkipWait-START-HERE.md, docs/BRIEF.md, docs/BUILD_CONTINUITY.md, docs/DELEGATION.md, docs/plans/D-048-auth.md, docs/DECISIONS.md and this packet. Runtime scope, not yet written: scripts/nextTaskCore.mjs (the narrow avoid-first-of-two-owned-continuations hunk, blockedOwn fallback preserved), scripts/nextTaskAvoidLand.test.ts (4 tests), scripts/nextTaskText.mjs (printed stop copy only), scripts/nextTaskReviewWording.test.ts (2 printed-text pins). No owns by design (D-293/D-286 precedent): two non-done rows may not own overlapping paths without a dependency edge, and a reverse dependsOn on PICKER-fullstack-lights, PICKER-qa-stage or PICKER-landing-wait-fallthrough would stall this row under D-134. Serialization is the shared picker lane; those three TODO owners carry no branch on origin. CAVEAT: with no owns, scripts/scope-check.mjs returns skipped (\"declares no owns\"), never a pass, so scope enforcement is a manual exact allowlist diff plus independent review. No heldBy, heartbeat or stale-CI-race change; next-task behavior unchanged. Neither stage is done until its own protected merge; a missing-main-row warning is not a pass."
     }
   ]
 }
