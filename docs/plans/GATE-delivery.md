@@ -197,7 +197,7 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
-PICKER-oracle-kind-repair: registered — D-304 — branch agent/queue/picker-oracle-kind-repair
+PICKER-oracle-kind-repair: in progress — Antigravity · 87cf — 2026-11-08 — branch agent/queue/picker-oracle-kind-repair
 
 GATE-test-integrity: done — e425fac9 (PR #846)
 GATE-tier-floor: done — 0899a26a (PR #862; built by DeepSeek V4.1 Flash 1017 · s38fcc2f0 at 2cbe6f33, gate/PR/land finished by the Cline · b579 takeover). Gate proof: `pnpm check` 0, `scripts/` 28 files/925 tests, full `pnpm vitest run` 5316 passed with 6 load-flakes in `scripts/classifyCiChange.test.ts`, `server/chargebeeRoutes.cardValidation.test.ts` and `client/src/pages/startGoal.test.tsx` that each pass alone (70/70), token audit, migration lint, deploy triggers and `pnpm build` all 0, `scope-check` inside the row's owns; the new message reproduced locally on a scratch Tier 2 tree that touches `server/dailyMoneyCheck.ts` — "Tier 1: this change touches `server/dailyMoneyCheck.ts`, which are Tier 1 (D-212)…" — the first real Tier 2 row that touches a Tier 1 path will show it in CI (none exists today, so that instance is unverified)
