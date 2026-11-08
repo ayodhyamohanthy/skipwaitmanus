@@ -1,5 +1,5 @@
 {
-  "source": "b47a6fe0e83435ea045a7cf7122aeed85de52c9a",
+  "source": "129188d5a8256aba503d5bde2a659411291caefc",
   "sourceTreeDirty": false,
   "build": "VITE_GOAL_SURFACES=admin-money (local vite dev server, every /api call mocked in the browser)",
   "command": "node design/goal-ui/captures/admin-money/capture.mjs",
