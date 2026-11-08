@@ -1,5 +1,5 @@
 {
-  "source": "c49a0d4ce12464ec337e5947b2b8fe6195e33dd8",
+  "source": "bf0d489e0a42390fe82ce23da1b8042fb6f1e9b6",
   "route": "/for-companies",
   "command": "node design/goal-ui/captures/for-companies/capture.mjs",
   "synthetic": true,
