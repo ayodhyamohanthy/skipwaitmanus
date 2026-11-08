@@ -127,6 +127,15 @@ Drive `pickNext` through the same fixtures `scripts/nextTaskArchitectLanding.tes
 
 ## Status
 
+- `PICKER-architect-review-route`: in progress - Instinct · 09c7 - 2026-11-08 - branch agent/queue/picker-architect-review-route; ordinary picker claim db56b45a. Packet drafted by Hark · b06c, registered D-294.
+- Coordination: accidental D-100.otp-hmac review claim 0a6b1b7a/heartbeat96963710 is untouched, holds remain in force, no review/verdict or renewal; factual correction on PR #884. No release/unclaim command exists; normal quiet expiry applies. Exact comma-list avoid is corrected. Supported avoided-continuation routing selected this build; no review outcome or handoff claimed.
+
+- 2026-11-08 04:27 IST: bounded lifecycle omission found, not silently implemented. `ownStage` recognizes review ownership only for `v.open`, while packet rows have `v.open=false`. New red lifecycle regression reproduces `kind:none` instead of CONTINUE REVIEW and absent normal heartbeat ownership. Packet R1-R6 does not admit that change; coordinator clarification and independent inspection pending. Existing implementation is not ready to land.
 - `PICKER-architect-review-route`: packet drafted by Hark · b06c on `agent/architect/picker-architect-review-route` (registered by D-294, 2026-11-07). Direction: Instinct coordinator, 2026-11-07 (coordinator routing confirmed; no owner instruction on this packet).
 
 - Amendment R7 (Review-claim-only lifecycle continuation for packet rows) registered by D-299, 2026-11-08: successor-architect ruling under D-200/D-202 - the original architect session (Hark · b06c) ended 2026-11-07 12:57 IST and no task waits for one session. Defect measured on `main` `d6685c97` and reproduced by the independent reviewer (PR #1038 comment 6714302658; 11/11 focused, `nextTask` 299/299).
+
+- 2026-11-08 05:21 IST: D-299/R7 is effective on main6327ceae; merged normal scope re-sync, preserving historical red finding and amendment provenance. Narrow review-only implementation and final independent review pending.
+- 2026-11-08 05:22 IST: R7 red-first f8f9918c: focused12 tests11pass1fail (existing lifecycle regression); added real `leaseFor` lock Heartbeat assertion and negative Fix/Verdict-pass/Land cases. Narrow Review-claim-only ownStage implementation: all11 picker suites300/300 pass; full scripts and exact-head CI/final independent review pending. No generic packet fix/land widening.
+
+- 2026-11-08 05:41 IST: landing-preparation status commit only, not a landed claim. Implementation5a4f9454504dbe796e8922eb12b4322193914f4f independent final-head PASS at PR1038 comment6714726685; exact CI42427172305 all4 jobs SUCCESS including Typecheck/Vitest. All11 local picker suites300/300; local fullscripts120s timeout remains incomplete. Current-main picker exit4 WAIT: landing slot36fd7836 belongs Qoder b69f / D-048-p3-admin-approvals, no competing slot/merge. Row done is prepared on this PR only; final status-delta review/CI and ordinary slot/protected merge still pending. Accidental D089 reviewclaim41f6 from candidate-router execution left untouched, corrected publicly6714851284, no formal verdict/renewal.

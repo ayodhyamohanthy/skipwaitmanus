@@ -5607,7 +5607,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-architect-review-route",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-299",
       "dependsOn": [
         "REVIEW-GATE-fetch-parity"
