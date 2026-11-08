@@ -25,3 +25,25 @@ describe("the printed review step (D-184)", () => {
     expect(reviewPick).toContain("post no verdict and report it blocked to the CEO");
   });
 });
+
+// D-235 (owner, Oct 29 2026): after a bounded handoff a session reports, reruns the preflight and takes
+// the next eligible task instead of ending. Pins the printed Tier 1 stop copy; the review independence
+// above is unchanged.
+describe("the printed Tier 1 handoff step (D-235)", () => {
+  const buildPick = renderPick(
+    { kind: "build", task: task("M", { status: "todo" }), ciRunning: false },
+    ctx,
+  );
+
+  it("sends the session to the next eligible task instead of ending it", () => {
+    expect(buildPick).toContain("take the next eligible task");
+    expect(buildPick).toContain("D-235; one packet at a time");
+    expect(buildPick).not.toContain("end the session (one packet per session, D-074)");
+  });
+
+  it("keeps the draft-pull-request step and the bar on landing your own work", () => {
+    expect(buildPick).toContain("open a DRAFT pull request");
+    expect(buildPick).toContain("Never land it yourself");
+    expect(buildPick).toContain("hands the review to a different session");
+  });
+});
