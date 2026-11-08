@@ -3414,7 +3414,7 @@
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
       "status": "todo",
-      "syncedTo": "D-298",
+      "syncedTo": "D-299",
       "dependsOn": [
         "D-089.server",
         "D-089.ui"
@@ -5618,7 +5618,7 @@
       "lane": "request-inbox-server",
       "branch": "agent/queue/d089-server",
       "status": "todo",
-      "syncedTo": "D-298",
+      "syncedTo": "D-299",
       "dependsOn": [
         "D-090-BYOR",
         "D-086-demand-list",
@@ -5647,7 +5647,7 @@
       "lane": "request-inbox-ui",
       "branch": "agent/queue/d089-ui",
       "status": "todo",
-      "syncedTo": "D-298",
+      "syncedTo": "D-299",
       "dependsOn": [
         "D-089.server",
         "D-048-p3-links",
