@@ -222,6 +222,24 @@ describe("goal /admin/payments row confirm lifecycle", () => {
     expect(pagePrimary()).toEqual(["Confirm: keep credits and close"]);
   });
 
+  it("gives the black commit back when the row holding it leaves the queue", async () => {
+    // The row is decided elsewhere (409 already resolved) and a reload drops it:
+    // its open dialog must not keep the page's next step ghost forever.
+    let answered = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (init?.method === "POST") { answered = true; return reply({ error: "This payment was already resolved." }, false, 409); }
+      if (url.includes("scope=credited")) return reply({ payments: [] });
+      return reply({ payments: answered ? [] : [REFUNDED] });
+    }));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Keep credits and close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm: keep credits and close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("Nothing needs review right now.")).toBeTruthy();
+    expect(pagePrimary()).toEqual(["Reload the queue"]);
+  });
+
   it("closes the dialog on failure, shows the truthful error, and lets the retry send exactly one more POST", async () => {
     vi.stubGlobal("fetch", queueWith(() => reply({ error: "Chargebee did not answer" }, false, 503)));
     render(<GoalAdminPayments />);

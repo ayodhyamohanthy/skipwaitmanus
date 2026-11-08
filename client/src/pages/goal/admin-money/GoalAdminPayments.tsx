@@ -94,6 +94,9 @@ export default function GoalAdminPayments() {
     row?.scrollIntoView?.({ block: "center" });
     row?.querySelector<HTMLElement>("input, button")?.focus();
   };
+  // Only a row still in the queue can hold the commit: an id left behind by a
+  // row that a reload removed must not keep the page's next step ghost.
+  const rowDialogOpen = payments.some(payment => openRowDialogs.has(payment.id));
   const oldest = payments[0] ?? null;
   const nextStep = error
     ? { label: "Reload the queue", reason: "The review queue is not answering. Reload it before deciding anything.", onClick: () => { void load(); }, busy: false }
@@ -118,7 +121,7 @@ export default function GoalAdminPayments() {
     <AdminMoneyGoalFrame screen="admin-payments" current="/admin/payments">
       <AdminMoneyHeading current="/admin/payments" />
       <GoalNextStep reason={nextStep.reason}>
-        <GoalButton variant={refundTarget || openRowDialogs.size > 0 ? "ghost" : "primary"} className="mt-3" busy={nextStep.busy} busyLabel="Reading the queue…" onClick={nextStep.onClick}>{nextStep.label}</GoalButton>
+        <GoalButton variant={refundTarget || rowDialogOpen ? "ghost" : "primary"} className="mt-3" busy={nextStep.busy} busyLabel="Reading the queue…" onClick={nextStep.onClick}>{nextStep.label}</GoalButton>
       </GoalNextStep>
       {error ? <GoalErrorState className="mt-6" title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
       <section aria-label="Payments under review" className="mt-6 border border-g-hairline bg-g-surface">
