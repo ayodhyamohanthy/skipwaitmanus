@@ -141,7 +141,8 @@ Test (AGENTS.md product compass): the seeker gets a named, verified person to as
 - `D-089.server`;
 - `D-048-p3-links`: owns the landings and their goal folder;
 - `D-086.admit`: the last open owner of `GOAL_UI_COVERAGE.md`. `D-086.ui` and `D-090-BYOR` also own it, and are reached through it and through `D-089.server`;
-- `D-057-session-gate`: owns `MyCompanyInbox.tsx` and `referrerData.ts`, reached through BYOR.
+- `D-057-session-gate`: owns `MyCompanyInbox.tsx` and `referrerData.ts`, reached through BYOR (no direct edge);
+- `D-048-fix-referrer-home-ux` and `D-048-fix-referrer-home-private-copy`: both own `client/src/pages/goal/referrer-home/GoalReferrerHome.tsx`, where this row adds one switch-only mount, so the two repairs land first (the `validateAssignments` overlap rule; added Nov 8).
 
 **Owns:**
 - `client/src/components/referrer-home/GoalReferralLinkPanel.tsx`, `client/src/components/referrer-home/referralLinkApi.ts`, `client/src/components/referrer-home/goalReferralLinkPanel.test.tsx`;
