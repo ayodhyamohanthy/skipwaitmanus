@@ -1,5 +1,5 @@
 import { AlertCircle, CreditCard, LoaderCircle, RotateCcw, ShieldCheck } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
@@ -8,10 +8,16 @@ import PaymentReviewRow, { type ReviewQueuePayment, type ReviewSubmitResult } fr
 import { compactDate, displayPaymentRef as displayRef, formatAmount } from "@/components/admin/paymentReviewCopy";
 import { readApiJson } from "@/lib/apiResponse";
 import { paymentReviewOutcomeSchema, type PaymentReviewRequestBody } from "@shared/paymentReview";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-admin-money: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-money).
+const GoalAdminPayments = lazy(() => import("./goal/admin-money/GoalAdminPayments"));
 
 type ReviewPayment = { id: number; provider: string; providerHostedPageId: string | null; checkoutIntentId: string | null; userId: number; role: "job_seeker" | "referrer"; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: string | Date; userEmail: string | null; status?: "credited" | "refunded" | "requires_review" };
 
 export default function AdminPaymentsReview() {
+  if (goalSurfaceOn("admin-money")) return <Suspense fallback={null}><GoalAdminPayments /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [payments, setPayments] = useState<ReviewQueuePayment[]>([]);
   const [recent, setRecent] = useState<ReviewPayment[]>([]);

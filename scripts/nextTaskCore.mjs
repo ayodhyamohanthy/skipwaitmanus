@@ -871,7 +871,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
-  let mine = claimant ? ownWork(view, claimant) : null;
+  const owned = claimant ? ownWorkList(view, claimant) : null;
+  let mine = owned?.found.find(pick => !(pick.kind === "continue" && pick.task && avoid.has(pick.task.id)))
+    ?? (owned?.found.length ? null : owned?.blockedOwn ?? null);
   // --avoid also applies when the claimant already holds a continuation: let the
   // normal pass preserve blocked-lane holds and select another eligible task.
   if (mine?.kind === "continue" && mine.task && avoid.has(mine.task.id)) mine = null;

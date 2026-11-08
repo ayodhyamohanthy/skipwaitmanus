@@ -1,13 +1,19 @@
 import { SignInButton, useAuth } from "@/_core/auth";
 import { AlertCircle, ArrowRight, CheckCircle2, ClipboardCheck, Coins, History, Search, ShieldCheck, UserRound } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { lazy, Suspense, FormEvent, useEffect, useState } from "react";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-admin-money: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-money).
+const GoalAdminTokenRecovery = lazy(() => import("./goal/admin-money/GoalAdminTokenRecovery"));
 
 type RecoveryUser = { id: number; name: string | null; email: string | null };
 type Adjustment = { id: number; recipientUserId: number; recipientName: string | null; recipientEmail: string | null; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string; createdAt: string };
 
 export default function AdminTokenRecovery() {
+  if (goalSurfaceOn("admin-money")) return <Suspense fallback={null}><GoalAdminTokenRecovery /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [query, setQuery] = useState(""); const [users, setUsers] = useState<RecoveryUser[]>([]); const [selected, setSelected] = useState<RecoveryUser | null>(null);
   const [role, setRole] = useState<"job_seeker" | "referrer">("job_seeker"); const [tokenCount, setTokenCount] = useState(1); const [caseReference, setCaseReference] = useState(""); const [reason, setReason] = useState(""); const [confirmed, setConfirmed] = useState(false);
