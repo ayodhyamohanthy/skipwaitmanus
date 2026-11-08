@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-01",
+  "updated": "2026-11-07",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -77,10 +77,10 @@
       "tier": 1,
       "lane": "auth-device",
       "branch": "agent/queue/fix-device-signin",
-      "status": "todo",
-      "syncedTo": "D-273",
+      "status": "done",
+      "syncedTo": "D-286",
       "dependsOn": [],
-      "note": "D-273 (2026-11-01): the closure deliverable is complete on PR #952 (head 48eb44df): status done plus the structural rewrite of the nextTask.test.ts:47-62 first-pick pin. That head is red only at the review gate - unit + component + route, production build and e2e journeys are all green on it - and the pass it needs cannot be issued: nextTaskCore.mjs:573-584 returns fix or green for every red CI and reaches review only below that guard (:586-592). The row also cannot be parked by a docs-only PR: the :47-62 pin asserts the live first pick IS this row, so any status other than todo moves it and fails the required unit job (measured on PR #953, run 41331510865). Sessions that cannot complete it should run the picker with --avoid FIX-device-signin rather than burn a run; it lands unchanged once the D-254 answer opens a review route. Do not rebuild. Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner. D-272 (2026-11-01): the row is done and live (PR #655 merged 059ef908; PASS 084577f9 by GPT 2a58 on head 9237ac4e, an ancestor of main; 40/40 focused green). The board flip and the property rewrite of the nextTask.test.ts:47-62 first-pick pin ride agent/queue/fix-device-signin as an ordinary Tier 1 pull request - do not rebuild; one independent review, then landing.",
+      "note": "D-273 (2026-11-01): the closure deliverable is complete on PR #952 (head 48eb44df): status done plus the structural rewrite of the nextTask.test.ts:47-62 first-pick pin. That head is red only at the review gate - unit + component + route, production build and e2e journeys are all green on it - and the pass it needs cannot be issued: nextTaskCore.mjs:573-584 returns fix or green for every red CI and reaches review only below that guard (:586-592). The row also cannot be parked by a docs-only PR: the :47-62 pin asserts the live first pick IS this row, so any status other than todo moves it and fails the required unit job (measured on PR #953, run 41331510865). Sessions that cannot complete it should run the picker with --avoid FIX-device-signin rather than burn a run; it lands unchanged once the picker can hand its review, which D-286 registers as row PICKER-gate-red-review-route. Do not rebuild. Owner report, Oct 25: device-based sign-ins are not populating. Built by Claude Code · 6029 on the row branch (ef08e168); next is one independent review by a model other than Claude (D-200), then landing on green required CI. Face ID, passkeys and Sign in with Apple are not in this row: they change the login rule and wait for the owner. D-272 (2026-11-01): the row is done and live (PR #655 merged 059ef908; PASS 084577f9 by GPT 2a58 on head 9237ac4e, an ancestor of main; 40/40 focused green). The board flip and the property rewrite of the nextTask.test.ts:47-62 first-pick pin ride agent/queue/fix-device-signin as an ordinary Tier 1 pull request - do not rebuild; one independent review, then landing.",
       "owns": [
         "client/src/lib/rememberedSignInEmail.ts",
         "client/src/components/SeekerSignIn.tsx",
@@ -440,7 +440,8 @@
       "status": "todo",
       "syncedTo": "D-227",
       "dependsOn": [
-        "SKIPPY-fix"
+        "SKIPPY-fix",
+        "D-178.grant"
       ],
       "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>. D-221 (Oct 26): limits, re-quote and the shortfall path are stated in D-219 terms (referral level and spend source; a shortfall links to the banded extra referrals once sold, never to paused packs), with referral wording (D-180)."
     },
@@ -2594,9 +2595,10 @@
         "client/src/pages/AdminCatalogSync.tsx",
         "client/src/pages/AdminTokenRecovery.tsx",
         "client/src/pages/goal/admin-money/**",
-        "design/goal-ui/captures/admin-money/**"
+        "design/goal-ui/captures/admin-money/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-money'); read-only: components/admin/paymentReviewCopy.ts; also covers /admin/money-check styling (packet §10).",
+      "note": "Implementation row from the D-048-admin.md packet (AYO-11 design lane). flag: goalSurfaceOn('admin-money'); read-only: components/admin/paymentReviewCopy.ts; also covers /admin/money-check styling (packet §10). Nov 8 (PR #986 F1): owns gains client/src/test/goalPagesBoundary.test.ts so the packet's read-only paymentReviewCopy.ts can be admitted as behavior-only; D-048-p3-for-companies waits for this row because both edit that shared test (D-223).",
       "epic": "D-048-p3"
     },
     {
@@ -2607,7 +2609,7 @@
       "tier": 1,
       "lane": "d048-admin-people",
       "branch": "agent/queue/d048-p3-admin-people",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
@@ -2653,7 +2655,7 @@
       "tier": 2,
       "lane": "d048-admin-ops",
       "branch": "agent/queue/d048-p3-admin-ops",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-p3-admin",
@@ -2792,19 +2794,21 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-296",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
         "D-048-F-goal-check",
-        "DECISION-COPY-oct26"
+        "DECISION-COPY-oct26",
+        "D-048-p3-admin-money"
       ],
       "owns": [
         "client/src/pages/ForCompanies.tsx",
         "client/src/pages/goal/for-companies/**",
-        "design/goal-ui/captures/for-companies/**"
+        "design/goal-ui/captures/for-companies/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file).",
+      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file). D-296 clears its boundary block: goalPagesBoundary.test.ts is added to owns, so components/employer/employerPlans.ts can be admitted as behavior-only on the row's branch.",
       "epic": "D-048-p3"
     },
     {
@@ -3530,11 +3534,11 @@
       "lane": "security-otp",
       "branch": "agent/queue/d100-otp-hmac",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-297",
       "dependsOn": [
         "FIX-device-signin"
       ],
-      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151).",
+      "note": "D-223 subtask of D-100. After FIX-device-signin, which edits server/workEmailOtp.ts. Sign-in path: independent review by another model (D-151). D-297: on this branch merge current main, move OTP_HMAC_SINCE to 2026-12-01T00:00:00.000Z (one line; every other reviewed line byte-identical), take a fresh independent Tier 1 review naming the new head, then land; never land 692e7c3c; if deploy cannot finish before 2026-12-01, move the constant and re-review.",
       "epic": "D-100",
       "owns": [
         "server/workEmailOtp.ts",
@@ -4852,20 +4856,142 @@
       "id": "D-178-agent-portal-access",
       "title": "External agents using the portal: user-scoped sign-in, approved payment, apply-for-referral (protocol TBD)",
       "row": "D-178",
-      "packet": null,
+      "packet": "docs/plans/D-178-agent-portal-access.md",
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/d178-agent-portal",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "owns": [
-        "docs/plans/D-178-agent-portal-access.md"
-      ],
+      "status": "done",
+      "syncedTo": "D-290",
       "dependsOn": [
         "D-048-p3-assistants",
         "D-048-p3-agents"
       ],
-      "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-189: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers."
+      "note": "Founder direction Oct 24 00:58 IST (phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M). Direction not authority: no charges, no auth bypass, no invented protocol. Delegated identity rides existing assistant-grant work; payment needs explicit user approval per the money rules; retry-safe apply/pay required. D-189: the old branch name carried #606 (the direction record), which made the picker read this row done. The build packet comes first: the contract design the direction record asks for (docs/plans/D-178-agent-portal-access.md), with D-181's free-allowance eligibility, owned paths, tests and tiers. D-290 (Nov 7): packet-only; the packet is adopted and its work moves to the rows D-178.gate, D-178.grant, D-178.read, D-178.screen and D-178.release, and SKIPPY-6 now depends on D-178.grant."
+    },
+    {
+      "id": "D-178.gate",
+      "title": "Agent access is gated by the Skippy agent switch and account allow-list, never by the Land plan; one call cap of 20 an hour for MCP (D-178, D-290 R2, R6; switch off)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-gate",
+      "branch": "agent/queue/d178-gate",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "server/agentPortalAccess.ts",
+        "server/agentPortalAccess.test.ts",
+        "server/mcpRoutes.ts",
+        "server/mcpRoutes.test.ts",
+        "server/oauthRoutes.test.ts",
+        "shared/assistant.ts",
+        "shared/assistant.test.ts",
+        "server/db.ts (hasAssistantAccess, assertAssistantAccess and its calls in connectAssistant and createAssistantToken only)",
+        "server/_core/index.ts (the assistant, MCP and OAuth registration lines only)"
+      ],
+      "dependsOn": [
+        "SKIPPY-fix",
+        "D-178-agent-portal-access"
+      ],
+      "note": "Packet section 5 row 1. shared/planEntitlements.ts is out of scope and stays byte-identical. No new env key."
+    },
+    {
+      "id": "D-178.grant",
+      "title": "OAuth connect creates the seeker's D-141 agent grant and returns its key; MCP and REST check the same grant, scope, expiry and pause (D-290 R1; no migration)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-grant",
+      "branch": "agent/queue/d178-grant",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "server/agentGrantAuth.ts",
+        "server/agentGrantAuth.test.ts",
+        "server/oauthRoutes.ts",
+        "server/oauthRoutes.test.ts",
+        "server/mcpRoutes.ts (bearer verification only)",
+        "server/mcpRoutes.test.ts",
+        "server/seekerAgentDeps.ts",
+        "server/_core/index.ts (verifyBearer and mintToken lines only)"
+      ],
+      "dependsOn": [
+        "D-178.gate"
+      ],
+      "note": "Packet section 5 row 2. Legacy sw_ tokens keep today's behaviour and never send."
+    },
+    {
+      "id": "D-178.read",
+      "title": "Agents read the seeker's own referral requests over REST, never a referrer's identity before acceptance (D-290 R9 parity)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-read",
+      "branch": "agent/queue/d178-read",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "server/seekerAgentRoutes.ts (one route)",
+        "shared/seekerAgents.ts (one view type)",
+        "server/seekerAgentRequests.test.ts"
+      ],
+      "dependsOn": [
+        "SKIPPY-6"
+      ],
+      "note": "Packet section 5 row 4."
+    },
+    {
+      "id": "D-178.screen",
+      "title": "One goal screen to grant, limit, pause and revoke agents; consent shows the self-declared name and the expiry; approval shows the referral's source (D-290 R1, R4, R7)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-screen",
+      "branch": "agent/queue/d178-screen",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "client/src/pages/goal/assistants/**",
+        "client/src/pages/SeekerAgents.tsx",
+        "client/src/pages/seekerAgents.test.tsx",
+        "client/src/pages/Assistants.tsx",
+        "client/src/pages/ConnectAssistant.tsx",
+        "client/src/pages/Approve.tsx",
+        "design/goal-ui/captures/assistants/**"
+      ],
+      "dependsOn": [
+        "D-178.grant",
+        "SKIPPY-6"
+      ],
+      "note": "Packet section 5 row 5. Captures at 1280 and 390."
+    },
+    {
+      "id": "D-178.release",
+      "title": "Release D-178: allow-listed test seeker end to end on skipwait_qa (connect, propose, approve, one debit, decline, revoke, shortfall); production is the owner's word",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-release",
+      "branch": "agent/queue/d178-release",
+      "status": "todo",
+      "syncedTo": "D-290",
+      "epic": "D-178",
+      "owns": [
+        "docs/plans/D-178-agent-portal-access.md"
+      ],
+      "dependsOn": [
+        "D-178.gate",
+        "D-178.grant",
+        "SKIPPY-6",
+        "D-178.read",
+        "D-178.screen",
+        "SKIPPY-redteam"
+      ],
+      "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201)."
     },
     {
       "id": "D-180-terminology-docs-sync",
@@ -5153,6 +5279,69 @@
       ]
     },
     {
+      "id": "D-048-fix-referrer-home-ux",
+      "title": "/referrer-home goal page: capacity bar shows what remains, with an aria-label; Ref ID in the mobile metadata",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-referrer.md",
+      "tier": 2,
+      "lane": "d048-referrer-home",
+      "branch": "agent/queue/d048-fix-referrer-home-ux",
+      "status": "todo",
+      "syncedTo": "D-285",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx",
+        "client/src/pages/referrerHomeGoal.test.tsx"
+      ],
+      "note": "Fix row after D-048-p3-referrer-home (done), from the designer repair file: R1 the capacity bar states the remaining capacity and carries an aria-label; R2 the Ref ID shows in the mobile (390) metadata. Red-first pins in referrerHomeGoal.test.tsx; 1280/390 captures in the PR report. No shared helper unless the patch requires one (then an owns amendment first). Excluded: R3 (duplicate bell) is held on the D-231 shell-parts owner gate; the next-step-block finding was withdrawn (wrong comp) and is not part of this row.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-fix-referrer-home-private-copy",
+      "title": "/referrer-home goal page: the first-time empty state says referral requests reach you privately (D-176 port), not that people can find verified referrers",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-fix-referrer-home-private-copy.md",
+      "tier": 2,
+      "lane": "d048-referrer-home",
+      "branch": "agent/queue/d048-fix-referrer-home-private-copy",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer-home",
+        "D-048-fix-referrer-home-ux"
+      ],
+      "owns": [
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx",
+        "client/src/pages/referrerHomeGoal.test.tsx"
+      ],
+      "note": "Corrective fix row, release-blocking for D-048-R4 (PR #1020). The distinct CEO did not sign off effdfdde because of finding B1: GoalReferrerHome.tsx:85 restates the pre-D-176 availability claim ('People can find verified referrers'), which kit commit 7ee6da33 replaced with private delivery. Port only that decided wording and add one red-first regression pin (packet section 2); no flag flip, shared helper, or admin/money/auth change. dependsOn names the two done rows whose output this edits in the same files (PICKER-owns-scope). E1-E4 from the R4 review stay open, are not part of this row, and are not reported resolved (packet section 4).",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R4",
+      "title": "Release 4, referrer: referrer, referrer-home, invite, post-opportunity (email-review when its straggler lands; the queue went live in place, D-149)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-r4",
+      "status": "todo",
+      "syncedTo": "D-295",
+      "dependsOn": [
+        "D-048-p3-referrer",
+        "D-048-p3-referrer-home",
+        "D-048-p3-invite",
+        "D-048-p3-post",
+        "D-048-fix-referrer-home-private-copy"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/lib/goalSurfaces.test.ts"
+      ],
+      "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names the four surfaces whose output it releases plus the B1 corrective output D-048-fix-referrer-home-private-copy (D-223 (1)/(3)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines, kit commit 7ee6da33): the D-147 credit clause the kit dropped is already absent in the goal version, while the D-176 change from availability framing to private delivery has a semantic goal twin (GoalReferrerHome.tsx empty state, finding B1) that REQUIRES PORT, done under D-048-fix-referrer-home-private-copy; referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only. Owns amendment (2026-11-07): adds client/src/lib/goalSurfaces.test.ts, because the RELEASED assertion in goalSurfaces.test.ts (releasedGoalSurfaces() equals exactly [\"home\"]) must change with the flip; the registered owns missed it. Dependency correction (coordinator ruling on PR #1021, 2026-11-07, D-223 (1)/(3)): D-048-fix-referrer-home-private-copy is added to dependsOn because its output (the D-176 private-delivery copy on /referrer-home, finding B1) is a piece this release needs. The distinct CEO held effdfdde on it. This is an output edge, not an ordering-only edge; id, branch, owns and claim are unchanged.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-222-referral-count-shell",
       "title": "Persistent person-owned remaining-referral count in the shell (D-222)",
       "row": "D-048",
@@ -5277,8 +5466,8 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-landed-marker-continuity",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-288",
       "dependsOn": [
         "PICKER-heartbeat-slot-safety",
         "PICKER-avoid-land"
@@ -5317,7 +5506,7 @@
       "tier": 2,
       "lane": "support-promises",
       "branch": "agent/queue/support-a",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-277",
       "dependsOn": [],
       "owns": [
@@ -5335,7 +5524,7 @@
       "tier": 1,
       "lane": "conv-report-entry",
       "branch": "agent/queue/conv-report-entry",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-278",
       "dependsOn": [
         "D-048-p3-live-review-conversation"
@@ -5355,7 +5544,7 @@
       "tier": 2,
       "lane": "ci-checks",
       "branch": "agent/queue/gate-migration-cleanup",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-283",
       "dependsOn": [
         "GATE-migration-apply"
@@ -5366,6 +5555,64 @@
         "scripts/migrationGateCleanup.test.ts"
       ],
       "note": "D-283: follow-up to the landed GATE-migration-apply (f305e2e3, PR #967) by the route in #967 comment 6581005262: CLI + owned regression test + packet, ci-checks serialization, no workflow, settings or DB schema change. Scope: after skipwait_head is created, the S1, S2 and summary-throw paths make at least one cleanup attempt, the normal paths keep exactly one drop, the primary is never dropped, and the raised error keeps the FAILED verdict when cleanup fails (CL-1 to CL-3c, ER-3a/b; the other settled items stay green). U1-U11 stay unsettled and undecided: no warning or fallback policy is added. prepare() only; the test is a Vitest .test.ts adapted from the W5 candidate (#967 comment 6579717344), with no committed skip; the H-2 and K controls run as red-first evidence. migrationGate.test.ts (24 tests) and ci.yml are unchanged. Builder: a development session other than the Claude Code session through the picker (D-225). Tier 2 is not a waiver: a separate independent final-head review and a separate lander are required before landing (packet section 9; prose, not machine-enforced). Probe for overlapping e2e-server.mjs work at claim time (Qoder 11b2 availability unconfirmed)."
+    },
+    {
+      "id": "PICKER-gate-red-review-route",
+      "title": "A Tier 1 head whose only red is the review gate is handed its REVIEW stage, so the D-254 deadlock stops re-forming on every new Tier 1 pull request (D-286)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-gate-red-review-route.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-gate-red-review-route",
+      "status": "todo",
+      "syncedTo": "D-291",
+      "dependsOn": [],
+      "note": "D-286 (2026-11-05): registers the cure D-254 and D-273 named but held, because the Oct 31 'new rows paused' restriction they relied on turned out to be the coordinator's recommendation, not the owner's (docs/BUILD_CONTINUITY.md provenance correction, November 2; D-277, D-278 and D-283 each registered a row on November 2). Scope: in scripts/nextTaskCore.mjs tier1(v) (:573-595), when a Tier 1 pull request's CI is red and the red is confined to the review gate's own failure, hand kind review instead of falling through to green; every other red keeps today's behaviour. Fail closed on unknown CI, an unreadable job list or any other failed step. The gate itself is untouched: an independent pass naming the exact head by a model that neither built nor fixed the work is still required before CI goes green, D-151 still bars the builder and the fixer, and landing still needs green required CI. No new, renamed or removed required status check (branch-protection state is the owner's setting), no waiver, no reorder, no product or runtime change. Measured live instances on 2026-11-05: PR #952 (FIX-device-signin, head 76969eb7, run 41986076200, typecheck job 127106983943) and PR #986 (D-048-p3-admin-money, head dad31bcf, run 41982060943, typecheck job 127094188653), each red only at the gate with unit, build, e2e and Workers green. Do not land any parked row from this row: after it lands, #952, #815, #851, #850, #979, #986 and the D-086.count and D-174-job-sources-more rows still need their own independent review and their own green-CI landing. No `owns` is declared, measured rather than chosen: `validateAssignments` rejects two rows owning a path when neither waits on the other, and this row's `scripts/nextTaskCore.mjs` collides with `PICKER-fullstack-lights`, `PICKER-qa-stage`, `PICKER-landed-marker-continuity` and `PICKER-landing-wait-fallthrough`; `dependsOn` edges to those four would park the cure behind four unstarted rows, one of which (`PICKER-fullstack-lights`) already waits on `FIX-device-signin`, which is what this row exists to free. So the build serializes on the `picker` lane instead: `laneBusy` releases a lane only when both rows declare disjoint `owns`, so with none declared no picker-lane build runs beside an open or in-review picker-lane row. The files it may change are the five its packet names."
+    },
+    {
+      "id": "REVIEW-GATE-fetch-parity",
+      "title": "The named CI step \"Review gate (independent Tier 1 pass)\" fetches origin/main (and keeps fetching the review lock) so it evaluates instead of failing open, and a review-only red fails at that step for the D-286/D-291 picker classifier (D-292)",
+      "row": "D-200",
+      "packet": "docs/plans/REVIEW-GATE-fetch-parity.md",
+      "tier": 2,
+      "lane": "process",
+      "branch": "agent/queue/review-gate-fetch-parity",
+      "status": "todo",
+      "syncedTo": "D-292",
+      "dependsOn": [],
+      "owns": [
+        "scripts/review-gate.mjs",
+        "scripts/reviewGateFetchParity.test.ts"
+      ],
+      "note": "D-292 (2026-11-07, decided under D-200; cites D-286, D-291, D-032). Measured on PR #878 head e1128076, run 42339003779, typecheck job 128302286336: the named review-gate step printed 'could not run (… invalid object name origin/main) — not failing the branch' and passed, and the Scope check step's internal review-gate call (after queue-gate.mjs ensureOriginMainHistory fetched origin/main) failed the job, so gateOnlyRedFromJobs can never be true on a real run. Fix: a local copy of queue-gate.mjs:15-28 ensureOriginMainHistory in scripts/review-gate.mjs, called before its first origin/main read, keeping the existing review-lock fetch after it. Genuine fetch errors still fail open (scope-check's unchanged internal call is the backstop); definite verdicts fail closed. No change to .github/workflows/ci.yml, scripts/scope-check.mjs, scripts/queue-gate.mjs, any required check or branch protection. Red-first tests in scripts/reviewGateFetchParity.test.ts; live proof on a real gate-only-red Tier 1 PR (the failed step is the review gate alone and the picker prints REVIEW). Lands no parked row."
+    },
+    {
+      "id": "PICKER-land-exact-head",
+      "title": "The picker hands LAND only when a green required-checks CI run is on the pull request's current tip: a green run on an older sha, no run on the tip, or an unreadable tip gets no LAND (D-293)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-land-exact-head.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-land-exact-head",
+      "status": "done",
+      "syncedTo": "D-298",
+      "dependsOn": [],
+      "note": "D-293 (2026-11-07, decided under D-200; cites D-082, D-085, D-286, D-291). Measured on PR #994 (D-048-p3-admin-approvals, Tier 2 on main): head 7aeaf8fb has no CI workflow run (GET /actions/runs?head_sha=7aeaf8fb total_count 0; only Workers Builds, not a gate), while ciStateFromRuns over the picker's newest-100 batch (scripts/next-task.mjs:289, filtered by head_branch only) reads green from run 42094576051 on 58e065cb, so the Tier 2 hand (scripts/nextTaskCore.mjs:783-786) offers LAND; --status shows the row GREEN · pr-green. The exact-tip comparison exists only on D-291's gate-only path (next-task.mjs:302, nextTaskCore.mjs:607). Fix: one pure helper in scripts/nextTaskCore.mjs applied where the view reads ci (:584) makes a state landable only when green and sha === info.tipSha; anything else is no-tip-ci and no LAND path (Tier 2, Tier 1, packet, continue) or board pr-green fires on it. Fail-closed hand: a quiet Tier 2 row gets the existing MAKE GREEN with a why asking for a two-parent sync push so CI runs on the exact head; a busy row waits; Tier 1 waits; continue becomes build; red is unchanged. scripts/next-task.mjs gets one hunk: one head_sha read for a head whose batch run is not on its tip, failing closed. New test scripts/nextTaskLandExactHead.test.ts, red-first; live proof that #994 is not offered LAND until CI runs on its tip. No owns, measured: scripts/nextTaskCore.mjs is owned by PICKER-fullstack-lights, PICKER-qa-stage and PICKER-landing-wait-fallthrough (all todo), so the build serializes on the picker lane like PICKER-gate-red-review-route (D-286 (4)). No nextTaskText.mjs, ci.yml, review-gate, scope-check or queue-gate change, no required-check or branch-protection change. Out of scope: the review-gate fetch-parity defect (REVIEW-GATE-fetch-parity, D-292, PR #1013). Lands no other row and changes nothing about #994's own holds. D-298 (2026-11-08, unblock ruling under D-200, D-032, D-074, D-202) clears the block reported at b06fcabb: PR #1028 head ce23492f fails seven cases in CI run 42403183658 job 128495186939 because §6's three files cannot carry R1, and its ciOnTip carve-out at scripts/nextTaskCore.mjs:320-321 ('Unit-test fixtures passing bare { state: green } without sha stay green') is a production fail-open on a run payload with no head_sha, contradicting R1 and D-085. Ruling: delete those two lines so a green state without a string sha is no-tip-ci; §6 admits scripts/nextTask.test.ts, scripts/nextTaskArchitectLanding.test.ts, scripts/nextTaskAvoidLand.test.ts, scripts/nextTaskHeartbeatSlot.test.ts and scripts/nextTaskLandingWaitFallthrough.test.ts for fixture data only (a sha on a green prCi entry equal to that branch's tipSha, a tipSha on branch fixtures that lack one, an explicit prCi where a Tier 1 landing fixture omitted one, and a completed successful ci.yml run on the disposable origin's real branch tip in the heartbeat harness mock). Forbidden in those five: removing or loosening an assertion, changing any expected value or it/describe title, deleting, renaming, skipping, todo-ing or focusing a test, touching PINNED_TESTS, defaulting an omitted prCi to green, or any edit that is not the CI/tip data the fixture always meant; GATE-test-integrity still runs and must pass. §8 adds case (l) pinning green-without-a-sha. Measured on a disposable worktree at ce23492f: the deletion alone gives 38 failed / 1204 passed (1242), and with the data-only amendments 1 failed / 1241 passed, the one being an unrelated scripts/classifyCiChange.test.ts:655 host timeout that passes 54/54 on main's code; all 287 cases in the ten scripts/nextTask*.test.ts files pass, testIntegrityViolations returns [], the 7 assertion lines touched keep their expectations byte-identical, and the whole delta is 6 files +56/-41 with production -2. scripts/nextTaskGateRedReview.test.ts and scripts/nextTaskLandedMarkerContinuity.test.ts pass as written and are not admitted. If a case cannot go green without changing an expected value, stop and --report blocked naming it (D-032). The holder continues on the same branch and PR #1028: no new row, no re-tier, no owns, no dependency, status stays todo, and #1028 lands only on green required CI on its exact tip (D-082), never ce23492f as it stands. No code is edited by the ruling."
+    },
+    {
+      "id": "PICKER-architect-review-route",
+      "title": "A Tier 1 row's packet pull request whose only red is the review gate is handed its REVIEW by the picker, so a Tier 1 packet can reach the independent pass D-074 (3) and D-190 (3) require (D-294)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-architect-review-route.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-architect-review-route",
+      "status": "done",
+      "syncedTo": "D-299",
+      "dependsOn": [
+        "REVIEW-GATE-fetch-parity"
+      ],
+      "note": "D-294 (2026-11-07, decided under D-200; cites D-074, D-151, D-190, D-286, D-291, D-292; coordinator routing). review-gate.mjs findGateRow (:38-44) maps agent/architect/<slug> to its row, so a Tier 1 packet PR needs a pass on its exact head, but a packet row is never open (nextTaskCore.mjs:609) and the packet path (:795-808) hands only LAND on green or ARCHITECT, never REVIEW; next-task.mjs:380-381 names the task branch's tip in a verdict, not the lock's. Live case: PR #878 (D-089-request-inbox, Tier 1, architect, head e1128076), run 42339003779 red only for the missing Tier 1 review. Change: in the packet path, a Tier 1 packet PR with gateOnlyRed on the lock's exact tip and a review pending gets kind review on agent/review/<slug> through the existing claim/lock/verdict flow (no manual markers); did(builders, fixers) bars the packet's writers' models (D-151); the verdict names the lock tip for a packet row; fail closed otherwise; the green packet LAND (never a writer, one at a time) is unchanged. Files: scripts/nextTaskCore.mjs, scripts/next-task.mjs (verdict head only), scripts/nextTaskText.mjs, new scripts/nextTaskArchitectReview.test.ts. No owns, for the reason D-286 (4) measured for the picker lane. Depends on REVIEW-GATE-fetch-parity: without it the named gate step fails open and gate-only red is never classified on a real run. Out of scope: the fetch-parity fix (#1013) and the LAND exact-tip defect (PICKER-land-exact-head). Lands no packet: each Tier 1 packet still needs its own independent pass and green-CI landing."
     }
   ]
 }
