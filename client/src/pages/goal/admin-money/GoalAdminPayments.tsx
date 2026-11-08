@@ -33,7 +33,8 @@ export default function GoalAdminPayments() {
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState("");
   // An open row confirm dialog owns the one black commit while it is open (D-150).
-  const [openRowDialogs, setOpenRowDialogs] = useState(0);
+  // Keyed by row so a repeated or late notification cannot release another row's.
+  const [openRowDialogs, setOpenRowDialogs] = useState<ReadonlySet<number>>(() => new Set());
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -117,7 +118,7 @@ export default function GoalAdminPayments() {
     <AdminMoneyGoalFrame screen="admin-payments" current="/admin/payments">
       <AdminMoneyHeading current="/admin/payments" />
       <GoalNextStep reason={nextStep.reason}>
-        <GoalButton variant={refundTarget || openRowDialogs > 0 ? "ghost" : "primary"} className="mt-3" busy={nextStep.busy} busyLabel="Reading the queue…" onClick={nextStep.onClick}>{nextStep.label}</GoalButton>
+        <GoalButton variant={refundTarget || openRowDialogs.size > 0 ? "ghost" : "primary"} className="mt-3" busy={nextStep.busy} busyLabel="Reading the queue…" onClick={nextStep.onClick}>{nextStep.label}</GoalButton>
       </GoalNextStep>
       {error ? <GoalErrorState className="mt-6" title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
       <section aria-label="Payments under review" className="mt-6 border border-g-hairline bg-g-surface">
@@ -127,7 +128,7 @@ export default function GoalAdminPayments() {
         </div>
         {loading ? <GoalSkeletonRows density="queue" count={3} className="p-4" /> : null}
         {!loading && !error && !payments.length ? <GoalEmptyState title="Nothing needs review right now." body="Reconciled rows move out of this queue." /> : null}
-        <ul>{payments.map(payment => <GoalPaymentReviewRow key={payment.id} payment={payment} submit={submitReview} onReload={() => { void load(); }} onConfirmingChange={open => setOpenRowDialogs(count => Math.max(0, count + (open ? 1 : -1)))} />)}</ul>
+        <ul>{payments.map(payment => <GoalPaymentReviewRow key={payment.id} payment={payment} submit={submitReview} onReload={() => { void load(); }} onConfirmingChange={open => setOpenRowDialogs(current => { const next = new Set(current); if (open) next.add(payment.id); else next.delete(payment.id); return next; })} />)}</ul>
       </section>
       <section aria-label="Recent credited payments" className="mt-6 border border-g-hairline bg-g-surface">
         <h2 className="border-b border-g-hairline p-4 text-g-label text-g-ink">Recent credited payments</h2>

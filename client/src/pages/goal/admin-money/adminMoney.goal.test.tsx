@@ -168,6 +168,75 @@ describe("goal /admin/payments", () => {
   });
 });
 
+// PR #986 review finding F1: a successful confirmed decision left its dialog
+// open over the recorded result and offered a second POST once `working`
+// settled. A confirmed money decision must close its dialog on every terminal
+// answer, hand the page's one black commit back, and never post twice.
+describe("goal /admin/payments row confirm lifecycle", () => {
+  const REFUNDED = { ...PAYMENT, reviewKind: "refunded_after_credit" };
+  const queueWith = (post: () => ReturnType<typeof reply>) => vi.fn(async (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
+    if (init?.method === "POST") return post();
+    return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [REFUNDED] });
+  });
+  const posts = () => calls.filter(call => call.init?.method === "POST");
+  const pagePrimary = () => Array.from(document.querySelectorAll("[data-g-primary]")).map(node => node.textContent?.trim());
+
+  it("closes the keep-and-close dialog on success, restores the page next step, and never posts twice", async () => {
+    vi.stubGlobal("fetch", queueWith(() => reply({ payment: null })));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Keep credits and close" }));
+    expect(screen.getByRole("dialog", { name: "Keep the credits and close?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm: keep credits and close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("Saved. Reload this page to see the result.")).toBeTruthy();
+    expect(screen.getByText("Recorded")).toBeTruthy();
+    expect(pagePrimary()).toEqual(["Review the oldest flagged payment"]);
+    expect(posts().map(call => call.init?.body)).toEqual([JSON.stringify({ decision: "keep_credits" })]);
+  });
+
+  it("closes the take-back dialog on success with exactly one revoke_unused POST", async () => {
+    vi.stubGlobal("fetch", queueWith(() => reply({ payment: null })));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Take back unused credits" }));
+    expect(screen.getByRole("dialog", { name: "Take back unused credits?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Take back credits" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("Saved. Reload this page to see the result.")).toBeTruthy();
+    expect(pagePrimary()).toEqual(["Review the oldest flagged payment"]);
+    expect(posts().map(call => call.init?.body)).toEqual([JSON.stringify({ decision: "revoke_unused", credits: 3 })]);
+  });
+
+  it("keeps another row's open dialog holding the black commit when a direct decision succeeds", async () => {
+    const AWAITING = { ...PAYMENT, id: 8 };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (init?.method === "POST") return reply({ payment: null });
+      return url.includes("scope=credited") ? reply({ payments: [] }) : reply({ payments: [REFUNDED, AWAITING] });
+    }));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Keep credits and close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add 3 credits" }));
+    await waitFor(() => expect(posts().some(call => call.url === "/api/admin/payments/review/8")).toBe(true));
+    expect(screen.getByRole("dialog", { name: "Keep the credits and close?" })).toBeTruthy();
+    expect(pagePrimary()).toEqual(["Confirm: keep credits and close"]);
+  });
+
+  it("closes the dialog on failure, shows the truthful error, and lets the retry send exactly one more POST", async () => {
+    vi.stubGlobal("fetch", queueWith(() => reply({ error: "Chargebee did not answer" }, false, 503)));
+    render(<GoalAdminPayments />);
+    fireEvent.click(await screen.findByRole("button", { name: "Keep credits and close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm: keep credits and close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("Chargebee did not answer")).toBeTruthy();
+    expect(screen.getByText("The payment is unchanged and still in this queue.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry decision" }));
+    await waitFor(() => expect(posts().length).toBe(2));
+    expect(posts().map(call => call.init?.body)).toEqual([JSON.stringify({ decision: "keep_credits" }), JSON.stringify({ decision: "keep_credits" })]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
 describe("goal /admin/catalog-sync", () => {
   it("reads the dry run and shows its site and plan", async () => {
     const { container } = render(<GoalAdminCatalogSync />);

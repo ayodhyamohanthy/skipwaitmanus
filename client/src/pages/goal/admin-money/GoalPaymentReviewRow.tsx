@@ -36,6 +36,10 @@ export default function GoalPaymentReviewRow({ payment, submit, onReload, onConf
     const body: PaymentReviewRequestBody = decision === "revoke_unused" ? { decision, ...withNote, ...(credits === undefined ? {} : { credits }) } : { decision, ...withNote };
     const result = await submit(payment.id, body);
     setWorking(false);
+    // Every terminal answer closes the confirm step: the recorded result, the
+    // reloaded queue or the failure alert must be visible, and a settled
+    // dialog could send the same money decision a second time (review F1).
+    setConfirm(null);
     if (result.ok) { setDone({ decision, text: result.outcome ? outcomeText(result.outcome) : "Saved. Reload this page to see the result." }); return; }
     // Someone already decided this payment: show the queue as it is now rather than a failed save.
     if (result.status === 409 && /already resolved/i.test(result.message)) { onReload(); return; }
