@@ -34,7 +34,7 @@ function workSteps(task, who, branch) {
     "Follow docs/DELEGATION.md §4 steps 4-8 exactly: the packet's tests first (they must fail for its reason), one step per commit, only the packet's files, then the full gate on your branch merged with the latest origin/main.",
     keepAlive(who),
     task.tier === 1
-      ? `Tier 1: push the branch, open a DRAFT pull request, set ${statusAt(task)} to "review — ${branch} — <sha>", report, and end the session (one packet per session, D-074). Never land it yourself: \`${CMD}\` hands the review to a different session.`
+      ? `Tier 1: push the branch, open a DRAFT pull request, set ${statusAt(task)} to "review — ${branch} — <sha>", report, then rerun the preflight (\`docs/BUILD_CONTINUITY.md\`) and take the next eligible task \`${CMD}\` hands you (D-235; one packet at a time). Never land it yourself: \`${CMD}\` hands the review to a different session.`
       : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>".`,
     unclear,
     report(task, who),
