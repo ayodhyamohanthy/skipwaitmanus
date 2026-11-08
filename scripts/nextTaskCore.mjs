@@ -839,7 +839,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // that waits for the owner stays with the owner.
     const stale = staleOf(v);
     if (stale && v.task.status !== "owner") return resync(v);
-    // D-190: a packet's pull request with green CI lands through the slot (the docs path: no Tier 1 review),
+    // D-190: Tier 2/3 packets go the docs path; Tier 1 packets need their review (D-074 (3), D-294).
+    // A packet's pull request with green CI lands through the slot,
     // by any session but a writer of the packet; anything else about it stays with the packet stage below.
     if (v.packet && v.pr && v.ci === "green") {
       if (claimant && v.writers.includes(claimant)) return skip(v, "its packet pull request is green, and you wrote the packet; another session lands it (D-190)");
@@ -848,6 +849,15 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, from: v.packetLander ?? v.owner };
     }
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
+    // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
+    if (v.packet && v.pr && Number(v.task.tier) === 1 && v.gateOnlyRed) {
+      if (v.review === "passed") return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      if (v.review === "in-review" && !quiet(lockAt(v))) return skip(v, `under review by ${v.reviewer}`);
+      if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v)))) {
+        if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you wrote or fixed its packet");
+        return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
+      }
+    }
     if (v.task.status === "architect") {
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
@@ -953,6 +963,11 @@ function ownStage(v, claimant) {
       // PICKER-land-exact-head (D-293): continue landing only when CI is green on the exact tip.
       if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red" && v.ci !== "no-tip-ci") return { ...base, of: "land", tier1: true };
     }
+  }
+  // D-299 R7: packet reviewers use the existing lock lifecycle, never packet fix/land stages.
+  if (!v.open && v.packet && v.pr && v.task.tier === 1 && v.lock) {
+    const last = stageMarkers(v.lock, v.task.id).at(-1);
+    if (last?.who === claimant && last.verb === "Review claim") return { kind: "continue", of: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, builder: v.owner, packet: true, at: v.at };
   }
   if (v.open && v.owner === claimant) {
     // A blocked task waits for another session or the owner; its holder keeps going on anything else it holds (D-085 (3), D-200).
@@ -1150,8 +1165,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
     const archHeld = task.status === "architect" && Boolean(v.arch);
     const activeAt = archHeld ? archAt(v) : v.open ? workAt(v) : null;
     const quiet = activeAt !== null && now - activeAt > IDLE_MS;
-    // D-190: a packet pull request goes the docs path, never through a Tier 1 review.
-    const review = pr && task.tier === 1 && !v.packet ? v.review : null;
+    // D-190/D-294: Tier 2/3 packets go the docs path; Tier 1 packets need their review.
+    const review = pr && task.tier === 1 ? v.review : null;
     // D-202: an out-of-sync task shows the decision that holds it, not its old state.
     const stale = outOfSyncOf(v, register);
     let state;
