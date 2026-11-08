@@ -84,6 +84,14 @@ export default function GoalEmployerBilling() {
   const topUp = useMutation({
     mutationFn: async (input: { pack: UnlockPack; idempotencyKey: string }) => {
       const order = await startUnlockTopUp({ pack: input.pack.id, idempotencyKey: input.idempotencyKey });
+      if (
+        order.pack !== input.pack.id ||
+        order.amount !== input.pack.amountInPaise ||
+        order.currency !== "INR" ||
+        order.credits !== input.pack.adds
+      ) {
+        throw new Error(CHECKOUT_ERROR_FALLBACK);
+      }
       await openRazorpayCheckout({
         orderId: order.orderId,
         amount: order.amount,

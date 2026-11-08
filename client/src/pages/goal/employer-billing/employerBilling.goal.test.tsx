@@ -361,6 +361,70 @@ describe("goal /employer/billing top-up money path", () => {
     expect(widgetOptions.amount).toBe(scale?.amountInPaise);
     expect(widgetOptions.amount).toBe(39900);
   });
+
+  it("opens matched checkout for starter, growth, and scale packs", async () => {
+    for (const pack of UNLOCK_PACKS) {
+      cleanup();
+      serve({ account: ACCOUNT, spend: SPEND });
+      stubKeys();
+      stubRazorpay();
+      renderPage(<GoalEmployerBilling />);
+      fireEvent.click(await screen.findByRole("button", { name: new RegExp(`Adds ${pack.adds} to your balance`) }));
+      fireEvent.click(screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ }));
+      await waitFor(() => expect(widgetOpened).toBe(1));
+      expect(purchaseCalls()[0].body).toBe(JSON.stringify({ pack: pack.id }));
+      expect(widgetOptions).toMatchObject({
+        key: "rzp_test_key",
+        amount: pack.amountInPaise,
+        currency: "INR",
+        order_id: "order_test_1",
+      });
+    }
+  });
+
+  it("rejects an order whose returned pack does not match the selection before opening checkout", async () => {
+    serve({
+      account: ACCOUNT,
+      spend: SPEND,
+      purchase: [{
+        status: 200,
+        body: { orderId: "order_mismatched", amount: 12900, currency: "INR", keyId: "rzp_test_key", pack: "growth", credits: 50 },
+      }],
+    });
+    stubKeys();
+    stubRazorpay();
+    renderPage(<GoalEmployerBilling />);
+    fireEvent.click(await screen.findByRole("button", { name: /Adds 10 to your balance/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ }));
+    await waitFor(() => expect(purchaseCalls()).toHaveLength(1));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(purchaseCalls()[0].body).toBe('{"pack":"starter"}');
+    expect(widgetOpened).toBe(0);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/We could not start the Razorpay checkout/);
+  });
+
+  it("rejects returned orders with incompatible amount, currency, or units", async () => {
+    const invalidReplies = [
+      { orderId: "order_bad_amt", amount: 9999, currency: "INR", keyId: "rzp_test_key", pack: "starter", credits: 10 },
+      { orderId: "order_bad_cur", amount: 2900, currency: "USD", keyId: "rzp_test_key", pack: "starter", credits: 10 },
+      { orderId: "order_bad_units", amount: 2900, currency: "INR", keyId: "rzp_test_key", pack: "starter", credits: 50 },
+    ];
+    for (const reply of invalidReplies) {
+      cleanup();
+      serve({ account: ACCOUNT, spend: SPEND, purchase: [{ status: 200, body: reply }] });
+      stubKeys();
+      stubRazorpay();
+      renderPage(<GoalEmployerBilling />);
+      fireEvent.click(await screen.findByRole("button", { name: /Adds 10 to your balance/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Top up for talent unlocks and sponsored roles/ }));
+      await waitFor(() => expect(purchaseCalls()).toHaveLength(1));
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(widgetOpened).toBe(0);
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toMatch(/We could not start the Razorpay checkout/);
+    }
+  });
 });
 
 describe("goal employer billing money-copy integrity (rule 1a)", () => {

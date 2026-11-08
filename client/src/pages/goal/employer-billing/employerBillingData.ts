@@ -9,7 +9,7 @@
 import { z } from "zod";
 import { LIST_LIMIT, employerAccountSchema, type EmployerAccount } from "@/components/employer/employerData";
 import { readApiJson } from "@/lib/apiResponse";
-import type { UnlockPackId } from "./unlockPacks";
+import { UNLOCK_PACKS, type UnlockPackId } from "./unlockPacks";
 
 const ACCOUNT_ERROR = "We could not load your employer account";
 const SPEND_ERROR = "We could not load your spend history";
@@ -92,6 +92,16 @@ export async function startUnlockTopUp(input: { pack: UnlockPackId; idempotencyK
   if (!response.ok) throw new Error(serverError(payload) || CHECKOUT_ERROR);
   const parsed = checkoutResponseSchema.safeParse(payload);
   if (!parsed.success) throw new Error(CHECKOUT_ERROR);
+  const expected = UNLOCK_PACKS.find(p => p.id === input.pack);
+  if (
+    !expected ||
+    parsed.data.pack !== input.pack ||
+    parsed.data.amount !== expected.amountInPaise ||
+    parsed.data.currency !== "INR" ||
+    parsed.data.credits !== expected.adds
+  ) {
+    throw new Error(CHECKOUT_ERROR);
+  }
   return parsed.data;
 }
 
