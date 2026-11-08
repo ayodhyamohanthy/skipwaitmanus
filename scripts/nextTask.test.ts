@@ -172,7 +172,7 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     check(outcomeOf(pickNextTask({ tasks: behind, register: stamped, ...emptyBoard }))).toEqual({ kind: "resync", id: firstId });
     const cleared = real.tasks.map((t: { id?: string }) => (t.id === firstId ? { ...t, syncedTo: "D-2" } : t));
     const clearedPick = pickNextTask({ tasks: cleared, register: stamped, ...emptyBoard });
-    check(outcomeOf(clearedPick)).toEqual({ kind: "build", id: firstId });
+    check(outcomeOf(clearedPick)).toEqual({ kind: oracle.kind, id: firstId });
     check(outcomeOf(clearedPick)).toEqual(emptyBoardEligibleRow(cleared, stamped));
     // 7. Unconditional assertion-count pin: nothing above returns early, so the property always runs exactly these
     //    ten assertions. A property that exits with zero assertions, or silently skips a phase, cannot satisfy it.
