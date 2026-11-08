@@ -1,6 +1,7 @@
 import { createTransactionalEmailSender } from "./emailDelivery";
 import type { RequestHandler } from "express";
 import { recordOperationalActivity } from "./db";
+import { scrubTelemetryPath } from "../shared/telemetryScrub";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
 // Second recipient: the owner mailbox. Best effort: the primary result decides success.
@@ -28,7 +29,8 @@ type AlertDependencies = {
 };
 
 function normalizedPath(path: string) {
-  const pathname = path.split("?")[0]?.trim() || "/";
+  // FND-4: tokens, aliases and storage keys become :token; query and hash are dropped.
+  const pathname = scrubTelemetryPath(path);
   return pathname.startsWith("/api/") ? pathname.slice(0, 180) : "";
 }
 

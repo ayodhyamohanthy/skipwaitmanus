@@ -205,7 +205,7 @@ A new job needs its name in both registries and a contract test (`server/schedul
 | WorkOS (seekers, admin) | `server/_core/workosAuth.ts`, `client/src/_core/auth.tsx` | Without keys, dev auth runs (local only) |
 | Chargebee (+ Razorpay INR, PayPal USD) | `server/chargebee*.ts` | Site and key chosen by `BILLING_ENV` only; never by host |
 | ZeptoMail, Resend | `server/emailDelivery.ts`, `server/errorAlerting.ts` | User email via ZeptoMail; admin alerts via Resend |
-| Sentry | `server/sentry.ts`, `client/src/lib/sentry.ts` | Only when a DSN is set; path scrubbing |
+| Sentry | `server/sentry.ts`, `client/src/lib/sentry.ts` | Only when a DSN is set; token paths scrubbed by `shared/telemetryScrub.ts` (also admin alerts, FND-4) |
 | AI (any OpenAI-compatible endpoint) | `server/_core/modelRouter.ts`, `server/ai.ts` | Deterministic fallback text; three env values swap the model |
 | R2 / Forge storage | `server/storageCloudflare.ts`, `server/storage.ts` | Database blobs as the last resort |
 | Microsoft Clarity | `client/src/lib/clarity.ts` | Only after "Accept all" consent; skips token pages |
@@ -219,7 +219,6 @@ A new job needs its name in both registries and a contract test (`server/schedul
 2. **Test blind spots:**
    - `*.test.ts` files are not type-checked;
 3. **Privacy hygiene:**
-   - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
    - the Pages CSP is report-only with nowhere to report.
 4. **Toolchain:**
    - deploys do not wait for CI;

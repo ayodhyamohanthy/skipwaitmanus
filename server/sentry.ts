@@ -1,16 +1,13 @@
 import { readFileSync } from "node:fs";
 import * as Sentry from "@sentry/node";
 import type { NextFunction, Request, Response } from "express";
+import { scrubTelemetryPath } from "../shared/telemetryScrub";
 
 let initialized = false;
 
+// FND-4: one shared scrubber for every token-bearing browser and API route.
 export function scrubSentryPath(path: string): string {
-  return path
-    .split("?")[0]
-    .replace(/^\/email-review\/[^/]+/, "/email-review/[redacted]")
-    .replace(/^\/share-card\/[^/]+/, "/share-card/[redacted]")
-    .replace(/^\/fast\/[^/]+/, "/fast/[redacted]")
-    .replace(/^\/refer\/[^/]+\/[^/]+/, "/refer/[redacted]");
+  return scrubTelemetryPath(path);
 }
 
 function serverRelease(): string | undefined {

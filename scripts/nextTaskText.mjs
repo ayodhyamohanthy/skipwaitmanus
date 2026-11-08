@@ -64,9 +64,9 @@ const unreviewed = pick => `Before you land, take the head commit the pass verdi
 
 const reviewSteps = (pick, who) => steps([
   `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit, whatever arrives later, in its own worktree: \`git worktree add --detach ../skipwaitmanus-wt/review-${slugOf(pick.work)} <reviewed>\`, then \`${INSTALL}\` there before any test: ${INSTALL_WHY}`,
-  `Read docs/BRIEF.md and ${pick.task.packet}, then review exactly as docs/DELEGATION.md §6 says, reproducing every claim yourself.`,
+  pick.packet ? `Review the packet and its rows (not implementation code) on ${pick.work}; read docs/BRIEF.md and follow docs/DELEGATION.md §6, reproducing its claims.` : `Read docs/BRIEF.md and ${pick.task.packet}, then review exactly as docs/DELEGATION.md §6 says, reproducing every claim yourself.`,
   `Before posting, run \`git fetch origin && git log --no-merges --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`: if it lists anything, review those commits too and record the new head as <reviewed>, or return findings. Name <reviewed> with your verdict, never a fresh rev-parse: a lander checks that nothing but clean merges of main came after it. Post it on the pull request if your tools can; if they cannot (git-only access), put "reviewed <reviewed>" in the note of a \`${CMD} --report review\` instead. The \`--verdict\` marker below is the record and is a plain git push: a GitHub review is never required.`,
-  `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it, first run the check in the landing steps: a commit after the one you reviewed, other than merges of main and the status commit, means do not land; report it blocked (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
+  pick.packet ? `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Then re-run the failed CI jobs on the same exact head of ${pick.pr}. Keep the row at its packet stage; the existing D-190 packet landing follows only green CI and its independent pass.` : `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it, first run the check in the landing steps: a commit after the one you reviewed, other than merges of main and the status commit, means do not land; report it blocked (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
   `Findings: list each with file:line, severity and the failing test to add first, then run \`${CMD} --verdict findings --task ${pick.task.id} --as "${who}"\` and stop. The verdict moves the task to its fix stage; you never fix code you reviewed.`,
   `Run \`${CMD} --heartbeat --as "${who}"\` before any long step: a review lock nobody has pushed to for 2 hours goes to the next agent (D-085).`,
   report(pick.task, who),
@@ -91,7 +91,19 @@ const greenSteps = (pick, who) => steps([
   report(pick.task, who),
 ]);
 
-const landSteps = (pick, who) => steps([
+// D-190 (3), D-183: a packet pull request on its architect lock lands by the docs path, by anyone but its writer.
+const packetLandSteps = (pick, who) => steps([
+  `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
+  worktree(pick.work),
+  `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} (never rebase). In docs/plans/assignments.json keep every row main has unchanged and add only the packet's rows (D-183); never push to the lock branch except that merge and its conflict resolution.`,
+  "Run `node -e \"import('./scripts/nextTaskCore.mjs').then(async c => { const fs = await import('node:fs'); console.log(JSON.stringify(c.validateAssignments(JSON.parse(fs.readFileSync('docs/plans/assignments.json', 'utf8')), p => fs.existsSync(p), c.parseDecisionRegister(fs.readFileSync('docs/DECISIONS.md', 'utf8'))))) })\"` (validateAssignments must print []) and `pnpm vitest run scripts/`; both must pass before you land.",
+  `Land under D-082: wait until every check on that exact head of ${pick.pr} is green and main's own CI is green, then merge with GitHub's "Create a merge commit" button pinned to that head (never squash or rebase-merge, D-134 (6)). If main moved, merge it again, re-run the two checks above and wait for the new head's checks; never force-push. If anything goes red, revert your merge before anything else.`,
+  keepAlive(who),
+  `After main's CI and any deploys finish, release the landing slot: \`${CMD} --landed --task ${pick.task.id} --as "${who}"\`.`,
+  report(pick.task, who),
+]);
+
+const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : steps([
   `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
@@ -264,7 +276,9 @@ function pickText(pick, { who, date, claimed, register = null }) {
       greenSteps(pick, who),
     ]) + take;
     case "land": return head(`LAND ${pick.task.id} — ${pick.task.title}`, [
-      `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
+      pick.packet
+        ? `Packet pull request ${pick.pr} on its architect lock ${pick.work} has green CI and waits for a lander (written by ${pick.from ?? "unknown"}; D-190). You must not have written this packet: its writer never lands it.`
+        : `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
       ...holding(pick),
       landSteps(pick, who),
     ]) + take;
@@ -294,7 +308,7 @@ function pickText(pick, { who, date, claimed, register = null }) {
         case "review": return head(`CONTINUE REVIEW ${pick.task.id} — ${pick.task.title}`, [intro, `Tier 1 · pull request ${pick.pr} · branch ${pick.work} · review lock ${pick.lock}`, reviewSteps(pick, who)]);
         case "fix": return head(`CONTINUE FIXING REVIEW FINDINGS ${pick.task.id} — ${pick.task.title}`, [intro, `Tier 1 · pull request ${pick.pr} · branch ${pick.work}`, fixSteps(pick, who)]);
         case "green": return head(`CONTINUE: MAKE GREEN ${pick.task.id} — ${pick.task.title}`, [intro, `Pull request ${pick.pr} has red CI.`, greenSteps(pick, who)]);
-        case "land": return head(`CONTINUE: LAND ${pick.task.id} — ${pick.task.title}`, [intro, `Pull request ${pick.pr}.`, landSteps(pick, who)]);
+        case "land": return head(`CONTINUE: LAND ${pick.task.id} — ${pick.task.title}`, [intro, pick.packet ? `Packet pull request ${pick.pr} on ${pick.work} (D-190). You must not have written this packet: its writer never lands it.` : `Pull request ${pick.pr}.`, landSteps(pick, who)]);
         case "architect": return head(`CONTINUE: WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, architectSteps({ ...pick, lockExists: true }, who, true)]);
         case "resync": return head(`CONTINUE: RESYNC ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, resyncSteps({ ...pick, lockExists: true }, who, register)]);
         case "unblock": return head(`CONTINUE: UNBLOCK ${pick.task.id} — ${pick.task.title}`, [intro, `${pick.report.who} reported it ${pick.report.status}${pick.report.note ? `: ${pick.report.note}` : ""}. Lock ${pick.lock}.`, unblockSteps(pick, who)]);

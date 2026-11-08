@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, MessageSquare, Send, UserPlus } from "lucide-react";
 import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import { ReferrerRuleCard } from "@/components/messages/ReferrerRuleCard";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import {
   DM_SEND_WORKFLOW,
   beginPendingSend,
@@ -52,7 +53,12 @@ function FollowRuleCard({ rule }: { rule: DmFollowRequired }) {
   </div>;
 }
 
+// Goal-UI migration (D-048-p3-messages): the goal page replaces this one when
+// the "messages" surface flag is on; off, the kit page below is unchanged.
+const GoalMessages = lazy(() => import("./goal/messages/GoalMessages"));
+
 export default function Messages() {
+  if (goalSurfaceOn("messages")) return <Suspense fallback={null}><GoalMessages /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [threads, setThreads] = useState<DmThreadSummary[] | null>(null);
   const [thread, setThread] = useState<DmThread | null>(null);

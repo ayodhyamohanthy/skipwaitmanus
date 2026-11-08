@@ -24,9 +24,11 @@
 // the list from another ref; it exists only to test the picker itself.
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import {
-  LAND_SLOT, REPORT_STATUSES, architectLockOf, ciStateFromRuns, classifyPushError, fixMainIdOf, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
-  mayReport, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
+  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 
@@ -89,15 +91,18 @@ async function github(repo, path) {
   return res.json();
 }
 
-/** Marker commits are empty: a commit that changes files is work, whatever its subject says. */
-function markersOn(ref) {
-  const raw = tryGit("log", "--reverse", "--no-merges", "--format=%x1e%s%x1f", "--name-only", `origin/main..${ref}`) ?? "";
-  return raw.split("\x1e").filter(Boolean).flatMap(rec => {
-    const [subject, files = ""] = rec.split("\x1f");
-    const m = files.trim() ? null : parseMarker(subject.trim());
-    return m ? [m] : [];
-  });
+/**
+ * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
+ * commit that changes files is work, whatever its subject says (D-190).
+ */
+function commitsOn(ref) {
+  return parseBranchLog(tryGit("log", "--reverse", "--no-merges", `--format=${BRANCH_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
 }
+
+const markersOn = commits => commits.flatMap(({ subject, files }) => {
+  const m = files.length ? null : parseMarker(subject);
+  return m ? [m] : [];
+});
 
 function loadBranches(tasks) {
   const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
@@ -110,9 +115,42 @@ function loadBranches(tasks) {
     if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
     const ref = `refs/remotes/origin/${name}`;
     const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, markers: markersOn(ref) });
+    const commits = commitsOn(ref);
+    // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
+    // PICKER-landed-marker-continuity: only provably empty, recognized markers (and no merge commit) beyond main.
+    const merges = Number(tryGit("rev-list", "--merges", "--count", `origin/main..${ref}`) ?? NaN);
+    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markerOnly: markerOnlyOf(commits, merges), markers: markersOn(commits) });
   }
   return branches;
+}
+
+/**
+ * PICKER-landed-marker-continuity: verified merged pull requests for the todo rows whose branch is gone or carries
+ * only markers, beyond the newest-100 closed window (S1, S2). Merged pull requests are cached in the clone's git
+ * directory (never in the repository); an incomplete or failed read is unknown, which the core never counts as landed.
+ */
+async function landedEvidenceFor(doc, branches, mergedHeads, closedFirst) {
+  if (mergedHeads === null || closedFirst === null) return new Map();
+  const candidates = doc.tasks.filter(t => {
+    if (t.status !== "todo") return false;
+    const info = branches.get(t.branch);
+    if (!info) return !mergedHeads.has(t.branch);
+    return info.markerOnly === true && !info.merged;
+  }).map(t => t.branch);
+  if (!candidates.length) return new Map();
+  const dir = tryGit("rev-parse", "--git-common-dir");
+  const file = dir ? path.join(path.resolve(dir), "skipwait-next-task", "merged-pulls.json") : null;
+  let cache = null;
+  try { cache = file ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { cache = null; }
+  const out = await collectLandedEvidence({
+    repo: doc.repo, candidates, firstPage: closedFirst, cache, now: Date.now(),
+    fetchPage: page => github(doc.repo, `/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=${page}`),
+    verify: pull => verifyMergedPull(pull, { repo: doc.repo, tryGit, mainRef: "origin/main" }),
+  });
+  try { if (file) { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, JSON.stringify(out.cache) + "\n"); } } catch (e) { console.error(`next-task: could not save the merged pull request cache: ${e.message}`); }
+  const unknown = [...out.evidence].filter(([, e]) => e.state === "unknown");
+  if (unknown.length) console.error(`next-task: landed state UNKNOWN for ${unknown.length} branch(es) (${unknown[0][1].reason}); they are treated as not landed`);
+  return out.evidence;
 }
 
 /** D-085: every local branch with commits no origin branch has, and every worktree with uncommitted changes. */
@@ -178,7 +216,10 @@ function pushMarker(branch, parent, subject, body) {
 function keepClaim(pick, who, branches) {
   if (pick.of === "land") {
     const slot = landingSlot(branches, Date.now());
-    if (slot.holder !== who || slot.quiet) {
+    // PICKER-heartbeat-slot-safety: another lander's fresh slot is theirs. Renewing this holder's own LAND lease
+    // below never writes it; a free or quiet slot is taken as before (first push wins, a lost race fails closed).
+    const othersFresh = Boolean(slot.holder) && slot.holder !== who && !slot.quiet;
+    if (!othersFresh && (slot.holder !== who || slot.quiet)) {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
       const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who));
       if (!took) return false;
@@ -220,7 +261,7 @@ async function state() {
   const errors = validateAssignments(doc, p => tryGit("cat-file", "-e", `${LIST_REF}:${p}`) !== null, register);
   if (errors.length) fail(`${LIST} is invalid; tell Claude Code:\n- ${errors.join("\n- ")}`);
   // D-085: every GitHub read is known or unknown; an unknown one stops the picker instead of looking like "nothing there".
-  let mainCi = { state: "unknown" }, openPrs = null, mergedHeads = null;
+  let mainCi = { state: "unknown" }, openPrs = null, mergedHeads = null, closedFirst = null;
   const prCi = new Map();
   try { mainCi = ciStateFromRuns((await github(doc.repo, "/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10")).workflow_runs); }
   catch (e) { console.error(`next-task: ${e.message}`); }
@@ -230,6 +271,7 @@ async function state() {
   } catch (e) { console.error(`next-task: ${e.message}`); }
   try {
     const closed = await github(doc.repo, "/pulls?state=closed&sort=updated&direction=desc&per_page=100");
+    closedFirst = closed;
     mergedHeads = new Map();
     for (const p of closed) {
       if (!p.merged_at || p.head?.repo?.full_name !== doc.repo) continue;
@@ -249,6 +291,31 @@ async function state() {
       console.error(`next-task: ${e.message}`);
       for (const head of heads) prCi.set(head, { state: "error" });
     }
+    // PICKER-land-exact-head (D-293): find the tip's run when it has aged out of the newest 100 runs.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state === "error") continue;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!tipSha || ci?.sha === tipSha) continue;
+      try {
+        const runs = (await github(doc.repo, `/actions/workflows/ci.yml/runs?head_sha=${tipSha}&per_page=10`)).workflow_runs;
+        if (Array.isArray(runs) && runs.length) prCi.set(head, ciStateFromRuns(runs));
+      } catch (e) {
+        console.error(`next-task: ${e.message}`);
+      }
+    }
+    // PICKER-gate-red-review-route (D-291): a red run on the branch's exact tip gets one read of its jobs, so a red
+    // that is only the review gate's own step can be handed REVIEW. Fail closed: a missing run id, a run not on the
+    // tip, or any fetch or parse error leaves gateOnly false and the picker keeps handing MAKE GREEN.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state !== "red") continue;
+      ci.gateOnly = false;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!Number.isSafeInteger(ci.runId) || !tipSha || ci.sha !== tipSha) continue;
+      try { ci.gateOnly = gateOnlyRedFromJobs(await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`)) === true; }
+      catch (e) { console.error(`next-task: ${e.message}`); }
+    }
   }
   // Count main-only commits, not branch-only commits. Missing refs stay unknown,
   // never a misleading zero; use argv (not a shell) for branch names from GitHub.
@@ -258,7 +325,9 @@ async function state() {
     const count = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null;
     prBehind.set(head, Number.isSafeInteger(count) ? count : null);
   }
-  return { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches: loadBranches(doc.tasks), reports: loadReports() };
+  const branches = loadBranches(doc.tasks);
+  const landedEvidence = await landedEvidenceFor(doc, branches, mergedHeads, closedFirst);
+  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports: loadReports() };
 }
 
 function claim(pick, who, branches) {
@@ -308,17 +377,25 @@ async function main() {
   const args = argsOf(process.argv.slice(2));
   const date = new Date().toLocaleDateString("en-CA");
   if (args.verdict || args.fixed) {
-    const { doc, branches } = await state();
+    const { doc, branches, openPrs } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
     const lockName = reviewLockOf(task), lock = branches.get(lockName);
     const stage = reviewStateOf(lock, task.id);
     const holder = stageHolderOf(lock, task.id);
-    if (args.verdict && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
+    // PROCESS-review-gate (D-166): the reviewer who passed may re-record the pass on the current head (after a merge of main, or
+    // over a verdict written before verdicts named their head); a landing refuses a head no verdict names.
+    const reviewer = [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb === "Review claim")?.who ?? null;
+    const rerecord = args.verdict === "pass" && ["passed", "landing"].includes(stage) && reviewer === args.as;
+    if (args.verdict && !rerecord && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed) requireSynced(doc, branches, args.as);
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
-    if (!pushMarker(lockName, tip(lockName), subject)) fail(`could not push ${lockName}: it moved; fetch and run again`);
-    console.log(`Recorded on ${lockName}: ${subject}`);
+    // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
+    const architect = architectLockOf(task);
+    const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
+    const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
+    if (!pushMarker(lockName, tip(lockName), subject, reviewed ? `reviewed ${reviewed}` : undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}`);
     return;
   }
   if (args.landed) {
@@ -333,11 +410,11 @@ async function main() {
     return;
   }
   if (args.status) {
-    const { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
     const newest = register.at(-1);
     console.log(`Register: ${newest.id}, ${newest.date} — ${newest.title}`);
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now: Date.now(), register })));
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prBehind, reports, now: Date.now(), register })));
     return;
   }
   if (args.report) {
@@ -356,13 +433,13 @@ async function main() {
     return;
   }
   if (args.heartbeat) {
-    const { doc, mainCi, openPrs, mergedHeads, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, landedEvidence, prCi, branches, reports } = await state();
     // Without the pull requests, a Tier 1 branch under review would look like a build to keep alive, and a claim marker would land on it.
     if (openPrs === null || mergedHeads === null) fail("cannot read the pull requests from GitHub; a heartbeat now could push a claim onto a branch under review (D-085); run this again when GitHub answers", 2);
     const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
     // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
     // D-134: every claim you hold stays alive, not only the first one in queue order.
-    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, reports, claimant: args.as, mainSha, now: Date.now() });
+    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, reports, claimant: args.as, mainSha, now: Date.now() });
     if (!helds.length) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
     // Commits only on this machine are the real heartbeat: push them first, or a marker on origin would leave your branch diverged.
     const { local, mainBehind } = localState();
@@ -378,12 +455,12 @@ async function main() {
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { doc, register, mainCi, openPrs, mergedHeads, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, prCi, reports, now, claimant: who, avoid, register });
+    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, reports, now, claimant: who, avoid, register });
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, prCi, prBehind, reports, now, register });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prBehind, reports, now, register });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();
