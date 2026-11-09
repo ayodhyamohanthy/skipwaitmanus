@@ -121,6 +121,13 @@ export default function GoalEmployerTalent() {
         return;
       }
       if (!response.ok) throw new Error(payload.error || "We could not unlock this profile");
+      // Searches started during the POST can return the pre-grant Locked row.
+      // The completed grant wins over those in-flight snapshots, but never
+      // re-inserts a row excluded by the current search.
+      listGeneration.current += 1;
+      setLoading(false);
+      setError("");
+      setTalent(current => current.map(item => item.displayRef === row.displayRef ? { ...item, isUnlocked: true } : item));
       if (typeof payload.remaining === "number") setBalance(payload.remaining);
       toast(`${row.displayRef} unlocked. They decide whether to respond.`);
     } catch (unlockError) {

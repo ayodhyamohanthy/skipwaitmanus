@@ -385,6 +385,31 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     });
   });
 
+  it.each(["completed", "pending", "failed"])("reconciles a successful unlock after a %s search started during the unlock", async state => {
+    let finishUnlock: (value: Reply) => void = () => {};
+    let finishSearch: (value: Reply) => void = () => {};
+    let n = 0;
+    stub({ talent: () => ++n === 1 ? reply({ talent: [LOCKED] }) : new Promise<Reply>(resolve => { finishSearch = resolve; }), unlock: () => new Promise<Reply>(resolve => { finishUnlock = resolve; }) });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(n).toBe(2));
+    if (state !== "pending") {
+      await act(async () => finishSearch(state === "failed" ? reply({ error: "Search failed" }, 500) : reply({ talent: [LOCKED] })));
+    }
+    await act(async () => finishUnlock(reply({ unlocked: true, remaining: 15 }, 201)));
+    expect(await within(card(REF_A)).findByRole("button", { name: /View profile/ })).toBeTruthy();
+    expect(within(card(REF_A)).getByText("Unlocked")).toBeTruthy();
+    expect(screen.queryByText("Search failed")).toBeNull();
+    expect(screen.queryByRole("status", { name: /Loading talent/ })).toBeNull();
+    expect(balanceText()).toBe("15");
+    if (state === "pending") {
+      await act(async () => finishSearch(reply({ talent: [LOCKED] })));
+      expect(within(card(REF_A)).getByText("Unlocked")).toBeTruthy();
+    }
+  });
+
   it("a non-array expertise value in the profile renders no Expertise line", async () => {
     stub({ profile: () => reply({ profile: { headline: "Product designer", experience: "6-10 years", expertise: "Design systems" } }) });
     render(<GoalEmployerTalent />);
