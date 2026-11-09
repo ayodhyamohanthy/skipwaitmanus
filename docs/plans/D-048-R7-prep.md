@@ -44,3 +44,20 @@ Registered preparation only; no runtime, captures or acceptance completed by reg
 Focused run on this head: `client/src/pages/goal/system` (4 files) + `scripts/r7ReleaseAcceptance.test.ts` + the kit `emails.test.tsx` = **5 files / 35 tests passed**; `pnpm check` 0.
 
 Still owed before ready, unchanged from the entry above and not claimed: the policy flag-on/off rendered-text equality proof on every legal route, the `design/goal-ui/captures/r7-release/**` set at 1280 and 390 for every route/state of the three public groups, and the local production-mode preview QA with only `policy,system,links` enabled. `RELEASED` is untouched.
+
+2026-11-09: synthetic 1280/390 capture pass (10 routes, 20 captures) — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
+
+Built with `VITE_GOAL_SURFACES=policy,system,links` and captured through the checked-in driver `design/goal-ui/captures/r7-release/capture.mjs` (local SPA server, every `/api` answered at the network layer, synthetic tokens only). Manifest records source `a6f7da6a`, each route, viewport, the goal/kit marker seen and `horizontalOverflowPx`.
+
+**What the pixels show.** Goal chrome renders correctly on the policy reading column (`/privacy`, `/terms`, `/guidelines` — "Know your rights.", numbered sections, one "Open privacy controls" commit) and on the system pages (`/offline`, `/app-states`, `/emails`, 404). Overflow is **0 at 1280 and 390** on all 20 captures. The three `links` states captured here (`/fast/<bad token>`, `/refer/<company>/<bad alias>`, `/share-card/<bad token>`) still render their **kit** screens.
+
+**Three findings for the release carrier, none of which this prep row may fix:**
+1. `GoalPolicyPage` sets `data-skipwait-screen` and **not** `data-goal-page` (`client/src/pages/goal/policy/GoalPolicyPage.tsx:79`), so no machine check — mine included — can tell the goal policy page from the kit one on all eleven legal routes. A D-167 observability gap worth a bounded amendment before the `policy` release is signed off.
+2. D-173/D-180 wording still appears on goal surfaces: the email template names "Ask accepted" / "Ask passed" and the policy summary bullet "…until a referrer accepts your ask." Legal bodies are untouched by design; this is shell/template copy and needs the bounded copy amendment.
+3. `links` needs goal coverage for its invalid/expired token states before its id can be released; only the kit screens render today.
+
+Unverified and listed in the manifest: `/emails` interactions beyond the default selection, link sign-in return, authenticated share-card privacy states, and the individual `/app-states` panels. `RELEASED` untouched.
+
+2026-11-09: interactive capture coverage added — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
+
+The driver now selects every control in a page's own group and captures that state, which closes the two gaps my previous entry listed: **all 13 `/emails` templates** and **all 9 `/app-states` screens**, at 1280 and 390. Manifest now records **64 captures, 0 with horizontal overflow**, source `2e478baa`. Still unverified and still listed in the manifest: link sign-in return, authenticated share-card privacy states, and `/app-states` sub-dialogs opened from inside a panel (install instructions dismissed, permission denied).

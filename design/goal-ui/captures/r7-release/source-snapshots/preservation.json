@@ -1,0 +1,941 @@
+{
+  "purpose": "Historical synthetic evidence preservation, not acceptance of combined/new copy. Both manifests/drivers/images remain byte-identical under their own source folders. Root paths are a mixed historical set and must not be treated as a single coherent new run. Rerender after terminology integration.",
+  "files": [
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-error-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-error-1280.png",
+      "sha256": "80ec616aa0c09157f076ef1813547bac623436fd92ebec03d1b0990e72949612"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-error-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-error-390.png",
+      "sha256": "f1343698ddb997d6598e1431cf0a3e5515a1fc8b34c7949813b984f8a3997027"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-install-android-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-install-android-1280.png",
+      "sha256": "9941eb3ea4978d83a4bea1f2235f230ab1f09ec3901203bf4469850616a06326"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-install-android-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-install-android-390.png",
+      "sha256": "51e406659d8edda8c7aa137cee7d0f53eddebb52c641638a2c6e2bd002a3d89a"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-install-iphone-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-install-iphone-1280.png",
+      "sha256": "93f5e4a0928449a224d644856f4b0c0c28136ed7daee831a23015f58bcb2d27e"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-install-iphone-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-install-iphone-390.png",
+      "sha256": "b3e686b211e2563427069b2ac1b293c52083986d8bc423e3571acf0a37cbda64"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-loading-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-loading-1280.png",
+      "sha256": "31c1cbdc44f41293f161721a03a33f5c257efaf6bf47864c8d1fe1045adee800"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-loading-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-loading-390.png",
+      "sha256": "4237f7eab8ae7dc9fb31f851e1df0fc29ee638e3f12bfb86b60b3f2c2d21aa26"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-not-found-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-not-found-1280.png",
+      "sha256": "cdfc2cdc259eab6e83dc8261d2f6e9c46b31948b90b1dd85ee6deabc675b67c2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-not-found-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-not-found-390.png",
+      "sha256": "7de921376ea5ccc867f0fc63cba447fb4eec8f5e4813c94fb75412068045e224"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-offline-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-offline-1280.png",
+      "sha256": "489f948c8409ce210453dc0953d04df243afa294a213cf9bcb6ded273d99181c"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-offline-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-offline-390.png",
+      "sha256": "c9e51a8e3616a2fdedb60b2578de503e8346c95a5e4fda091d2af9a6cbde8868"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-payment-failed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-payment-failed-1280.png",
+      "sha256": "9df1d028649eced2ad7bdef90ee8c2a693f963a676aa0dba876a378056201ca8"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-payment-failed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-payment-failed-390.png",
+      "sha256": "615d37142dd2f8cf84abc60ed05db2456ee9fc460e31d4697df82d5d2e06b2e4"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-push-permission-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-push-permission-1280.png",
+      "sha256": "a5bb2d43917ba8ddf16b54114f2e533d39adc524cbd922f803a07cee349d1e4c"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-push-permission-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-push-permission-390.png",
+      "sha256": "c66d9baf3959b944a3ed09984971fa0c871e2baba53daac2740ee022f9a79c29"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-slow-connection-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-slow-connection-1280.png",
+      "sha256": "1192c81a4d2edc1bb27a95099ccd18540670dc30c01243f67a55acbe892c7c32"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/app-slow-connection-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/app-slow-connection-390.png",
+      "sha256": "4d7d4813bc53ec63f09327569f88c46e4e15035ef2c1c278cef68c79541e6d38"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/capture.mjs",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/capture.mjs",
+      "sha256": "9fd2caa6d0d6966c0e097076c834912bbc058064afa0e468684d927d2b88b4e2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-accepted-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-accepted-1280.png",
+      "sha256": "17af614fd6df33a548a073e684781b841f7a486dd16a47175054519910681245"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-accepted-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-accepted-390.png",
+      "sha256": "378b208c4bb72a2274d60936b814bc7cc13cd6560ebaaed3cece69ad5a6dd9c7"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-claimed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-claimed-1280.png",
+      "sha256": "73e31fe2979f7386b86fe1689fc0edf17d41ca5f0e055edff4750c4770a69ef6"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-claimed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-claimed-390.png",
+      "sha256": "cd1226f17a796d7fc2bdab8994c2d433c2c7bcd3d07abc014921cf0d980cd9c9"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-code-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-code-1280.png",
+      "sha256": "26cde734d5514f83db419cfed02b52fb810523320730405ba029feb3e92f701e"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-code-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-code-390.png",
+      "sha256": "34489d56fae9b840b0d1e30c2d6bd77ff714ed93a394949c85b205033920dd33"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-new-message-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-new-message-1280.png",
+      "sha256": "ead0af4cf8b38c61973c03ab02eb77165e649406d5d3c55a76cd0a48c75fe1f0"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-new-message-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-new-message-390.png",
+      "sha256": "a340338947c6a51fc3146fc1da7cfcc1e9731199ff2946638eabd00e72727cb1"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-passed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-passed-1280.png",
+      "sha256": "394bfc9d4bcbb1d658f8eab3639ae195f1c95b04ce1d50ad8d0bf4deedaaf3f0"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-passed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-passed-390.png",
+      "sha256": "250e294688345e021f454677508478ddc7a48468fd3623510457ed52758c61f3"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-password-reset-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-password-reset-1280.png",
+      "sha256": "3b91f770c58ad1d7933f0409ceb3e5462f89e4883a630e790ad8950f554c9df1"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-password-reset-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-password-reset-390.png",
+      "sha256": "63d52c7022e58957d47ecc028283e0fb2f09275d91ce83e9f495c245e22ae246"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-payment-receipt-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-payment-receipt-1280.png",
+      "sha256": "ede01c1d7fb914223a8da81481ff03cf8529b9b70f272de2d1d712d0971fefb2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-payment-receipt-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-payment-receipt-390.png",
+      "sha256": "b9a0d545ca63241d27e7c920eac54f778009ece9dc7ff44042c63259ce76002b"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-report-outcome-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-report-outcome-1280.png",
+      "sha256": "0f51dd9d30aa715ca5a5b7fd45cc3539e0920e03b203b6de30467a009f457060"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-report-outcome-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-report-outcome-390.png",
+      "sha256": "1b4a596a7f037dceeebdae09efe215fce24a3c588bc8d16ae7bf863f5e0f0429"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-reverify-reminder-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-reverify-reminder-1280.png",
+      "sha256": "03ed614c4a647b6f7783bd6b35be584e9f8f16a5ce9eb2bae0a426a13b3e0284"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-reverify-reminder-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-reverify-reminder-390.png",
+      "sha256": "7604acc9cf12431b5157e01c821439ca9ab73baf36c26876eda6fbabe31c1250"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-review-ready-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-review-ready-1280.png",
+      "sha256": "0bd7dabb1318d4712a6aa9e5ce2f0c1c8723247ae48c0c6a802900ece58515cf"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-review-ready-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-review-ready-390.png",
+      "sha256": "49a32ec1a34cbd08d0241e39caad2d42b6f77469c7914b683c3bbf9361047bf4"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-slot-opened-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-slot-opened-1280.png",
+      "sha256": "8a375bbc5f3caaa593e7f1fd611d41f349534cbff96e2d7d517c4fcc752d9389"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-slot-opened-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-slot-opened-390.png",
+      "sha256": "6970831710ca18ea04e26cc393090ac9a60150f7f2047ab37b7ae29698e02f1a"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-waiting-for-coverage-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-waiting-for-coverage-1280.png",
+      "sha256": "a8851d8326b0a584e8d221da4a59baca803d50482e6dcbd243273830781ad68f"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-waiting-for-coverage-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-waiting-for-coverage-390.png",
+      "sha256": "b43f1349cdcb4ca1f40eed1e97553eeee7210d52e73f1f3cef575c1c6bcecd27"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-welcome-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-welcome-1280.png",
+      "sha256": "6900c775ed6f3efd5d78fc5b5f3228ed318aaaeca5ecdeb566b7852f310881bb"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/emails-welcome-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/emails-welcome-390.png",
+      "sha256": "e6b0d80ba65484b26d7caba552ad8cd0521b113b82aac9a2467d50f37606aee1"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fast-loading-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fast-loading-1280.png",
+      "sha256": "74a31075fd1f6751a6d9696f64c91a81b7a3294b06a9ab4253f544b7fc9c571d"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fast-loading-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fast-loading-390.png",
+      "sha256": "7991507eaedd68423750ecd731f946f1dfa4f161c3ad690c73ad5d4a11b5461a"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fast-ready-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fast-ready-1280.png",
+      "sha256": "c0dcc81be129063ab6386c9a59115a6f5f61cc24ce6fce0ca363ae1aa20156be"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fast-ready-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fast-ready-390.png",
+      "sha256": "f95c169407835a49724ea9068d8a12b7abd8a3007dccd9cff232ea8236bb8649"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fast-unavailable-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fast-unavailable-1280.png",
+      "sha256": "f3f24de93d2743c919e7335fc9ffbf8d1667df65ad5a951ff31ddd2bd2cda240"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fast-unavailable-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fast-unavailable-390.png",
+      "sha256": "b1b0f6e406c6c62eb6a098d41613f7b39eadfc4818d2a688a2459f46595cbbf2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/fixtures.json",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/fixtures.json",
+      "sha256": "a45e5d8e6c2315834a07553f5f5e8bf552de958d6030bf10e823bb7965826602"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/guide-choosing-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/guide-choosing-1280.png",
+      "sha256": "456674098c60b8442b4b3a32f87f7b2dd86033e50f548e59ec214a340af27b7b"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/guide-choosing-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/guide-choosing-390.png",
+      "sha256": "e040b2a7e3df4eb9553e4378d00fe28e6b825a0a65616b954e19c4e82b1d4bb7"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/guide-how-employees-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/guide-how-employees-1280.png",
+      "sha256": "694d3eb4969fc77242a65f985b6103992d1af92698835bdec2fc33192cdb20a2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/guide-how-employees-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/guide-how-employees-390.png",
+      "sha256": "a653d9baa80f006a6302d12d70a642e0e0299c6c5850e0d673e6fc758510f571"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/guide-platforms-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/guide-platforms-1280.png",
+      "sha256": "dd8a8a420eb3727508c9913f1f35bb5372aa55b158855b5e033e5cb410cc0daf"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/guide-platforms-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/guide-platforms-390.png",
+      "sha256": "d5569c23741bfae682f653ed41348290e6b1feb17cc8185af7509d104d7ed080"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/manifest.md",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/manifest.md",
+      "sha256": "f27d20c8c4dd527b76cc45de6699ba1236be6040b21da80bb6b8cae597d8230c"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-about-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-about-1280.png",
+      "sha256": "6788992eb3248324dff68ceac12bf3a54a53e8519ec8c9842956ec42622c6ee0"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-about-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-about-390.png",
+      "sha256": "83a3c0c2856ca5e9d9dbc763b35bac4cb0739ef71adc228aa8d79aff474891b2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-cancellations-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-cancellations-1280.png",
+      "sha256": "8f750d124d4c7c72df02f3cec8089eed7c027f184b4d2305ac54a0b009bf3bea"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-cancellations-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-cancellations-390.png",
+      "sha256": "a9cf7e704231f26db774d3aa4ba2b9eb9991d796d7d757c35b1b3d674883fda5"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-contact-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-contact-1280.png",
+      "sha256": "d5c4f05cf9d31426aa7516c4891cbd2413633c49c78673dce39af0907b19f134"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-contact-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-contact-390.png",
+      "sha256": "b9a561032f39f69b4606b16f430624b2d505a9be2b7d486d640e1842ae0eba5e"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-guidelines-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-guidelines-1280.png",
+      "sha256": "845341120ca8dc44282ccafbfb9bdd104b95c1d660fa5705eb2b1948a00103c9"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-guidelines-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-guidelines-390.png",
+      "sha256": "7b5e3a4570b85b34dc0c6dc89ef5b8a254b24587274db1fc216c007e520f4b94"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-privacy-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-privacy-1280.png",
+      "sha256": "5543f2af572a271316795e46533e5e45f3184f3db1df77ef49f2a85f4e00ebda"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-privacy-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-privacy-390.png",
+      "sha256": "2746b94f24df1f4759dcd8c430b5b03d6c0b9cfe3ec8f877a409647fb3784a35"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-refunds-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-refunds-1280.png",
+      "sha256": "473ce1d3762c53413a0f8294b697f68e90d90d4efef87f028df5e3df4720b948"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-refunds-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-refunds-390.png",
+      "sha256": "c9ada9bdc2533e3626c8c7357bec803ddb27f38afae52b9ccdb19ce3c00907d3"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-shipping-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-shipping-1280.png",
+      "sha256": "b4e85f8ef090d441fb59a5cdc3980084873eb60f591678ae8e416e25098d71ff"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-shipping-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-shipping-390.png",
+      "sha256": "9f7c7aac25105a134aaf9061dd6bc7172b41e678df3ac013dde0bdcfd29396e8"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-terms-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-terms-1280.png",
+      "sha256": "b623cd39c74af7f1009edde0c398cce96cc5d0bb989fd83289dccc3db6ceaa4b"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/policy-terms-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/policy-terms-390.png",
+      "sha256": "fbcc82c819ec6667fe229d110a506ed89d280a4c8c4136827e914f9698a46aa9"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/results.json",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/results.json",
+      "sha256": "2538514c97d7ad3ce8faa176fe9bd1b948d5258b5a862622d3780e403f4d53ac"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/share-ready-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/share-ready-1280.png",
+      "sha256": "836e0ae1ab138f09130b9a97d8ef69a692c57cb8fe0ab431b0db6c09724d526e"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/share-ready-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/share-ready-390.png",
+      "sha256": "56dc2ed68c3548d61e01d3fe7f0068668d00da2f003249f6ca7bc91bf9e1a2be"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/share-unavailable-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/share-unavailable-1280.png",
+      "sha256": "d3c616815f6ed12bb6f350fdb62a3d07d0f15860fd3959d33ffa90cdac28933c"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/share-unavailable-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/share-unavailable-390.png",
+      "sha256": "db34e45b9034893e91084d024705c7d2ca3e07f0568d609ca268f507733a8574"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/start-return-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/start-return-1280.png",
+      "sha256": "605fd9e7a31f285b75398a8a02e6616f06d4fb0fd3f89b6f35add9ba4bee7183"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/start-return-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/start-return-390.png",
+      "sha256": "3cb1494bf280d3589b0b1521d33cad3da7a8bbbd7d8af4ebaf4db0587b2cf4f5"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/system-not-found-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/system-not-found-1280.png",
+      "sha256": "e08f03eb63a2919f5c598748647bf258798f0f9839bd49508e63d71f9271a5fa"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/system-not-found-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/system-not-found-390.png",
+      "sha256": "f8729c73f80fc07e6f40c10c25a4effd190d4742f47e3d5b6f567dcd26b133d2"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/system-offline-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/system-offline-1280.png",
+      "sha256": "1b0115961c469d49eab19eac95799cf68a4247af74923e3a7e7ab82a65b13d06"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/system-offline-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/system-offline-390.png",
+      "sha256": "a96221cf2041ffdedc25bb2608faca577ef1bc36605407c13dd19d614a8c887b"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/vanity-ready-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/vanity-ready-1280.png",
+      "sha256": "38810944d33517d741fc944938472d266c085031da405c9608148bd60f676f5d"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/vanity-ready-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/vanity-ready-390.png",
+      "sha256": "7d91ff61d121b70a4359c61c697253f1e3bfc5c323080d6b844f42d299f9e5df"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/vanity-unavailable-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/vanity-unavailable-1280.png",
+      "sha256": "f3f24de93d2743c919e7335fc9ffbf8d1667df65ad5a951ff31ddd2bd2cda240"
+    },
+    {
+      "source_head": "556e9799581cd927c32b1f628d1b2bd413d20edc",
+      "source_path": "design/goal-ui/captures/r7-release/vanity-unavailable-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/eb38-556e979/vanity-unavailable-390.png",
+      "sha256": "b1b0f6e406c6c62eb6a098d41613f7b39eadfc4818d2a688a2459f46595cbbf2"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-android-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-install-android-1280.png",
+      "sha256": "9941eb3ea4978d83a4bea1f2235f230ab1f09ec3901203bf4469850616a06326"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-android-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-install-android-390.png",
+      "sha256": "572b54f57699a5e6610285db7fb1e9c9fc2ab02848cab361e21f5466fbab9278"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-iphone-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-install-iphone-1280.png",
+      "sha256": "93f5e4a0928449a224d644856f4b0c0c28136ed7daee831a23015f58bcb2d27e"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-iphone-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-install-iphone-390.png",
+      "sha256": "9de52dbbc2dc8084a8eded080ae826c58087d0d48122c37bcb5a0a7221c9642b"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-loading-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-loading-1280.png",
+      "sha256": "31c1cbdc44f41293f161721a03a33f5c257efaf6bf47864c8d1fe1045adee800"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-loading-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-loading-390.png",
+      "sha256": "491571027a47a0b38f37d0ad5056386c56bf4e01897d6144e7d4723bfa1a4d2f"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-not-found-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-not-found-1280.png",
+      "sha256": "cdfc2cdc259eab6e83dc8261d2f6e9c46b31948b90b1dd85ee6deabc675b67c2"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-not-found-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-not-found-390.png",
+      "sha256": "e60cb5964e911e788ba99916b51f95fb5780a3c9cf8157eb1fe706ca6a5251a9"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-offline-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-offline-1280.png",
+      "sha256": "489f948c8409ce210453dc0953d04df243afa294a213cf9bcb6ded273d99181c"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-offline-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-offline-390.png",
+      "sha256": "7f4049b847a8c46ff70042b15e3a48c0d46784e81ffe40d4b11a83de165cb9f4"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-payment-failed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-payment-failed-1280.png",
+      "sha256": "9df1d028649eced2ad7bdef90ee8c2a693f963a676aa0dba876a378056201ca8"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-payment-failed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-payment-failed-390.png",
+      "sha256": "21489d29ad87e05997414cf2fe30d736bac9eca212e47f7d41c27e8647794395"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-push-permission-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-push-permission-1280.png",
+      "sha256": "a5bb2d43917ba8ddf16b54114f2e533d39adc524cbd922f803a07cee349d1e4c"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-push-permission-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-push-permission-390.png",
+      "sha256": "145c712ce623446f71e7cb0dfc1b943f225fc8b7d6da8803b5ad699d12a47561"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-slow-connection-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-slow-connection-1280.png",
+      "sha256": "1192c81a4d2edc1bb27a95099ccd18540670dc30c01243f67a55acbe892c7c32"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-slow-connection-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-slow-connection-390.png",
+      "sha256": "ada33669cc4569700e6dd6f96ca6560a96d56e227f6b20814104469ad6e40dae"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-something-went-wrong-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-something-went-wrong-1280.png",
+      "sha256": "80ec616aa0c09157f076ef1813547bac623436fd92ebec03d1b0990e72949612"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-something-went-wrong-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-state-something-went-wrong-390.png",
+      "sha256": "6a5a42d14152ec9765301276565cfa15d6888a353413b0415c5b6740b38d1c19"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-states-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-states-1280.png",
+      "sha256": "9941eb3ea4978d83a4bea1f2235f230ab1f09ec3901203bf4469850616a06326"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/app-states-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/app-states-390.png",
+      "sha256": "572b54f57699a5e6610285db7fb1e9c9fc2ab02848cab361e21f5466fbab9278"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/capture.mjs",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/capture.mjs",
+      "sha256": "e3715b6b8b1ff9756b33f2f0fdc5f042a4cd75b1f859f569055f7ce9c9e71efb"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-1280.png",
+      "sha256": "2d4f46d6d9fe736d2c7b6de9ee5a9bfa537164f4351b277784f402190cc68b04"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-390.png",
+      "sha256": "b3ab403dea171af3016101b40de13926692cd5353ae6bb86b88a853c84ad956e"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-ask-accepted-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-ask-accepted-1280.png",
+      "sha256": "17af614fd6df33a548a073e684781b841f7a486dd16a47175054519910681245"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-ask-accepted-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-ask-accepted-390.png",
+      "sha256": "2b27a8f7e56db7ecccafc52ac1f79305de09b6e0376869300e065f990471e044"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-ask-passed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-ask-passed-1280.png",
+      "sha256": "394bfc9d4bcbb1d658f8eab3639ae195f1c95b04ce1d50ad8d0bf4deedaaf3f0"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-ask-passed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-ask-passed-390.png",
+      "sha256": "e3382c1ff6277c71698ec55cc0052c0992f901eeec88542095a001fcb53c7cd9"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-new-message-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-new-message-1280.png",
+      "sha256": "ead0af4cf8b38c61973c03ab02eb77165e649406d5d3c55a76cd0a48c75fe1f0"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-new-message-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-new-message-390.png",
+      "sha256": "58de92debc5734c522ed861a276443b50b633668de8bffc1ce9dcb0f1ed0d92d"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-password-reset-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-password-reset-1280.png",
+      "sha256": "3b91f770c58ad1d7933f0409ceb3e5462f89e4883a630e790ad8950f554c9df1"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-password-reset-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-password-reset-390.png",
+      "sha256": "b8b01ffa02b022aabacac95827e7a10aeaaac39eb9858435498347a6272543c5"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-payment-receipt-failed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-payment-receipt-failed-1280.png",
+      "sha256": "ede01c1d7fb914223a8da81481ff03cf8529b9b70f272de2d1d712d0971fefb2"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-payment-receipt-failed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-payment-receipt-failed-390.png",
+      "sha256": "bb30ff8202698b76d978c4e914e123ada9f3cbd5aa9961640a735ec0819ef316"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-re-verify-reminder-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-re-verify-reminder-1280.png",
+      "sha256": "03ed614c4a647b6f7783bd6b35be584e9f8f16a5ce9eb2bae0a426a13b3e0284"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-re-verify-reminder-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-re-verify-reminder-390.png",
+      "sha256": "18046a6854f9c02dbca305dd8f1671ad9b6ddbb4120f1298e40f829b745b6ddc"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-report-outcome-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-report-outcome-1280.png",
+      "sha256": "0f51dd9d30aa715ca5a5b7fd45cc3539e0920e03b203b6de30467a009f457060"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-report-outcome-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-report-outcome-390.png",
+      "sha256": "0851b82e12c28b32a8b70855f94ab429c60608b790fc30ee8132c099e2b896a5"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-request-claimed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-request-claimed-1280.png",
+      "sha256": "73e31fe2979f7386b86fe1689fc0edf17d41ca5f0e055edff4750c4770a69ef6"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-request-claimed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-request-claimed-390.png",
+      "sha256": "ad17d37077ccb4efdb138a136ae49426ba423283e5645388bb1ac51c98628121"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-review-ready-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-review-ready-1280.png",
+      "sha256": "963b6bb70278864b47551dccaffc03d36721e23be97b2d8acdbbb0728756393b"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-review-ready-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-review-ready-390.png",
+      "sha256": "6f04a98f0ae5e82776da72bfb20fd518f6e9920f7f61e0f22560ccfa58204d97"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-slot-opened-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-slot-opened-1280.png",
+      "sha256": "8a375bbc5f3caaa593e7f1fd611d41f349534cbff96e2d7d517c4fcc752d9389"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-slot-opened-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-slot-opened-390.png",
+      "sha256": "0c81a74a898be52d0cc8c0b45d5a8cdc9903ec5be55bb678cf33d86370e6686e"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-waiting-for-coverage-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-waiting-for-coverage-1280.png",
+      "sha256": "a8851d8326b0a584e8d221da4a59baca803d50482e6dcbd243273830781ad68f"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-waiting-for-coverage-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-waiting-for-coverage-390.png",
+      "sha256": "92a85d7434ca3a7a02d4908cfd3e43dbe089d8440bdf3976b4471eacf7cb011c"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-welcome-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-welcome-1280.png",
+      "sha256": "6900c775ed6f3efd5d78fc5b5f3228ed318aaaeca5ecdeb566b7852f310881bb"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-welcome-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-welcome-390.png",
+      "sha256": "0bb499393d753d35fd0be6b2c1b8b811bd512dde18b9e627be5153ac218255e8"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-work-email-code-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-work-email-code-1280.png",
+      "sha256": "2d4f46d6d9fe736d2c7b6de9ee5a9bfa537164f4351b277784f402190cc68b04"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/emails-work-email-code-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/emails-work-email-code-390.png",
+      "sha256": "b3ab403dea171af3016101b40de13926692cd5353ae6bb86b88a853c84ad956e"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/fast-invalid-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/fast-invalid-1280.png",
+      "sha256": "174c946fdeea4ec0e5746a24d0aba6c398fe1e5cd8d91456393582a94dd455fe"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/fast-invalid-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/fast-invalid-390.png",
+      "sha256": "d1b4829ad68c62a767cc3e46956e533872808a19919406be56f0bd971c349025"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/guidelines-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/guidelines-1280.png",
+      "sha256": "845341120ca8dc44282ccafbfb9bdd104b95c1d660fa5705eb2b1948a00103c9"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/guidelines-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/guidelines-390.png",
+      "sha256": "6b65f30ba0488c7df951a94e379f3e52c082a5bf0dad824c341d4925c5a37b20"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/manifest-all.json",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/manifest-all.json",
+      "sha256": "af237b6de0304ef4e26a2f32e29cfea7f92a1e05ef5f5d6b332c70f381a07f4d"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/not-found-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/not-found-1280.png",
+      "sha256": "e08f03eb63a2919f5c598748647bf258798f0f9839bd49508e63d71f9271a5fa"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/not-found-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/not-found-390.png",
+      "sha256": "1f2961fde261ac8367ac89e59465217ee5a14cd5ee2af0ae4bf97a03e95bba0b"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/offline-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/offline-1280.png",
+      "sha256": "1b0115961c469d49eab19eac95799cf68a4247af74923e3a7e7ab82a65b13d06"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/offline-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/offline-390.png",
+      "sha256": "af54d495346be2b8ea43fa1aa7022a87a29cb65c69903d6cb94310e500dcf1f6"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/privacy-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/privacy-1280.png",
+      "sha256": "5543f2af572a271316795e46533e5e45f3184f3db1df77ef49f2a85f4e00ebda"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/privacy-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/privacy-390.png",
+      "sha256": "36943f1be24ca6342f79b03caaf6ba76d469efc0120b410f9035998543e13450"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/refer-invalid-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/refer-invalid-1280.png",
+      "sha256": "174c946fdeea4ec0e5746a24d0aba6c398fe1e5cd8d91456393582a94dd455fe"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/refer-invalid-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/refer-invalid-390.png",
+      "sha256": "d1b4829ad68c62a767cc3e46956e533872808a19919406be56f0bd971c349025"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/share-card-missing-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/share-card-missing-1280.png",
+      "sha256": "d3c616815f6ed12bb6f350fdb62a3d07d0f15860fd3959d33ffa90cdac28933c"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/share-card-missing-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/share-card-missing-390.png",
+      "sha256": "c22b4d95eb9162e3d23ddd9c4c1873546c75523b478d65e1a4c9bef8ac3ea6d5"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/terms-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/terms-1280.png",
+      "sha256": "b623cd39c74af7f1009edde0c398cce96cc5d0bb989fd83289dccc3db6ceaa4b"
+    },
+    {
+      "source_head": "23c069e70e24d966e09f09dfe189e781ccaa65ab",
+      "source_path": "design/goal-ui/captures/r7-release/terms-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/terms-390.png",
+      "sha256": "48481d550371fc55887c6ba76ccf09b9045232304a948adb62d16ef7848cb819"
+    }
+  ]
+}
