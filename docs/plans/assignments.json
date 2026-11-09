@@ -3220,11 +3220,11 @@
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
       "status": "todo",
-      "syncedTo": "D-246",
+      "syncedTo": "D-310",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151). D-246 (CEO sequencing, Oct 30): waits for D-057-session-gate, which takes a limited handoff of server/privateReferralRoutes.ts, server/_core/index.ts (switch only), drizzle/schema.ts and server/schemaReconcile.ts for its build only. #632 keeps its id, branch, scope, code, findings (b8552f96: F1-F4 in server/sentry.ts) and holds; no takeover. After D-057 lands, merge main into agent/claude/d090-byor (merge commit, never rebase) and resolve the four files by keeping both sides.",
+      "note": "D-162: the owner waived the demand-list gate (asked in workbuddy · b0eb's session at 02:26 IST; confirmed to the CEO on Oct 23), so BYOR depends on nothing. agent/claude/d090-byor already holds C1 and the C2 token layer (ecff975b); its claim is free, so continue it there: merge main (docs/DECISIONS.md conflicts on the D-148 row: keep main's side and drop the branch's row, since D-162 records the waiver; the packet merges cleanly, so delete by hand its 'Gate waived by the owner (D-148 ...)' paragraph in §0 and its 'in progress — workbuddy · b0eb' Status line), and renumber 0107_ask_invites.sql to the next free number at landing (check drizzle/deploy/ on main and plan §5 at landing: on Oct 23 main has 0107_seeker_levels.sql and 0108_landed_thank_you.sql, and open branches hold 0108-0109 (#523) and 0110 (#527), so it is 0111 or later). Build C1-C5 in order: D-048-p3-live-review-requests landed the redesigned My asks on Oct 23 (#533), so C5 puts the invite action into MyRequests.tsx as it is on main, as a ghost button or plain link (one black commit per page, D-150). Status goes in the §3b row D-090. The four approved mocks are not in the repo (packet §12 Q5). D-187 (Oct 24): C1-C6 are built; resume there: add \"/r/:token\" to KNOWN_ROUTE_PATTERNS in functions/_middleware.ts (not D-057's gate); the local '[auth] VITE_WORKOS_CLIENT_ID is not set' line is listed, not counted; user-facing 'ask' copy becomes D-180's referral vocabulary (money lines keep 'credit'); full gate, renumber 0111 at landing, Tier 1 draft PR. Review: not workbuddy, not GPT (D-151). D-246 (CEO sequencing, Oct 30): waits for D-057-session-gate, which takes a limited handoff of server/privateReferralRoutes.ts, server/_core/index.ts (switch only), drizzle/schema.ts and server/schemaReconcile.ts for its build only. #632 keeps its id, branch, scope, code, findings (b8552f96: F1-F4 in server/sentry.ts) and holds; no takeover. After D-057 lands, merge main into agent/claude/d090-byor (merge commit, never rebase) and resolve the four files by keeping both sides. Nov 9 (Qoder · f7e4, owns amendment under D-200/D-309): D-057-session-gate and FND-4 landed after this packet, so owns gains shared/telemetryScrub.ts (+test), the FND-4 single scrubber that must learn the BYOR /r and /api/ask-invites routes, and server/referrerSessionGate.ts (+test), where packet §2 requires the BYOR claim route to join D-057's referrer-action list.",
       "owns": [
         ".env.example",
         "AGENTS.md",
@@ -3302,6 +3302,8 @@
         "server/errorAlerting.test.ts",
         "server/errorAlerting.ts",
         "server/privateReferralRoutes.ts",
+        "server/referrerSessionGate.test.ts",
+        "server/referrerSessionGate.ts",
         "server/scheduledJobRegistry.ts",
         "server/scheduledJobsContract.test.ts",
         "server/schemaReconcile.ts",
@@ -3310,6 +3312,8 @@
         "shared/askInvites.test.ts",
         "shared/askInvites.ts",
         "shared/scheduledJobs.ts",
+        "shared/telemetryScrub.test.ts",
+        "shared/telemetryScrub.ts",
         "src/worker.ts"
       ]
     },
@@ -4239,6 +4243,19 @@
         "D-166-journey-decisions-sync"
       ],
       "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules. D-189: done by #609 (labels, chips and open-first grouping removed)."
+    },
+    {
+      "id": "D-174-post-close-slice",
+      "title": "Clear old posted-role routing when a company ask drawer closes",
+      "row": "D-193",
+      "packet": "docs/plans/D-174-post-close-slice.md",
+      "tier": 1,
+      "lane": "d174-fix",
+      "branch": "agent/instinct/posted-role-close-binding-nov9",
+      "status": "todo",
+      "syncedTo": "D-310",
+      "dependsOn": [],
+      "note": "Bounded child of922 existingD193\u00a75.1Closecontract. Parent804ae119lineage/owner/dependencies/status/otherrequirements preserved; reintegratebeforeparentresumes samehunk. OnlyExploreCompanyclosehandler+newexploreCompany.closePostBinding.test.tsx, noauth/pricing/storage/server/UIcopychange. Noowns becauseparentoverlap; exact2pathmanualscope+qualifiedindependentreview required,nobypass/noownerACKclaim. Redfirststaleid88afterClose;25testsPASS;local1280/390interceptedpayload hasnoid,noactualsend/credits. Other922casesunresolved. Latestowner20:29parallel-easytestedproduction slices, notwholequeuehold."
     },
     {
       "id": "D-174-fix-post-binding",
