@@ -115,7 +115,7 @@ describe("D311 actual CLI and gate loader composition, local bare origin only", 
    expect(message).toContain(`Verdict T: pass — ${r}`); expect(message).toContain(`reviewed ${f.head}`); expect(message).toContain("execution reviewed");
    expect(message).not.toContain("public-reviewer ·");
    f.must("switch", task.branch);
-   const gate = spawnSync(process.execPath, [path.join(root, "scripts/review-gate.mjs")], { cwd: f.work, encoding: "utf8", env: { ...process.env, GITHUB_HEAD_REF: task.branch } });
+   const gate = spawnSync(process.execPath, [path.join(root, "scripts/review-gate.mjs")], { cwd: f.work, encoding: "utf8", env: { ...process.env, GITHUB_HEAD_REF: task.branch, GITHUB_EVENT_PATH: "", GITHUB_EVENT_NAME: "" } });
    expect(gate.status, gate.stdout + gate.stderr).toBe(0); expect(gate.stdout).toContain("has an independent passing review");
  }), 30000);
  it("candidate copy and CLI strings cannot replace trusted model evidence or write an invalid verdict", () => withFixture(f => {
@@ -208,7 +208,7 @@ it("actual gate source failure on external work never becomes its legacy fail-op
  f.must("push", "-u", "origin", "agent/review/t"); f.must("switch", task.branch);
  // A missing review-lock source used to enter the gate's internal-error PASS.
  f.must("remote", "set-url", "origin", path.join(f.dir, "missing.git"));
- const gate = spawnSync(process.execPath, [path.join(root, "scripts/review-gate.mjs")], { cwd: f.work, encoding: "utf8", env: { ...process.env, GITHUB_HEAD_REF: task.branch } });
+ const gate = spawnSync(process.execPath, [path.join(root, "scripts/review-gate.mjs")], { cwd: f.work, encoding: "utf8", env: { ...process.env, GITHUB_HEAD_REF: task.branch, GITHUB_EVENT_PATH: "", GITHUB_EVENT_NAME: "" } });
  expect(gate.status).toBe(1); expect(gate.stderr).toContain("failing closed");
 }));
 
