@@ -51,3 +51,21 @@ Status: registration proposed; no runtime implementation or acceptance claimed.
 The old `/requests` shell title is not fixed here. Its file is also pricing-owned;
 this child does not obtain that handoff, add a pricing dependency or claim the
 whole PR #674 terminology sweep complete.
+
+## Qualification found after proposal publication
+
+Local uncommitted two-file preparation proves the new navigation strings, but
+existing tests fail at exactly three old navigation-link selectors:
+`appShell.test.tsx` (seeker links and active-route link) and
+`myRequests.goal.test.tsx` (current-destination link). Other 31 shell/requests/
+step-up controls pass. Those are not runtime regressions, but their expected
+literal changes are outside this child's scope. They cannot be silently edited,
+deleted or weakened.
+
+These tests have other unfinished owners: D-173-referral-words-goal-ui owns both,
+D-222-referral-count-shell owns appShell.test.tsx, and the original D-180 sweep
+also owns both. This registration DOES NOT transfer those tests or invent their
+holders' ACK. Before runtime integration, obtain the required bounded handoff
+and independently reviewed exact three-selector scope amendment, preserving all
+other tests and assertions. Until that exists the runtime carrier is blocked;
+this draft is not a claim of a fully landable or green implementation.
