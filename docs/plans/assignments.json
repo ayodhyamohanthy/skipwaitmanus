@@ -5728,6 +5728,19 @@
         "design/goal-ui/captures/r7-release/**"
       ],
       "note": "Bounded preparatory subtask of the already-specified R7 wave (phase-3-split142-149/185), under existing implementation/decomposition and Nov9 parallel-work instructions. Three actual surface output rows are done. Current R4 flag owner remains intact: no goalSurfaces or release flag edit here, no R4 acceptance/status fiction. Port only verified current Emails kit/sender drift into its goal twin; all policy legal words unchanged; current preview QA/captures and behavior/text equality acceptance proof. This output feeds the later R7 release row/handoff, not permission to activate it. Claim real distinct work only, preserve D057f679 and all review/CI/money/privacy constraints."
+    },
+    {
+      "id": "D-180-referral-copy-prep",
+      "title": "Prepare referral-only shared and email-gallery wording without changing money behavior",
+      "row": "D-180",
+      "packet": "docs/plans/D-180-referral-copy-prep.md",
+      "tier": 1,
+      "lane": "referral-copy-prep",
+      "branch": "agent/queue/d180-referral-copy-prep",
+      "status": "todo",
+      "syncedTo": "D-309",
+      "dependsOn": [],
+      "note": "Bounded isolated preparation split from existing D-180-referral-words under original Oct23/24 terminology and Nov9 parallel-development direction. Exact manual allowlist: shared/moneyCopy.ts (presentation strings only), its shared/moneyCopy.test.ts/shared/moneyCopy.item7.test.ts/server/moneyCopy.test.ts direct wording pins only, kit client/src/pages/Emails.tsx template labels/wording only, NEW scripts/referralCopyPrep.test.ts, design/goal-ui/captures/referral-copy-prep/** and own packet Status. No owns declaration because existing pricing/sweep rows retain shared-path ownership history: scope-check skipped is NOT pass. Preserve all existing branch hunks and report unpublished state, independent exact-delta review/manual allowlist and combined current-main money tests before integration. No actual money/catalog/charge/card/eligibility/expiration/flags/legal/sender changes. Existing eb38 owns GoalEmails local-label amendment; never duplicate that writer. Preserve D180 sweep dependencies for its remaining behavior-sensitive integration; this prep need not wait unrelated outputs merely to develop presentation hunks."
     }
   ]
 }
