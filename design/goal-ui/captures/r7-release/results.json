@@ -1,0 +1,128 @@
+[
+ {
+  "shot": "policy-privacy",
+  "url": "/privacy",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-privacy",
+  "url": "/privacy",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-terms",
+  "url": "/terms",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-terms",
+  "url": "/terms",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-code",
+  "url": "/emails",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-code",
+  "url": "/emails",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-review-ready",
+  "url": "/emails",
+  "click": "Review ready",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-review-ready",
+  "url": "/emails",
+  "click": "Review ready",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "offline",
+  "url": "/offline",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "offline",
+  "url": "/offline",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-states",
+  "url": "/app-states",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-states",
+  "url": "/app-states",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-ready",
+  "url": "/fast/fx-link-0001",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-ready",
+  "url": "/fast/fx-link-0001",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "vanity-ready",
+  "url": "/refer/northwind/fx-alias",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "vanity-ready",
+  "url": "/refer/northwind/fx-alias",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "share-ready",
+  "url": "/share-card/fxsharetoken000000000001",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "share-ready",
+  "url": "/share-card/fxsharetoken000000000001",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ }
+]

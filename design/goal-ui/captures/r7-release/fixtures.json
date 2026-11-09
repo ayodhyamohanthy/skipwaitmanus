@@ -1,0 +1,17 @@
+{
+  "note": "Synthetic fixtures only (example domains, no real people, companies, tokens or payments). D-048-R7-prep captures for the policy + system + links trio, built with VITE_GOAL_SURFACES=policy,system,links.",
+  "shots": [
+    { "name": "policy-privacy", "url": "/privacy", "waitFor": "h1" },
+    { "name": "policy-terms", "url": "/terms", "waitFor": "h1" },
+    { "name": "emails-code", "url": "/emails", "waitFor": "h1" },
+    { "name": "emails-review-ready", "url": "/emails", "waitFor": "h1", "click": "Review ready" },
+    { "name": "offline", "url": "/offline", "waitFor": "h1" },
+    { "name": "app-states", "url": "/app-states", "waitFor": "h1" },
+    { "name": "fast-ready", "url": "/fast/fx-link-0001", "waitFor": "h1",
+      "routes": [{ "path": "/api/referrer-fast-track/fx-link-0001", "status": 200, "body": { "link": { "companyDomain": "northwind.example", "isActive": true } } }] },
+    { "name": "vanity-ready", "url": "/refer/northwind/fx-alias", "waitFor": "h1",
+      "routes": [{ "path": "/api/referrer-fast-track/vanity/northwind/fx-alias", "status": 200, "body": { "link": { "companyDomain": "northwind.example", "isActive": true } } }] },
+    { "name": "share-ready", "url": "/share-card/fxsharetoken000000000001", "waitFor": "h1",
+      "routes": [{ "path": "/api/referral-share-cards/public/fxsharetoken000000000001", "status": 200, "body": { "card": { "companyDomain": "northwind.example", "status": "accepted", "inviteCode": "r1-fx000001" } } }] }
+  ]
+}
