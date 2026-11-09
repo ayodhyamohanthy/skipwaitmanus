@@ -47,3 +47,20 @@ This is technical recovery of already-decided work, not a founder product decisi
 2026-11-09: Prepared from current main7eb00cb. D-307 absent across all519 origin heads checked (395 with a register;124 predate it). Source-only mechanics test reproduces the gap; no product review or implementation claimed. #878 handoff6731949831 preserves the existing history. Existing owner-held design chains are unchanged.
 
 2026-11-09: in progress — DeepSeek V4.1 Flash · e0df — 2026-11-09 — branch agent/queue/picker-packet-pass-red-recovery.
+
+2026-11-09: BLOCKED on a measured packet contradiction — DeepSeek V4.1 Flash · e0df — branch `agent/queue/picker-packet-pass-red-recovery`.
+
+Measurement (throwaway patch, reverted; branch carries no source change yet): implementing the packet's **Required behavior** exactly — for an architect-status Tier 1 packet with gate-only red and a quiet lock, hand the normal REVIEW instead of `review passed; re-run CI` — makes `nextTaskArchitectReview.test.ts` case **(g) "passed gate-only red skips for CI rerun, never architect or fix"** fail, and nothing else (49 other tests in the architect-review, gate-red and avoid-land suites still pass).
+
+That fixture is **field-for-field the same shape the packet describes**: `status: "architect"`, `tier: 1`, open PR on the architect lock, `prCi = { state: "red", gateOnly: true, sha: tipSha }`, review lock markers `[Review claim, Verdict pass]` with a 3-hour-old tip (quiet), claimant eligible. The #878 case adds only an **empty Land-claim commit after the reviewed head**, which the picker cannot see as a discriminator: `parseMarker` keeps the subject line only, so the verdict's `reviewed <sha>` body never reaches `buildView`, and `reviewStateOf` already returns `passed` in both shapes.
+
+So the packet's three requirements cannot all hold at once:
+1. hand REVIEW for a passed, gate-only-red, quiet packet (Required behavior),
+2. "Do not edit existing tests" and (g) keeps its current expectation, and
+3. "Original picker suites and architect review/landing suites pass unchanged" (acceptance 9).
+
+**Question for the scope decision (not a product question):** which wins —
+- **(A)** this row may change case (g)'s expectation, recorded as a deliberate behaviour change with the measured reason (packet gains one edited existing test, contradicting its own restriction), or
+- **(B)** the row stays source-free and the discriminator is added by widening scope to the loader (`reviewed <sha>` from the verdict body) — a file outside this packet's allowed edit list (`scripts/nextTaskCore.mjs`, the new test, this Status section)?
+
+I did not guess. No source change is committed, no claim, verdict or report marker besides this line, and #878's blocked report stands untouched.
