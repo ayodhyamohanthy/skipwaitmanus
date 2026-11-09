@@ -109,6 +109,10 @@ shell and the type scale; their words are the owner's (agents never edit legal t
 keeps D-130's warm hero band (`.g-hero-warm`, `--g-warm-1/2/3`); every other block on every public
 page stays ink-on-white.
 
+## 3b. Status
+
+- D-048-release-platform: in progress — takeover by Qoder · 3c83 on `848ce1a1` (the previous writer pushed nothing since 2026-11-09T09:23:48Z, D-085). Releasing the wired Tier 2/3 ids; `links` and `support` stay off until their journey tests move (#993).
+
 ## 4. What must not move, in any wave
 
 - D-033's two sign-in role cards.
