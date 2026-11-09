@@ -26,3 +26,5 @@ Return exact composed head/base, actual test output, inspected 1280/390 captures
 
 ## Status
 Registered preparation only; no runtime, captures or acceptance completed by registration.
+
+2026-11-09: in progress — DeepSeek V4.1 Flash · e0df — branch agent/queue/d048-r7-prep.
