@@ -5331,7 +5331,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-fix-referrer-home-ux",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-285",
       "dependsOn": [],
       "owns": [
@@ -5349,7 +5349,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-fix-referrer-home-private-copy",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-295",
       "dependsOn": [
         "D-048-p3-referrer-home",
@@ -5370,7 +5370,7 @@
       "tier": 1,
       "lane": "d048-release",
       "branch": "agent/queue/d048-r4",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-295",
       "dependsOn": [
         "D-048-p3-referrer",
@@ -5384,6 +5384,24 @@
         "client/src/lib/goalSurfaces.test.ts"
       ],
       "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names the four surfaces whose output it releases plus the B1 corrective output D-048-fix-referrer-home-private-copy (D-223 (1)/(3)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines, kit commit 7ee6da33): the D-147 credit clause the kit dropped is already absent in the goal version, while the D-176 change from availability framing to private delivery has a semantic goal twin (GoalReferrerHome.tsx empty state, finding B1) that REQUIRES PORT, done under D-048-fix-referrer-home-private-copy; referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only. Owns amendment (2026-11-07): adds client/src/lib/goalSurfaces.test.ts, because the RELEASED assertion in goalSurfaces.test.ts (releasedGoalSurfaces() equals exactly [\"home\"]) must change with the flip; the registered owns missed it. Dependency correction (coordinator ruling on PR #1021, 2026-11-07, D-223 (1)/(3)): D-048-fix-referrer-home-private-copy is added to dependsOn because its output (the D-176 private-delivery copy on /referrer-home, finding B1) is a piece this release needs. The distinct CEO held effdfdde on it. This is an output edge, not an ordering-only edge; id, branch, owns and claim are unchanged.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-release-platform",
+      "title": "Release the complete Tier 2/3 goal surfaces in one line each (goal design across the platform)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-rollout.md",
+      "tier": 2,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-release-platform",
+      "status": "todo",
+      "syncedTo": "D-307",
+      "dependsOn": [],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/lib/goalSurfaces.test.ts"
+      ],
+      "note": "Owner instruction (Nov 9): make sure goal-based design is applied across the platform. This row releases the wired Tier 2/3 surfaces whose goal pages and switch tests already pass: admin, admin-ops, alerts, developers, discovery, employer, for-companies, landed, links, messages, onboarding, policy, settings, share, start, suggest-company, support, system. Tier 1 surfaces (sign-in, plans, admin-money, admin-people, admin-approvals, verify, email-review, employer-billing) stay behind the flag pending independent review. The 12 unwired surfaces (inbox, queue, ask, company, conversation, premium, pricing, profile, public-profile, employer-talent, skippy, home-signed-in) need their own build rows. One-line release edit to the RELEASED block plus the goalSurfaces.test.ts assertion; no other code.",
       "epic": "D-048-p3"
     },
     {
