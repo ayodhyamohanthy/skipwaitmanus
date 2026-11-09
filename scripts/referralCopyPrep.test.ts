@@ -132,9 +132,9 @@ describe("D-180 kit email gallery", () => {
 
   function articleText(): string {
     const text = screen.getByRole("article").textContent ?? "";
-    // The shared money footer is covered by the money-copy suite above; its
-    // "extra asks use credits" tail is pricing-dependent and reported, not
-    // promised here, so it is not part of the gallery's stage text.
+    // The shared money footer is independently covered by the money-copy
+    // suite above, including its allowance and balance-use tail. Remove it
+    // only to isolate the gallery stage text in this separate control.
     return text.replace(MONEY_SENTENCE, "");
   }
 
