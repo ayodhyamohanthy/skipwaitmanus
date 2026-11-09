@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isStatusOnlyChange, loadTrustedProvenance, markerReferences, routeIdentity, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance } from "./modelProvenance.mjs";
 /**
  * PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
  * independent pass verdict on its exact head (D-074, D-151).
@@ -54,45 +55,7 @@ export function reviewedOf(body) {
 
 const fail = why => `${REVIEW_GATE_FAIL} ${why}`;
 
-/** 1-based line numbers of a markdown file's `## Status` section (heading excluded), up to the next `#`/`##` heading. */
-function statusSectionLines(text) {
-  const lines = String(text ?? "").split("\n");
-  const inside = new Set();
-  let open = false;
-  lines.forEach((line, i) => {
-    if (/^#{1,2}\s/.test(line)) { open = /^##\s+Status\s*$/.test(line); return; }
-    if (open) inside.add(i + 1);
-  });
-  return inside;
-}
-
-const STATUS_FIELD = /^\s*"status":\s*"[^"]*",?\s*$/;
-
-/**
- * The status commit the landing steps make after the review (nextTaskText.mjs: "set this task's
- * status to done in docs/plans/assignments.json … set its Status line to done — <sha>"): it changes
- * nothing but `"status"` lines of docs/plans/assignments.json and lines inside the `## Status`
- * section of docs/plans/*.md packets. `files` is every file the commit changed, each with its text
- * before and after and the 1-based line numbers removed (in `before`) and added (in `after`).
- */
-export function isStatusOnlyChange(files) {
-  if (!Array.isArray(files) || !files.length) return false;
-  return files.every(file => {
-    if (!file || typeof file.path !== "string") return false;
-    const removed = Array.isArray(file.removed) ? file.removed : [];
-    const added = Array.isArray(file.added) ? file.added : [];
-    if (!removed.length && !added.length) return false;
-    if (file.path === ASSIGNMENTS) {
-      const before = String(file.before ?? "").split("\n");
-      const after = String(file.after ?? "").split("\n");
-      return removed.every(n => STATUS_FIELD.test(before[n - 1] ?? "")) && added.every(n => STATUS_FIELD.test(after[n - 1] ?? ""));
-    }
-    if (!/^docs\/plans\/[^/]+\.md$/.test(file.path)) return false;
-    const before = statusSectionLines(file.before);
-    const after = statusSectionLines(file.after);
-    return removed.every(n => before.has(n)) && added.every(n => after.has(n));
-  });
-}
+export { isStatusOnlyChange } from "./modelProvenance.mjs";
 
 /**
  * The rule, with no I/O. `workMarkers` are the task branch's markers and `lockMarkers` the review
@@ -107,7 +70,7 @@ export function isStatusOnlyChange(files) {
  */
 export function reviewGateViolation({
   task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince, isStatusCommit,
-  tierOf, tierReasonPaths = () => [], changedPaths = [],
+  tierOf, tierReasonPaths = () => [], changedPaths = [], provenance = null,
 }) {
   if (!task) return null;
   // The row's declared tier, and the tier its changed paths compute (GATE-tier-floor, D-212).
@@ -132,6 +95,21 @@ export function reviewGateViolation({
     if (own === null) return `${raised} The reviewed commit ${reviewed.slice(0, 8)} is not in this head's history.`;
     const unreviewed = own.filter(sha => !(typeof isStatusCommit === "function" && isStatusCommit(sha)));
     if (unreviewed.length) return `${raised} ${unreviewed.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main and the landing's status commit keep a pass).`;
+  }
+
+  const resolved = resolveTaskProvenance({ taskId: task.id, head,
+    workMarkers, lockMarkers, isStatusCommit, ...(provenance ?? {}) });
+  if (resolved.active) {
+    if (!resolved.ok) return `${raised} External provenance held: ${resolved.reason}.`;
+    if (!markerReferences(verdict.body).external) return `${raised} External pass requires its qualified execution marker.`;
+    const model = resolved.reviewers.get(verdict.who);
+    if (!model || [...resolved.builders, ...resolved.fixers].includes(model)) return `${raised} External review is missing or shares a builder/fixer model.`;
+    if (last.verb === "Land claim") {
+      const refs = markerReferences(last.body);
+      const lander = !refs.invalid && refs.route ? routeIdentity(provenance?.registry, refs.route, last.who, task.id, "land") : null;
+      if (!lander?.ok || [...resolved.builders, ...resolved.fixers].includes(lander.model)) return `${raised} External lander has no independent qualified route.`;
+    }
+    return null;
   }
 
   // D-151: the same sets the picker's did() reads — builders on the task branch, fixers on the lock.
@@ -217,13 +195,10 @@ export function changedPathsOf(head) {
 
 /** Empty marker commits on `range`, oldest first, with each verdict's reviewed head. Commits that change files are work. */
 function markersIn(range) {
-  const raw = git(["log", "--reverse", "--no-merges", "--format=%x1e%s%x1f%b%x1d", "--name-only", range]);
-  return raw.split("\x1e").filter(Boolean).flatMap(record => {
-    const [subject, rest = ""] = record.split("\x1f");
-    const [body = "", files = ""] = rest.split("\x1d");
-    const marker = files.trim() ? null : parseMarker(subject.trim());
-    if (!marker) return [];
-    return [marker.verb === "Verdict" ? { ...marker, reviewed: reviewedOf(body) } : marker];
+  const raw = git(["log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", range]);
+  return parseProvenanceLog(raw).flatMap(({ sha, subject, body, files }) => {
+    const marker = files.length ? null : parseMarker(subject);
+    return marker ? [{ ...marker, sha, body, ...(marker.verb === "Verdict" ? { reviewed: reviewedOf(body) } : {}) }] : [];
   });
 }
 
@@ -266,17 +241,28 @@ function fetchBranch(name) {
  * checks the current head, so a lander can see the answer before pushing to main.
  */
 export function runReviewGate({ local = false } = {}) {
+  let externalContext = false;
   try {
     const eventName = process.env.GITHUB_EVENT_NAME;
     if (!local && eventName !== "pull_request") return 0;
 
     // Before the first origin/main read and before the review-lock fetch (D-292). A fetch error throws
     // into the catch below: the only fail-open, loudly.
+    try {
+      externalContext = /(?:^|\n)(?:provenance|execution)(?: |$)/m.test(git(["log", "-n", "1000", "--format=%b", "HEAD"]))
+        || (() => {
+          const registry = JSON.parse(git(["show", "origin/main:docs/model-provenance.json"]));
+          const tasks = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]))?.tasks;
+          const branch = process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]);
+          const task = findGateRow(tasks, branch);
+          return Boolean(task && registry.routes?.some(r => r.taskId === task.id));
+        })();
+    } catch { /* The work-history probe still detects an external branch when main is absent. */ }
     ensureOriginMainHistory();
     const tasks = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]))?.tasks;
     if (!Array.isArray(tasks)) {
-      console.warn("review-gate: origin/main task list has an unknown structure — not failing the branch.");
-      return 0;
+      console.warn("review-gate: origin/main task list has an unknown structure.");
+      return externalContext ? 1 : 0;
     }
     const branch = process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]);
     const task = findGateRow(tasks, branch);
@@ -292,16 +278,20 @@ export function runReviewGate({ local = false } = {}) {
     if (Number(task.tier) !== 1 && computed.tier === 1) {
       console.log(`review-gate: ${task.id} declares Tier ${task.tier} but its paths compute Tier 1 (${tierReasonPaths(changedPaths).join(", ")}).`);
     }
+    const workMarkers = markersIn(`origin/main..${head}`);
+    const trusted = loadTrustedProvenance((...args) => { try { return git(args); } catch { return null; } });
+    externalContext = workMarkers.some(m => markerReferences(m.body).external)
+      || Boolean(trusted.registry?.routes?.some(r => r.taskId === task.id))
+      || (trusted.registryError && trusted.registryError !== "no trusted-main provenance registry");
     const lock = reviewLockOf(task);
     const lockMarkers = fetchBranch(lock) ? markersIn(`origin/main..refs/remotes/origin/${lock}`) : [];
-    const workMarkers = markersIn(`origin/main..${head}`);
     const nonMergeCommitsSince = sha => {
       try { git(["merge-base", "--is-ancestor", sha, head]); } catch { return null; }
       return git(["rev-list", "--no-merges", `${sha}..${head}`, "--not", "origin/main"]).split("\n").filter(Boolean);
     };
     const violation = reviewGateViolation({
       task, head, workMarkers, lockMarkers, nonMergeCommitsSince, isStatusCommit: statusCommit,
-      tierOf, tierReasonPaths, changedPaths,
+      tierOf, tierReasonPaths, changedPaths, provenance: { ...trusted, git: (...args) => { try { return git(args); } catch { return null; } } },
     });
 
     if (violation) {
@@ -311,6 +301,7 @@ export function runReviewGate({ local = false } = {}) {
     console.log(`review-gate: ${task.id} at ${head.slice(0, 8)} has an independent passing review.`);
     return 0;
   } catch (error) {
+    if (externalContext) { console.error("review-gate: external provenance source unavailable; failing closed"); return 1; }
     console.error(`review-gate: could not run (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`);
     return 0;
   }
