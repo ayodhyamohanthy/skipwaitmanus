@@ -92,6 +92,21 @@ describe("goal inbox", () => {
     expect(screen.getByLabelText(/2 unread/)).toBeTruthy();
   });
 
+  it("never claims nothing needs you when a referrer source failed beside a nonactionable loaded thread", async () => {
+    accessState.status = "verified";
+    let fail = true;
+    stubFetch(url => url.includes("/mine") ? { requests: [askingRow(5)] } : fail ? { __status: 503, error: "Referrer list unavailable" } : { requests: [] });
+    render(<Page />);
+    await screen.findByText("Some conversations could not load.");
+    expect(screen.queryByText("Nothing needs you right now.")).toBeNull();
+    expect(within(nextStepBlock()).getByText("Some conversations are still unavailable.")).toBeTruthy();
+    const retry = within(nextStepBlock()).getByRole("button", { name: "Try again" });
+    fail = false;
+    fireEvent.click(retry);
+    await waitFor(() => expect(screen.queryByText("Some conversations could not load.")).toBeNull());
+    expect(screen.getByText("Nothing needs you right now.")).toBeTruthy();
+  });
+
   it("shows the loading skeleton while the lists are still in flight, never an empty inbox", async () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     render(<Page />);

@@ -40,16 +40,17 @@ function errorMessage(error: unknown) {
 
 type NextStep =
   | { kind: "link"; reason: string; detail: string; label: string; href: string }
-  | { kind: "reset"; reason: string; detail: string; label: string };
+  | { kind: "reset" | "retry"; reason: string; detail: string; label: string };
 
 /** The single next step for what the reader can actually do right now. */
-function planNextStep(threads: readonly InboxThread[], visible: readonly InboxThread[], loading: boolean): NextStep {
+function planNextStep(threads: readonly InboxThread[], visible: readonly InboxThread[], loading: boolean, failed: boolean): NextStep {
   const reply = visible.find(thread => thread.unread > 0);
   if (reply) return { kind: "link", reason: reply.who, detail: `${reply.unread} unread message${reply.unread === 1 ? "" : "s"}.`, label: "Reply", href: reply.href };
   const review = visible.find(thread => thread.side === "referring" && thread.pill === "Requested");
   if (review) return { kind: "link", reason: review.who, detail: `A new referral request at ${review.companyName} is waiting for your decision.`, label: "Review the request", href: review.href };
   // No "nothing needs you" or "no match" claim until every source has settled (review finding 2).
   if (loading) return { kind: "link", reason: "Still checking for replies and new referral requests.", detail: "Conversations that already loaded stay below; this line updates once everything has loaded.", label: "Find a referrer", href: "/explore" };
+  if (failed) return { kind: "retry", reason: "Some conversations are still unavailable.", detail: "Loaded conversations stay below. Try again to check whether the missing conversations need you.", label: "Try again" };
   if (visible.length === 0 && threads.length > 0) {
     return { kind: "reset", reason: "No matching conversations.", detail: "Try another search, or switch between My requests and Referring.", label: "Show all conversations" };
   }
@@ -69,12 +70,12 @@ function PageHeading() {
 }
 
 /** The one bordered block: its heading, the reason in words, then the page's only black commit. */
-function NextStepBlock({ plan, onReset }: { plan: NextStep; onReset(): void }) {
+function NextStepBlock({ plan, onReset, onRetry }: { plan: NextStep; onReset(): void; onRetry(): void }) {
   return (
     <div className="mx-4 my-5 gdesk:mx-5">
       <GoalNextStep reason={plan.reason}>
         <p className="mt-2 text-g-meta text-g-ink-2">{plan.detail}</p>
-        <GoalButton variant="primary" asChild={plan.kind === "link"} className="mt-4" onClick={plan.kind === "reset" ? onReset : undefined}>
+        <GoalButton variant="primary" asChild={plan.kind === "link"} className="mt-4" onClick={plan.kind === "reset" ? onReset : plan.kind === "retry" ? onRetry : undefined}>
           {plan.kind === "link" ? <Link href={plan.href}>{plan.label}</Link> : plan.label}
         </GoalButton>
       </GoalNextStep>
@@ -135,7 +136,7 @@ export default function GoalInbox() {
   const partial = failed.length > 0 && threads.length > 0;
   // Sections come from the filtered list, so a search narrows what is rendered (review finding 1).
   const { waitingOnYou, waitingOnThem } = splitByOwner(visible);
-  const plan = planNextStep(threads, visible, loading);
+  const plan = planNextStep(threads, visible, loading, failed.length > 0);
 
   return (
     <main data-skipwait-screen="inbox" className="g-scope pb-10">
@@ -175,7 +176,7 @@ export default function GoalInbox() {
 
       {!showSkeleton && !(failed.length > 0 && !partial) ? (
         <>
-          <NextStepBlock plan={plan} onReset={() => { setQuery(""); setSide("all"); }} />
+          <NextStepBlock plan={plan} onRetry={retry} onReset={() => { setQuery(""); setSide("all"); }} />
           {threads.length > 0 ? (
             <div className="mx-4 mb-3 flex flex-wrap items-center gap-2 gdesk:mx-5">
               <GoalFilterChip label="All" pressed={side === "all"} onPressedChange={pressed => { if (pressed) setSide("all"); }} count={threads.length} />
