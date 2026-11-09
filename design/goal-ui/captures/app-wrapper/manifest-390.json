@@ -1,0 +1,458 @@
+{
+  "task": "D-048-F-app-wrapper",
+  "source": "c56febbbc34218522c46813cc2be2fe6594b2afe",
+  "command": "node design/goal-ui/captures/app-wrapper/capture.mjs 390",
+  "server": "VITE_GOAL_SURFACES=start, NODE_ENV=development, no database, API mocked",
+  "synthetic": true,
+  "results": [
+    {
+      "file": "home-page-390.png",
+      "route": "/",
+      "state": "page",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": null,
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": null
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "home-offline-390.png",
+      "route": "/",
+      "state": "offline",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "notice",
+          "box": {
+            "x": 0,
+            "y": 740,
+            "w": 390,
+            "h": 36
+          },
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "overlaps": [
+          "[role=\"dialog\"][aria-label=\"Cookie choices\"]"
+        ],
+        "statusCount": 1,
+        "toasters": 1,
+        "h1": 1,
+        "screen": null
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "home-slow-390.png",
+      "route": "/",
+      "state": "slow",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "notice",
+          "box": {
+            "x": 0,
+            "y": 720,
+            "w": 390,
+            "h": 56
+          },
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "overlaps": [
+          "[role=\"dialog\"][aria-label=\"Cookie choices\"]"
+        ],
+        "statusCount": 1,
+        "toasters": 1,
+        "h1": 1,
+        "screen": null
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "home-update-390.png",
+      "route": "/",
+      "state": "update",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": {
+        "type": "SKIP_WAITING"
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": null,
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": null
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "home-route-error-390.png",
+      "route": "/",
+      "state": "route-error",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "error",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": 390,
+            "h": 844
+          },
+          "color": "rgb(10, 10, 10)",
+          "background": "rgb(255, 255, 255)"
+        },
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "route-error"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "%o\n\n%s\n\n%s\n Error: synthetic route failure\n    at window.matchMedia (<anonymous>:9:92)\n    at reducedMotion (http://localhost:3017/src/pages/GoalLanding.tsx:26:60)\n    at http://localhost:3017/src/pag"
+      ]
+    },
+    {
+      "file": "home-app-error-390.png",
+      "route": "/",
+      "state": "app-error",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "error",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": 390,
+            "h": 844
+          },
+          "color": "rgb(10, 10, 10)",
+          "background": "rgb(255, 255, 255)"
+        },
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 0,
+        "h1": 1,
+        "screen": "app-error"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "%o\n\n%s\n\n%s\n Error: synthetic app-wide failure\n    at Navigator.get [as connection] (<anonymous>:5:136)\n    at connection (http://localhost:3017/src/components/PwaStatus.tsx?t=1793416718028:24:80)\n    "
+      ]
+    },
+    {
+      "file": "home-toast-390.png",
+      "route": "/",
+      "state": "toast",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "toast",
+          "box": {
+            "x": 16,
+            "y": 72,
+            "w": 358,
+            "h": 54
+          },
+          "color": "rgb(10, 10, 10)",
+          "background": "rgb(255, 255, 255)"
+        },
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": null
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "start-page-390.png",
+      "route": "/start",
+      "state": "page",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": null,
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "onboarding"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "start-offline-390.png",
+      "route": "/start",
+      "state": "offline",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "notice",
+          "box": {
+            "x": 0,
+            "y": 740,
+            "w": 390,
+            "h": 36
+          },
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "overlaps": [],
+        "statusCount": 1,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "onboarding"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "start-slow-390.png",
+      "route": "/start",
+      "state": "slow",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "notice",
+          "box": {
+            "x": 0,
+            "y": 720,
+            "w": 390,
+            "h": 56
+          },
+          "color": "oklch(0.191 0 0)",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        "overlaps": [],
+        "statusCount": 1,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "onboarding"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "start-update-390.png",
+      "route": "/start",
+      "state": "update",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": {
+        "type": "SKIP_WAITING"
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": null,
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "onboarding"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "start-route-error-390.png",
+      "route": "/start",
+      "state": "route-error",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "error",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": 390,
+            "h": 844
+          },
+          "color": "rgb(10, 10, 10)",
+          "background": "rgb(255, 255, 255)"
+        },
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "route-error"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: net::ERR_FAILED",
+        "%o\n\n%s\n\n%s\n TypeError: Failed to fetch dynamically imported module: http://localhost:3017/src/pages/Onboarding.tsx The above error occurred in one of your React components. React will try to recreate "
+      ]
+    },
+    {
+      "file": "start-app-error-390.png",
+      "route": "/start",
+      "state": "app-error",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "error",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": 390,
+            "h": 844
+          },
+          "color": "rgb(10, 10, 10)",
+          "background": "rgb(255, 255, 255)"
+        },
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 0,
+        "h1": 1,
+        "screen": "app-error"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "%o\n\n%s\n\n%s\n Error: synthetic app-wide failure\n    at Navigator.get [as connection] (<anonymous>:5:136)\n    at connection (http://localhost:3017/src/components/PwaStatus.tsx?t=1793416718028:24:80)\n    "
+      ]
+    },
+    {
+      "file": "start-toast-390.png",
+      "route": "/start",
+      "state": "toast",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "posted": null,
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "wrapper": {
+          "kind": "toast",
+          "box": {
+            "x": 16,
+            "y": 72,
+            "w": 358,
+            "h": 54
+          },
+          "color": "rgb(10, 10, 10)",
+          "background": "rgb(255, 255, 255)"
+        },
+        "overlaps": [],
+        "statusCount": 0,
+        "toasters": 1,
+        "h1": 1,
+        "screen": "onboarding"
+      },
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    }
+  ]
+}

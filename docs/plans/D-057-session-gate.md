@@ -137,7 +137,7 @@ The build edits exactly these paths: the no-conflict paths, then the four confli
 - `client/src/hooks/useReferrerAccess.ts`, `client/src/lib/threadApi.ts`, `client/src/components/referrer-home/referrerData.ts`, the new `client/src/lib/referrerStepUpApi.ts` and the new `client/src/components/goal/GoalWorkEmailStepUp.tsx`;
 - the eight surface files in §0b.6;
 - the new migration `drizzle/deploy/<next>_referrer_step_ups.sql`;
-- tests beside each file;
+- tests beside each file (with the alerts surface test narrowed to `client/src/pages/alerts.stepUp.test.tsx` per D-265, keeping `alerts.test.tsx` with `DECISION-COPY-oct26`);
 - docs: this packet, the AGENTS.md living-map rows for auth and the referrer gate, and the plan §3b row and §5.
 - the e2e session fixture paths `e2e/fixtures.ts` and `scripts/seed-test-accounts.ts`, limited as §0b.8a says (added Oct 31; nothing else under `e2e/` or `scripts/`).
 
@@ -269,3 +269,9 @@ App at head `dfc555b9` (the `571543dd` contract fix changes no screen). Google-f
 - `10`–`12` P's seeker pages (`/requests`, `/ask`, `/explore`) in the code-required session: no step-up, `/api/company-referrals/mine` 200 · `13` seeker Asha `/requests`.
 - `14`–`16` signed-out work-email sign-in (`ravi.kumar@wipro.com`): code login lands on `/queue` open for his own account, `codeRequired: false`.
 - No page errors and no 5xx in any context. Step-up screens and the queue are goal-native (goal primitives); `/verify` and `/sign-in` are kit (item 10); the shell link is item 1.
+
+## Status
+- Nov 1: D-265 (Antigravity · 88b9): owns narrowed from `client/src/pages/alerts*.test.tsx` to `client/src/pages/alerts.stepUp.test.tsx` (the test file introduced by this row), keeping `alerts.test.tsx` with `DECISION-COPY-oct26`.
+- Nov 1: **parked at `owner` by D-268** (DeepSeek V4.1 Flash Free · abdf). The Tier 1 pass is real and names head `e4fe0ae5` exactly (marker `fddd21e2`), and three of four required jobs are green there. The row still cannot land: the branch is 263 commits behind `main` and a normal merge of current `main` conflicts in this packet, so every landable head is a new commit needing a fresh independent review - and every such head ships `drizzle/deploy/0116_referrer_step_ups.sql`, which a push to `main` applies as a production migration (`migrate-db`). §0b/§1 line 49 and line 180 already require that migration applied and verified first, §8a item 7 records it exists only on the local e2e MySQL, and no recorded decision authorizes it. Waiting on the owner's one-line migration go; nothing is built, pushed or re-reviewed here, and no marker, pass or hold is changed.
+
+- Nov 9: D-308 source qualification supersedes only D-268's unsupported owner-pause attribution and blanket preparation hold. Row returns to todo in place, synced to D-308; no new row or competing writer. Original Oct 31 owner messages asked for coordination/collaboration, not a production or migration pause. Ordinary existing-holder current-main preparation and fresh exact-head review may continue without asking for a pause lift. The previous Status remains historical, not a current prohibition on preparation. Actual database target/schema/ledger/pending migrations and safe execution must be checked before any production mutation. Migration 0116 must still be applied and verified before schema-dependent code reaches main; no merge to trigger the all-pending applier as a shortcut. Shared-file constraints, D-265 ownership, full browser path, independent review, required CI and all unrelated holds remain. No production write, spending, settings change, marker or release clearance is supplied by this correction. Current evidence and receipt route: PR #867 comment 6735943568.

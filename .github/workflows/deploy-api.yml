@@ -60,11 +60,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/require-green-release.mjs --target api
 
+  # Source retirement: read-only, after unchanged exact-head CI gate.
+  source-retirement:
+    needs: release-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.retirement.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: retirement
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node scripts/classify-source-retirement.mjs >> "$GITHUB_OUTPUT"
+
   # Migration-first gate: pending drizzle/deploy/*.sql must apply to production
   # MySQL before any API image ships, so code can never run ahead of its tables.
   # A failure here fails the run and the deploy job never starts.
   migrate-db:
-    needs: release-gate
+    needs: [release-gate, source-retirement]
+    if: needs.source-retirement.outputs.mode == 'normal'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
