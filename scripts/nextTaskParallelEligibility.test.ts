@@ -67,7 +67,7 @@ describe("D-309 parallel eligibility: independent work is offered", () => {
     expect(outcome(picked)).toEqual({ kind: "build", id: "B" });
   });
 
-  it.fails("control 2 (D-309 contract; known core gap, no core edit here): bounded overlap is offered with an integration handoff", () => {
+  it("control 2 diagnostic: core currently holds an overlapping file; isolated-preparation target remains unmet", () => {
     const shared = redA(["server/shared.ts"]);
     const b = task("B", { lane: "inbox", owns: ["server/shared.ts"] });
     const picked = pick([shared.task, b], {
@@ -77,8 +77,10 @@ describe("D-309 parallel eligibility: independent work is offered", () => {
     // The measured cause: core.filesBusy skips B because A owns the same file, so the picker waits on A.
     // D-309 permits bounded overlap on an isolated branch with a truthful integration handoff; aligning
     // core is a separate bounded amendment (this row owns the text and this control only).
+    // This is a diagnostic, NOT a passing target contract. The separately executed
+    // single-expectation BUILD target fails; keep that gap explicit in the packet.
     expect(picked).toMatchObject({ kind: "wait", gate: "A" });
-    expect(outcome(picked)).toEqual({ kind: "build", id: "B" });
+    expect(outcome(picked)).toEqual({ kind: "wait", id: null });
   });
 
   it("control 3: FIFO picks the earliest eligible independent task, and --avoid keeps a real hold", () => {
