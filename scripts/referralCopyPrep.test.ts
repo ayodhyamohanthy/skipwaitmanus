@@ -30,6 +30,7 @@ import {
   REFERRING_FREE_LINE,
   askCostLanding,
   askCostLine,
+  creditReservedPhrase,
   creditUsedPhrase,
 } from "../shared/moneyCopy";
 import { FREE_PLAN } from "../shared/planCatalog";
@@ -59,6 +60,8 @@ function forbiddenNoun(text: string): RegExpMatchArray | null {
  */
 const REFERRAL_SAFE_COPY: ReadonlyArray<readonly [string, string]> = [
   ["FREE_ASKS_CHIP", FREE_ASKS_CHIP],
+  ["MONEY_SENTENCE", MONEY_SENTENCE],
+  ["MONEY_SENTENCE_SHORT", MONEY_SENTENCE_SHORT],
   ["CREDIT_RULE", CREDIT_RULE],
   ["askCostLine: waiting for coverage", askCostLine({ open: false, balance: null }).line],
   ["askCostLine: availability unknown", askCostLine({ open: null, balance: null }).line],
@@ -87,6 +90,11 @@ describe("D-180 public money copy", () => {
       return hit ? [`${label}: ${text} -> ${hit[0]}`] : [];
     });
     expect(violations).toEqual([]);
+  });
+
+  it("keeps administrator-only reservation facts unchanged", () => {
+    expect(creditReservedPhrase(false)).toBe("1 credit reserved");
+    expect(creditReservedPhrase(true)).toBe("Credits reserved");
   });
 
   it("keeps the allowance derived from the live catalog, not a new hardcoded amount", () => {

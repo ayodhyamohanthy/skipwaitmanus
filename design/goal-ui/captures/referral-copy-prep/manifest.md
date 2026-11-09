@@ -175,3 +175,11 @@ branch does not duplicate its pin set.
 
 Preparation only. No review, landing, release or goal-surface change is
 claimed, and the out-of-scope pin blocker above is open.
+
+
+## Coordinator integration17:16 IST (supersedes stale blockers above)
+Worker runtime0281201d is preserved through normal main8a78 composition. PR1079's landed direct-pin amendment resolves the earlier41-assertion scope hold. The extra-asks footer tail was not a pricing dependency: it now says "extra referral requests use your balance" with the same current allowance/usage. Full and short footers have independent public-noun pins. PlansV2 hardcoded inactive-pricing labels, actual admin-only reservation names, D132V2 strings, other runtime sweep nouns and legal bodies remain unchanged; this is not all terminology corrected.
+
+New captures `kit-emails-integrated-1280.png` and `kit-emails-integrated-390.png` come from the integrated source's actual production Vite build, local static server3137, Playwright with every API route intercepted to a synthetic/no-person fixture. No sign-in, real mail, payment, provider or production mutation. Inspected actual pixels: readable footer and email body both widths, desktop labels Referral accepted/passed, zero document horizontal overflow. Mobile template rail is intentionally scrollable; third tab truncation is not evidence every template is visible at once. Existing before/after images retained, not relabeled new evidence. These captures prove only local kit gallery layout/current shared footer, not all route or real auth acceptance.
+
+Actual combined terminology/page/cost plus unchanged catalog/ledger/refund/card regressions:22files226PASS; exact Guidelines adversarial free/unlimited/guaranteed-promise negative controls included. Design token audit452files/1273approved/3brandtokensOK. Vite production frontend buildPASS; fullprerender/serverbuild/typecheck/exactCI/final independent review still needed. Separate old chip branch12157a9e is preserved unchanged: its shared chip hunk exactly matches current corrected public string, but its full10-file delta also changes PlansV2 runtime/static index metadata outside this packet, so it is not blindly merged or claimed as new implementation. Remaining old-carrier outputs are reported for their own integration.

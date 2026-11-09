@@ -40,9 +40,9 @@ describe("System galleries", () => {
     expect(screen.getByRole("article", { name: "Work-email code" }).textContent).toContain("skipwait.me <noreply@skipwait.me>");
     expect(screen.getByText(/6 digits, 10-minute expiry, 5 attempts/)).toBeTruthy();
     // Selecting another template swaps the preview; in-app templates are not shown as mail.
-    fireEvent.click(screen.getByRole("button", { name: "Ask passed" }));
-    expect(screen.getByRole("button", { name: "Ask passed" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByText(/The ask stays active for other employees/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Referral passed" }));
+    expect(screen.getByRole("button", { name: "Referral passed" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/The referral request stays active for other employees/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "New message" }));
     expect(screen.getByRole("article", { name: "New message" }).textContent).not.toContain("noreply@skipwait.me");
     expect(screen.queryByRole("link", { name: /See in-app updates/ })).toBeNull();

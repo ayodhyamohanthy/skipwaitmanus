@@ -18,7 +18,7 @@ export const FREE_ASKS_PER_MONTH = FREE_PLAN.creditsPerMonth;
 export const FREE_ASKS_CHIP = `${FREE_ASKS_PER_MONTH} free referrals every month`;
 
 /** The seeker half of the money sentence: what asking costs. */
-export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; extra asks use credits.`;
+export const ASK_COST_SENTENCE = `${FREE_ASKS_CHIP}; extra referral requests use your balance.`;
 
 /** The shortest referrer fact, for chips and footers. */
 export const REFERRERS_NEVER_PAID = "Referrers are never paid.";
