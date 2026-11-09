@@ -15,13 +15,16 @@ Read current BRIEF, BUILD_CONTINUITY, DECISIONS (D-309), this packet and origina
 
 ## Required red-first controls
 1. Claimed RED A with an active real Fix marker, plus later ready independent B with explicit disjoint owns and no dependency: B is offered to another qualified model. No duplicated A claim or fabricated green report.
-2. A owns a file B also owns: B is refused, including different lane labels. A dependent B stays refused. Unknown ownership does not prove safe concurrency.
+2. A owns a file B also owns: distinguish distinct isolated development from a duplicated same-task/shared-checkout write. Under the latest owner instruction, bounded overlap is permitted only with explicit isolated branch/worktree preparation and a truthful integration handoff; never imply it is already merged or conflict-free. A true unfinished output dependency still holds execution that needs that output. Unknown ownership requires an integration assessment, not false proof of absence. Existing core overlap rejection is a known contract-alignment gap, not a passed control or permission to weaken tests.
 3. FIFO chooses earliest eligible independent pending/build work; lower independent work may proceed only after earlier eligible work is accounted for. Avoid preserves the actual conflict/dependency hold.
 4. Same-model review/fix independence, owner-parked/stale/unmet tasks and landing-slot behavior stay unchanged. Red main still selects/waits for the legitimate fix-main, never a lower landing.
 5. No independent task eligible: WAIT truthfully names the actual held/blocked task and says no eligible independent work was found. It must not instruct a blanket stop on every lower independent task or claim all agents can pick.
 6. Printed red/blocked report and CEO guidance match this scope, not a global lower-row ban. Main/release red safety wording is preserved.
 
 First show which controls are already green and which wording/behavior is red on current main. Fix only the reproduced owned defect. Keep all prior tests intact. Run focused new controls, existing nextTask/text tests, register/decision checks, typecheck and applicable required CI on the exact composed head. Separate independent final review before ordinary merge, no admin bypass.
+
+## Latest owner clarification and honest pending scope
+The later direct owner instructions permit isolated parallel builds with bounded file overlap and place integration responsibility on the coordinator. The earlier fail-closed unknown-ownership development expectation is superseded, not silently made green. This text/new-test task may document existing core mismatches, but no core/validator/CLI edit is granted here. Keep any expected-red contract test real and report its exact cause; request one bounded implementation amendment for a reproduced mismatch rather than skip it, weaken it or claim the task complete. Distinct explicitly owned R7 preparation need not wait for this wording task. No fake claims, overwrite or unsafe merge.
 
 ## Completion proof
 Report current head/base, actual commands and output. After landing, fetch all current refs and read the real picker for distinct actual sessions. Show the selected distinct task/claim receipts, or explain the specific remaining missing registration/owner/dependency/capability constraint. Synthetic tests are not actual live pickups. Never claim parallel work from a wording change alone. No real-money or provider QA, production flags, settings or external messages.
