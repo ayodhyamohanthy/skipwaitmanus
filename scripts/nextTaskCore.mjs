@@ -139,6 +139,101 @@ export function parseBranchLog(raw) {
   });
 }
 
+/** D-237: the loader's `git log --format` for `origin/main..<ref>` (with --reverse --no-merges --name-only); parseBranchLog reads it. */
+export const BRANCH_LOG_FORMAT = "%x1e%s%x1f";
+
+/**
+ * PICKER-landed-marker-continuity S2: a branch is marker-only when it has at least one commit beyond main, no merge
+ * commit, and every commit changes no file AND parses as a picker marker. An empty commit with any other subject is
+ * not a marker merely because it is empty; a marker subject on a commit that changes files is work (D-190).
+ * commits: parseBranchLog of the loader's read (merges excluded); merges: the merge commits in the same range.
+ */
+export function markerOnlyOf(commits, merges) {
+  if (!Array.isArray(commits) || !commits.length || merges !== 0) return false;
+  return commits.every(c => c.files.length === 0 && parseMarker(c.subject) !== null);
+}
+
+/**
+ * PICKER-landed-marker-continuity: one closed pull request as landed evidence, checked against local git.
+ * merged: GitHub says it merged into main from this repository, its merge commit is on main, and for a normal
+ * (two-parent) merge the pull request's head is one of its parents; a one-parent merge commit is GitHub's squash or
+ * rebase merge, which only the merged pull request vouches for. unknown: the merge commit is missing from local
+ * history (never converted into done). none: anything else. A commit subject alone is never evidence.
+ * tryGit(...args) returns the output, or null when git fails.
+ */
+export function verifyMergedPull(pull, { repo, tryGit, mainRef = "origin/main" }) {
+  const none = { state: "none" };
+  const mergeSha = pull?.merge_commit_sha;
+  if (!pull?.merged_at || pull.base?.ref !== "main" || pull.head?.repo?.full_name !== repo || !pull.head?.sha || !mergeSha) return none;
+  if (!/^[0-9a-f]{40}$/.test(mergeSha) || tryGit("cat-file", "-e", `${mergeSha}^{commit}`) === null) {
+    return { state: "unknown", reason: `merge commit ${String(mergeSha).slice(0, 8)} of #${pull.number} is not in local history` };
+  }
+  if (tryGit("merge-base", "--is-ancestor", mergeSha, mainRef) === null) return none;
+  const parents = (tryGit("rev-list", "--parents", "-n", "1", mergeSha) ?? "").split(/\s+/).filter(Boolean).slice(1);
+  if (parents.length >= 2 && !parents.slice(1).includes(pull.head.sha)) return none;
+  if (!parents.length) return none;
+  return { state: "merged", number: pull.number, mergeSha };
+}
+
+const PAGE_SIZE = 100;
+
+/**
+ * PICKER-landed-marker-continuity S1: landed evidence for the candidate branches beyond the newest-100 closed window.
+ * Pages of closed pull requests (newest updated first) are read until every candidate has a merged pull request, a
+ * short page proves the list is complete, the page reaches back to a complete cache, a read fails, or maxPages.
+ * Merged pull requests never change, so they are cached; the cache is complete only after a full read, and a
+ * window that reaches back to its completeAt covers everything merged since. Per candidate: { state: "merged",
+ * number, mergeSha } | { state: "unknown", reason } | absent (no merged pull request: none). Unknown is never done,
+ * and evidence already found is kept when a later read fails.
+ */
+export async function collectLandedEvidence({ repo, candidates, firstPage, fetchPage, verify, cache = null, now, maxPages = 12 }) {
+  const usable = cache && cache.repo === repo && cache.completeAt && cache.merged && typeof cache.merged === "object" ? cache : null;
+  const found = new Map();
+  const add = (ref, entry) => {
+    const list = found.get(ref) ?? [];
+    if (!list.some(e => e.number === entry.number)) list.push(entry);
+    found.set(ref, list);
+  };
+  const cached = cache && cache.repo === repo && cache.merged && typeof cache.merged === "object" ? cache.merged : {};
+  for (const [ref, list] of Object.entries(cached)) {
+    for (const e of Array.isArray(list) ? list : []) if (e && Number.isSafeInteger(e.number) && e.headSha && e.mergeSha) add(ref, e);
+  }
+  const take = page => {
+    for (const p of page ?? []) {
+      if (!p?.merged_at || p.base?.ref !== "main" || p.head?.repo?.full_name !== repo || !p.head?.ref || !p.head?.sha || !p.merge_commit_sha) continue;
+      add(p.head.ref, { number: p.number, headSha: p.head.sha, mergeSha: p.merge_commit_sha });
+    }
+  };
+  const since = usable ? Date.parse(usable.completeAt) : NaN;
+  const covers = page => Number.isFinite(since) && (page ?? []).some(p => Date.parse(p.updated_at) <= since);
+  const want = [...new Set(candidates)];
+  const resolved = () => want.every(ref => found.has(ref));
+  let page = firstPage ?? [], read = 1, complete = page.length < PAGE_SIZE || covers(page), failed = null;
+  take(page);
+  while (!complete && !resolved() && read < maxPages) {
+    read++;
+    try { page = await fetchPage(read); } catch (e) { failed = e?.message ?? String(e); break; }
+    take(page);
+    if (!Array.isArray(page) || page.length < PAGE_SIZE || covers(page)) complete = true;
+  }
+  const evidence = new Map();
+  for (const ref of want) {
+    const list = found.get(ref);
+    if (list) {
+      const results = list.map(e => ({ number: e.number, mergeSha: e.mergeSha, ...verify({ number: e.number, merged_at: true, base: { ref: "main" }, head: { ref, sha: e.headSha, repo: { full_name: repo } }, merge_commit_sha: e.mergeSha }) }));
+      const hit = results.find(r => r.state === "merged");
+      if (hit) { evidence.set(ref, hit); continue; }
+      const unsure = results.find(r => r.state === "unknown");
+      if (unsure) { evidence.set(ref, unsure); continue; }
+    }
+    if (!complete) evidence.set(ref, { state: "unknown", reason: failed ? `closed pull requests unreadable: ${failed}` : `not in the newest ${read} pages of closed pull requests` });
+  }
+  const merged = {};
+  for (const [ref, list] of found) merged[ref] = list;
+  const prior = usable?.completeAt ?? null;
+  return { evidence, complete, pages: read, cache: { repo, completeAt: complete ? new Date(now).toISOString() : prior, merged } };
+}
+
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
 export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
@@ -199,7 +294,74 @@ export function ciStateFromRuns(runs) {
   const running = newest.status !== "completed";
   const state = running ? (red ? "running-after-red" : "running") : (red ? "red" : "green");
   const at = Date.parse(done.updated_at ?? "");
-  return { state, sha: done.head_sha, url: done.html_url, ...(Number.isFinite(at) ? { at } : {}) };
+  // PICKER-gate-red-review-route (D-291): the run id rides along so the picker can read a red run's jobs.
+  return { state, sha: done.head_sha, url: done.html_url, ...(Number.isSafeInteger(done.id) ? { runId: done.id } : {}), ...(Number.isFinite(at) ? { at } : {}) };
+}
+
+/**
+ * PICKER-land-exact-head (D-293): LAND requires green CI on the exact tip.
+ * Fails closed: green on an older sha, unknown with an open pull request, or a missing tipSha
+ * becomes "no-tip-ci". Red, running, running-after-red and error are returned unchanged.
+ */
+export function ciOnTip(rawCi, tipSha) {
+  const ci = rawCi ?? { state: "unknown" };
+  if (ci.state === "red" || ci.state === "running" || ci.state === "running-after-red" || ci.state === "error") {
+    return ci;
+  }
+  if (ci.state === "green") {
+    if (typeof ci.sha === "string") {
+      if (Boolean(tipSha) && ci.sha === tipSha) return ci;
+      return {
+        ...ci,
+        state: "no-tip-ci",
+        ...(typeof tipSha === "string" ? { tipSha } : {}),
+      };
+    }
+    // Missing head_sha is unknown, never evidence that this tip passed.
+    return { ...ci, state: "no-tip-ci", ...(typeof tipSha === "string" ? { tipSha } : {}) };
+  }
+  return {
+    ...ci,
+    state: "no-tip-ci",
+    ...(typeof tipSha === "string" ? { tipSha } : {}),
+  };
+}
+
+/**
+ * PICKER-gate-red-review-route (D-286): the step in the `typecheck` job that runs the review gate
+ * (`node scripts/review-gate.mjs`, the same script and exit code scope-check runs) under its own name,
+ * so a red that is nothing but the missing independent review can be told from every other red.
+ */
+export const GATE_STEP = "Review gate (independent Tier 1 pass)";
+const JOB_OK = new Set(["success", "skipped"]);
+
+/**
+ * True only on a positive identification: the failed run's job list (an array, or GitHub's `{ jobs }`)
+ * shows the `typecheck` job failed at exactly one step, the review gate step, and every other job and
+ * step finished `success` or `skipped`. An unreadable, empty, stepless or cancelled list is false, so the
+ * picker keeps handing MAKE GREEN (fail closed).
+ */
+export function gateOnlyRedFromJobs(jobs) {
+  const list = Array.isArray(jobs) ? jobs : Array.isArray(jobs?.jobs) ? jobs.jobs : null;
+  if (!list?.length) return false;
+  let failed = 0;
+  for (const job of list) {
+    if (!job || typeof job.name !== "string") return false;
+    if (JOB_OK.has(job.conclusion)) continue;
+    if (job.conclusion !== "failure" || job.name !== "typecheck") return false;
+    failed += 1;
+    const steps = job.steps;
+    if (!Array.isArray(steps) || !steps.length) return false;
+    let stepsFailed = 0;
+    for (const step of steps) {
+      if (!step || typeof step.name !== "string") return false;
+      if (JOB_OK.has(step.conclusion)) continue;
+      if (step.conclusion !== "failure" || step.name !== GATE_STEP) return false;
+      stepsFailed += 1;
+    }
+    if (stepsFailed !== 1) return false;
+  }
+  return failed === 1;
 }
 
 // D-202: the decision register is data too. A row is `| D-nnn | date | decision | ...`;
@@ -432,7 +594,7 @@ const standingReport = (reports, holder) => {
 };
 
 /** One row per task with everything every decision reads. */
-function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
+function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence = new Map() }) {
   const byTask = reportsByTask(reports);
   return tasks.map((task, at) => {
     const id = task.id;
@@ -448,9 +610,14 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
     const work = packet ? archName : workBranchOf(task, branches);
     const info = work ? branches.get(work) : null;
     const pr = work ? openPrs.get(work) ?? null : null;
-    const ci = pr ? prCi.get(work) ?? { state: "unknown" } : { state: "unknown" };
+    const ci = pr ? ciOnTip(prCi.get(work) ?? { state: "unknown" }, info?.tipSha) : { state: "unknown" };
     // A squash merge leaves the branch unmerged in git; GitHub's merged pull request says it landed.
-    const landed = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
+    const landedBefore = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
+    // PICKER-landed-marker-continuity: a verified merged pull request from the row's branch keeps it landed when the
+    // branch is gone (S1) or was recreated with only this row's empty picker markers (S2). Unknown is never landed.
+    const continuity = landedEvidence?.get?.(task.branch)?.state === "merged"
+      && (!info || (work === task.branch && info.markerOnly === true && info.markers.every(m => m.id === id)));
+    const landed = landedBefore || continuity;
     const owner = holderOf(info, id);
     let said = standingReport(byTask.get(id) ?? [], owner);
     // A red report older than a green CI run on the pull request no longer holds anything.
@@ -460,11 +627,14 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports }) {
     return {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
       slug: slugOf(task.branch), owner, pr, ci: ci.state, said,
+      ciSha: ci.sha ?? null, ciRunId: ci.runId ?? null, tipSha: info?.tipSha ?? null,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
       reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
       reviewer: lastBy(lockMarkers, ["Review claim"])?.who ?? null, fixer: lastBy(lockMarkers, ["Fix claim"])?.who ?? null,
       lander: lastBy(lockMarkers, ["Land claim"])?.who ?? null, review: reviewStateOf(lock, id), stageHolder: lockMarkers.at(-1)?.who ?? null,
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
+      // PICKER-gate-red-review-route: red CI that is only the review gate, read from this exact head's own run.
+      gateOnlyRed: ci.state === "red" && ci.gateOnly === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
       done: task.status === "done" || ((task.status === "todo" || packet) && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
       packet, writers: packet ? everyone(archMarkers, ["Claim", "Takeover"]) : [],
@@ -490,6 +660,9 @@ function clock(branches, now) {
 }
 
 const PENDING_KINDS = new Set(["review", "fix", "green", "land", "takeover", "unblock"]);
+/** PICKER-avoid-land: the hand-outs of a red or blocked task whose lane stays held when the session avoids it. */
+const AVOID_HOLDS = new Set(["unblock", "green", "fix", "takeover"]);
+const redOrBlocked = v => v.open && (v.said?.status === "blocked" || v.said?.status === "red" || (Boolean(v.pr) && v.ci === "red"));
 
 /**
  * D-202: the newest register entry that names this task and sits after its `syncedTo`, or null.
@@ -513,7 +686,7 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
+export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
@@ -530,7 +703,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
 
-  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports });
+  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence });
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-134: dependsOn holds every kind of work on a task, not only a new build.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
@@ -570,7 +743,17 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const tier1 = v => {
     const state = v.review;
     const lockQuiet = v.lock ? quiet(lockAt(v)) : false;
-    if (v.ci === "red") {
+    // D-286: a head whose only red is the review gate is waiting for the one stage that clears it, so it is not
+    // "red" here while its review is still to be done; the review hand-out below applies the same builder/fixer bar.
+    const gateOnlyWaiting = v.gateOnlyRed && (state === "needs-review" || (state === "in-review" && lockQuiet));
+    // An unchanged head red only at the review gate needs its verdict re-evaluated,
+    // not another source FIX that overwrites the pass with empty Fix/Fixed markers.
+    if (v.gateOnlyRed && (state === "passed" || state === "landing")) {
+      if (!lockQuiet || state === "landing") return skip(v, "review verdict recorded; re-run exact-head CI before any landing, not a source fix");
+      if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
+      return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
+    }
+    if (v.ci === "red" && !gateOnlyWaiting) {
       if (state === "fixing" && !lockQuiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.fixer} is on it`);
       // Red after a passed review: the change goes through a fix stage and is reviewed again, never landed as it is.
       const afterPass = state === "passed" || state === "landing";
@@ -596,6 +779,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
     }
     if ((state === "passed" || state === "landing") && lockQuiet) {
+      if (v.ci === "no-tip-ci") {
+        const tip8 = (v.tipSha ?? v.info?.tipSha ?? "").slice(0, 8);
+        return skip(v, `waiting for CI on the tip ${tip8} of ${v.pr}`);
+      }
       if (did(v, ["builders", "fixers"])) return skip(v, "its review passed, and you built or fixed it");
       if (slotBusyFor(claimant)) return waitLanding();
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.lander ?? v.reviewer };
@@ -634,6 +821,19 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         return v.pr ? green(v, reportWhy(said)) : { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), why: reportWhy(said) };
       }
       if (v.pr && (v.ci === "running" || v.ci === "running-after-red")) return skip(v, `CI is running on ${v.pr}`);
+      if (v.pr && v.ci === "no-tip-ci") {
+        const tip8 = (v.tipSha ?? v.info?.tipSha ?? "").slice(0, 8);
+        if (!idle) return skip(v, `waiting for CI on the tip ${tip8} of ${v.pr}`);
+        const runPart = v.ciRunId && v.ciSha
+          ? `the newest completed run ${v.ciRunId} is on ${v.ciSha.slice(0, 8)}`
+          : v.ciSha
+          ? `the newest completed run is on ${v.ciSha.slice(0, 8)}`
+          : v.ciRunId
+          ? `the newest completed run ${v.ciRunId} was found`
+          : "none was found";
+        const why = `CI has not run on the tip ${tip8} of ${v.pr} (${runPart}): bring the branch up to date with main with a two-parent merge, never a rebase, and push it so required CI runs on that exact head; do not land on an older run (D-082, D-293)`;
+        return green(v, why);
+      }
       if (v.pr) {
         if (!idle) return skip(v, `${v.owner ?? "its builder"} is landing ${v.pr}`);
         if (slotBusyFor(claimant)) return waitLanding();
@@ -646,7 +846,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // that waits for the owner stays with the owner.
     const stale = staleOf(v);
     if (stale && v.task.status !== "owner") return resync(v);
-    // D-190: a packet's pull request with green CI lands through the slot (the docs path: no Tier 1 review),
+    // D-190: Tier 2/3 packets go the docs path; Tier 1 packets need their review (D-074 (3), D-294).
+    // A packet's pull request with green CI lands through the slot,
     // by any session but a writer of the packet; anything else about it stays with the packet stage below.
     if (v.packet && v.pr && v.ci === "green") {
       if (claimant && v.writers.includes(claimant)) return skip(v, "its packet pull request is green, and you wrote the packet; another session lands it (D-190)");
@@ -655,6 +856,26 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, from: v.packetLander ?? v.owner };
     }
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
+    // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
+    if (v.packet && v.pr && Number(v.task.tier) === 1 && v.gateOnlyRed) {
+      // D-307: a passed stage on an exact-tip gate-only red cannot be cleared by re-running CI when the pass names
+      // an earlier head (a post-review empty claim plus a clean main merge, #878). Once the lock and the work branch
+      // are genuinely quiet, hand the ordinary REVIEW again — the one stage that can record this head. An active
+      // stage keeps the rerun answer, and builder/writer/fixer models stay out of it (D-151, D-190).
+      if (v.review === "passed" && !quiet(lockAt(v))) return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      if (v.review === "passed") {
+        // A standing block is never cleared by this routing: an architect row is not `open`, so the ordinary blocked
+        // hand-out cannot see it, and this route must report it truthfully instead of handing a review over it.
+        if (v.said?.status === "blocked") return skip(v, `${v.task.id} is blocked (${v.said.who} reported it blocked: ${v.said.note ?? "no note"}); a session that neither raised the block nor holds the task clears it (D-200)`);
+        if (did(v, ["builders", "fixers"]) || (claimant && v.writers.includes(claimant))) return skip(v, "its review passed; another session re-reviews this exact head");
+        return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
+      }
+      if (v.review === "in-review" && !quiet(lockAt(v))) return skip(v, `under review by ${v.reviewer}`);
+      if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v)))) {
+        if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you wrote or fixed its packet");
+        return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
+      }
+    }
     if (v.task.status === "architect") {
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
@@ -668,7 +889,9 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
   };
 
-  let mine = claimant ? ownWork(view, claimant) : null;
+  const owned = claimant ? ownWorkList(view, claimant) : null;
+  let mine = owned?.found.find(pick => !(pick.kind === "continue" && pick.task && avoid.has(pick.task.id)))
+    ?? (owned?.found.length ? null : owned?.blockedOwn ?? null);
   // --avoid also applies when the claimant already holds a continuation: let the
   // normal pass preserve blocked-lane holds and select another eligible task.
   if (mine?.kind === "continue" && mine.task && avoid.has(mine.task.id)) mine = null;
@@ -686,6 +909,13 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // blocked priority holds only its lane and its dependents (D-109). D-200: Claude Code builds too.
   const actions = [];
   let gateAt = -1, gateAction = null;
+  // PICKER-landing-wait-fallthrough: a pending landing that waits only for another session's landing slot is
+  // remembered, not returned at once: later eligible work is still handed out (the slot is never touched), but
+  // only work whose declared owns are provably disjoint from every waiting landing's. Unknown or overlapping
+  // ownership keeps the old landing wait (see `disjoint`: missing ownership never proves concurrent work is safe).
+  let landingWait = null;
+  const landingViews = [];
+  const clearOfLandings = v => landingViews.every(l => disjoint(l, v));
   const heldLanes = new Map(), heldIds = new Map();
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
   // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
@@ -697,7 +927,12 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // --avoid: a session that may not take a task (its own instruction or a missing tool) is handed something else;
     // the task is never reported blocked for that reason, and a red or blocked one still holds its lane (gate).
     let action = actionFor(view[i]);
-    if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) action = skip(view[i], "you asked to avoid it (--avoid)");
+    if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) {
+      // PICKER-avoid-land (D-109): avoiding a red or blocked task's hand-out (unblock, make green, fix, takeover)
+      // never frees its lane or its dependents for this session; it holds them as it would for anyone else.
+      if (AVOID_HOLDS.has(action.kind) && redOrBlocked(view[i])) { heldLanes.set(view[i].task.lane, view[i].task.id); heldIds.set(view[i].task.id, view[i].task.id); }
+      action = skip(view[i], "you asked to avoid it (--avoid)");
+    }
     actions[i] = action;
     if (!action) continue;
     if (action.kind === "gate") {
@@ -706,13 +941,19 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       skip(view[i], action.reason);
       continue;
     }
-    if (action.kind === "wait") return action;
+    if (action.kind === "wait") {
+      if (action.landing) { landingWait ??= action; landingViews.push(view[i]); actions[i] = null; continue; }
+      return action;
+    }
     if (!PENDING_KINDS.has(action.kind)) continue;
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
+    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
+  // A pending landing above it that waits for the slot keeps the old wait: own work is not reordered by this fall-through.
   if (mine) {
+    if (landingWait) return landingWait;
     if (mine.of === "land" && slotBusyFor(claimant)) return waitLanding();
     const { at, ...pick } = mine;
     return withHold(pick);
@@ -720,8 +961,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
+    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(action);
   }
+  // Nothing else was eligible: the honest answer is the landing wait, with the slot holder and the reason.
+  if (landingWait) return landingWait;
   // A Claude Code session that raised a block waits like anyone else; it never gets the CEO review telling it to clear its own block.
   if (gateAt >= 0 && (!ceo || gateAction.blocked)) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
@@ -736,15 +980,22 @@ function ownStage(v, claimant) {
       if (last.verb === "Review claim") return { ...base, of: "review", builder: v.owner };
       if (last.verb === "Fix claim") return { ...base, of: "fix" };
       // A passed review whose CI went red is not landed: it goes to a fix stage (pickNextTask), never back to its lander.
-      if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red") return { ...base, of: "land", tier1: true };
+      // PICKER-land-exact-head (D-293): continue landing only when CI is green on the exact tip.
+      if ((last.verb === "Land claim" || (last.verb === "Verdict" && last.verdict === "pass")) && v.ci !== "red" && v.ci !== "no-tip-ci") return { ...base, of: "land", tier1: true };
     }
+  }
+  // D-299 R7: packet reviewers use the existing lock lifecycle, never packet fix/land stages.
+  if (!v.open && v.packet && v.pr && v.task.tier === 1 && v.lock) {
+    const last = stageMarkers(v.lock, v.task.id).at(-1);
+    if (last?.who === claimant && last.verb === "Review claim") return { kind: "continue", of: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, builder: v.owner, packet: true, at: v.at };
   }
   if (v.open && v.owner === claimant) {
     // A blocked task waits for another session or the owner; its holder keeps going on anything else it holds (D-085 (3), D-200).
     if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); a session that neither raised the block nor holds the task, or the owner, clears it (D-200)` };
     // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
-    if (v.pr && v.task.tier === 1 && !(v.ci === "red" && ["needs-review", "in-review"].includes(v.review))) return null;
-    return { kind: "continue", of: v.pr ? (v.ci === "red" ? "green" : "land") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
+    // D-286: a red that is only the review gate is not the builder's to make green; only a review clears it.
+    if (v.pr && v.task.tier === 1 && !(v.ci === "red" && !v.gateOnlyRed && ["needs-review", "in-review"].includes(v.review))) return null;
+    return { kind: "continue", of: v.pr ? (v.ci === "green" ? "land" : v.ci === "red" ? "green" : "build") : "build", task: v.task, work: v.work, pr: v.pr, tier1: v.task.tier === 1, at: v.at };
   }
   // D-190: the packet's lander (a Land claim on the lock, never its writer) continues the landing while CI is green.
   if (v.packet && v.pr && v.packetLander === claimant && v.ci === "green" && !v.writers.includes(claimant)) return { kind: "continue", of: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, at: v.at };
@@ -791,13 +1042,13 @@ function fixMainLocks(branches, now) {
 }
 
 /** D-085: what `--heartbeat` keeps alive, whatever main's CI says. mainSha: main's red commit, if any. */
-export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   if (mainSha) {
     const current = fixMainLockOf(mainSha);
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock };
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
   const own = ownWork(view, claimant);
   if (!own || own.kind !== "continue") return null;
   const { at, ...pick } = own;
@@ -808,14 +1059,14 @@ export function heldBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads
  * D-134: every claim this agent holds (the fix-main lock first), so a heartbeat keeps all of them alive, not only
  * the first; that includes a claim on a task that waits for a dependency, which is nobody's work yet but stays its holder's.
  */
-export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   const out = [];
   if (mainSha) {
     const current = fixMainLockOf(mainSha);
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) out.push({ kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock });
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
   for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
   const slot = landingSlot(branches, now);
   if (slot.holder === claimant && !slot.quiet) {
@@ -923,9 +1174,9 @@ export function mayReport({ task, branches, claimant }) {
  * state, holder, quiet time and the latest report its team sent.
  * reports: [{ id, status, who, at, note }] from agent/reports/log, newest first.
  */
-export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), reports = [], now, register = null }) {
+export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, register = null }) {
   const HOUR = 60 * 60 * 1000;
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
   const byTask = reportsByTask(reports);
   const { workAt, archAt } = clock(branches, now);
   const doneIds = new Set(view.filter(v => v.done).map(v => v.task.id));
@@ -934,8 +1185,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prBehi
     const archHeld = task.status === "architect" && Boolean(v.arch);
     const activeAt = archHeld ? archAt(v) : v.open ? workAt(v) : null;
     const quiet = activeAt !== null && now - activeAt > IDLE_MS;
-    // D-190: a packet pull request goes the docs path, never through a Tier 1 review.
-    const review = pr && task.tier === 1 && !v.packet ? v.review : null;
+    // D-190/D-294: Tier 2/3 packets go the docs path; Tier 1 packets need their review.
+    const review = pr && task.tier === 1 ? v.review : null;
     // D-202: an out-of-sync task shows the decision that holds it, not its old state.
     const stale = outOfSyncOf(v, register);
     let state;

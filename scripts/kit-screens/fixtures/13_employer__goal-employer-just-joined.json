@@ -1,0 +1,49 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "account": {
+          "id": 7,
+          "companyName": "Northwind Robotics",
+          "billingEmail": "hire@northwind.example",
+          "credits": 0,
+          "budgetMonthlyUsdCents": 0,
+          "approvalStatus": "approved"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/opportunities",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "opportunities": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/spend-history",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "spend": []
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Get started"
+    }
+  ]
+}

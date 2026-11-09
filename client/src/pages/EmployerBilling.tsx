@@ -1,9 +1,10 @@
 import { ArrowLeft, CreditCard, Receipt } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { readApiJson } from "@/lib/apiResponse";
 
 type Pack = { id: "starter" | "growth" | "scale"; credits: number; priceInr: number; amountInPaise: number };
@@ -41,7 +42,12 @@ async function openRazorpayCheckout(input: { orderId: string; amount: number; ke
   razorpay.open();
 }
 
+// D-048-p3-employer-billing: the goal reskin of this surface (switch only; the
+// goal implementation lives under pages/goal/employer-billing).
+const GoalEmployerBilling = lazy(() => import("./goal/employer-billing/GoalEmployerBilling"));
+
 export default function EmployerBilling() {
+  if (goalSurfaceOn("employer-billing")) return <Suspense fallback={null}><GoalEmployerBilling /></Suspense>;
   const [, go] = useLocation();
   const [credits, setCredits] = useState<number | null>(null);
   const [budgetMonthlyUsdCents, setBudgetMonthlyUsdCents] = useState<number | null>(null);
