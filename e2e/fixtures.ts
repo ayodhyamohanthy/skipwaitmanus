@@ -162,9 +162,9 @@ export async function readBalance(page: Page): Promise<number> {
   return value;
 }
 
-/** The compose screen's cost line ("Uses 1 credit ..."), read as the number it quotes. */
+/** The compose cost line names the amount deducted from the balance before Send. */
 export function costLine(page: Page) {
-  return page.getByText(/^Uses \d+ (credit|referral)s?\b/i).first();
+  return page.getByText(/^Uses \d+ from your balance\b/i).first();
 }
 
 export async function quotedCost(page: Page): Promise<number> {
