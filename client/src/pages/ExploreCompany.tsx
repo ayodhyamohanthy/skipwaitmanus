@@ -89,7 +89,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
       drawer={
         <AskDrawer
           open={drawerOpen}
-          onOpenChange={setDrawerOpen}
+          onOpenChange={open => { setDrawerOpen(open); if (!open) composer.selectPost(null); }}
           company={company}
           context={composer.sent ? null : composer.context}
           signedIn={composer.signedIn}
