@@ -26,10 +26,13 @@ export function GoalAppShell({ active, pageTitle, drawer, children }: { active: 
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const access = useReferrerAccess();
-  const verifiedReferrer = access.status === "verified";
+  // D-057 (§0b.8c): a server-verified referrer whose session is code_required keeps
+  // the referrer navigation; the surfaces themselves show the in-place step-up.
+  const verifiedReferrer = access.status === "verified" || access.status === "code_required";
   // A verified referrer never sees a credits pill (D-055); wait for the verdict
-  // instead of flashing one while it is checked.
-  const credits = useCreditBalance(isSignedIn && access.status !== "verified" && access.status !== "checking");
+  // instead of flashing one while it is checked. The same holds while the session
+  // only needs its step-up: the person is the server's verified referrer either way.
+  const credits = useCreditBalance(isSignedIn && access.status !== "verified" && access.status !== "code_required" && access.status !== "checking");
   return (
     <GoalShell
       active={active}

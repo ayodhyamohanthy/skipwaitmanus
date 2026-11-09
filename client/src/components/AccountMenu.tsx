@@ -15,7 +15,10 @@ import { useState } from "react";
 function ReferrerMenuItems() {
   const [, setLocation] = useLocation();
   const access = useReferrerAccess();
-  if (access.status !== "verified") return null;
+  // D-057 (§0b.8c): a server-verified referrer whose session is code_required keeps
+  // their navigation — the referrer surfaces themselves show the in-place step-up.
+  // A signed-in person is never sent to the standalone code sign-in from here.
+  if (access.status !== "verified" && access.status !== "code_required") return null;
   return <><DropdownMenuItem onSelect={() => setLocation("/inbox")} className="cursor-pointer rounded-md px-3 py-2 text-sm font-semibold text-[#505050] focus:bg-[#f0f0f0] focus:text-black"><BriefcaseBusiness className="h-4 w-4 text-[#505050]" />My Company Inbox</DropdownMenuItem><DropdownMenuItem onSelect={() => setLocation("/referrer/impact")} className="cursor-pointer rounded-md px-3 py-2 text-sm font-semibold text-[#505050] focus:bg-[#f0f0f0] focus:text-black"><BarChart3 className="h-4 w-4 text-[#505050]" />My impact</DropdownMenuItem></>;
 }
 
