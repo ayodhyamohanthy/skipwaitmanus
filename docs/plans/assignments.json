@@ -5847,7 +5847,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-open-pr-pagination",
-      "status": "todo",
+      "status": "in-review",
       "syncedTo": "D-310",
       "dependsOn": [],
       "note": "Bounded read-only picker correctness under the BRANCH-HYGIENE See every pull request requirement, which had no buildable carrier because BRANCH-HYGIENE-2 is parked at owner under D-232. Measured Nov9: 186 open pull requests, one per_page=100 read, 86 invisible; PR632 on page2; D-090-BYOR handed a TAKEOVER on finished work with no review reachable. Exact three paths: scripts/nextTaskCore.mjs (new pure collectOpenPulls only), scripts/next-task.mjs (open pull request read only), NEW scripts/nextTaskOpenPrPagination.test.ts. No owns because PICKER-fullstack-lights and PICKER-qa-stage already own those scripts and validateAssignments refuses overlapping non-done owns without a dependency; manual exact-diff scope at review, scope-check skipped is NOT pass. An incomplete read is unknown and stops the picker, never a short list. No branch deletion, no --apply, no --local, no cleanup run, no closed-window change, no gate or workflow change."
