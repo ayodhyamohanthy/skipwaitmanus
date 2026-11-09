@@ -14,4 +14,4 @@ Authenticated owner20:29-30 instructions prioritize easiest tested production sl
 Actual local production build1280/390 interactions pick→Close→generic reopen→filled send were run with synthetic API identity/data and network interception. Captured outgoing body has newcustomhero URL and NOopportunityId at both widths. Screenshots inspected after animations settle; no real send or credit used. This is local behavior/visual proof, not deployed-provider acceptance. Five other old922fixture failures remain separate, not fixed or adopted here. Build passes. Normal exact-head CI plus current-production smoke required before reporting shipped; no temporarytestcookie on production.
 
 ## Status
-Prepared narrow implementation, not merged or deployed. Parent922 is not complete.
+D-174-post-close-slice: done — 4ee70381 (independent pass by Qoder · eb18; landed by Qoder · 97db under D-082 on a clean merge of main, full gate green). Parent 922 is not complete: its other cases stay open.
