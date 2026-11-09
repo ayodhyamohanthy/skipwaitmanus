@@ -21,6 +21,8 @@ Each route has:
 - `id`, `taskId`, `operator` (exact actual session, not the model), `modelId` (reviewed canonical public identity), `roles` (subset of `build`, `fix`, `review`, `land`), `revoked` (must be explicitly false to use).
 - `providerUrl`, `selectedModel`, `observation`, `observationSha256`, `qualificationReview`. Both URLs must be HTTPS. The observation digest binds retained sanitized bytes, not authorship.
 
+For contributor exclusion, a separately reviewed `modelId` may deliberately group observed same-family models under one conservative key. Such a key may over-exclude reviewers but must never split aliases to gain independence or assert an unobserved served checkpoint/API endpoint. `selectedModel` and the retained observation still identify exactly what the provider visibly selected; execution receipts must preserve that distinction.
+
 Each execution has:
 
 - `id`, `routeId`, `taskId`, `operator`, `role`, `claimSha`, `inputSha`, `outputSha`.
