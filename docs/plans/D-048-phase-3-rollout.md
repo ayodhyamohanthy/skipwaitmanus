@@ -111,7 +111,7 @@ page stays ink-on-white.
 
 ## 3b. Status
 
-- D-048-release-platform: in progress — takeover by Qoder · 3c83 on `848ce1a1` (the previous writer pushed nothing since 2026-11-09T09:23:48Z, D-085). Releasing the wired Tier 2/3 ids; `links` and `support` stay off until their journey tests move (#993).
+- D-048-release-platform: done — `7781e23b` — takeover by Qoder · 3c83 on `848ce1a1` (the previous writer pushed nothing since 2026-11-09T09:23:48Z, D-085). Released the wired Tier 2/3 ids; `links` and `support` stay off until their journey tests move (#993). `pnpm check` clean, `goalSurfaces` 6/6, goal pages 576/576, `goalUiCoverage` 4/4, scope-check on 2 owned paths, required CI green on the exact head.
 
 ## 4. What must not move, in any wave
 
