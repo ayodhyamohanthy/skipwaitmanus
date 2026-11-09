@@ -117,6 +117,24 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("posted-role Close binding regression",()=>{
+  it("preserves an ordinary unselected company draft when its drawer closes", async () => {
+    routeState.isDoor = true;
+    routeState.path = "/explore/wipro";
+    window.history.replaceState({}, "", "/explore/wipro");
+    stub();
+    renderCompanyDoor();
+    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral", exact: true }));
+    let drawer = await screen.findByTestId("goal-drawer");
+    fillLink(drawer, "https://careers.wipro.com/jobs/ordinary-draft");
+    fillReasons(drawer);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Ask for a referral", exact: true }));
+    drawer = await screen.findByTestId("goal-drawer");
+    expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/ordinary-draft");
+    expect((within(drawer).getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toContain("checkout redesign");
+  });
+
   it("pick a post, close the drawer, open the hero ask, send → no opportunityId", async () => {
     routeState.isDoor = true;
     routeState.path = "/explore/wipro";
