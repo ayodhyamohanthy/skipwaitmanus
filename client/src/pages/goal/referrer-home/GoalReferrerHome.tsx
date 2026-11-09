@@ -56,7 +56,8 @@ function Countdown({ label, urgent }: { label: string; urgent: boolean }) {
 
 function RequestTitle({ item }: { item: InboxRow }) {
   const title = item.jobTitle?.trim();
-  return <strong className="block truncate text-g-label text-g-ink">{title || <>Private referral request · Ref-<GoalNum>{1000 + item.id}</GoalNum></>}</strong>;
+  // The Ref ID always leads the metadata line (it survives the 390 truncation there), so the title never repeats it.
+  return <strong className="block truncate text-g-label text-g-ink">{title || "Private referral request"}</strong>;
 }
 
 function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
@@ -81,7 +82,7 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
       ) : view.waiting.length === 0 ? (
         <GoalEmptyState
           title={view.isNew ? "Your first referral request will appear here." : "No referral requests right now."}
-          body={view.isNew ? `People can find verified referrers${company ? ` at ${company.name}` : ""}. Share your profile when you are ready.` : "Your queue is clear for now."}
+          body={view.isNew ? `Referral requests${company ? ` for ${company.name}` : ""} now reach you privately. Share your profile when you are ready.` : "Your queue is clear for now."}
         />
       ) : (
         <ul className="grid gap-2">
@@ -91,12 +92,13 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
             const companyName = company?.name ?? item.companyDomain;
             const fit = item.askStrength === "strong" ? "Strong" : item.askStrength === "good" ? "Good" : item.askStrength === "basic" ? "Basic" : null;
             return (
-              <li key={item.id}>
+              <li key={item.id} className="min-w-0">
                 <Link href={`/queue?request=${item.id}`} aria-label={`Private referral request · Ref-${1000 + item.id}`} className="flex min-h-14 items-center gap-3 rounded-g-tile border border-g-hairline p-4 transition-colors hover:border-g-control-edge">
                   <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-g-control border border-g-hairline text-g-meta text-g-ink">{company?.mark ?? (item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
                     <RequestTitle item={item} />
-                    <span className="block truncate text-g-meta text-g-ink-3">
+                    <span data-testid="goal-referrer-row-meta" className="block truncate text-g-meta text-g-ink-3">
+                      <span data-testid="goal-referrer-row-ref">Ref-<GoalNum>{1000 + item.id}</GoalNum></span>{" · "}
                       {displayJobFunction(item.jobFunction) ?? companyName}
                       {fit ? ` · referral fit: ${fit}` : ""}
                       {files > 0 ? <> · <GoalNum>{files}</GoalNum> attached {files === 1 ? "file" : "files"}</> : null}
@@ -229,8 +231,8 @@ export default function GoalReferrerHome() {
               <section className="rounded-g-tile border border-g-hairline p-4">
                 <p><GoalNum>{view.left}</GoalNum><span className="text-g-meta text-g-ink-3"> / </span><GoalNum>{view.capacity}</GoalNum></p>
                 <p className="mt-1 text-g-meta text-g-ink-2">Monthly capacity remaining</p>
-                <div className="mt-2 h-1 rounded-full bg-g-hairline" role="progressbar" aria-label="Referral capacity used" aria-valuenow={view.used} aria-valuemin={0} aria-valuemax={view.capacity}>
-                  <span className="block h-full rounded-full bg-g-ink" style={{ width: `${view.capacity ? Math.min(100, (view.used / view.capacity) * 100) : 0}%` }} />
+                <div className="mt-2 h-1 rounded-full bg-g-hairline" role="progressbar" aria-label={`${view.left} of ${view.capacity} monthly referral capacity remaining`} aria-valuenow={view.left} aria-valuemin={0} aria-valuemax={view.capacity} aria-valuetext={`${view.left} of ${view.capacity} remaining`}>
+                  <span className="block h-full rounded-full bg-g-ink" style={{ width: `${view.capacity ? Math.min(100, (view.left / view.capacity) * 100) : 0}%` }} />
                 </div>
               </section>
             </div>

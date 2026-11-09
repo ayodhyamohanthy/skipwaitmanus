@@ -1,0 +1,89 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops-admin@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/payments/review",
+      "status": 200,
+      "body": {
+        "payments": [
+          {
+            "id": 7,
+            "provider": "chargebee",
+            "providerHostedPageId": "hosted-7",
+            "checkoutIntentId": null,
+            "userId": 3,
+            "role": "job_seeker",
+            "tokenCount": 3,
+            "amount": 499,
+            "currency": "INR",
+            "reconciliationReason": "Held for reconciliation",
+            "createdAt": "2026-11-04T00:00:00.000Z",
+            "userEmail": "fixture-user@example.com",
+            "reviewKind": "awaiting_credit",
+            "refunds": null
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/payments/review/7",
+      "status": 200,
+      "body": {
+        "payment": {
+          "paymentId": 7,
+          "tokenCount": 3,
+          "userId": 3,
+          "role": "job_seeker",
+          "decision": "credited"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "button:has-text(\"Add 3 credits\")"
+    },
+    {
+      "click": "button:has-text(\"Add 3 credits\")"
+    },
+    {
+      "waitFor": "text=Added 3 credits to the wallet."
+    },
+    {
+      "wait": 400
+    }
+  ]
+}
