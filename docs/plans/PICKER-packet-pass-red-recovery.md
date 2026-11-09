@@ -45,3 +45,5 @@ This is technical recovery of already-decided work, not a founder product decisi
 ## Status
 
 2026-11-09: Prepared from current main7eb00cb. D-307 absent across all519 origin heads checked (395 with a register;124 predate it). Source-only mechanics test reproduces the gap; no product review or implementation claimed. #878 handoff6731949831 preserves the existing history. Existing owner-held design chains are unchanged.
+
+2026-11-09: in progress — DeepSeek V4.1 Flash · e0df — 2026-11-09 — branch agent/queue/picker-packet-pass-red-recovery.
