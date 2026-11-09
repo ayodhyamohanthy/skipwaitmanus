@@ -851,9 +851,12 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
     // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
     if (v.packet && v.pr && Number(v.task.tier) === 1 && v.gateOnlyRed) {
-      if (v.review === "passed") return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      // D-307: a passed review returns to qualified REVIEW once its lock is quiet; while the
+      // reviewer is active, the packet waits for a CI rerun on its exact head. A blocked report
+      // is preserved untouched by this routing change; the fresh review assesses it truthfully.
+      if (v.review === "passed" && !quiet(lockAt(v))) return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
       if (v.review === "in-review" && !quiet(lockAt(v))) return skip(v, `under review by ${v.reviewer}`);
-      if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v)))) {
+      if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v))) || (v.review === "passed" && quiet(lockAt(v)))) {
         if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you wrote or fixed its packet");
         return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
       }

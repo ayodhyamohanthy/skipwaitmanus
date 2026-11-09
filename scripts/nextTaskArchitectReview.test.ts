@@ -44,10 +44,10 @@ describe("PICKER-architect-review-route", () => {
       expect(heldAllBy(input(extra))).not.toContainEqual(expect.objectContaining({ lock: REVIEW }));
     }
   });
-  it("(g) passed gate-only red skips for CI rerun, never architect or fix", () => {
+  it("(g) passed gate-only red returns to REVIEW after a quiet lock, never architect or fix (D-307)", () => {
     const got = pick({ branches: new Map([[ARCH, arch], [REVIEW, lock([claim, pass])]]) });
-    expect(["architect", "green", "fix", "review"]).not.toContain(got.kind);
-    expect(JSON.stringify(got)).toMatch(/re-run CI/);
+    expect(got).toMatchObject({ kind: "review", work: ARCH, lock: REVIEW, packet: true });
+    expect(["architect", "green", "fix"]).not.toContain(got.kind);
   });
   it("(h) preserves green packet landing and writer exclusion", () => {
     const extra = { prCi: new Map([[ARCH, { state: "green", sha: HEAD }]]), branches: new Map([[ARCH, arch], [REVIEW, lock([claim, pass])]]) };
