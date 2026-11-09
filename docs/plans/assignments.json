@@ -5394,8 +5394,8 @@
       "tier": 2,
       "lane": "d048-release",
       "branch": "agent/queue/d048-release-platform",
-      "status": "todo",
-      "syncedTo": "D-307",
+      "status": "done",
+      "syncedTo": "D-309",
       "dependsOn": [],
       "owns": [
         "client/src/lib/goalSurfaces.ts",
