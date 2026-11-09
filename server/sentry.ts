@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import * as Sentry from "@sentry/node";
 import type { NextFunction, Request, Response } from "express";
+import { scrubTelemetryPath } from "../shared/telemetryScrub";
 
 let initialized = false;
 
@@ -22,8 +23,9 @@ export function scrubSentryText(value: string): string {
   return SINGLE_USE_SEGMENTS.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), withoutQuery);
 }
 
+// FND-4: one shared scrubber for every token-bearing browser and API route.
 export function scrubSentryPath(path: string): string {
-  return scrubSentryText(path);
+  return scrubTelemetryPath(path);
 }
 
 type EventRequest = NonNullable<Sentry.Event["request"]>;

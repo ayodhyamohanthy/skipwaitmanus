@@ -41,9 +41,25 @@ describe("material API error escalation", () => {
 
     await expect(escalate({ method: "POST", path: `/api/ask-invites/${token}/claim`, statusCode: 500, durationMs: 12 })).resolves.toEqual({ alerted: true, reason: "sent" });
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
-    expect(payload.text).toContain("POST /api/ask-invites/[redacted]/claim");
+    expect(payload.text).toContain("POST /api/ask-invites/:token/claim");
     expect(payload.text).not.toContain(token);
-    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "/api/ask-invites/[redacted]/claim" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "/api/ask-invites/:token/claim" }));
+  });
+
+  it("never puts a single-use token in the alert, the activity record or the dedupe key (FND-4)", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const escalate = createMaterialErrorEscalator({ fetchImpl, recordActivity, now: () => 1_000 });
+
+    await expect(escalate({ method: "POST", path: "/api/referrer-review-links/tokA1/decision?x=1", statusCode: 500, durationMs: 5 })).resolves.toEqual({ alerted: true, reason: "sent" });
+    await expect(escalate({ method: "POST", path: "/api/referrer-review-links/tokB2/decision", statusCode: 500, durationMs: 5 })).resolves.toEqual({ alerted: false, reason: "deduplicated" });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload.text).toContain("POST /api/referrer-review-links/:token/decision");
+    expect(JSON.stringify(fetchImpl.mock.calls)).not.toContain("tokA1");
+    expect(JSON.stringify(recordActivity.mock.calls)).not.toContain("tokA1");
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "/api/referrer-review-links/:token/decision" }));
   });
 
   it("sends payment alerts through ZeptoMail when it is configured and Resend is not", async () => {

@@ -154,7 +154,7 @@ describe("Goal /email-review states", () => {
       expect.any(TypeError),
       expect.objectContaining({
         source: "email-review",
-        url: expect.stringMatching(/^\/email-review\/\[redacted\]/),
+        url: expect.stringMatching(/^\/email-review\/:token/),
       }),
     );
 

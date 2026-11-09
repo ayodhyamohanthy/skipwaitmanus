@@ -1,0 +1,15 @@
+{
+  "signedIn": { "id": 1, "name": "Ops Admin", "email": "ops@example.com", "role": "admin" },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "match": "prefix",
+      "status": 500,
+      "body": { "error": "We could not load the users directory" }
+    }
+  ],
+  "actions": [
+    { "waitFor": "text=Try again" }
+  ]
+}

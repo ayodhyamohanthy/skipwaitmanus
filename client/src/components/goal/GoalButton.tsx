@@ -52,11 +52,10 @@ export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(functio
           touch === "large" ? "max-gdesk:h-12" : "max-gdesk:h-11",
           keys?.length ? "pr-2.5 max-gdesk:pr-[14px]" : "",
           flush && (size === "md" ? "-ml-[15px]" : size === "sm" ? "-ml-[13px]" : "-ml-[11px]"),
-          variant === "primary" && "bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover",
-          variant === "ghost" && "text-g-ink hover:bg-g-surface-hover aria-expanded:bg-g-surface-hover",
-          variant === "outline" && "border-g-ink text-g-ink",
-          inert && "cursor-not-allowed border-g-control-edge text-g-ink-3 hover:bg-transparent active:bg-transparent",
-          inert && variant === "primary" && "bg-transparent hover:bg-transparent",
+          variant === "primary" && !inert && "bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover",
+          variant === "ghost" && !inert && "text-g-ink hover:bg-g-surface-hover aria-expanded:bg-g-surface-hover",
+          variant === "outline" && !inert && "border-g-ink text-g-ink",
+          inert && "cursor-not-allowed border-g-control-edge text-g-ink-3 bg-transparent hover:bg-transparent active:bg-transparent",
           className,
         )}
         {...rest}

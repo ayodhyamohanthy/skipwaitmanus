@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/react";
+import { scrubTelemetryPath } from "@shared/telemetryScrub";
 
 declare global {
   interface Window {
@@ -17,6 +18,10 @@ const SENSITIVE_PREFIXES = [
   "/refer/",
   "/r/",
   "/api/ask-invites/",
+  "/api/referrer-fast-track/",
+  "/api/referral-share-cards/public/",
+  "/api/referrer-review-links/",
+  "/api/documents/by-key/",
 ];
 const MAX_DECODE_PASSES = 2;
 
@@ -52,18 +57,13 @@ export function containsSensitivePath(value: string): boolean {
 }
 
 // Single-use links carry secrets in the path (referral review tokens, share
-// cards, fast-track codes). These must never leave the device in an event.
+// cards, fast-track codes, vanity aliases, storage keys), in browser and API
+// URLs alike. These must never leave the device in an event (FND-4).
 export function scrubSentryUrl(value: string, origin: string): string {
   try {
     const url = new URL(value, origin);
     const pathname = decodeURIComponent(url.pathname);
-    const scrubbed = pathname
-      .replace(/^\/email-review\/[^/]+/i, "/email-review/[redacted]")
-      .replace(/^\/share-card\/[^/]+/i, "/share-card/[redacted]")
-      .replace(/^\/fast\/[^/]+/i, "/fast/[redacted]")
-      .replace(/^\/refer\/[^/]+\/[^/]+/i, "/refer/[redacted]")
-      .replace(/^\/r\/[^/]+/i, "/r/[redacted]")
-      .replace(/^\/api\/ask-invites\/[^/]+/i, "/api/ask-invites/[redacted]");
+    const scrubbed = scrubTelemetryPath(pathname);
     if (scrubbed !== pathname) return scrubbed;
     // Not an anchored route but still carrying a sensitive path: fail safe.
     return containsSensitivePath(pathname) ? "/[redacted]" : pathname;

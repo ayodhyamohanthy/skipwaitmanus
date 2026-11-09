@@ -125,6 +125,9 @@ export default function Alerts() {
     );
   }
 
+  // D-057: a personal-login session's referral routing starts with the in-session work-email step-up,
+  // which is goal-native; the goal alerts page renders it in place (never the code sign-in).
+  if (access.status === "code_required") return <Suspense fallback={null}><GoalAlerts /></Suspense>;
   return (
     <main data-skipwait-screen="alerts" className="page-content">
       <Heading {...HEADING} />

@@ -61,3 +61,7 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 
 ## Pricing
 One source of truth: [`docs/PRICING.md`](PRICING.md) (D-219, owner freeze Oct 25: banded seeker plans Early to Mid, Mid to Senior and Senior to Executive with per-level extra referrals; 3 free referrals a month at any level with a verified card; legacy packs paused; passes off). The D-132 credit-dropdown model and the D-152 plan names are superseded. Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
+
+## Group Plan bulk purchase - approved build direction (Oct 31)
+
+Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.

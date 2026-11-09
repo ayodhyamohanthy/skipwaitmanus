@@ -1,0 +1,96 @@
+name: Deploy Watchdog (Cloudflare Worker)
+
+# REL-watchdog (D-212, D-100): the external watchdog Worker `skipwait-watchdog`
+# (watchdog/). Every run typechecks it; a push to main also deploys it.
+# Owner actions (D-200 (6)), printed again by the job when missing:
+#   npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog     (required: nothing alerts without it)
+#   npx wrangler secret put GITHUB_ISSUES_TOKEN --name skipwait-watchdog   (optional: incident issues)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "watchdog/**"
+      - ".github/workflows/deploy-watchdog.yml"
+  pull_request:
+    paths:
+      - "watchdog/**"
+      - ".github/workflows/deploy-watchdog.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck the watchdog
+        run: npx tsc -p watchdog --noEmit
+
+      - name: Ensure the WATCHDOG_STATE KV namespace and use its id
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        working-directory: watchdog
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          find_id() {
+            npx --yes wrangler kv namespace list | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const list=JSON.parse(s.slice(s.indexOf("[")));const hit=list.find(n=>n.title==="WATCHDOG_STATE"||String(n.title).endsWith("-WATCHDOG_STATE"));process.stdout.write(hit?hit.id:"")})'
+          }
+          id=$(find_id)
+          if [ -z "$id" ]; then
+            npx --yes wrangler kv namespace create WATCHDOG_STATE
+            id=$(find_id)
+          fi
+          if [ -z "$id" ]; then
+            echo "::error::Could not find or create the WATCHDOG_STATE KV namespace"
+            exit 1
+          fi
+          # Job workspace only: the id is never committed (D-204).
+          ID="$id" node -e 'const fs=require("fs");const p="wrangler.jsonc";const s=fs.readFileSync(p,"utf8");if(!s.includes("WATCHDOG_STATE_ID"))process.exit(1);fs.writeFileSync(p,s.replace("WATCHDOG_STATE_ID",process.env.ID))'
+
+      - name: Deploy the watchdog Worker
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        working-directory: watchdog
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler deploy
+
+      - name: Check the watchdog's secrets
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          names=$(npx --yes wrangler secret list --name skipwait-watchdog | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const list=JSON.parse(s.slice(s.indexOf("[")));process.stdout.write(list.map(x=>x.name).join("\n"))})')
+          if ! grep -qx "GITHUB_ISSUES_TOKEN" <<<"$names"; then
+            echo "::warning::GITHUB_ISSUES_TOKEN is not set: the watchdog alerts by email only. Owner: npx wrangler secret put GITHUB_ISSUES_TOKEN --name skipwait-watchdog"
+          fi
+          if ! grep -qx "ZEPTOMAIL_API_KEY" <<<"$names"; then
+            echo "::error::ZEPTOMAIL_API_KEY is not set, so the watchdog cannot alert anyone. Owner: npx wrangler secret put ZEPTOMAIL_API_KEY --name skipwait-watchdog"
+            exit 1
+          fi
+          echo "watchdog secrets present"

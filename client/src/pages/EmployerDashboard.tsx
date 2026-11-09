@@ -1,5 +1,5 @@
 import { BadgeCheck, BarChart3, LoaderCircle, Sparkles, UsersRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
@@ -8,6 +8,7 @@ import { EmployerFrame, EmployerSkeleton } from "@/components/employer/EmployerF
 import { EmployerOverview } from "@/components/employer/EmployerOverview";
 import { fetchEmployerAccount, fetchEmployerActivity, openEmployerAccount } from "@/components/employer/employerData";
 import { applySeo } from "@/lib/seo";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 
 /** D-063 for employers: what a company can never buy, and both money facts. */
@@ -17,7 +18,12 @@ const ACCOUNT_KEY = ["employer", "account"] as const;
 const ACTIVITY_KEY = ["employer", "activity"] as const;
 const errorText = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
 
+// D-048-p3-employer: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/employer).
+const GoalEmployer = lazy(() => import("./goal/employer/GoalEmployer"));
+
 export default function EmployerDashboard() {
+  if (goalSurfaceOn("employer")) return <Suspense fallback={null}><GoalEmployer /></Suspense>;
   const { isLoaded, isSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const [companyName, setCompanyName] = useState("");
