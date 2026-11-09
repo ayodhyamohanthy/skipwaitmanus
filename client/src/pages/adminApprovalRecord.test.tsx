@@ -52,7 +52,7 @@ describe("administrator approval record detail", () => {
       const url = String(input);
       if (init?.method === "POST") {
         posts += 1;
-        if (posts === 1) return { ok: false, status: 500, json: async () => ({ error: "This record was already resolved" }) };
+        if (posts === 1) return { ok: false, status: 500, json: async () => ({ error: "We could not record this approval decision" }) };
         return { ok: true, json: async () => ({ ok: true, status: "approved", decision: "approved" }) };
       }
       if (url.includes("/api/admin/activity")) return { ok: true, json: async () => ({ events: [activityEvent] }) };
@@ -61,9 +61,25 @@ describe("administrator approval record detail", () => {
     render(<AdminApprovalRecord />);
     await waitFor(() => expect(screen.getByRole("heading", { name: "Ref-1501" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(screen.getByText(/Decision failed to save/)).toBeTruthy());
-    expect(screen.getByText(/The record is unchanged and still in the queue. No notifications were sent./)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/The decision may not have been recorded. Reload this record before you retry./)).toBeTruthy());
+    expect(screen.queryByText(/The record is unchanged and still in the queue/)).toBeNull();
+    expect(screen.queryByText(/No notifications were sent/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Retry decision" }));
     await waitFor(() => expect(screen.getByText("Approved")).toBeTruthy());
+  });
+
+  it("shows already-resolved copy when a decision returns 409", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST") return { ok: false, status: 409, json: async () => ({ error: "This record was already resolved" }) };
+      if (url.includes("/api/admin/activity")) return { ok: true, json: async () => ({ events: [activityEvent] }) };
+      return { ok: true, json: async () => ({ items: [requestItem] }) };
+    }));
+    render(<AdminApprovalRecord />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Ref-1501" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(screen.getByText(/This attempt was not recorded — this record was already resolved. Reload to see its current state./)).toBeTruthy());
+    expect(screen.queryByText(/The record is unchanged and still in the queue/)).toBeNull();
+    expect(screen.queryByText(/No notifications were sent/)).toBeNull();
   });
 });

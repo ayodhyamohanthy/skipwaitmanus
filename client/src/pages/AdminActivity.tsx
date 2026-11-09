@@ -1,13 +1,19 @@
 import { Activity, AlertCircle, LoaderCircle, Search, ShieldCheck } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type ActivityEvent = { id: number; action: string; outcome: "success" | "failure" | "denied"; resourceType: string | null; resourceId: string | null; companyDomain: string | null; metadata: string | null; createdAt: string | Date; actorName: string | null; actorEmail: string | null };
 
+// D-048-p3-admin-ops: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-ops).
+const GoalAdminActivity = lazy(() => import("./goal/admin-ops/GoalAdminActivity"));
+
 export default function AdminActivity() {
+  if (goalSurfaceOn("admin-ops")) return <Suspense fallback={null}><GoalAdminActivity /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [filter, setFilter] = useState("");

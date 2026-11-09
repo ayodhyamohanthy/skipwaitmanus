@@ -5,7 +5,10 @@
  *
  *   node scripts/review-gate.mjs        # check the current branch's head now (a lander's check)
  *
- * In CI it runs from `scripts/scope-check.mjs` right after the queue gate, on pull requests only.
+ * In CI it runs as its own step, "Review gate (independent Tier 1 pass)" (the name the picker reads,
+ * D-286/D-291), and again from `scripts/scope-check.mjs` right after the queue gate, on pull requests
+ * only. On actions/checkout's depth-one checkout it first fetches origin/main with history, as the queue
+ * gate does (REVIEW-GATE-fetch-parity, D-292), so the named step evaluates instead of failing open.
  * It finds the row as the queue gate does (the row's own branch, or a marker branch of its slug).
  * A Tier 2 or 3 row, or no row, passes here; the queue gate handles the no-row case. For a Tier 1
  * row it reads the row's review lock (`agent/review/<slug>`) and passes only when:
@@ -231,6 +234,26 @@ function pullRequestHead() {
   return typeof sha === "string" && SHA.test(sha) ? sha : null;
 }
 
+/**
+ * REVIEW-GATE-fetch-parity (D-292): the twin of scripts/queue-gate.mjs:15 ensureOriginMainHistory.
+ * Does nothing when origin/main and HEAD already share a merge base; otherwise fetches main into
+ * refs/remotes/origin/main (unshallowing a shallow checkout) and re-checks. Throws on a fetch error.
+ */
+function ensureOriginMainHistory() {
+  try {
+    git(["merge-base", "origin/main", "HEAD"]);
+    return;
+  } catch {
+    // actions/checkout's default depth-one checkout may not include the base history.
+    const shallow = git(["rev-parse", "--is-shallow-repository"]) === "true";
+    const refspec = "+refs/heads/main:refs/remotes/origin/main";
+    git(shallow
+      ? ["fetch", "--no-tags", "--unshallow", "origin", refspec]
+      : ["fetch", "--no-tags", "origin", refspec]);
+    git(["merge-base", "origin/main", "HEAD"]);
+  }
+}
+
 /** Fetch one branch into origin's namespace; false when origin has no such branch. Throws when origin is unreachable. */
 function fetchBranch(name) {
   if (!git(["ls-remote", "--heads", "origin", `refs/heads/${name}`])) return false;
@@ -247,6 +270,9 @@ export function runReviewGate({ local = false } = {}) {
     const eventName = process.env.GITHUB_EVENT_NAME;
     if (!local && eventName !== "pull_request") return 0;
 
+    // Before the first origin/main read and before the review-lock fetch (D-292). A fetch error throws
+    // into the catch below: the only fail-open, loudly.
+    ensureOriginMainHistory();
     const tasks = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]))?.tasks;
     if (!Array.isArray(tasks)) {
       console.warn("review-gate: origin/main task list has an unknown structure — not failing the branch.");

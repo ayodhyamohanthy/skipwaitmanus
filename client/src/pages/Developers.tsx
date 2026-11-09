@@ -1,8 +1,10 @@
 import { Bot, CircleCheck, KeyRound, ShieldCheck, Terminal, X } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import { DOCUMENTED_MCP_TOOLS, MCP_ENDPOINT } from "@/components/developers/mcpTools";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 // Describes only what is live: the MCP endpoint, personal tokens issued in
 // Connected assistants, and member approval of every proposed ask.
@@ -11,7 +13,12 @@ const QUICK_START = `curl ${MCP_ENDPOINT} \\
   -H "Content-Type: application/json" \\
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`;
 
+// Goal-UI migration (D-048-p3-dev): the goal page replaces this one when the
+// "developers" surface flag is on; off, the kit page below is unchanged.
+const GoalDevelopers = lazy(() => import("./goal/developers/GoalDevelopers"));
+
 export default function Developers() {
+  if (goalSurfaceOn("developers")) return <Suspense fallback={null}><GoalDevelopers /></Suspense>;
   return (
     <div data-skipwait-screen="developers" className="min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5"><Link href="/" className="wordmark text-xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link><Button asChild variant="outline" size="sm"><Link href="/assistants">Connected assistants</Link></Button></header>

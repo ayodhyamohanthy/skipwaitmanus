@@ -25,4 +25,4 @@ Builders waiting on routing errors delay reliable referral journeys for seekers 
 
 ## Status
 
-Proposed registration only. No implementation, review verdict, completion or live acceptance is asserted.
+PICKER-landing-wait-fallthrough: in progress — Hark · 5de4 — 2026-11-06 — branch agent/queue/picker-landing-wait-fallthrough. Code at 4a34bbd9 (draft PR #1007): red-first 4 failed/7 control, green 13/13, scripts/ 1202/1202, tsc 0, scope-check OK. Awaiting independent review and a distinct lander; no review verdict, completion or live acceptance is asserted. Hark's underlying model is unverified; no D-151 independence claim.
