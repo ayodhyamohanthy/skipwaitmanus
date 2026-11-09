@@ -5273,12 +5273,13 @@
         "server/planGates.test.ts",
         "client/src/pages/goal/onboarding/GoalOnboarding.tsx",
         "client/src/pages/MyRequests.tsx",
+        "client/src/components/goal/useGoalShellMeta.ts",
         "client/src/components/goal/nav.test.ts",
         "client/src/pages/myRequests.goal.test.tsx",
         "client/src/components/appShell.test.tsx",
         "design/goal-ui/captures/referral-words/**"
       ],
-      "note": "Presentation-only shared referral wording; original moneyCopy/planGates/GoalOnboarding scope preserved. My referrals changes nav and shell/page titles only, keeping id asks, /requests and request stages. Current packet documents exact ownership serialization after PRICING, D-180-a-free-asks-chip, D-222, D-173 and only the D-094 status-help piece. No existing queued row waits changed. Capture and test owns declared. No price, charge, eligibility, availability, release or implementation acceptance change. Nov 9 bounded presentation handoff: nav.ts and useGoalShellMeta.ts move only to D-180-referral-nav-copy; consume its exact rail/header strings before the remaining sweep. All other ownership, money scope and dependencies remain."
+      "note": "Presentation-only shared referral wording; original moneyCopy/planGates/GoalOnboarding scope preserved. My referrals changes nav and shell/page titles only, keeping id asks, /requests and request stages. Current packet documents exact ownership serialization after PRICING, D-180-a-free-asks-chip, D-222, D-173 and only the D-094 status-help piece. No existing queued row waits changed. Capture and test owns declared. No price, charge, eligibility, availability, release or implementation acceptance change. Nov 9 bounded presentation handoff: nav.ts moves only to D-180-referral-nav-copy; consume its exact navigation strings before the remaining sweep. All other ownership, money scope and dependencies remain."
     },
     {
       "id": "D-048-copy-goal-twins",
@@ -5810,7 +5811,7 @@
     },
     {
       "id": "D-180-referral-nav-copy",
-      "title": "Referral-only current navigation rail and requests shell title",
+      "title": "Referral-only current navigation labels",
       "row": "D-180",
       "packet": "docs/plans/D-180-referral-nav-copy.md",
       "epic": "D-180",
@@ -5822,11 +5823,10 @@
       "dependsOn": [],
       "owns": [
         "client/src/components/goal/nav.ts",
-        "client/src/components/goal/useGoalShellMeta.ts",
         "client/src/components/goal/referralNavCopy.test.ts",
         "design/goal-ui/captures/referral-nav-copy/**"
       ],
-      "note": "Presentation-only bounded child of the existing terminology sweep. Exact two literal replacements: navigation My asks to My referrals and /requests shell title My asks to My referrals; internal asks ID, /requests href, all routes, access conditions, balances, policy and flags unchanged. Existing D-180 sweep retains all other scope/dependencies and consumes this child output. No implementation or production acceptance claimed."
+      "note": "Presentation-only bounded child of the existing terminology sweep. Only navigation My asks labels become My referrals; shell/page titles remain with existing owners; internal asks ID, /requests href, all routes, access conditions, balances, policy and flags unchanged. Existing D-180 sweep retains all other scope/dependencies and consumes this child output. No implementation or production acceptance claimed."
     }
   ]
 }
