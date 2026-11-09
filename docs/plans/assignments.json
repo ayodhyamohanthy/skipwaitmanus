@@ -5707,6 +5707,24 @@
       "note": "D-309 actual owner instruction enables many agents on distinct authorized work. Diagnose actual selection first: current core already scans past gate actions; no global runtime bug is assumed. Red-first tests cover real independent offers and honest no-capacity wording. Core/CLI/existing tests are read-only; if a genuine core defect is reproduced, request exact bounded scope before editing. PICKER-fullstack-lights consumes this new printed eligibility contract and must merge it before its own text work; PICKER-qa-stage follows through it, genuine output serialization not a preference edge. No claiming a competing D057, blanket owner clearance, test weakening or review/CI bypass."
     },
     {
+      "id": "D-048-GoalEmails-nouns",
+      "title": "Ship remaining live GoalEmails local referral nouns independently of broader R7 prep",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-GoalEmails-nouns.md",
+      "tier": 2,
+      "lane": "goal-emails-nouns",
+      "branch": "agent/instinct/goal-emails-noun-recovery-nov9",
+      "status": "todo",
+      "syncedTo": "D-309",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/system/GoalEmails.tsx",
+        "client/src/pages/goal/system/systemPages.goal.test.tsx",
+        "docs/plans/D-048-R7-prep.md"
+      ],
+      "note": "Bounded coordinator recovery assigned18:13Nov9, source already published934a6bfc PR1085. Only6local presentation-noun lines and2direct selector pins. No global R7 takeover, sender/body change, flags, auth, money behavior, legal edit or capture deletion. Broader R7 canonical/custom work preserved. Final R7 composition consumes this exact source output; child does not await full R7 acceptance. Independent final-version review, exact-head CI and actual production1280/390 required."
+    },
+    {
       "id": "D-048-R7-prep",
       "title": "Prepare existing R7 public release: current drift, policy text equality, goal QA and proof without flag activation",
       "row": "D-048",
@@ -5719,7 +5737,8 @@
       "dependsOn": [
         "D-048-p3-policy",
         "D-048-p3-system",
-        "D-048-p3-links"
+        "D-048-p3-links",
+        "D-048-GoalEmails-nouns"
       ],
       "owns": [
         "client/src/pages/goal/system/GoalEmails.tsx",
@@ -5727,7 +5746,7 @@
         "scripts/r7ReleaseAcceptance.test.ts",
         "design/goal-ui/captures/r7-release/**"
       ],
-      "note": "Bounded preparatory subtask of the already-specified R7 wave (phase-3-split142-149/185), under existing implementation/decomposition and Nov9 parallel-work instructions. Three actual surface output rows are done. Current R4 flag owner remains intact: no goalSurfaces or release flag edit here, no R4 acceptance/status fiction. Port only verified current Emails kit/sender drift into its goal twin; all policy legal words unchanged; current preview QA/captures and behavior/text equality acceptance proof. This output feeds the later R7 release row/handoff, not permission to activate it. Claim real distinct work only, preserve D057f679 and all review/CI/money/privacy constraints."
+      "note": "Bounded preparatory subtask of the already-specified R7 wave (phase-3-split142-149/185), under existing implementation/decomposition and Nov9 parallel-work instructions. Three actual surface output rows are done. Current R4 flag owner remains intact: no goalSurfaces or release flag edit here, no R4 acceptance/status fiction. Port only verified current Emails kit/sender drift into its goal twin; all policy legal words unchanged; current preview QA/captures and behavior/text equality acceptance proof. This output feeds the later R7 release row/handoff, not permission to activate it. Claim real distinct work only, preserve D057f679 and all review/CI/money/privacy constraints. Nov9 incremental recovery: consume the independently shipped GoalEmails local referral-noun correction before final sender-drift composition and rerender; this actual same-file source input is not a whole-feature hold on the child or independent capture work."
     },
     {
       "id": "D-180-referral-copy-prep",
