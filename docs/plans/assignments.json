@@ -5750,8 +5750,8 @@
       "tier": 2,
       "lane": "d048-r7-prep",
       "branch": "agent/queue/d048-r7-prep",
-      "status": "todo",
-      "syncedTo": "D-308",
+      "status": "done",
+      "syncedTo": "D-310",
       "dependsOn": [
         "D-048-p3-policy",
         "D-048-p3-system",
