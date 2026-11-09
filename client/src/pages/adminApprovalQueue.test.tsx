@@ -84,10 +84,27 @@ describe("administrator unified approval queue", () => {
     await waitFor(() => expect(screen.getByText("Ref-1501")).toBeTruthy());
     const card = screen.getByText("Ref-1501").closest("li")!;
     fireEvent.click(within(card).getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(screen.getByText(/Decision failed to save/)).toBeTruthy());
-    expect(screen.getByText(/The record is unchanged and still in the queue. No notifications were sent./)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/The decision may not have been recorded. Reload the queue before you retry./)).toBeTruthy());
+    expect(screen.queryByText(/The record is unchanged and still in the queue/)).toBeNull();
+    expect(screen.queryByText(/No notifications were sent/)).toBeNull();
     expect(screen.getByText("Ref-1501")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry decision" }));
     await waitFor(() => expect(within(card).getByText("Approved")).toBeTruthy());
+  });
+
+  it("shows already-resolved copy when a decision returns 409", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return { ok: false, status: 409, json: async () => ({ error: "This record was already resolved" }) };
+      }
+      return { ok: true, json: async () => ({ items: queueItems }) };
+    }));
+    render(<AdminApprovalQueue />);
+    await waitFor(() => expect(screen.getByText("Ref-1501")).toBeTruthy());
+    const card = screen.getByText("Ref-1501").closest("li")!;
+    fireEvent.click(within(card).getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(screen.getByText(/This attempt was not recorded — this record was already resolved. Reload to see its current state./)).toBeTruthy());
+    expect(screen.queryByText(/The record is unchanged and still in the queue/)).toBeNull();
+    expect(screen.queryByText(/No notifications were sent/)).toBeNull();
   });
 });

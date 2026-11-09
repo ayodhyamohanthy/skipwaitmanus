@@ -2648,6 +2648,26 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-fix-admin-approvals-failure-copy",
+      "title": "Kit admin-approvals decision/load failure copy describes this attempt and the current resolved state only (#993)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-admin.md",
+      "tier": 1,
+      "lane": "d048-fix-admin-approvals-copy",
+      "branch": "agent/queue/993-kit-admin-approvals-failure-copy",
+      "status": "todo",
+      "syncedTo": "D-301",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/AdminApprovalQueue.tsx",
+        "client/src/pages/AdminApprovalRecord.tsx",
+        "client/src/pages/adminApprovalQueue.test.tsx",
+        "client/src/pages/adminApprovalRecord.test.tsx"
+      ],
+      "note": "Repair-lane row for issue #993 (reviewer-lane finding, outside D-048-p3-admin-approvals' switch-only scope). The live kit pages claimed 'record unchanged / no notifications sent' and 'read-only until it loads — nothing has been decided or notified'; both now describe this attempt and the current resolved state only, reusing the goal module's ApprovalDecisionError/decisionFailureOf/decisionFailureCopy. Server calls byte-identical; goal pages and approvalsData.ts unchanged. Tier 1 (money-adjacent admin surface): independent review by a model other than the builder (D-151) before landing.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-048-p3-admin-ops",
       "title": "W6 /admin/activity, /admin/flow-health, /admin/schema, /admin/smoke, /admin/partners",
       "row": "D-048",
@@ -2794,7 +2814,7 @@
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
       "status": "todo",
-      "syncedTo": "D-303",
+      "syncedTo": "D-304",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
@@ -4486,7 +4506,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-oracle-kind-repair",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-304",
       "dependsOn": [],
       "epic": "D-212",
@@ -5281,7 +5301,7 @@
       "tier": 1,
       "lane": "d048-foundation",
       "branch": "agent/deepseek/d048-goal-twins-trigger-fix",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-300",
       "dependsOn": [
         "FIX-share-hub-link-ready"
