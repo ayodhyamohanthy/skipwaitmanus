@@ -104,12 +104,26 @@ describe("R7 release acceptance: the system surface carries the kit's verified c
     expect(goalTemplates.map(t => t.name)).toEqual(kitTemplates.map(t => t.name));
   });
 
-  it("repeats every verified word verbatim, so the honesty rule holds after release", () => {
+  it("preserves every kit word except the two independently sender-verified drift ports", () => {
     const goalByName = new Map(goalTemplates.map(t => [t.name, t]));
     for (const entry of kitTemplates) {
       const twin = goalByName.get(entry.name);
       expect(twin, `${entry.name} is missing from the goal page`).toBeDefined();
-      expect(twin?.literals, `${entry.name} text drifted from the kit page`).toEqual(entry.literals);
+      // The kit is stale for exactly these two sender fields. Preserve full literal equality
+      // after the measured ports, not a broad exclusion of those templates or fields.
+      const expected = entry.literals.map(value => {
+        if (entry.name === "Work-email code" && value === "Your skipwait.me verification code") {
+          expect(read("server/workEmailOtp.ts")).toContain("`${code} is your skipwait.me verification code`");
+          return "⟨6-digit code⟩ is your skipwait.me verification code";
+        }
+        if (entry.name === "Review ready" && value === "Opening this link never records a decision. Review and confirm on skipwait.me.") {
+          const current = "Open the private review page to inspect and confirm a decision. Opening this link never records a decision.";
+          expect(read("server/referrerReviewEmail.ts")).toContain(current);
+          return current;
+        }
+        return value;
+      });
+      expect(twin?.literals, `${entry.name} has unverified drift from kit/sender source`).toEqual(expected);
     }
   });
 
