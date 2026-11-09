@@ -4350,6 +4350,23 @@
       ]
     },
     {
+      "id": "D-176-home-metadata-hydration",
+      "title": "Keep canonical Home descriptions after hydration without broader D176 availability rewrite",
+      "row": "D-176",
+      "packet": "docs/plans/D-176-home-metadata-hydration.md",
+      "tier": 2,
+      "lane": "home-meta-hydration",
+      "branch": "agent/instinct/home-metadata-hydration-nov9",
+      "status": "todo",
+      "syncedTo": "D-309",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/Home.tsx",
+        "client/src/pages/home.metadataHydration.test.tsx"
+      ],
+      "note": "Bounded current-main hydration recovery, no visible copy/flags/auth/money changes. D176 final Home work consumes this source output; unrelated explore test dependency not inherited. Red-first2fail, focused18pass. Separate review, required exact-headCI and actual posthydration production DOM proof required."
+    },
+    {
       "id": "D-176-public-claims",
       "title": "Stop claiming availability on the signed-in Home and in the /explore description",
       "row": "D-193",
@@ -4363,7 +4380,8 @@
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
         "D-048-F-static-frame",
-        "D-174-fix-post-binding"
+        "D-174-fix-post-binding",
+        "D-176-home-metadata-hydration"
       ],
       "note": "D-193 packet section 5.6. Production marks only skipwait and go-neutrinos open, while Home and the /explore description claim Wipro and TCS too. Copy only; dropping openToReferrals/openCount from the public payload waits for the D-189 journey packet (D-193 (6)).",
       "epic": "D-174",
