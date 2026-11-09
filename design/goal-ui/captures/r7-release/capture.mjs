@@ -32,6 +32,14 @@ const ROUTES = [
 
 const WIDTHS = [1280, 390];
 
+// Interactive states the packet names explicitly ("Emails template interactions", "app states"): each button in the
+// page's own control group is selected and captured, so a gallery screenshot never stands in for its panels.
+const VARIANTS = [
+  { route: "/emails", group: '[aria-label="Templates"] button, main button[type="button"]', prefix: "emails" },
+  { route: "/app-states", group: '[aria-label="Screen"] button', prefix: "app-state" },
+];
+
+
 const api = (url) => {
   if (url.includes("/api/health")) return { ok: true, state: "ready", service: "skipwait-api" };
   if (url.includes("/api/companies")) return { companies: [], openCount: 0 };
@@ -90,6 +98,31 @@ for (const width of WIDTHS) {
   }
   await page.close();
 }
+// Interactive variants: select every control in the page's own group, capture that state, then reload.
+for (const width of WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 900 } });
+  for (const variant of VARIANTS) {
+    await page.goto(`http://127.0.0.1:${port}${variant.route}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.waitForTimeout(1000);
+    const labels = await page.$$eval(variant.group, nodes => nodes.map(node => (node.textContent ?? "").trim()).filter(Boolean));
+    const unique = Array.from(new Set(labels)).slice(0, 14);
+    for (const label of unique) {
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(500);
+      const target = page.locator(variant.group, { hasText: label }).first();
+      try { await target.click({ timeout: 4000 }); } catch { continue; }
+      await page.waitForTimeout(400);
+      const slug = `${variant.prefix}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`.slice(0, 60);
+      const file = `${slug}-${width}.png`;
+      await page.screenshot({ path: path.join(here, file), fullPage: true });
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      results.push({ file, route: variant.route, note: `variant: ${label}`, viewport: width, goalPage: null, kitScreen: null, h1: label, overflow, errors: [] });
+      console.log(`${file.padEnd(40)} variant="${label}" overflow=${overflow}`);
+    }
+  }
+  await page.close();
+}
+
 await browser.close();
 server.close();
 

@@ -57,3 +57,7 @@ Built with `VITE_GOAL_SURFACES=policy,system,links` and captured through the che
 3. `links` needs goal coverage for its invalid/expired token states before its id can be released; only the kit screens render today.
 
 Unverified and listed in the manifest: `/emails` interactions beyond the default selection, link sign-in return, authenticated share-card privacy states, and the individual `/app-states` panels. `RELEASED` untouched.
+
+2026-11-09: interactive capture coverage added — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
+
+The driver now selects every control in a page's own group and captures that state, which closes the two gaps my previous entry listed: **all 13 `/emails` templates** and **all 9 `/app-states` screens**, at 1280 and 390. Manifest now records **64 captures, 0 with horizontal overflow**, source `2e478baa`. Still unverified and still listed in the manifest: link sign-in return, authenticated share-card privacy states, and `/app-states` sub-dialogs opened from inside a panel (install instructions dismissed, permission denied).
