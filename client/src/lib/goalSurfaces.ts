@@ -78,7 +78,6 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "employer",
   "for-companies",
   "landed",
-  "links",
   "messages",
   "onboarding",
   "policy",
@@ -86,7 +85,6 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "share",
   "start",
   "suggest-company",
-  "support",
   "system",
 ];
 
