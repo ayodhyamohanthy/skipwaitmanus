@@ -113,7 +113,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/The moment one can see your referral request, 1 referral request is used/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your referral request, 1 is deducted from your balance/)).toBeTruthy();
     expect(screen.getByText(/withdraw before someone picks it up/)).toBeTruthy();
     expect(screen.getByText(/not on sale right now/)).toBeTruthy();
     expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();

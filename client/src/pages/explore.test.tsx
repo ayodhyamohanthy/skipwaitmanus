@@ -119,7 +119,7 @@ describe("Find a referral directory", () => {
     const drawer = await screen.findByTestId("goal-drawer");
     expect(within(drawer).getByText("No verified employee at Merkle can take a new ask right now.")).toBeTruthy();
     expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
-    expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("No referral request used until a verified employee can see it");
+    expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it");
     expect(within(drawer).queryByTestId("goal-verified-mark")).toBeNull();
   });
 

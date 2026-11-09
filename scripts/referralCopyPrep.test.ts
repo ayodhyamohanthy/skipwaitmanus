@@ -74,6 +74,15 @@ const REFERRAL_SAFE_COPY: ReadonlyArray<readonly [string, string]> = [
 ];
 
 describe("D-180 public money copy", () => {
+  it("distinguishes the submitted request from its balance debit and refund", () => {
+    const lines = [askCostLine({ open: true, balance: 8, cost: 5 }).line, askCostLine({ open: true, balance: 3, cost: 5 }).line, CREDIT_RULE, askCostLanding(false).fairRule];
+    for (const line of lines) expect(line).not.toMatch(/(?:costs? \d+ referral requests?|uses? \d+ of your \d+ referral requests?|\d+ referral requests? (?:is|are) used|referral request comes back)/i);
+    expect(lines[0]).toBe("Uses 5 from your balance of 8");
+    expect(lines[1]).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more.");
+    expect(CREDIT_RULE).toContain("The charge is refunded once");
+    expect(CREDIT_RULE).toContain("has not expired, ended or been revoked and has room for the refund");
+  });
+
   // Vacuity guard: the detector must catch the retired nouns and still allow
   // the verb the owner kept ("never ask you for money", "Ask for a referral").
   it("detects the retired nouns and allows the verb", () => {

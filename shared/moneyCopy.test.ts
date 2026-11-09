@@ -29,26 +29,26 @@ afterEach(() => { vi.resetModules(); vi.doUnmock("./referral"); });
 describe("askCostLine", () => {
   it("says nothing is used while a company has no available employee", () => {
     const cost = askCostLine({ open: false, balance: 7 });
-    expect(cost.line).toBe("No referral request used until a verified employee can see it");
+    expect(cost.line).toBe("Nothing deducted from your balance until a verified employee can see it");
     expect(cost.detail).toContain(`${COVERAGE_WAIT_DAYS} days`);
     expect(cost.blockedReason).toBeNull();
   });
 
   it("states the balance when it is known", () => {
-    expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 of your 2 referral requests");
-    expect(askCostLine({ open: true, balance: 1 }).line).toBe("Uses 1 of your 1 referral request");
+    expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 from your balance of 2");
+    expect(askCostLine({ open: true, balance: 1 }).line).toBe("Uses 1 from your balance of 1");
     expect(askCostLine({ open: true, balance: 2 }).detail).toContain(`${ASK_TTL_DAYS} days`);
   });
 
   it("never invents a balance while it loads, and blocks a wallet with none", () => {
-    expect(askCostLine({ open: true, balance: null }).line).toBe("Uses 1 referral request");
+    expect(askCostLine({ open: true, balance: null }).line).toBe("Uses 1 from your balance");
     const none = askCostLine({ open: true, balance: 0 });
-    expect(none.line).toBe("You have no referral requests left");
+    expect(none.line).toBe("Your balance is empty");
     expect(none.blockedReason).toContain("Top up in Plans");
   });
 
   it("describes the waiting case when availability is not known yet", () => {
-    expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 referral request when a verified employee can see it");
+    expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 from your balance when a verified employee can see it");
   });
 });
 
@@ -74,20 +74,20 @@ describe("CREDIT_RULE follows the part B switch", () => {
 
 describe("level-aware ask cost (D-132 item 7)", () => {
   it("default cost is 1 credit: every existing line is unchanged", () => {
-    expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 of your 2 referral requests");
-    expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 referral request when a verified employee can see it");
-    expect(askCostLine({ open: false, balance: 7 }).detail).toContain("1 referral request is used");
-    expect(askCostLine({ open: false, balance: 7, cost: null }).detail).toContain("its referral request is used");
+    expect(askCostLine({ open: true, balance: 2 }).line).toBe("Uses 1 from your balance of 2");
+    expect(askCostLine({ open: null, balance: null }).line).toBe("Uses 1 from your balance when a verified employee can see it");
+    expect(askCostLine({ open: false, balance: 7 }).detail).toContain("1 is deducted from your balance");
+    expect(askCostLine({ open: false, balance: 7, cost: null }).detail).toContain("its cost is deducted from your balance");
   });
   it("a level cost is stated in the same line", () => {
-    expect(askCostLine({ open: true, balance: 8, cost: 5 }).line).toBe("Uses 5 of your 8 referral requests");
-    expect(askCostLine({ open: null, balance: null, cost: 5 }).line).toBe("Uses 5 referral requests when a verified employee can see it");
-    expect(askCostLine({ open: false, balance: 8, cost: 5 }).detail).toContain("5 referral requests are used");
+    expect(askCostLine({ open: true, balance: 8, cost: 5 }).line).toBe("Uses 5 from your balance of 8");
+    expect(askCostLine({ open: null, balance: null, cost: 5 }).line).toBe("Uses 5 from your balance when a verified employee can see it");
+    expect(askCostLine({ open: false, balance: 8, cost: 5 }).detail).toContain("5 is deducted from your balance");
   });
   it("short of credits names the gap and blocks", () => {
     const line = askCostLine({ open: true, balance: 3, cost: 5 });
-    expect(line.line).toBe("This referral request costs 5 referral requests. You have 3. Add 2 more.");
-    expect(line.blockedReason).toBe("This referral request costs 5 referral requests. You have 3. Add 2 more.");
+    expect(line.line).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more.");
+    expect(line.blockedReason).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more.");
   });
   it("top-up destination: lands on packs when available, falls back to premium role for job seeker", () => {
     expect(topUpHref(true)).toBe("/plans#packs");
@@ -95,7 +95,7 @@ describe("level-aware ask cost (D-132 item 7)", () => {
     expect(topUpHref()).toBe("/plans#packs");
   });
   it("landing copy: flat wording with the flag off, level wording with it on, never 'costs the same' under levels", () => {
-    expect(askCostLanding(false).fairRule).toContain("1 referral request");
+    expect(askCostLanding(false).fairRule).toContain("1 from your balance");
     expect(askCostLanding(false).stepBody).toContain("Every ask costs the same");
     const on = askCostLanding(true);
     for (const text of [on.stepBody, on.waitBody, on.fairRule]) { expect(text).not.toMatch(/costs the same|\b1 credit only\b/); }
@@ -125,11 +125,11 @@ describe("CREDIT_RULE_V2 against the live CREDIT_RULE (D-132 item 11)", () => {
 describe("askCostLine: known-uncovered deferred cost grounding (D-132 item 3)", () => {
   it("names the deferred charge only when a current quote grounds it", () => {
     const grounded = askCostLine({ open: false, balance: null, cost: 6 });
-    expect(grounded.line).toBe("No referral request used until a verified employee can see it");
-    expect(grounded.detail).toContain("6 referral requests are used");
+    expect(grounded.line).toBe("Nothing deducted from your balance until a verified employee can see it");
+    expect(grounded.detail).toContain("6 is deducted from your balance");
     const ungrounded = askCostLine({ open: false, balance: null, cost: null });
-    expect(ungrounded.detail).toBe(`It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, its referral request is used; if you don't have enough then, we hold it until you add more.`);
-    expect(ungrounded.detail).not.toContain("1 referral request");
+    expect(ungrounded.detail).toBe(`It waits up to ${COVERAGE_WAIT_DAYS} days. When one can, its cost is deducted from your balance; if you don't have enough then, we hold it until you add more.`);
+    expect(ungrounded.detail).not.toContain("1 is deducted");
     expect(ungrounded.blockedReason).toBeNull();
   });
 });

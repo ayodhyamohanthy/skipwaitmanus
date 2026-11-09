@@ -55,10 +55,10 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
 /** D-042: the reopen promise is stated only while part B can deliver it (D-038-reconcile F3, R-2);
  * the routes answer 409 and the job skips its part B steps while the switch is off. */
 const REFERRED_REOPEN_SENTENCE = REFERRED_DEADLINE_ENABLED
-  ? " If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge comes back if it is then withdrawn or expires unclaimed."
+  ? " If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn or expires unclaimed, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund."
   : "";
 
-export const CREDIT_RULE = `A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 referral request is used; if you have none then, we hold the referral request until you add one. The referral request comes back once if you withdraw before someone picks it up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the month or plan it came from has not ended by then. A referral request that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass.${REFERRED_REOPEN_SENTENCE}`;
+export const CREDIT_RULE = `A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass.${REFERRED_REOPEN_SENTENCE}`;
 
 /**
  * D-132 (frozen Oct 21 18:42 IST): PAID credits never expire; free monthly
@@ -77,10 +77,10 @@ export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
 /** A credit goes back to the bucket it came from, so one whose month or plan cycle ended cannot come back (refundLedgerSpendTx logs 0). */
-export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
+export const CREDIT_ENDED_CAVEAT = "only if its original balance or allowance has not expired, ended or been revoked and has room for the refund";
 
 /** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
-export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the referral request comes back once if you withdraw before pickup or it expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
+export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the charge is refunded once if you withdraw before pickup or it expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
 
 export type AskCostLine = { line: string; detail: string; blockedReason: string | null };
 
@@ -92,29 +92,28 @@ export type AskCostLine = { line: string; detail: string; blockedReason: string 
  */
 export function askCostLine(input: { open: boolean | null; balance: number | null; /** Credits this ask costs; null when unpriced/pending quote, 1 by default (D-132). */ cost?: number | null }): AskCostLine {
   const cost = Math.max(1, Math.round(input.cost ?? 1));
-  const requests = (n: number) => `${n} referral request${n === 1 ? "" : "s"}`;
   if (input.open === false) {
     // A known-uncovered ask waits free. The deferred charge is named only when
     // a current server quote grounds it: a pending or failed price must not
     // state a stale or fallback K (D-132 item 3).
     const when = input.cost === null
-      ? "When one can, its referral request is used; if you don't have enough then, we hold it until you add more."
-      : `When one can, ${requests(cost)} ${cost === 1 ? "is" : "are"} used; if you don't have enough then, we hold it until you add ${cost === 1 ? "one" : "more"}.`;
+      ? "When one can, its cost is deducted from your balance; if you don't have enough then, we hold it until you add more."
+      : `When one can, ${cost} is deducted from your balance; if you don't have enough then, we hold it until you add ${cost === 1 ? "one" : "more"}.`;
     return {
-      line: "No referral request used until a verified employee can see it",
+      line: "Nothing deducted from your balance until a verified employee can see it",
       detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. ${when}`,
       blockedReason: null,
     };
   }
-  const detail = `Comes back if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays charged, even if they pass.`;
-  if (input.open === null) return { line: `Uses ${requests(cost)} when a verified employee can see it`, detail, blockedReason: null };
-  if (input.balance === null) return { line: `Uses ${requests(cost)}`, detail, blockedReason: null };
+  const detail = `The charge is refunded if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays charged, even if they pass.`;
+  if (input.open === null) return { line: `Uses ${cost} from your balance when a verified employee can see it`, detail, blockedReason: null };
+  if (input.balance === null) return { line: `Uses ${cost} from your balance`, detail, blockedReason: null };
   if (cost > 1 && input.balance < cost) {
-    const short = `This referral request costs ${requests(cost)}. You have ${input.balance}. Add ${cost - input.balance} more.`;
+    const short = `This referral request uses ${cost} from your balance. You have ${input.balance}. Add ${cost - input.balance} more.`;
     return { line: short, detail: "Top up in Plans to send this referral request now.", blockedReason: short };
   }
-  if (input.balance <= 0) return { line: "You have no referral requests left", detail: "Top up in Plans to send this referral request now.", blockedReason: "You have no referral requests left. Top up in Plans." };
-  return { line: `Uses ${cost} of your ${input.balance} ${input.balance === 1 ? "referral request" : "referral requests"}`, detail, blockedReason: null };
+  if (input.balance <= 0) return { line: "Your balance is empty", detail: "Top up in Plans to send this referral request now.", blockedReason: "Your balance is empty. Top up in Plans." };
+  return { line: `Uses ${cost} from your balance of ${input.balance}`, detail, blockedReason: null };
 }
 
 
@@ -127,7 +126,7 @@ export const addCreditPhrase = (levelCost: boolean): string => (levelCost ? "Add
 export const ADD_CREDITS_LABEL = "Add credits";
 export const ADD_CREDITS_HREF = "/plans#packs";
 export const topUpHref = (packsOnSale = true): string => (packsOnSale ? "/plans#packs" : "/premium?role=job_seeker");
-export const creditUsedPhrase = (levelCost: boolean): string => (levelCost ? "its credits are used" : "1 referral request is used");
+export const creditUsedPhrase = (levelCost: boolean): string => (levelCost ? "its credits are used" : "1 is deducted from your balance");
 /** Administrator-only copy (approval queue/record), not a public surface: left as-is by D-180. */
 export const creditReservedPhrase = (levelCost: boolean): string => (levelCost ? "Credits reserved" : "1 credit reserved");
 
@@ -146,8 +145,8 @@ export function askCostLanding(levelCost: boolean): { stepBody: string; waitBody
   }
   return {
     stepBody: `You see the cost before you ask: ${ASK_COST_SENTENCE} Every ask costs the same.`,
-    waitBody: "1 referral request only when a verified employee can see it, and it comes back if you withdraw first.",
-    fairRule: "Every referral request costs the same: 1 referral request when a verified employee can see it, nothing while it waits.",
+    waitBody: "1 is deducted from your balance only when a verified employee can see it. The charge is refunded if you withdraw before pickup, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund.",
+    fairRule: "Every referral request uses the same amount: 1 from your balance when a verified employee can see it, nothing while it waits.",
   };
 }
 
