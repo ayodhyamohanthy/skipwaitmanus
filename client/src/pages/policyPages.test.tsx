@@ -51,10 +51,12 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const policyLinks = (container: HTMLElement) => Array.from(container.querySelectorAll('nav[aria-label="Policies"] a')).map(a => a.getAttribute("href"));
 
 it("rejects extra free or guaranteed referral promises outside the exact allowance", () => {
-  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST)).not.toMatch(/Referrals are free|free referrals|guaranteed? referrals?/i);
-  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Referrals are free.")).toMatch(/Referrals are free|free referrals|guaranteed? referrals?/i);
-  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited free referrals.")).toMatch(/Referrals are free|free referrals|guaranteed? referrals?/i);
-  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " A guaranteed referral.")).toMatch(/Referrals are free|free referrals|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST)).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Referrals are free.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited free referrals.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited referrals.")).toMatch(/unlimited referrals/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited requests.")).toMatch(/unlimited requests/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " A guaranteed referral.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
 });
 
 describe("legal and support disclosures (pre-launch P0 gate)", () => {
@@ -99,7 +101,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText("3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.")).toBeTruthy();
     expect(FREE_PLAN.creditsPerMonth).toBe(3);
     expect((document.body.textContent ?? "").split(EXPECTED_ALLOWANCE_COST)).toHaveLength(2);
-    expect(noBlanketReferralPromise(document.body.textContent ?? "")).not.toMatch(/Referrals are free|free referrals|guaranteed? referrals?/i);
+    expect(noBlanketReferralPromise(document.body.textContent ?? "")).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
     expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
     expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");

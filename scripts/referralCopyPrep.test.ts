@@ -9,8 +9,8 @@
  *
  * This file covers only the presentation strings whose referral-only rewording
  * needs no purchase or plan change. Strings whose replacement depends on a
- * pricing decision that is not live (the "extra asks use credits" tail, the
- * "Add a credit pack" top-up, PAID_PLANS_SENTENCE, the payment template, the
+ * pricing decision that is not live (the "Add a credit pack" top-up,
+ * PAID_PLANS_SENTENCE, the payment template, the
  * D-132 V2 strings) are deliberately not asserted here: per the packet, a hunk
  * that depends on a future behavior change is left unchanged and reported, not
  * promised. Internal identifiers, amounts, charges, card rules, timing,
