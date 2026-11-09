@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
+import { publicRoute } from "@shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
 import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
@@ -29,7 +30,7 @@ export default function Home() {
   const goalLanding = goalSurfaceOn("home") && isLoaded && !isSignedIn;
   useEffect(() => {
     if (goalLanding) return;
-    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `skipwait.me connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
+    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: publicRoute("/")!.description, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
   }, [goalLanding]);
   if (goalLanding) return <GoalLandingV9 />;
 
