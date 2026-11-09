@@ -28,3 +28,11 @@ Return exact composed head/base, actual test output, inspected 1280/390 captures
 Registered preparation only; no runtime, captures or acceptance completed by registration.
 
 2026-11-09: in progress — DeepSeek V4.1 Flash · e0df — branch agent/queue/d048-r7-prep.
+
+2026-11-09: drift comparison measured, acceptance controls landed, captures and preview QA still owed — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
+
+**Content drift: none found, and it is now pinned.** `scripts/r7ReleaseAcceptance.test.ts` compares the kit page (`client/src/pages/Emails.tsx`) with the goal twin (`client/src/pages/goal/system/GoalEmails.tsx`) as ordered lists of string literals per template: **13 templates in the same order, and every verified word identical** — subjects, bodies and CTAs. The #324 password-reset change the packet calls out is already carried in the goal twin (neutral reply, one hour, single use, "ignore this email"); no port was needed. The goal body imports nothing from the kit and carries the goal frame, so `assertGoalPage`'s preconditions hold. Red first: the extractor was written against the real files and asserts equality, so any future drift fails the suite.
+
+**Blocker recorded before release (D-173/D-180):** the goal page still labels two templates **"Ask accepted"** and **"Ask passed"**. The buyer-facing unit is a referral request, so releasing the `system` surface as it stands would print the retired noun on a public page. The rename is a copy change and needs its own bounded amendment; the release carrier must not flip the `system` id until it lands. The last test in the new suite records this so it cannot be forgotten at release time.
+
+**Owed before this row can claim ready** (not done here, and not claimed): the component-level `goalEmails.releaseDrift.test.tsx`, the `design/goal-ui/captures/r7-release/**` evidence at 1280 and 390 for every route/state of the three public groups (including not-found, offline, app states, Emails interactions, valid/invalid/expired links, sign-in return and share-card privacy), and the policy flag-on/off rendered-text equality proof on every legal route. `RELEASED` is untouched; this row flips no flag.
