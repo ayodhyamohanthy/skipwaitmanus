@@ -53,3 +53,5 @@ No product behavior, sign-in provider, user account, money, legal copy, migratio
 ## Status
 
 2026-11-10: proposed registration only from main41e80352 after the owner's explicit approval of truthful separate external-model/operator support. Runtime is unimplemented and unverified. No claim, verdict, receipt, registry entry or held-fix clearance was recorded by this registration. Prior held work is preserved.
+
+2026-11-10: in progress - Instinct · provenance-nov10 - branch `agent/queue/process-model-provenance`. Ordinary released picker from reviewed registration source selected BUILD with supported explicit session-scope avoids; no new provenance route was used to claim its own implementation. Isolated preliminary qualification is uncommitted, incomplete and not a qualified external model contribution. Existing unknown-model product work stays held. Real local fixture tests and separate final review are still required before any completion claim.
