@@ -30,4 +30,24 @@ No owns is declared because existing pricing/sweep rows retain active overlappin
 No flags, prices, plan availability, actual money flows, card requirements, expiration, legal text, API/auth, sender behavior or production mutation is authorized. Completion means reviewed presentation preparation landed, not R7 activation or every user flow verified.
 
 ## Status
-Registered bounded isolated preparation. No implementation, test result, capture acceptance or live release is claimed by this document.
+Registered bounded isolated preparation (PR #1078 merged at `69627919`).
+
+Prepared on `agent/d180prep/d1b4-referral-copy` (`Qoder · d1b4`, claim
+`f9121732`): the allowlisted presentation hunks in `shared/moneyCopy.ts` and
+`client/src/pages/Emails.tsx`, their direct wording pins, the red-first
+`scripts/referralCopyPrep.test.ts` (red at `3 failed | 6 passed (9)`, green at
+`9 passed`), before/after `/emails` captures at 1280 and 390, `pnpm check` and
+the token audit. Evidence and the exact wording: `design/goal-ui/captures/referral-copy-prep/manifest.md`.
+
+Open blocker, reported not worked around: 41 assertions in 12 files outside the
+allowlist still pin the old nouns (`ask.costQuote.test.tsx` 20,
+`home.world.test.tsx` 4, `explore.test.tsx` 3, `exploreDrawer.test.tsx` 3,
+`policyPages.test.tsx` 3, `ask.test.tsx` 2, plus one each in
+`GoalLanding.test.tsx`, `emails.test.tsx`, `systemGalleries.test.tsx`,
+`home.mobileNav.test.tsx`, `planCatalog.test.ts` and `threadModel.test.ts`).
+They need a bounded correction through Instinct or an allowlist amendment
+before this copy can land. Pricing-dependent strings are left unchanged and
+reported in the manifest.
+
+No independent review, landing, capture acceptance or live release is claimed
+by this document.

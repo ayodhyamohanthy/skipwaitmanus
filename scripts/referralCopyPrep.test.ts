@@ -30,7 +30,6 @@ import {
   REFERRING_FREE_LINE,
   askCostLanding,
   askCostLine,
-  creditReservedPhrase,
   creditUsedPhrase,
 } from "../shared/moneyCopy";
 import { FREE_PLAN } from "../shared/planCatalog";
@@ -67,7 +66,6 @@ const REFERRAL_SAFE_COPY: ReadonlyArray<readonly [string, string]> = [
   ["askCostLine: one left", askCostLine({ open: true, balance: 1 }).line],
   ["askCostLine: empty wallet", askCostLine({ open: true, balance: 0 }).line],
   ["creditUsedPhrase: flat", creditUsedPhrase(false)],
-  ["creditReservedPhrase: flat", creditReservedPhrase(false)],
   ["askCostLanding: waitBody", askCostLanding(false).waitBody],
   ["askCostLanding: fairRule", askCostLanding(false).fairRule],
 ];
