@@ -38,7 +38,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const access = useReferrerAccess();
-  const verifiedReferrer = access.status === "verified";
+  // D-057 (§0b.8c): a server-verified referrer whose session is code_required keeps
+  // the referrer navigation; the surfaces themselves show the in-place step-up.
+  const verifiedReferrer = access.status === "verified" || access.status === "code_required";
   const onReferrerSurface = REFERRER_SURFACE.test(path);
 
   // One balance query for the whole app (F-credits): the hook owns the fetch,

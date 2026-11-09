@@ -74,6 +74,8 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "subscriptionCancellationFeedback", createSql: `CREATE TABLE IF NOT EXISTS \`subscriptionCancellationFeedback\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`subscriptionId\` varchar(80) NOT NULL, \`reason\` enum('got_job','too_expensive','not_using','missing_feature','other') NOT NULL, \`outcome\` enum('cancelled','paused') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`subscriptionCancellationFeedback_id\` PRIMARY KEY(\`id\`), INDEX \`subscription_cancellation_feedback_user_idx\`(\`userId\`,\`createdAt\`), CONSTRAINT \`subscription_cancellation_feedback_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
   // Kit landed journey + private thank-you wall (0108, §3b row 20 slices C/D).
   { table: "landedJourney", createSql: `CREATE TABLE IF NOT EXISTS \`landedJourney\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`seekerUserId\` int NOT NULL, \`referrerUserId\` int NOT NULL, \`thankYouMessage\` text NULL, \`shareOnWall\` boolean NOT NULL DEFAULT false, \`payForwardChoice\` varchar(12) NULL, \`deliveredAt\` timestamp NULL, \`conversationMessageId\` int NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`landedJourney_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`landed_journey_request_unique\`(\`referralRequestId\`), INDEX \`landed_journey_referrer_wall_idx\`(\`referrerUserId\`,\`shareOnWall\`), CONSTRAINT \`landed_journey_request_fk\` FOREIGN KEY (\`referralRequestId\`) REFERENCES \`referralRequests\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`landed_journey_seeker_fk\` FOREIGN KEY (\`seekerUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`landed_journey_referrer_fk\` FOREIGN KEY (\`referrerUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  // D-057-session-gate (0116): in-session work-email step-up challenges and proofs.
+  { table: "referrerStepUps", createSql: `CREATE TABLE IF NOT EXISTS \`referrerStepUps\` (\`id\` int AUTO_INCREMENT NOT NULL, \`challengeIdHash\` varchar(64) NOT NULL, \`userId\` int NOT NULL, \`sessionKeyHash\` varchar(64) NOT NULL, \`purpose\` enum('referrer_actions') NOT NULL, \`emailFingerprint\` varchar(80) NOT NULL, \`workEmailDomain\` varchar(255) NOT NULL, \`codeHash\` varchar(64) NOT NULL, \`codeExpiresAt\` timestamp NOT NULL, \`attempts\` int NOT NULL DEFAULT 0, \`verifiedAt\` timestamp NULL, \`proofExpiresAt\` timestamp NULL, \`revokedAt\` timestamp NULL, \`revokedReason\` enum('superseded','logout') NULL, \`createdAt\` timestamp NOT NULL, CONSTRAINT \`referrerStepUps_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referrer_step_ups_challenge_unique\`(\`challengeIdHash\`), INDEX \`referrer_step_ups_proof_idx\`(\`userId\`,\`sessionKeyHash\`,\`purpose\`,\`verifiedAt\`), CONSTRAINT \`referrer_step_ups_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
   // Job catalog (0120, D-174-job-catalog packet section 5.5): board sources
   // registered with evidence and the catalog rows fetched from them. Both
   // start empty; the sync job writes nothing while JOB_CATALOG_ENABLED is
@@ -274,6 +276,9 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   // Kit landed journey + private thank-you wall (0108).
   { table: "landedJourney", name: "landed_journey_request_unique", columns: "`referralRequestId`" },
   { table: "landedJourney", name: "landed_journey_referrer_wall_idx", columns: "`referrerUserId`,`shareOnWall`", nonUnique: true },
+  // D-057-session-gate (0116): one challenge per id; the gate reads proofs by account, session and purpose.
+  { table: "referrerStepUps", name: "referrer_step_ups_challenge_unique", columns: "`challengeIdHash`" },
+  { table: "referrerStepUps", name: "referrer_step_ups_proof_idx", columns: "`userId`,`sessionKeyHash`,`purpose`,`verifiedAt`", nonUnique: true },
   // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
   { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
   // Task 13 (0105): the pieces pinned to one ask, read in the order the seeker chose.
@@ -335,6 +340,8 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "landedJourney", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
   { table: "landedJourney", column: "seekerUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "landedJourney", column: "referrerUserId", referencedTable: "users", referencedColumn: "id" },
+  // D-057-session-gate (0116): a proof goes when its account goes.
+  { table: "referrerStepUps", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
