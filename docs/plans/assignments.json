@@ -4252,7 +4252,7 @@
       "tier": 1,
       "lane": "d174-fix",
       "branch": "agent/instinct/posted-role-close-binding-nov9",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-310",
       "dependsOn": [],
       "note": "Bounded child of922 existingD193\u00a75.1Closecontract. Parent804ae119lineage/owner/dependencies/status/otherrequirements preserved; reintegratebeforeparentresumes samehunk. OnlyExploreCompanyclosehandler+newexploreCompany.closePostBinding.test.tsx, noauth/pricing/storage/server/UIcopychange. Noowns becauseparentoverlap; exact2pathmanualscope+qualifiedindependentreview required,nobypass/noownerACKclaim. Redfirststaleid88afterClose;25testsPASS;local1280/390interceptedpayload hasnoid,noactualsend/credits. Other922casesunresolved. Latestowner20:29parallel-easytestedproduction slices, notwholequeuehold."
