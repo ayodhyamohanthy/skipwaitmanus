@@ -163,9 +163,8 @@ await writeFile(
     synthetic: true,
     covered: results.length,
     unverified: [
-      "/emails template interactions beyond the default selection",
-      "link sign-in return and share-card privacy states behind an authenticated session",
-      "/app-states individual state panels",
+      "link sign-in return (needs an authenticated session; this driver must not fake one)",
+      "share-card privacy state behind an authenticated session",
     ],
     results,
   }, null, 2) + "\n",
