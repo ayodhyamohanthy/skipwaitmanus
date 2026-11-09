@@ -114,3 +114,62 @@ describe("EmailReviewAction with a code_required session (D-057)", () => {
     expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeNull();
   });
 });
+
+
+describe("coordinator isolated negative reproduction, no runtime change", () => {
+  it("POST403 then explicit verification retries the originally pressed body exactly once", async () => {
+    reviewLinkReplies = [READY];
+    const posts: RequestInit[] = [];
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (String(input) === LINK + "/decision") {
+        posts.push(init!);
+        return posts.length === 1 ? CODE_REQUIRED : { ok: true, status: 200, json: async () => ({status:"approved"}) };
+      }
+      return fetchMock(input, init);
+    });
+    renderPage();
+    await screen.findByText("Choose your decision.");
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", {name:"Accept & connect"}));
+    await screen.findByLabelText("Work email");
+    await stepUpFlow();
+    await screen.findByText("Request accepted.");
+    expect(posts).toHaveLength(2);
+    expect(posts.map(p=>JSON.parse(String(p.body)))).toEqual([
+      {decision:"approved",ethicsConfirmed:true}, {decision:"approved",ethicsConfirmed:true}
+    ]);
+  });
+  it("a repeated403 after explicit verification is bounded to one automatic resume", async () => {
+    reviewLinkReplies = [CODE_REQUIRED];
+    let gets = 0;
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (String(input) === LINK) {
+        gets++;
+        // Safety valve ends an actual loop so this reproduction cannot hammer forever.
+        if (gets > 5) return {ok:false,status:409,json:async()=>({error:"reproduction safety stop"})};
+      }
+      return fetchMock(input, init);
+    });
+    renderPage();
+    await screen.findByLabelText("Work email");
+    await stepUpFlow();
+    await new Promise(resolve=>setTimeout(resolve,1000));
+    console.log("ACTUAL_REPEATED403_GET_COUNT", gets);
+    expect(gets).toBeLessThanOrEqual(2);
+  });
+});
+
+
+it("explicit verification refreshes the actual outer access cache, not only the island client", async () => {
+  reviewLinkReplies = [CODE_REQUIRED, READY];
+  vi.stubGlobal("fetch",fetchMock);
+  const outer = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  outer.setQueryData(["referrer-access",null],ACCESS_REQUIRED);
+  const invalidation=vi.spyOn(outer,"invalidateQueries");
+  render(<QueryClientProvider client={outer}><EmailReviewAction/></QueryClientProvider>);
+  await screen.findByLabelText("Work email");
+  await stepUpFlow();
+  await screen.findByText("Choose your decision.");
+  expect(invalidation).toHaveBeenCalledWith({queryKey:["referrer-access",null]});
+  expect(outer.getQueryState(["referrer-access",null])?.isInvalidated).toBe(true);
+});
