@@ -1,5 +1,5 @@
 {
-  "source": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+  "source": "8ea9269ff39a17487fb3b635739756ddc2513120",
   "surfaces": "policy,system,links",
   "command": "VITE_GOAL_SURFACES=policy,system,links pnpm build && node design/goal-ui/captures/r7-release/capture.mjs",
   "synthetic": true,
@@ -318,24 +318,24 @@
       "errors": []
     },
     {
-      "file": "emails-ask-accepted-1280.png",
+      "file": "emails-referral-accepted-1280.png",
       "route": "/emails",
-      "note": "variant: Ask accepted",
+      "note": "variant: Referral accepted",
       "viewport": 1280,
       "goalPage": null,
       "kitScreen": null,
-      "h1": "Ask accepted",
+      "h1": "Referral accepted",
       "overflow": 0,
       "errors": []
     },
     {
-      "file": "emails-ask-passed-1280.png",
+      "file": "emails-referral-passed-1280.png",
       "route": "/emails",
-      "note": "variant: Ask passed",
+      "note": "variant: Referral passed",
       "viewport": 1280,
       "goalPage": null,
       "kitScreen": null,
-      "h1": "Ask passed",
+      "h1": "Referral passed",
       "overflow": 0,
       "errors": []
     },
@@ -560,24 +560,24 @@
       "errors": []
     },
     {
-      "file": "emails-ask-accepted-390.png",
+      "file": "emails-referral-accepted-390.png",
       "route": "/emails",
-      "note": "variant: Ask accepted",
+      "note": "variant: Referral accepted",
       "viewport": 390,
       "goalPage": null,
       "kitScreen": null,
-      "h1": "Ask accepted",
+      "h1": "Referral accepted",
       "overflow": 0,
       "errors": []
     },
     {
-      "file": "emails-ask-passed-390.png",
+      "file": "emails-referral-passed-390.png",
       "route": "/emails",
-      "note": "variant: Ask passed",
+      "note": "variant: Referral passed",
       "viewport": 390,
       "goalPage": null,
       "kitScreen": null,
-      "h1": "Ask passed",
+      "h1": "Referral passed",
       "overflow": 0,
       "errors": []
     },
