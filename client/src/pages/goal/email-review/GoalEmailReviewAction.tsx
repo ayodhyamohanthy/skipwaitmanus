@@ -3,12 +3,12 @@
 // card: one decision, recorded only on an explicit press. Standalone frame
 // (the route is not wrapped in AppShell), ink-on-canvas, one primary commit.
 // Fetch/decision flow is the kit's, runtime-validated and fail-closed.
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useContext } from "react";
 import { useAuth } from "@/_core/auth";
 import { Check, Lock, X } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryClientContext, useQuery } from "@tanstack/react-query";
 import { GoalButton } from "@/components/goal";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
@@ -95,8 +95,16 @@ function StepUpPanel({ onVerified }: { onVerified: () => void }) {
 
 /** The step-up island the kit and goal /email-review pages both render in the code_required state. */
 export function GoalEmailReviewStepUpIsland({ onVerified }: { onVerified: () => void }) {
+  // Standalone review routes can lack a provider. When a shell provider exists,
+  // refresh its same-account access verdict too, not only this island's client.
+  const outerClient = useContext(QueryClientContext);
+  const { userId } = useAuth();
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
-  return <QueryClientProvider client={client}><StepUpPanel onVerified={onVerified} /></QueryClientProvider>;
+  const resume = useCallback(() => {
+    if (outerClient) void outerClient.invalidateQueries({ queryKey: referrerAccessKey(userId ?? null) });
+    onVerified();
+  }, [outerClient, userId, onVerified]);
+  return <QueryClientProvider client={client}><StepUpPanel onVerified={resume} /></QueryClientProvider>;
 }
 
 export default function GoalEmailReviewAction() {
