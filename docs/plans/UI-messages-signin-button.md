@@ -50,6 +50,10 @@ captures exist separately; no implementation or release is asserted here.
 
 ## Prospective qualified execution amendment (November 10)
 
+The NVIDIA future-route instructions in this historical amendment are
+superseded by the Macaly service amendment below. They are retained as history,
+not directions to use the now-disallowed service for future production work.
+
 The earlier Tier 2 review FAIL and the unknown-model isolated implementation
 prep remain recorded and held. No existing code/test contribution is renamed,
 adopted or cleared. This packet and queue row are requirements/process docs,
@@ -116,7 +120,12 @@ qualified only to let the existing resolver verify the already-created empty
 claim's zero-contribution interval; revoking it would make that supported proof
 fail closed. This historical record is no permission for another NVIDIA claim,
 execution or production contribution. No temporal-revocation capability is
-asserted, and no historical claim or verdict is rewritten.
+asserted, and no historical claim or verdict is rewritten. This prohibition is
+manual operational scope, not machine enforcement: the current resolver can
+still accept a new claim naming the old author route. An executable capability
+is not permission to use it. The actual operator and independent reviewer must
+check that no such new NVIDIA claim or execution exists. This carrier does not
+claim to implement a technical revocation boundary.
 
 Prior observed review PASS/FAIL facts remain evidence of what was observed, not
 production-use permission. Internal static evaluation is a stated trial purpose;
@@ -131,7 +140,13 @@ and an independent actual review model with sufficient rights for that use.
 permit commercial use, modification and distribution of generated app code,
 subject to their restrictions including reusable template resale. Section 8.3
 permits Free-plan customer data and generated content to become community
-templates. Supply already-public repository code and sanitized requirements only,
+templates. Section 3.11 also permits storage and use of generated content for
+service improvement, demonstration and promotion. Section 8.2 requires the
+uploader to hold the necessary authority and rights; public accessibility alone
+is not a license. Use only the owner-authorized project source with appropriate
+submission rights. The generated patch may also be exposed before it is merged;
+do not submit a fix whose unreleased contents require confidentiality.
+Supply already-public repository code and sanitized requirements only,
 never private account data, credentials, transcripts or unreleased private input.
 The [Free-plan guide](https://www.macaly.com/docs/en/welcome/pricing) requires a
 paid upgrade to continue after free credits are exhausted. Stop rather than
@@ -145,10 +160,15 @@ allowlist. Register new service-specific route IDs
 `messages-author-macaly-mistral-nov10` (build/fix) and
 `messages-review-macaly-deepseek-nov10` (review/land), with the actual operator's
 own retained selection observations and independently qualified public model
-identities. The proposed canonical identifiers `mistral-large-4` and
-`deepseek-v4.1-flash` normalize only the observed public family/version labels,
-not a hidden checkpoint or provider endpoint. The Mistral family is not treated
-as independent from the earlier NVIDIA Mistral identity. Homepage selection
+identities. The proposed DeepSeek identity `deepseek-v4.1-flash` normalizes only
+the observed public family/version label, not a hidden checkpoint or endpoint.
+The Macaly Mistral route deliberately shares the existing Mistral contributor
+exclusion key `mistralai/mistral-large-4-1t-a52b`. This is a conservative same-family
+exclusion, not an assertion that Macaly serves that hidden checkpoint or the
+NVIDIA endpoint. Thus string-keyed consumers cannot treat the two Mistral routes
+as independent. The actual observed Macaly label remains `Mistral Large 4`.
+If evidence later identifies a different checkpoint, do not split this family
+into independent contributors without separately reviewing the real identities. Homepage selection
 qualifies only the prospective route: before submitting project source or using
 a response, confirm the selected model and absence of a project-level override
 on the actual new task composer, and retain that evidence with the execution.
@@ -182,3 +202,17 @@ neither productive generation nor tests. All original red-first, signed-in
 privacy/idempotency, exact-head, provider-continuity and released 1280/390 pixel
 acceptance remains. The unchanged sign-in behavior, money/legal/auth-policy
 boundaries and unknown-prep hold remain intact.
+
+### Independent carrier review, not execution self-admission
+
+The actual Macaly DeepSeek static review of candidate `9685617` returned FAIL.
+Its findings and outcome are preserved; this changed carrier needs a new actual
+review. Separately reviewing this docs-only carrier and normally merging it to
+main is the existing route-qualification mechanism in `docs/MODEL_PROVENANCE.md`.
+A candidate file is never trusted by the resolver. A static reviewer of this
+carrier does not thereby create a product Review claim, execution receipt or
+PASS marker, and is not a product builder/fixer merely for reviewing it. The
+packet writer remains excluded from landing its own carrier. Project execution
+and exact receipt qualification remain later, separate evidence obligations.
+No new schema state, hidden model authentication or machine-enforced temporal
+revocation is asserted by this docs-only amendment.

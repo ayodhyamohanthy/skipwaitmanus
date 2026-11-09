@@ -37,7 +37,7 @@
       "id": "messages-author-macaly-mistral-nov10",
       "taskId": "UI-messages-signin-button",
       "operator": "Instinct \u00b7 public-model-review-nov10",
-      "modelId": "mistral-large-4",
+      "modelId": "mistralai/mistral-large-4-1t-a52b",
       "roles": [
         "build",
         "fix"
