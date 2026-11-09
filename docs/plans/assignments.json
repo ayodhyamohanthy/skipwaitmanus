@@ -5864,6 +5864,24 @@
       "syncedTo": "D-311",
       "dependsOn": [],
       "note": "Owner-approved D311 technical provenance support only. Exact manual allowlist in packet; no owns because existing picker/gate rows retain shared-path histories. No automated scope pass. Preserve isolated overlapping work and serialize composed integration. Shared picker/gate resolution with qualified external evidence, real operator identity and complete contributor history. Unknown authorship remains held, no automatic old-fix clearance, no self-authorization of initial support merge, no product/auth/money/workflow/protection change. Separate final-version review and required current-main CI before normal landing."
+    },
+    {
+      "id": "UI-messages-signin-button",
+      "title": "One non-nested sign-in button on the released signed-out messages screen",
+      "row": "UI",
+      "packet": "docs/plans/UI-messages-signin-button.md",
+      "tier": 1,
+      "lane": "messages-signin-ui",
+      "branch": "agent/queue/ui-messages-signin-button",
+      "status": "todo",
+      "syncedTo": "D-311",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/messages/GoalMessages.tsx",
+        "client/src/pages/goal/messages/messagesGoal.test.tsx",
+        "client/src/pages/goal/messages/messagesSignInButton.test.tsx"
+      ],
+      "note": "Tier 1 sign-in work per docs/DELEGATION.md section 3, despite bounded markup. Actual underlying builder-model independence evidence is unresolved; do not manufacture a review identity or marker. Bounded signed-out markup repair only: replace SignInButton wrapping GoalButton with one GoalButton calling existing useAuth.openSignIn with no arguments. No auth mechanism/destination/cookies/policy/server/GET/POST or message privacy changes. Preserve all existing signed-in behavior and tests. Exact independent final review and all required CI/current-main checks before normal protected merge; real provider continuity is not established by local synthetic captures. Prospective D-311 amendment preserves old FAIL/unused unknown prep; only a fresh pristine-main, actually evidenced external implementation may start after this carrier and task-specific routes receive independent qualification and normal landing. Packet writer is not thereby a product-code contributor; no actual historical contribution is washed."
     }
   ]
 }
