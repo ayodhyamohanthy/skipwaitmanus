@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
+import { fetchCompanyAccess } from "@/components/referrer-home/referrerData";
 import { AskInviteApiError, claimAskInvite, fetchAskInviteLanding } from "@/components/requests/askInviteApi";
 import { ASK_INVITE_STATE_COPY, type AskInviteClaimOutcome, type AskInviteLanding, type AskInviteLandingState } from "@shared/askInvites";
+import { referrerAccessKey } from "@/hooks/useReferrerAccess";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { BYOR_LINK } from "@/lib/flags";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
@@ -65,6 +69,28 @@ function SignInAction({ token, companyName }: { token: string; companyName: stri
   );
 }
 
+// D-057 (§0b.8b): the claim answered 403 work_email_code_required, so a signed-in
+// person confirms their work email in place and the same claim is retried for the
+// same account. Never the standalone code sign-in, which would make another account.
+function ClaimStepUp({ onVerified }: { onVerified: () => void }) {
+  const { userId, getToken } = useAuth();
+  const getTokenRef = usePersistFn(getToken);
+  const accessQuery = useQuery({
+    queryKey: referrerAccessKey(userId ?? null),
+    queryFn: () => fetchCompanyAccess(getTokenRef),
+    retry: 1,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const access = accessQuery.data;
+  useEffect(() => {
+    if (access?.verified && !access.codeRequired) onVerified();
+  }, [access?.verified, access?.codeRequired, onVerified]);
+  if (!access || accessQuery.isFetching) return <p className="text-g-meta text-g-ink-2">Checking your work email…</p>;
+  if (!access.verified) return <p role="alert" className="text-g-meta text-g-ink-2">This link needs a verified work email at {access.companyName || access.domain}.</p>;
+  return <GoalWorkEmailStepUp access={access} />;
+}
+
 export default function AskInviteLink() {
   const [, params] = useRoute("/r/:token");
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -76,7 +102,7 @@ export default function AskInviteLink() {
   const [loadError, setLoadError] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [claimOutcome, setClaimOutcome] = useState<AskInviteClaimOutcome | null>(null);
-  const [claimError, setClaimError] = useState<"work_email" | "account_unavailable" | "retry" | null>(null);
+  const [claimError, setClaimError] = useState<"work_email" | "account_unavailable" | "retry" | "code_required" | null>(null);
 
   useNoIndex();
 
@@ -133,6 +159,10 @@ export default function AskInviteLink() {
           setClaimError("work_email");
           return;
         }
+        if (error.status === 403 && error.code === "work_email_code_required") {
+          setClaimError("code_required");
+          return;
+        }
         if (error.code === "referrer_unavailable") {
           setClaimError("account_unavailable");
           return;
@@ -143,6 +173,8 @@ export default function AskInviteLink() {
       setClaiming(false);
     }
   };
+  // Stable identity: the step-up panel resumes the same claim once the code is confirmed.
+  const retryClaim = usePersistFn(() => { void claim(); });
 
   if (!BYOR_LINK || unavailable) {
     return <PageFrame><section className="mx-auto max-w-xl rounded-g-tile border border-g-hairline bg-g-surface p-5 gdesk:p-7"><h1 className="text-g-heading text-g-ink">Referral request unavailable</h1><p role="status" className="mt-2 text-g-body text-g-ink-2">{ASK_INVITE_STATE_COPY.unavailable}</p></section></PageFrame>;
@@ -181,6 +213,7 @@ export default function AskInviteLink() {
           <div className="mt-6 grid gap-3">
             {canClaim ? <GoalButton variant="primary" busy={claiming} busyLabel="Taking this referral request…" onClick={() => { void claim(); }}>Take this referral request</GoalButton> : <SignInAction token={token} companyName={invite.companyName ?? ""} />}
             {claimError === "work_email" ? <><p role="status" className="text-g-meta text-g-ink-2">Use a verified work email at {invite.companyName || "this company"} to take this referral request.</p><GoalButton asChild variant="ghost"><a href={signInHref}>Sign in with your work email</a></GoalButton></> : null}
+            {claimError === "code_required" ? <ClaimStepUp onVerified={retryClaim} /> : null}
             {claimError === "account_unavailable" ? <p role="status" className="text-g-meta text-g-ink-2">This account can’t take this referral request right now.</p> : null}
             {claimError === "retry" ? <p role="alert" className="text-g-meta text-g-ink-2">We couldn’t take this referral request. It has not been changed; try again.</p> : null}
           </div>
