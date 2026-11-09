@@ -1,0 +1,234 @@
+{
+  "source": "a6f7da6a13ad1601006abce1c6017e51d3756bd0",
+  "surfaces": "policy,system,links",
+  "command": "VITE_GOAL_SURFACES=policy,system,links pnpm build && node design/goal-ui/captures/r7-release/capture.mjs",
+  "synthetic": true,
+  "covered": 20,
+  "unverified": [
+    "/emails template interactions beyond the default selection",
+    "link sign-in return and share-card privacy states behind an authenticated session",
+    "/app-states individual state panels"
+  ],
+  "results": [
+    {
+      "file": "privacy-1280.png",
+      "route": "/privacy",
+      "note": "policy: longest legal reading column",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": "privacy",
+      "h1": "Know your rights.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "terms-1280.png",
+      "route": "/terms",
+      "note": "policy: acceptance clause",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": "terms",
+      "h1": "Know your rights.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "guidelines-1280.png",
+      "route": "/guidelines",
+      "note": "policy: guide layout",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": "guidelines",
+      "h1": "Know your rights.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "offline-1280.png",
+      "route": "/offline",
+      "note": "system: offline state",
+      "viewport": 1280,
+      "goalPage": "offline",
+      "kitScreen": "offline",
+      "h1": "You're offline.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "app-states-1280.png",
+      "route": "/app-states",
+      "note": "system: app states gallery",
+      "viewport": 1280,
+      "goalPage": "app-states",
+      "kitScreen": "app-states",
+      "h1": "See how skipwait.me behaves when things go wrong.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "emails-1280.png",
+      "route": "/emails",
+      "note": "system: template gallery (first template selected)",
+      "viewport": 1280,
+      "goalPage": "emails",
+      "kitScreen": "emails",
+      "h1": "See every message skipwait.me sends.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "not-found-1280.png",
+      "route": "/definitely-not-a-skipwait-route",
+      "note": "system: 404",
+      "viewport": 1280,
+      "goalPage": "not-found",
+      "kitScreen": "not-found",
+      "h1": "This page isn't here.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "fast-invalid-1280.png",
+      "route": "/fast/not-a-real-token",
+      "note": "links: invalid fast-track token",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": "fast-track-link",
+      "h1": "This private link isn’t available.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "refer-invalid-1280.png",
+      "route": "/refer/synthetic-corp/not-a-real-alias",
+      "note": "links: invalid vanity refer link",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": "vanity-fast-track-link",
+      "h1": "This private link isn’t available.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "share-card-missing-1280.png",
+      "route": "/share-card/not-a-real-token",
+      "note": "links: missing share card",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": "share-card",
+      "h1": "This share card isn’t available.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "privacy-390.png",
+      "route": "/privacy",
+      "note": "policy: longest legal reading column",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": "privacy",
+      "h1": "Know your rights.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "terms-390.png",
+      "route": "/terms",
+      "note": "policy: acceptance clause",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": "terms",
+      "h1": "Know your rights.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "guidelines-390.png",
+      "route": "/guidelines",
+      "note": "policy: guide layout",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": "guidelines",
+      "h1": "Know your rights.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "offline-390.png",
+      "route": "/offline",
+      "note": "system: offline state",
+      "viewport": 390,
+      "goalPage": "offline",
+      "kitScreen": "offline",
+      "h1": "You're offline.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "app-states-390.png",
+      "route": "/app-states",
+      "note": "system: app states gallery",
+      "viewport": 390,
+      "goalPage": "app-states",
+      "kitScreen": "app-states",
+      "h1": "See how skipwait.me behaves when things go wrong.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "emails-390.png",
+      "route": "/emails",
+      "note": "system: template gallery (first template selected)",
+      "viewport": 390,
+      "goalPage": "emails",
+      "kitScreen": "emails",
+      "h1": "See every message skipwait.me sends.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "not-found-390.png",
+      "route": "/definitely-not-a-skipwait-route",
+      "note": "system: 404",
+      "viewport": 390,
+      "goalPage": "not-found",
+      "kitScreen": "not-found",
+      "h1": "This page isn't here.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "fast-invalid-390.png",
+      "route": "/fast/not-a-real-token",
+      "note": "links: invalid fast-track token",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": "fast-track-link",
+      "h1": "This private link isn’t available.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "refer-invalid-390.png",
+      "route": "/refer/synthetic-corp/not-a-real-alias",
+      "note": "links: invalid vanity refer link",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": "vanity-fast-track-link",
+      "h1": "This private link isn’t available.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "share-card-missing-390.png",
+      "route": "/share-card/not-a-real-token",
+      "note": "links: missing share card",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": "share-card",
+      "h1": "This share card isn’t available.",
+      "overflow": 0,
+      "errors": []
+    }
+  ]
+}

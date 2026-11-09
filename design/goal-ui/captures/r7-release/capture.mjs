@@ -1,0 +1,113 @@
+#!/usr/bin/env node
+// D-048-R7-prep evidence driver (packet docs/plans/D-048-R7-prep.md): synthetic local captures for the existing R7
+// public surfaces (policy, system, links). Serves the built dist/public with SPA fallback, answers every /api call
+// at the network layer, and writes <route>-<width>.png plus manifest-all.json beside this file. Nothing reaches a
+// backend, no real link token or private data is used. It flips no flag: run it after
+// `VITE_GOAL_SURFACES=policy,system,links pnpm build`.
+import { createServer } from "node:http";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
+
+const require = createRequire(new URL("../../../../package.json", import.meta.url));
+const { chromium } = require("playwright");
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const dist = path.resolve(path.join(here, "..", "..", "..", "..", "dist", "public"));
+
+const ROUTES = [
+  { slug: "privacy", route: "/privacy", note: "policy: longest legal reading column" },
+  { slug: "terms", route: "/terms", note: "policy: acceptance clause" },
+  { slug: "guidelines", route: "/guidelines", note: "policy: guide layout" },
+  { slug: "offline", route: "/offline", note: "system: offline state" },
+  { slug: "app-states", route: "/app-states", note: "system: app states gallery" },
+  { slug: "emails", route: "/emails", note: "system: template gallery (first template selected)" },
+  { slug: "not-found", route: "/definitely-not-a-skipwait-route", note: "system: 404" },
+  { slug: "fast-invalid", route: "/fast/not-a-real-token", note: "links: invalid fast-track token" },
+  { slug: "refer-invalid", route: "/refer/synthetic-corp/not-a-real-alias", note: "links: invalid vanity refer link" },
+  { slug: "share-card-missing", route: "/share-card/not-a-real-token", note: "links: missing share card" },
+];
+
+const WIDTHS = [1280, 390];
+
+const api = (url) => {
+  if (url.includes("/api/health")) return { ok: true, state: "ready", service: "skipwait-api" };
+  if (url.includes("/api/companies")) return { companies: [], openCount: 0 };
+  return { ok: false, error: "synthetic fixture" };
+};
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url ?? "/", "http://127.0.0.1");
+  if (url.pathname.startsWith("/api/")) {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(api(url.pathname)));
+    return;
+  }
+  const candidate = path.join(dist, url.pathname);
+  try {
+    const body = await readFile(candidate);
+    res.writeHead(200, { "content-type": candidate.endsWith(".js") ? "text/javascript" : candidate.endsWith(".css") ? "text/css" : candidate.endsWith(".svg") ? "image/svg+xml" : "text/html" });
+    res.end(body);
+    return;
+  } catch {
+    try {
+      const html = await readFile(path.join(dist, "index.html"));
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html);
+    } catch {
+      res.writeHead(404).end("not found");
+    }
+  }
+});
+
+await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+const port = server.address().port;
+const source = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const dirty = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim();
+if (dirty) console.warn("warning: working tree is not clean; record the source commit with care");
+
+const browser = await chromium.launch();
+const results = [];
+for (const width of WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 900 } });
+  const errors = [];
+  page.on("pageerror", error => errors.push(String(error).slice(0, 200)));
+  for (const entry of ROUTES) {
+    await page.goto(`http://127.0.0.1:${port}${entry.route}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.waitForTimeout(1200);
+    const info = await page.evaluate(() => ({
+      goalPage: document.querySelector("[data-goal-page]")?.getAttribute("data-goal-page") ?? null,
+      kitScreen: document.querySelector("[data-skipwait-screen]")?.getAttribute("data-skipwait-screen") ?? null,
+      h1: document.querySelector("h1")?.textContent?.trim().slice(0, 80) ?? null,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    const file = `${entry.slug}-${width}.png`;
+    await page.screenshot({ path: path.join(here, file), fullPage: true });
+    results.push({ file, route: entry.route, note: entry.note, viewport: width, ...info, errors: errors.splice(0) });
+    console.log(`${file.padEnd(28)} goal=${info.goalPage ?? "-"} kit=${info.kitScreen ?? "-"} overflow=${info.overflow} h1="${info.h1 ?? "-"}"`);
+  }
+  await page.close();
+}
+await browser.close();
+server.close();
+
+await mkdir(here, { recursive: true });
+await writeFile(
+  path.join(here, "manifest-all.json"),
+  JSON.stringify({
+    source,
+    surfaces: "policy,system,links",
+    command: "VITE_GOAL_SURFACES=policy,system,links pnpm build && node design/goal-ui/captures/r7-release/capture.mjs",
+    synthetic: true,
+    covered: results.length,
+    unverified: [
+      "/emails template interactions beyond the default selection",
+      "link sign-in return and share-card privacy states behind an authenticated session",
+      "/app-states individual state panels",
+    ],
+    results,
+  }, null, 2) + "\n",
+);
+console.log(`manifest: ${results.length} captures from ${source.slice(0, 8)}`);
