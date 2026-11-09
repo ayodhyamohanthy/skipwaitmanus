@@ -47,3 +47,44 @@ to reconfirm the identity gap.
 
 Registration only. Isolated local red-green tests and before/after
 captures exist separately; no implementation or release is asserted here.
+
+## Prospective qualified execution amendment (November 10)
+
+The earlier Tier 2 review FAIL and the unknown-model isolated implementation
+prep remain recorded and held. No existing code/test contribution is renamed,
+adopted or cleared. This packet and queue row are requirements/process docs,
+not proof that their author wrote future product code. D-151 concerns actual
+build/takeover/fix contributions; D-190 separately bars a packet writer from
+landing its packet. A fresh external implementation must retain these facts.
+
+After this complete carrier and its proposed routes receive separate review,
+required exact-head CI and ordinary non-writer protected landing, the registered
+future task may be claimed by its qualified actual operator. Start from pristine
+then-current main plus the ordinary qualified claim, not the unused local patch,
+test bodies or captures. Supply the public current source and these requirements
+to the selected author model. Retain the actual supplied input, raw public output,
+observed selection and exact applied output bytes. The actual external author must
+write all product/test changes; an operator semantic edit remains a contribution
+and cannot be called transport. Do not import the unknown prep into its history.
+
+The future implementation uses task `UI-messages-signin-button` and the same
+registered branch. No duplicate row or cosmetic rewrite clears the old prep.
+Proposed actual transport session: `Instinct · public-model-review-nov10`.
+Mistral route `messages-author-mistral-nov10` supports build and fix only.
+Kimi route `messages-review-kimi-nov10` supports review and land only.
+Both refer to public NVIDIA-hosted selected models, not internal metadata.
+They are proposals until independently qualified and merged on main. Their
+qualificationReview points to this carrier's public review thread, not an
+assertion that a candidate file is trusted or already approved.
+
+Route qualification is not completed execution qualification. Before accepting
+any future PASS/Fixed marker, the exact task/role/operator/claim/input/output
+receipt must itself receive separate review and merge to main. Every real
+contributor is retained and excluded from its own review/landing. All Tier 1
+red-first, existing test, exact-head, provider-continuity and released-pixel
+acceptance above remains. Unknown or insufficient evidence still holds work.
+
+This amendment changes only the prospective carrier's execution-readiness path
+under landed D-311. It does not assert an implementation, qualified execution,
+provider login, product release or retrospective author identity. It does not
+waive the prior hold on unused prep or substitute repeated static review for it.

@@ -1,5 +1,38 @@
 {
   "version": 1,
-  "routes": [],
+  "routes": [
+    {
+      "id": "messages-author-mistral-nov10",
+      "taskId": "UI-messages-signin-button",
+      "operator": "Instinct \u00b7 public-model-review-nov10",
+      "modelId": "mistralai/mistral-large-4-1t-a52b",
+      "roles": [
+        "build",
+        "fix"
+      ],
+      "revoked": false,
+      "providerUrl": "https://build.nvidia.com/mistralai/mistral-large-4-1t-a52b/playground",
+      "selectedModel": "mistral-large-4-1t-a52b",
+      "observation": "Public provider selection observation, retained 2026-11-10 03:55 IST.\nOperator/session: Instinct \u00b7 public-model-review-nov10.\nObserved public provider URL: https://build.nvidia.com/mistralai/mistral-large-4-1t-a52b/playground\nThe live page title was \"Mistral Large 4 Model by Mistral AI | NVIDIA NIM\". Its visible header was \"mistralai/Mistral Large 4\" and the selected playground label was \"mistral-large-4-1t-a52b\". The corresponding Build page's example model field was \"mistralai/mistral-large-4-1t-a52b\". The Build page said \"Free Endpoint: Available\".\nObserved public model-card URL: https://build.nvidia.com/mistralai/mistral-large-4-1t-a52b/modelcard\nThe model card names \"Mistral Large 4\", vendor checkpoint \"mistralai/Mistral-Large-4-1T-A52B\", vendor API model ID \"mistral-large-4\". Proposed canonical modelId for this hosted endpoint: mistralai/mistral-large-4-1t-a52b. These are declared provider aliases, not separately independent models.\nScope: selection evidence only. No code was generated during this observation, and no project input or unknown preparation was supplied. Prior successful trivial availability output does not establish a completed project execution. This observation does not authenticate the provider cryptographically, grant a task, clear unknown authorship, or qualify a registry route by itself. Exact taskId, supported roles and separate qualification review remain required before route admission. Actual future input/output, selected model, applied patch and pure-transport status must be checked separately for each execution.\n",
+      "observationSha256": "daf3d1945da8ee5cffc774a2b94fe68b1517a2020ba6c18fa8953156859ea07b",
+      "qualificationReview": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1100"
+    },
+    {
+      "id": "messages-review-kimi-nov10",
+      "taskId": "UI-messages-signin-button",
+      "operator": "Instinct \u00b7 public-model-review-nov10",
+      "modelId": "moonshotai/kimi-k3.1-pro",
+      "roles": [
+        "review",
+        "land"
+      ],
+      "revoked": false,
+      "providerUrl": "https://build.nvidia.com/moonshotai/kimi-k3_1-pro/playground",
+      "selectedModel": "kimi-k3.1-pro",
+      "observation": "Public provider selection observation, retained 2026-11-10 03:55 IST.\nOperator/session: Instinct \u00b7 public-model-review-nov10.\nObserved public provider URL: https://build.nvidia.com/moonshotai/kimi-k3_1-pro/playground\nThe live page title was \"kimi-k3.1-pro Model by Moonshotai | NVIDIA NIM\". Its visible header was \"moonshotai/kimi-k3.1-pro\" and the selected playground label was \"kimi-k3_1-pro\".\nObserved public model-card URL: https://build.nvidia.com/moonshotai/kimi-k3_1-pro/modelcard\nThe model card names \"Kimi K3.1 Pro (v3.1)\" and vendor model identifier \"kimi-k3.1-pro\". Proposed canonical modelId for this hosted endpoint: moonshotai/kimi-k3.1-pro. The underscore in the endpoint path is a declared provider spelling, not another independent model.\nScope: selection evidence only. No new code or review execution was requested during this observation, and no project input or unknown preparation was supplied. Prior successful reviews do not establish a completed execution for any prospective task. This observation does not authenticate the provider cryptographically, grant a task, clear unknown authorship, or qualify a registry route by itself. Exact taskId, supported roles and separate qualification review remain required before route admission. Actual future input/output, selected model, exact reviewed head and pure-transport status must be checked separately for each execution.\n",
+      "observationSha256": "1febcc45edcae1a13dad1372f428f219d4e3952f4a5e9bf3d8dbdc118fd48f64",
+      "qualificationReview": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1100"
+    }
+  ],
   "executions": []
 }
