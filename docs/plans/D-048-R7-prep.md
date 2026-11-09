@@ -34,6 +34,9 @@ The existing R7 worker may additionally change ONLY local presentation labels/bo
 
 Current published eb38 preparation is preserved at custom branch agent/r7prep/eb38-emails-drift, b84376fd532b880bf3d7935f94987d3c5e539601. This is a publication receipt, NOT a picker claim or acceptance. No second R7 implementation. Existing holder must claim with its actual identity and align canonical branch through normal forward-preserving composition before integration. No marker is fabricated by this amendment. Existing tests, full route/state proof, synthetic-auth labeling, independent review, current-main combined tests and live-release separation remain. The observed captures do not satisfy full release acceptance merely because horizontal overflow is zero.
 
+## Nov 9 exact existing selector-pin correction (16:28 IST)
+The local referral noun correction above also changes the literal expected GoalEmails selector/article names in `client/src/pages/goal/system/systemPages.goal.test.tsx`, in the case titled `covers every email selector plus distinct body/code/push/fallback branches without sending`. The existing R7 holder may update ONLY `Ask accepted` and `Ask passed` in that case's names array to the actual corrected local labels. Preserve all 13 templates, each button/article assertion, body/code/push/fallback controls, and the no-fetch assertion. No other test or runtime scope is added. D-180 must not edit this goal test or GoalEmails runtime on R7's behalf. Coordinate the one R7 output across the existing preserved branches; this correction creates no third implementation or fabricated claim. Combined current-main tests and one qualified final-version review still apply.
+
 2026-11-09: in progress — DeepSeek V4.1 Flash · e0df — branch agent/queue/d048-r7-prep.
 
 2026-11-09: drift comparison measured, acceptance controls landed, captures and preview QA still owed — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
