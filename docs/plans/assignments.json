@@ -5825,6 +5825,19 @@
         "pnpm-lock.yaml"
       ],
       "note": "Bounded existing PR8 dev formatter update. Pin exactly prettier3.9.6; regenerate only its importer/package/snapshot entries, no other version or integrity changes. Preserve original Dependabot branch/PR, no repo formatting or source edits, no runtime/production behavior claims. Full current-main checks, separate final-version review and required CI before normal protected landing. Existing observed peer warning is not fixed by this slice."
+    },
+    {
+      "id": "PROCESS-model-provenance",
+      "title": "Represent actual external coding and review models separately from their operator",
+      "row": "PROCESS",
+      "packet": "docs/plans/PROCESS-model-provenance.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/process-model-provenance",
+      "status": "todo",
+      "syncedTo": "D-311",
+      "dependsOn": [],
+      "note": "Owner-approved D311 technical provenance support only. Exact manual allowlist in packet; no owns because existing picker/gate rows retain shared-path histories. No automated scope pass. Preserve isolated overlapping work and serialize composed integration. Shared picker/gate resolution with qualified external evidence, real operator identity and complete contributor history. Unknown authorship remains held, no automatic old-fix clearance, no self-authorization of initial support merge, no product/auth/money/workflow/protection change. Separate final-version review and required current-main CI before normal landing."
     }
   ]
 }
