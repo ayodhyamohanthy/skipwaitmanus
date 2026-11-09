@@ -1342,3 +1342,27 @@ export const seekerLevels = mysqlTable("seekerLevels", {
   level: int("level").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("seeker_levels_user_unique").on(table.userId)]);
+
+/**
+ * D-057-session-gate (D-245, 0116): one row per in-session work-email step-up
+ * challenge, which may become one proof bound to the account, the session key
+ * (stored as a SHA-256 digest), the exact work email (its HMAC fingerprint) and
+ * the purpose. Written only by server/referrerStepUp.ts.
+ */
+export const referrerStepUps = mysqlTable("referrerStepUps", {
+  id: int("id").autoincrement().primaryKey(),
+  challengeIdHash: varchar("challengeIdHash", { length: 64 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionKeyHash: varchar("sessionKeyHash", { length: 64 }).notNull(),
+  purpose: mysqlEnum("purpose", ["referrer_actions"]).notNull(),
+  emailFingerprint: varchar("emailFingerprint", { length: 80 }).notNull(),
+  workEmailDomain: varchar("workEmailDomain", { length: 255 }).notNull(),
+  codeHash: varchar("codeHash", { length: 64 }).notNull(),
+  codeExpiresAt: timestamp("codeExpiresAt").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  proofExpiresAt: timestamp("proofExpiresAt"),
+  revokedAt: timestamp("revokedAt"),
+  revokedReason: mysqlEnum("revokedReason", ["superseded", "logout"]),
+  createdAt: timestamp("createdAt").notNull(),
+}, table => [uniqueIndex("referrer_step_ups_challenge_unique").on(table.challengeIdHash), index("referrer_step_ups_proof_idx").on(table.userId, table.sessionKeyHash, table.purpose, table.verifiedAt)]);
