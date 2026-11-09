@@ -79,3 +79,20 @@ now owns SeekerConversation.tsx; this registration does not edit it.
 Status: registration repair prepared on main 7d69a3ce; build remains waiting.
 Separate final-delta review, exact required CI, current-main validation and a
 distinct normal-procedure lander are still required. No self-landing.
+
+## Nov 9 bounded navigation-label handoff
+
+After this registration lands normally, `D-180-referral-nav-copy` exclusively
+owns `client/src/components/goal/nav.ts` for the existing terminology
+change only. Its packet is `docs/plans/D-180-referral-nav-copy.md`. This sweep
+consumes that child's exact navigation output before any later combined
+acceptance. Its existing money, requests-page, onboarding, test and capture
+scope, Tier 1 classification and every other dependency remain unchanged.
+No active sweep work/review/heartbeat ref or Claim/Takeover marker was found in
+the bounded live check on Nov 9; unpublished state cannot be established.
+Preserve any such work and coordinate composition before touching it.
+PR #674 remains open with its other hunks preserved, not silently replaced or
+marked complete. This handoff changes neither product policy nor a release flag.
+
+The requests shell title stays with PRICING-banded-oct25 and this sweep; no
+header-title handoff or completion is claimed by the navigation-only child.
