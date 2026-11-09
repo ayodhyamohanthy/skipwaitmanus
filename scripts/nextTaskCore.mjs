@@ -746,6 +746,13 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // D-286: a head whose only red is the review gate is waiting for the one stage that clears it, so it is not
     // "red" here while its review is still to be done; the review hand-out below applies the same builder/fixer bar.
     const gateOnlyWaiting = v.gateOnlyRed && (state === "needs-review" || (state === "in-review" && lockQuiet));
+    // An unchanged head red only at the review gate needs its verdict re-evaluated,
+    // not another source FIX that overwrites the pass with empty Fix/Fixed markers.
+    if (v.gateOnlyRed && (state === "passed" || state === "landing")) {
+      if (!lockQuiet || state === "landing") return skip(v, "review verdict recorded; re-run exact-head CI before any landing, not a source fix");
+      if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
+      return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
+    }
     if (v.ci === "red" && !gateOnlyWaiting) {
       if (state === "fixing" && !lockQuiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.fixer} is on it`);
       // Red after a passed review: the change goes through a fix stage and is reviewed again, never landed as it is.
