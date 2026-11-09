@@ -123,6 +123,12 @@ reports `OK — no legacy or off-brand hexes in the client surface.`
 
 ## Scope blocker (reported, not worked around)
 
+**Superseded on 2026-11-09 16:38 by PR #1079 (`257c1d7f`).** That merge adds an
+"Additional manual test allowlist" to the packet, authorizing these exact
+literal pins. This branch still edits none of them: the coordinator owns the
+combined compose. The counts below are the measurement that prompted the
+amendment, kept as the record of what was reported.
+
 The same shared strings are pinned by tests outside this packet's allowlist. On
 this head those suites show `Test Files 12 failed | 3 passed (15)` /
 `Tests 41 failed | 106 passed (147)`:
@@ -148,18 +154,43 @@ this head those suites show `Test Files 12 failed | 3 passed (15)` /
 pin `creditReservedPhrase`, which is administrator-only copy, so it was left
 unchanged (an earlier attempt to change it was reverted).
 
+For the compose, precisely: `creditReservedPhrase` is
+`shared/moneyCopy.ts:132` — `levelCost ? "Credits reserved" : "1 credit
+reserved"` — consumed only by `AdminApprovalQueue.tsx`, `AdminApprovalRecord.tsx`
+and the goal admin-approvals data, never by a public surface. `257c1d7f`
+authorizes the two admin test files' "literal reserved-phrase output only",
+which permits their pins to move; it does not by itself require the source
+string to change, because D-180's rule covers public nouns. If the compose
+does change it, the full set is: that one source line, the `1 credit reserved`
+pin in `shared/moneyCopy.item7.test.ts`, `adminApprovalQueue.test.tsx:39`,
+`adminApprovalRecord.test.tsx:32,34`, and the goal approval pins; the
+`(monthly)` qualifier and request metadata must stay. This branch removed
+`creditReservedPhrase` from `scripts/referralCopyPrep.test.ts` (2 lines: the
+import and its `REFERRAL_SAFE_COPY` row) when it reverted the over-reach, so
+the compose re-adds the row if and only if it changes the phrase.
+
 The packet says a new source/test/semantic edit outside its list needs a bounded
 correction through Instinct first, and a hunk that depends on a future behavior
 change is left unchanged and reported. No file outside the allowlist was edited.
-These 41 pins need their own bounded row or an allowlist amendment before this
-copy can land.
 
 ## Reported, not promised
 
-Pricing-dependent strings were deliberately left unchanged and are not asserted
-by the new test: the `extra asks use credits` tail of `ASK_COST_SENTENCE`
-(so `MONEY_SENTENCE` and `MONEY_SENTENCE_SHORT` still carry it),
-`PAID_PLANS_SENTENCE`, the `Add a credit` / `Add credits` top-up labels and
+**Corrected by `257c1d7f`:** the footer tail is not a pricing decision. The
+packet's Nov 9 section says the `extra asks use credits` tail "must not be
+declared pricing-dependent merely because it contains the old nouns" and must
+be replaced with a truthful presentation of the same current allowance/usage.
+The paragraph below is this branch's original rationale, kept as the record of
+what was reported at `0281201d`; it is no longer the operative reading, and the
+tail is still unchanged in this branch because the coordinator owns that
+compose. Live facts it must state without inventing an offer:
+`FREE_PLAN.creditsPerMonth = 3`, flat default cost of one internal unit,
+`CREDIT_PACKS_ON_SALE = true` in code with legacy packs paused by the owner
+(D-219), `PASS_SALES_ENABLED = false`.
+
+Original rationale: these strings were deliberately left unchanged and are not
+asserted by the new test: the `extra asks use credits` tail of
+`ASK_COST_SENTENCE` (so `MONEY_SENTENCE` and `MONEY_SENTENCE_SHORT` still carry
+it), `PAID_PLANS_SENTENCE`, the `Add a credit` / `Add credits` top-up labels and
 `topUpHref`, the "Payment receipt / failed" template trigger, the D-132 V2
 strings (`CREDIT_RULE_V2`, `CREDIT_ENDED_CAVEAT_V2`, `creditUsedPhrase(true)`),
 and the server sender copy in `coverageHeldNotice`. Each depends on a pricing
@@ -174,4 +205,6 @@ branch does not duplicate its pin set.
 ## Status
 
 Preparation only. No review, landing, release or goal-surface change is
-claimed, and the out-of-scope pin blocker above is open.
+claimed. The out-of-scope pin blocker was reported at `0281201d` and is
+resolved on main by `257c1d7f`; the coordinator owns composing those pins and
+the footer tail with this branch's hunks.
