@@ -70,6 +70,22 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "referrer-home",
   "invite",
   "post-opportunity",
+  "admin",
+  "admin-ops",
+  "alerts",
+  "developers",
+  "discovery",
+  "employer",
+  "for-companies",
+  "landed",
+  "messages",
+  "onboarding",
+  "policy",
+  "settings",
+  "share",
+  "start",
+  "suggest-company",
+  "system",
 ];
 
 export function releasedGoalSurfaces(): readonly GoalSurfaceId[] {
