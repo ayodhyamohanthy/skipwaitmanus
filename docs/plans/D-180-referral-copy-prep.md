@@ -39,15 +39,31 @@ Prepared on `agent/d180prep/d1b4-referral-copy` (`Qoder · d1b4`, claim
 `9 passed`), before/after `/emails` captures at 1280 and 390, `pnpm check` and
 the token audit. Evidence and the exact wording: `design/goal-ui/captures/referral-copy-prep/manifest.md`.
 
-Open blocker, reported not worked around: 41 assertions in 12 files outside the
-allowlist still pin the old nouns (`ask.costQuote.test.tsx` 20,
-`home.world.test.tsx` 4, `explore.test.tsx` 3, `exploreDrawer.test.tsx` 3,
-`policyPages.test.tsx` 3, `ask.test.tsx` 2, plus one each in
-`GoalLanding.test.tsx`, `emails.test.tsx`, `systemGalleries.test.tsx`,
-`home.mobileNav.test.tsx`, `planCatalog.test.ts` and `threadModel.test.ts`).
-They need a bounded correction through Instinct or an allowlist amendment
-before this copy can land. Pricing-dependent strings are left unchanged and
-reported in the manifest.
+The 41 assertions in 12 files outside the original allowlist that still pinned
+the old nouns were reported as a blocker, not worked around. The Nov 9
+direct wording-pin correction below (PR #1079, `257c1d7f`) now authorizes those
+literal pins; the coordinator owns composing them with this branch's hunks.
+No pin in those files was edited by this branch.
 
 No independent review, landing, capture acceptance or live release is claimed
 by this document.
+
+## Nov 9 direct wording-pin correction (16:28 IST)
+Actual isolated preparation `21f2e0dfeadc22dd92e31213e47d469feac46934` reproduces the forbidden public nouns: the new regression has 3 failures and 6 passing controls in an independent normal Vitest run. The first preparation correctly did not rewrite existing out-of-scope assertions. The implementation must now continue in parallel, not wait for every historical carrier.
+
+Additional manual test allowlist, ONLY literal expected display text directly changed by the already-allowed shared functions or kit gallery labels:
+- `client/src/pages/policyPages.test.tsx`: the `CREDIT_RULE` returned-text excerpts only (including the visibility charge and withdrawal-before-pickup excerpts). No Terms, Privacy, policy dates, consent or unrelated legal expectations.
+- `client/src/pages/explore/ask.costQuote.test.tsx`: expected cost-line wording returned by `askCostLine` only. Preserve all flag-on/off cases, pending/failed pricing, coverage flips, numeric costs/balances/shortfalls, top-up links, POST bodies and no-fetch/no-send assertions. A shared function changes both callers; an inactive pricing branch is not permission to change its arithmetic or behavior.
+- `client/src/pages/exploreDrawer.test.tsx`, `client/src/pages/explore.test.tsx` and `client/src/pages/ask.test.tsx`: direct expected returned cost-line text only. Do not rewrite the independently hardcoded queue, refund, send-action or coverage paragraphs.
+- `client/src/pages/adminApprovalRecord.test.tsx` and `client/src/pages/adminApprovalQueue.test.tsx`: literal reserved-phrase output only, preserving the monthly qualifier and request metadata.
+- `client/src/pages/GoalLanding.test.tsx`: the returned flat `askCostLanding` phrases only, including its step/fair-rule assertions. No GoalLanding runtime edit.
+- `client/src/components/thread/threadModel.test.ts`: only the `creditUsedPhrase(false)` substring in the waiting-for-coverage expected sentence. Preserve the surrounding current hardcoded text, employee, wait state and other cases. `threadModel.ts` remains read-only and its remaining public nouns are a separately reported sweep gap.
+- `client/src/pages/emails.test.tsx` and `client/src/pages/systemGalleries.test.tsx`: the two local accepted/passed selector names and their directly changed kit stage/trigger nouns only. Keep every template, button/article relationship, selected-state assertion and exact matching strength.
+
+- For the unchanged-semantics shared footer/allowance replacement only: the exact literal chip, `ASK_COST_SENTENCE`, `MONEY_SENTENCE` or `MONEY_SENTENCE_SHORT` substrings in `client/src/components/plans/planCatalog.test.ts`, `client/src/pages/PlansV2.test.tsx`, `client/src/pages/home.mobileNav.test.tsx`, `client/src/pages/home.world.test.tsx`, plus the footer/metadata assertions in the already-listed `explore.test.tsx` and `policyPages.test.tsx`. Preserve all surrounding claims, no-paid-priority text, referrer-unpaid text, monthly amount and negative-visibility controls. Some of these pins are already changed by the existing chip carrier: preserve that work, then update only the remaining changed tail. This grants no plan availability, catalog, page runtime or legal-source edit.
+
+Keep every existing test and assertion, all numeric and flag/negative controls, and full-string strength. No skip/focus/expected-failure wrapper, regex broadening, deletion or dynamic import of the production string to replace an independent literal pin. A line number is a locator, not permission to rewrite a whole test. Run each affected suite together with the original shared/server, new regression and catalog/charge/refund/card checks. This is a direct wording-pin correction, not additional runtime scope or a behavior, legal or pricing change. Existing external branches and unpublished hunks remain preserved; coordinator owns combined integration.
+
+The existing chip branch `agent/copy/free-asks-chip-terminology` at `12157a9e7c0771be12685a0121bbeb597ffe5e64` already carries that bounded hunk. Consume/preserve it by normal forward composition rather than reimplementing or overwriting it. Do not claim the chip work as a new implementation.
+
+The live source on main `6962791957126ffdd21d65698a7564b7dfd33ab7` has `FREE_PLAN.creditsPerMonth = 3`, `CREDIT_PACKS_ON_SALE = true`, `PASS_SALES_ENABLED = false`, and a flat default cost of one internal unit. Public referral-only nouns do not by themselves change those facts. The old `extra asks use credits` tail must not be declared pricing-dependent merely because it contains the old nouns. Replace it only with a truthful presentation of the same current allowance/usage, with no claim that an accepted request is a completed or guaranteed referral, and no claim that paused passes are sold. Existing paid-plan, charge/card/expiration and legal behavior restrictions stand. Leave any genuinely unresolved offer wording explicitly incomplete and report its exact source conflict; do not block independent local-label/cost-line development on it.
