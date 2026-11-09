@@ -4530,8 +4530,9 @@
       "lane": "picker",
       "branch": "agent/queue/picker-fullstack-lights",
       "status": "todo",
-      "syncedTo": "D-304",
+      "syncedTo": "D-309",
       "dependsOn": [
+        "PICKER-parallel-eligibility",
         "REL-release-verify",
         "REL-watchdog",
         "PROCESS-review-gate",
@@ -4564,7 +4565,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-qa-stage",
       "status": "todo",
-      "syncedTo": "D-304",
+      "syncedTo": "D-309",
       "dependsOn": [
         "GATE-e2e-journeys",
         "GATE-tier-floor",
@@ -5330,7 +5331,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-fix-referrer-home-ux",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-285",
       "dependsOn": [],
       "owns": [
@@ -5348,7 +5349,7 @@
       "tier": 2,
       "lane": "d048-referrer-home",
       "branch": "agent/queue/d048-fix-referrer-home-private-copy",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-295",
       "dependsOn": [
         "D-048-p3-referrer-home",
@@ -5383,6 +5384,24 @@
         "client/src/lib/goalSurfaces.test.ts"
       ],
       "note": "Release row from the D-048 phase 3 split R-table (docs/plans/D-048-phase-3-split.md line 145, as amended by D-295): a one-line release pull request that adds the W4 ids (referrer, referrer-home, invite, post-opportunity) to the RELEASED block of client/src/lib/goalSurfaces.ts and touches nothing else. Registered under split line 185: all four surfaces have landed (done on main). R4 releases before R1 (D-295, which supersedes the unlanded D-168 draft on PR #592); dependsOn names the four surfaces whose output it releases plus the B1 corrective output D-048-fix-referrer-home-private-copy (D-223 (1)/(3)), so there is no D-048-R1, D-048-R7 or other ordering-only edge. Pre-release gates, all mandatory, none waived (D-123): QA on the preview at current main, 1280 and 390 captures, kit-drift check, behaviour tests re-run with the ids on, independent reviewer sign-off; the owner gets the captures in the report. Kit-drift check: the literal git-log drift check false-positives because commit 7288e9d is a parentless root commit; the gate is a CONTENT diff of the kit pages and their exclusive files since each surface's landing SHA. Current source facts for R4: referrer-home has exactly one real drift item, components/referrer-home/WaitingAsks.tsx (2 lines, kit commit 7ee6da33): the D-147 credit clause the kit dropped is already absent in the goal version, while the D-176 change from availability framing to private delivery has a semantic goal twin (GoalReferrerHome.tsx empty state, finding B1) that REQUIRES PORT, done under D-048-fix-referrer-home-private-copy; referrer, invite, post-opportunity: verify content drift at build time. Gates are not waived; the content diff IS the check. Registration only: no flag flip, code or status change to any other row lands with it. Owns client/src/lib/goalSurfaces.ts for the RELEASED block only. Owns amendment (2026-11-07): adds client/src/lib/goalSurfaces.test.ts, because the RELEASED assertion in goalSurfaces.test.ts (releasedGoalSurfaces() equals exactly [\"home\"]) must change with the flip; the registered owns missed it. Dependency correction (coordinator ruling on PR #1021, 2026-11-07, D-223 (1)/(3)): D-048-fix-referrer-home-private-copy is added to dependsOn because its output (the D-176 private-delivery copy on /referrer-home, finding B1) is a piece this release needs. The distinct CEO held effdfdde on it. This is an output edge, not an ordering-only edge; id, branch, owns and claim are unchanged.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-release-platform",
+      "title": "Release the complete Tier 2/3 goal surfaces in one line each (goal design across the platform)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-rollout.md",
+      "tier": 2,
+      "lane": "d048-release",
+      "branch": "agent/queue/d048-release-platform",
+      "status": "todo",
+      "syncedTo": "D-307",
+      "dependsOn": [],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts",
+        "client/src/lib/goalSurfaces.test.ts"
+      ],
+      "note": "Owner instruction (Nov 9): make sure goal-based design is applied across the platform. This row releases the wired Tier 2/3 surfaces whose goal pages and switch tests already pass: admin, admin-ops, alerts, developers, discovery, employer, for-companies, landed, links, messages, onboarding, policy, settings, share, start, suggest-company, support, system. Tier 1 surfaces (sign-in, plans, admin-money, admin-people, admin-approvals, verify, email-review, employer-billing) stay behind the flag pending independent review. The 12 unwired surfaces (inbox, queue, ask, company, conversation, premium, pricing, profile, public-profile, employer-talent, skippy, home-signed-in) need their own build rows. One-line release edit to the RELEASED block plus the goalSurfaces.test.ts assertion; no other code.",
       "epic": "D-048-p3"
     },
     {
@@ -5670,6 +5689,22 @@
       "dependsOn": [],
       "note": "Two-stage follow-through carrier, one task row and one decision ID (D-235). STAGE 1 (this PR #833, branch agent/queue/process-session-continuation-docs): docs-only scope registration, no runtime. STAGE 2 (branch agent/queue/process-session-continuation-runtime, pre-registered here, NOT created): the bounded runtime follow-through, created only after this docs amendment has independent final-head review, required green CI and protected merge, then assigned by the normal picker. Why the branch differs: a merged row left in-review reads \"being landed by its reviewer\" and a merged row set todo on its own merged branch reads \"done\", so neither would ever hand out the runtime work; a distinct not-yet-created branch makes the picker hand BUILD after the merge. Docs scope: AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, START_HERE.md, SkipWait-START-HERE.md, docs/BRIEF.md, docs/BUILD_CONTINUITY.md, docs/DELEGATION.md, docs/plans/D-048-auth.md, docs/DECISIONS.md and this packet. Runtime scope, not yet written: scripts/nextTaskCore.mjs (the narrow avoid-first-of-two-owned-continuations hunk, blockedOwn fallback preserved), scripts/nextTaskAvoidLand.test.ts (4 tests), scripts/nextTaskText.mjs (printed stop copy only), scripts/nextTaskReviewWording.test.ts (2 printed-text pins). No owns by design (D-293/D-286 precedent): two non-done rows may not own overlapping paths without a dependency edge, and a reverse dependsOn on PICKER-fullstack-lights, PICKER-qa-stage or PICKER-landing-wait-fallthrough would stall this row under D-134. Serialization is the shared picker lane; those three TODO owners carry no branch on origin. CAVEAT: with no owns, scripts/scope-check.mjs returns skipped (\"declares no owns\"), never a pass, so scope enforcement is a manual exact allowlist diff plus independent review. No heldBy, heartbeat or stale-CI-race change; next-task behavior unchanged. Neither stage is done until its own protected merge; a missing-main-row warning is not a pass."
     }, {"id":"PICKER-packet-pass-red-recovery","title":"A passed Tier1 packet red only at review gate returns to qualified REVIEW after quiet, instead of rerun-only NONE (D-307)","row":"D-200","packet":"docs/plans/PICKER-packet-pass-red-recovery.md","tier":2,"lane":"picker","branch":"agent/queue/picker-packet-pass-red-recovery","status":"done","syncedTo":"D-307","dependsOn":[],"note":"Bounded continuation of D-294/D-299, measured on PR878 head75fffe81. Current packet gateOnlyRed + passed branch skips rerun while reviewGateViolation correctly rejects empty Land claim807 after reviewed74d71. Route a passed Tier1 packet with exact-tip gate-only red and quiet review lock back through normal REVIEW; preserve writer/fixer actual-model exclusions, active locks, head binding and required CI. Only scripts/nextTaskCore.mjs and new scripts/nextTaskPacketPassRed.test.ts; no existing tests or review-gate edit. No owns declared: current fullstack/qa/landing-wait rows own core; dependencies purely to serialize would violate D223, so existing picker lane serializes against every non-disjoint open/in-review picker row, matching D286/D294. No code or task878 change in registration, no automatic pass/unblock/status change/marker deletion. Separate final-version review and green CI required before any normal merge. D307 measured scope correction 2026-11-09 additionally permits only nextTaskArchitectReview.test.ts case (g) title and two expectations to pin normal REVIEW after quiet, no reduced assertions; all other cases unchanged. Old architect packet R3/(g) superseded only in that bounded state. Block ff1db785 remains truthful until supported holder transition after reviewed docs correction."},
-    {"id":"D-048-R5-public","title":"Release the public and marketing lane: goal surfaces landed, share, suggest-company, policy, system, links, discovery","row":"D-048","packet":"docs/plans/D-048-R5-public.md","tier":1,"lane":"d048-public","branch":"agent/queue/d048-r5-public","status":"todo","syncedTo":"D-308","dependsOn":["D-048-p3-policy","D-048-p3-system","D-048-p3-links","D-048-p3-discovery"],"owns":["client/src/lib/goalSurfaces.ts","client/src/lib/goalSurfaces.test.ts"],"note":"Owner direction 2026-11-09: the goal design must actually render for users. Measured on main 7dcc2cc5: 44 surfaces declared, 28 goal dirs landed, RELEASED holds 5, and a live 1280 render check showed /explore, /support, /for-companies, /plans, /sign-in, /requests and /employer still serving kit markup. This row flips only the seven public/marketing surfaces whose implementation rows are done, with 1280/390 captures per surface, the goalSurfaces.test pin updated in the same pull request, and a live [data-goal-page] check after landing. Excludes premium/pricing/plans (owner-reserved), every admin*/developers surface, public-profile (/p/:handle is not built, D-048-p3-public-profile is todo) and all signed-in lanes, each of which needs its own release row. Rollback is one commit: delete the ids from RELEASED."}
-  ]
+    {
+      "id": "PICKER-parallel-eligibility",
+      "title": "Prove independent claimed-red parallel eligibility and remove false global WAIT instructions (D-309)",
+      "row": "D-309",
+      "packet": "docs/plans/PICKER-parallel-eligibility.md",
+      "tier": 2,
+      "lane": "picker-parallel",
+      "branch": "agent/queue/picker-parallel-eligibility",
+      "status": "todo",
+      "syncedTo": "D-309",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskParallelEligibility.test.ts"
+      ],
+      "note": "D-309 actual owner instruction enables many agents on distinct authorized work. Diagnose actual selection first: current core already scans past gate actions; no global runtime bug is assumed. Red-first tests cover real independent offers and honest no-capacity wording. Core/CLI/existing tests are read-only; if a genuine core defect is reproduced, request exact bounded scope before editing. PICKER-fullstack-lights consumes this new printed eligibility contract and must merge it before its own text work; PICKER-qa-stage follows through it, genuine output serialization not a preference edge. No claiming a competing D057, blanket owner clearance, test weakening or review/CI bypass."
+    },
+    {"id":"D-048-R5-public","title":"Release the public and marketing lane: goal surfaces landed, share, suggest-company, policy, system, links, discovery","row":"D-048","packet":"docs/plans/D-048-R5-public.md","tier":1,"lane":"d048-public","branch":"agent/queue/d048-r5-public","status":"todo","syncedTo":"D-308","dependsOn":["D-048-p3-policy","D-048-p3-system","D-048-p3-links","D-048-p3-discovery"],"owns":["client/src/lib/goalSurfaces.ts","client/src/lib/goalSurfaces.test.ts"],"note":"Owner direction 2026-11-09: the goal design must actually render for users. Measured on main 7dcc2cc5: 44 surfaces declared, 28 goal dirs landed, RELEASED holds 5, and a live 1280 render check showed /explore, /support, /for-companies, /plans, /sign-in, /requests and /employer still serving kit markup. This row flips only the seven public/marketing surfaces whose implementation rows are done, with 1280/390 captures per surface, the goalSurfaces.test pin updated in the same pull request, and a live [data-goal-page] check after landing. Excludes premium/pricing/plans (owner-reserved), every admin*/developers surface, public-profile (/p/:handle is not built, D-048-p3-public-profile is todo) and all signed-in lanes, each of which needs its own release row. Rollback is one commit: delete the ids from RELEASED."}  ]
 }
