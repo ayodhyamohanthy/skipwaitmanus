@@ -123,13 +123,13 @@ describe("posted-role Close binding regression",()=>{
     window.history.replaceState({}, "", "/explore/wipro");
     stub();
     renderCompanyDoor();
-    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Ask for a referral$/ }));
     let drawer = await screen.findByTestId("goal-drawer");
     fillLink(drawer, "https://careers.wipro.com/jobs/ordinary-draft");
     fillReasons(drawer);
     fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
-    fireEvent.click(screen.getByRole("button", { name: "Ask for a referral", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Ask for a referral$/ }));
     drawer = await screen.findByTestId("goal-drawer");
     expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/ordinary-draft");
     expect((within(drawer).getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toContain("checkout redesign");
