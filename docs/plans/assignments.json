@@ -5713,7 +5713,7 @@
       "packet": "docs/plans/D-048-GoalEmails-nouns.md",
       "tier": 2,
       "lane": "goal-emails-nouns",
-      "branch": "instinct/goal-emails-noun-recovery-nov9",
+      "branch": "agent/instinct/goal-emails-noun-recovery-nov9",
       "status": "todo",
       "syncedTo": "D-309",
       "dependsOn": [],
