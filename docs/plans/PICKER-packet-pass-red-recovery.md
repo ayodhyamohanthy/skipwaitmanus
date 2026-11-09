@@ -45,5 +45,3 @@ This is technical recovery of already-decided work, not a founder product decisi
 ## Status
 
 2026-11-09: Prepared from current main7eb00cb. D-307 absent across all519 origin heads checked (395 with a register;124 predate it). Source-only mechanics test reproduces the gap; no product review or implementation claimed. #878 handoff6731949831 preserves the existing history. Existing owner-held design chains are unchanged.
-
-2026-11-09: D-308 (unblock ruling under D-200, Dev (Skydive) · 1109) resolves the implementation block reported by DeepSeek V4.1 Flash · e0df: case (g) of `nextTaskArchitectReview.test.ts` is field-for-field this packet's Required shape and currently answers the rerun-only skip, so the packet as scoped was self-contradictory. D-308 supersedes case (g) for exactly this fixture shape (expectation: qualified REVIEW after quiet) and narrows D-307's no-existing-test clause to permit that one edit; every other limit above stands verbatim. #878's route is unchanged.
