@@ -1,0 +1,604 @@
+[
+ {
+  "shot": "policy-privacy",
+  "url": "/privacy",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-privacy",
+  "url": "/privacy",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-terms",
+  "url": "/terms",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-terms",
+  "url": "/terms",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-refunds",
+  "url": "/refunds",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-refunds",
+  "url": "/refunds",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-shipping",
+  "url": "/shipping",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-shipping",
+  "url": "/shipping",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-cancellations",
+  "url": "/cancellations",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-cancellations",
+  "url": "/cancellations",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-guidelines",
+  "url": "/guidelines",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-guidelines",
+  "url": "/guidelines",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-about",
+  "url": "/about",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-about",
+  "url": "/about",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-contact",
+  "url": "/contact",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "policy-contact",
+  "url": "/contact",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "guide-platforms",
+  "url": "/job-referral-platforms",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "guide-platforms",
+  "url": "/job-referral-platforms",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "guide-choosing",
+  "url": "/choosing-a-job-referral-platform",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "guide-choosing",
+  "url": "/choosing-a-job-referral-platform",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "guide-how-employees",
+  "url": "/how-employees-refer-candidates",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "guide-how-employees",
+  "url": "/how-employees-refer-candidates",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "system-offline",
+  "url": "/offline",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "system-offline",
+  "url": "/offline",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "system-not-found",
+  "url": "/no-such-page-r7",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "system-not-found",
+  "url": "/no-such-page-r7",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-install-android",
+  "url": "/app-states",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-install-android",
+  "url": "/app-states",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-install-iphone",
+  "url": "/app-states",
+  "click": "Install (iPhone)",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-install-iphone",
+  "url": "/app-states",
+  "click": "Install (iPhone)",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-push-permission",
+  "url": "/app-states",
+  "click": "Push permission",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-push-permission",
+  "url": "/app-states",
+  "click": "Push permission",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-offline",
+  "url": "/app-states",
+  "click": "Offline",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-offline",
+  "url": "/app-states",
+  "click": "Offline",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-slow-connection",
+  "url": "/app-states",
+  "click": "Slow connection",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-slow-connection",
+  "url": "/app-states",
+  "click": "Slow connection",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-not-found",
+  "url": "/app-states",
+  "click": "Not found",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-not-found",
+  "url": "/app-states",
+  "click": "Not found",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-error",
+  "url": "/app-states",
+  "click": "Something went wrong",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-error",
+  "url": "/app-states",
+  "click": "Something went wrong",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-payment-failed",
+  "url": "/app-states",
+  "click": "Payment failed",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-payment-failed",
+  "url": "/app-states",
+  "click": "Payment failed",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-loading",
+  "url": "/app-states",
+  "click": "Loading",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "app-loading",
+  "url": "/app-states",
+  "click": "Loading",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-code",
+  "url": "/emails",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-code",
+  "url": "/emails",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-password-reset",
+  "url": "/emails",
+  "click": "Password reset",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-password-reset",
+  "url": "/emails",
+  "click": "Password reset",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-welcome",
+  "url": "/emails",
+  "click": "Welcome",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-welcome",
+  "url": "/emails",
+  "click": "Welcome",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-claimed",
+  "url": "/emails",
+  "click": "Request claimed",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-claimed",
+  "url": "/emails",
+  "click": "Request claimed",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-accepted",
+  "url": "/emails",
+  "click": "Ask accepted",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-accepted",
+  "url": "/emails",
+  "click": "Ask accepted",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-passed",
+  "url": "/emails",
+  "click": "Ask passed",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-passed",
+  "url": "/emails",
+  "click": "Ask passed",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-new-message",
+  "url": "/emails",
+  "click": "New message",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-new-message",
+  "url": "/emails",
+  "click": "New message",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-waiting-for-coverage",
+  "url": "/emails",
+  "click": "Waiting for coverage",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-waiting-for-coverage",
+  "url": "/emails",
+  "click": "Waiting for coverage",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-slot-opened",
+  "url": "/emails",
+  "click": "Slot opened",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-slot-opened",
+  "url": "/emails",
+  "click": "Slot opened",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-review-ready",
+  "url": "/emails",
+  "click": "Review ready",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-review-ready",
+  "url": "/emails",
+  "click": "Review ready",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-reverify-reminder",
+  "url": "/emails",
+  "click": "Re-verify reminder",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-reverify-reminder",
+  "url": "/emails",
+  "click": "Re-verify reminder",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-report-outcome",
+  "url": "/emails",
+  "click": "Report outcome",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-report-outcome",
+  "url": "/emails",
+  "click": "Report outcome",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-payment-receipt",
+  "url": "/emails",
+  "click": "Payment receipt / failed",
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "emails-payment-receipt",
+  "url": "/emails",
+  "click": "Payment receipt / failed",
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-ready",
+  "url": "/fast/fx-link-0001",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-ready",
+  "url": "/fast/fx-link-0001",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-unavailable",
+  "url": "/fast/fx-link-0002",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-unavailable",
+  "url": "/fast/fx-link-0002",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-loading",
+  "url": "/fast/fx-link-0003",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "fast-loading",
+  "url": "/fast/fx-link-0003",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "vanity-ready",
+  "url": "/refer/fabrikam/fx-alias",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "vanity-ready",
+  "url": "/refer/fabrikam/fx-alias",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "vanity-unavailable",
+  "url": "/refer/fabrikam/fx-alias-gone",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "vanity-unavailable",
+  "url": "/refer/fabrikam/fx-alias-gone",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "share-ready",
+  "url": "/share-card/fxsharetoken000000000001",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "share-ready",
+  "url": "/share-card/fxsharetoken000000000001",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "share-unavailable",
+  "url": "/share-card/fxsharetoken000000000002",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "share-unavailable",
+  "url": "/share-card/fxsharetoken000000000002",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "start-return",
+  "url": "/start?fast=fx-link-0001",
+  "click": null,
+  "width": 1280,
+  "horizontalOverflowPx": 0
+ },
+ {
+  "shot": "start-return",
+  "url": "/start?fast=fx-link-0001",
+  "click": null,
+  "width": 390,
+  "horizontalOverflowPx": 0
+ }
+]
