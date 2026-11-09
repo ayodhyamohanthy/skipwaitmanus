@@ -138,7 +138,11 @@ describe("reportQueryCacheError (REL-client-capture, main.tsx handlers)", () => 
     const serverError = Object.assign(new Error("Internal server error"), { data: { httpStatus: 500 } });
     reportQueryCacheError(serverError, "mutation");
     reportQueryCacheError(new Error("boom"), "query");
-    expect(captured.map(entry => entry.error)).toEqual([serverError, expect.any(Error)]);
+    // Telemetry deliberately normalizes errors; apiFetch still preserves its
+    // caller-facing thrown error and Response identity in the controls above.
+    expect(captured.map(entry => entry.error)).toEqual([expect.any(Error), expect.any(Error)]);
+    expect(captured[0].error).not.toBe(serverError);
+    expect(captured.map(entry => (entry.error as Error).message)).toEqual(["api_query_failure", "api_query_failure"]);
     expect(captured[0].context).toMatchObject({ source: "react-mutation" });
   });
 

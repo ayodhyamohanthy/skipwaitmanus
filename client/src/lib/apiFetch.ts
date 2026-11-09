@@ -113,10 +113,12 @@ export function reportQueryCacheError(error: unknown, kind: "query" | "mutation"
     }
     const status = httpStatusOf(error);
     if (status !== undefined && status >= 400 && status < 500) return;
-    const key = `${source}:${error instanceof Error ? error.message : String(error)}`;
+    // Error messages and custom properties may contain private URLs, tokens or
+    // user data. Classify the failure without forwarding the original object.
+    const key = `${source}:${status ?? "unknown"}`;
     if (reportedQueryErrors.has(key)) return;
     reportedQueryErrors.add(key);
-    captureClientError(error, status === undefined ? { source } : { source, status });
+    captureClientError(new Error("api_query_failure"), { source, kind: "api_query_failure", ...(status === undefined ? {} : { status }) });
   } catch {
     // Reporting must never break the query cache.
   }
