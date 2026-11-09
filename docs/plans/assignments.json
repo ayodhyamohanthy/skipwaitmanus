@@ -5831,7 +5831,7 @@
       "title": "One non-nested sign-in button on the released signed-out messages screen",
       "row": "UI",
       "packet": "docs/plans/UI-messages-signin-button.md",
-      "tier": 2,
+      "tier": 1,
       "lane": "messages-signin-ui",
       "branch": "agent/queue/ui-messages-signin-button",
       "status": "todo",
@@ -5842,7 +5842,7 @@
         "client/src/pages/goal/messages/messagesGoal.test.tsx",
         "client/src/pages/goal/messages/messagesSignInButton.test.tsx"
       ],
-      "note": "Bounded signed-out markup repair only: replace SignInButton wrapping GoalButton with one GoalButton calling existing useAuth.openSignIn with no arguments. No auth mechanism/destination/cookies/policy/server/GET/POST or message privacy changes. Preserve all existing signed-in behavior and tests. Exact independent final review and all required CI/current-main checks before normal protected merge; real provider continuity is not established by local synthetic captures."
+      "note": "Tier 1 sign-in work per docs/DELEGATION.md section 3, despite bounded markup. Actual underlying builder-model independence evidence is unresolved; do not manufacture a review identity or marker. Bounded signed-out markup repair only: replace SignInButton wrapping GoalButton with one GoalButton calling existing useAuth.openSignIn with no arguments. No auth mechanism/destination/cookies/policy/server/GET/POST or message privacy changes. Preserve all existing signed-in behavior and tests. Exact independent final review and all required CI/current-main checks before normal protected merge; real provider continuity is not established by local synthetic captures."
     }
   ]
 }

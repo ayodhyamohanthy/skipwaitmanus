@@ -8,7 +8,9 @@ and cannot detect that invalid DOM.
 
 ## Boundaries
 
-Tier 2 UI markup and action wiring only. Keep one existing styled GoalButton
+Tier 1 sign-in work per `docs/DELEGATION.md` section 3. The runtime delta is
+bounded UI markup and action wiring, but it starts sign-in and is not exempt
+from Tier 1. Keep one existing styled GoalButton
 and call the existing `useAuth().openSignIn()` without arguments. This is the
 same function the wrapper calls, not a change to auth destination, mechanism,
 return handling, cookies, permissions or policy. No signed-in message, request,
@@ -34,5 +36,14 @@ proof of unpublished state; preserve other work and coordinate new overlap.
 - After merge, verify live release identity and signed-out button behavior;
   do not claim real provider login or all-role acceptance without that evidence.
 
-Status: registration only. Isolated local red-green tests and before/after
+Status: blocked registration proposal. Actual external review FAIL on
+`c951200862db4c23086740eaf41832dc6eb0caf9` identified the Tier 2
+under-classification. Correcting the tier does not grant a pass. Actual
+underlying builder-model identity/independence evidence remains unresolved;
+no invented model identity, review marker, cosmetic rewrite or history wash
+may clear it. Keep this proposal and isolated prep held pending a genuine
+qualified Tier 1 review and landing route. Do not repeat static review only
+to reconfirm the identity gap.
+
+Registration only. Isolated local red-green tests and before/after
 captures exist separately; no implementation or release is asserted here.
