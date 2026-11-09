@@ -53,6 +53,8 @@ export default function GoalEmployerTalent() {
   const unlockInFlight = useRef<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [openedProfile, setOpenedProfile] = useState<OpenedProfile | null>(null);
+  const listGeneration = useRef(0);
+  const balanceChangedByUnlock = useRef(false);
   const [introSentTo, setIntroSentTo] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,35 +62,44 @@ export default function GoalEmployerTalent() {
   }, []);
 
   const loadTalent = async (nextQuery = query, nextLocation = location) => {
+    const generation = ++listGeneration.current;
+    setOpenedProfile(null);
     setLoading(true); setError("");
     try {
       const params = new URLSearchParams(); if (nextQuery.trim()) params.set("query", nextQuery.trim()); if (nextLocation.trim()) params.set("location", nextLocation.trim());
       const response = await fetch(`/api/employer/talent${params.size ? `?${params.toString()}` : ""}`, { credentials: "include" });
       const payload = await readApiJson<{ talent?: TalentRow[]; error?: string }>(response, "We could not load the talent list");
       if (!response.ok) throw new Error(payload.error || "We could not load the talent list");
-      setTalent(payload.talent || []);
-    } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load the talent list"); }
-    finally { setLoading(false); }
+      if (generation === listGeneration.current) setTalent(payload.talent || []);
+    } catch (loadError) { if (generation === listGeneration.current) setError(loadError instanceof Error ? loadError.message : "We could not load the talent list"); }
+    finally { if (generation === listGeneration.current) setLoading(false); }
   };
 
   useEffect(() => {
     let active = true;
+    const generation = ++listGeneration.current;
     void (async () => {
       try {
         const [talentResponse, accountResponse] = await Promise.all([fetch("/api/employer/talent", { credentials: "include" }), fetch("/api/employer/account", { credentials: "include" })]);
         const talentPayload = await readApiJson<{ talent?: TalentRow[]; error?: string }>(talentResponse, "We could not load the talent list");
         if (!talentResponse.ok) throw new Error(talentPayload.error || "Employer access is required");
         const accountPayload = await readApiJson<{ account?: { credits: number } | null }>(accountResponse, "Employer account unavailable");
-        if (active) { setTalent(talentPayload.talent || []); setBalance(accountPayload.account?.credits ?? null); }
-      } catch (loadError) { if (active) setError(loadError instanceof Error ? loadError.message : "We could not load the talent list"); }
-      finally { if (active) setLoading(false); }
+        if (active) {
+          if (generation === listGeneration.current) setTalent(talentPayload.talent || []);
+          if (!balanceChangedByUnlock.current) setBalance(accountPayload.account?.credits ?? null);
+        }
+      } catch (loadError) { if (active && generation === listGeneration.current) setError(loadError instanceof Error ? loadError.message : "We could not load the talent list"); }
+      finally { if (active && generation === listGeneration.current) setLoading(false); }
     })();
-    return () => { active = false; };
+    return () => { active = false; listGeneration.current += 1; };
   }, []);
 
   const unlockTalent = async (row: TalentRow) => {
     if (unlockInFlight.current !== null) return;
     unlockInFlight.current = row.displayRef;
+    balanceChangedByUnlock.current = true;
+    listGeneration.current += 1;
+    setLoading(false);
     setUnlockingId(row.displayRef);
     const previousBalance = balance;
     const previousUnlocked = row.isUnlocked;
@@ -119,12 +130,13 @@ export default function GoalEmployerTalent() {
   };
 
   const openProfile = async (row: TalentRow) => {
+    const generation = listGeneration.current;
     try {
       const response = await fetch(`/api/employer/talent/${encodeURIComponent(row.displayRef)}`, { credentials: "include" });
       const payload = await readApiJson<{ profile?: UnlockedProfile; error?: string }>(response, "We could not load this profile");
       if (response.status === 402) { toast("Unlock this profile first."); return; }
       if (!response.ok || !payload.profile) throw new Error(payload.error || "We could not load this profile");
-      setOpenedProfile({ displayRef: row.displayRef, profile: payload.profile });
+      if (generation === listGeneration.current) setOpenedProfile({ displayRef: row.displayRef, profile: payload.profile });
     } catch (openError) { toast(openError instanceof Error ? openError.message : "We could not load this profile"); }
   };
 
@@ -172,7 +184,7 @@ export default function GoalEmployerTalent() {
         ) : (
           <ul className="grid gap-3 gdesk:grid-cols-2">
             {talent.map(row => {
-              const opened = openedProfile && openedProfile.displayRef === row.displayRef ? openedProfile.profile : null;
+              const opened = row.isUnlocked && openedProfile && openedProfile.displayRef === row.displayRef ? openedProfile.profile : null;
               const expertise = Array.isArray(opened?.expertise) ? opened.expertise.filter(Boolean) : [];
               // While the optimistic unlock is pending the server has not
               // granted anything yet, so no profile or intro action is offered.

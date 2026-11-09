@@ -130,6 +130,76 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     await waitFor(() => expect(calls(fetchMock)).toContain("GET /api/employer/talent?query=go&location=Pune"));
   });
 
+  it("drops a previously opened profile when a refreshed server row is locked", async () => {
+    let refresh = false;
+    stub({ talent: () => reply({ talent: [refresh ? { ...UNLOCKED, isUnlocked: false } : UNLOCKED] }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: "View profile" }));
+    await screen.findByRole("group", { name: "Shared profile" });
+    refresh = true;
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await within(await screen.findByRole("listitem", { name: REF_B })).findByText("Locked");
+    expect(screen.queryByRole("group", { name: "Shared profile" })).toBeNull();
+    expect(screen.queryByText(/6-10 years/)).toBeNull();
+  });
+
+  it("keeps the latest search when an older search completes last", async () => {
+    const releases: ((value: Reply) => void)[] = [];
+    let initial = true;
+    stub({ talent: () => { if (initial) { initial = false; return reply({ talent: [LOCKED] }); } return new Promise<Reply>(resolve => releases.push(resolve)); } });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.change(screen.getByLabelText("Search talent"), { target: { value: "older" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search talent"), { target: { value: "latest" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(releases).toHaveLength(2);
+    await act(async () => { releases[1](reply({ talent: [UNLOCKED] })); });
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => { releases[0](reply({ talent: [LOCKED] })); });
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(screen.getByRole("listitem", { name: REF_B })).toBeTruthy();
+  });
+
+  it("ignores an older error and finally while the latest search is pending", async () => {
+    const releases: ((value: Reply) => void)[] = [];
+    let initial = true;
+    stub({ talent: () => { if (initial) { initial = false; return reply({ talent: [LOCKED] }); } return new Promise<Reply>(resolve => releases.push(resolve)); } });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await act(async () => { releases[0](reply({ error: "Older failed search" }, 500)); });
+    expect(screen.queryByText("Older failed search")).toBeNull();
+    expect(screen.getByRole("status", { name: /Loading talent/ })).toBeTruthy();
+    await act(async () => { releases[1](reply({ talent: [UNLOCKED] })); });
+    expect(await screen.findByRole("listitem", { name: REF_B })).toBeTruthy();
+  });
+
+  it("does not let the pending mount overwrite a newer search and still loads its balance", async () => {
+    let releaseMount: (value: Reply) => void = () => {};
+    let initial = true;
+    stub({ talent: () => { if (initial) { initial = false; return new Promise<Reply>(resolve => { releaseMount = resolve; }); } return reply({ talent: [UNLOCKED] }); } });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => { releaseMount(reply({ talent: [LOCKED] })); });
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(screen.getByRole("listitem", { name: REF_B })).toBeTruthy();
+    expect(balanceText()).toBe("20");
+  });
+
+  it("does not reopen a pending old profile after a list refresh", async () => {
+    let releaseProfile: (value: Reply) => void = () => {};
+    stub({ talent: () => reply({ talent: [UNLOCKED] }), profile: () => new Promise<Reply>(resolve => { releaseProfile = resolve; }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: "View profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => { releaseProfile(reply({ profile: PROFILE })); });
+    expect(screen.queryByRole("group", { name: "Shared profile" })).toBeNull();
+  });
+
   it("narrows the anonymity line to what the structured fields omit (the headline is free text)", async () => {
     stub();
     const { container } = render(<GoalEmployerTalent />);
