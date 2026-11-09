@@ -1,9 +1,9 @@
 {
-  "source": "2e478baa24cf7ebf6a55168060896a180d8817d6",
+  "source": "ca4a5990fb4365acbd58702aa22a7dacd4cdf6de",
   "surfaces": "policy,system,links",
   "command": "VITE_GOAL_SURFACES=policy,system,links pnpm build && node design/goal-ui/captures/r7-release/capture.mjs",
   "synthetic": true,
-  "covered": 64,
+  "covered": 68,
   "unverified": [
     "/emails template interactions beyond the default selection",
     "link sign-in return and share-card privacy states behind an authenticated session",
@@ -227,6 +227,50 @@
       "goalPage": null,
       "kitScreen": "share-card",
       "h1": "This share card isn’t available.",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "app-state-install-android-dismissed-1280.png",
+      "route": "/app-states",
+      "note": "sequence: Install (Android) > Not now",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": null,
+      "h1": "Not now",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "app-state-install-iphone-dismissed-1280.png",
+      "route": "/app-states",
+      "note": "sequence: Install (iPhone) > Got it",
+      "viewport": 1280,
+      "goalPage": null,
+      "kitScreen": null,
+      "h1": "Got it",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "app-state-install-android-dismissed-390.png",
+      "route": "/app-states",
+      "note": "sequence: Install (Android) > Not now",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": null,
+      "h1": "Not now",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "file": "app-state-install-iphone-dismissed-390.png",
+      "route": "/app-states",
+      "note": "sequence: Install (iPhone) > Got it",
+      "viewport": 390,
+      "goalPage": null,
+      "kitScreen": null,
+      "h1": "Got it",
       "overflow": 0,
       "errors": []
     },

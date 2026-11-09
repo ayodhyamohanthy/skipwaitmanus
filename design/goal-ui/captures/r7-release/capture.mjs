@@ -98,6 +98,33 @@ for (const width of WIDTHS) {
   }
   await page.close();
 }
+// Sequence variants: a panel's own sub-dialog reached by clicking inside it (the last unverified state my earlier
+// entry listed), so a gallery screenshot never stands in for the dismissed prompt.
+const SEQUENCES = [
+  { route: "/app-states", clicks: ["Install (Android)", "Not now"], prefix: "app-state-install-android-dismissed" },
+  { route: "/app-states", clicks: ["Install (iPhone)", "Got it"], prefix: "app-state-install-iphone-dismissed" },
+];
+
+for (const width of WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 900 } });
+  for (const sequence of SEQUENCES) {
+    await page.goto(`http://127.0.0.1:${port}${sequence.route}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.waitForTimeout(900);
+    let ok = true;
+    for (const label of sequence.clicks) {
+      try { await page.getByRole("button", { name: label, exact: true }).first().click({ timeout: 4000 }); } catch { ok = false; break; }
+      await page.waitForTimeout(400);
+    }
+    if (!ok) { console.warn(`sequence skipped: ${sequence.prefix}-${width} (${sequence.clicks.join(" > ")})`); continue; }
+    const file = `${sequence.prefix}-${width}.png`;
+    await page.screenshot({ path: path.join(here, file), fullPage: true });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    results.push({ file, route: sequence.route, note: `sequence: ${sequence.clicks.join(" > ")}`, viewport: width, goalPage: null, kitScreen: null, h1: sequence.clicks.at(-1), overflow, errors: [] });
+    console.log(`${file.padEnd(44)} sequence="${sequence.clicks.join(" > ")}" overflow=${overflow}`);
+  }
+  await page.close();
+}
+
 // Interactive variants: select every control in the page's own group, capture that state, then reload.
 for (const width of WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 900 } });

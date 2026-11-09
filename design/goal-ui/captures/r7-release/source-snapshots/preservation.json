@@ -936,6 +936,42 @@
       "source_path": "design/goal-ui/captures/r7-release/terms-390.png",
       "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-23c069/terms-390.png",
       "sha256": "48481d550371fc55887c6ba76ccf09b9045232304a948adb62d16ef7848cb819"
+    },
+    {
+      "source_head": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-android-dismissed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-996c956/app-state-install-android-dismissed-1280.png",
+      "sha256": "d9bc988d5d3b8339e6c6fb9845a3dee68ca35e4318b8fb5b8193272ca2fa107a"
+    },
+    {
+      "source_head": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-android-dismissed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-996c956/app-state-install-android-dismissed-390.png",
+      "sha256": "be761ef082a7fa16861338300fc74329c4efdaa48234258df362c0b04633022f"
+    },
+    {
+      "source_head": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-iphone-dismissed-1280.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-996c956/app-state-install-iphone-dismissed-1280.png",
+      "sha256": "54647edf7d67f5ddbd54877ec49cb76b49380f1f403ee185a6b5ca4a5c7c931a"
+    },
+    {
+      "source_head": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+      "source_path": "design/goal-ui/captures/r7-release/app-state-install-iphone-dismissed-390.png",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-996c956/app-state-install-iphone-dismissed-390.png",
+      "sha256": "6926abca0882b0e1c8787358e2e387f815e7c58beaee66ed83e2bc06329dd8f7"
+    },
+    {
+      "source_head": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+      "source_path": "design/goal-ui/captures/r7-release/capture.mjs",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-996c956/capture.mjs",
+      "sha256": "e79a44b8f65309fc6df4d8a1e0716a26cf918cca92975e63cdbc2bc4670d7502"
+    },
+    {
+      "source_head": "996c956a98b954ef0054b86869f0bc0dac79ab9a",
+      "source_path": "design/goal-ui/captures/r7-release/manifest-all.json",
+      "preserved_path": "design/goal-ui/captures/r7-release/source-snapshots/canonical-996c956/manifest-all.json",
+      "sha256": "aa41458eb9911ac4b35e28f0d02cecd149cc1d86449daed11b21525197de0e03"
     }
   ]
 }

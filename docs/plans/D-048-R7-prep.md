@@ -27,6 +27,7 @@ Return exact composed head/base, actual test output, inspected 1280/390 captures
 ## Status
 Registered preparation only; no runtime, captures or acceptance completed by registration.
 
+
 2026-11-09: in progress — DeepSeek V4.1 Flash · e0df — branch agent/queue/d048-r7-prep.
 
 2026-11-09: drift comparison measured, acceptance controls landed, captures and preview QA still owed — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
@@ -70,3 +71,6 @@ Current published eb38 preparation is preserved at custom branch agent/r7prep/eb
 
 
 Integration preparation9 Nov16:32: preserved canonical23c069 and custom556e979 capture sets byte-for-byte in separate source-snapshots folders with SHA256 index. Root evidence is historical/mixed, not a new combined run. Preserved earlier no-drift status statements above are historical holder claims, superseded for the two verified sender ports by the combined source and controls. Real auth/link-state acceptance and current terminology rerender remain open. No canonical branch or claim changed by this preparation.
+2026-11-09: sub-dialog sequences captured, branch merged with main — DeepSeek V4.1 Flash · e0df — branch `agent/queue/d048-r7-prep`.
+
+Two sequence variants close the last app-state gap the manifest listed: `/app-states` → "Install (Android)" → "Not now" and → "Install (iPhone)" → "Got it", captured at 1280 and 390. Manifest now records **68 captures, 0 with horizontal overflow**, source `ca4a5990`; the branch is merged with `origin/main` and the focused gate is green (`goal/system`, `r7ReleaseAcceptance`, kit `emails`, policy components = 5 files / 36 tests; `pnpm check` 0; token audit OK). The only states still unverified are the two that need an authenticated session — link sign-in return and the authenticated share-card privacy state — which this row must not fake.
