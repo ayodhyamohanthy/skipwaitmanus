@@ -851,7 +851,18 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
     // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
     if (v.packet && v.pr && Number(v.task.tier) === 1 && v.gateOnlyRed) {
-      if (v.review === "passed") return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      // D-307: a passed stage on an exact-tip gate-only red cannot be cleared by re-running CI when the pass names
+      // an earlier head (a post-review empty claim plus a clean main merge, #878). Once the lock and the work branch
+      // are genuinely quiet, hand the ordinary REVIEW again — the one stage that can record this head. An active
+      // stage keeps the rerun answer, and builder/writer/fixer models stay out of it (D-151, D-190).
+      if (v.review === "passed" && !quiet(lockAt(v))) return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      if (v.review === "passed") {
+        // A standing block is never cleared by this routing: an architect row is not `open`, so the ordinary blocked
+        // hand-out cannot see it, and this route must report it truthfully instead of handing a review over it.
+        if (v.said?.status === "blocked") return skip(v, `${v.task.id} is blocked (${v.said.who} reported it blocked: ${v.said.note ?? "no note"}); a session that neither raised the block nor holds the task clears it (D-200)`);
+        if (did(v, ["builders", "fixers"]) || (claimant && v.writers.includes(claimant))) return skip(v, "its review passed; another session re-reviews this exact head");
+        return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
+      }
       if (v.review === "in-review" && !quiet(lockAt(v))) return skip(v, `under review by ${v.reviewer}`);
       if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v)))) {
         if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you wrote or fixed its packet");
