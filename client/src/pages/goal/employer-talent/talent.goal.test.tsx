@@ -410,6 +410,21 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     }
   });
 
+  it("does not reinsert an unlocked row excluded by a search completed during its unlock", async () => {
+    let finishUnlock: (value: Reply) => void = () => {};
+    let n = 0;
+    stub({ talent: () => reply({ talent: ++n === 1 ? [LOCKED] : [] }), unlock: () => new Promise<Reply>(resolve => { finishUnlock = resolve; }) });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByText("No opt-in talent matches yet.");
+    await act(async () => finishUnlock(reply({ unlocked: true, remaining: 15 }, 201)));
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(screen.getByText("No opt-in talent matches yet.")).toBeTruthy();
+    expect(balanceText()).toBe("15");
+  });
+
   it("a non-array expertise value in the profile renders no Expertise line", async () => {
     stub({ profile: () => reply({ profile: { headline: "Product designer", experience: "6-10 years", expertise: "Design systems" } }) });
     render(<GoalEmployerTalent />);
