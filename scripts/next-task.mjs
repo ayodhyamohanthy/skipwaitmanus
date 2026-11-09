@@ -27,7 +27,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
@@ -266,8 +266,11 @@ async function state() {
   try { mainCi = ciStateFromRuns((await github(doc.repo, "/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10")).workflow_runs); }
   catch (e) { console.error(`next-task: ${e.message}`); }
   try {
-    const pulls = await github(doc.repo, "/pulls?state=open&per_page=100");
-    openPrs = new Map(pulls.filter(p => p.head?.repo?.full_name === doc.repo).map(p => [p.head.ref, p.html_url]));
+    // BRANCH-HYGIENE "See every pull request": page by page, never one page of 100 (D-085).
+    const first = await github(doc.repo, "/pulls?state=open&per_page=100&page=1");
+    const read = await collectOpenPulls({ firstPage: first, fetchPage: page => github(doc.repo, `/pulls?state=open&per_page=100&page=${page}`) });
+    if (!read.complete) throw new Error(`open pull requests unknown: ${read.reason}`);
+    openPrs = new Map(read.pulls.filter(p => p.head?.repo?.full_name === doc.repo).map(p => [p.head.ref, p.html_url]));
   } catch (e) { console.error(`next-task: ${e.message}`); }
   try {
     const closed = await github(doc.repo, "/pulls?state=closed&sort=updated&direction=desc&per_page=100");
