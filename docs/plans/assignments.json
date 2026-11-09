@@ -3553,7 +3553,7 @@
       "tier": 1,
       "lane": "security-otp",
       "branch": "agent/queue/d100-otp-hmac",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-297",
       "dependsOn": [
         "FIX-device-signin"
