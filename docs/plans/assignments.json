@@ -4245,6 +4245,19 @@
       "note": "Builds D-176 (merged in #601; user instruction phonemsg-01M5N0ED9V8M2929BBYJY7QXCG, Oct 24 00:00 IST): availability framing does not map to the seeker's mental model. Remove the labels, chips and open-first grouping; availability becomes backend routing only, with an honest delivered-vs-waiting status after save and no false immediate-referral claim. Supersedes the shipped D-048-fix-explore-open-first grouping (#594 stands as completed history - removal is this row, not a rollback). Preserves verified company-employee access and privacy rules. D-189: done by #609 (labels, chips and open-first grouping removed)."
     },
     {
+      "id": "D-174-post-close-slice",
+      "title": "Clear old posted-role routing when a company ask drawer closes",
+      "row": "D-193",
+      "packet": "docs/plans/D-174-post-close-slice.md",
+      "tier": 1,
+      "lane": "d174-fix",
+      "branch": "agent/instinct/posted-role-close-binding-nov9",
+      "status": "todo",
+      "syncedTo": "D-310",
+      "dependsOn": [],
+      "note": "Bounded child of922 existingD193\u00a75.1Closecontract. Parent804ae119lineage/owner/dependencies/status/otherrequirements preserved; reintegratebeforeparentresumes samehunk. OnlyExploreCompanyclosehandler+newexploreCompany.closePostBinding.test.tsx, noauth/pricing/storage/server/UIcopychange. Noowns becauseparentoverlap; exact2pathmanualscope+qualifiedindependentreview required,nobypass/noownerACKclaim. Redfirststaleid88afterClose;25testsPASS;local1280/390interceptedpayload hasnoid,noactualsend/credits. Other922casesunresolved. Latestowner20:29parallel-easytestedproduction slices, notwholequeuehold."
+    },
+    {
       "id": "D-174-fix-post-binding",
       "title": "Keep a picked posted role through sign-in, and never carry a stale one into a later request (#612 regressions)",
       "row": "D-193",
