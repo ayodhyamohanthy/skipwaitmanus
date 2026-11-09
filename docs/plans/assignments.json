@@ -438,7 +438,7 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-agent-send",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-308",
       "dependsOn": [
         "SKIPPY-fix",
         "D-178.grant"
@@ -454,7 +454,7 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
       "status": "architect",
-      "syncedTo": "D-227",
+      "syncedTo": "D-308",
       "dependsOn": [
         "SKIPPY-6"
       ],
