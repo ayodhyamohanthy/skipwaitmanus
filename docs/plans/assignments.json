@@ -5808,6 +5808,23 @@
       "syncedTo": "D-309",
       "dependsOn": [],
       "note": "Bounded isolated preparation split from existing D-180-referral-words under original Oct23/24 terminology and Nov9 parallel-development direction. Exact manual allowlist: shared/moneyCopy.ts (presentation strings only), its shared/moneyCopy.test.ts/shared/moneyCopy.item7.test.ts/server/moneyCopy.test.ts direct wording pins only, kit client/src/pages/Emails.tsx template labels/wording only, NEW scripts/referralCopyPrep.test.ts, design/goal-ui/captures/referral-copy-prep/** and own packet Status. No owns declaration because existing pricing/sweep rows retain shared-path ownership history: scope-check skipped is NOT pass. Preserve all existing branch hunks and report unpublished state, independent exact-delta review/manual allowlist and combined current-main money tests before integration. No actual money/catalog/charge/card/eligibility/expiration/flags/legal/sender changes. Existing eb38 owns GoalEmails local-label amendment; never duplicate that writer. Preserve D180 sweep dependencies for its remaining behavior-sensitive integration; this prep need not wait unrelated outputs merely to develop presentation hunks."
+    },
+    {
+      "id": "DEV-prettier-396",
+      "title": "Qualify existing Prettier 3.9.6 dev-only update without unrelated lock changes",
+      "row": "DEV",
+      "packet": "docs/plans/DEV-prettier-396.md",
+      "tier": 2,
+      "lane": "dev-prettier",
+      "branch": "agent/queue/dev-prettier-396",
+      "status": "todo",
+      "syncedTo": "D-309",
+      "dependsOn": [],
+      "owns": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "note": "Bounded existing PR8 dev formatter update. Pin exactly prettier3.9.6; regenerate only its importer/package/snapshot entries, no other version or integrity changes. Preserve original Dependabot branch/PR, no repo formatting or source edits, no runtime/production behavior claims. Full current-main checks, separate final-version review and required CI before normal protected landing. Existing observed peer warning is not fixed by this slice."
     }
   ]
 }
