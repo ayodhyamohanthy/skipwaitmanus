@@ -220,3 +220,41 @@ it("does not hide semantic contribution inside a merge commit", () => withFixtur
  const merge = f.must("commit-tree", tree, "-p", parent, "-p", f.must("rev-parse", "main"), "-m", "semantic merge edit");
  expect(f.resolved({ head: merge })).toMatchObject({ ok: false, reason: "unattributed merge contribution; only clean main merges are transport" });
 }));
+
+it("allows a proven zero-contribution abandoned external claim without washing later authors", () => withFixture(f => {
+ const idle = { ...f.registry.routes[0], id: "idle", operator: "Operator · idle", modelId: "public-idle" };
+ f.registry.routes.push(idle);
+ // A real empty claim immediately before the retained original build claim.
+ const tree = f.must("rev-parse", `${f.input}^{tree}`);
+ const abandoned = f.must("commit-tree", tree, "-p", f.input, "-m", "Claim T: Operator · idle", "-m", "provenance idle");
+ const owned = { verb: "Claim", id: "T", who: "Operator · idle", sha: abandoned, body: "provenance idle" };
+ // Keep the fixture's original build claim, but put the empty abandoned claim
+ // into its ancestry. Recreate the remaining tree without changing its bytes.
+ const original = f.must("commit-tree", tree, "-p", abandoned, "-m", `Takeover T: ${b}`, "-m", "provenance builder");
+ const outputTree = f.must("rev-parse", `${f.head}^{tree}`);
+ const head = f.must("commit-tree", outputTree, "-p", original, "-m", "external implementation after empty takeover");
+ f.build.claimSha = original; f.build.outputSha = head;
+ const patch = f.must("diff", "--binary", "--no-ext-diff", f.input, head, "--");
+ f.build.output = patch; f.build.outputSha256 = digest(patch); f.build.patchSha256 = digest(patch);
+ const result = f.resolved({ head, workMarkers: [owned, { ...f.workMarkers[0], verb: "Takeover", sha: original }], lockMarkers: [] });
+ expect(result).toMatchObject({ ok: true, builders: ["public-author"] });
+ const next = { ...f.workMarkers[0], verb: "Takeover", sha: original };
+ const run = (markers: any[], currentHead = head) => f.resolved({ head: currentHead, workMarkers: markers, lockMarkers: [] });
+ expect(run([{ ...owned, body: "" }, next])).toMatchObject({ ok: false });
+ idle.revoked = true; expect(run([owned, next])).toMatchObject({ ok: false }); idle.revoked = false;
+ expect(run([owned])).toMatchObject({ ok: false });
+ expect(run([{ ...owned, body: "provenance idle\nexecution invented" }, next])).toMatchObject({ ok: false });
+ // Actual edits followed by a revert are not a zero-contribution interval.
+ const changed = f.must("commit-tree", outputTree, "-p", abandoned, "-m", "old operator changed code");
+ const reverted = f.must("commit-tree", tree, "-p", changed, "-m", "old operator reverted code");
+ const takeover = f.must("commit-tree", tree, "-p", reverted, "-m", `Takeover T: ${b}`, "-m", "provenance builder");
+ const changedHead = f.must("commit-tree", outputTree, "-p", takeover, "-m", "new external output");
+ f.build.claimSha = takeover; f.build.outputSha = changedHead;
+ expect(run([owned, { ...next, sha: takeover }], changedHead)).toMatchObject({ ok: false });
+ // Even an empty merge in that interval cannot hide another history.
+ const merge = f.must("commit-tree", tree, "-p", abandoned, "-p", f.input, "-m", "ambiguous merge");
+ const mergeTakeover = f.must("commit-tree", tree, "-p", merge, "-m", `Takeover T: ${b}`, "-m", "provenance builder");
+ const mergeHead = f.must("commit-tree", outputTree, "-p", mergeTakeover, "-m", "new output");
+ f.build.claimSha = mergeTakeover; f.build.outputSha = mergeHead;
+ expect(run([owned, { ...next, sha: mergeTakeover }], mergeHead)).toMatchObject({ ok: false });
+}));

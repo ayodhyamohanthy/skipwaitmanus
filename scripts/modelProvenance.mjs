@@ -77,6 +77,35 @@ export function executionIdentity({ registry, marker, taskId, role, head, git })
   }
   return { ok: true, model: route.model, execution: e };
 }
+/** A missing execution may be abandoned only when the retained first-parent
+ * interval through the next qualified build claim is entirely empty. Equal
+ * endpoints alone would hide edits followed by reverts. Never infer this for
+ * fix locks: their ancestry is separate from the code branch.
+ */
+function emptyAbandonedBuild({ marker, workMarkers, registry, taskId, head, git }) {
+  if (!["Claim", "Takeover"].includes(marker.verb) || !SHA.test(marker.sha ?? "")) return false;
+  const refs = markerReferences(marker.body);
+  if (refs.invalid || refs.execution || !routeIdentity(registry, refs.route, marker.who, taskId, "build").ok) return false;
+  if (registry.executions.some(e => e.taskId === taskId && e.routeId === refs.route && e.role === "build" && e.claimSha === marker.sha)) return false;
+  const at = workMarkers.indexOf(marker);
+  const next = at >= 0 && workMarkers.slice(at + 1).find(m => m.id === taskId && ["Claim", "Takeover"].includes(m.verb));
+  if (!next || !SHA.test(next.sha ?? "")) return false;
+  const nextRefs = markerReferences(next.body);
+  if (nextRefs.invalid || !routeIdentity(registry, nextRefs.route, next.who, taskId, "build").ok) return false;
+  if (git("merge-base", "--is-ancestor", next.sha, head) === null) return false;
+  let sha = next.sha;
+  const seen = new Set();
+  while (sha && !seen.has(sha)) {
+    seen.add(sha);
+    const parents = git("show", "-s", "--format=%P", sha)?.split(" ");
+    if (parents?.length !== 1 || !SHA.test(parents[0])) return false;
+    const delta = git("diff", "--binary", "--no-ext-diff", parents[0], sha, "--");
+    if (delta !== "") return false;
+    if (sha === marker.sha) return true;
+    sha = parents[0];
+  }
+  return false;
+}
 /** Resolve a complete external task once, preserving unknowns. Legacy-only tasks return inactive. */
 export function resolveTaskProvenance({ taskId, head, workMarkers = [], lockMarkers = [], registry, registryError, git, claimant, routeId, candidateRole = "review", isStatusCommit }) {
   const markers = [...workMarkers, ...lockMarkers].filter(m => m.id === taskId);
@@ -103,6 +132,7 @@ export function resolveTaskProvenance({ taskId, head, workMarkers = [], lockMark
       reviewers.set(m.who, route.model);
       continue;
     }
+    if (role === "build" && emptyAbandonedBuild({ marker: m, workMarkers, registry, taskId, head, git })) continue;
     const result = executionIdentity({ registry, marker: m, taskId, role, head: role === "review" ? (m.reviewed || head) : head, git });
     if (!result.ok) return { active: true, ...result };
     const expected = role === "build" ? ["Claim", "Takeover"] : role === "fix" ? ["Fix claim"] : ["Review claim"];
