@@ -4255,7 +4255,7 @@
       "status": "todo",
       "syncedTo": "D-310",
       "dependsOn": [],
-      "note": "Bounded child of922 existingD193§5.1Closecontract. Parent804ae119lineage/owner/dependencies/status/otherrequirements preserved; reintegratebeforeparentresumes samehunk. OnlyExploreCompanyclosehandler+newexploreCompany.closePostBinding.test.tsx, noauth/pricing/storage/server/UIcopychange. Noowns becauseparentoverlap; exact2pathmanualscope+qualifiedindependentreview required,nobypass/noownerACKclaim. Redfirststaleid88afterClose;25testsPASS;local1280/390interceptedpayload hasnoid,noactualsend/credits. Other922casesunresolved. Latestowner20:29parallel-easytestedproduction slices, notwholequeuehold."
+      "note": "Bounded child of922 existingD193\u00a75.1Closecontract. Parent804ae119lineage/owner/dependencies/status/otherrequirements preserved; reintegratebeforeparentresumes samehunk. OnlyExploreCompanyclosehandler+newexploreCompany.closePostBinding.test.tsx, noauth/pricing/storage/server/UIcopychange. Noowns becauseparentoverlap; exact2pathmanualscope+qualifiedindependentreview required,nobypass/noownerACKclaim. Redfirststaleid88afterClose;25testsPASS;local1280/390interceptedpayload hasnoid,noactualsend/credits. Other922casesunresolved. Latestowner20:29parallel-easytestedproduction slices, notwholequeuehold."
     },
     {
       "id": "D-174-fix-post-binding",
@@ -5723,20 +5723,7 @@
       "syncedTo": "D-303",
       "dependsOn": [],
       "note": "Two-stage follow-through carrier, one task row and one decision ID (D-235). STAGE 1 (this PR #833, branch agent/queue/process-session-continuation-docs): docs-only scope registration, no runtime. STAGE 2 (branch agent/queue/process-session-continuation-runtime, pre-registered here, NOT created): the bounded runtime follow-through, created only after this docs amendment has independent final-head review, required green CI and protected merge, then assigned by the normal picker. Why the branch differs: a merged row left in-review reads \"being landed by its reviewer\" and a merged row set todo on its own merged branch reads \"done\", so neither would ever hand out the runtime work; a distinct not-yet-created branch makes the picker hand BUILD after the merge. Docs scope: AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, START_HERE.md, SkipWait-START-HERE.md, docs/BRIEF.md, docs/BUILD_CONTINUITY.md, docs/DELEGATION.md, docs/plans/D-048-auth.md, docs/DECISIONS.md and this packet. Runtime scope, not yet written: scripts/nextTaskCore.mjs (the narrow avoid-first-of-two-owned-continuations hunk, blockedOwn fallback preserved), scripts/nextTaskAvoidLand.test.ts (4 tests), scripts/nextTaskText.mjs (printed stop copy only), scripts/nextTaskReviewWording.test.ts (2 printed-text pins). No owns by design (D-293/D-286 precedent): two non-done rows may not own overlapping paths without a dependency edge, and a reverse dependsOn on PICKER-fullstack-lights, PICKER-qa-stage or PICKER-landing-wait-fallthrough would stall this row under D-134. Serialization is the shared picker lane; those three TODO owners carry no branch on origin. CAVEAT: with no owns, scripts/scope-check.mjs returns skipped (\"declares no owns\"), never a pass, so scope enforcement is a manual exact allowlist diff plus independent review. No heldBy, heartbeat or stale-CI-race change; next-task behavior unchanged. Neither stage is done until its own protected merge; a missing-main-row warning is not a pass."
-    },
-    {
-      "id": "PICKER-packet-pass-red-recovery",
-      "title": "A passed Tier1 packet red only at review gate returns to qualified REVIEW after quiet, instead of rerun-only NONE (D-307)",
-      "row": "D-200",
-      "packet": "docs/plans/PICKER-packet-pass-red-recovery.md",
-      "tier": 2,
-      "lane": "picker",
-      "branch": "agent/queue/picker-packet-pass-red-recovery",
-      "status": "done",
-      "syncedTo": "D-307",
-      "dependsOn": [],
-      "note": "Bounded continuation of D-294/D-299, measured on PR878 head75fffe81. Current packet gateOnlyRed + passed branch skips rerun while reviewGateViolation correctly rejects empty Land claim807 after reviewed74d71. Route a passed Tier1 packet with exact-tip gate-only red and quiet review lock back through normal REVIEW; preserve writer/fixer actual-model exclusions, active locks, head binding and required CI. Only scripts/nextTaskCore.mjs and new scripts/nextTaskPacketPassRed.test.ts; no existing tests or review-gate edit. No owns declared: current fullstack/qa/landing-wait rows own core; dependencies purely to serialize would violate D223, so existing picker lane serializes against every non-disjoint open/in-review picker row, matching D286/D294. No code or task878 change in registration, no automatic pass/unblock/status change/marker deletion. Separate final-version review and green CI required before any normal merge. D307 measured scope correction 2026-11-09 additionally permits only nextTaskArchitectReview.test.ts case (g) title and two expectations to pin normal REVIEW after quiet, no reduced assertions; all other cases unchanged. Old architect packet R3/(g) superseded only in that bounded state. Block ff1db785 remains truthful until supported holder transition after reviewed docs correction."
-    },
+    }, {"id":"PICKER-packet-pass-red-recovery","title":"A passed Tier1 packet red only at review gate returns to qualified REVIEW after quiet, instead of rerun-only NONE (D-307)","row":"D-200","packet":"docs/plans/PICKER-packet-pass-red-recovery.md","tier":2,"lane":"picker","branch":"agent/queue/picker-packet-pass-red-recovery","status":"done","syncedTo":"D-307","dependsOn":[],"note":"Bounded continuation of D-294/D-299, measured on PR878 head75fffe81. Current packet gateOnlyRed + passed branch skips rerun while reviewGateViolation correctly rejects empty Land claim807 after reviewed74d71. Route a passed Tier1 packet with exact-tip gate-only red and quiet review lock back through normal REVIEW; preserve writer/fixer actual-model exclusions, active locks, head binding and required CI. Only scripts/nextTaskCore.mjs and new scripts/nextTaskPacketPassRed.test.ts; no existing tests or review-gate edit. No owns declared: current fullstack/qa/landing-wait rows own core; dependencies purely to serialize would violate D223, so existing picker lane serializes against every non-disjoint open/in-review picker row, matching D286/D294. No code or task878 change in registration, no automatic pass/unblock/status change/marker deletion. Separate final-version review and green CI required before any normal merge. D307 measured scope correction 2026-11-09 additionally permits only nextTaskArchitectReview.test.ts case (g) title and two expectations to pin normal REVIEW after quiet, no reduced assertions; all other cases unchanged. Old architect packet R3/(g) superseded only in that bounded state. Block ff1db785 remains truthful until supported holder transition after reviewed docs correction."},
     {
       "id": "PICKER-ordinary-gate-red-recovery",
       "title": "Stop ordinary Tier1 passed gate-only-red from zero-delta FIX reclaim loop",
@@ -5838,19 +5825,6 @@
         "pnpm-lock.yaml"
       ],
       "note": "Bounded existing PR8 dev formatter update. Pin exactly prettier3.9.6; regenerate only its importer/package/snapshot entries, no other version or integrity changes. Preserve original Dependabot branch/PR, no repo formatting or source edits, no runtime/production behavior claims. Full current-main checks, separate final-version review and required CI before normal protected landing. Existing observed peer warning is not fixed by this slice."
-    },
-    {
-      "id": "PICKER-open-pr-pagination",
-      "title": "The picker reads every open pull request page by page, so a completed row is handed its review instead of a takeover",
-      "row": "D-085",
-      "packet": "docs/plans/PICKER-open-pr-pagination.md",
-      "tier": 2,
-      "lane": "picker",
-      "branch": "agent/queue/picker-open-pr-pagination",
-      "status": "in-review",
-      "syncedTo": "D-310",
-      "dependsOn": [],
-      "note": "Bounded read-only picker correctness under the BRANCH-HYGIENE See every pull request requirement, which had no buildable carrier because BRANCH-HYGIENE-2 is parked at owner under D-232. Measured Nov9: 186 open pull requests, one per_page=100 read, 86 invisible; PR632 on page2; D-090-BYOR handed a TAKEOVER on finished work with no review reachable. Exact three paths: scripts/nextTaskCore.mjs (new pure collectOpenPulls only), scripts/next-task.mjs (open pull request read only), NEW scripts/nextTaskOpenPrPagination.test.ts. No owns because PICKER-fullstack-lights and PICKER-qa-stage already own those scripts and validateAssignments refuses overlapping non-done owns without a dependency; manual exact-diff scope at review, scope-check skipped is NOT pass. An incomplete read is unknown and stops the picker, never a short list. No branch deletion, no --apply, no --local, no cleanup run, no closed-window change, no gate or workflow change."
     }
   ]
 }
