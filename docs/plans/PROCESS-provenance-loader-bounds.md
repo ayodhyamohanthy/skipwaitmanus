@@ -136,6 +136,16 @@ admission remain required before supported completion markers.
 
 PROCESS-provenance-loader-bounds: in progress — Qoder · 5f11 — 2026-11-10 — branch agent/queue/process-provenance-loader-bounds
 
+Implementation evidence (local, branch `agent/queue/process-provenance-loader-bounds`, base main `92fc6ebc`):
+
+- Measured red on unchanged code, real repo: `docs/model-provenance.json` is 1,620,441 bytes; the picker adapter returns `invalid provenance registry` and the gate's own read throws `ENOBUFS` (raw script output captured). Registry is genuinely populated: 5 routes, 3 executions.
+- `scripts/provenanceGitOutput.test.ts` red-first: 4 of 7 failed on the pre-fix wrappers (wiring pins, `>1MiB` picker loader, gate CLI, unreadable-registry control) and all 7 pass with the wiring. Mutation proof: reverting only the two wrapper hunks turns 3 back red, the two CLI cases failing with `invalid provenance registry`; restoring returns 7/7.
+- Both real CLIs keep behaving: the picker prints `NEXT: CONTINUE: LAND T` from the oversized fixture (contributor resolution intact) and `review-gate.mjs` prints "has an independent passing review"; a tampered observation still holds.
+- Bound: one shared `TRUSTED_GIT_OUTPUT_MAX_BYTES = 64 MiB` reader, documented in `docs/MODEL_PROVENANCE.md`; over-bound output still throws `ENOBUFS`, and missing/malformed/unreadable sources keep their explicit errors.
+- Gate on this branch merged with current main: `pnpm check` 0, design-token audit OK, migrations lint 0, deploy triggers OK, `pnpm build` 0. Full suite 6684 passed / 5 failed, all five in files this change does not touch (`classifyCiChange` 400-commit timeout; four `startGoal.test.tsx` element lookups); `classifyCiChange` passes alone with a longer timeout and `startGoal.test.tsx` passes alone 7/7, so they are this host's load flakes, not regressions.
+
+Nothing external was claimed for this row; it is ordinary tooling work under D-311, which the new mechanism does not authorize to merge itself.
+
 Registration candidate from mainf1adbc, November10,2026. Both default-buffer
 failures independently reproduced. No implementation, external prompt, route,
 claim, source fix, execution receipt, verdict, completion or deployment is
