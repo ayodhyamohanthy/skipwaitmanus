@@ -216,3 +216,15 @@ packet writer remains excluded from landing its own carrier. Project execution
 and exact receipt qualification remain later, separate evidence obligations.
 No new schema state, hidden model authentication or machine-enforced temporal
 revocation is asserted by this docs-only amendment.
+
+## Actual Macaly BUILD receipt candidate (November 10)
+
+This docs-only carrier proposes qualification of the actual Mistral BUILD
+execution, not a product completion marker. The separate first DeepSeek
+assessment passed bounded source at `ab3cbc6d` but failed the incomplete
+receipt proposal. Preserve both outcomes. This candidate requires a new
+independent exact-record qualification before normal non-writer landing.
+No product, tests, resolver, queue, workflow or protection changes belong here.
+The final candidate will include retained public input/output/observation bytes,
+all required digests and concrete empty-claim/clean-main-merge proof. Candidate
+records are not trusted until their separately reviewed carrier reaches main.
