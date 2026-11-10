@@ -1883,7 +1883,7 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-254",
       "dependsOn": [
         "D-048-F-harness",
@@ -1898,7 +1898,7 @@
         "client/src/pages/inboxGoal.test.tsx",
         "design/goal-ui/captures/inbox/**"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Status owner -> todo (registry proposal, Nov 6 2026): the D-254 park rested in part on an Oct 31 'new rows paused' owner restriction that docs/BUILD_CONTINUITY.md 'Provenance correction, November 2, 2026' (mirrored in D-274 and the D-093 correction) shows was a coordinator recommendation, not the owner's; the Nov 6 direction asks for the whole product goal-focused. Cited as provenance only, not as an owner unpark approval. D-254's routed scope question (the Tier 2 picker-cure row) is not waived, the cure is not registered here, and #815's review is not unblocked by this change; it lands only after the picker cure (PICKER-gate-red-review-route, #988) has landed and is effective. The parked product findings D-254 preserves are untouched."
     },
     {
       "row": "D-048",
