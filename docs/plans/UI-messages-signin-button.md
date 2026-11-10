@@ -254,3 +254,18 @@ final corrected source PASS are retained separately. This carrier does not
 qualify itself or write a product PASS marker. A concrete record, original
 inputs/outputs and limits follow before separate exact-version qualification
 and normal non-writer landing. No product, tests, queue or tooling changes.
+
+Concrete proposed id `messages-macaly-deepseek-review-nov10`, role `review`, verdict
+`pass`, inputSha = outputSha = `8e7ee196f58d995d2a2e8eb684b56b39e8d0eb56`.
+The exact final corrected external response is output. Input is an explicitly
+constructed three-attachment envelope plus actual composer prompts, not a
+verbatim aggregate request. Observation preserves public exchange, original
+FINDINGS, intermediate binding-error PASS, correction, digests and scope limits.
+Two original contract FULLFILE labels were prefix excerpts, not complete files;
+full contract source arrived in the recheck. No earlier review is expanded.
+
+Independent qualification discussion: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1108. This is a
+pending candidate link, not an existing qualification. No supported product
+Verdict marker may be written until separate exact-record admission on main.
+After that, ordinary marker, full exact CI/current-main/protected landing and
+provider/live acceptance remain separate. Packet writer does not land this carrier.
