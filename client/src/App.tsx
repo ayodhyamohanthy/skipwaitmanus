@@ -12,6 +12,7 @@ import { askRedirectTarget } from "./lib/fastTrackHandoff";
 import { PLAN_FAMILY_V2_CLIENT } from "@/lib/planFamilyFlag";
 import Home from "./pages/Home";
 import { AppToaster, OfflineNotice, PwaUpdatePrompt, SlowConnectionNotice } from "./components/PwaStatus";
+import { useLanguageSync } from "@/lib/useLanguageSync";
 import { ErrorScreen, LoadingScreen, needsReload } from "./components/app-states/SystemStates";
 import { AppShell } from "./components/AppShell";
 const CompanyClaim = lazy(() => import("./pages/CompanyClaim"));
@@ -276,4 +277,4 @@ function Router() {
 }
 function PwaSessionContinuity(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(isLoaded&&isSignedIn)markSecureSessionVerified()},[isLoaded,isSignedIn]);return null}const personalInviteStorageKey="skipwait:personal-invite-code";
 function PersonalInviteAttribution(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(typeof window==="undefined")return;const inviteCode=new URLSearchParams(window.location.search).get("invite")?.trim()??"";if(/^r\d+-[a-f0-9]{8}$/i.test(inviteCode))sessionStorage.setItem(personalInviteStorageKey,inviteCode)},[]);useEffect(()=>{if(!isLoaded||!isSignedIn)return;const inviteCode=sessionStorage.getItem(personalInviteStorageKey);if(!inviteCode)return;void fetch("/api/personal-invites/claim",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({inviteCode})}).finally(()=>sessionStorage.removeItem(personalInviteStorageKey))},[isLoaded,isSignedIn]);return null}
-export default function App(){return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><SlowConnectionNotice/><PwaUpdatePrompt/><AppToaster/><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}
+export default function App(){useLanguageSync();return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><SlowConnectionNotice/><PwaUpdatePrompt/><AppToaster/><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}

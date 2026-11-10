@@ -143,8 +143,8 @@ describe("D-093 language sync after sign-in (C4)", () => {
     const files = [
       join(__dirname, "i18n.ts"),
       join(__dirname, "useLanguageSync.ts"),
-      join(__dirname, "..", "..", "shared", "i18n", "catalog.ts"),
-      join(__dirname, "..", "..", "scripts", "i18n-coverage.mjs"),
+      join(__dirname, "..", "..", "..", "shared", "i18n", "catalog.ts"),
+      join(__dirname, "..", "..", "..", "scripts", "i18n-coverage.mjs"),
     ];
     for (const file of files) {
       const source = readFileSync(file, "utf8");
