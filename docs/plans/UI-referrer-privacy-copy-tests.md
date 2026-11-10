@@ -195,3 +195,15 @@ review; fixes require real external-author contribution, not hidden edits.
 Future runtime registration must explicitly transfer ownership of its packet
 from this prep row. Source bytes and actual prep contributor remain pinned;
 GLM is excluded from final independent Tier1 runtime review across tasks.
+
+### Actual external revision candidate, not accepted
+
+DeepSeek's actual af0ed/f61ed source assessment returned B1/B2/B3 FINDINGS.
+GLM, not the operator, revised the source at7ef155f5 afteraf0ed. One cumulative
+1857 claim to7ef BUILD candidate replaces the unadmitted prior candidate,
+retaining both versions, actual multi-turn inputs/outputs and original findings.
+Revised source is23937bytes SHAb125aefa50843ab6b38ba4352b91a5cb07c4b81888d02f813a2c5d96bd02c54f.
+Actual revised RED:25tests9assertionFAIL16PASS, exit1; cleanup clean. This is
+not independent quality acceptance. Broad future qualifiers and expired-access
+polarity remain explicit adversarial review questions. Coordinator's §7/proof
+update remains separate prose outside the source-only GLM execution range.
