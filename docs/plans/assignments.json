@@ -2365,7 +2365,7 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-313",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
