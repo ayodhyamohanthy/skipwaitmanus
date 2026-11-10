@@ -61,6 +61,8 @@ export const REFERRER_ACTION_ROUTES: readonly ReferrerRoute[] = [
   { method: "get", path: "/api/company-referrals/:requestId/preview" },
   { method: "get", path: "/api/company-referrals/:requestId" },
   { method: "post", path: "/api/company-referrals/:requestId/claim" },
+  // D-090-BYOR §2: taking a one-time invite link is a referrer action too.
+  { method: "post", path: "/api/ask-invites/:token/claim" },
   { method: "put", path: "/api/referrer-preferences" },
 ];
 
