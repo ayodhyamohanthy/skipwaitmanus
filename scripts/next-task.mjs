@@ -23,6 +23,7 @@
 // to report work that origin cannot see (D-085). NEXT_TASK_LIST_REF=<ref> reads
 // the list from another ref; it exists only to test the picker itself.
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
+import { trustedGitReader } from "./provenanceGitOutput.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -48,7 +49,7 @@ const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "l
 const EXIT = { stop: 2, wait: 4, none: 5 };
 const REPORTS = "agent/reports/log";
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
-const git = (...args) => execFileSync("git", args, { encoding: "utf8", env: GIT_ENV, stdio: ["ignore", "pipe", "pipe"] }).trim();
+const git = trustedGitReader(execFileSync, { env: GIT_ENV });
 const tryGit = (...args) => { try { return git(...args); } catch { return null; } };
 const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
 
