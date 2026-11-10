@@ -276,6 +276,33 @@ repair; it never becomes a reusable route for other work.
 
 ## Status
 
+PROCESS-provenance-loader-bounds: in progress — Qoder · 5f11 — 2026-11-10 — branch agent/queue/process-provenance-loader-bounds
+
+D-312 / section 5a conflict, reported blocked (D-202), 2026-11-10. A newer
+decision and packet section now govern this task: source dispatch requires a
+complete, independently reviewed pre-dispatch task/operator/actual-author
+binding, and section 5a was still explicitly "not execution-ready" carrying
+open blockers when this session committed source. This session is the existing
+plain `Qoder · 5f11` claim that section 5a names; it is not the proposed GLM
+author and has not been admitted as one. Nothing here is relabeled, and no
+Claim/provenance/execution marker, receipt, verdict or completion is claimed.
+The implementation below exists as real Qoder work for independent assessment;
+it must not be landed until the binding question is settled by the coordinator
+and, on its own merits, it passes independent exact-head review. My reading is
+that section 5a gates this task's implementation generally, not only the
+proposed external route, so treating my unbound dispatch as compliant would
+fabricate an approval. The work is preserved on the branch and PR #1114.
+
+Implementation evidence (local, branch `agent/queue/process-provenance-loader-bounds`, base main `92fc6ebc`):
+
+- Measured red on unchanged code, real repo: `docs/model-provenance.json` is 1,620,441 bytes; the picker adapter returns `invalid provenance registry` and the gate's own read throws `ENOBUFS` (raw script output captured). Registry is genuinely populated: 5 routes, 3 executions.
+- `scripts/provenanceGitOutput.test.ts` red-first: 4 of 7 failed on the pre-fix wrappers (wiring pins, `>1MiB` picker loader, gate CLI, unreadable-registry control) and all 7 pass with the wiring. Mutation proof: reverting only the two wrapper hunks turns 3 back red, the two CLI cases failing with `invalid provenance registry`; restoring returns 7/7.
+- Both real CLIs keep behaving: the picker prints `NEXT: CONTINUE: LAND T` from the oversized fixture (contributor resolution intact) and `review-gate.mjs` prints "has an independent passing review"; a tampered observation still holds.
+- Bound: one shared `TRUSTED_GIT_OUTPUT_MAX_BYTES = 64 MiB` reader, documented in `docs/MODEL_PROVENANCE.md`; over-bound output still throws `ENOBUFS`, and missing/malformed/unreadable sources keep their explicit errors.
+- Gate on this branch merged with current main: `pnpm check` 0, design-token audit OK, migrations lint 0, deploy triggers OK, `pnpm build` 0. Full suite 6684 passed / 5 failed, all five in files this change does not touch (`classifyCiChange` 400-commit timeout; four `startGoal.test.tsx` element lookups); `classifyCiChange` passes alone with a longer timeout and `startGoal.test.tsx` passes alone 7/7, so they are this host's load flakes, not regressions.
+
+Nothing external was claimed for this row; it is ordinary tooling work under D-311, which the new mechanism does not authorize to merge itself.
+
 Registration candidate from mainf1adbc, November10,2026. Both default-buffer
 failures independently reproduced. No implementation, external prompt, route,
 claim, source fix, execution receipt, verdict, completion or deployment is

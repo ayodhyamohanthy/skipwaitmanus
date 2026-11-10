@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { isStatusOnlyChange, loadTrustedProvenance, markerReferences, routeIdentity, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance } from "./modelProvenance.mjs";
+import { trustedGitRead } from "./provenanceGitOutput.mjs";
 /**
  * PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
  * independent pass verdict on its exact head (D-074, D-151).
@@ -36,7 +37,7 @@ export const REVIEW_GATE_FAIL = "Tier 1: this head has no independent passing re
 export const TIER_FLOOR_FAIL = "Tier 1: this change touches";
 
 const SHA = /^[0-9a-f]{40}$/;
-const git = args => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+const git = args => trustedGitRead(execFileSync, args);
 
 /** The row a branch belongs to, by the queue gate's rules 1-2; null when none. */
 export function findGateRow(tasks, branch) {
