@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 import { BoundedTtlCache } from "../boundedTtlCache";
 const authDiagnostics = new BoundedTtlCache<string,{stage:string;errorName:string;safeMessage:string;timestamp:string}>(100);
 import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
+import { revokeReferrerStepUpsForSessionToken } from "../referrerStepUp";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
 import { completeWorkosLogin, resolveWorkosOpenId } from "./workosSession";
@@ -121,6 +122,11 @@ export async function currentWorkosSessionId(req: Request): Promise<string | nul
   } catch { return null; }
 }
 
+/** D-057-session-gate §0b.2: the session key of a verified WorkOS access token is its own hosted session id. */
+export function sessionKeyFromWorkosClaims(payload: Record<string, unknown>): string | undefined {
+  return typeof payload.sid === "string" && /^session_[A-Za-z0-9]+$/.test(payload.sid) ? `workos:${payload.sid}` : undefined;
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
@@ -136,7 +142,9 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   // session revocation are re-checked against the DB above on every request.
   const cacheKey = `${sub}:${String(payload.iat ?? "")}`;
   const cached = workosIdentityCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing } };
+  // D-057: the Bearer identity is keyed by this token's own sid; it never carries the amr claim.
+  const sessionKey = sessionKeyFromWorkosClaims(payload);
+  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing }, ...(sessionKey ? { sessionKey } : {}) };
   const workos = new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
   const user = await workos.userManagement.getUser(sub);
   if (user.id !== sub) return undefined;
@@ -150,7 +158,7 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
   if (workosIdentityCache.size >= WORKOS_IDENTITY_CACHE_MAX) workosIdentityCache.clear();
   workosIdentityCache.set(cacheKey, { identity, expiresAt: Date.now() + WORKOS_IDENTITY_CACHE_TTL_MS });
-  return identity;
+  return sessionKey ? { ...identity, sessionKey } : identity;
 }
 
 type IdentityResolverDependencies = {
@@ -352,6 +360,8 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         const account = session ? await db.getUserByOpenId(session.openId) : undefined;
         if (account) hostedUserIds = await db.listWorkosSubjectsForUser(account.id);
       } catch { hostedUserIds = []; }
+      // D-057 §0b.3: mark this account's step-up proofs revoked for the audit trail (the revocation below already ends them).
+      await revokeReferrerStepUpsForSessionToken(token);
       await sdk.revokeSession(token);
       if (hostedUserIds.length) {
         const outcome = await revokeHostedSessions(workos.userManagement as never, hostedUserIds, { log: message => console.warn("[workos-logout]", message) }).catch(() => ({ revoked: 0, failed: 1 }));

@@ -1,18 +1,24 @@
 import { AlertCircle, BadgeCheck, Search, ShieldCheck, ShieldOff } from "lucide-react";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useAuth, SignInButton } from "@/_core/auth";
 import StatusBadge, { type StatusTone } from "@/components/StatusBadge";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
 import { readApiJson } from "@/lib/apiResponse";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type AdminUserRow = { id: number; email: string | null; name: string | null; role: "user" | "admin"; accountType: "job_seeker" | "referrer" | null; company: string | null; workEmailVerifiedAt: string | Date | null; suspended: boolean; createdAt: string | Date };
 const accountTypeLabels: Record<"job_seeker" | "referrer", { label: string; tone: StatusTone }> = { job_seeker: { label: "Job Seeker", tone: "blue" }, referrer: { label: "Referrer", tone: "green" } };
 const compactDate = (value: string | Date) => new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+// D-048-p3-admin-people: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-people).
+const GoalAdminUsers = lazy(() => import("./goal/admin-people/GoalAdminUsers"));
+
 export default function AdminUsers() {
+  if (goalSurfaceOn("admin-people")) return <Suspense fallback={null}><GoalAdminUsers /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [filter, setFilter] = useState("");

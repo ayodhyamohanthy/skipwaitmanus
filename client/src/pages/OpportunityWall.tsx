@@ -11,6 +11,9 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { OneTapShareActions } from "@/components/OneTapShareActions";
 import { PartnerModuleCard, type PartnerModuleRow } from "@/components/PartnerModuleCard";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalWall = lazy(() => import("./goal/discovery/GoalWall"));
 
 type OpportunityPoster = { kind: "firstName"; firstName: string } | { kind: "anonymous" };
 type Opportunity = { id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl: string | null; location: string | null; compensation: string | null; walkInAt: string | null; walkInEndsAt: string | null; createdAt: string; isSponsored?: boolean; poster?: OpportunityPoster };
@@ -19,6 +22,7 @@ type WallItem = { kind: "opportunity"; opportunity: Opportunity } | { kind: "par
 function formatWalkIn(opportunity: Opportunity) { if (!opportunity.walkInAt) return "Walk-in details shared"; const start = new Date(opportunity.walkInAt); const date = start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); const time = start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); if (!opportunity.walkInEndsAt) return `${date} · ${time}`; const end = new Date(opportunity.walkInEndsAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); return `${date} · ${time}–${end}`; }
 
 export default function OpportunityWall() {
+  if (goalSurfaceOn("discovery")) return <Suspense fallback={null}><GoalWall /></Suspense>;
   const [, go] = useLocation();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [partners, setPartners] = useState<PartnerModuleRow[]>([]);

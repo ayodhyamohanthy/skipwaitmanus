@@ -1,5 +1,5 @@
 import { AppWindow, Bot, CircleAlert, Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Link, useLocation, useSearch } from "wouter";
 import type { DeveloperApp } from "@shared/assistant";
@@ -11,6 +11,7 @@ import { AppDetails } from "@/components/developers/AppDetails";
 import { RegisterAppForm, type RegisterAppInput } from "@/components/developers/RegisterAppForm";
 import { KIND_ICON, STATUS_META, appSubtitle } from "@/components/developers/consoleMeta";
 import { consoleHref, readConsoleView, type ConsoleView } from "@/components/developers/consoleRoute";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 function ConsoleHeader({ signedIn, email }: { signedIn: boolean; email: string | null }) {
   return (
@@ -29,7 +30,12 @@ function LoadErrorLine({ message, onRetry }: { message: string; onRetry: () => v
   return <p role="alert" className="mt-6 flex items-start gap-2 text-sm text-destructive"><CircleAlert className="mt-0.5 size-4 shrink-0" /><span>{message} <button type="button" className="text-link" onClick={onRetry}>Try again</button></span></p>;
 }
 
+// Goal-UI migration (D-048-p3-dev): the goal page replaces this one when the
+// "developers" surface flag is on; off, the kit page below is unchanged.
+const GoalDeveloperConsole = lazy(() => import("./goal/developers/GoalDeveloperConsole"));
+
 export default function DeveloperConsole() {
+  if (goalSurfaceOn("developers")) return <Suspense fallback={null}><GoalDeveloperConsole /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const email = user?.primaryEmailAddress?.emailAddress ?? null;
