@@ -3867,7 +3867,7 @@
         "scripts/i18nCoverage.test.ts",
         "client/src/App.tsx (switch only)"
       ],
-      "note": "D-093 packet §5.3. No new dependency. Formatting stays on the device locale (device.ts unchanged). Signed-out choice wins until the account has one; never from country, company, email domain or billing region."
+      "note": "D-093 packet §5.3. No new dependency. Formatting stays on the device locale (device.ts unchanged). Signed-out choice wins until the account has one; never from country, company, email domain or billing region. Landed 2026-11-10 as 0bd16da7 (PR #1125); main CI, both deploys and Release verify green; live check CONVERGED; /api/health/ready state=ready at the exact SHA. Only English visible; LANGUAGE_CAPTURE_ENABLED stays false."
     },
     {
       "id": "D-093.picker",
