@@ -650,6 +650,8 @@ platform goal-focused instruction remains active. D-048-auth.md now
 corrects its older "GoalSignIn already done/not rebuilt" assumption:
 the existing D-048-p3-signin switch-only path may import a new goal-native
 entry in its already owned goal/sign-in directory, within the12-line cap.
+The affected row alone advances syncedTo D227 to the newest checked D313
+in this same commit; no other row field changes.
 No new owns, auth policy, dependency removal, owner-hold lift, flag release,
 source dispatch, new decision ID or completion claim. Historical copy-fix
 proof remains scoped to wording. Current design requires actual hierarchy,

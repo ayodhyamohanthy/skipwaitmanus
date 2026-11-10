@@ -289,5 +289,8 @@ that its rendered hierarchy and imported children meet the contract.
 ### Status of this correction
 
 Docs-only candidate. Existing task id/branch/lane/owns/tier/dependencies,
-queue order and syncedTo stamp remain unchanged. No source claim,
+queue order remain unchanged. The affected D-048-p3-signin row alone is
+checked through D313 and advances syncedTo from D227 to D313 in this same
+commit; no other row field or stamp changes. This check changes no active
+auth, privacy, model or product rule. No source claim,
 author selection or blanket current-decisions sync is asserted here.
