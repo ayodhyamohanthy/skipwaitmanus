@@ -78,6 +78,7 @@ import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { registerAdminCatalogSyncRoutes } from "../adminCatalogSyncRoutes";
 import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
+import { registerLanguageFunnelRoutes } from "../languageFunnel";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
@@ -323,6 +324,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
   registerPlansCatalogRoutes(app);
   registerAdminBillingLedgerRoutes(app, { resolveIdentity, loadRows: db.listBillingLedgerRows });
+  // D-093.metrics: admin-only language funnel (aggregate only; 404 while capture is off).
+  registerLanguageFunnelRoutes(app, { resolveIdentity });
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
