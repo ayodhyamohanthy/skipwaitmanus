@@ -5912,6 +5912,19 @@
       "syncedTo": "D-312",
       "dependsOn": [],
       "note": "New bounded followup, not revived completed PROCESS row. Actual mainf1adbc registry1620441bytes causes defaultexecFileSync ENOBUFS in BOTH next-task/review-gate trustedloader wrappers. Exact manual allowlist in packet: two wrapper hunks, NEW shared provenanceGitOutput.mjs and realGit provenanceGitOutput.test.ts, MODEL_PROVENANCE bound/error docs, ownStatus. No owns because existing fullstack/QA/fetch-parity rows retain shared path ownership; current split/coordination and full composed manual scope review required, skipped scope is not PASS. Preserve evidence/history/schema/trust/independence/FIFO/failclosed errors, no compression/deletion/registry edits/gate waiver. Tier2/tooling classification subject actual separate review. RealGit above1MiB actual productionpath RED/GREEN + overbound/malformed/unreadable negatives, currentmain/full applicable gates/exactCI/normal protected landing. External claim bootstrap under broken loader remains explicit unresolved check; no candidate selfauthorization or manual fabricated claim. Privacy followthrough stays held until actualloader acceptance."
+    },
+    {
+      "id": "UI-referrer-privacy-copy",
+      "title": "Referrer sign-in promises name and resume access only after acceptance",
+      "row": "UI",
+      "packet": "docs/plans/UI-referrer-privacy-copy.md",
+      "tier": 1,
+      "lane": "referrer-privacy-copy",
+      "branch": "agent/queue/ui-referrer-privacy-copy",
+      "status": "todo",
+      "syncedTo": "D-313",
+      "dependsOn": [],
+      "note": "Bounded released-copy contradiction found by the existing page-by-page audit on dc6492 at 1280/390. Append-only registration, no FIFO reorder or existing-row change. Exact manual scope: introductory privacy paragraph only in client/src/components/ReferrerOtpSignIn.tsx, client/src/components/WorkEmailSignIn.tsx, client/src/pages/goal/referrer/GoalOtpSignIn.tsx, plus NEW client/src/components/referrerPrivacyCopy.test.tsx. No owns because REL-client-capture retains switch-only ownership in the first two files; exact hunk review and current shared-record split/coordination required, no silence-as-consent or automatic scope pass. Preserve auth handlers/fetch switches/legal/money/flags/current owners and unpublished work. Conservative Tier1, red-first all-three-path regression, actual fresh task-specific qualified author/reviewer and receipts, independent final review/current-main/required CI/normal protected landing, released 1280/390 copy proof. Registration alone grants no execution qualification or privacy-policy change. This is the distinct runtime task, never a replacement for held prep UI-referrer-privacy-copy-tests; preserve its full-task unresolved historical contributor hold. Exact preexisting GLM regression source is33911bytesSHA244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f, source-only receipt already on main, bounded quality Assessment6PASS. GLM and runtime author/everyfixer excluded from final Tier1review. No new route/claim/source accepted before independent registration qualification and manual hunk admission."
     }
   ]
 }
