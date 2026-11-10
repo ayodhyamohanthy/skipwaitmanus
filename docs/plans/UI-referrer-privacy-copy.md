@@ -50,7 +50,9 @@ A skipped automatic scope check is not a pass.
 - This packet's Status section: evidence and outcome only.
 
 Explain accurately that the role and note can be reviewed before choosing,
-while the seeker name and resume become visible only after acceptance. Do not
+while the seeker name and resume must remain hidden before acceptance. Resume
+access also requires active document access after acceptance; acceptance alone
+is not a promise of permanent or unconditional file availability. Do not
 promise a forwardable packet before the server actually supplies it. Ground
 any such detail against the current referral card before adopting the words.
 Keep existing decline/context and nothing-sent-from-your-account statements
