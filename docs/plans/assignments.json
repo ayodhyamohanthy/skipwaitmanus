@@ -3800,7 +3800,7 @@
       "tier": 1,
       "lane": "i18n-capture",
       "branch": "agent/queue/d093-capture",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-275",
       "epic": "D-093-language",
       "dependsOn": [

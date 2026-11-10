@@ -198,6 +198,10 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "users", column: "chargebeeCustomerId", definition: "VARCHAR(80) NULL" },
   // Seeker company demand (0104): the optional work function on a demand vote.
   { table: "companySuggestions", column: "jobFunction", definition: "VARCHAR(32) NULL" },
+  // Language capture (0121): the chosen language and the write-once signup
+  // subtag. Both nullable; null means behaviour exactly as before.
+  { table: "accountPreferences", column: "language", definition: "VARCHAR(16) NULL" },
+  { table: "accountPreferences", column: "signupLanguage", definition: "VARCHAR(16) NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied

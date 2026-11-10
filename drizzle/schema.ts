@@ -143,6 +143,10 @@ export const accountPreferences = mysqlTable("accountPreferences", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   timeZone: varchar("timeZone", { length: 64 }),
   dateFormat: varchar("dateFormat", { length: 8 }),
+  // D-093.capture (0121): the chosen visible language and the write-once
+  // signup subtag. Both stay null until capture is enabled by the release row.
+  language: varchar("language", { length: 16 }),
+  signupLanguage: varchar("signupLanguage", { length: 16 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
 
