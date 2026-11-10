@@ -1,3 +1,14 @@
+// Keep the legacy standalone core usable by queue/scope fixture consumers.
+// Missing provenance support may NEVER admit an external claim or history.
+let resolveTaskProvenance;
+try { ({ resolveTaskProvenance } = await import("./modelProvenance.mjs")); }
+catch (error) {
+  if (error.code !== "ERR_MODULE_NOT_FOUND") throw error;
+  resolveTaskProvenance = ({ taskId, registry, routeId, workMarkers = [], lockMarkers = [] }) => {
+    const active = Boolean(routeId) || registry?.routes?.some(r => r.taskId === taskId) || [...workMarkers, ...lockMarkers].some(m => /(?:^|\n)(?:provenance|execution)(?: |$)/.test(m.body ?? ""));
+    return active ? { active: true, ok: false, reason: "external provenance support unavailable" } : { active: false, ok: true };
+  };
+}
 // D-083: the queue picker's pure logic. `scripts/next-task.mjs` does the git
 // and GitHub I/O and passes plain data in; everything here is deterministic,
 // so `scripts/nextTask.test.ts` can pin each decision.
@@ -710,7 +721,7 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
+function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
@@ -754,7 +765,16 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-085, narrowed by D-109: a priority that is red (CI, or its team reported red or blocked) holds its own lane
   // and every task that depends on it, never unrelated lanes; red main (above) still holds everything.
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
-  const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
+  const did = (v, roles, candidateRole = "review") => {
+    const resolved = resolveTaskProvenance({ taskId: v.task.id, head: v.tipSha,
+      workMarkers: v.info?.markers ?? [], lockMarkers: v.lock?.markers ?? [],
+      ...(provenance ?? {}), claimant, candidateRole });
+    if (resolved.active) {
+      const members = { builders: resolved.builders ?? [], fixers: resolved.fixers ?? [], reviewers: [...(resolved.reviewers?.values() ?? [])] };
+      return !resolved.ok || !resolved.candidate || roles.some(role => members[role]?.includes(resolved.candidate));
+    }
+    return Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
+  };
   const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
   // D-202: updating the packet is a docs job on the architect lock; any capable session may take it (D-200).
   const resync = v => ({ kind: "resync", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: v.arch ? holderOf(v.arch, v.task.id) : null, decisions: decisionsSince(register, v.task.syncedTo) });
@@ -782,11 +802,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       // Red after a passed review: the change goes through a fix stage and is reviewed again, never landed as it is.
       const afterPass = state === "passed" || state === "landing";
       if (state === "needs-fix" || state === "fixing" || afterPass) {
-        if (did(v, ["reviewers"]) || (v.lander && claimant === v.lander)) return gate(`${v.task.id} is red (CI on ${v.pr}) and you reviewed or are landing it, so someone else fixes it`);
+        if (did(v, ["reviewers"], "fix") || (v.lander && claimant === v.lander)) return gate(`${v.task.id} is red (CI on ${v.pr}) and you reviewed or are landing it, so someone else fixes it`);
         return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, ...(afterPass ? { why: `CI on ${v.pr} turned red after its review passed; fix it red-first, then it is reviewed again` } : {}) };
       }
       if (!quiet(workAt(v))) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.owner ?? "its builder"} is making it green`);
-      if (did(v, ["reviewers"])) return gate(`${v.task.id} is red (CI on ${v.pr}); you reviewed it, so someone else makes it green`);
+      if (did(v, ["reviewers"], "build")) return gate(`${v.task.id} is red (CI on ${v.pr}); you reviewed it, so someone else makes it green`);
       return green(v, `Pull request ${v.pr} has red CI`);
     }
     if (v.ci === "running" || v.ci === "running-after-red") return skip(v, `CI is running on ${v.pr}`);
@@ -799,7 +819,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
     }
     if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {
-      if (did(v, ["reviewers"])) return skip(v, "needs its review findings fixed, and you reviewed it");
+      if (did(v, ["reviewers"], "fix")) return skip(v, "needs its review findings fixed, and you reviewed it");
       return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
     }
     if ((state === "passed" || state === "landing") && lockQuiet) {
@@ -807,7 +827,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         const tip8 = (v.tipSha ?? v.info?.tipSha ?? "").slice(0, 8);
         return skip(v, `waiting for CI on the tip ${tip8} of ${v.pr}`);
       }
-      if (did(v, ["builders", "fixers"])) return skip(v, "its review passed, and you built or fixed it");
+      if (did(v, ["builders", "fixers"], "land")) return skip(v, "its review passed, and you built or fixed it");
       if (slotBusyFor(claimant)) return waitLanding();
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.lander ?? v.reviewer };
     }
@@ -1262,4 +1282,20 @@ export function epicSummaries(rows) {
     if (row.health === "red") summary.red++;
   }
   return [...epics.values()];
+}
+
+/** D-311: continuations must pass the same identity checks as new handouts. */
+export function pickNextTask(input) {
+  const pick = pickNextTaskLegacy(input);
+  const stage = pick.kind === "continue" ? pick.of : pick.kind;
+  if (!["review", "land"].includes(stage) || !pick.task) return pick;
+  const work = input.branches.get(pick.work || pick.task.branch);
+  const lock = input.branches.get(reviewLockOf(pick.task));
+  const resolved = resolveTaskProvenance({ taskId: pick.task.id, head: work?.tipSha,
+    workMarkers: work?.markers ?? [], lockMarkers: lock?.markers ?? [],
+    ...(input.provenance ?? {}), claimant: input.claimant, candidateRole: stage });
+  if (resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate))) {
+    return { kind: "wait", reason: `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}` };
+  }
+  return pick;
 }

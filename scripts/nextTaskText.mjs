@@ -224,7 +224,7 @@ export function renderBoard(rows) {
 }
 
 /** The steps for one pick. ctx: { who, date, claimed, register } (claimed = this run took the lock or holds it). */
-export function renderPick(pick, { who, date, claimed, register = null }) {
+function renderPickLegacy(pick, { who, date, claimed, register = null }) {
   const body = pickText(pick, { who, date, claimed, register });
   // D-202: every pick opens with the newest decisions, so no agent works from an old packet unseen.
   const block = decisionsBlock(pick, register);
@@ -317,4 +317,10 @@ function pickText(pick, { who, date, claimed, register = null }) {
     }
     default: throw new Error(`unknown pick kind ${pick.kind}`);
   }
+}
+
+/** D-311: never ask an operator to impersonate the external model. */
+export function renderPick(pick, context) {
+  const text = renderPickLegacy(pick, context);
+  return pick.provenanceRoute ? text + `\nExternal model route: ${pick.provenanceRoute}. Keep your actual operator/session name. Preserve --provenance on claims/reclaims and add --execution for a completed exact-head verdict/fix. Read docs/MODEL_PROVENANCE.md; route qualification alone is not execution evidence.\n` : text;
 }
