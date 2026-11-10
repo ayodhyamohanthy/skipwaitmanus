@@ -741,7 +741,7 @@
       "tier": 2,
       "lane": "observability",
       "branch": "agent/queue/rel-5xx-capture",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-222",
       "dependsOn": [
         "D-090-BYOR"
