@@ -641,3 +641,19 @@ No new decision ID or FIFO reorder; all existing owners/history remain.
 Current D313 is checked. Exact packet limits, remaining non-atomic race,
 shallow/unknown failclosed cases, actual author qualification, independent
 review and full current-main CI/protected landing remain mandatory.
+
+
+### November11 goal sign-in packet contradiction correction
+
+The owner rejected the delivered old sign-in layout while the whole
+platform goal-focused instruction remains active. D-048-auth.md now
+corrects its older "GoalSignIn already done/not rebuilt" assumption:
+the existing D-048-p3-signin switch-only path may import a new goal-native
+entry in its already owned goal/sign-in directory, within the12-line cap.
+No new owns, auth policy, dependency removal, owner-hold lift, flag release,
+source dispatch, new decision ID or completion claim. Historical copy-fix
+proof remains scoped to wording. Current design requires actual hierarchy,
+flow, import/DOM contract, state tests and1280/390 pixels, then a separately
+reviewed live release, not a legacy candidate or dark switch called done.
+Originals personally inspected: phonemsg-01M73JSJ0Z6NVPRG9QNKRRJ6NF,
+phonemsg-01M73G0A5X8ZWG40JVH0T13ABC. Provenance only, not authentication.

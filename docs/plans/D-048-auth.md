@@ -210,3 +210,84 @@ None of the six changes who can sign in, what a work-email code proves, what a r
 - **D-048-p3-verify: done — `1b8eb6cc` (#817) — Qoder · d746 (independent Tier 1 review of `147d1f81`; built by Deepseek-V4.1-Flash · 7d0f) — 2026-10-29 — branch `agent/queue/d048-p3-verify`, landed head `42b1a7aa`.** Goal line `Refer someone at your company.` (static, so the contract holds in every state; the company is named in the body, which is what the landed `GoalReferrerSetup` does). Next step: one per stage — pick the company, send the code, verify, then set up referring. Files: `client/src/pages/goal/verify/GoalVerify.tsx` (new), `client/src/pages/verifyGoal.test.tsx` (new, 22 cases), `client/src/pages/Verify.tsx` (+5 lines: two imports and one early return, inside the 12-line switch cap), `design/goal-ui/captures/verify/*` (6 PNGs). Flag off, `Verify.tsx`'s kit body is unchanged and `verify.test.tsx` 18/18 green. Flag on, every §7 fact is kept: the same `useCompanyDirectory`, the same three `verifyApi` calls in the same order, the 30-second resend, the five-try lock and the 429 wait in the server's words, the receipt kept in memory across a failed enrolment and dropped on 403, and the referrer-only handoff through `referrerSignInHref` (no `SignInButton`, no `openSignIn`, pinned by a source scan). Local: `pnpm check` clean; `design-token-audit` 0 off-brand after replacing two `sm:` prefixes with `gdesk:`; `lint-deploy-migrations` and `check-deploy-triggers` clean; `VITE_GOAL_SURFACES=all pnpm build` clean; controls 13 files / 108 tests green (loginRule, signIn, GoalSignIn, premium.oneTapSignin, referrer.otp, verify, goalBoundary, goalStaticFrame, goalShellHarness, goalPageContract, goalPagesBoundary, designTokenAudit, goalUiCoverage). Captures from `14_verify__*` fixtures at 1280 and 390, `horizontalOverflowPx` 0 at both widths. Two stated readings for the reviewer: (1) the directory error state's commit *is* the retry (one action, no second ghost retry beside it), so it passes the contract instead of being exempt; the auth-loading state has no next step and is exempt, named in its test. (2) The client-side pre-checks and the resend/lock constants mirror `Verify.tsx` because they are file-local there and `Verify.tsx` may not be edited past the switch; the server stays the authority and every refusal is shown in the server's words. Harness gaps recorded, not fixed: no fixture signs a persona *out* (so the signed-out goal panel has no capture), `GET /api/account/preferences` and `GET /api/company-referrals/access` are unmocked by the shared set (404 in every capture), and `capture.mjs:209` still names files `${state}-${width}.png` per route. Tier 1: independent review passed on `147d1f81` and the reviewer landed it; production stays on the kit page because `verify` is not in `RELEASED` (`client/src/lib/goalSurfaces.ts:67`), checked live at 1280 and 390 on `1b8eb6cc` (`/verify` 200, kit page unchanged, no horizontal overflow).
 - D-048-P-auth: review — GPT · a796 — branch `agent/architect/d048-p-auth`, PR #585. Packet scope and both child rows remain aligned with the split/D-167. Current-main `4a8b32ee`: 15/15 focused files and 325/325 tests passed with `GITHUB_EVENT_NAME=push`; `pnpm check` passed. Flag-on pins: loginRule 7/7; signIn 5/7, with only the two expected kit-markup assertions failing. A first local run without an Actions event hit one queue-gate harness failure on `main`; the push-context rerun passed. No runtime files changed.
 - Landing blocker from the CEO's D-190 ruling in #585: #557 (D-048-P-money) must land before #585; #557 remains open, behind main, and review-required. On pre-update PR #585 head `634d0bca`, merge state was `DIRTY`, review was required, and `Workers Builds` was the only reported check (successful). After #557 lands, a separate independent delta review and a non-writer lander must take the landing slot, merge latest main (never rebase), preserve rows, run `validateAssignments` and `vitest run scripts/`, wait for all required checks on the exact head, then land with the merge-commit button. This packet writer will not land it.
+
+
+## November11 current-goal sign-in path correction (bounded candidate)
+
+This section replaces the older §1/§4.8 assumption that the existing dark
+`client/src/pages/GoalSignIn.tsx` is already an accepted goal-flow design.
+It is not a design completion or reference. On November11 the owner
+rejected the live old sign-in layout (personally inspected original
+phonemsg-01M73JSJ0Z6NVPRG9QNKRRJ6NF), after asking for the entire platform
+to use goal-focused design only (phonemsg-01M73G0A5X8ZWG40JVH0T13ABC).
+The independently completed privacy-copy change remains real and narrow;
+it did not approve or finish the layout. Repository citations record
+provenance, they do not authenticate those originals.
+
+### Observed contradiction and shortest existing scope
+
+Current main dcee454acccd3e54472ce3d4eb3e992f52f29409:
+`SignIn.tsx:5,30` statically imports the old `pages/GoalSignIn` candidate
+and selects it only with `goalSurfaceOn("sign-in")`. The `sign-in` id is
+not released. That old candidate renders shared legacy SeekerSignIn and
+ReferrerOtpSignIn forms, including the former's kit import, and has no
+GoalNextStep contract. No `pages/goal/sign-in/` implementation exists.
+The older §4.3 already identified the no-kit failure; §4.8 nevertheless
+forbade replacing its top-level import. That is not a usable completion
+contract for the current whole-flow requirement.
+
+Use the EXISTING D-048-p3-signin owned paths, not another UI row or file
+ownership transfer: create the new goal-native sign-in entry under
+`client/src/pages/goal/sign-in/**` and repoint the existing switch-only
+`client/src/pages/SignIn.tsx` import to it. The import/switch delta must
+stay within the existing 12-line cap. No permission to edit old
+`client/src/pages/GoalSignIn.tsx`, its tests, shared legacy forms, auth
+providers, server, session logic, flags or other owned files is added.
+The old candidate is neither resurrected nor relabeled as approved. No
+need to add its path to owns. A component name or goal prop is not proof
+that its rendered hierarchy and imported children meet the contract.
+
+### Current acceptance, not a repaint
+
+- Read DESIGN.md, the approved `design/goal-ui/pick/` references and current
+  DOCTRINE.md including benefit-oriented copy. The reference screenshots
+  establish the design system, not fictional production data or an auth
+  implementation spec. Preserve active explicit auth decisions where they
+  constrain the flow, including D033 role choice; resolve a real conflict
+  instead of silently dropping a role or replacing the login mechanism.
+- Rebuild hierarchy, staged next action, recovery, accessibility and mobile
+  arrangement around the person's goal. One GoalNextStep and one primary
+  action in each actionable stage, honest status and current benefit copy.
+  No kit imports/classes in the new entry or rendered forms; no style-only
+  reuse of old shared form components to claim completion.
+- Preserve personal/social seeker versus work-email-only referrer rules,
+  returnTo validation, existing auth API/response/session authority, safe
+  error and loading paths, server-defined limits and privacy. The current
+  privacy-copy conditions (acceptance before name/resume, resume access
+  still active) must survive on the new referrer path. Do not substitute
+  an in-session referrer step-up with standalone login or invent passkey
+  permission. Actual APIs remain one behavior contract, not a copied server
+  implementation or independently changed eligibility logic.
+- Own `signInGoal.test.tsx` must exercise the NEW path selected by the
+  SignIn switch, not the old GoalSignIn test passing in isolation. Run the
+  no-kit import/DOM boundary and assertGoalPage per actionable state plus
+  original auth pins unchanged; retain explicit, measured exemptions.
+- Inspect actual pixels at1280 and390 for role choice, form, submitting,
+  validation/server error/retry and success handoff. Record fixture,
+  persona, forced surface, exact SHA and route. Off-flag legacy appearance
+  is a regression control, not a successful goal capture or live result.
+- Seeker-passwords and DEVICE-SIGNIN-passkeys dependencies, owner holds,
+  ordinary FIFO claim, actual source/fixer qualification, independent
+  different-model Tier1 review and exact protected CI remain. This packet
+  correction neither lifts those holds nor starts source work.
+- Production activation needs a separately scoped reviewed release edit
+  after auth dependencies and entire sign-in cluster acceptance; no id is
+  added to RELEASED here. All four routes sharing sign-in must be checked,
+  not only the one screenshot. Live design completion requires actual
+  released-path1280/390 proof, not dark code, current copy or a route label.
+
+### Status of this correction
+
+Docs-only candidate. Existing task id/branch/lane/owns/tier/dependencies,
+queue order and syncedTo stamp remain unchanged. No source claim,
+author selection or blanket current-decisions sync is asserted here.
