@@ -93,11 +93,40 @@ payment, provider settings or feature activation during QA.
 
 ## 5. Provenance and publication boundaries
 
-This carrier contains requirements and registration only, no product/test
-implementation, successful external execution, model route or receipt.
-The future operator must qualify fresh task-specific actual free author and
-independent reviewer routes and their service rights/capacity before runtime
-execution. Messages routes, claims and receipts are task-specific and cannot
+This carrier contains requirements, registration and two prospective routes,
+not product/test implementation, successful external execution or a receipt.
+Both routes use actual operator `Instinct · public-model-review-nov10` and
+provider `https://www.macaly.com/`:
+
+- `referrer-copy-author-macaly-mistral-nov10`: build/fix; selected public name
+  `Mistral Large 4`; conservative existing canonical exclusion key
+  `mistralai/mistral-large-4-1t-a52b`.
+- `referrer-copy-review-macaly-deepseek-nov10`: review/land; selected public name
+  `DeepSeek V4.1 Flash`; existing canonical key `deepseek-v4.1-flash`.
+
+The retained fresh observation digest is
+`865c92da023af221fa10bc77d04c537e2c421c3d6b586201d12049c0d2623ab9`.
+The earlier shorthand keys were withdrawn; these keys preserve known-family
+exclusions, not evidence of a hidden checkpoint, endpoint or cryptographic
+provider authorship. Fresh observed homepage selections and Free allowance
+(3.3M at the observed check) are prospective, not actual task execution.
+The qualification discussion is this actual carrier:
+https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1109 . Neither a link nor
+a candidate record supplies a PASS. Independent exact-record review and
+normal admission on main must precede any runtime claim or execution.
+
+Before the actual task prompt, re-select and inspect the intended model in the
+actual new task composer, including any project override; retain that evidence
+with exact public input/output and applied bytes. The future operator must
+confirm current free capacity and service rights before runtime execution.
+[Macaly terms](https://www.macaly.com/terms-of-service) sections 3.10 and 3.12
+permit commercial generated-code use subject to their restrictions; sections
+3.11 and 8.3 permit service use and Free-content public exposure. Only owner-
+authorized public project source and sanitized requirements may be submitted,
+never private context, account data, secrets or unreleased confidential work.
+[Pricing](https://www.macaly.com/docs/en/welcome/pricing) makes top-ups paid:
+stop at the free limit, never upgrade or add billing. A free allowance is not
+proof of model identity, productive execution or production acceptance. Messages routes, claims and receipts are task-specific and cannot
 be reused as qualification for this task. No spending, paid upgrade or public
 submission of private information is approved. Preserve full actual input,
 output and selection evidence; use separately reviewed receipt admission
@@ -112,4 +141,6 @@ not runtime authorship, and the packet writer does not land its own carrier.
 
 Registration candidate, November 10, 2026, based on main
 `dc6492b337dcdec0696848fad93101606e3cc1d7`. No runtime claim, implementation,
-qualified route, review verdict, deployment or completion is asserted.
+admitted route, review verdict, deployment or completion is asserted.
+The two proposed registry records remain candidates pending independent review
+and normal non-writer admission.
