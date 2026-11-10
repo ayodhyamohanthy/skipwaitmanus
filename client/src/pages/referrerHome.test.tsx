@@ -137,7 +137,9 @@ describe("ReferrerHome", () => {
     stubHome({ fresh: [], reviewed: 0 });
     renderWithQuery(<ReferrerHome />);
     expect(await screen.findByText("Your first ask will appear here.")).toBeTruthy();
-    expect(screen.getByText(/verified referrer at Wipro/)).toBeTruthy();
+    expect(screen.getByText(/Referral requests for Wipro now reach you privately/)).toBeTruthy();
+    expect(screen.queryByText(/verified referrer at/)).toBeNull();
+    expect(screen.queryByText(/Seekers can now find/)).toBeNull();
     expect(screen.getByText("—")).toBeTruthy();
   });
 

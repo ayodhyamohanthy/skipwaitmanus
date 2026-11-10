@@ -9,11 +9,15 @@ import { readApiJson } from "@/lib/apiResponse";
 import { applySeo, jobsJsonLd } from "@/lib/seo";
 import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "@shared/referralUrl";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalJobs = lazy(() => import("./goal/discovery/GoalJobs"));
 
 type JobRow = { id: number; title: string; company: string; location: string; seniority: string; workMode: string; targetRoleUrl?: string | null };
 export function uniqueJobMetadata(job:JobRow){const seen=new Set<string>();return [job.company,job.location,job.seniority,job.workMode].map(v=>v?.trim()).filter((v):v is string=>Boolean(v)&&!seen.has(v.toLowerCase())&&(seen.add(v.toLowerCase()),true));}
 
 export default function JobExplorer() {
+  if (goalSurfaceOn("discovery")) return <Suspense fallback={null}><GoalJobs /></Suspense>;
   const { isSignedIn } = useAuth();
   const [, go] = useLocation();
   // SEO contract: the site SearchAction advertises /jobs?q={term} and the
