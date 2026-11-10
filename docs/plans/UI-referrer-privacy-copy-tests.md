@@ -179,3 +179,19 @@ RED run, execution receipt, qualified route, runtime admission, data disclosure,
 provider acceptance, deployment or product completion is asserted here.
 The proposed third-model task-specific route and exact independent carrier
 assessment remain pending before ordinary prep BUILD.
+
+## Source execution candidate and separate prose handoff
+
+Actual claim1857d9a6 -> sourceaf0ed257 generated one immutable inert source
+file only. Proposed receipt referrer-copy-tests-glm-build-nov10 covers that
+exact source-only range. Its semanticEdits:false does not cover coordinator-
+authored packet prose or this Status/evidence addition. The packet writer
+mechanically integrated the exact14737byte source into runtime section7 with
+actual RED9fail/4pass/exit1 and cleanup evidence. No prep completion, runtime
+READY, independently admitted execution or deployment is asserted. Source
+detector/active-access strength concerns remain open for actual independent
+review; fixes require real external-author contribution, not hidden edits.
+
+Future runtime registration must explicitly transfer ownership of its packet
+from this prep row. Source bytes and actual prep contributor remain pinned;
+GLM is excluded from final independent Tier1 runtime review across tasks.
