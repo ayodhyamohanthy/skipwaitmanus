@@ -12,6 +12,14 @@ After the actual run, separately review and merge the exact execution receipt on
 
 Qualification changes are their own bounded docs work, not candidate self-approval. A qualified route/receipt is an independently reviewed assertion, not a signed provider receipt. Code checks its structure, digests, binding and contribution independence; human/model review establishes whether the asserted observation is true. Revoke a route with `revoked: true`; do not relabel history to clear a hold.
 
+## Supported size, transport and failure behavior
+
+Both real consumers — `scripts/next-task.mjs` and `scripts/review-gate.mjs` — read the trusted registry through one shared reader in `scripts/provenanceGitOutput.mjs`, so the two paths cannot silently drift apart. The supported aggregate output bound is **64 MiB** (`TRUSTED_GIT_OUTPUT_MAX_BYTES`), the same finite bound the gate's existing source readers use. It is transport only, not a trust decision: it exists because Node's `execFileSync` default is 1 MiB, while the trusted registry measured 1,620,441 bytes on main `f1adbc2a`, and a quiet default turned a readable registry into an `ENOBUFS` error.
+
+The bound is checked, never bypassed. A registry read above it fails loudly (the process throws `ENOBUFS`), and both wrappers turn that into the same explicit "unreadable/invalid provenance registry" result they already use. Nothing about that path becomes a pass: no truncated success, no empty valid registry, no stale or candidate-local fallback, and no silent internal-error approval. Malformed or truncated JSON, unreadable Git objects, a missing `origin/main` ref and process failures keep their existing explicit results.
+
+A pure resolver harness with a larger buffer proves only parser behavior. It is not loader acceptance: loader acceptance means the actual picker and gate scripts, run as processes against a real registry above 1 MiB, read the complete bytes and keep every contributor, route, digest and exact-head check.
+
 ## Registry version 1
 
 Root fields: `version: 1`, `routes: []`, `executions: []`. IDs are unique within each collection, 1-120 ASCII letters/digits/dot/underscore/hyphen, starting with a letter/digit. Artifact strings are nonempty, no control characters other than tab/newline, at most 16 MiB. SHA fields are lowercase hex (40 for commits, 64 for SHA-256).
