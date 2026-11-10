@@ -3800,7 +3800,7 @@
       "tier": 1,
       "lane": "i18n-capture",
       "branch": "agent/queue/d093-capture",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-275",
       "epic": "D-093-language",
       "dependsOn": [
@@ -3828,7 +3828,7 @@
       "tier": 2,
       "lane": "i18n-metrics",
       "branch": "agent/queue/d093-metrics",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-275",
       "epic": "D-093-language",
       "dependsOn": [
@@ -3849,7 +3849,7 @@
       "tier": 2,
       "lane": "i18n-runtime",
       "branch": "agent/queue/d093-runtime",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-275",
       "epic": "D-093-language",
       "dependsOn": [
