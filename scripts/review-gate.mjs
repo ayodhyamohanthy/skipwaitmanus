@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { isStatusOnlyChange, loadTrustedProvenance, markerReferences, routeIdentity, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance } from "./modelProvenance.mjs";
+import { nullableBoundedGitReader, readGitOutput } from "./provenanceGitOutput.mjs";
 /**
  * PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
  * independent pass verdict on its exact head (D-074, D-151).
@@ -36,7 +37,9 @@ export const REVIEW_GATE_FAIL = "Tier 1: this head has no independent passing re
 export const TIER_FLOOR_FAIL = "Tier 1: this change touches";
 
 const SHA = /^[0-9a-f]{40}$/;
-const git = args => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+// PROCESS-provenance-loader-bounds: the gate reads through the same bounded reader as
+// the picker, so the two loaders cannot diverge on the supported aggregate size.
+const git = args => readGitOutput(args);
 
 /** The row a branch belongs to, by the queue gate's rules 1-2; null when none. */
 export function findGateRow(tasks, branch) {
@@ -279,7 +282,7 @@ export function runReviewGate({ local = false } = {}) {
       console.log(`review-gate: ${task.id} declares Tier ${task.tier} but its paths compute Tier 1 (${tierReasonPaths(changedPaths).join(", ")}).`);
     }
     const workMarkers = markersIn(`origin/main..${head}`);
-    const trusted = loadTrustedProvenance((...args) => { try { return git(args); } catch { return null; } });
+    const trusted = loadTrustedProvenance(nullableBoundedGitReader());
     externalContext = workMarkers.some(m => markerReferences(m.body).external)
       || Boolean(trusted.registry?.routes?.some(r => r.taskId === task.id))
       || (trusted.registryError && trusted.registryError !== "no trusted-main provenance registry");

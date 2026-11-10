@@ -406,3 +406,45 @@ recovered. Binding facts and supported mechanics above are unresolved; no
 source dispatch, claim, implementation readiness or customer completion.
 
 Routing registration candidate, November 10 at17:47 IST: old PR1114 is reference-only, preserved and unmerged; the proposed isolated route is not execution-ready. No new source generation, ordinary BUILD claim, identity certification or customer completion is asserted.
+
+### Bounded loader transport implementation, November 10 at 21:05 IST
+
+Fresh GLM 5.3 authoring from current main `0bd16da75e4ce4cb521da880f258b81c2d9b6e60`
+on the isolated row branch. No source from the reference-only PR1114 carrier was
+supplied or reused, and this record asserts no claim, receipt, verdict, admission,
+completion or deployment.
+
+Six paths, exactly section 4: `scripts/next-task.mjs` and `scripts/review-gate.mjs`
+wire their existing wrappers to one shared reader; `scripts/provenanceGitOutput.mjs`
+is the new bounded transport helper (no policy, network, claim, registry edit or
+trust decision); `scripts/provenanceGitOutput.test.ts` is the new deterministic
+real-Git regression; `docs/MODEL_PROVENANCE.md` records the supported aggregate
+bound and the real-loader versus pure-resolver distinction; this Status section
+records the outcome. No registry compression, receipt edit, schema change,
+dependency, workflow or protection change.
+
+Bound and rationale: 64MiB of aggregate stdout per read. Measured registry about
+1.6MiB, per-artifact schema limit 16MiB, several artifacts per read possible, and
+the same 64MiB figure already used by the review gate's source readers. Above the
+bound the read throws; the wrappers' nullable adapters still return `null`, so the
+loader reports missing or unreadable rather than a truncated success.
+
+Preserved semantics: `next-task` keeps `GIT_ENV` (`GIT_TERMINAL_PROMPT=0`), stdio
+`["ignore","pipe","pipe"]`, `trim()`, and the `git` throw / `tryGit` null split;
+`review-gate` keeps its array-argument reader and its nullable adapter at the
+trusted-registry load. CLI parsing, claim/avoid/role/holder/FIFO behavior, review
+classification, protected checks, origin/main trust, model aliases, gates,
+contribution resolution and every existing test are untouched.
+
+Regression-first evidence required before landing: the new test proves the legacy
+default buffer aborts with ENOBUFS on a real repository whose valid registry
+exceeds 1MiB, that the shared reader loads the same bytes, and that both production
+loaders compose it successfully above 1MiB. Negatives covered: read above the
+bound, process failure, missing trusted main, malformed and truncated content.
+RED on the unchanged wrappers and GREEN with this patch must be recorded in the
+repair pull request, together with the exact command, exit status and output.
+
+Actual author, exact supplied input bytes/digest, raw output, applied byte range,
+RED/GREEN output and independent findings/revisions remain to be retained in that
+pull request. No bootstrap, trust, gate or ownership exception is claimed here, and
+no unrelated preexisting path is asserted to be fail-closed.
