@@ -12,6 +12,20 @@ After the actual run, separately review and merge the exact execution receipt on
 
 Qualification changes are their own bounded docs work, not candidate self-approval. A qualified route/receipt is an independently reviewed assertion, not a signed provider receipt. Code checks its structure, digests, binding and contribution independence; human/model review establishes whether the asserted observation is true. Revoke a route with `revoked: true`; do not relabel history to clear a hold.
 
+## One-task loader repair exception (D-312)
+
+The owner approved one exception to the automated task-claim requirement only
+for `PROCESS-provenance-loader-bounds`, because the trusted registry loader
+blocks claiming its own repair. Its packet section 5a records the exact
+pre-dispatch binding and landing review. Approval alone is not a qualified
+author, claim, receipt, implementation acceptance or a working gate path.
+Document the task and actual free code author before work starts. Preserve
+independent exact-version review, real tests, protected merges, no spending
+and every other rule. No other task, old unknown contributor, route or
+execution is grandfathered. Do not insert a fabricated normal claim or use
+a candidate loader to authorize itself. If the independently reviewed
+mechanics cannot preserve the remaining gates, hold and report the exact gap.
+
 ## Registry version 1
 
 Root fields: `version: 1`, `routes: []`, `executions: []`. IDs are unique within each collection, 1-120 ASCII letters/digits/dot/underscore/hyphen, starting with a letter/digit. Artifact strings are nonempty, no control characters other than tab/newline, at most 16 MiB. SHA fields are lowercase hex (40 for commits, 64 for SHA-256).

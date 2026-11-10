@@ -96,12 +96,121 @@ manual markers or bypass the broken trusted read. Any available ordinary
 nonexternal development route must have genuinely established author identity
 and applicable authority, not a relabeled external model. If no supported
 route exists, report this precise execution blocker while continuing bounded
-registration/research; this packet grants no bootstrap exception.
+registration/research; the original registration granted no bootstrap exception. D-312 now supplies
+only the owner-approved one-task automated-claim exception, subject to section
+5a below. It does not establish any missing execution fact.
 
 Unknown identity stays held; no self-admission, hidden operator semantic edits,
 cosmetic rewrite or history replacement. Any actual source repair needs its
 real author/fixer attribution. Separate final exact review and execution receipt
 admission remain required before supported completion markers.
+
+## 5a. D-312 pre-dispatch binding and landing review
+
+The complete owner proposal at 12:30:24 IST and its actual owner-added like at
+15:27:23 IST are recorded in D-312. Only the automated task claim for this
+registered loader repair is excepted. No code generation has been requested
+under this record. This section must be complete and independently reviewed
+before source dispatch; open fields below are blockers, not implied approvals.
+
+### Binding record (not yet execution-ready)
+
+- Task: `PROCESS-provenance-loader-bounds`, existing Tier 2, existing six-path
+  implementation allowlist in section 4; no new or renamed row.
+- Approval-record starting base: `03bb0ff8a72be6c6d73f47e312dc4f8cdfad25a0`.
+  It includes the actual pagination merge; do not use the older wrapper/core
+  context as an execution base. Public prebinding snapshot assembled from that base: 125,131 bytes,
+  SHA-256 `cf174693f25bc32eff4c62b0a67ca955c6256675b78c9df619b43746daea7b65`.
+  It includes actual consumers/resolver, current provenance and pagination
+  tests, packet/model contract, config and package context. This is NOT the
+  final prompt digest. After admitted binding is included, retain the final
+  supplied bytes/digest immediately before generation; do not claim a
+  circular digest of the yet-to-be-committed carrier.
+- Actual operator/session: `Instinct · public-model-review-nov10`, separately
+  attributed transport/testing coordinator, not the code author.
+- Actual coding author selection: Macaly public selector explicitly reselected
+  `GLM 5.3` on November 10 at 15:30:48 IST, before source dispatch. Provider
+  https://www.macaly.com/ ; existing author session
+  https://www.macaly.com/chat/ntir2jti8lu3np3l0bvabmzb?variant=ntir2jti8lu3np3l0bvabmzb .
+  Conservative canonical family `glm-5.3` retains GLM/Flash alias exclusion;
+  this does not assert an unobserved served checkpoint. Selection screenshot was inspected and shows `GLM 5.3`; its PNG SHA-256 is
+  `7c85df042ff75a1ac82897e260e44efcc835f869454282c7e87ab3ee4082e2c8`.
+  Actual independent binding assessment remains pending. Existing privacy
+  work is not this execution.
+- Free route: supervisor inspected current Macaly billing at 15:30:16 IST:
+  account is on Free; adding capacity requires purchasing a plan. Stop at
+  capacity, any paid requirement or possible card charge; no top-ups, upgrade
+  or payment. The exact private allowance/account identifier is not published.
+  This observed account state and hard stop must remain valid at dispatch.
+- Ownership: current live exact fullstack-lights/QA/fetch-parity branch
+  queries returned no branches. Their rows and ownership remain; absence is
+  not an ACK or proof of no unpublished work. Preserve histories and isolate
+  the two wrapper hunks; shared-hunk composition still requires review.
+- FIFO: actual supported nonmutating previews on current base at 15:35:40
+  offered own prep CONTINUE after only `--avoid D-090-BYOR` (unknown real
+  contributors, outside this exception). That prep's completion is actually
+  blocked by the confirmed production loader defect. Adding only
+  `--avoid UI-referrer-privacy-copy-tests` then offered BUILD
+  `PROCESS-provenance-loader-bounds`. No claim, target override or blanket
+  avoid was used. This is ordinary eligibility, not a priority exception.
+  Rerun fresh after binding admission/main movement; retain exact outputs.
+- Source branch: `agent/queue/process-provenance-loader-bounds`, absent at the
+  supervisor's prebinding check. Start it from the admitted, independently
+  reviewed binding on current main; no ordinary claim marker is asserted.
+- Source transport: only public repository input, the exact section 4 scope
+  and required tests. Retain final supplied bytes/digest, exact raw generated
+  output, byte-for-byte patch application, every actual author/fixer range,
+  RED/GREEN output and all independent findings/revisions in the repair PR.
+  The operator does not write semantic source or silently repair output.
+  No private transcripts, secrets or hidden metadata in the public repo.
+- Replacement claim binding: D-312 plus this independently reviewed task,
+  operator, observed author/model/provider/session, current-base/scope/branch
+  and free-hard-stop record replaces only this broken automated task claim.
+  Do NOT create normal Claim/provenance/execution markers or normal D-311
+  receipts with invented claim linkage. Later code needs its own actual
+  manual attribution and exact evidence, not this pre-execution record alone.
+- Independent binding/mechanics assessment: PENDING exact carrier SHA and
+  actual independent model verdict/source, required before generation.
+- Proposed unchanged-check path, subject to actual independent assessment:
+  the exact registered Tier 2 source branch is admitted by queue-gate;
+  `reviewGateViolation` on base03bb returns for declared/computed non-Tier1
+  before provenance resolution. Such a return is NOT identity certification.
+  The row's no-owns scope result is SKIPPED, not a scope PASS, so the actual
+  six-path/hunk diff and ownership composition need explicit manual review.
+  No gate edits, fabricated claim or data compression are permitted.
+- Implementation review: genuine independent DeepSeek exact-source/manual
+  attribution/current-main assessment, excluding the actual GLM author and
+  any real fixer. Record the actual model and complete verdict, not a made-up
+  pass marker. Reviewer identity/availability still needs fresh execution
+  evidence at that stage. Final required tests/CI must pass on the exact head.
+- Proposed protected nonwriter landing/slot mechanics, for independent
+  assessment: after current-main and exact-head CI plus actual independent
+  final review, verify the landing slot is free, record an honest empty
+  task/operator-only Land claim as in prior nonwriter documentation admissions,
+  and normally protected-merge the registered Tier 2 branch. This is NOT a
+  BUILD claim, D-311 qualifier or identity certification. Supported --landed
+  after an explicit landing-ref fetch was proved earlier today. Current slot
+  was empty with Landed f32a29e3; revalidate it at landing. The proposed loader-specific
+  slot procedure still needs actual independent assessment; no
+  fabricated verdict, admin bypass or unchanged-gate skip is approved.
+- After actual merge: settle main CI and slot via their supported operations,
+  prove both released production loaders and unchanged original prep D-311
+  receipt composition, then resume ordinary protocol. Do not call --fixed or
+  complete unless genuine existing markers support it. Record this one-task
+  manual exception's actual outcome explicitly, without a counterfeit marker.
+
+This is not a new schema or runtime gate exception. If the proposed replacement
+binding cannot work through the remaining unchanged checks, report that precise
+conflict for review before authoring. Do not broaden the founder's approval to
+skip CI, review, scope, independence, protections, history or any other rule.
+
+After actual source output, preserve input/output/observation bytes and digests,
+actual author/fixer identities and ranges, test failures and revisions. Obtain
+actual independent exact-final-version implementation review, required exact
+CI and current-main validation before normal protected landing. Neither this
+approval record nor a candidate repaired loader may approve its own code.
+The one-task exception ends with acceptance or explicit abandonment of this
+repair; it never becomes a reusable route for other work.
 
 ## 6. Red-first verification
 
@@ -140,3 +249,7 @@ claim, source fix, execution receipt, verdict, completion or deployment is
 asserted. Supervisor retains implementation/testing/independent review and
 normal nonwriter landing follow-through; packet writer supplies docs only.
 The original privacy outcome remains active and unshipped.
+
+D-312 approval-record preparation, November 10 at 15:28 IST: actual approval
+recovered. Binding facts and supported mechanics above are unresolved; no
+source dispatch, claim, implementation readiness or customer completion.
