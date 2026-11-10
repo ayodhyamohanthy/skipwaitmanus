@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Referrer privacy-copy regression, red-first, revision 4.
+ * Referrer privacy-copy regression, red-first, revision 5.
  * Packet: docs/plans/UI-referrer-privacy-copy-tests.md
  *
  * Final collected path: client/src/components/referrerPrivacyCopy.test.tsx
@@ -18,22 +18,31 @@
  * active document access. The truthful boundary sentence and the conditional
  * access sentence are not authored yet, so the positive cases are RED too.
  *
- * How the copy is judged (three bounded checks, no prose engine):
+ * How the copy is judged (three bounded checks, no clause grammar, no prose engine):
  *  - Promise check: a resume visibility claim is exempt only when an
- *    acceptance-anchored marker sits before the claim verb, or in the claim's own
- *    comma segment, or when every pre-choice marker in the sentence is denied.
- *    Comma segments give locality; there is no clause grammar.
- *  - Boundary check: name, resume, concealment and a pre-choice marker must be
- *    stated together (two adjacent sentences at most).
+ *    acceptance-anchored marker ends before the claim verb, or when the marker
+ *    sits in the claim's own comma segment and no immediacy word ("now",
+ *    "immediately", "right away", "today", "already") is detached from that
+ *    marker. Every pre-choice marker in the sentence being denied also exempts.
+ *  - Boundary check: name, resume, concealment and a pre-choice marker must all
+ *    appear in ONE sentence, in the first or third person.
  *  - Access check: inside one comma segment, document-qualified access must carry
  *    a live link with a positive active state, or the bounded "until ... ends"
- *    form. A negated active state, an ended state under a live link, an
- *    unqualified access noun, or a permanence word in the same sentence fails.
+ *    form, and the same segment must bind a file noun outside the access phrase
+ *    to a visibility verb that does not sit after the access phrase. Negated or
+ *    ended states, unqualified access nouns, a later file verb, or a permanence
+ *    word in the same sentence fail.
  *
  * Stated limits, so the header is not read as more than it is:
  *  - Closed marker classes only. No paraphrase generality and no claim to parse
  *    arbitrary English. Prose that expresses the same meaning outside these
  *    classes is not covered.
+ *  - Comma segments are the only locality model. Punctuation therefore matters:
+ *    a condition placed in a different comma segment from the file claim does not
+ *    count.
+ *  - A FRONTED condition ("While your document access is active, you can open the
+ *    file after you accept") is deliberately NOT covered, because the file verb
+ *    follows the access phrase there and that shape is also the bleed pattern.
  *  - Access must be document-qualified ("document access", "access to the
  *    files"); bare "your access" is deliberately not accepted.
  *  - Cross-sentence conditionality is refused on purpose, because accepting it is
@@ -91,15 +100,6 @@ function copyText(container: HTMLElement): string {
   return copyBlocks(container).join(" ");
 }
 
-/** First run of consecutive sentences that satisfies every pattern. */
-function findWindow(sentences: string[], size: number, patterns: RegExp[]): string | null {
-  for (let index = 0; index < sentences.length; index += 1) {
-    const candidate = sentences.slice(index, index + size).join(" ");
-    if (patterns.every(pattern => pattern.test(candidate))) return candidate;
-  }
-  return null;
-}
-
 type Match = { index: number; end: number; text: string };
 
 /** All matches with offsets, without leaking lastIndex state between calls. */
@@ -145,8 +145,9 @@ function segmentOf(sentence: string, index: number): Segment | null {
  * Closed marker classes
  * ------------------------------------------------------------------ */
 
+/** Pre-choice markers accept first and third person, because the packet does too. */
 const PRE_ACCEPTANCE =
-  /\b(?:before (?:you )?(?:choose|choosing|accept|accepting|decide|deciding)|until (?:you )?(?:accept|choose)|prior to (?:acceptance|accepting|choosing)|pre-acceptance|before acceptance|before the referrer (?:accepts|chooses))\b/i;
+  /\b(?:before (?:you |the referrer |they )?(?:choose|chooses|choosing|accept|accepts|accepting|decide|deciding)|until (?:you |the referrer |they )?(?:accept|accepts|choose|chooses)|prior to (?:acceptance|accepting|choosing)|pre-acceptance|before acceptance)\b/i;
 
 /** Post markers must be anchored to acceptance or claiming, never to any other time. */
 const POST_ACCEPTANCE =
@@ -168,8 +169,11 @@ const NEGATOR =
 /** "not your resume", "never the resume": the noun itself is denied. */
 const NOUN_NEGATION = /\b(?:not|never|no)\b(?:\s+\w+){0,2}\s*$/i;
 
+/** Immediacy words make a claim current, so they cannot be paired with a later condition. */
+const IMMEDIACY = /\b(?:now|immediately|right away|today|already)\b/gi;
+
 /* ------------------------------------------------------------------ *
- * Promise check: negation scope plus comma-segment locality
+ * Promise check: negation scope, comma-segment locality, immediacy guard
  * ------------------------------------------------------------------ */
 
 function negatedVerb(sentence: string, verbIndex: number): boolean {
@@ -207,16 +211,32 @@ function resumeVisibilityClaims(sentence: string): ResumeClaim[] {
 }
 
 /**
+ * An immediacy word inside the claim segment blocks the same-segment exemption
+ * unless it is attached to the post marker itself ("immediately after you
+ * accept"). This closes the comma-free coordination leak.
+ */
+function immediacyBlocksPostfixScope(sentence: string, segment: Segment, verbIndex: number): boolean {
+  const attached = new RegExp(`^(?:${POST_ACCEPTANCE.source})`, POST_ACCEPTANCE.flags);
+  return matchesOf(sentence, IMMEDIACY).some(word => {
+    if (word.index < segment.start || word.index >= segment.end) return false;
+    if (word.end <= verbIndex) return false;
+    return !attached.test(sentence.slice(word.end).trimStart());
+  });
+}
+
+/**
  * A claim is post-acceptance scoped when an acceptance-anchored marker ends
- * before the claim verb, or sits in the claim's own comma segment. A marker in
- * another comma segment never exempts the claim.
+ * before the claim verb, or sits in the claim's own comma segment with no
+ * detached immediacy word. A marker in another comma segment never exempts.
  */
 function claimIsPostScoped(sentence: string, verbIndex: number): boolean {
+  const posts = matchesOf(sentence, POST_ACCEPTANCE);
+  if (posts.some(marker => marker.end <= verbIndex)) return true;
   const segment = segmentOf(sentence, verbIndex);
-  return matchesOf(sentence, POST_ACCEPTANCE).some(marker => {
-    if (marker.end <= verbIndex) return true;
-    return segment !== null && marker.index >= segment.start && marker.index < segment.end;
-  });
+  if (segment === null) return false;
+  const sameSegment = posts.some(marker => marker.index >= segment.start && marker.index < segment.end);
+  if (!sameSegment) return false;
+  return !immediacyBlocksPostfixScope(sentence, segment, verbIndex);
 }
 
 /** A pre-choice marker that is itself denied ("but not before you choose"). */
@@ -244,21 +264,24 @@ function promisesResumeBeforeChoice(sentence: string): boolean {
 }
 
 /* ------------------------------------------------------------------ *
- * Boundary check
+ * Boundary check: one sentence, first or third person
  * ------------------------------------------------------------------ */
 
 /** Name and resume must both be stated as hidden at or before acceptance. */
 function findHiddenUntilAcceptance(sentences: string[]): string | null {
-  return findWindow(sentences, 2, [
-    /\bname\b/i,
-    /\b(?:resume|résumé|cv)\b/i,
-    CONCEALMENT,
-    PRE_ACCEPTANCE,
-  ]);
+  return (
+    sentences.find(
+      sentence =>
+        /\bname\b/i.test(sentence) &&
+        /\b(?:resume|résumé|cv)\b/i.test(sentence) &&
+        CONCEALMENT.test(sentence) &&
+        PRE_ACCEPTANCE.test(sentence),
+    ) ?? null
+  );
 }
 
 /* ------------------------------------------------------------------ *
- * Access check: document-qualified access, signed polarity, one guard
+ * Access check: object-bound file noun, signed polarity, one guard
  * ------------------------------------------------------------------ */
 
 const DOC_ACCESS =
@@ -275,18 +298,38 @@ const NEGATED_ACTIVE = /\b(?:not|never|isn't|aren't|no longer)\b(?:\s+\w+){0,2}\
 const PERMANENCE = /\b(?:always|permanent(?:ly)?|forever|for good|no matter what|regardless|unconditionally)\b/i;
 
 /**
- * True when one comma segment holds a file noun, document-qualified access and a
- * polarity-consistent condition: a live link with a positive active state, or the
- * bounded "until ... ends" form. A negated or ended state under a live link fails.
+ * The segment must bind a file noun that is NOT part of the access phrase to a
+ * visibility verb, and no visibility verb may follow the access phrase. That is
+ * what stops a condition attached to a different object from satisfying the
+ * check, and it is also why a fronted condition is not covered.
+ */
+function hasObjectBoundFileClaim(segment: string, accesses: Match[]): boolean {
+  const fileNouns = matchesOf(segment, FILE_NOUN);
+  const verbs = matchesOf(segment, VISIBILITY_VERB);
+  const lastAccessEnd = Math.max(...accesses.map(access => access.end));
+  return fileNouns.some(file => {
+    const insideAccessPhrase = accesses.some(access => file.index >= access.index && file.index < access.end);
+    if (insideAccessPhrase) return false;
+    const boundToVerb = verbs.some(verb => Math.abs(verb.index - file.index) <= 40);
+    if (!boundToVerb) return false;
+    return !verbs.some(verb => verb.index >= lastAccessEnd);
+  });
+}
+
+/**
+ * True when one comma segment holds document-qualified access with a
+ * polarity-consistent condition and an object-bound file claim: a live link with
+ * a positive active state, or the bounded "until ... ends" form.
  */
 function hasConditionalDocumentAccess(sentence: string): boolean {
   return commaSegments(sentence).some(segment => {
-    if (matchesOf(segment.text, DOC_ACCESS).length === 0) return false;
-    if (!FILE_NOUN.test(segment.text)) return false;
+    const accesses = matchesOf(segment.text, DOC_ACCESS);
+    if (accesses.length === 0) return false;
     if (NEGATED_ACTIVE.test(segment.text)) return false;
     const bounded = LIMIT_LINK.test(segment.text) && ENDED_STATE.test(segment.text);
     const live = LIVE_LINK.test(segment.text) && ACTIVE_STATE.test(segment.text) && !ENDED_STATE.test(segment.text);
-    return bounded || live;
+    if (!bounded && !live) return false;
+    return hasObjectBoundFileClaim(segment.text, accesses);
   });
 }
 
@@ -324,7 +367,7 @@ function expectHiddenUntilAcceptanceBoundary(container: HTMLElement): void {
   const sentences = copySentences(container);
   expect(
     findHiddenUntilAcceptance(sentences),
-    `pre-choice copy must state that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ${JSON.stringify(sentences)}`,
+    `pre-choice copy must state in one sentence that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ${JSON.stringify(sentences)}`,
   ).not.toBeNull();
 }
 
@@ -410,6 +453,15 @@ describe("sanity: pre-choice resume-promise detector", () => {
     expect(promisesResumeBeforeChoice("When you sign in, you can open the resume.")).toBe(true);
   });
 
+  it("does not let a later condition exempt a current claim without a comma", () => {
+    expect(promisesResumeBeforeChoice("You can read the resume now and after you accept you can message them.")).toBe(
+      true,
+    );
+    expect(
+      promisesResumeBeforeChoice("You can read the resume right away and after you accept you can message them."),
+    ).toBe(true);
+  });
+
   it("still flags a real promise when an unrelated negation sits in the window", () => {
     expect(promisesResumeBeforeChoice("See the role, not a summary, and the resume before you choose.")).toBe(true);
   });
@@ -429,6 +481,7 @@ describe("sanity: pre-choice resume-promise detector", () => {
       promisesResumeBeforeChoice("After you accept, you can open the resume while your document access is active."),
     ).toBe(false);
     expect(promisesResumeBeforeChoice("You can open the resume after you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("You can open the resume immediately after you accept.")).toBe(false);
     expect(promisesResumeBeforeChoice("Once you accept you can read the resume.")).toBe(false);
   });
 
@@ -450,16 +503,22 @@ describe("sanity: pre-choice resume-promise detector", () => {
 });
 
 describe("sanity: hidden-until-acceptance boundary", () => {
-  it("accepts natural truthful phrasings", () => {
+  it("accepts natural truthful phrasings in the first and third person", () => {
     expect(findHiddenUntilAcceptance(["Your name and resume stay hidden until you accept."])).not.toBeNull();
     expect(findHiddenUntilAcceptance(["We hide your name and resume before you accept."])).not.toBeNull();
     expect(findHiddenUntilAcceptance(["Before you choose, your name and resume are private."])).not.toBeNull();
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden until the referrer accepts."])).not.toBeNull();
   });
 
   it("rejects the released sentence and partial statements", () => {
     expect(findHiddenUntilAcceptance(["See the role, resume, and forwardable note before you choose."])).toBeNull();
     expect(findHiddenUntilAcceptance(["Your resume stays private until you accept."])).toBeNull();
     expect(findHiddenUntilAcceptance(["Your name and resume stay private."])).toBeNull();
+  });
+
+  it("rejects a timing marker borrowed from an unrelated sentence", () => {
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden.", "Ask for context before you choose."])).toBeNull();
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden.", "Decline before you choose."])).toBeNull();
   });
 });
 
@@ -508,6 +567,24 @@ describe("sanity: conditional file access", () => {
     ).toBeNull();
     expect(findConditionalFileAccess(["After you accept, the file requires a click to open."])).toBeNull();
     expect(findConditionalFileAccess(["After you accept, you can open the file."])).toBeNull();
+  });
+
+  it("rejects a condition attached to a different object than the file claim", () => {
+    expect(
+      findConditionalFileAccess([
+        "After you accept, the file opens, and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess([
+        "After you accept, you can open the file, and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess([
+        "After you accept, the file opens and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
   });
 
   it("rejects a permanence claim even when a conditional clause is present", () => {
