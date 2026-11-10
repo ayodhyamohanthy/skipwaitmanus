@@ -26,7 +26,7 @@ function baseDeps(overrides: Partial<PrivateReferralRouteDeps> = {}): PrivateRef
 function buildApp(deps: PrivateReferralRouteDeps) {
   const app = express();
   app.use(express.json());
-  registerPrivateReferralRoutes(app, deps);
+  registerPrivateReferralRoutes(app, { getBlockedReferralRequestIds: async () => new Set<number>(), ...deps });
   return app;
 }
 

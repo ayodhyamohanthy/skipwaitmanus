@@ -28,6 +28,7 @@ describe("referral operating-system routes", () => {
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
       getDomainIntegrity: async () => { if (diagnosticFails) throw new Error("diagnostic failed"); return ({ affectedCount: 2, aggregates: { public_suffix_only: 1, malformed_ip_localhost: 1 }, affectedRows: [{ table: "jobs", rowId: "9", storedDomain: "co.uk", classification: "public_suffix_only" }], evidence: { affectedCount: 0, aggregates: {}, affectedRows: [] } }); },
       recordActivity: async input => { activities.push(input); },
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       getReferralFlowHealth: async () => ({ funnel: { requestsCreated: 5, requestsClaimed: 3, decisionsRecorded: 2, waitingForCoverage: 2 }, coverageGaps: [{ companyDomain: "acme.com", waitingRequests: 2, verifiedCoverage: 0 }], instrumentation: { uploadedDocuments: 5, recordedFailures: 1 } }),
     });
 

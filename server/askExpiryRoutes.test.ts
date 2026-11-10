@@ -11,6 +11,7 @@ function setup(deps: Partial<PrivateReferralRouteDeps>) {
   registerPrivateReferralRoutes(app, {
     resolveIdentity: async req => (req.header("x-test-user") ? seeker : undefined),
     recordActivity: async () => {},
+    getBlockedReferralRequestIds: async () => new Set<number>(),
     ...deps,
   } as unknown as PrivateReferralRouteDeps);
   return app;

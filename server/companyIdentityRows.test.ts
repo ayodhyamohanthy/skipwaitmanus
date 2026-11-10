@@ -23,7 +23,7 @@ function setup(lookup: CompanyIdentityLookup = directory) {
     getClaimedCompanyReferralDetail: async () => ({ id: 41, companyDomain: "goneutrinos.com", status: "approved", attachments: [attachment] }),
     resolveCompanyIdentities,
   };
-  registerPrivateReferralRoutes(app, deps as unknown as PrivateReferralRouteDeps);
+  registerPrivateReferralRoutes(app, { getBlockedReferralRequestIds: async () => new Set<number>(), ...deps } as unknown as PrivateReferralRouteDeps);
   return { app, resolveCompanyIdentities };
 }
 
