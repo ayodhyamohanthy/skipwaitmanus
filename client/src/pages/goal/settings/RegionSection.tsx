@@ -10,6 +10,9 @@ import { setDisplayPrefs, useDisplayPrefs, type DisplayPrefs } from "@/lib/displ
 import { browserPaymentRoute } from "@/lib/paymentRoute";
 import { Link } from "wouter";
 import { InlineError, InlineLink, Section } from "./settingsParts";
+import { GoalLanguagePicker } from "@/components/goal/GoalLanguagePicker";
+import { regionFootnote } from "@/components/settings/RegionPanel";
+import { visibleLanguages } from "@shared/languages";
 
 const DATE_FORMAT_LABELS: Record<DateFormat, string> = { dmy: "8 Oct 2026", mdy: "Oct 8, 2026", iso: "2026-10-08" };
 
@@ -70,8 +73,14 @@ export default function RegionSection() {
       <Section title="Language & region">
         <div className="mt-4 grid gap-4 gdesk:grid-cols-2">
           <div>
-            <p className="text-g-label text-g-ink">Language</p>
-            <p className="mt-2 flex min-h-11 items-center rounded-g-control border border-g-hairline px-3 text-g-label text-g-ink-2">English</p>
+            {visibleLanguages().length >= 2 ? (
+              <GoalLanguagePicker variant="settings" />
+            ) : (
+              <>
+                <p className="text-g-label text-g-ink">Language</p>
+                <p className="mt-2 flex min-h-11 items-center rounded-g-control border border-g-hairline px-3 text-g-label text-g-ink-2">English</p>
+              </>
+            )}
           </div>
           <label className={FIELD_LABEL}>Time zone
             <select className={FIELD} value={prefs.timeZone ?? ""} onChange={event => {
@@ -97,7 +106,7 @@ export default function RegionSection() {
           </label>
         </div>
         {error ? <InlineError>{error}</InlineError> : null}
-        <p className="mt-4 text-g-meta text-g-ink-2">Language and currency follow this device. Dates and times in your referral requests and alerts use this time zone and date format. Billing from another country? Switch it on <InlineLink href="/plans">Plans</InlineLink>.</p>
+        <p className="mt-4 text-g-meta text-g-ink-2">{regionFootnote(visibleLanguages().length)} Billing from another country? Switch it on <InlineLink href="/plans">Plans</InlineLink>.</p>
         <p className="mt-2 text-g-meta text-g-ink-3">This changes how dates are printed only. It never changes when anything expires or what anyone is charged.</p>
       </Section>
     </>
