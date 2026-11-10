@@ -281,6 +281,9 @@ repair; it never becomes a reusable route for other work.
 
 ## Status
 
+
+Final exact author-input snapshot assembled20:58 before this digest note: 269391 bytes, SHA-256 `21600dd8fe40b286189b5d5afc23cc7fbe55db2cbfccfe51d720fecc9450a049`, current-main `07ceca64a2350d9870e1e8f5158b6898eb983f6e`, packet snapshot from branch `b3c0c6991ba23bc5bd81701a42b619adf4fd4e74`. Fourteen named public blobs and task instruction retained in full with per-blob exclusion manifest; PR1114 source patch and private context excluded. The snapshot is non-circular: it does not include this later digest note. Not dispatched; actual supported FIFO and independent admission remain pending. GLM actual source author / DeepSeek actual independent reviewer will be recorded separately from operator. This note creates no automated provenance claim or self-authorization.
+
 ### Current bounded continuation amendment, November 10 at 20:48 IST
 
 No source has been generated. This amendment supersedes the LOCAL 19:18 proposed holder-ACK/no-takeover path, not any founder rule or source-admission requirement.
