@@ -2446,7 +2446,8 @@
         "client/src/pages/Work.tsx",
         "client/src/pages/goal/profile/**",
         "client/src/pages/profileGoal.test.tsx",
-        "design/goal-ui/captures/profile/**"
+        "design/goal-ui/captures/profile/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
       "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile').",
       "epic": "D-048-p3"
