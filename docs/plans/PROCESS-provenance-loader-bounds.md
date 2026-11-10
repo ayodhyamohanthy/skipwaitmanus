@@ -134,6 +134,8 @@ admission remain required before supported completion markers.
 
 ## Status
 
+PROCESS-provenance-loader-bounds: in progress — Qoder · 5f11 — 2026-11-10 — branch agent/queue/process-provenance-loader-bounds
+
 Registration candidate from mainf1adbc, November10,2026. Both default-buffer
 failures independently reproduced. No implementation, external prompt, route,
 claim, source fix, execution receipt, verdict, completion or deployment is
