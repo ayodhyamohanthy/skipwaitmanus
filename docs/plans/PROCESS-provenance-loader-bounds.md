@@ -167,6 +167,9 @@ before source dispatch; open fields below are blockers, not implied approvals.
   GLM record above remains a proposed author, NOT this holder's identity or
   execution. Current-holder coordination must settle the actual author route
   and source composition before generation; do not relabel the real claim.
+  A plain Qoder Claim can work; the broken loader blocks the provenance-qualified
+  external claim path, not every plain marker. This existing plain marker does
+  not establish actual-author validity or settle the provenance-qualified route.
 - Source transport: only public repository input, the exact section 4 scope
   and required tests. Retain final supplied bytes/digest, exact raw generated
   output, byte-for-byte patch application, every actual author/fixer range,
