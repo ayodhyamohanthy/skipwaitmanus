@@ -1,0 +1,329 @@
+// @vitest-environment jsdom
+/**
+ * Referrer privacy-copy regression, prepared red-first.
+ * Packet: docs/plans/UI-referrer-privacy-copy-tests.md
+ *
+ * Final collected path: client/src/components/referrerPrivacyCopy.test.tsx
+ * Source of record:     docs/plans/tests/referrerPrivacyCopy.test.tsx.source
+ *
+ * Scope: pre-choice copy only. The three shipped components are rendered as they
+ * are (no target mocks, no handler edits, no config edits, no network). Every
+ * case proves that a static pre-choice render sends no request and never reaches
+ * an OTP step: no button is clicked and no code is entered anywhere in this file.
+ *
+ * Expected RED on unchanged product (dc6492 copy): all three paths still render
+ * "See the role, resume, and forwardable note before you choose." That promises
+ * resume visibility before the choice, while the actual privacy controls hide the
+ * seeker's name and resume until acceptance, and file access after acceptance also
+ * requires active document access. The truthful boundary sentence and the
+ * conditional access sentence are not authored yet, so the positive cases are RED
+ * as well. Absence of the old sentence alone can never pass: each path must
+ * positively state the boundary and the access condition.
+ *
+ * What these assertions do NOT claim: they say nothing about backend authorization,
+ * document endpoints, OTP delivery or login acceptance. They assert only what the
+ * rendered pre-choice copy promises a referrer.
+ */
+import React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+
+import { ReferrerOtpSignIn } from "./ReferrerOtpSignIn";
+import { WorkEmailSignIn } from "./WorkEmailSignIn";
+import { GoalOtpSignIn } from "@/pages/goal/referrer/GoalOtpSignIn";
+
+const fetchMock = vi.fn();
+
+/* ------------------------------------------------------------------ *
+ * Copy extraction
+ * ------------------------------------------------------------------ */
+
+function normalize(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Leaf text blocks only, so a wrapper element never repeats its children's copy
+ * and one sentence is counted once.
+ */
+function copyBlocks(container: HTMLElement): string[] {
+  const blocks: string[] = [];
+  container.querySelectorAll("p, li, span, label, h1, h2, h3, h4, h5, h6, div").forEach(element => {
+    if (element.children.length > 0) return;
+    const text = normalize(element.textContent ?? "");
+    if (text !== "") blocks.push(text);
+  });
+  return blocks;
+}
+
+/** The same copy split into sentences, so a boundary may span two sentences. */
+function copySentences(container: HTMLElement): string[] {
+  return copyBlocks(container)
+    .flatMap(block => block.split(/(?<=[.!?])\s+/))
+    .map(normalize)
+    .filter(sentence => sentence !== "");
+}
+
+/** Whole pre-choice copy as one string, for preserved-promise checks. */
+function copyText(container: HTMLElement): string {
+  return copyBlocks(container).join(" ");
+}
+
+/** First run of consecutive sentences that satisfies every pattern. */
+function findWindow(sentences: string[], size: number, patterns: RegExp[]): string | null {
+  for (let index = 0; index < sentences.length; index += 1) {
+    const candidate = sentences.slice(index, index + size).join(" ");
+    if (patterns.every(pattern => pattern.test(candidate))) return candidate;
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Semantic matchers
+ * ------------------------------------------------------------------ */
+
+const VISIBILITY_VERB = "(?:see|sees|view|views|preview|previews|read|reads|open|opens|inspect|inspects|browse|browses)";
+const RESUME_NOUN = "(?:resume|résumé|cv)";
+
+/** A visibility verb next to the resume noun, in either order, inside one sentence. */
+const RESUME_VISIBILITY_PROMISE = new RegExp(
+  `\\b${VISIBILITY_VERB}\\b[^.]{0,80}?\\b${RESUME_NOUN}\\b|\\b${RESUME_NOUN}\\b[^.]{0,80}?\\b${VISIBILITY_VERB}\\b`,
+  "i",
+);
+
+/** Negation or concealment that turns a resume mention into a truthful statement. */
+const NEGATION = /\b(?:not|never|no|isn't|aren't|cannot|can't|hidden|hide|private|locked|withheld|only)\b/i;
+
+const CONCEALMENT =
+  /\b(?:hidden|hide|hides|private|locked|withheld|not (?:shown|visible|shared|revealed|sent)|never (?:shown|shared|revealed)|isn't (?:shown|visible|shared)|stays? (?:hidden|private)|remain(?:s)? (?:hidden|private)|only after)\b/i;
+
+const BEFORE_ACCEPTANCE =
+  /\b(?:before (?:you )?(?:choose|choosing|accept|accepting|decide|deciding)|until (?:you )?(?:accept|choose)|prior to (?:acceptance|accepting|choosing)|pre-acceptance|before acceptance|before the referrer (?:accepts|chooses))\b/i;
+
+const AFTER_ACCEPTANCE =
+  /\b(?:after (?:you )?(?:accept|accepting|that|claiming)|once (?:you )?(?:accept|claim)|post-acceptance|after acceptance|when you accept|on acceptance)\b/i;
+
+const ACCESS_CONDITION =
+  /\b(?:while|as long as|for as long as|only (?:while|when|if|during|after)|subject to|requires?|requiring|conditional(?:ly)?|depends? on|when (?:your )?(?:document )?access (?:is|remains) active|access (?:is|remains) active|active (?:document )?access|access (?:can |may )?end(?:s|ed)?|access expires|until (?:your |that )?access (?:ends|expires))\b/i;
+
+/**
+ * The released promise: an unnegated visibility claim about the resume before the
+ * choice. Truthful copy may name the resume while hiding it, so a match that
+ * carries a negation or concealment word is not the old promise.
+ */
+function promisesResumeBeforeChoice(sentence: string): boolean {
+  const match = RESUME_VISIBILITY_PROMISE.exec(sentence);
+  if (!match) return false;
+  return !NEGATION.test(match[0]);
+}
+
+/* ------------------------------------------------------------------ *
+ * Assertions
+ * ------------------------------------------------------------------ */
+
+/**
+ * RED driver: no pre-choice sentence may promise that the resume can be seen,
+ * read, previewed, opened or inspected before the referrer chooses.
+ */
+function expectNoPreChoiceResumePromise(container: HTMLElement): void {
+  const offending = copySentences(container).filter(promisesResumeBeforeChoice);
+  expect(
+    offending,
+    `pre-choice copy still promises resume visibility before the choice; offending sentences: ${JSON.stringify(offending)}`,
+  ).toEqual([]);
+}
+
+/**
+ * RED driver: the copy must positively state that the seeker's name AND resume
+ * are hidden before acceptance. Two adjacent sentences may carry it together.
+ */
+function expectHiddenUntilAcceptanceBoundary(container: HTMLElement): void {
+  const sentences = copySentences(container);
+  const boundary = findWindow(sentences, 2, [
+    /\bname\b/i,
+    /\b(?:resume|résumé|cv)\b/i,
+    CONCEALMENT,
+    BEFORE_ACCEPTANCE,
+  ]);
+  expect(
+    boundary,
+    `pre-choice copy must state that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ${JSON.stringify(sentences)}`,
+  ).not.toBeNull();
+}
+
+/**
+ * RED driver: any post-acceptance file access must be stated as conditional on
+ * active access. It must not be required to claim that every accepted referral
+ * always has a file available, so no existence of a document is asserted here.
+ */
+function expectConditionalFileAccess(container: HTMLElement): void {
+  const sentences = copySentences(container);
+  const conditional = findWindow(sentences, 3, [
+    /\b(?:file|files|document|documents|resume|résumé|attachment|attachments)\b/i,
+    /\b(?:access|open|unlock|available)\b/i,
+    ACCESS_CONDITION,
+    AFTER_ACCEPTANCE,
+  ]);
+  expect(
+    conditional,
+    `post-acceptance file access must be described as conditional on active access; rendered sentences: ${JSON.stringify(sentences)}`,
+  ).not.toBeNull();
+}
+
+/** Guards the promises that must survive the copy repair. */
+function expectPreservedPromises(container: HTMLElement): void {
+  const text = copyText(container);
+  expect(text, "the pre-choice copy must still offer declining").toMatch(/\bdecline\b/i);
+  expect(text, "the pre-choice copy must still offer asking for context").toMatch(/\bcontext\b/i);
+  expect(
+    text,
+    "the pre-choice copy must still promise that nothing is sent from the seeker's account",
+  ).toMatch(/\bnothing\b[^.!?]{0,80}\bsent\b/i);
+  expect(text, "the no-send promise must still name the seeker's account").toMatch(/\byour account\b/i);
+}
+
+/* ------------------------------------------------------------------ *
+ * Render harness
+ * ------------------------------------------------------------------ */
+
+/**
+ * Renders the real pre-choice stage and proves two things before any copy check:
+ * the render sent no request, and the OTP step was never reached (the email
+ * control is rendered and the six-digit step is not). No click happens here.
+ */
+function renderPreChoice(element: React.ReactElement): HTMLElement {
+  const view = render(element);
+  expect(fetchMock, "a static pre-choice render must not send any network request").not.toHaveBeenCalled();
+  const container = view.container;
+  expect(
+    container.querySelector("input[placeholder='you@company.com']"),
+    "the pre-choice company-email control must be rendered",
+  ).not.toBeNull();
+  expect(
+    container.querySelector("input[placeholder='123456']"),
+    "the six-digit OTP step must not be rendered: this file never sends or enters a code",
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /verify/i }),
+    "no verify control may exist before a code is requested",
+  ).toBeNull();
+  return container;
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
+
+/* ------------------------------------------------------------------ *
+ * Detector sanity: the privacy assertions cannot pass by absence alone
+ * ------------------------------------------------------------------ */
+
+describe("pre-choice resume-promise detector", () => {
+  it("flags the released promise sentence and exempts truthful concealment", () => {
+    expect(promisesResumeBeforeChoice("See the role, resume, and forwardable note before you choose.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can preview the resume before you accept.")).toBe(true);
+    expect(promisesResumeBeforeChoice("Your name and resume stay hidden until you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("See the role and note, not your resume, before you choose.")).toBe(false);
+    expect(promisesResumeBeforeChoice("Decline or ask for context. Nothing is sent from your account.")).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Path 1: kit ReferrerOtpSignIn
+ * ------------------------------------------------------------------ */
+
+describe("ReferrerOtpSignIn pre-choice privacy copy", () => {
+  it("does not promise the resume before the referrer chooses", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    expectNoPreChoiceResumePromise(container);
+  });
+
+  it("states that the name and resume stay hidden until acceptance", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    expectHiddenUntilAcceptanceBoundary(container);
+  });
+
+  it("makes post-acceptance file access conditional on active access", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    expectConditionalFileAccess(container);
+  });
+
+  it("keeps the work-email control, the decline/context/no-send promises and sends nothing", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    const emailControl = container.querySelector("#otp-referrer-email");
+    expect(emailControl, "the company-email control must keep its stable id").not.toBeNull();
+    expect(emailControl?.getAttribute("type")).toBe("email");
+    expectPreservedPromises(container);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Path 2: kit WorkEmailSignIn, noncompact (compact renders no copy at all,
+ * so the preserved-promise case below also proves the noncompact path)
+ * ------------------------------------------------------------------ */
+
+describe("WorkEmailSignIn (noncompact) pre-choice privacy copy", () => {
+  it("does not promise the resume before the referrer chooses", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    expectNoPreChoiceResumePromise(container);
+  });
+
+  it("states that the name and resume stay hidden until acceptance", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    expectHiddenUntilAcceptanceBoundary(container);
+  });
+
+  it("makes post-acceptance file access conditional on active access", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    expectConditionalFileAccess(container);
+  });
+
+  it("keeps the work-email control, the decline/context/no-send promises and sends nothing", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    const emailControl = screen.getByLabelText("Company email for secure employee sign in");
+    expect((emailControl as HTMLInputElement).type).toBe("email");
+    expectPreservedPromises(container);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Path 3: goal twin GoalOtpSignIn
+ * ------------------------------------------------------------------ */
+
+describe("GoalOtpSignIn pre-choice privacy copy", () => {
+  it("does not promise the resume before the referrer chooses", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    expectNoPreChoiceResumePromise(container);
+  });
+
+  it("states that the name and resume stay hidden until acceptance", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    expectHiddenUntilAcceptanceBoundary(container);
+  });
+
+  it("makes post-acceptance file access conditional on active access", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    expectConditionalFileAccess(container);
+  });
+
+  it("keeps the work-email control, the decline/context/no-send promises and sends nothing", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    const emailControl = container.querySelector("#goal-otp-referrer-email");
+    expect(emailControl, "the goal company-email control must keep its stable id").not.toBeNull();
+    expect(emailControl?.getAttribute("type")).toBe("email");
+    expectPreservedPromises(container);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
