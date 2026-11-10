@@ -53,7 +53,7 @@ describe("GoalLanding (D-120)", () => {
   it("states the fair rules from shared money copy - no invented claims", () => {
     render(<GoalLanding />);
     expect(screen.getByText(REFERRING_FREE_LINE)).toBeTruthy();
-    expect(screen.getByText(/Every ask costs the same: 1 credit/)).toBeTruthy();
+    expect(screen.getByText(/Every referral request uses the same amount: 1 from your balance/)).toBeTruthy();
     expect(screen.getByText(/not an interview or a job/)).toBeTruthy();
     expect(screen.getByText(/hidden until a referrer accepts/)).toBeTruthy();
   });

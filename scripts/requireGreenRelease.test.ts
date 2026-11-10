@@ -509,7 +509,10 @@ describe.each([
     }
     for (const job of wf.jobs.keys()) {
       const lines = wf.jobs.get(job) ?? [];
-      expect(lines.some(l => /^ {4}if:/.test(l))).toBe(false);
+      const conditions = lines.filter(l => /^ {4}if:/.test(l));
+      if (file === "deploy-api.yml" && job === "migrate-db") {
+        expect(conditions).toEqual(["    if: needs.source-retirement.outputs.mode == 'normal'"]);
+      } else expect(conditions).toEqual([]);
       expect(lines.some(l => /^ {4}continue-on-error/.test(l))).toBe(false);
       for (const s of wf.steps(job)) if (has(s, /require-green-release|wrangler|apply-deploy-migrations|deploy-cloudflare/)) expect(has(s, /continue-on-error/)).toBe(false);
     }
@@ -524,8 +527,19 @@ describe.each([
 describe("deploy-api.yml migrations", () => {
   it("apply only after the release gate passed, never merely before the deploy job", () => {
     const wf = workflow("deploy-api.yml");
-    expect(wf.needs("migrate-db")).toEqual(["release-gate"]);
+    expect(wf.needs("migrate-db")).toEqual(["release-gate", "source-retirement"]);
+    expect(wf.needs("source-retirement")).toEqual(["release-gate"]);
     expect(wf.needs("deploy")).toEqual(["migrate-db"]);
+  });
+  it("keeps the cleanup preflight read-only and permits no skipped-gate production fallback", () => {
+    const wf = workflow("deploy-api.yml");
+    const preflight = (wf.jobs.get("source-retirement") ?? []).join("\n");
+    expect(preflight).toContain("    permissions:\n      contents: read");
+    expect(preflight).not.toMatch(/secrets\.|continue-on-error:|always\(\)/);
+    expect(preflight).toContain('run: node scripts/classify-source-retirement.mjs >> "$GITHUB_OUTPUT"');
+    const migrate = wf.jobs.get("migrate-db") ?? [];
+    expect(migrate.filter(l => /^ {4}if:/.test(l))).toEqual(["    if: needs.source-retirement.outputs.mode == 'normal'"]);
+    expect((wf.jobs.get("deploy") ?? []).filter(l => /^ {4}if:/.test(l))).toEqual([]);
   });
 });
 
