@@ -460,3 +460,5 @@ Actual author, exact supplied input bytes/digest, raw output, applied byte range
 RED/GREEN output and independent findings/revisions remain to be retained in that
 pull request. No bootstrap, trust, gate or ownership exception is claimed here, and
 no unrelated preexisting path is asserted to be fail-closed.
+
+Actual operator test record21:52: 2b37bbd3 commit body prematurely claimed real buffer RED: first test-only visibility harness had a comment-fragment parse error and ran zero tests. Corrected that unshipped harness typo immediately, preserving old reader expressions byte-for-byte plus exports and author CLI guard only. Actual subsequent run15tests11pass4fail: picker bytes null, picker invalid registry, gate ENOBUFS, gate invalid registry. Same exact accepted GLM regression on patched wrappers15PASS; all53script suites1362PASS. Neither missing-export RED nor rejected CLI/static-only probes count as defect RED. Harness is test instrumentation only, not shipped source or operator semantic contribution. Fullgate, independent exact-source review, CI, protected landing and released-loader checks still pending.
