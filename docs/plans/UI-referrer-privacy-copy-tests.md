@@ -207,3 +207,14 @@ Actual revised RED:25tests9assertionFAIL16PASS, exit1; cleanup clean. This is
 not independent quality acceptance. Broad future qualifiers and expired-access
 polarity remain explicit adversarial review questions. Coordinator's §7/proof
 update remains separate prose outside the source-only GLM execution range.
+
+### Third source-only correction candidate
+
+After actual DeepSeek source FINDINGS on7ef/5cf, GLM authored a3ef5f43
+parent7ef. The sole cumulative claim1857 BUILD candidate now ends ata3ef,
+retaining af0ed/7ef and both FINDINGS histories. Exact28487byte source
+SHA76e3917897ca1a1df43e37645caf5a76ad5136522668bad607b0f850f4cf3f64
+was mechanically embedded in section7 with real29tests9assertionFAIL20PASS,
+exit1 and clean cleanup. This is not source acceptance. Active/not-active
+polarity and nearest-timing clause handling require independent adversarial
+review. Packet prose remains separately attributed outside GLMsource range.

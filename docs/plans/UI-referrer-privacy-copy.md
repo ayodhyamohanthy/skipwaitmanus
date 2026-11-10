@@ -142,11 +142,11 @@ Proposed execution: `referrer-copy-tests-glm-build-nov10`, route
 `UI-referrer-privacy-copy-tests`, actual operator
 `Instinct · public-model-review-nov10`. Actual ordinary claim/input:
 `1857d9a6d72a3cf2d4f7d756860af52931fa53fa`; pure source output commit:
-`7ef155f5717b23c8dde575e85e9a86703352b5a6` (after original af0ed257).
+`a3ef5f4359799c867ea94c6f7f2e90f555b624b4` (after af0ed257 and 7ef155f5).
 Exact CLI-trimmed binary patch digest:
-`5d87eb3004cb0d6d4782cb9db2c0038768e83f1de2251e8b4bf8c20c60e1e2b7`.
-Source: 23937 UTF-8 bytes, SHA-256
-`b125aefa50843ab6b38ba4352b91a5cb07c4b81888d02f813a2c5d96bd02c54f`.
+`ebd22c8a7cb7e5d34faf1792ad7739858ce94473756a419c5463291a429b04c8`.
+Source: 28487 UTF-8 bytes, SHA-256
+`76e3917897ca1a1df43e37645caf5a76ad5136522668bad607b0f850f4cf3f64`.
 Final collected path remains `client/src/components/referrerPrivacyCopy.test.tsx`.
 The inert source is retained as the immutable source of record; future accepted
 transport must prove byte equality and name actual contributors. GLM now authored
@@ -155,7 +155,7 @@ tasks. No runtime claim or route is admitted here.
 
 Actual command on unchanged main product was
 `pnpm vitest run client/src/components/referrerPrivacyCopy.test.tsx`.
-It exited 1: 25 tests, 9 assertion failures and 16 passes. This is actual RED,
+It exited 1: 29 tests, 9 assertion failures and 20 passes. This is actual RED,
 not a green test result, full privacy acceptance or mutation-strength proof.
 The temporary collected-path copy was removed; no collected test, product or
 config edit is included in this docs carrier or the source-only execution.
@@ -169,11 +169,19 @@ BUILD candidate retains original af0ed history, raw responses and findings,
 plus actual multi-turn input/output; no second same-claim receipt is invented.
 Old source and RED proof remain in this carrier's Git history, not relabeled.
 
-The new 25-case result is still RED on unchanged product, not good-copy or
+The actual independent DeepSeek assessment of 7ef155f5 and 5cfccfc0 also
+returned source FINDINGS: unscoped future words could admit a pre-choice
+resume promise, expired/unrelated access could count as active, and truthful
+mixed after-acceptance/not-before sentences could be rejected. GLM authored
+third source a3ef5f43 after those findings. Both earlier source legs, reviews
+and raw exchanges remain in the cumulative evidence and carrier Git history.
+
+The new 29-case result is still RED on unchanged product, not good-copy or
 mutation-strength acceptance. Independent full adversarial evaluation must
-check the revised broad FUTUREQUALIFIER and expired-access polarity. Do not
-assume those are fixed or shape product wording to satisfy the tests. Any
-remaining test-source repair returns to the actual external author under the
+check whether an active token can wrongly accept not-active access and whether
+the nearest-timing heuristic handles clause boundaries and mixed polarity.
+Do not assume those are fixed or shape product wording to satisfy the tests.
+Any remaining source repair returns to the actual external author under the
 legitimate ongoing BUILD, never an operator semantic edit.
 
 ### Complete exact source candidate
@@ -181,7 +189,7 @@ legitimate ongoing BUILD, never an operator semantic edit.
 ```tsx
 // @vitest-environment jsdom
 /**
- * Referrer privacy-copy regression, red-first, revision 2.
+ * Referrer privacy-copy regression, red-first, revision 3.
  * Packet: docs/plans/UI-referrer-privacy-copy-tests.md
  *
  * Final collected path: client/src/components/referrerPrivacyCopy.test.tsx
@@ -194,29 +202,29 @@ legitimate ongoing BUILD, never an operator semantic edit.
  *
  * Expected RED on unchanged product (dc6492 copy): all three paths still render
  * "See the role, resume, and forwardable note before you choose." That promises
- * resume visibility before the choice, while the actual privacy controls hide the
- * seeker's name and resume until acceptance, and file access after acceptance also
- * requires active document access. The truthful boundary sentence and the
- * conditional access sentence are not authored yet, so the positive cases are RED
- * as well. Absence of the old sentence alone can never pass.
+ * resume visibility before the choice, while the privacy controls hide the name
+ * and resume until acceptance, and file access after acceptance also requires
+ * active document access. The truthful boundary sentence and the conditional
+ * access sentence are not authored yet, so the positive cases are RED too.
  *
- * Revision 2 corrects three test-quality defects found in the previous source:
- *  - B1: the prohibition no longer flags truthful post-acceptance or negated copy.
- *    A visibility claim is only a promise when it is unnegated AND either timed
- *    before the choice or not timed at all, so "after you accept you can open the
- *    resume while your document access is active" is not a promise. This removes
- *    the contradiction with the required conditional-access assertion.
- *  - B2: conditional access must now hold inside ONE sentence, with a real
- *    active-access clause (connective + access noun + active/expired state), so
- *    bare "while"/"requires" prose and stitched multi-sentence windows fail.
- *  - B3: negation is anchored to the verb's own clause and to the noun itself, so
- *    an unrelated negation such as "not a summary" can no longer mask a genuine
- *    overpromise.
+ * Revision 3 replaces word-list patching with a small bounded analyzer, and
+ * corrects the three defects found in revision 2 in general form:
+ *  - F1 qualifier scope: a claim is exempt only when an ACCEPTANCE-ANCHORED post
+ *    marker scopes it. Any other temporal word (then, when you choose, once you
+ *    decide, after signing in) no longer exempts a claim.
+ *  - F2 access polarity and noun scope: document access must be document, file,
+ *    attachment or resume access (or "your access" alongside a file noun), and
+ *    the polarity is checked: an active state under while/if/as long as passes,
+ *    an ended or expired state under those links fails, and the bounded truthful
+ *    form "until your document access ends" passes.
+ *  - F3 before/after precedence: the timing marker nearest the claim verb decides,
+ *    so "after you accept, but not before you choose" passes while an inverted
+ *    "before you choose, not after you accept" still fails.
  *
- * What these assertions do NOT claim: they say nothing about backend
- * authorization, document endpoints, OTP delivery or login acceptance. They
- * assert only what the rendered pre-choice copy promises a referrer. The sanity
- * controls below are pure string checks and do not depend on the product.
+ * What these assertions do NOT claim: nothing about backend authorization,
+ * document endpoints, OTP delivery or login acceptance. They assert only what the
+ * rendered pre-choice copy promises a referrer. The sanity controls are pure
+ * string checks and do not depend on the product.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -238,8 +246,7 @@ function normalize(value: string): string {
 
 /**
  * Leaf marketing-copy blocks. Form labels and sr-only text are excluded so a
- * future field label such as "Your name" cannot satisfy a copy assertion by
- * accident.
+ * future field label such as "Your name" cannot satisfy a copy assertion.
  */
 function copyBlocks(container: HTMLElement): string[] {
   const blocks: string[] = [];
@@ -274,39 +281,7 @@ function findWindow(sentences: string[], size: number, patterns: RegExp[]): stri
   return null;
 }
 
-/* ------------------------------------------------------------------ *
- * Shared matchers
- * ------------------------------------------------------------------ */
-
-const BEFORE_ACCEPTANCE =
-  /\b(?:before (?:you )?(?:choose|choosing|accept|accepting|decide|deciding)|until (?:you )?(?:accept|choose)|prior to (?:acceptance|accepting|choosing)|pre-acceptance|before acceptance|before the referrer (?:accepts|chooses))\b/i;
-
-const AFTER_ACCEPTANCE =
-  /\b(?:after (?:you )?(?:accept|accepting|that|claiming)|once (?:you )?(?:accept|claim)|post-acceptance|after acceptance|when you accept|on acceptance|following acceptance)\b/i;
-
-/** Any timing that places the statement after the decision, so it is not a pre-choice promise. */
-const FUTURE_QUALIFIER =
-  /\b(?:after|afterwards|once|when|later|then|following|post-acceptance|subsequently|next|thereafter|from then on)\b/i;
-
-const CONCEALMENT =
-  /\b(?:hidden|hide|hides|private|locked|withheld|not (?:shown|visible|shared|revealed|sent)|never (?:shown|shared|revealed)|isn't (?:shown|visible|shared)|stays? (?:hidden|private)|remain(?:s)? (?:hidden|private)|only after)\b/i;
-
-/* ------------------------------------------------------------------ *
- * B1 and B3: clause-anchored, time-qualified resume-promise detector
- * ------------------------------------------------------------------ */
-
-const RESUME_NOUN = /\b(?:resume|résumé|cv)\b/gi;
-
-/** Visibility verbs that can carry a promise about a file the referrer cannot see yet. */
-const VISIBILITY_VERB =
-  /\b(?:see|sees|seeing|view|views|preview|previews|read|reads|open|opens|inspect|inspects|browse|browses|access|accesses|get|gets|receive|receives|review|reviews|download|downloads|examine|examines)\b/gi;
-
-const NEGATOR =
-  /\b(?:not|never|no|cannot|can't|won't|wouldn't|shouldn't|isn't|aren't|don't|doesn't|didn't|unable|nothing)\b|n't\b/i;
-
-/** "not your resume", "never the resume": the noun itself is denied, not promised. */
-const NOUN_NEGATION = /\b(?:not|never|no)\b(?:\s+\w+){0,2}\s*$/i;
-
+/** All match offsets for a pattern, without leaking lastIndex state between calls. */
 function indicesOf(text: string, pattern: RegExp): number[] {
   const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
   const scan = new RegExp(pattern.source, flags);
@@ -320,17 +295,43 @@ function indicesOf(text: string, pattern: RegExp): number[] {
   return indices;
 }
 
-/**
- * Negation is read only inside the verb's own clause, so an unrelated "not" in
- * another comma-separated part of the sentence cannot mask a real promise.
- */
+/* ------------------------------------------------------------------ *
+ * Shared matchers
+ * ------------------------------------------------------------------ */
+
+const PRE_ACCEPTANCE =
+  /\b(?:before (?:you )?(?:choose|choosing|accept|accepting|decide|deciding)|until (?:you )?(?:accept|choose)|prior to (?:acceptance|accepting|choosing)|pre-acceptance|before acceptance|before the referrer (?:accepts|chooses))\b/i;
+
+/** Post markers must be anchored to acceptance or claiming, never to any other time. */
+const POST_ACCEPTANCE =
+  /\bpost-acceptance\b|\b(?:after|once|when|on|following|upon)\b(?:\s+[\w']+){0,3}\s(?:accept(?:s|ed|ing)?|acceptance|claim(?:s|ed|ing)?|approv(?:e|ed|es|al))\b/i;
+
+const CONCEALMENT =
+  /\b(?:hidden|hide|hides|private|locked|withheld|not (?:shown|visible|shared|revealed|sent)|never (?:shown|shared|revealed)|isn't (?:shown|visible|shared)|stays? (?:hidden|private)|remain(?:s)? (?:hidden|private)|only after)\b/i;
+
+const FILE_NOUN = /\b(?:file|files|document|documents|resume|résumé|attachment|attachments)\b/i;
+
+const RESUME_NOUN = /\b(?:resume|résumé|cv)\b/gi;
+
+const VISIBILITY_VERB =
+  /\b(?:see|sees|seeing|view|views|preview|previews|read|reads|open|opens|inspect|inspects|browse|browses|access|accesses|get|gets|receive|receives|review|reviews|download|downloads|examine|examines)\b/gi;
+
+const NEGATOR =
+  /\b(?:not|never|no|cannot|can't|won't|wouldn't|shouldn't|isn't|aren't|don't|doesn't|didn't|unable|nothing)\b|n't\b/i;
+
+/** "not your resume", "never the resume": the noun itself is denied. */
+const NOUN_NEGATION = /\b(?:not|never|no)\b(?:\s+\w+){0,2}\s*$/i;
+
+/* ------------------------------------------------------------------ *
+ * B1 and B3: clause-anchored visibility claims about the resume
+ * ------------------------------------------------------------------ */
+
 function negatedVerb(sentence: string, verbIndex: number): boolean {
   const prefix = sentence.slice(Math.max(0, verbIndex - 48), verbIndex);
   const lastBreak = Math.max(prefix.lastIndexOf(","), prefix.lastIndexOf(";"), prefix.lastIndexOf("."));
   return NEGATOR.test(prefix.slice(lastBreak + 1));
 }
 
-/** Negation must sit immediately before the noun to deny that noun. */
 function negatedNoun(sentence: string, nounIndex: number): boolean {
   return NOUN_NEGATION.test(sentence.slice(Math.max(0, nounIndex - 32), nounIndex));
 }
@@ -339,36 +340,75 @@ function sameClause(sentence: string, left: number, right: number): boolean {
   return !/[.;]/.test(sentence.slice(Math.min(left, right), Math.max(left, right)));
 }
 
+type ResumeClaim = { verbIndex: number; nounIndex: number; text: string };
+
 /** Unnegated visibility claims about the resume inside one sentence. */
-function resumeVisibilityClaims(sentence: string): string[] {
+function resumeVisibilityClaims(sentence: string): ResumeClaim[] {
   const verbs = indicesOf(sentence, VISIBILITY_VERB);
   const nouns = indicesOf(sentence, RESUME_NOUN);
-  const claims: string[] = [];
+  const claims: ResumeClaim[] = [];
   nouns.forEach(nounIndex => {
     verbs.forEach(verbIndex => {
       if (Math.abs(verbIndex - nounIndex) > 80) return;
       if (!sameClause(sentence, verbIndex, nounIndex)) return;
       if (negatedVerb(sentence, verbIndex)) return;
       if (negatedNoun(sentence, nounIndex)) return;
-      claims.push(sentence.slice(Math.min(verbIndex, nounIndex), Math.max(verbIndex, nounIndex) + 6));
+      const from = Math.min(verbIndex, nounIndex);
+      const to = Math.max(verbIndex, nounIndex) + 6;
+      claims.push({ verbIndex, nounIndex, text: sentence.slice(from, to) });
     });
   });
   return claims;
 }
 
+/* ------------------------------------------------------------------ *
+ * F1 and F3: timing scope decided by proximity to the claim verb
+ * ------------------------------------------------------------------ */
+
+function nearestMarker(sentence: string, pattern: RegExp, anchor: number): { index: number; distance: number } | null {
+  const indices = indicesOf(sentence, pattern);
+  if (indices.length === 0) return null;
+  return indices
+    .map(index => ({ index, distance: Math.abs(index - anchor) }))
+    .reduce((best, current) => (current.distance < best.distance ? current : best));
+}
+
+/** A pre-choice marker that is itself denied ("but not before you choose"). */
+function preMarkerNegated(sentence: string, markerIndex: number): boolean {
+  const prefix = sentence.slice(0, markerIndex);
+  const clausePrefix = prefix.slice(Math.max(prefix.lastIndexOf(","), prefix.lastIndexOf(";")) + 1);
+  return NEGATOR.test(clausePrefix.slice(-16));
+}
+
+type TimingScope = "post" | "pre-denied" | "pre" | "none";
+
+/**
+ * Whichever timing marker sits closer to the claim verb scopes the claim. This
+ * keeps "after you accept, but not before you choose" truthful while an inverted
+ * "before you choose, not after you accept" stays a promise.
+ */
+function classifyTiming(sentence: string, anchor: number): TimingScope {
+  const pre = nearestMarker(sentence, PRE_ACCEPTANCE, anchor);
+  const post = nearestMarker(sentence, POST_ACCEPTANCE, anchor);
+  if (post !== null && (pre === null || post.distance <= pre.distance)) return "post";
+  if (pre !== null) return preMarkerNegated(sentence, pre.index) ? "pre-denied" : "pre";
+  return "none";
+}
+
 /**
  * The released promise: an unnegated visibility claim about the resume that is
- * either timed before the choice or carries no timing at all. Truthful copy that
- * names resume access after acceptance, or denies it, is not a promise.
+ * scoped before the choice, or not timed at all. Acceptance-anchored post timing
+ * and a denied pre-choice marker both exempt the claim.
  */
 function promisesResumeBeforeChoice(sentence: string): boolean {
-  if (resumeVisibilityClaims(sentence).length === 0) return false;
-  if (BEFORE_ACCEPTANCE.test(sentence)) return true;
-  return !FUTURE_QUALIFIER.test(sentence);
+  const claims = resumeVisibilityClaims(sentence);
+  if (claims.length === 0) return false;
+  const scope = classifyTiming(sentence, claims[0].verbIndex);
+  return scope === "pre" || scope === "none";
 }
 
 /* ------------------------------------------------------------------ *
- * Boundary and conditional-access matchers
+ * Boundary assertion
  * ------------------------------------------------------------------ */
 
 /** Name and resume must both be stated as hidden at or before acceptance. */
@@ -377,29 +417,52 @@ function findHiddenUntilAcceptance(sentences: string[]): string | null {
     /\bname\b/i,
     /\b(?:resume|résumé|cv)\b/i,
     CONCEALMENT,
-    BEFORE_ACCEPTANCE,
+    PRE_ACCEPTANCE,
   ]);
 }
 
-const FILE_NOUN = /\b(?:file|files|document|documents|resume|résumé|attachment|attachments)\b/i;
+/* ------------------------------------------------------------------ *
+ * F2: scoped access noun and checked polarity
+ * ------------------------------------------------------------------ */
 
-const ACCESS_LINK =
-  "(?:while|as long as|for as long as|so long as|only while|only if|only when|when|if|subject to|provided that|provided|conditional on|conditional upon|contingent on)";
-const ACCESS_NOUN =
-  "(?:document access|file access|access to (?:the )?(?:files?|documents?)|your access|active access|access)";
-const ACCESS_STATE =
-  "(?:is active|remains? active|stays? active|is still active|still active|active|has ended|ends?|ended|expires?|expired|lapses?|lapsed|in effect|is valid|valid|is open)";
+const DOC_ACCESS_PRE = /\b(?:document|file|attachment|resume|résumé)\s+access\b/gi;
+const DOC_ACCESS_POST = /\baccess\s+to\s+(?:the\s+|your\s+)?(?:documents?|files?|attachments?|resume|résumés?|cv)\b/gi;
+const GENERIC_ACCESS = /\byour access\b/gi;
+
+const POSITIVE_LINK =
+  /\b(?:while|as long as|for as long as|so long as|only while|only if|only when|if|when|subject to|provided that|provided|conditional on|conditional upon|contingent on)\b/i;
+const LIMIT_LINK = /\b(?:until|till)\b/i;
+const ACTIVE_STATE = /\b(?:active|in effect|valid)\b/i;
+const END_STATE = /\b(?:ends?|ended|has ended|expires?|expired|has expired|lapses?|lapsed|revoked|withdrawn|is over)\b/i;
+
+type AccessMention = { index: number; qualified: boolean };
+
+/** Document-scoped access only: internet access or company access never qualifies. */
+function accessMentions(sentence: string): AccessMention[] {
+  const mentions: AccessMention[] = [];
+  indicesOf(sentence, DOC_ACCESS_PRE).forEach(index => mentions.push({ index, qualified: true }));
+  indicesOf(sentence, DOC_ACCESS_POST).forEach(index => mentions.push({ index, qualified: true }));
+  indicesOf(sentence, GENERIC_ACCESS).forEach(index => mentions.push({ index, qualified: false }));
+  return mentions;
+}
 
 /**
- * A real active-access clause: a conditional connective tied to an access noun
- * and to an active/expired state, all inside one clause. Bare "while" or
- * "requires" prose does not qualify.
+ * True when the sentence ties document access to a live state: an active or
+ * valid state under while/if/as long as, or the bounded form "until access ends".
+ * An ended or expired state under those links is the inverted case and fails.
  */
-const ACTIVE_ACCESS_CLAUSE = new RegExp(
-  `\\b${ACCESS_LINK}\\b[^.;]{0,60}?\\b${ACCESS_NOUN}\\b[^.;]{0,60}?\\b${ACCESS_STATE}\\b` +
-    `|\\b${ACCESS_LINK}\\b[^.;]{0,60}?\\b${ACCESS_STATE}\\b[^.;]{0,60}?\\b${ACCESS_NOUN}\\b`,
-  "i",
-);
+function hasConditionalDocumentAccess(sentence: string): boolean {
+  const mentions = accessMentions(sentence);
+  if (mentions.length === 0) return false;
+  const hasFileNoun = FILE_NOUN.test(sentence);
+  return mentions.some(mention => {
+    if (!mention.qualified && !hasFileNoun) return false;
+    const window = sentence.slice(Math.max(0, mention.index - 70), Math.min(sentence.length, mention.index + 90));
+    const bounded = LIMIT_LINK.test(window) && END_STATE.test(window);
+    const live = POSITIVE_LINK.test(window) && ACTIVE_STATE.test(window) && !END_STATE.test(window);
+    return bounded || live;
+  });
+}
 
 /**
  * Post-acceptance file access must be conditional on active access inside ONE
@@ -410,7 +473,7 @@ function findConditionalFileAccess(sentences: string[]): string | null {
   return (
     sentences.find(
       sentence =>
-        FILE_NOUN.test(sentence) && AFTER_ACCEPTANCE.test(sentence) && ACTIVE_ACCESS_CLAUSE.test(sentence),
+        FILE_NOUN.test(sentence) && POST_ACCEPTANCE.test(sentence) && hasConditionalDocumentAccess(sentence),
     ) ?? null
   );
 }
@@ -513,6 +576,15 @@ describe("sanity: pre-choice resume-promise detector", () => {
     expect(promisesResumeBeforeChoice("You can open the resume.")).toBe(true);
   });
 
+  it("scopes the exemption to acceptance, so other temporal words do not exempt", () => {
+    expect(promisesResumeBeforeChoice("Read the resume, then decide.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can read the resume when you choose.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can view the resume once you decide.")).toBe(true);
+    expect(promisesResumeBeforeChoice("When you sign in, you can open the resume.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can preview the resume after signing in.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can open the resume and then choose.")).toBe(true);
+  });
+
   it("still flags a real promise when an unrelated negation sits in the window", () => {
     expect(promisesResumeBeforeChoice("See the role, not a summary, and the resume before you choose.")).toBe(true);
     expect(promisesResumeBeforeChoice("It is not a summary, and you can see the resume before you choose.")).toBe(true);
@@ -535,6 +607,15 @@ describe("sanity: pre-choice resume-promise detector", () => {
       promisesResumeBeforeChoice("After you accept, you can open the resume while your document access is active."),
     ).toBe(false);
     expect(promisesResumeBeforeChoice("Once you accept you can read the resume.")).toBe(false);
+    expect(promisesResumeBeforeChoice("You can open the resume once accepted.")).toBe(false);
+  });
+
+  it("gives the nearer timing marker precedence", () => {
+    expect(promisesResumeBeforeChoice("You can open the resume after you accept, but not before you choose.")).toBe(
+      false,
+    );
+    expect(promisesResumeBeforeChoice("You can see the role and resume, but not before you choose.")).toBe(false);
+    expect(promisesResumeBeforeChoice("You can open the resume before you choose, not after you accept.")).toBe(true);
   });
 
   it("does not flag the boundary sentence or the preserved no-send promise", () => {
@@ -554,51 +635,61 @@ describe("sanity: hidden-until-acceptance boundary", () => {
   it("accepts natural truthful phrasings", () => {
     expect(findHiddenUntilAcceptance(["Your name and resume stay hidden until you accept."])).not.toBeNull();
     expect(findHiddenUntilAcceptance(["We hide your name and resume before you accept."])).not.toBeNull();
-    expect(
-      findHiddenUntilAcceptance(["Before you choose, your name and resume are private."]),
-    ).not.toBeNull();
+    expect(findHiddenUntilAcceptance(["Before you choose, your name and resume are private."])).not.toBeNull();
   });
 
   it("rejects the released sentence, partial statements and copy with no acceptance boundary", () => {
-    expect(
-      findHiddenUntilAcceptance(["See the role, resume, and forwardable note before you choose."]),
-    ).toBeNull();
+    expect(findHiddenUntilAcceptance(["See the role, resume, and forwardable note before you choose."])).toBeNull();
     expect(findHiddenUntilAcceptance(["Your resume stays private until you accept."])).toBeNull();
     expect(findHiddenUntilAcceptance(["Your name and resume stay private."])).toBeNull();
     expect(findHiddenUntilAcceptance(["Work email verifies company access; it stays private."])).toBeNull();
   });
 });
 
-describe("sanity: conditional file access", () => {
-  it("accepts access that is conditional on active document access after acceptance", () => {
+describe("sanity: conditional file access polarity and scope", () => {
+  it("accepts live document access after acceptance", () => {
     expect(
-      findConditionalFileAccess([
-        "After you accept, you can open the resume while your document access is active.",
-      ]),
+      findConditionalFileAccess(["After you accept, you can open the resume while your document access is active."]),
     ).not.toBeNull();
     expect(
-      findConditionalFileAccess([
-        "Once you accept, files open for as long as your document access stays active.",
-      ]),
+      findConditionalFileAccess(["Once you accept, files open for as long as your document access stays active."]),
     ).not.toBeNull();
     expect(
       findConditionalFileAccess(["After you accept, you can open the file if your document access is active."]),
     ).not.toBeNull();
   });
 
-  it("rejects an unrelated conditional that does not pin access", () => {
+  it("accepts the bounded form where access ends", () => {
     expect(
-      findConditionalFileAccess(["After you accept, you can open the file while you review the role."]),
+      findConditionalFileAccess(["After you accept, you can open the file until your document access ends."]),
+    ).not.toBeNull();
+  });
+
+  it("rejects inverted polarity where access has already ended", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while your document access has ended."]),
     ).toBeNull();
     expect(
-      findConditionalFileAccess(["After you accept, the file requires a click to open."]),
+      findConditionalFileAccess(["After you accept, the file opens when your access expires."]),
     ).toBeNull();
   });
 
-  it("rejects missing active access", () => {
+  it("rejects unrelated access nouns", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while your internet access is active."]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file if your company access is valid."]),
+    ).toBeNull();
+  });
+
+  it("rejects an unrelated conditional and missing active access", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while you review the role."]),
+    ).toBeNull();
+    expect(findConditionalFileAccess(["After you accept, the file requires a click to open."])).toBeNull();
     expect(findConditionalFileAccess(["After you accept, you can open the file."])).toBeNull();
     expect(findConditionalFileAccess(["Your document access stays active while you review."])).toBeNull();
-    expect(findConditionalFileAccess(["Files may be attached to a request."])).toBeNull();
   });
 
   it("rejects unrelated sentences stitched together", () => {
@@ -710,35 +801,39 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/tmp/referrer-external-test-prep[39m
 
 [90mstdout[2m | client/src/components/referrerPrivacyCopy.test.tsx
-[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
 
- [31m❯[39m client/src/components/referrerPrivacyCopy.test.tsx [2m([22m[2m25 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[32m 199[2mms[22m[39m
+ [31m❯[39m client/src/components/referrerPrivacyCopy.test.tsx [2m([22m[2m29 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[32m 208[2mms[22m[39m
      [32m✓[39m flags the released promise and the wider set of visibility verbs[32m 4[2mms[22m[39m
+     [32m✓[39m scopes the exemption to acceptance, so other temporal words do not exempt[32m 1[2mms[22m[39m
      [32m✓[39m still flags a real promise when an unrelated negation sits in the window[32m 0[2mms[22m[39m
      [32m✓[39m does not flag cannot, won't or will not phrasing[32m 0[2mms[22m[39m
      [32m✓[39m does not flag a noun-level denial[32m 0[2mms[22m[39m
      [32m✓[39m does not flag truthful post-acceptance copy[32m 0[2mms[22m[39m
+     [32m✓[39m gives the nearer timing marker precedence[32m 0[2mms[22m[39m
      [32m✓[39m does not flag the boundary sentence or the preserved no-send promise[32m 0[2mms[22m[39m
-     [32m✓[39m keeps the prohibition consistent with the required post-acceptance assertion[32m 2[2mms[22m[39m
+     [32m✓[39m keeps the prohibition consistent with the required post-acceptance assertion[32m 3[2mms[22m[39m
      [32m✓[39m accepts natural truthful phrasings[32m 1[2mms[22m[39m
      [32m✓[39m rejects the released sentence, partial statements and copy with no acceptance boundary[32m 0[2mms[22m[39m
-     [32m✓[39m accepts access that is conditional on active document access after acceptance[32m 1[2mms[22m[39m
-     [32m✓[39m rejects an unrelated conditional that does not pin access[32m 0[2mms[22m[39m
-     [32m✓[39m rejects missing active access[32m 0[2mms[22m[39m
+     [32m✓[39m accepts live document access after acceptance[32m 1[2mms[22m[39m
+     [32m✓[39m accepts the bounded form where access ends[32m 0[2mms[22m[39m
+     [32m✓[39m rejects inverted polarity where access has already ended[32m 0[2mms[22m[39m
+     [32m✓[39m rejects unrelated access nouns[32m 0[2mms[22m[39m
+     [32m✓[39m rejects an unrelated conditional and missing active access[32m 0[2mms[22m[39m
      [32m✓[39m rejects unrelated sentences stitched together[32m 0[2mms[22m[39m
-[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 98[2mms[22m[39m
-[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 10[2mms[22m[39m
-[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 11[2mms[22m[39m
+[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 101[2mms[22m[39m
+[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 11[2mms[22m[39m
+[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 7[2mms[22m[39m
      [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 7[2mms[22m[39m
 [31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 8[2mms[22m[39m
-[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 6[2mms[22m[39m
-[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 8[2mms[22m[39m
-     [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 7[2mms[22m[39m
-[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 13[2mms[22m[39m
-[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 8[2mms[22m[39m
-[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 5[2mms[22m[39m
+[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 12[2mms[22m[39m
      [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 8[2mms[22m[39m
+[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 13[2mms[22m[39m
+[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 9[2mms[22m[39m
+[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 6[2mms[22m[39m
+     [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 6[2mms[22m[39m
 
 [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 9 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
 
@@ -753,40 +848,40 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [31m+   "See the role, resume, and forwardable note before you choose.",[39m
 [31m+ ][39m
 
-[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m247:5[22m[39m
-    [90m245|[39m     offending[33m,[39m
-    [90m246|[39m     `pre-choice copy still promises resume visibility before the choic…
-    [90m247|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m302:5[22m[39m
+    [90m300|[39m     offending[33m,[39m
+    [90m301|[39m     `pre-choice copy still promises resume visibility before the choic…
+    [90m302|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
     [90m   |[39m     [31m^[39m
-    [90m248|[39m }
-    [90m249|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m441:5[22m[39m
+    [90m303|[39m }
+    [90m304|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m524:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mReferrerOtpSignIn pre-choice privacy copy[2m > [22mstates that the name and resume stay hidden until acceptance
 [31m[1mAssertionError[22m: pre-choice copy must state that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m256:9[22m[39m
-    [90m254|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
-    [90m255|[39m     `pre-choice copy must state that the seeker's name and resume stay…
-    [90m256|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m311:9[22m[39m
+    [90m309|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
+    [90m310|[39m     `pre-choice copy must state that the seeker's name and resume stay…
+    [90m311|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m257|[39m }
-    [90m258|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m446:5[22m[39m
+    [90m312|[39m }
+    [90m313|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m529:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mReferrerOtpSignIn pre-choice privacy copy[2m > [22mmakes post-acceptance file access conditional on active access
 [31m[1mAssertionError[22m: post-acceptance file access must be described as conditional on active access in one sentence; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m265:9[22m[39m
-    [90m263|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
-    [90m264|[39m     `post-acceptance file access must be described as conditional on a…
-    [90m265|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m320:9[22m[39m
+    [90m318|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
+    [90m319|[39m     `post-acceptance file access must be described as conditional on a…
+    [90m320|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m266|[39m }
-    [90m267|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m451:5[22m[39m
+    [90m321|[39m }
+    [90m322|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m534:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯[22m[39m
 
@@ -801,40 +896,40 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [31m+   "See the role, resume, and forwardable note before you choose.",[39m
 [31m+ ][39m
 
-[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m247:5[22m[39m
-    [90m245|[39m     offending[33m,[39m
-    [90m246|[39m     `pre-choice copy still promises resume visibility before the choic…
-    [90m247|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m302:5[22m[39m
+    [90m300|[39m     offending[33m,[39m
+    [90m301|[39m     `pre-choice copy still promises resume visibility before the choic…
+    [90m302|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
     [90m   |[39m     [31m^[39m
-    [90m248|[39m }
-    [90m249|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m472:5[22m[39m
+    [90m303|[39m }
+    [90m304|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m555:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mWorkEmailSignIn (noncompact) pre-choice privacy copy[2m > [22mstates that the name and resume stay hidden until acceptance
 [31m[1mAssertionError[22m: pre-choice copy must state that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private.","We email a one-time code to verify this company address.","Personal email providers are not accepted."]: expected null not to be null[39m
-[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m256:9[22m[39m
-    [90m254|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
-    [90m255|[39m     `pre-choice copy must state that the seeker's name and resume stay…
-    [90m256|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m311:9[22m[39m
+    [90m309|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
+    [90m310|[39m     `pre-choice copy must state that the seeker's name and resume stay…
+    [90m311|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m257|[39m }
-    [90m258|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m477:5[22m[39m
+    [90m312|[39m }
+    [90m313|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m560:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mWorkEmailSignIn (noncompact) pre-choice privacy copy[2m > [22mmakes post-acceptance file access conditional on active access
 [31m[1mAssertionError[22m: post-acceptance file access must be described as conditional on active access in one sentence; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private.","We email a one-time code to verify this company address.","Personal email providers are not accepted."]: expected null not to be null[39m
-[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m265:9[22m[39m
-    [90m263|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
-    [90m264|[39m     `post-acceptance file access must be described as conditional on a…
-    [90m265|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m320:9[22m[39m
+    [90m318|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
+    [90m319|[39m     `post-acceptance file access must be described as conditional on a…
+    [90m320|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m266|[39m }
-    [90m267|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m482:5[22m[39m
+    [90m321|[39m }
+    [90m322|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m565:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯[22m[39m
 
@@ -849,48 +944,48 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [31m+   "See the role, resume, and forwardable note before you choose.",[39m
 [31m+ ][39m
 
-[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m247:5[22m[39m
-    [90m245|[39m     offending[33m,[39m
-    [90m246|[39m     `pre-choice copy still promises resume visibility before the choic…
-    [90m247|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m302:5[22m[39m
+    [90m300|[39m     offending[33m,[39m
+    [90m301|[39m     `pre-choice copy still promises resume visibility before the choic…
+    [90m302|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
     [90m   |[39m     [31m^[39m
-    [90m248|[39m }
-    [90m249|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m501:5[22m[39m
+    [90m303|[39m }
+    [90m304|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m584:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mGoalOtpSignIn pre-choice privacy copy[2m > [22mstates that the name and resume stay hidden until acceptance
 [31m[1mAssertionError[22m: pre-choice copy must state that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m256:9[22m[39m
-    [90m254|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
-    [90m255|[39m     `pre-choice copy must state that the seeker's name and resume stay…
-    [90m256|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m311:9[22m[39m
+    [90m309|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
+    [90m310|[39m     `pre-choice copy must state that the seeker's name and resume stay…
+    [90m311|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m257|[39m }
-    [90m258|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m506:5[22m[39m
+    [90m312|[39m }
+    [90m313|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m589:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mGoalOtpSignIn pre-choice privacy copy[2m > [22mmakes post-acceptance file access conditional on active access
 [31m[1mAssertionError[22m: post-acceptance file access must be described as conditional on active access in one sentence; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m265:9[22m[39m
-    [90m263|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
-    [90m264|[39m     `post-acceptance file access must be described as conditional on a…
-    [90m265|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m320:9[22m[39m
+    [90m318|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
+    [90m319|[39m     `post-acceptance file access must be described as conditional on a…
+    [90m320|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m266|[39m }
-    [90m267|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m511:5[22m[39m
+    [90m321|[39m }
+    [90m322|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m594:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯[22m[39m
 
 
 [2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
-[2m      Tests [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m16 passed[39m[22m[90m (25)[39m
-[2m   Start at [22m 03:59:32
-[2m   Duration [22m 1.41s[2m (transform 352ms, setup 45ms, import 634ms, tests 199ms, environment 430ms)[22m
+[2m      Tests [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m20 passed[39m[22m[90m (29)[39m
+[2m   Start at [22m 04:10:03
+[2m   Duration [22m 1.48s[2m (transform 423ms, setup 56ms, import 678ms, tests 208ms, environment 437ms)[22m
 
 
 EXIT_STATUS=1
@@ -903,12 +998,12 @@ Original af0ed run before cleanup (historical, not revised-run status):
 ?? client/src/components/referrerPrivacyCopy.test.tsx
 ?? docs/plans/tests/
 ```
-Revised 7ef run after temporary cleanup (empty output means clean):
+Third a3ef run after temporary cleanup (empty output means clean):
 ```text
 ```
 
 The original af0ed run left only its intended inert source untracked. The
-revised run cleanup was clean. Both af0ed and subsequent 7ef155f5 change only
+revised run cleanup was clean. All three af0ed, 7ef155f5 and a3ef5f43 source legs change only
 that same inert source file; the source-only range excludes packet prose. This source and
 its execution are candidates pending separate exact independent admission.
 Coordinator prose here is a distinct docs contribution outside the GLM range.
