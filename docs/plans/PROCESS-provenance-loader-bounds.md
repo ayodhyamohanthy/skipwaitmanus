@@ -113,6 +113,8 @@ registered loader repair is excepted. No code generation has been requested
 under this record. This section must be complete and independently reviewed
 before source dispatch; open fields below are blockers, not implied approvals.
 
+Routing registration amendment, November 10 at 17:47 IST: the actual holder offered the reference-only alternative in [PR1114 comment6765718585](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1114#issuecomment-6765718585), now accepted. Preserve PR1114 head `a14385f0a1b90c9433dfdf86fe7417b2244b4229`, plain claim77b9962d, active heartbeatbc7597, all old refs/history and unpublished work (UNKNOWN), unmerged and without author certification. This docs registration is subject to separate exact-head review and changes ONLY this existing row's branch to `agent/queue/process-provenance-loader-bounds-glm-nov10-isolated`; it must land on main before a code PR. It implements the accepted reference-only handoff under routine registration/coordination authority, not a D-312 expansion or source allowlist change. The old branch and derived `agent/review/process-provenance-loader-bounds`, `agent/architect/process-provenance-loader-bounds` and `agent/heartbeat/process-provenance-loader-bounds` remain physically preserved but intentionally cease mapping to this row; new derived refs use the `process-provenance-loader-bounds-glm-nov10-isolated` slug. No old ref is deleted, reset, reclaimed or impersonated. Fresh work starts from verified current main (registration base `93b27c59e52324f377037951fe0b8b8dd29967fc`, recheck at binding/admission), not a14385f0: this is a second authoring effort, NOT ancestry continuation or an abandoned-build exception, and no new receipt covers the preserved contribution. The new author receives current-main requirements, measured defect and review findings, never the unknown source patch to reissue as its own; retain exact supplied input proving that exclusion. The fresh GLM route uses its own complete, independently admitted D-312 pre-dispatch binding, NOT an ordinary nonexternal claim or a fabricated qualified marker through the broken loader. The reference-only hold has no dispatch or landing. Earlier branch/base/selection/free snapshots below are historical: fresh actual selection/free-generation capability and hard stop, base, final input bytes/digest, FIFO, shared-hunk composition, unchanged gate/landing mechanics and actual binding assessment remain supervisor-owned prerequisites before generation. The supervisor observed explicit Macaly GLM 5.3 selection at17:35:12 and Free/purchase-required billing at17:36:23 in the existing author session; those snapshots do not prove future free generation. This paragraph proposes no source permission or author clearance; independent final review, exact tests/CI, protected landing and every other rule remain unchanged.
+
 ### Binding record (not yet execution-ready)
 
 - Task: `PROCESS-provenance-loader-bounds`, existing Tier 2, existing six-path
@@ -159,14 +161,17 @@ before source dispatch; open fields below are blockers, not implied approvals.
   avoid was used. This is ordinary eligibility, not a priority exception.
   Main has since moved to92fc6ebc; rerun fresh after binding admission/main
   movement and account for its actual merged prep, retaining exact outputs.
-- Source branch: `agent/queue/process-provenance-loader-bounds`. Prior absence
+- HISTORICAL reference-only source branch (not the fresh execution route):
+  `agent/queue/process-provenance-loader-bounds`. Prior absence
   is historical: at15:45:28 IST another actual session created empty Claim
   `77b9962d2f2f858ac6a1db2f005e792e54bfe79c`, Qoder · 5f11, parent92fc6ebc.
   Its real model, source and unpublished work are unresolved. Preserve that
-  claim/history; no overwrite, reclaim or duplicate GLM dispatch. The named
-  GLM record above remains a proposed author, NOT this holder's identity or
-  execution. Current-holder coordination must settle the actual author route
-  and source composition before generation; do not relabel the real claim.
+  claim/history; no overwrite, reclaim or duplicate claim ON THIS PRESERVED
+  BRANCH. The fresh isolated GLM route needs its own complete binding. The
+  named GLM record is NOT this holder's identity or execution. Holder
+  coordination for the reference-only handoff is satisfied by the accepted
+  offer above, not author qualification or source composition; do not relabel
+  the real claim or treat its unknown author as qualified.
   A plain Qoder Claim can work; the broken loader blocks the provenance-qualified
   external claim path, not every plain marker. This existing plain marker does
   not establish actual-author validity or settle the provenance-qualified route.
@@ -286,3 +291,5 @@ The original privacy outcome remains active and unshipped.
 D-312 approval-record preparation, November 10 at 15:28 IST: actual approval
 recovered. Binding facts and supported mechanics above are unresolved; no
 source dispatch, claim, implementation readiness or customer completion.
+
+Routing registration candidate, November 10 at17:47 IST: old PR1114 is reference-only, preserved and unmerged; the proposed isolated route is not execution-ready. No new source generation, ordinary BUILD claim, identity certification or customer completion is asserted.
