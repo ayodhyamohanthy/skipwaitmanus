@@ -107,7 +107,10 @@ provider `https://www.macaly.com/`:
   `DeepSeek V4.1 Flash`; existing canonical key `deepseek-v4.1-flash`.
 
 The retained fresh observation digest is
-`865c92da023af221fa10bc77d04c537e2c421c3d6b586201d12049c0d2623ab9`.
+`187ff8e5f040437e15e91fa1a247dd66c18d79b6bd006376fccf168a710f6d4a`.
+Earlier 865c92da observation bytes remain in carrier history; this revision
+distinguishes AX labels from literal pixel text/lock icons and retains the
+provider EU badge/menu-note context without verifying execution location.
 The earlier shorthand keys were withdrawn; these keys preserve known-family
 exclusions, not evidence of a hidden checkpoint, endpoint or cryptographic
 provider authorship. Fresh observed homepage selections and Free allowance
