@@ -96,12 +96,154 @@ manual markers or bypass the broken trusted read. Any available ordinary
 nonexternal development route must have genuinely established author identity
 and applicable authority, not a relabeled external model. If no supported
 route exists, report this precise execution blocker while continuing bounded
-registration/research; this packet grants no bootstrap exception.
+registration/research; the original registration granted no bootstrap exception. D-312 now supplies
+only the owner-approved one-task automated-claim exception, subject to section
+5a below. It does not establish any missing execution fact.
 
 Unknown identity stays held; no self-admission, hidden operator semantic edits,
 cosmetic rewrite or history replacement. Any actual source repair needs its
 real author/fixer attribution. Separate final exact review and execution receipt
 admission remain required before supported completion markers.
+
+## 5a. D-312 pre-dispatch binding and landing review
+
+The complete owner proposal at 12:30:24 IST and its actual owner-added like at
+15:27:23 IST are recorded in D-312. Only the automated task claim for this
+registered loader repair is excepted. No code generation has been requested
+under this record. This section must be complete and independently reviewed
+before source dispatch; open fields below are blockers, not implied approvals.
+
+### Binding record (not yet execution-ready)
+
+- Task: `PROCESS-provenance-loader-bounds`, existing Tier 2, existing six-path
+  implementation allowlist in section 4; no new or renamed row.
+- Approval-record starting base: `03bb0ff8a72be6c6d73f47e312dc4f8cdfad25a0`.
+  Fresh current-main composition base: `92fc6ebc2313a93a6ac5623c4a319de79102129e`.
+  Its intervening PR1112 changes only prep packet/inert test source, not the
+  two production wrappers; preserve that separately merged history.
+  It includes the actual pagination merge; do not use the older wrapper/core
+  context as an execution base. Historical03bb prebinding snapshot: 125,131 bytes,
+  SHA-256 `cf174693f25bc32eff4c62b0a67ca955c6256675b78c9df619b43746daea7b65`.
+  It includes actual consumers/resolver, current provenance and pagination
+  tests, packet/model contract, config and package context. This is NOT the
+  final prompt digest. After admitted binding is included, retain the final
+  supplied bytes/digest immediately before generation; do not claim a
+  circular digest of the yet-to-be-committed carrier. Final input must be
+  reassembled from current92fc including its merged prep and admitted binding.
+- Actual operator/session: `Instinct · public-model-review-nov10`, separately
+  attributed transport/testing coordinator, not the code author.
+- Actual coding author selection: Macaly public selector explicitly reselected
+  `GLM 5.3` on November 10 at 15:30:48 IST, before source dispatch. Provider
+  https://www.macaly.com/ ; existing author session
+  https://www.macaly.com/chat/ntir2jti8lu3np3l0bvabmzb?variant=ntir2jti8lu3np3l0bvabmzb .
+  Conservative canonical family `glm-5.3` retains GLM/Flash alias exclusion;
+  this does not assert an unobserved served checkpoint. Selection screenshot was inspected and shows `GLM 5.3`; its PNG SHA-256 is
+  `7c85df042ff75a1ac82897e260e44efcc835f869454282c7e87ab3ee4082e2c8`.
+  The c9d63 record received an actual independent PASS; final exact carrier
+  assessment remains pending. Existing privacy work is not this execution.
+- Free route: supervisor inspected current Macaly billing at 15:30:16 IST:
+  account is on Free; adding capacity requires purchasing a plan. Stop at
+  capacity, any paid requirement or possible card charge; no top-ups, upgrade
+  or payment. The exact private allowance/account identifier is not published.
+  This observed account state and hard stop must remain valid at dispatch.
+- Ownership: current live exact fullstack-lights/QA/fetch-parity branch
+  queries returned no branches. Their rows and ownership remain; absence is
+  not an ACK or proof of no unpublished work. Preserve histories and isolate
+  the two wrapper hunks; shared-hunk composition still requires review.
+- FIFO: actual supported nonmutating previews on current base at 15:35:40
+  offered own prep CONTINUE after only `--avoid D-090-BYOR` (unknown real
+  contributors, outside this exception). That prep's completion is actually
+  blocked by the confirmed production loader defect. Adding only
+  `--avoid UI-referrer-privacy-copy-tests` then offered BUILD
+  `PROCESS-provenance-loader-bounds`. No claim, target override or blanket
+  avoid was used. This is ordinary eligibility, not a priority exception.
+  Main has since moved to92fc6ebc; rerun fresh after binding admission/main
+  movement and account for its actual merged prep, retaining exact outputs.
+- Source branch: `agent/queue/process-provenance-loader-bounds`. Prior absence
+  is historical: at15:45:28 IST another actual session created empty Claim
+  `77b9962d2f2f858ac6a1db2f005e792e54bfe79c`, Qoder · 5f11, parent92fc6ebc.
+  Its real model, source and unpublished work are unresolved. Preserve that
+  claim/history; no overwrite, reclaim or duplicate GLM dispatch. The named
+  GLM record above remains a proposed author, NOT this holder's identity or
+  execution. Current-holder coordination must settle the actual author route
+  and source composition before generation; do not relabel the real claim.
+  A plain Qoder Claim can work; the broken loader blocks the provenance-qualified
+  external claim path, not every plain marker. This existing plain marker does
+  not establish actual-author validity or settle the provenance-qualified route.
+- Source transport: only public repository input, the exact section 4 scope
+  and required tests. Retain final supplied bytes/digest, exact raw generated
+  output, byte-for-byte patch application, every actual author/fixer range,
+  RED/GREEN output and all independent findings/revisions in the repair PR.
+  The operator does not write semantic source or silently repair output.
+  No private transcripts, secrets or hidden metadata in the public repo.
+- Replacement claim binding: D-312 plus this independently reviewed task,
+  operator, observed author/model/provider/session, current-base/scope/branch
+  and free-hard-stop record replaces only this broken automated task claim.
+  Do NOT create normal Claim/provenance/execution markers or normal D-311
+  receipts with invented claim linkage. Later code needs its own actual
+  manual attribution and exact evidence, not this pre-execution record alone.
+- Actual independent DeepSeek assessment: PASS for the binding record as
+  written at `c9d63bdf149af5ee6a706472d3e5c805a4618c77`, base03bb0ff8,
+  NOT dispatch readiness. Source
+  https://www.macaly.com/chat/kowmhfs2ijn30ip2sace3744?variant=kowmhfs2ijn30ip2sace3744 .
+  The actual verdict requires final supplied bytes/digest, free-route and
+  fresh-FIFO rechecks, explicit six-path/two-wrapper manual owner composition,
+  exact unchanged non-Tier1 early-return proof, and an actual supported Land
+  path under the broken loader before generation. This later status record
+  is not a claim that the reviewer already assessed its own added text;
+  final exact carrier review remains required. No source generation yet.
+- Actual unchanged-check proof plus required final assessment:
+  the exact registered Tier 2 source branch is admitted by queue-gate;
+  `reviewGateViolation` on base03bb returns for declared/computed non-Tier1
+  before provenance resolution. Such a return is NOT identity certification.
+  The row's no-owns scope result is SKIPPED, not a scope PASS, so the actual
+  six-path/hunk diff and ownership composition need explicit manual review.
+  Supervisor ran an isolated local Git fixture of exactc9d63 with the real
+  oversized registry: actual Git read still failed ENOBUFS/SIGTERM. The exact
+  six implementation paths computed Tier2 and reviewGateViolation returned
+  null with provenanceAccessed:false. This is technical control evidence,
+  not model certification or production source/claim. No gate edits,
+  fabricated claim or data compression are permitted.
+- Implementation review: genuine independent DeepSeek exact-source/manual
+  attribution/current-main assessment, excluding the actual GLM author and
+  any real fixer. Record the actual model and complete verdict, not a made-up
+  pass marker. Reviewer identity/availability still needs fresh execution
+  evidence at that stage. Final required tests/CI must pass on the exact head.
+- Proposed protected nonwriter landing/slot mechanics, for independent
+  assessment: after current-main and exact-head CI plus actual independent
+  final review, verify the landing slot is free, record an honest empty
+  task/operator-only Land claim as in prior nonwriter documentation admissions,
+  and normally protected-merge the registered Tier 2 branch. This is NOT a
+  BUILD claim, D-311 qualifier or identity certification. Supported --landed
+  after an explicit landing-ref fetch was proved earlier today. Current slot
+  was empty with Landed f32a29e3; revalidate it at landing. The proposed loader-specific
+  slot procedure now has an actual isolated-local-Git proof under the SAME
+  ENOBUFS condition: correctly formatted task/operator-only Land claim,
+  actual unchanged supported --landed exit0, then readback Landed. An initial
+  wrong-format synthetic marker failed exit1 and remains a FAILED probe;
+  correction used the actual markerSubject format, not a runtime edit.
+  No production marker was created by that fixture. This establishes command
+  mechanics, not future live free-slot ownership, final review or CI. Final
+  independent assessment still required; no fabricated verdict, admin bypass
+  or gate skip is approved.
+- After actual merge: settle main CI and slot via their supported operations,
+  prove both released production loaders and unchanged original prep D-311
+  receipt composition, then resume ordinary protocol. Do not call --fixed or
+  complete unless genuine existing markers support it. Record this one-task
+  manual exception's actual outcome explicitly, without a counterfeit marker.
+
+This is not a new schema or runtime gate exception. If the proposed replacement
+binding cannot work through the remaining unchanged checks, report that precise
+conflict for review before authoring. Do not broaden the founder's approval to
+skip CI, review, scope, independence, protections, history or any other rule.
+
+After actual source output, preserve input/output/observation bytes and digests,
+actual author/fixer identities and ranges, test failures and revisions. Obtain
+actual independent exact-final-version implementation review, required exact
+CI and current-main validation before normal protected landing. Neither this
+approval record nor a candidate repaired loader may approve its own code.
+The one-task exception ends with acceptance or explicit abandonment of this
+repair; it never becomes a reusable route for other work.
 
 ## 6. Red-first verification
 
@@ -140,3 +282,7 @@ claim, source fix, execution receipt, verdict, completion or deployment is
 asserted. Supervisor retains implementation/testing/independent review and
 normal nonwriter landing follow-through; packet writer supplies docs only.
 The original privacy outcome remains active and unshipped.
+
+D-312 approval-record preparation, November 10 at 15:28 IST: actual approval
+recovered. Binding facts and supported mechanics above are unresolved; no
+source dispatch, claim, implementation readiness or customer completion.
