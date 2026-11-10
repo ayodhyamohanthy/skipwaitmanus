@@ -169,8 +169,16 @@ before source dispatch; open fields below are blockers, not implied approvals.
   Do NOT create normal Claim/provenance/execution markers or normal D-311
   receipts with invented claim linkage. Later code needs its own actual
   manual attribution and exact evidence, not this pre-execution record alone.
-- Independent binding/mechanics assessment: PENDING exact carrier SHA and
-  actual independent model verdict/source, required before generation.
+- Actual independent DeepSeek assessment: PASS for the binding record as
+  written at `c9d63bdf149af5ee6a706472d3e5c805a4618c77`, base03bb0ff8,
+  NOT dispatch readiness. Source
+  https://www.macaly.com/chat/kowmhfs2ijn30ip2sace3744?variant=kowmhfs2ijn30ip2sace3744 .
+  The actual verdict requires final supplied bytes/digest, free-route and
+  fresh-FIFO rechecks, explicit six-path/two-wrapper manual owner composition,
+  exact unchanged non-Tier1 early-return proof, and an actual supported Land
+  path under the broken loader before generation. This later status record
+  is not a claim that the reviewer already assessed its own added text;
+  final exact carrier review remains required. No source generation yet.
 - Proposed unchanged-check path, subject to actual independent assessment:
   the exact registered Tier 2 source branch is admitted by queue-gate;
   `reviewGateViolation` on base03bb returns for declared/computed non-Tier1
