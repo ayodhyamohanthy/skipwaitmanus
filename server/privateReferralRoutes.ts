@@ -24,7 +24,7 @@ import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, send
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
 import { getAskShelfLifeEndsAtMs, isReferralProgressUpdateStatus, REFERRED_DEADLINE_ENABLED, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
-import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
+import { BlockCheckUnavailableError, getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
@@ -92,8 +92,8 @@ export type PrivateReferralRouteDeps = {
   /**
    * Batched block check for referral lists and thread guards. Returns the
    * subset of request ids blocked with the viewer (either direction).
-   * Fail-open by contract: a check failure must never hide unblocked threads
-   * (e.g. before migration 0075_user_blocks is applied in an environment).
+   * Unavailable by contract: a check failure means the decision cannot be
+   * established, so the surface answers a truthful unavailable response.
    */
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
@@ -228,6 +228,19 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   const referredActionsEnabled = deps.referredDeadlineEnabled ?? REFERRED_DEADLINE_ENABLED;
   const refuseReferredAction = (res: ExpressResponse) => res.status(409).json({ code: "not_available_yet", error: "This option is not available yet. Nothing has changed." });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  // Authorization unavailability (P0-referral-access-availability): a block check
+  // that cannot be established never reads as "not blocked". The surface answers
+  // a truthful unavailable response with private no-store; the denial deny path
+  // stays a neutral 404.
+  const referralUnavailable = (res: ExpressResponse) => {
+    res.set("Cache-Control", "private, no-store");
+    return res.status(503).json({ error: "This private request is unavailable right now" });
+  };
+  const noteBlockUnavailable = (actorUserId: number | undefined, requestId: number | undefined): BlockCheckUnavailableError => {
+    record({ actorUserId, action: "company_referral.block_check_unavailable", outcome: "failure", resourceType: "referral_request", resourceId: requestId });
+    captureServerError(new Error("Block availability check failed"), { area: "referral_block_check" });
+    return new BlockCheckUnavailableError();
+  };
   // Additive companyName/companyInitials from the company directory on every
   // row that carries a companyDomain; non-object rows pass through untouched.
   const lookupCompanies = deps.resolveCompanyIdentities ?? resolveCompanyIdentities;
@@ -240,21 +253,21 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   };
   const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
   const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
-  // Block enforcement is fail-open: if the check itself fails (e.g. the
-  // userBlocks table is absent in an environment), threads stay visible
-  // rather than vanishing. Denials are neutral 404s so blocks are not enumerable.
+  // Block enforcement is availability-safe: if the check itself fails (e.g. the
+  // userBlocks table is absent in an environment), private access stays
+  // unavailable (truthful 503) instead of an unsupported not-blocked result.
+  // Denials are neutral 404s so blocks are not enumerable.
   const getBlockedIds = deps.getBlockedReferralRequestIds ?? defaultBlockedRequestIds;
   const blockedRequestIds = async (userId: number, rows: unknown[]): Promise<Set<number>> => {
-    try {
-      const ids = rows
-        .map(row => (typeof row === "object" && row !== null ? Number((row as Record<string, unknown>).id) : NaN))
-        .filter(id => Number.isInteger(id) && id > 0);
-      return await getBlockedIds(userId, ids);
-    } catch { return new Set<number>(); }
+    const ids = rows
+      .map(row => (typeof row === "object" && row !== null ? Number((row as Record<string, unknown>).id) : NaN))
+      .filter(id => Number.isInteger(id) && id > 0);
+    try { return await getBlockedIds(userId, ids); }
+    catch { throw noteBlockUnavailable(userId, undefined); }
   };
   const isRequestBlocked = async (userId: number, requestId: number): Promise<boolean> => {
     try { return (await getBlockedIds(userId, [requestId])).has(requestId); }
-    catch { return false; }
+    catch { throw noteBlockUnavailable(userId, requestId); }
   };
   const blockedThreadDeny = (actorUserId: number | undefined, resourceId: number, res: ExpressResponse) => {
     record({ actorUserId, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", resourceId });
@@ -587,7 +600,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).send("Sign in to view this document"); if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
       const attachment = await deps.getAccessibleReferralAttachment(identity.account.id, attachmentId); if (!attachment) return res.status(404).send("Document not found");
       // A referrer blocked with the seeker, either way, gets the same 404 as no access (blocks stay unenumerable); the seeker
-      // always keeps their own file. Fail-open like every referral surface: a failed check never hides a file.
+      // always keeps their own file. Unavailable-on-failure like every referral surface: a failed check never grants a file.
       const askId = attachment.ownerId === identity.account.id ? null : attachment.referralRequestId ?? null;
       if (askId !== null && await isRequestBlocked(identity.account.id, askId)) {
         record({ actorUserId: identity.account.id, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", resourceId: askId, metadata: { surface: "document" } });
@@ -605,7 +618,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         return res.send(Buffer.from(bytes));
       }
       const url = await deps.storageGetSignedUrl(attachment.fileKey || ""); res.redirect(307, url);
-    } catch { res.status(502).send("We could not retrieve that document. Please try again."); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(502).send("We could not retrieve that document. Please try again."); }
   });
   app.get("/api/privacy/export", async (req, res) => {
     try {
@@ -1160,7 +1173,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       let hasEverAsked = true; // fail closed: a payload doubt must never show first-timer sample rows
       try { hasEverAsked = deps.hasEverCreatedReferralRequest ? await deps.hasEverCreatedReferralRequest(identity.account.id) : true; } catch { hasEverAsked = true; }
       res.json({ requests, expiredRequestIds, hasEverAsked, ...(slots ? { slots } : {}) });
-    } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(500).json({ error: "We could not load your referral requests" }); }
   });
   const loadInbox = async (userId: number, requestedScope: string) => {
     const scope = requestedScope === "saved" || requestedScope === "completed" ? requestedScope : "new";
@@ -1185,7 +1198,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to view employee requests" });
       res.json(await loadInbox(identity.account.id, typeof req.query.scope === "string" ? req.query.scope : "new"));
-    } catch { res.status(500).json({ error: "We could not load private company requests" }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(500).json({ error: "We could not load private company requests" }); }
   });
   // One call for the referrer home page: same helpers as the separate endpoints, one sign-in check, sections in parallel.
   // Unverified accounts get no inbox/impact data. A failing section is reported in `failed` and does not hide the others.
@@ -1251,7 +1264,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.saveCompanyReferralRequest(identity.account.id, requestId, saved);
       record({ actorUserId: identity.account.id, action: saved ? "company_referral.saved" : "company_referral.unsaved", outcome: "success", resourceType: "referral_request", resourceId: requestId });
       res.json(result);
-    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
   });
   app.post("/api/company-referrals/:requestId/withdraw", async (req, res) => {
     try {
@@ -1281,7 +1294,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.reviewReferralRequest(identity.account.id, { requestId, decision, message });
       record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
       res.json(result);
-    } catch (error) { const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(409).json({ error: error instanceof Error ? error.message : "This referral request can no longer be reviewed", currentState }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(409).json({ error: error instanceof Error ? error.message : "This referral request can no longer be reviewed", currentState }); }
   });
   app.post("/api/company-referrals/:requestId/one-click-review", async (req, res) => {
     try {
@@ -1298,9 +1311,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, decision === "approved" ? `Your referral request was accepted at ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? "A verified employee accepted your private request." : `The employee can't help right now${passReasonSeekerLabel(passReasonOf(req.body)) ? ` (${passReasonSeekerLabel(passReasonOf(req.body))})` : ""}. Your request stays active for other employees.`);
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, decision === "approved" ? `Your referral was accepted — ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p>` : result.reopened ? `<p>The employee who was reviewing your request at <strong>${escapeHtml(result.companyDomain)}</strong> can't take it on right now. Your ask is open again to other verified employees there.</p>` : `<p>Your request at <strong>${escapeHtml(result.companyDomain)}</strong> remains visible to other verified employees.</p>`);
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
-    } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/verify your work email|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/verify your work email|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
-  app.get("/api/referrer-review-links/:linkToken", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);const linkToken=req.params.linkToken;if(!identity)return res.status(401).json({error:"Sign in with your verified company email to use this private review link"});if(!isOpaqueReviewLinkToken(linkToken))return res.status(400).json({error:"This private review link is invalid"});if(!deps.resolveReferrerReviewEmailLink)return res.status(503).json({error:"Email review is unavailable right now"});const link=await deps.resolveReferrerReviewEmailLink(identity.account.id,linkToken);if(await isRequestBlocked(identity.account.id,link.requestId))return blockedThreadDeny(identity.account.id,link.requestId,res);res.set("Cache-Control","private, no-store");res.json({review:{ready:true,decisions:["approved","role_not_a_fit","cannot_support","timing"]}});}catch(error){const message=error instanceof Error?error.message:"This private review link is unavailable";res.status(409).json({error:message});}});
+  app.get("/api/referrer-review-links/:linkToken", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);const linkToken=req.params.linkToken;if(!identity)return res.status(401).json({error:"Sign in with your verified company email to use this private review link"});if(!isOpaqueReviewLinkToken(linkToken))return res.status(400).json({error:"This private review link is invalid"});if(!deps.resolveReferrerReviewEmailLink)return res.status(503).json({error:"Email review is unavailable right now"});const link=await deps.resolveReferrerReviewEmailLink(identity.account.id,linkToken);if(await isRequestBlocked(identity.account.id,link.requestId))return blockedThreadDeny(identity.account.id,link.requestId,res);res.set("Cache-Control","private, no-store");res.json({review:{ready:true,decisions:["approved","role_not_a_fit","cannot_support","timing"]}});}catch(error){if(error instanceof BlockCheckUnavailableError) return referralUnavailable(res);const message=error instanceof Error?error.message:"This private review link is unavailable";res.status(409).json({error:message});}});
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
@@ -1320,7 +1333,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, decision === "approved" ? `Your referral request was accepted at ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? "A verified employee accepted your private request." : `The employee can't help right now${passReasonSeekerLabel(passReasonOf(req.body)) ? ` (${passReasonSeekerLabel(passReasonOf(req.body))})` : ""}. Your request stays active for other employees.`);
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, decision === "approved" ? `Your referral was accepted — ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p>` : result.reopened ? `<p>The employee who was reviewing your request at <strong>${escapeHtml(result.companyDomain)}</strong> can't take it on right now. Your ask is open again to other verified employees there.</p>` : `<p>Your request at <strong>${escapeHtml(result.companyDomain)}</strong> remains visible to other verified employees.</p>`);
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
-    } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/private review link|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); const message = error instanceof Error ? error.message : "This private review link is unavailable"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/private review link|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
   app.post("/api/company-referrals/:requestId/progress", async (req, res) => {
     const requestId = Number(req.params.requestId);
@@ -1339,6 +1352,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { status: result.status } });
       res.json({ progress: result });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "We could not record this referral progress";
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
@@ -1364,6 +1378,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store");
       res.json({ messages, progressStatus: progress?.status, referenceId: progress?.referenceId ?? null });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "We could not open this private conversation";
       record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
       res.status(/only available after the referral is accepted/i.test(message) ? 409 : 403).json({ error: message });
@@ -1391,6 +1406,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "success", resourceType: "referral_conversation", resourceId: requestId, metadata: { bodyLength: body.length } });
       res.status(201).json({ message });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "We could not send this private message";
       record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
       res.status(/only available after the referral is accepted/i.test(message) ? 409 : 403).json({ error: message });
@@ -1417,6 +1433,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (parsed.data.payForward) record({ actorUserId, action: "landed.pay_forward_chosen", outcome: "success", resourceType: "landed_journey", resourceId: state.referralRequestId, metadata: { choice: parsed.data.payForward } });
       res.json({ state });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "We could not send your thank-you";
       const isKnownClientError = /not available to you/i.test(message) || /marks the ask as hired/i.test(message) || /database unavailable/i.test(message);
       if (isKnownClientError) {
@@ -1467,7 +1484,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only", pinnedWorkCount } });
       res.set("Cache-Control", "private, no-store");
       res.json({ request: { ...withParsedJobFunction(anonymousRequest), publicRef: publicAskRef(requestId), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
-    } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
+    } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(500).json({ error: "We could not load this private candidate preview" }); }
   });
   app.get("/api/company-referrals/:requestId", async (req, res) => {
     try {
@@ -1487,7 +1504,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: view.companyDomain ?? undefined, metadata: { attachmentCount: view.attachments.length, accepted: view.candidateName !== undefined, documentLinks } });
       res.set("Cache-Control", "private, no-store");
       res.json({ request: { ...view, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } });
-    } catch {
+    } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       res.status(500).json({ error: "We could not load this private referral request" });
     }
   });
@@ -1503,6 +1521,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p>`);
       res.json(claimResponseView(result));
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
       // D-038-A: the 5-claim cap is a state conflict (the referrer must accept or pass one first), never a server fault.
@@ -1521,6 +1540,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.extend_referred_deadline", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { extended: result.extended, replayed: result.replayed } });
       res.json({ extended: result.extended, replayed: result.replayed ?? false });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
       res.status(/not in your account|not found|no longer exists/i.test(message) ? 404 : 409).json({ error: message, currentState });
@@ -1537,6 +1557,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.step_back", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { steppedBack: result.lapsed, reason: result.reason } });
       res.json({ steppedBack: result.lapsed, reason: result.reason ?? null });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
       res.status(/not in your account|not found|no longer exists/i.test(message) ? 404 : 409).json({ error: message, currentState });
@@ -1553,6 +1574,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.seeker_confirmed_referred", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { confirmed: result.confirmed, replayed: result.replayed } });
       res.json({ confirmed: result.confirmed, replayed: result.replayed ?? false });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res);
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
       res.status(/not in your account|not found|no longer exists/i.test(message) ? 404 : 409).json({ error: message, currentState });

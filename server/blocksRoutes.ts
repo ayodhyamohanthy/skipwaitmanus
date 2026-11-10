@@ -10,6 +10,18 @@ type Identity = { account: Account };
 export type BlockEntry = { id: number; blockedUserId: number; reason: string | null; createdAt: Date };
 export type BlockResult = { id: number; blockedUserId: number; created: boolean };
 
+/**
+ * Authorization unavailability: the block/authorization decision cannot be
+ * established (the database or the block lookup failed). Callers must answer
+ * a truthful unavailable response, never an unsupported authorization result.
+ */
+export class BlockCheckUnavailableError extends Error {
+  constructor(message = "Block checks are temporarily unavailable") {
+    super(message);
+    this.name = "BlockCheckUnavailableError";
+  }
+}
+
 export type BlocksRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number }) => void | Promise<void>;
@@ -23,7 +35,7 @@ export type BlocksRouteDeps = {
 
 async function defaultBlockUser(blockerUserId: number, blockedUserId: number, reason: string | null): Promise<BlockResult> {
   const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
+  if (!db) throw new BlockCheckUnavailableError();
   if (blockedUserId === blockerUserId) throw new Error("You cannot block yourself");
   const target = (await db.select({ id: users.id }).from(users).where(eq(users.id, blockedUserId)).limit(1))[0];
   if (!target) throw new Error("This member is not available");
@@ -44,7 +56,7 @@ async function defaultBlockUser(blockerUserId: number, blockedUserId: number, re
 
 async function defaultUnblockUser(blockerUserId: number, blockId: number): Promise<{ unblocked: true }> {
   const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
+  if (!db) throw new BlockCheckUnavailableError();
   const result = await db.delete(userBlocks).where(and(eq(userBlocks.id, blockId), eq(userBlocks.blockerUserId, blockerUserId)));
   if (Number(result[0]?.affectedRows ?? 0) === 0) throw new Error("This block could not be found");
   return { unblocked: true };
@@ -52,13 +64,13 @@ async function defaultUnblockUser(blockerUserId: number, blockId: number): Promi
 
 async function defaultListBlocks(blockerUserId: number): Promise<BlockEntry[]> {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new BlockCheckUnavailableError();
   return db.select({ id: userBlocks.id, blockedUserId: userBlocks.blockedUserId, reason: userBlocks.reason, createdAt: userBlocks.createdAt }).from(userBlocks).where(eq(userBlocks.blockerUserId, blockerUserId)).orderBy(desc(userBlocks.createdAt)).limit(100);
 }
 
 async function defaultFindCounterpart(userId: number, referralRequestId: number): Promise<{ counterpartUserId: number }> {
   const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
+  if (!db) throw new BlockCheckUnavailableError();
   const row = (await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, referralRequestId)).limit(1))[0];
   if (!row || (row.jobSeekerId !== userId && row.referrerId !== userId)) throw new Error("This conversation is not available");
   const counterpart = userId === row.jobSeekerId ? row.referrerId : row.jobSeekerId;
@@ -69,7 +81,7 @@ async function defaultFindCounterpart(userId: number, referralRequestId: number)
 /** Either direction counts: exported for later thread/inbox enforcement (not wired here). */
 export async function isBlockedBetween(userA: number, userB: number): Promise<boolean> {
   const db = await getDb();
-  if (!db) return false;
+  if (!db) throw new BlockCheckUnavailableError();
   const rows = await db.select({ id: userBlocks.id }).from(userBlocks).where(or(and(eq(userBlocks.blockerUserId, userA), eq(userBlocks.blockedUserId, userB)), and(eq(userBlocks.blockerUserId, userB), eq(userBlocks.blockedUserId, userA)))).limit(1);
   return rows.length > 0;
 }
@@ -82,7 +94,7 @@ export async function isBlockedBetween(userA: number, userB: number): Promise<bo
 export async function getBlockedRequestIds(userId: number, requestIds: number[]): Promise<Set<number>> {
   const blocked = new Set<number>();
   const db = await getDb();
-  if (!db) return blocked;
+  if (!db) throw new BlockCheckUnavailableError();
   const ids = Array.from(new Set(requestIds.filter(id => Number.isInteger(id) && id > 0)));
   const chunkSize = 200;
   for (let offset = 0; offset < ids.length; offset += chunkSize) {
@@ -168,6 +180,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
       record({ actorUserId: identity.account.id, action: "block.created", outcome: "success", resourceType: "user_block", resourceId: result.id });
       res.status(result.created ? 201 : 200).json({ blocked: true, created: result.created, id: result.id, blockedUserId: result.blockedUserId });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return res.status(503).json({ error: "Blocking is temporarily unavailable" });
       const message = error instanceof Error ? error.message : "We could not save this block";
       if (/cannot block yourself/i.test(message)) return res.status(400).json({ error: message });
       if (/another participant/i.test(message)) return res.status(400).json({ error: message });
@@ -182,7 +195,13 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
       if (!identity) return res.status(401).json({ error: "Sign in to view your blocks" });
       res.set("Cache-Control", "private, no-store");
       res.json({ blocks: await listMine(identity.account.id) });
-    } catch { res.status(500).json({ error: "We could not load your blocks" }); }
+    } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) {
+        res.set("Cache-Control", "private, no-store");
+        return res.status(503).json({ error: "Blocking is temporarily unavailable" });
+      }
+      res.status(500).json({ error: "We could not load your blocks" });
+    }
   });
 
   app.delete("/api/blocks/:id", async (req, res) => {
@@ -195,6 +214,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
       record({ actorUserId: identity.account.id, action: "block.removed", outcome: "success", resourceType: "user_block", resourceId: id });
       res.json({ unblocked: true });
     } catch (error) {
+      if (error instanceof BlockCheckUnavailableError) return res.status(503).json({ error: "Blocking is temporarily unavailable" });
       const message = error instanceof Error ? error.message : "We could not remove this block";
       if (/could not be found/i.test(message)) return res.status(404).json({ error: message });
       res.status(500).json({ error: "We could not remove this block" });
