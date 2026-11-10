@@ -20,8 +20,7 @@ vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: f
 vi.mock("@/lib/displayPrefs", () => ({ useDisplayPrefs: () => ({ timeZone: null, dateFormat: null }), setDisplayPrefs: vi.fn(async () => undefined) }));
 vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 
-import { RegionPanel } from "./RegionPanel";
-import { regionFootnote } from "@/components/goal/GoalLanguagePicker";
+import { RegionPanel, regionFootnote } from "./RegionPanel";
 
 beforeEach(() => { visible.list = []; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
