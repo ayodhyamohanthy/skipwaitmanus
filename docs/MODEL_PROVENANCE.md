@@ -130,3 +130,12 @@ single-parent-empty ancestry rule above. Do not force reclaim, alter old history
 reuse the loader-only exception, adopt an unbound draft, or let DeepSeek review its
 own code. Actual generated output, applied diff, tests and separate exact-version
 review still need their own qualified receipts and normal protected landing.
+
+A separate observed Claude resource supplies the proposed final-review route
+`picker-refs-review-claude-nov11`, exact operator
+`Instinct · picker-free-model-review-claude-nov11`, visible `Opus 5.5 Max`,
+conservatively grouped as `claude-opus-5.5`. Review/land roles only, no build/fix:
+D-225's Claude reasoning boundary remains unchanged. The fresh availability
+response says no source or review has started and offers a complete read-only
+exact-head review with findings, no patches. This is not a completed verdict.
+No artificial alias split, hidden-checkpoint claim or author role is inferred.
