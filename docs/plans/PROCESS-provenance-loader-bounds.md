@@ -122,13 +122,14 @@ before source dispatch; open fields below are blockers, not implied approvals.
   Its intervening PR1112 changes only prep packet/inert test source, not the
   two production wrappers; preserve that separately merged history.
   It includes the actual pagination merge; do not use the older wrapper/core
-  context as an execution base. Public prebinding snapshot assembled from that base: 125,131 bytes,
+  context as an execution base. Historical03bb prebinding snapshot: 125,131 bytes,
   SHA-256 `cf174693f25bc32eff4c62b0a67ca955c6256675b78c9df619b43746daea7b65`.
   It includes actual consumers/resolver, current provenance and pagination
   tests, packet/model contract, config and package context. This is NOT the
   final prompt digest. After admitted binding is included, retain the final
   supplied bytes/digest immediately before generation; do not claim a
-  circular digest of the yet-to-be-committed carrier.
+  circular digest of the yet-to-be-committed carrier. Final input must be
+  reassembled from current92fc including its merged prep and admitted binding.
 - Actual operator/session: `Instinct · public-model-review-nov10`, separately
   attributed transport/testing coordinator, not the code author.
 - Actual coding author selection: Macaly public selector explicitly reselected
@@ -138,8 +139,8 @@ before source dispatch; open fields below are blockers, not implied approvals.
   Conservative canonical family `glm-5.3` retains GLM/Flash alias exclusion;
   this does not assert an unobserved served checkpoint. Selection screenshot was inspected and shows `GLM 5.3`; its PNG SHA-256 is
   `7c85df042ff75a1ac82897e260e44efcc835f869454282c7e87ab3ee4082e2c8`.
-  Actual independent binding assessment remains pending. Existing privacy
-  work is not this execution.
+  The c9d63 record received an actual independent PASS; final exact carrier
+  assessment remains pending. Existing privacy work is not this execution.
 - Free route: supervisor inspected current Macaly billing at 15:30:16 IST:
   account is on Free; adding capacity requires purchasing a plan. Stop at
   capacity, any paid requirement or possible card charge; no top-ups, upgrade
