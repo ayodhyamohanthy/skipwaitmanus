@@ -5907,7 +5907,7 @@
       "packet": "docs/plans/PROCESS-provenance-loader-bounds.md",
       "tier": 2,
       "lane": "provenance-loader",
-      "branch": "agent/queue/process-provenance-loader-bounds",
+      "branch": "agent/queue/process-provenance-loader-bounds-glm-nov10-isolated",
       "status": "todo",
       "syncedTo": "D-312",
       "dependsOn": [],
