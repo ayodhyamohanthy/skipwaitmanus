@@ -243,3 +243,14 @@ Review location: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1106. Thi
 qualification discussion, not an assertion that a PASS already exists. Only
 separate exact-version review and normal non-writer protected admission can make
 this candidate trusted. Old unknown preparation remains held.
+
+## Actual claimed DeepSeek REVIEW receipt candidate (November 10)
+
+This docs-only carrier proposes a separate execution receipt for the actual
+DeepSeek source review at head `8e7ee196f58d995d2a2e8eb684b56b39e8d0eb56`,
+ordinary review-lock claim `47c1a28b653102ca5331c9365bc29bbb569fbf72`.
+The first FINDINGS, intermediate PASS with mistaken tree/parent readings and
+final corrected source PASS are retained separately. This carrier does not
+qualify itself or write a product PASS marker. A concrete record, original
+inputs/outputs and limits follow before separate exact-version qualification
+and normal non-writer landing. No product, tests, queue or tooling changes.
