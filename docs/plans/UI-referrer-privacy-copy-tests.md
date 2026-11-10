@@ -218,3 +218,14 @@ was mechanically embedded in section7 with real29tests9assertionFAIL20PASS,
 exit1 and clean cleanup. This is not source acceptance. Active/not-active
 polarity and nearest-timing clause handling require independent adversarial
 review. Packet prose remains separately attributed outside GLMsource range.
+
+### Fourth actual source candidate
+
+After actual DeepSeek source FINDINGS ona3ef/d44, GLM authored9a009256
+parenta3ef. The one cumulative1857 BUILD candidate ends at9a009; all three
+earlier legs, findings and raw exchanges remain. Exact28434byte source
+SHAf12edb8fcc9a2168811081fa0c8ece67d8d54c8a7c348cff641ea2fc3ada4a8c
+was mechanically embedded with actual29tests9FAIL20PASS/exit1/cleanstatus.
+This is not independent source acceptance. Bounded-contract quality, polarity
+and illegal-promise controls require genuine exact evaluation. Coordinator prose
+remains separate from source-only execution; no prior PASS transfers.
