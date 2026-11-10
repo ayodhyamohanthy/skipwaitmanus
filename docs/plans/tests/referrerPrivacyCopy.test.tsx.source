@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Referrer privacy-copy regression, red-first, revision 5.
+ * Referrer privacy-copy regression, red-first, revision 6.
  * Packet: docs/plans/UI-referrer-privacy-copy-tests.md
  *
  * Final collected path: client/src/components/referrerPrivacyCopy.test.tsx
@@ -21,9 +21,11 @@
  * How the copy is judged (three bounded checks, no clause grammar, no prose engine):
  *  - Promise check: a resume visibility claim is exempt only when an
  *    acceptance-anchored marker ends before the claim verb, or when the marker
- *    sits in the claim's own comma segment and no immediacy word ("now",
- *    "immediately", "right away", "today", "already") is detached from that
- *    marker. Every pre-choice marker in the sentence being denied also exempts.
+ *    sits in the claim's own comma segment AND the sentence carries no undenied
+ *    pre-choice marker AND no immediacy word ("now", "immediately", "right
+ *    away", "today", "already") is detached from that marker. A pre-choice
+ *    marker being present and undenied therefore always keeps the claim a
+ *    promise, whatever post marker shares the segment.
  *  - Boundary check: name, resume, concealment and a pre-choice marker must all
  *    appear in ONE sentence, in the first or third person.
  *  - Access check: inside one comma segment, document-qualified access must carry
@@ -41,8 +43,9 @@
  *    a condition placed in a different comma segment from the file claim does not
  *    count.
  *  - A FRONTED condition ("While your document access is active, you can open the
- *    file after you accept") is deliberately NOT covered, because the file verb
- *    follows the access phrase there and that shape is also the bleed pattern.
+ *    file after you accept") is deliberately NOT covered, and neither is a file
+ *    claim split from its condition by other clauses. Future repair copy is
+ *    constrained to: file claim first, condition after, same comma segment.
  *  - Access must be document-qualified ("document access", "access to the
  *    files"); bare "your access" is deliberately not accepted.
  *  - Cross-sentence conditionality is refused on purpose, because accepting it is
@@ -173,7 +176,8 @@ const NOUN_NEGATION = /\b(?:not|never|no)\b(?:\s+\w+){0,2}\s*$/i;
 const IMMEDIACY = /\b(?:now|immediately|right away|today|already)\b/gi;
 
 /* ------------------------------------------------------------------ *
- * Promise check: negation scope, comma-segment locality, immediacy guard
+ * Promise check: negation scope, comma-segment locality, immediacy and
+ * undenied pre-choice markers
  * ------------------------------------------------------------------ */
 
 function negatedVerb(sentence: string, verbIndex: number): boolean {
@@ -224,21 +228,6 @@ function immediacyBlocksPostfixScope(sentence: string, segment: Segment, verbInd
   });
 }
 
-/**
- * A claim is post-acceptance scoped when an acceptance-anchored marker ends
- * before the claim verb, or sits in the claim's own comma segment with no
- * detached immediacy word. A marker in another comma segment never exempts.
- */
-function claimIsPostScoped(sentence: string, verbIndex: number): boolean {
-  const posts = matchesOf(sentence, POST_ACCEPTANCE);
-  if (posts.some(marker => marker.end <= verbIndex)) return true;
-  const segment = segmentOf(sentence, verbIndex);
-  if (segment === null) return false;
-  const sameSegment = posts.some(marker => marker.index >= segment.start && marker.index < segment.end);
-  if (!sameSegment) return false;
-  return !immediacyBlocksPostfixScope(sentence, segment, verbIndex);
-}
-
 /** A pre-choice marker that is itself denied ("but not before you choose"). */
 function negationBefore(sentence: string, index: number): boolean {
   const prefix = sentence.slice(0, index);
@@ -249,6 +238,28 @@ function negationBefore(sentence: string, index: number): boolean {
 function preMarkersAllDenied(sentence: string): boolean {
   const markers = matchesOf(sentence, PRE_ACCEPTANCE);
   return markers.length > 0 && markers.every(marker => negationBefore(sentence, marker.index));
+}
+
+/** Any pre-choice marker that is not itself denied keeps the claim a promise. */
+function hasUndeniedPreMarker(sentence: string): boolean {
+  return matchesOf(sentence, PRE_ACCEPTANCE).some(marker => !negationBefore(sentence, marker.index));
+}
+
+/**
+ * A claim is post-acceptance scoped when an acceptance-anchored marker ends
+ * before the claim verb. The weaker same-segment exemption applies only when the
+ * sentence carries no undenied pre-choice marker and no detached immediacy word,
+ * so an explicit "before you choose" in the same sentence always wins.
+ */
+function claimIsPostScoped(sentence: string, verbIndex: number): boolean {
+  const posts = matchesOf(sentence, POST_ACCEPTANCE);
+  if (posts.some(marker => marker.end <= verbIndex)) return true;
+  const segment = segmentOf(sentence, verbIndex);
+  if (segment === null) return false;
+  const sameSegment = posts.some(marker => marker.index >= segment.start && marker.index < segment.end);
+  if (!sameSegment) return false;
+  if (hasUndeniedPreMarker(sentence)) return false;
+  return !immediacyBlocksPostfixScope(sentence, segment, verbIndex);
 }
 
 /**
@@ -459,6 +470,23 @@ describe("sanity: pre-choice resume-promise detector", () => {
     );
     expect(
       promisesResumeBeforeChoice("You can read the resume right away and after you accept you can message them."),
+    ).toBe(true);
+  });
+
+  it("does not let a later condition outrank an explicit pre-choice marker", () => {
+    expect(
+      promisesResumeBeforeChoice("You can open the resume before you choose and after you accept you can message them."),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice(
+        "You can see the role and resume before you choose and after you accept you can message them.",
+      ),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice("You can see the role and resume before you choose and message them after you accept."),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice("See the role and resume before you choose and message them once you accept."),
     ).toBe(true);
   });
 
