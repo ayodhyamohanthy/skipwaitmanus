@@ -216,3 +216,30 @@ packet writer remains excluded from landing its own carrier. Project execution
 and exact receipt qualification remain later, separate evidence obligations.
 No new schema state, hidden model authentication or machine-enforced temporal
 revocation is asserted by this docs-only amendment.
+
+## Actual Macaly BUILD receipt candidate (November 10)
+
+This docs-only carrier proposes qualification of the actual Mistral BUILD
+execution, not a product completion marker. The separate first DeepSeek
+assessment passed bounded source at `ab3cbc6d` but failed the incomplete
+receipt proposal. Preserve both outcomes. This candidate requires a new
+independent exact-record qualification before normal non-writer landing.
+No product, tests, resolver, queue, workflow or protection changes belong here.
+The final candidate will include retained public input/output/observation bytes,
+all required digests and concrete empty-claim/clean-main-merge proof. Candidate
+records are not trusted until their separately reviewed carrier reaches main.
+
+Concrete candidate id: `messages-macaly-mistral-build-nov10`. Role `build`, actual claim
+`e03144835054a2fbd46caad28b7a4124fd53b999`, input `ecbd4aad840d2e857c51372001f759df41e8c999`,
+output `ab3cbc6d7322f109368b940af57ea408d61ad626`. No separate Fix claim is invented.
+
+The receipt embeds exact original input attachments as an explicitly named
+envelope, the applied patch as output, original observation, all six raw output
+artifacts (including rejected attempts), full retained public task exchange and
+concrete Git ancestry/tree/delta proof as observation. SHA-256 digests bind those
+exact strings. Public provider labels are not cryptographic authentication.
+
+Review location: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1106. This link is the
+qualification discussion, not an assertion that a PASS already exists. Only
+separate exact-version review and normal non-writer protected admission can make
+this candidate trusted. Old unknown preparation remains held.
