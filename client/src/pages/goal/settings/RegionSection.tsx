@@ -10,8 +10,7 @@ import { setDisplayPrefs, useDisplayPrefs, type DisplayPrefs } from "@/lib/displ
 import { browserPaymentRoute } from "@/lib/paymentRoute";
 import { Link } from "wouter";
 import { InlineError, InlineLink, Section } from "./settingsParts";
-import { GoalLanguagePicker } from "@/components/goal/GoalLanguagePicker";
-import { regionFootnote } from "@/components/settings/RegionPanel";
+import { GoalLanguagePicker, regionFootnote } from "@/components/goal/GoalLanguagePicker";
 import { visibleLanguages } from "@shared/languages";
 
 const DATE_FORMAT_LABELS: Record<DateFormat, string> = { dmy: "8 Oct 2026", mdy: "Oct 8, 2026", iso: "2026-10-08" };

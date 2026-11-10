@@ -10,19 +10,8 @@ import { setDisplayPrefs, useDisplayPrefs, type DisplayPrefs } from "@/lib/displ
 import { Link } from "wouter";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { browserPaymentRoute, type PaymentRoute } from "@/lib/paymentRoute";
-import { GoalLanguagePicker } from "@/components/goal/GoalLanguagePicker";
+import { GoalLanguagePicker, regionFootnote } from "@/components/goal/GoalLanguagePicker";
 import { visibleLanguages } from "../../../../shared/languages";
-
-/**
- * D-093.picker (packet §5.4, C5): the footnote is conditional. While English is the only visible language it
- * says exactly that and that only currency follows the device; it never claims the language follows the device
- * or that the reader can choose one, and it promises no future languages. With two or more visible languages it
- * says the language follows the reader's choice while currency still follows the device.
- */
-export function regionFootnote(languageCount: number): string {
-  if (languageCount >= 2) return "Language follows your choice. Currency follows this device. Dates and times in your requests and alerts use your time zone and date format.";
-  return "English is the language available today. Currency follows this device. Dates and times in your requests and alerts use your time zone and date format.";
-}
 
 export type RegionValues = { language: string; timeZone: string; currency: PaymentRoute; dateSample: string };
 

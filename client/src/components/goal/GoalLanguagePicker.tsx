@@ -8,6 +8,17 @@ import { visibleLanguages, type LanguageCode } from "@shared/languages";
 
 const CONTROL = "min-h-11 rounded-g-tile border border-g-hairline bg-g-surface px-3 text-g-small text-g-ink";
 
+/**
+ * D-093.picker (packet §5.4, C5): the footnote is conditional. While English is the only visible language it
+ * says exactly that and that only currency follows the device; it never claims the language follows the device
+ * or that the reader can choose one, and it promises no future languages. With two or more visible languages it
+ * says the language follows the reader's choice while currency still follows the device.
+ */
+export function regionFootnote(languageCount: number): string {
+  if (languageCount >= 2) return "Language follows your choice. Currency follows this device. Dates and times in your requests and alerts use your time zone and date format.";
+  return "English is the language available today. Currency follows this device. Dates and times in your requests and alerts use your time zone and date format.";
+}
+
 type Props = { variant?: "bar" | "settings"; className?: string };
 
 /** Saves the choice to the account when signed in; the device copy is written by `setLanguage`. Best effort. */
