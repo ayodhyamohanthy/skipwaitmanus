@@ -1272,3 +1272,45 @@ This docs-only candidate claims no machine scope PASS: when no exact owns row
 maps it, a scope-tool SKIP/exit0 is only SKIP. Its manual docs scope is this
 packet alone; future runtime registration and route qualification are separate
 not-yet-completed changes. No runtime/test/config/registry delta is included.
+
+### Registration candidate, November 10 at 23:31 IST
+
+The separate runtime row is proposed append-only at the end of the existing
+queue, with syncedTo D-313 and no invented dependency, FIFO reorder or new
+file ownership. This is not historical prep-task clearance. No runtime claim
+or source dispatch exists. Exact task-specific route qualification, manual
+hunk integration admission, independent exact registration review and required
+CI remain pending. The prior NOTREADY state remains until those gates pass.
+The source-only GLM receipt and bounded quality result are not a route for
+Mistral, DeepSeek or the runtime task; all task/operator/model binding must be
+separately qualified. The registration carrier changes no product/test bytes.
+
+### Manual copy-hunk coordination candidate, November 10 at 23:33 IST
+
+The current shared record is REL PR851 comment
+https://github.com/ayodhyamohanthy/skipwaitmanus/pull/851#issuecomment-6774796479.
+No REL reply, ACK or denial of unpublished overlap is asserted. Current remote
+REL source tip is still f8b080b196181a0a5ad29d749b2fd9e908c83cd8. Its
+main-base diff in the two shared components contains apiFetch import and
+send/verify/enroll replacements only; no introductory paragraph edit. The
+runtime task is distinct and uses a separate branch/worktree. It must not
+apply REL's transport changes or claim its ownership.
+
+The owner's November 9 parallel-development instructions, recorded in D-309
+and BUILD_CONTINUITY, allow distinct isolated tasks sharing a filename and
+assign combined integration responsibility to the coordinator. Existing
+section 2 requires current shared-record coordination and exact hunk review;
+it conditions a pause/split on actual held or unpublished overlap with these
+copy hunks. It does not require an affirmative ACK for distinct inspected
+hunks. A lack of reply is not evidence of consent or of no unpublished work.
+
+Proposed bounded admission for independent review: permit only the three
+introductory copy paragraphs plus byte-identical accepted regression in this
+separate task, preserving all REL switches, current refs and unknown work.
+Check current source/refs and the shared record at dispatch and integration;
+reconcile both intended outputs and test the combined result before landing.
+If overlapping actual unpublished or new source work appears, pause that hunk
+for coordinator split/handoff, never overwrite or infer consent. This is a
+manual hunk decision, not an automated owns/scope PASS or file takeover.
+Exact registration/route qualification review remains pending; this text is
+not a coding claim or dispatch clearance.
