@@ -78,13 +78,14 @@ describe("D-309 parallel eligibility: independent work is offered", () => {
     // second lander merges main and keeps both changes. A's lane and A's dependents stay held.
     expect(picked).toMatchObject({ kind: "build", task: { id: "B" }, overlaps: ["A"] });
     expect(renderPick(picked, ctx("Mistral · r2"))).toContain("Whoever lands second merges origin/main");
-    // A real output dependency still holds: B waits while A, which it needs, is red.
+    // A real output dependency still holds its landing: B, which needs red A, is handed only AHEAD of it (D-315).
     const dependent = task("B", { lane: "inbox", owns: ["server/shared.ts"], dependsOn: ["A"] });
     const held = pick([shared.task, dependent], {
       branches: [shared.branch], prs: [shared.pr], prCi: [shared.ci], reports: [redReport("A", "Qwen · s1")],
       claimant: "Mistral · r2",
     });
-    expect(outcome(held)).toEqual({ kind: "wait", id: null });
+    expect(held).toMatchObject({ kind: "build", task: { id: "B" }, ahead: ["A"] });
+    expect(renderPick(held, ctx("Mistral · r2"))).toContain("AHEAD OF ITS DEPENDENCIES (D-315)");
   });
 
   it("control 3: FIFO picks the earliest eligible independent task, and --avoid keeps a real hold", () => {

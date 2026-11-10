@@ -1134,7 +1134,9 @@ describe("hardening from the D-085 review", () => {
 
   it("a blocked task waits for another session or the owner: its holder is told so, any other session gets the unblock", () => {
     const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
-    const own = pick([task("A"), task("B")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" });
+    // D-315: the holder is never handed its own unblock, but is handed other work (B); the wait comes only when nothing is left.
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const own = pick([task("A")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" });
     expect(own).toMatchObject({ kind: "wait", gate: "A", blocked: true, own: true });
     expect(renderPick(own, { who: "Qwen · s1", date: "2026-10-20", claimed: true })).toContain("neither raised the block nor holds the task, or the owner");
     const ctx = { who: "Kimi · s2", date: "2026-10-20", claimed: false };
@@ -1839,7 +1841,9 @@ describe("D-200 block rule: nobody clears a block they raised or a task they hol
 
   it("the holder of a task someone else blocked is not offered the unblock, and only its green or landed report clears it", () => {
     const blocked = [rep("Mistral · r1", "blocked", 1)];
-    expect(pick([task("A"), task("B")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "wait", gate: "A", own: true });
+    // D-315: other work first (never the unblock of its own task); the own wait only when nothing else is eligible.
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    expect(pick([task("A")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "wait", gate: "A", own: true });
     expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "review", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
     expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "green", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
     const rows = statusBoard({ tasks: [task("A")], branches: new Map([busyA]), openPrs: new Map(), reports: [rep("Qwen · s1", "review", 0.5), ...blocked], now: NOW });

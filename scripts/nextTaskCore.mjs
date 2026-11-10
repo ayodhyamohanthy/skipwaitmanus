@@ -951,6 +951,10 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // --avoid also applies when the claimant already holds a continuation: let the
   // normal pass preserve blocked-lane holds and select another eligible task.
   if (mine?.kind === "continue" && mine.task && avoid.has(mine.task.id)) mine = null;
+  // D-315 (owner, Nov 10: "no wait no block"): your own blocked task waits for another session or the owner, but you
+  // do not: you are handed other work, and only when there is none at all does the picker answer with that wait.
+  let ownBlocked = null;
+  if (mine?.kind === "wait") { ownBlocked = mine; mine = null; }
   // D-202: a holder continuing an out-of-sync task is handed the re-sync first, not its build
   // (a blocked wait still comes first: the block is cleared before the packet moves).
   if (mine && mine.kind !== "wait" && mine.task) {
@@ -960,18 +964,33 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // D-134: whether a pick's plan row is shared by several tasks (their status then goes in their packet's Status section).
   const sharedRows = new Set(view.map(v => v.task.row).filter((r, k, all) => all.indexOf(r) !== k));
   const withHold = pick => (pick?.task && sharedRows.has(pick.task.row) ? { ...pick, task: { ...pick.task, sharedRow: true } } : pick);
+  // D-315: the oldest task held only by unfinished dependencies, as work to do ahead of them (FIFO; tasks whose unmet
+  // dependencies wait for the owner come after every other). A re-sync or packet comes first when the task needs one;
+  // a branch somebody is pushing to, or one with a pull request already, is theirs and is passed over.
+  const aheadPick = () => {
+    const parkedDep = v => unmetOf(v).some(d => byId.get(d)?.task.status === "owner");
+    const held = view.filter(v => !v.done && unmetOf(v).length > 0 && !avoid.has(v.task.id) && (v.task.status === "todo" || v.task.status === "architect"));
+    for (const v of [...held.filter(v => !parkedDep(v)), ...held.filter(parkedDep)]) {
+      const ahead = unmetOf(v);
+      const writer = v.arch ? holderOf(v.arch, v.task.id) : null;
+      const writing = Boolean(writer) && !quiet(archAt(v));
+      if (staleOf(v)) { if (!writing) return { ...resync(v), ahead }; continue; }
+      if (v.task.status === "architect") { if (!writing) return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer, ahead }; continue; }
+      if (v.pr) continue;
+      if (v.info) { if (quiet(workAt(v))) return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), ahead }; continue; }
+      return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ahead };
+    }
+    return null;
+  };
 
   // Pass 1: pending work top down, stopping at your own work; pass 2: new work. A red or
   // blocked priority holds only its lane and its dependents (D-109). D-200: Claude Code builds too.
   const actions = [];
   let gateAt = -1, gateAction = null;
-  // PICKER-landing-wait-fallthrough: a pending landing that waits only for another session's landing slot is
-  // remembered, not returned at once: later eligible work is still handed out (the slot is never touched), but
-  // only work whose declared owns are provably disjoint from every waiting landing's. Unknown or overlapping
-  // ownership keeps the old landing wait (see `disjoint`: missing ownership never proves concurrent work is safe).
+  // PICKER-landing-wait-fallthrough, widened by D-314/D-315: a pending landing that waits only for another session's
+  // landing slot is remembered, not returned: later eligible work is still handed out (the slot is never touched),
+  // overlapping files included (D-309: the second lander merges main). The wait is the answer only when nothing is left.
   let landingWait = null;
-  const landingViews = [];
-  const clearOfLandings = v => landingViews.every(l => disjoint(l, v));
   const heldLanes = new Map(), heldIds = new Map();
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
   // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
@@ -998,18 +1017,16 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       continue;
     }
     if (action.kind === "wait") {
-      if (action.landing) { landingWait ??= action; landingViews.push(view[i]); actions[i] = null; continue; }
+      if (action.landing) { landingWait ??= action; actions[i] = null; continue; }
       return action;
     }
     if (!PENDING_KINDS.has(action.kind)) continue;
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
-    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
-  // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
-  // A pending landing above it that waits for the slot keeps the old wait: own work is not reordered by this fall-through.
+  // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it),
+  // and neither does another session's landing that waits for the slot (D-315). Your own landing needs the slot.
   if (mine) {
-    if (landingWait) return landingWait;
     if (mine.of === "land" && slotBusyFor(claimant)) return waitLanding();
     const { at, ...pick } = mine;
     return withHold(pick);
@@ -1017,11 +1034,19 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
-    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(action);
   }
-  // Nothing else was eligible: the honest answer is the landing wait, with the slot holder and the reason.
+  // D-315 (owner, Nov 10: "when i say build in agents they should get a task to work . no wait no block"): with nothing
+  // above eligible, a session works AHEAD on the oldest task held only by unfinished dependencies, on that task's own
+  // branch, so nobody idles. Nothing lands early: review, fix and landing stay withheld until every dependency is done
+  // (D-134 holds those stages in actionFor). A Claude Code session keeps its CEO review instead (D-225).
+  if (!ceo) {
+    const ahead = aheadPick();
+    if (ahead) return withHold(ahead);
+  }
+  // Nothing at all was eligible: the honest answer is the landing wait, with the slot holder and the reason.
   if (landingWait) return landingWait;
+  if (ownBlocked) { const { at, ...wait } = ownBlocked; return wait; }
   // A Claude Code session that raised a block waits like anyone else; it never gets the CEO review telling it to clear its own block.
   if (gateAt >= 0 && (!ceo || gateAction.blocked)) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
@@ -1298,16 +1323,22 @@ export function epicSummaries(rows) {
 
 /** D-311: continuations must pass the same identity checks as new handouts. */
 export function pickNextTask(input) {
-  const pick = pickNextTaskLegacy(input);
-  const stage = pick.kind === "continue" ? pick.of : pick.kind;
-  if (!["review", "land"].includes(stage) || !pick.task) return pick;
-  const work = input.branches.get(pick.work || pick.task.branch);
-  const lock = input.branches.get(reviewLockOf(pick.task));
-  const resolved = resolveTaskProvenance({ taskId: pick.task.id, head: work?.tipSha,
-    workMarkers: work?.markers ?? [], lockMarkers: lock?.markers ?? [],
-    ...(input.provenance ?? {}), claimant: input.claimant, candidateRole: stage });
-  if (resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate))) {
-    return { kind: "wait", reason: `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}` };
+  // D-315: a review or landing held by external provenance is passed over for this session (as --avoid would), so the
+  // next eligible task is handed out instead of a WAIT; the held stage itself is never handed out or waived.
+  const avoid = new Set(input.avoid ?? []);
+  let firstHeld = null;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const pick = pickNextTaskLegacy({ ...input, avoid });
+    const stage = pick.kind === "continue" ? pick.of : pick.kind;
+    if (!["review", "land"].includes(stage) || !pick.task) return pick.kind === "none" && firstHeld ? firstHeld : pick;
+    const work = input.branches.get(pick.work || pick.task.branch);
+    const lock = input.branches.get(reviewLockOf(pick.task));
+    const resolved = resolveTaskProvenance({ taskId: pick.task.id, head: work?.tipSha,
+      workMarkers: work?.markers ?? [], lockMarkers: lock?.markers ?? [],
+      ...(input.provenance ?? {}), claimant: input.claimant, candidateRole: stage });
+    if (!(resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate)))) return pick;
+    firstHeld ??= { kind: "wait", reason: `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}` };
+    avoid.add(pick.task.id);
   }
-  return pick;
+  return firstHeld;
 }
