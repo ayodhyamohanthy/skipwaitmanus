@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { GoalButton, GoalFilterChip, GoalNextStep, useOnlineStatus } from "@/components/goal";
-import { asProfileVisibility } from "@/components/profile/VisibilityOptions";
+import { asProfileVisibility } from "@/components/profile/profileVisibility";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { GoalHeader, GOAL_LINE, InlineError, LoadError, LoadingState, OfflineNotice, ProfileLinkDialog, TextField, discoverability, requestJson, type ProfileRole } from "./profileParts";
 
