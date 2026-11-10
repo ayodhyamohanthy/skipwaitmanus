@@ -419,3 +419,28 @@ D-086-demand-list: revision3 reviewed source packet f81236e8; coordinator regist
 
 
 Coordinator review: f81236e8 locally integrated with main e67f7785 (not protected-merged);218registry rows/0errors,35baselinePASS,662scriptPASS. Original owner demand/journey messages recovered. No implementation, deployment or switch activation. Historical43 includes8rev2 disposable contract probes.
+
+
+### November 11, 2026: D-086.count technical parking reconciled
+
+The D-279 park above is historical. The only technical reason it records
+for owner status is the old D-254 review-route deadlock. The D-286/D-291
+cure, including real I/O wiring, is now on main via normal PR1008.
+Return this existing row to ordinary todo assessment and stamp syncedTo
+D-313, the latest checked register entry, under D-202/D-200. This does not
+clear any independent product, contributor, privacy, scope or review hold.
+
+Live PR955 is still draft/open/unmerged at 4700fc10dc9d41843a96cb52229630487378f166. Its
+exact-head historical CI has only Scope check failing, while unit, build
+and journeys succeeded. That old workflow is not today's positive
+named-step gate-only classification. Legitimate current-main composition
+and current exact-head CI must precede a qualifying ordinary review.
+No new empty Takeover to manufacture eligibility, no model relabeling,
+retrospective author replacement, manual review marker or fabricated pass.
+Known and unknown contributors remain subject to D-151/D-311. Existing
+models that built or fixed it remain excluded from its review.
+
+All switches, scope, ownership, dependencies, queue order, existing source,
+findings and product rules remain unchanged. Historical note text is kept
+for provenance, not presented as current owner-wait state. This is status
+reconciliation, not code completion, a pass, landing or live deployment.
