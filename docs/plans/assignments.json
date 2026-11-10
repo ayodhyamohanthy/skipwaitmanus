@@ -5882,6 +5882,23 @@
         "client/src/pages/goal/messages/messagesSignInButton.test.tsx"
       ],
       "note": "Tier 1 sign-in work per docs/DELEGATION.md section 3, despite bounded markup. Actual underlying builder-model independence evidence is unresolved; do not manufacture a review identity or marker. Bounded signed-out markup repair only: replace SignInButton wrapping GoalButton with one GoalButton calling existing useAuth.openSignIn with no arguments. No auth mechanism/destination/cookies/policy/server/GET/POST or message privacy changes. Preserve all existing signed-in behavior and tests. Exact independent final review and all required CI/current-main checks before normal protected merge; real provider continuity is not established by local synthetic captures. Prospective D-311 amendment preserves old FAIL/unused unknown prep; only a fresh pristine-main, actually evidenced external implementation may start after this carrier and task-specific routes receive independent qualification and normal landing. Packet writer is not thereby a product-code contributor; no actual historical contribution is washed."
+    },
+    {
+      "id": "UI-referrer-privacy-copy-tests",
+      "title": "Prepare complete inert regression source and actual scratch RED proof for referrer privacy copy",
+      "row": "UI",
+      "packet": "docs/plans/UI-referrer-privacy-copy-tests.md",
+      "tier": 3,
+      "lane": "referrer-privacy-copy-tests",
+      "branch": "agent/queue/ui-referrer-privacy-copy-tests",
+      "status": "todo",
+      "syncedTo": "D-311",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/tests/referrerPrivacyCopy.test.tsx.source",
+        "docs/plans/UI-referrer-privacy-copy.md"
+      ],
+      "note": "Preparation only, no collected tests or product/config changes. Existing1109 Tier1 admission FINDINGS retained. Runtime UI-referrer-privacy-copy is unregistered/NOTREADY until full packet section7 test source and actual RED proof exist. Exact inert source final imports at client/src/components/referrerPrivacyCopy.test.tsx; temporary untracked identical scratch transport only, assertion-level RED and cleanup/status evidence, no skip/xfail/config edit. Manual packet-only docs allowlist and independent scope/tier review. Actual task-bound free prep route/ordinary BUILD and exact execution admission before completion. Prep author retained and excluded from later independent runtime review across tasks. No FIFO reorder/currentowner takeover or runtime readiness claim."
     }
   ]
 }
