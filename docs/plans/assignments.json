@@ -2767,8 +2767,8 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
-      "status": "owner",
-      "syncedTo": "D-285",
+      "status": "todo",
+      "syncedTo": "D-313",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -3098,8 +3098,8 @@
       "tier": 1,
       "lane": "demand-count",
       "branch": "agent/queue/d086-count",
-      "status": "owner",
-      "syncedTo": "D-279",
+      "status": "todo",
+      "syncedTo": "D-313",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-174-company-search"
@@ -4457,8 +4457,8 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-sources-more",
-      "status": "owner",
-      "syncedTo": "D-282",
+      "status": "todo",
+      "syncedTo": "D-313",
       "dependsOn": [
         "D-174-job-catalog"
       ],

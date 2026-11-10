@@ -592,3 +592,36 @@ pause `phonemsg-01M67TJKFFY4D8TM1FHWQAMEDH`, and November9 parallel work
 `phonemsg-01M6ZS7BNPGN8RXJER5AVWHP9Q`/
 `phonemsg-01M6ZSDDEMF532AER4HD071MXC`. This repository records that
 provenance but does not authenticate the originals or expand their scope.
+
+
+### November 11, 2026: three further technical gate-route parks reconciled
+
+The same measured technical cure as the two REL rows applies separately
+to D-086.count (D-279/PR955), D-048-p3-employer-talent (D-285/PR979) and
+D-174-job-sources-more (D-282/PR938). Current source-of-truth readback
+finds all three open/draft/unmerged at their recorded old exact heads;
+their only historical failed step is Scope check, all other required jobs
+succeeded, and their review locks do not exist. Their registered
+dependencies are recorded done on inspected main. No separate owned
+acceptance defect is cleared by this reconciliation. The old talent
+architect ref is a November3 heartbeat, not proof of a current session.
+
+Only their statuses owner->todo and syncedTo stamps -> checked D-313
+change. Append dated packet notes under D-202/D-200; keep historical
+D-279/D-282/D-285 decisions and notes, source contributions, scope,
+dependencies, ownership and queue order. Current-main preparation and
+actual exact-head CI are real work, not permission to fabricate an
+empty claim or review. Unknown authors, builder/fixer review exclusions,
+privacy/consent rules, provider limits and off-by-default switches remain.
+No legal/pricing/login/account/settings/money hold is released. Other
+owner rows, including real owned findings and contaminated review locks,
+remain for their own grounding rather than release by analogy.
+
+Authority is existing bounded build coordination and the user's direct
+November11 instruction that pending work should open for agent pickup
+(phonemsg-01M73FJZK5STP5W2BG9J9XG75V), plus fix the picker
+(phonemsg-01M73FHPNVWN7DC66AQG08X2XX). These personally inspected
+originals do not waive current gates. This file records provenance but
+does not authenticate instructions. Status admission is not proof of
+real agent pickup or same-session productive continuation; verify those
+separately. No product/source review or live release is claimed here.
