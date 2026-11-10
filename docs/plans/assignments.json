@@ -3219,7 +3219,7 @@
       "tier": 1,
       "lane": "supply",
       "branch": "agent/claude/d090-byor",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-310",
       "dependsOn": [
         "D-057-session-gate"
