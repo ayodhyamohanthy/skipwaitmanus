@@ -414,8 +414,35 @@ Baseline tests show the cited sources behave as cited; they do not prove the fea
 | P1.2 | `adminCompanyCreateSchema` on a minimal valid body, then the same body with `demand: 20` added | accepted / refused (strict) |
 
 ## Status
-D-086.count: review — agent/queue/d086-count — 3564223c — draft PR #955. Built by DeepSeek V4.1 Flash Free · 6430 (2026-11-02). Both switches false; nothing lands until an independent pass (D-151).
+D-086.count: parked — D-279 (2026-11-02). The deliverable is complete on `agent/queue/d086-count` (head `4700fc10`, draft PR #955): the k-anonymous contract, the coverage-neutral read, the red-first fixture and route tests, the admin admission queue and the switch-only mount inside `registerCompanyDirectoryRoutes`, with both `COMPANY_DEMAND_PUBLIC_ENABLED` and `COMPANY_DEMAND_ADMIN_ENABLED` false. The only red required job on that head is the review gate — `typecheck` fails at its `Scope check (declared file ownership)` step with `review-gate: D-086.count at 4700fc10: Tier 1: this head has no independent passing review (D-074, D-151) … Nobody has reviewed D-086.count yet.`, while the job's own `Typecheck`, `Design tokens` and `Deploy trigger coverage` steps and the `unit + component + route tests`, `production build` and `e2e journeys` jobs are all green there. The review lock `agent/review/d086-count` has never existed on origin, so no session was ever handed the review that would clear the gate, and `scripts/nextTaskCore.mjs:573-584` can only answer `fix` or `green` while CI is red, so the picker's promised second review is unreachable. The row is therefore parked at `status: "owner"` with `syncedTo: "D-279"`; it is the eighth member of the class D-254 already measures, it asks no second question, and no gate is waived. Do not rebuild: the row lands unchanged once a review route exists, and both switches stay false. Its dependents `D-086.ui`, `D-086.admit` and the release row `D-086-demand-list` wait on it under D-134 either way.
 D-086-demand-list: revision3 reviewed source packet f81236e8; coordinator registration candidate on ordinary PR788, not yet merged. Four implementation rows and future release remain unbuilt; both switches stay off. The historical architect revision was proposal-only; registry and register changes in this candidate become effective only through protected merge.
 
 
 Coordinator review: f81236e8 locally integrated with main e67f7785 (not protected-merged);218registry rows/0errors,35baselinePASS,662scriptPASS. Original owner demand/journey messages recovered. No implementation, deployment or switch activation. Historical43 includes8rev2 disposable contract probes.
+
+
+### November 11, 2026: D-086.count technical parking reconciled
+
+The D-279 park above is historical. The only technical reason it records
+for owner status is the old D-254 review-route deadlock. The D-286/D-291
+cure, including real I/O wiring, is now on main via normal PR1008.
+Return this existing row to ordinary todo assessment and stamp syncedTo
+D-313, the latest checked register entry, under D-202/D-200. This does not
+clear any independent product, contributor, privacy, scope or review hold.
+
+Live PR955 is still draft/open/unmerged at 4700fc10dc9d41843a96cb52229630487378f166. Its
+exact-head historical CI has only Scope check failing, while unit, build
+and journeys succeeded. That old workflow is not today's positive
+named-step gate-only classification. Legitimate current-main composition
+and current exact-head CI must precede a qualifying ordinary review.
+No new empty Takeover to manufacture eligibility, no model relabeling,
+retrospective author replacement, manual review marker or fabricated pass.
+Known and unknown contributors remain subject to D-151/D-311. Existing
+models that built or fixed it remain excluded from its review.
+
+All switches, scope, ownership, dependencies, queue order, existing source,
+findings and product rules remain unchanged. Historical note text is kept
+for provenance, not presented as current owner-wait state. This is status
+reconciliation, not code completion, a pass, landing or live deployment.
+
+`D-086.count`: in progress — Qoder · d12e — 2026-11-11 — branch agent/queue/d086-count (make-green takeover from DeepSeek V4.1 Flash Free · 0eed's quiet branch; `38b6c98e`..`3564223c` and the takeover marker are preserved, nothing rebuilt). Current main merged. The Nov 2 `Scope check` failure is gone on this composition: `scope-check --branch` reports 7 owned paths and every change inside them. Both demand switches stay false; prior builders and fixers remain excluded from its review (D-151).

@@ -36,6 +36,8 @@ const RULES: Rule[] = [
   rule("/api/referrer-fast-track", 1, true),
   rule("/api/referral-share-cards/public", 1, true),
   rule("/api/referrer-review-links", 1, true),
+  // D-090-BYOR: the one-time bring-your-own-referrer link, raw token and claim suffix.
+  rule("/api/ask-invites", 1, true),
   // A storage key can hold slashes and a person's file name: drop everything after the prefix.
   rule("/api/documents/by-key", 1, false),
   // Browser link routes (client/src/App.tsx; /share-card is also served by the server)
@@ -43,6 +45,7 @@ const RULES: Rule[] = [
   rule("/share-card", 1, true),
   rule("/fast", 1, true),
   rule("/refer", 2, true),
+  rule("/r", 1, true),
 ];
 
 /** A path (or path with query/hash) with every token segment replaced by `:token`, query and hash dropped. */

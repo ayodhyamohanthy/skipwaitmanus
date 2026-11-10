@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
+import { apiFetch } from "@/lib/apiFetch";
 import { clearPendingCheckout, readPendingCheckout } from "./PlansKitSections";
 import { kitDate } from "./format";
 import type { Role } from "./PlansKitSections";
@@ -36,7 +37,7 @@ export function PendingCheckoutReturn({ role, getToken }: { role: Role; getToken
       tries += 1;
       try {
         const token = await getToken();
-        const response = await fetch("/api/chargebee/subscription-recovery", {
+        const response = await apiFetch("/api/chargebee/subscription-recovery", {
           method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ hostedPageId: pending.hostedPageId, role: pending.role }),

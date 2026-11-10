@@ -1,0 +1,7 @@
+{
+  "signedIn": false,
+  "routes": [],
+  "actions": [
+    { "waitFor": "text=Sign in" }
+  ]
+}
