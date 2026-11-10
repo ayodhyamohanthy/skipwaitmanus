@@ -36,6 +36,8 @@ import { splitWhyMe } from "@shared/whyMe";
 import { formatDay } from "@/lib/displayPrefs";
 import { readApiJson } from "@/lib/apiResponse";
 import { cn } from "@/lib/utils";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
 type QueueItem = {
   id: number;
@@ -118,6 +120,8 @@ export default function MyCompanyInbox() {
     const token = await getToken();
     const response = await fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
     const payload = await readApiJson<T & { error?: string }>(response, "We could not complete that private company request");
+    // D-057: a refusal for this session re-checks the verdict, so the queue flips to the step-up in place.
+    if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
     if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
     return payload;
   };
@@ -245,6 +249,8 @@ export default function MyCompanyInbox() {
     </section>
   );
   if (access.status === "error") return shell(<GoalErrorState title="We couldn’t check your verification" body={`${access.error.message || "Check your connection and try again."} Nothing changed on your account. Try again in a moment.`} retry={{ label: "Try again", onClick: access.retry }} />);
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  if (access.status === "code_required") return shell(<GoalWorkEmailStepUp access={access.access} />);
   if (!verified) return shell(<GoalEmptyState title="Verify your work email." body="A one-time code confirms your company. Your name and work email never appear to job seekers." action={{ label: "Add work email", onClick: () => go("/sign-in") }} />);
 
   const nowMs = Date.now();

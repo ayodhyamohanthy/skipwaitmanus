@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, CircleAlert, LockKeyhole, Send, UserPlus } from "lucide-react";
 import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton, GoalNextStep, GoalNum, useOnlineStatus } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { DM_SEND_WORKFLOW, beginPendingSend, clearPendingSend, normalizeMessageBody, readPendingSend } from "@/lib/idempotentSend";
@@ -108,7 +108,7 @@ function ChatRow({ item, onOpen }: { item: DmThreadSummary; onOpen: () => void }
 }
 
 export default function GoalMessages() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const online = useOnlineStatus();
   const [threads, setThreads] = useState<DmThreadSummary[] | null>(null);
   const [listError, setListError] = useState("");
@@ -231,7 +231,8 @@ export default function GoalMessages() {
       <h1 className="text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
       <p className="mt-2 text-g-meta text-g-ink-2">{DM_REFERRER_ACCEPTANCE_ERROR}</p>
       <div className="mt-5"><GoalNextStep reason="Sign in to see your messages.">
-        <div className="mt-4"><SignInButton><GoalButton variant="primary" touch="large">Sign in</GoalButton></SignInButton></div>
+        {/* One real button: SignInButton adopts only literal <button> children, so wrapping GoalButton would nest buttons. */}
+        <div className="mt-4"><GoalButton variant="primary" touch="large" onClick={() => openSignIn()}>Sign in</GoalButton></div>
       </GoalNextStep></div>
     </>);
   }

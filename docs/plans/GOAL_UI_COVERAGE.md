@@ -33,6 +33,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/` | `pages/Home` | `D-048-p3-home`, `D-048-p3-home-signed-in` | D-048-p3-home: done; D-048-p3-home-signed-in: to be added by its lane packet |
 | `/fast/:linkCode` | `pages/FastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/refer/:companySlug/:vanityAlias` | `pages/VanityFastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
+| `/r/:token` | `pages/AskInviteLink` | `D-090-BYOR` | D-090-BYOR: fix round in progress on #632 |
 | `/share-card/:token` | `pages/ShareCard` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/email-review/:linkToken` | `pages/EmailReviewAction` | `D-048-p3-email-review` | D-048-p3-email-review: todo |
 | `/start` | `pages/Onboarding` | `D-048-p3-start` | D-048-p3-start: todo |
@@ -75,8 +76,8 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/reset-password` | `pages/ResetPassword` | `D-048-p3-signin` | D-048-p3-signin: to be added by its lane packet |
 | `/wallet` | — | none: redirect to /plans | — |
 | `/thread` | `ThreadListAlias` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
-| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
-| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
+| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
+| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
 | `/messages` | `pages/Messages` | `D-048-p3-messages` | D-048-p3-messages: to be added by its lane packet |
 | `/share` | `pages/ShareHub` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
 | `/inbox` | `pages/UnifiedInbox` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
@@ -166,6 +167,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`
