@@ -166,10 +166,12 @@ Routing registration amendment, November 10 at 17:47 IST: the actual holder offe
   is historical: at15:45:28 IST another actual session created empty Claim
   `77b9962d2f2f858ac6a1db2f005e792e54bfe79c`, Qoder · 5f11, parent92fc6ebc.
   Its real model, source and unpublished work are unresolved. Preserve that
-  claim/history; no overwrite, reclaim or duplicate GLM dispatch. The named
-  GLM record above remains a proposed author, NOT this holder's identity or
-  execution. Current-holder coordination must settle the actual author route
-  and source composition before generation; do not relabel the real claim.
+  claim/history; no overwrite, reclaim or duplicate claim ON THIS PRESERVED
+  BRANCH. The fresh isolated GLM route needs its own complete binding. The
+  named GLM record is NOT this holder's identity or execution. Holder
+  coordination for the reference-only handoff is satisfied by the accepted
+  offer above, not author qualification or source composition; do not relabel
+  the real claim or treat its unknown author as qualified.
   A plain Qoder Claim can work; the broken loader blocks the provenance-qualified
   external claim path, not every plain marker. This existing plain marker does
   not establish actual-author validity or settle the provenance-qualified route.
