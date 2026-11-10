@@ -65,3 +65,41 @@ node scripts/next-task.mjs --fixed --task TASK --as 'Operator · session' --prov
 The normal subject stays attributed to the actual operator. Body lines `provenance ROUTE_ID` and `execution EXECUTION_ID` are unambiguous references, not free model names. Missing, duplicated, malformed, revoked or wrong-task/operator/role evidence holds external work. Failed completion checks write no marker. Normal fast-forward pushes still settle claim races. Ordinary locks, holder checks, dependencies, main-red safety, tests and protections remain in force.
 
 Picker and gate compare canonical actual model identities against every builder/fixer; another session of the same model is not independent. Legacy-only known-prefix behavior remains unchanged, without claiming those old names are newly verified. An external route cannot reinterpret an unknown legacy contributor. No example here is a qualified live execution.
+
+## Trusted registry read bound (PROCESS-provenance-loader-bounds)
+
+Both production provenance loaders, the picker (`scripts/next-task.mjs`) and the
+review gate (`scripts/review-gate.mjs`), read Git through one shared reader,
+`scripts/provenanceGitOutput.mjs`. It is transport only: it holds no policy, makes
+no trust decision and never edits the registry.
+
+Supported aggregate size: one read returns at most **64MiB** of stdout
+(`GIT_OUTPUT_LIMIT_BYTES`). The measured trusted registry is about 1.6MiB, a
+single artifact is schema-limited to 16MiB, and a read may legitimately carry
+several artifacts, so 64MiB matches the existing source-reader precedent in the
+review gate. The bound is finite and named; it is not an unbounded allocation and
+the 16MiB per-artifact limit does not imply an unlimited aggregate.
+
+Error behavior is unchanged. A Git that cannot start, a non-zero status, or output
+above the bound throws; each wrapper's nullable adapter turns that throw into
+`null`, and `loadTrustedProvenance` reports the result through its existing parser
+semantics rather than new transport wording: `null` bytes are `invalid provenance
+registry`, unparseable bytes are `unreadable provenance registry`, and an absent
+trusted main is `no trusted-main provenance registry`. An over-bound read is
+therefore a reported failure, not a truncated success, stale fallback,
+candidate-local substitution, legacy fallback or silent internal-error approval.
+Raising the output buffer is a transport fix; it does not add trust, change the
+evidence schema or weaken a gate, and nothing here claims fail-closed behavior for
+unrelated preexisting paths.
+
+Real loaders and the pure resolver are different evidence. `loadTrustedProvenance`
+composes the actual reader with the actual registry parser, so an integration test
+against a real Git repository exercises the production path. A pure resolver
+fixture that calls `resolveTaskProvenance` with an in-memory registry proves only
+the resolver; it cannot show that the trusted registry is readable at its real
+size, which is exactly how the 1MiB defect stayed hidden.
+
+Both wrappers export their real Git bindings (`git`/`tryGit` in the picker, `git`
+in the gate) for that regression, and the picker runs `main()` only when executed
+as a CLI. Those exports change no decision: they expose the same bindings the
+loaders already call, so a test cannot pass against a copy of the reader.
