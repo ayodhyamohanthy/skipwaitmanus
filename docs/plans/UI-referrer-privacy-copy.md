@@ -32,7 +32,8 @@ not a new product-policy decision or a priority override.
 
 Tier 1 conservatively: the text explains a privacy boundary on sign-in.
 Use branch `agent/queue/ui-referrer-privacy-copy` after ordinary assignment.
-The registration appends one task without moving or changing existing tasks.
+The earlier registration proposed this runtime task. This revision defers it;
+only the separate prep task is appended without changing existing tasks.
 
 `REL-client-capture` retains its switch-only ownership of the two component
 files. Its fetch/API switches, claims and unpublished work must be preserved.
@@ -42,7 +43,8 @@ those paths or make their blocked redesign a prerequisite for this copy fix.
 The goal/referrer implementation rows are done on the inspected main.
 
 Because the registry's file-level overlap cannot express the copy-only split
-from REL's switch-only ownership, this row declares no `owns`. This is not
+from REL's switch-only ownership, the future runtime registration must explain
+its manual hunk scope rather than silently claiming those files. This is not
 permission to bypass ownership: exact hunk review and current shared-record
 coordination are required before implementation and integration. If the
 actual held or unpublished work overlaps these copy hunks, pause the affected
@@ -58,7 +60,8 @@ A skipped automatic scope check is not a pass.
 - @client/src/pages/goal/referrer/GoalOtpSignIn.tsx: the same paragraph only,
   keeping goal tokens and structure unchanged.
 - @client/src/components/referrerPrivacyCopy.test.tsx: NEW focused deterministic
-  regression. The qualified author writes the test and every product byte.
+  regression: future byte-identical transport of the separately authored and
+  accepted prep source, never runtime-builder authorship of that source.
 - This packet's Status section: evidence and outcome only.
 
 Explain accurately that the role and note can be reviewed before choosing,
@@ -81,10 +84,12 @@ payment, provider settings or feature activation during QA.
 ## 4. Acceptance and verification
 
 1. Read current source and tests, preserve current-main contributions and
-   current owners. Write a deterministic regression first. It must fail on
+   current owners. Use the complete accepted prep regression without semantic
+   rewriting and reproduce its prior RED evidence. It must fail on
    the actual existing misleading promise in all three render paths, then
    pass for the accurate acceptance boundary. An absent sentence alone is
-   insufficient: require an explicit post-acceptance name/resume statement.
+   insufficient: require the explicit acceptance boundary with active file
+   access remaining conditional.
 2. Exercise noncompact WorkEmailSignIn, ReferrerOtpSignIn and GoalOtpSignIn
    without network sends. Preserve their different rendering and existing
    work-email-only controls. Do not mask the regression by replacing the
