@@ -10,6 +10,8 @@ import { VisualJourney } from "@/components/VisualJourney";
 import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
 import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 import GoalLandingV9 from "./GoalLandingV9";
+import GoalHomeLoading from "./goal/home/GoalHomeLoading";
+import GoalHomeSignedIn from "./goal/home/GoalHomeSignedIn";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import CookieConsent from "@/components/CookieConsent";
 
@@ -28,10 +30,17 @@ export default function Home() {
   // flag (off in production until QA verifies). Signed-in visitors keep the
   // existing page until the Home surface migrates.
   const goalLanding = goalSurfaceOn("home") && isLoaded && !isSignedIn;
+  // D-048-p3-home-signed-in: a signed-in visitor gets their own home (seeker
+  // -> /explore, verified referrer -> /referrer-home on the server verdict),
+  // never the Kit v4 page and never a flash of the marketing landing.
+  const goalSignedInHome = goalSurfaceOn("home-signed-in");
+  const goalHome = goalLanding || (goalSignedInHome && (!isLoaded || isSignedIn));
   useEffect(() => {
-    if (goalLanding) return;
+    if (goalHome) return;
     applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: publicRoute("/")!.description, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
-  }, [goalLanding]);
+  }, [goalHome]);
+  if (goalSignedInHome && !isLoaded) return <GoalHomeLoading />;
+  if (goalSignedInHome && isSignedIn) return <GoalHomeSignedIn />;
   if (goalLanding) return <GoalLandingV9 />;
 
   return (
