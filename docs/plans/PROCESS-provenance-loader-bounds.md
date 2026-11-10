@@ -118,6 +118,9 @@ before source dispatch; open fields below are blockers, not implied approvals.
 - Task: `PROCESS-provenance-loader-bounds`, existing Tier 2, existing six-path
   implementation allowlist in section 4; no new or renamed row.
 - Approval-record starting base: `03bb0ff8a72be6c6d73f47e312dc4f8cdfad25a0`.
+  Fresh current-main composition base: `92fc6ebc2313a93a6ac5623c4a319de79102129e`.
+  Its intervening PR1112 changes only prep packet/inert test source, not the
+  two production wrappers; preserve that separately merged history.
   It includes the actual pagination merge; do not use the older wrapper/core
   context as an execution base. Public prebinding snapshot assembled from that base: 125,131 bytes,
   SHA-256 `cf174693f25bc32eff4c62b0a67ca955c6256675b78c9df619b43746daea7b65`.
@@ -153,7 +156,8 @@ before source dispatch; open fields below are blockers, not implied approvals.
   `--avoid UI-referrer-privacy-copy-tests` then offered BUILD
   `PROCESS-provenance-loader-bounds`. No claim, target override or blanket
   avoid was used. This is ordinary eligibility, not a priority exception.
-  Rerun fresh after binding admission/main movement; retain exact outputs.
+  Main has since moved to92fc6ebc; rerun fresh after binding admission/main
+  movement and account for its actual merged prep, retaining exact outputs.
 - Source branch: `agent/queue/process-provenance-loader-bounds`, absent at the
   supervisor's prebinding check. Start it from the admitted, independently
   reviewed binding on current main; no ordinary claim marker is asserted.
@@ -179,13 +183,18 @@ before source dispatch; open fields below are blockers, not implied approvals.
   path under the broken loader before generation. This later status record
   is not a claim that the reviewer already assessed its own added text;
   final exact carrier review remains required. No source generation yet.
-- Proposed unchanged-check path, subject to actual independent assessment:
+- Actual unchanged-check proof plus required final assessment:
   the exact registered Tier 2 source branch is admitted by queue-gate;
   `reviewGateViolation` on base03bb returns for declared/computed non-Tier1
   before provenance resolution. Such a return is NOT identity certification.
   The row's no-owns scope result is SKIPPED, not a scope PASS, so the actual
   six-path/hunk diff and ownership composition need explicit manual review.
-  No gate edits, fabricated claim or data compression are permitted.
+  Supervisor ran an isolated local Git fixture of exactc9d63 with the real
+  oversized registry: actual Git read still failed ENOBUFS/SIGTERM. The exact
+  six implementation paths computed Tier2 and reviewGateViolation returned
+  null with provenanceAccessed:false. This is technical control evidence,
+  not model certification or production source/claim. No gate edits,
+  fabricated claim or data compression are permitted.
 - Implementation review: genuine independent DeepSeek exact-source/manual
   attribution/current-main assessment, excluding the actual GLM author and
   any real fixer. Record the actual model and complete verdict, not a made-up
@@ -199,8 +208,15 @@ before source dispatch; open fields below are blockers, not implied approvals.
   BUILD claim, D-311 qualifier or identity certification. Supported --landed
   after an explicit landing-ref fetch was proved earlier today. Current slot
   was empty with Landed f32a29e3; revalidate it at landing. The proposed loader-specific
-  slot procedure still needs actual independent assessment; no
-  fabricated verdict, admin bypass or unchanged-gate skip is approved.
+  slot procedure now has an actual isolated-local-Git proof under the SAME
+  ENOBUFS condition: correctly formatted task/operator-only Land claim,
+  actual unchanged supported --landed exit0, then readback Landed. An initial
+  wrong-format synthetic marker failed exit1 and remains a FAILED probe;
+  correction used the actual markerSubject format, not a runtime edit.
+  No production marker was created by that fixture. This establishes command
+  mechanics, not future live free-slot ownership, final review or CI. Final
+  independent assessment still required; no fabricated verdict, admin bypass
+  or gate skip is approved.
 - After actual merge: settle main CI and slot via their supported operations,
   prove both released production loaders and unchanged original prep D-311
   receipt composition, then resume ordinary protocol. Do not call --fixed or
