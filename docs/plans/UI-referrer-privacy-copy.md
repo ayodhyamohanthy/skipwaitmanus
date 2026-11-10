@@ -1405,4 +1405,3 @@ pending. This entry asserts no completion, no claim, no receipt, no verdict, no
 landing and no deployment. Current state: admitted 1129; genuine claim
 `cc2512bea9a7e171afd0da7d5bedb0f384ee272d` in progress on admitted
 `8b0212af36f7ced8cb0b52658ac505e45d3a2655`.
-
