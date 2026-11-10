@@ -1880,7 +1880,7 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-254",
       "dependsOn": [
         "D-048-F-harness",
@@ -2067,7 +2067,7 @@
       "tier": 1,
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-257",
       "dependsOn": [
         "D-048-F-harness",
@@ -2432,7 +2432,7 @@
       "tier": 1,
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-258",
       "dependsOn": [
         "D-048-F-harness",
@@ -4254,7 +4254,7 @@
       "tier": 1,
       "lane": "d174-fix",
       "branch": "agent/queue/d174-fix-post-binding",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-267",
       "dependsOn": [
         "D-132-audit",
