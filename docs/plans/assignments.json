@@ -1893,9 +1893,10 @@
         "client/src/pages/ThreadAlias.tsx",
         "client/src/pages/goal/inbox/**",
         "client/src/pages/inboxGoal.test.tsx",
-        "design/goal-ui/captures/inbox/**"
+        "design/goal-ui/captures/inbox/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Owns amendment (2026-11-11): adds client/src/test/goalPagesBoundary.test.ts - D-241 (3) boundary now walks each goal page runtime graph and bans goal pages importing modules that are neither goal code nor on the AUDITED list (the pattern of D-284/D-276/D-332); the goal inbox imports the kit page shared data layer client/src/components/inbox/inboxThreads.ts (buildInboxThreads/fetchAskingRows/fetchReferringRows/splitByOwner, packet-mandated unchanged data contract with the privacy invariants), which needs a behavior-only AUDITED entry. Same registration pattern as D-048-p3-admin (e82cad41), D-048-p3-employer (77346d74) and D-048-p3-discovery (329d72ae), whose rows all carry this file in owns."
     },
     {
       "row": "D-048",
