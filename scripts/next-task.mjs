@@ -28,7 +28,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
@@ -331,9 +331,15 @@ async function state() {
       const ci = prCi.get(head);
       if (ci?.state !== "red") continue;
       ci.gateOnly = false;
+      ci.legacyScope = false;
       const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
       if (!Number.isSafeInteger(ci.runId) || !tipSha || ci.sha !== tipSha) continue;
-      try { ci.gateOnly = gateOnlyRedFromJobs(await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`)) === true; }
+      try {
+        const jobs = await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`);
+        ci.gateOnly = gateOnlyRedFromJobs(jobs) === true;
+        // D-314: the same one read tells a pre-D-292 run red only at the old scope-check step (still MAKE GREEN).
+        ci.legacyScope = !ci.gateOnly && legacyScopeRedFromJobs(jobs) === true;
+      }
       catch (e) { console.error(`next-task: ${e.message}`); }
     }
   }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { normalizeWorkEmail, workEmailError } from "@/lib/workEmail";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Flow = "email" | "code";
 
@@ -32,7 +33,7 @@ export function WorkEmailSignIn({ inviteCode, compact = false }: { inviteCode?: 
     if (validation) { setError(validation); setFlow("email"); return; }
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/work-email/otp/send", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail }) });
+      const response = await apiFetch("/api/work-email/otp/send", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail }) });
       const payload = (await response.json().catch(() => ({}))) as { sent?: boolean; error?: string; retryAfterSeconds?: number };
       if (!response.ok || !payload.sent) {
         // Surface the server's specific message (rate limits, sign-in required,
@@ -52,12 +53,12 @@ export function WorkEmailSignIn({ inviteCode, compact = false }: { inviteCode?: 
     if (code.length !== 6) { setError("Enter the six-digit code from your company email."); return; }
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/work-email/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, code }) });
+      const response = await apiFetch("/api/work-email/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, code }) });
       const payload = (await response.json().catch(() => ({}))) as { verified?: boolean; receipt?: string; error?: string };
       if (!response.ok || !payload.verified || !payload.receipt) { setError(payload.error || "That code could not be verified. Check the latest code and try again."); return; }
       rememberCompanyEmail();
       // Enrollment completes through the existing verified-address endpoint.
-      const enroll = await fetch("/api/company-referrals/verify-work-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, receipt: payload.receipt, inviteCode }) });
+      const enroll = await apiFetch("/api/company-referrals/verify-work-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, receipt: payload.receipt, inviteCode }) });
       const enrollPayload = (await enroll.json().catch(() => ({}))) as { verified?: boolean; error?: string };
       if (!enroll.ok || !enrollPayload.verified) { setError(enrollPayload.error || "We could not confirm this company email for private referral access."); return; }
       window.location.reload();
