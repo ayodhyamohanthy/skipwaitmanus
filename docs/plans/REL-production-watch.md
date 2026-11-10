@@ -465,6 +465,8 @@ no compliant review route exists. PR1008's D-286/D-291 cure and live I/O
 wiring are now on main. Only REL-client-capture and REL-webhook-auth-alarm
 return to ordinary `todo` assessment; their existing source branches,
 contributions, dependencies, flags, scopes and findings are preserved.
+Their syncedTo stamps advance to checked register D-313 under the existing
+packet-update rule; historical D-256/D-262 text stays unchanged.
 This is not code completion, an independent pass, model qualification,
 landing authority or a live release. Historical heads ran old workflow
 revisions; require current-main composition and real current exact-head CI,

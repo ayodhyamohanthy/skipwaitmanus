@@ -855,7 +855,7 @@
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
       "status": "todo",
-      "syncedTo": "D-262",
+      "syncedTo": "D-313",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -921,7 +921,7 @@
       "lane": "observability-client",
       "branch": "agent/queue/rel-client-capture",
       "status": "todo",
-      "syncedTo": "D-256",
+      "syncedTo": "D-313",
       "dependsOn": [
         "FIX-device-signin"
       ],

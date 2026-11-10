@@ -555,8 +555,10 @@ Only `REL-client-capture` (D-256, PR851 head
 `f8b080b196181a0a5ad29d749b2fd9e908c83cd8`) and
 `REL-webhook-auth-alarm` (D-262, PR850 head
 `3ca0e0ccf564a7062f47646f579f45e2aa101c1e`) return from `owner` to `todo`.
-Every other row field, queue position, dependency, scope, contribution and
-historical decision stays unchanged. FIX-device-signin, the client row's
+The two syncedTo stamps advance from D-256/D-262 to checked current
+register D-313 under D-202/D-200 packet-update rules. Every other row
+field, queue position, dependency, scope, contribution and historical
+decision stays unchanged. FIX-device-signin, the client row's
 existing dependency, is recorded done on inspected main. The webhook row
 has no dependencies. Neither product PR is merged by this correction.
 
