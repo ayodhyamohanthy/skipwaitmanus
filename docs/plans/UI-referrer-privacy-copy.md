@@ -1375,3 +1375,33 @@ completion. The individual GLM prep receipt now resolves through that real
 loader; historical1112 full-task hold remains a distinct unresolved fact.
 Thus syncedTo D-313 records the checked decision, not a new dependency or
 waiver, and does not bypass this runtime registration/route/claim/review gate.
+
+### Runtime copy implementation, November 10 at 23:58 IST
+
+Five paths only: the introductory promise paragraph in
+`client/src/components/ReferrerOtpSignIn.tsx`, in
+`client/src/components/WorkEmailSignIn.tsx` (the noncompact branch only; the
+compact branch renders no copy paragraph), and in
+`client/src/pages/goal/referrer/GoalOtpSignIn.tsx`; the new byte-identical
+regression transport `client/src/components/referrerPrivacyCopy.test.tsx`
+(33,911 bytes, SHA-256
+`244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f`, unchanged
+from the separately qualified GLM 5.3 prep source, transported without edits and
+not authored here); and this Status section.
+
+The new copy states that the role and note can be reviewed before the choice, that
+the seeker's name and resume stay hidden until acceptance, and that post-acceptance
+file access stays conditional on active document access. The decline/context and
+nothing-sent-from-your-account sentences are preserved exactly, and no forwardable
+packet is promised. No handler, import, auth, endpoint, transport, flag, schema,
+dependency or other byte changed.
+
+Verification, all recorded by the operator and none invented here: on the
+unchanged copy the operator reproduced 33 tests with 9 failed and 24 passed, the
+expected RED drivers. With this copy the operator recorded the focused regression
+33/33 PASS at 00:10; the affected sign-in/referrer/login/privacy tests,
+`pnpm check`, the full gate, pixels, review, receipt and landing all remain
+pending. This entry asserts no completion, no claim, no receipt, no verdict, no
+landing and no deployment. Current state: admitted 1129; genuine claim
+`cc2512bea9a7e171afd0da7d5bedb0f384ee272d` in progress on admitted
+`8b0212af36f7ced8cb0b52658ac505e45d3a2655`.

@@ -41,7 +41,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
   if (stage === "email") {
     return (
       <div className="w-full">
-        <div className="mb-4 text-sm leading-5 text-black"><p className="font-semibold">See the role, resume, and forwardable note before you choose. Decline or ask for context. Nothing is sent from your account.</p><p className="mt-2 text-xs text-[#505050]">Work email verifies company access; it stays private.</p></div>
+        <div className="mb-4 text-sm leading-5 text-black"><p className="font-semibold">You can review the role and note before you choose. The seeker's name and resume stay hidden until you accept. After you accept, you can open the resume only while your document access is active. Decline or ask for context. Nothing is sent from your account.</p><p className="mt-2 text-xs text-[#505050]">Work email verifies company access; it stays private.</p></div>
         <label htmlFor="otp-referrer-email" className="block text-xs font-semibold text-black">Company email</label>
         <input id="otp-referrer-email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} inputMode="email" placeholder="you@company.com" value={email}
           onChange={event => { setEmail(event.target.value); setError(""); }}
