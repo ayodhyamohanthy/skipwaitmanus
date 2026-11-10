@@ -278,6 +278,21 @@ repair; it never becomes a reusable route for other work.
 
 PROCESS-provenance-loader-bounds: in progress — Qoder · 5f11 — 2026-11-10 — branch agent/queue/process-provenance-loader-bounds
 
+D-312 / section 5a conflict, reported blocked (D-202), 2026-11-10. A newer
+decision and packet section now govern this task: source dispatch requires a
+complete, independently reviewed pre-dispatch task/operator/actual-author
+binding, and section 5a was still explicitly "not execution-ready" carrying
+open blockers when this session committed source. This session is the existing
+plain `Qoder · 5f11` claim that section 5a names; it is not the proposed GLM
+author and has not been admitted as one. Nothing here is relabeled, and no
+Claim/provenance/execution marker, receipt, verdict or completion is claimed.
+The implementation below exists as real Qoder work for independent assessment;
+it must not be landed until the binding question is settled by the coordinator
+and, on its own merits, it passes independent exact-head review. My reading is
+that section 5a gates this task's implementation generally, not only the
+proposed external route, so treating my unbound dispatch as compliant would
+fabricate an approval. The work is preserved on the branch and PR #1114.
+
 Implementation evidence (local, branch `agent/queue/process-provenance-loader-bounds`, base main `92fc6ebc`):
 
 - Measured red on unchanged code, real repo: `docs/model-provenance.json` is 1,620,441 bytes; the picker adapter returns `invalid provenance registry` and the gate's own read throws `ENOBUFS` (raw script output captured). Registry is genuinely populated: 5 routes, 3 executions.
