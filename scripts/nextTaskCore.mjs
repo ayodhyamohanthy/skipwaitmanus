@@ -378,6 +378,21 @@ const JOB_OK = new Set(["success", "skipped"]);
  * picker keeps handing MAKE GREEN (fail closed).
  */
 export function gateOnlyRedFromJobs(jobs) {
+  return onlyTypecheckStepRed(jobs, GATE_STEP);
+}
+
+/**
+ * D-314: before REVIEW-GATE-fetch-parity (D-292) named the review gate's own step, CI ran it inside this
+ * step. A run older than that, red at exactly this step, cannot be told apart from a real scope failure,
+ * so it is never treated as gate-only; the picker still hands MAKE GREEN, but says the cure first: merge
+ * origin/main so CI re-runs with the current workflow, where a review-only red shows on its own.
+ */
+export const LEGACY_SCOPE_STEP = "Scope check (declared file ownership)";
+export function legacyScopeRedFromJobs(jobs) {
+  return onlyTypecheckStepRed(jobs, LEGACY_SCOPE_STEP);
+}
+
+function onlyTypecheckStepRed(jobs, stepName) {
   const list = Array.isArray(jobs) ? jobs : Array.isArray(jobs?.jobs) ? jobs.jobs : null;
   if (!list?.length) return false;
   let failed = 0;
@@ -392,7 +407,7 @@ export function gateOnlyRedFromJobs(jobs) {
     for (const step of steps) {
       if (!step || typeof step.name !== "string") return false;
       if (JOB_OK.has(step.conclusion)) continue;
-      if (step.conclusion !== "failure" || step.name !== GATE_STEP) return false;
+      if (step.conclusion !== "failure" || step.name !== stepName) return false;
       stepsFailed += 1;
     }
     if (stepsFailed !== 1) return false;
@@ -663,6 +678,8 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
       // PICKER-gate-red-review-route: red CI that is only the review gate, read from this exact head's own run.
       gateOnlyRed: ci.state === "red" && ci.gateOnly === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
+      // D-314: red only at the pre-D-292 scope-check step on this exact head: a run from before the workflow change.
+      legacyScopeRed: ci.state === "red" && ci.legacyScope === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
       done: task.status === "done" || ((task.status === "todo" || packet) && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
       packet, writers: packet ? everyone(archMarkers, ["Claim", "Takeover"]) : [],
@@ -768,7 +785,9 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     }
     return Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
   };
-  const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
+  // D-314: a red only at the pre-D-292 scope-check step is first a stale workflow, not a code failure to hunt for.
+  const legacyWhy = v => `Pull request ${v.pr}'s red run predates the current CI workflow: it failed only at the old "${LEGACY_SCOPE_STEP}" step, which then also ran the review gate. First merge the latest origin/main into ${v.work} (a two-parent merge, never a rebase; resolve conflicts keeping both sides) and push, so CI re-runs with the current workflow. Finding no code to fix is not "nothing to fix": if the new run is red only at the review gate, the picker hands its REVIEW; any other red is yours to fix`;
+  const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why: v.legacyScopeRed ? legacyWhy(v) : why, ...(v.legacyScopeRed ? { legacyScope: true } : {}) });
   // D-202: updating the packet is a docs job on the architect lock; any capable session may take it (D-200).
   const resync = v => ({ kind: "resync", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: v.arch ? holderOf(v.arch, v.task.id) : null, decisions: decisionsSince(register, v.task.syncedTo) });
   const reportWhy = said => `${said.who} reported it ${said.status}${said.note ? `: ${said.note}` : ""}`;
