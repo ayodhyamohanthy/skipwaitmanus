@@ -103,3 +103,39 @@ Both wrappers export their real Git bindings (`git`/`tryGit` in the picker, `git
 in the gate) for that regression, and the picker runs `main()` only when executed
 as a CLI. Those exports change no decision: they expose the same bindings the
 loaders already call, so a test cannot pass against a copy of the reader.
+
+
+## Picker authoritative-ref repair: alternate author resource, November 11
+
+The initial Mistral author resource could not consume the complete source packet
+or return an implementation. It completed no qualified build or fix execution.
+Its route and empty ordinary claim remain historical evidence, not a patch to
+adopt or a model to relabel.
+
+A new task-bound DeepSeek V4.1 Flash author route is proposed for
+`PICKER-authoritative-ref-refresh` only, operated as
+`Instinct · picker-free-model-author-deepseek-nov11`. The existing DeepSeek
+review route does not qualify authorship and cannot independently review code
+from this same canonical model. A distinct qualified final reviewer is required.
+The observed resource read a bounded 20,395-byte public source excerpt with both
+sentinels and correctly identified the first and last visible functions. The
+excerpt intentionally ends mid-function; this is smaller-input capacity evidence,
+not proof of whole-packet reading, generated code, tests or a completed review.
+Full required source context must be delivered in bounded chunks before work.
+
+This docs admission supplies no ordinary claim or execution. After admission,
+use the supported current-main picker and preserve holder, FIFO and route checks.
+An abandoned qualified empty claim may be non-contributing only under the existing
+single-parent-empty ancestry rule above. Do not force reclaim, alter old history,
+reuse the loader-only exception, adopt an unbound draft, or let DeepSeek review its
+own code. Actual generated output, applied diff, tests and separate exact-version
+review still need their own qualified receipts and normal protected landing.
+
+A separate observed Claude resource supplies the proposed final-review route
+`picker-refs-review-claude-nov11`, exact operator
+`Instinct · picker-free-model-review-claude-nov11`, visible `Opus 5.5 Max`,
+conservatively grouped as `claude-opus-5.5`. Review/land roles only, no build/fix:
+D-225's Claude reasoning boundary remains unchanged. The fresh availability
+response says no source or review has started and offers a complete read-only
+exact-head review with findings, no patches. This is not a completed verdict.
+No artificial alias split, hidden-checkpoint claim or author role is inferred.
