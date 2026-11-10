@@ -12,6 +12,7 @@ import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRe
 import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
+import { recordWebhookUnauthorized } from "./webhookAuthAlarm";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -404,7 +405,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
 
   app.post("/api/chargebee/webhook", async (req, res) => {
     const secret = resolveChargebeeWebhookSecret(req.hostname);
-    if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
+    if (!secret || !basicAuthMatches(req.header("authorization"), secret)) {
+      // D-212: a drifted secret refuses every refund and renewal; record it (no headers or body) and tell Sentry, throttled.
+      recordWebhookUnauthorized(deps.recordActivity);
+      return res.status(401).send("Unauthorized");
+    }
     const subscription = parseSubscriptionEvent(req.body);
     const payment = parsePaidPaymentEvent(req.body);
     const cardEvent = parsePaymentSourceEvent(req.body);

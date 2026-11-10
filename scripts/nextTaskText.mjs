@@ -27,6 +27,8 @@ const yours = who => `This is already yours (${who}): nothing new was claimed, a
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
 const statusAt = task => task.sharedRow ? `its line in the Status section of ${task.packet ?? "its packet"} (\"${task.id}: ...\"; the §3b row \"${task.row}\" is shared by several tasks, so never edit it)` : `the §3b row \"${task.row}\"`;
+// D-315: work handed out ahead of unfinished dependencies so no session idles; it never lands before them.
+const aheadLines = pick => (pick.ahead?.length ? [`AHEAD OF ITS DEPENDENCIES (D-315): ${pick.ahead.join(", ")} ${pick.ahead.length === 1 ? "is" : "are"} not done yet, and nothing else was free, so you start this now instead of waiting. Work only on its own branch from current origin/main and open a draft pull request; never land it, never mark it done and never edit a dependency's files to make it pass. The picker withholds its review and landing until every dependency is done; then merge origin/main into the branch and adapt to what they changed. If the packet truly needs a dependency's output to go further, push what you have, report it with \`${CMD} --report review\`, and run the picker again for your next task.`] : []);
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
 function workSteps(task, who, branch) {
@@ -60,7 +62,7 @@ function resumeSteps(task, who, branch) {
 }
 
 /** D-074: a Tier 1 change lands only as reviewed; a commit pushed after the pass verdict was never reviewed. */
-const unreviewed = pick => `Before you land, take the head commit the pass verdict names on the pull request, or in the reviewer's report note on the board (the newest pass, if there were several), as <reviewed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\` and \`git log --merges --cc --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`. Every commit the first lists, except one that only changes docs/plans/assignments.json (the status commit a landing makes), and every merge the second shows with a diff hunk (a conflict resolution or an extra change, your own merge included) was never reviewed (D-074): do not land, and report it blocked to the CEO with --report blocked.`;
+const unreviewed = pick => `Before you land, take the head commit the pass verdict names on the pull request, or in the reviewer's report note on the board (the newest pass, if there were several), as <reviewed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\` and \`git log --merges --cc --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`. Every commit the first lists, except one that only changes docs/plans/assignments.json (the status commit a landing makes) and one that lists no file at all (an empty picker marker, D-315), and every merge the second shows with a diff hunk (a conflict resolution or an extra change, your own merge included) was never reviewed (D-074): do not land, and report it blocked to the CEO with --report blocked.`;
 
 const reviewSteps = (pick, who) => steps([
   `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit, whatever arrives later, in its own worktree: \`git worktree add --detach ../skipwaitmanus-wt/review-${slugOf(pick.work)} <reviewed>\`, then \`${INSTALL}\` there before any test: ${INSTALL_WHY}`,
@@ -284,21 +286,26 @@ function pickText(pick, { who, date, claimed, register = null }) {
     ]) + take;
     case "architect": return head(`WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [
       `Any agent (D-109); Claude Code may revise it · lock ${pick.lock}${pick.from ? ` · taken over from ${pick.from}, quiet for 2 hours` : ""}`,
+      ...aheadLines(pick),
       architectSteps(pick, who, claimed),
     ]) + take;
     case "resync": return head(`RESYNC ${pick.task.id} — ${pick.task.title}`, [
       `A decision newer than this task's stamp (${pick.task.syncedTo ?? "none"}) names it: no build, takeover, review, fix or landing until the packet is re-synced. Lock ${pick.lock}; any capable session may take it (D-202, D-200).`,
+      ...aheadLines(pick),
       resyncSteps(pick, who, register),
     ]) + take;
     case "takeover": return head(`TAKE OVER ${pick.task.id} — ${pick.task.title}`, [
       `Half-built and quiet: nobody has pushed to ${pick.work} since ${new Date(pick.since).toISOString()} (queue rule 2, D-085; started by ${pick.from ?? "unknown"}).${pick.why ? ` ${pick.why}.` : ""}`,
       `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
       ...holding(pick),
+      ...aheadLines(pick),
       resumeSteps(pick.task, who, pick.work),
     ]) + take;
     case "build": return head(`BUILD ${pick.task.id} — ${pick.task.title}`, [
       `Tier ${pick.task.tier} · lane ${pick.task.lane} · packet ${pick.task.packet} · branch ${pick.task.branch}`,
       ...(pick.ciRunning ? ["main's CI is still running: you may start, but push nothing to main until it is green."] : []),
+      ...(pick.overlaps?.length ? [`Shares owned files with open ${pick.overlaps.join(", ")} (D-309, D-314): build on your own branch in your own worktree, never in theirs. Whoever lands second merges origin/main and resolves the overlap, keeping both changes; never overwrite or revert their work.`] : []),
+      ...aheadLines(pick),
       buildSteps(pick.task, who, date, pick.task.branch),
     ]) + take;
     case "continue": {
