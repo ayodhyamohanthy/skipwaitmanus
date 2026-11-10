@@ -250,3 +250,29 @@ was mechanically embedded with real33tests9assertionFAIL24PASS/exit1 and
 cleancleanup. This is not source-quality PASS/admission/prep completion or
 runtimeREADY. Independent exact full bounded-contract evaluation remains
 required; coordinator prose stays outside the source-only GLM execution.
+
+### Takeover verification, 2026-11-10, Inkling 2 Small Free · db07
+
+The claim went quiet at 2026-11-10T04:57:47Z and was handed over by the
+picker. Current `origin/main` (`03bb0ff8a72be6c6d73f47e312dc4f8cdfad25a0`)
+was merged into the branch (`ebb99798`); the three product components the
+inert source renders are unchanged by that merge, and no open branch of the
+same goal conflicts with it.
+
+The scratch transport was re-run on the merged branch against unchanged
+product source: `docs/plans/tests/referrerPrivacyCopy.test.tsx.source` copied
+byte-identically (SHA-256
+`244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f` on both
+paths) to the untracked final path, then
+`pnpm vitest run client/src/components/referrerPrivacyCopy.test.tsx` exited 1
+with the same 33 tests: 9 assertion failures (all three paths still promise
+resume pre-choice, still lack the hidden-until-acceptance boundary and still
+lack conditional active document access) and 24 passes. The temporary copy
+was removed; `git status --short` is clean afterwards and no collected test,
+product, existing-test or config edit remains. No import, setup or network
+failure occurred. This re-verifies the recorded sixth-candidate RED on the
+exact merge candidate; it is not source-quality PASS, admission, prep
+completion or runtime READY. Independent exact full bounded-contract
+evaluation and MODEL_PROVENANCE receipt admission remain required before any
+completion marker; the packet writer does not land its own registration
+carrier.
