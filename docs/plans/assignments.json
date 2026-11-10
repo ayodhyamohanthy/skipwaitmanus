@@ -2446,9 +2446,10 @@
         "client/src/pages/Work.tsx",
         "client/src/pages/goal/profile/**",
         "client/src/pages/profileGoal.test.tsx",
-        "design/goal-ui/captures/profile/**"
+        "design/goal-ui/captures/profile/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile').",
+      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile'). Owns amendment (2026-11-11): adds client/src/test/goalPagesBoundary.test.ts - D-241 (3) boundary walks each goal page runtime graph and bans goal pages importing modules that are neither goal code nor on the AUDITED list; this goal profile surface imports components/profile/workItems.ts (behavior-only contract: kinds, labels, visibility words) and components/profile/VisibilityOptions.tsx (kit UI; the fixer chooses between a behavior-only parser extract for asProfileVisibility or another mechanical kind - D-050 rule; never called in the goal tree otherwise). Same registration pattern as D-048-p3-inbox (PR #1143, merged 66ef5cf4).",
       "epic": "D-048-p3"
     },
     {
