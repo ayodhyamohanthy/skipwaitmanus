@@ -3526,13 +3526,13 @@
       "tier": 2,
       "lane": "security-csp-release",
       "branch": "agent/queue/d100-csp-release",
-      "status": "todo",
-      "syncedTo": "D-269",
+      "status": "owner",
+      "syncedTo": "D-312",
       "dependsOn": [
         "D-100.csp-enforce",
         "D-090-BYOR"
       ],
-      "note": "D-223 release row of the CSP pieces: one line, flips CSP_ENFORCED = true in server/securityHeaders.ts only after D-090-BYOR lands page CSP in functions/_middleware.ts, 7 days of clean violation reports at /api/csp-report elapse with zero legitimate blocked sources, captures at 1280 and 390 verify no broken pages, and the CEO signs off (D-259, D-269).",
+      "note": "D-223 release row of the CSP pieces: one line, flips CSP_ENFORCED = true in server/securityHeaders.ts only after the page CSP carries a reporting directive in functions/_middleware.ts, 7 days of clean violation reports at /api/csp-report elapse with zero legitimate blocked sources, captures at 1280 and 390 verify no broken pages, and the CEO signs off (D-259, D-269; unblock ruling Qoder · c810, 2026-11-10). Parked at owner: both dependencies are done while the page report-uri is measurably absent, so a BUILD/LAND hand-out would be a false completion.",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts"
