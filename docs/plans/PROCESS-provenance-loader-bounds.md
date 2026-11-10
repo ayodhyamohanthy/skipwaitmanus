@@ -281,6 +281,100 @@ repair; it never becomes a reusable route for other work.
 
 ## Status
 
+### Current bounded continuation amendment, November 10 at 20:48 IST
+
+No source has been generated. This amendment supersedes the LOCAL 19:18 proposed holder-ACK/no-takeover path, not any founder rule or source-admission requirement.
+
+The user's authenticated 20:45 instruction was to fix the stalled repair. The supported picker at current main db0a56698eb5e139e28c64c87ccc12a8ac33936b offered TAKEOVER on the same mapped branch after the real holder's two-hour quiet period. The operator used that supported action, not a manually fabricated marker: empty Takeover 0a4b137481878b16cd1b2cb2d6f709f8442578b8, parent 12b05e03d33d270193850f9fedc76ff229567df1, identical tree. Actual operator is Instinct · public-model-review-nov10. This is a transport/coordination takeover, NOT an external GLM coding claim, source qualification or retrospective author certification. No external provenance claim linkage was asserted.
+
+Normal merge f0a02b79556dfb02172645e7fdbeffaa3664374f joins then-current main db0a5669 into that same branch and was pushed normally. 379e0fd6 and 12b05e03 remain ancestors, with all commits and refs preserved. Their actual contribution is empty Claim plus packet Status only. No semantic code exists in this mapped branch. The old PR1114/source/history remains reference-only, unmerged, uncertified and excluded from the new source input. Actual d1a4 underlying model and unpublished work remain UNKNOWN. No absence or elapsed time proves their identity, consent or no unpublished work. The supported takeover establishes only the current branch operator under the existing quiet-holder mechanism; no response is newly required solely for that operation. Any returning work must be preserved and compared before composition, never overwritten.
+
+There is no longer a proposed d1a4 transport role to accept: the actual operator above performs transport/testing and normal main composition. The previous candidate's mandatory ACK/main-join fields are superseded by these actual operations, not marked answered. Its phrase "before merge" denotes the final protected landing, not a normal main-into-work-branch transport merge; this amendment states that distinction explicitly, and no final landing has occurred. Unknown d1a4 attribution remains explicit. Its empty claim and Status-only contribution is not GLM semantic source. Before final landing, the full contribution audit must confirm that unchanged classification. If any real semantic source/fixer contribution emerges, hold its admission until its actual model is established and final review excludes that actual model. No unknown semantic contribution can be certified through takeover.
+
+The complete D-312 manual pre-dispatch binding still applies: exact task/six paths/operator/observed actual GLM author and free route/current base/final exact input must be documented and independently assessed before generation. The operator never supplies semantic code or silent fixes. A second automated GLM Claim is neither required nor invented. Actual final independent source review, real RED/GREEN tests, exact required green CI against current main, legitimate free landing slot and normal protected merge remain. The old slot/1117 history issue is not an extra generation gate. No spending, identity invention, test weakening, source-history rewrite, policy bypass or privacy implementation is allowed.
+
+Current six-path source and wrapper composition: c30d9b65 to db0a5669 changes none of the six implementation paths. The exact changed-file list is retained below. The operator's normal merge adds no runtime code beyond current main; its branch-only delta remains the preserved d1a4 packet Status lines. Current exact fullstack-lights/QA/fetch-parity ref queries returned no matching refs, which is NOT an ACK or proof of no unpublished work. Both wrapper hunks must be isolated and manually assessed against current main and all known contributions. No-owns automated SKIPPED remains not a scope PASS.
+
+Pending dispatch facts: freshly verify actual GLM selection and usable Free capacity/hard stop, assemble and retain final exact public input bytes/digest and exclusion manifest from current main plus this amended binding, and obtain genuine independent assessment of this bounded continuation change. Do not regenerate generic historical binding reviews. Source dispatch remains held until those concrete checks are complete. After source acceptance, verify both real released loaders and original privacy-prep composition, then resume privacy work. Nothing is shipped or marked complete by this amendment.
+
+### Retained support for this continuation
+
+commit f0a02b79556dfb02172645e7fdbeffaa3664374f
+Merge: 0a4b1374 db0a5669
+Author:     Instinct Agent <agent@instinct.com>
+AuthorDate: Tue Nov 10 20:47:34 2026 +0530
+Commit:     Instinct Agent <agent@instinct.com>
+CommitDate: Tue Nov 10 20:47:34 2026 +0530
+
+    Merge remote-tracking branch 'origin/main' into agent/queue/process-provenance-loader-bounds-glm-nov10-isolated
+
+12b05e03d33d270193850f9fedc76ff229567df1 2026-11-10T12:54:28+00:00 PROCESS-provenance-loader-bounds: record automated claim d1a4 and open 5a dispatch blockers
+
+Actual supported picker output:
+ · CTO · Tier 2 · done · done
+268. DEPLOY-gate-docs-sync — Sync deployment and manual recovery docs to verified green gate behavior (#748) · CTO · Tier 3 · not started · waiting
+269. PICKER-heartbeat-slot-safety — Renew an owned landing lease without taking another fresh landing slot · CTO · Tier 2 · done · done
+270. PICKER-landed-marker-continuity — Keep merged work landed through marker-only branch recreation · CTO · Tier 2 · done · done
+271. PICKER-landing-wait-fallthrough — Offer eligible disjoint work before returning a landing-slot wait · CTO · Tier 2 · done · done
+272. SUPPORT-A — Kit /support page promises only what works today: remove the unbacked person, response-time, triage, pause and notification promises (D-153) · CTO · Tier 2 · done · done
+273. CONV-report-entry — Seeker conversation "Report or block" link carries the ask only when it is accepted (R-B-min, seeker side) · CTO · Tier 1 · done · done
+274. GATE-migration-cleanup — After the drift reference database exists, an S1/S2 snapshot or step-summary failure still attempts its cleanup, the primary is never dropped, and a failed cleanup no longer hides a FAILED verdict (D-212, D-283) · CTO · Tier 2 · done · done
+275. PICKER-gate-red-review-route — A Tier 1 head whose only red is the review gate is handed its REVIEW stage, so the D-254 deadlock stops re-forming on every new Tier 1 pull request (D-286) · CTO · Tier 2 · done · done
+276. REVIEW-GATE-fetch-parity — The named CI step "Review gate (independent Tier 1 pass)" fetches origin/main (and keeps fetching the review lock) so it evaluates instead of failing open, and a review-only red fails at that step for the D-286/D-291 picker classifier (D-292) · CTO · Tier 2 · done · done
+277. PICKER-land-exact-head — The picker hands LAND only when a green required-checks CI run is on the pull request's current tip: a green run on an older sha, no run on the tip, or an unreadable tip gets no LAND (D-293) · CTO · Tier 2 · done · done
+278. PICKER-architect-review-route — A Tier 1 row's packet pull request whose only red is the review gate is handed its REVIEW by the picker, so a Tier 1 packet can reach the independent pass D-074 (3) and D-190 (3) require (D-294) · CTO · Tier 2 · done · done
+279. PROCESS-session-continuation-docs — Record automatic next eligible session continuation without changing safety gates · CTO · Tier 1 · done · done
+280. PICKER-packet-pass-red-recovery — A passed Tier1 packet red only at review gate returns to qualified REVIEW after quiet, instead of rerun-only NONE (D-307) · CTO · Tier 2 · done · done
+281. PICKER-ordinary-gate-red-recovery — Stop ordinary Tier1 passed gate-only-red from zero-delta FIX reclaim loop · CTO · Tier 2 · done · done
+282. PICKER-parallel-eligibility — Prove independent claimed-red parallel eligibility and remove false global WAIT instructions (D-309) · CTO · Tier 2 · done · done
+283. D-048-GoalEmails-nouns — Ship remaining live GoalEmails local referral nouns independently of broader R7 prep · CTO · Tier 2 · done · done
+284. D-048-R7-prep — Prepare existing R7 public release: current drift, policy text equality, goal QA and proof without flag activation · CDO · Tier 2 · done · done
+285. D-180-referral-copy-prep — Prepare referral-only shared and email-gallery wording without changing money behavior · CTO · Tier 1 · done · done
+286. DEV-prettier-396 — Qualify existing Prettier 3.9.6 dev-only update without unrelated lock changes · CTO · Tier 2 · done · done
+287. PICKER-open-pr-pagination — The picker reads every open pull request page by page, so a completed row is handed its review instead of a takeover · CTO · Tier 2 · done · done
+288. PROCESS-model-provenance — Represent actual external coding and review models separately from their operator · CTO · Tier 2 · done · done
+289. UI-messages-signin-button — One non-nested sign-in button on the released signed-out messages screen · CTO · Tier 1 · done · done
+290. UI-referrer-privacy-copy-tests — Prepare complete inert regression source and actual scratch RED proof for referrer privacy copy · CTO · Tier 3 · done · done
+291. PROCESS-provenance-loader-bounds — Both production provenance loaders read supported registry output above1MiB without losing failclosed checks · CTO · Tier 2 · RED · quiet · unblocking: Instinct · public-model-review-nov10 · Dev (Skydive) · d1a4 · quiet 2h · report: review — Instinct · public-model-review-nov10: D-313 reference-only/bootstrap disposition is recorded on main; PR1114 stays preserved, unmerged and uncertified. Existing d1a4 claim/history retained, no new source claim. Loader defect remains unfixed; complete independent D-312 binding, holder ACK/no competing semantics, current-base/FIFO/composition/free/input checks remain pending. This is coordination review only, not green, fixed, source qualification or generation clearance.
+
+LOCAL WORK ORIGIN CANNOT SEE (D-085):
+- your main checkout is 113 commits behind origin/main: git pull --ff-only before reading any doc
+
+Newest decisions (read before you work):
+- D-313 · 2026-11-10 · PROCESS-provenance-loader-bounds: §5a gates every source dispatch on this row, so the plain-Qoder dispatch is unbound and cannot be certified — PR #1114 stays r
+- D-312 · 2026-11-10 · One-task automated-claim exception for the broken provenance file loader (owner approved).
+- D-311 · 2026-11-10 · Truthful external coding-model and review provenance, separate from its operator (owner approved).
+- D-310 · 2026-11-09 · The D-180-referral-copy-prep block clears: the bounded correction the report asked for is already recorded on main, so the row returns to BUILD under the amende
+- D-309 · 2026-11-09 · Parallel development, coordinator-owned integration.
+If any of these changes what your task says, stop and run `node scripts/next-task.mjs --report blocked "PROCESS-provenance-loader-bounds: conflicts with D-nnn"` (D-032). A newer decision always beats an older packet, note or chat message.
+
+NEXT: TAKE OVER PROCESS-provenance-loader-bounds — Both production provenance loaders read supported registry output above1MiB without losing failclosed checks
+Half-built and quiet: nobody has pushed to agent/queue/process-provenance-loader-bounds-glm-nov10-isolated since 2026-11-10T12:54:28.000Z (queue rule 2, D-085; started by Dev (Skydive) · d1a4).
+Continue on the same branch and keep every commit on it. Note the takeover in its line in the Status section of docs/plans/PROCESS-provenance-loader-bounds.md ("PROCESS-provenance-loader-bounds: ..."; the §3b row "PROCESS" is shared by several tasks, so never edit it).
+1. Work in your own worktree, never by switching branches in a shared checkout: git fetch origin && git worktree add ../skipwaitmanus-wt/process-provenance-loader-bounds-glm-nov10-isolated agent/queue/process-provenance-loader-bounds-glm-nov10-isolated (if it already exists, use it). Then run `pnpm install --frozen-lockfile` before your first `pnpm check`: a fresh worktree has no packages, and missing ones fail as TS2688/TS5101 or 'vitest not found' (REGISTER-520, Oct 24). It installs only the versions pinned in pnpm-lock.yaml, so it is always allowed, whatever your session says about installing (D-200 (5)).
+2. See where it stopped before touching anything: its line in the Status section of docs/plans/PROCESS-provenance-loader-bounds.md ("PROCESS-provenance-loader-bounds: ..."; the §3b row "PROCESS" is shared by several tasks, so never edit it), `git log --oneline origin/main..origin/agent/queue/process-provenance-loader-bounds-glm-nov10-isolated`, and any uncommitted changes in your worktree. Read docs/BRIEF.md and docs/plans/PROCESS-provenance-loader-bounds.md.
+3. Follow docs/DELEGATION.md §4 steps 4-8 exactly: the packet's tests first (they must fail for its reason), one step per commit, only the packet's files, then the full gate on your branch merged with the latest origin/main.
+4. Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run `node scripts/next-task.mjs --heartbeat --as "Instinct · public-model-review-nov10"`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.
+5. Run `node scripts/scope-check.mjs <id>` before you push: it reads the task's declared `owns` from origin/main and fails on any change outside them (PICKER-owns-scope). Probe every other open branch of the same goal for conflicts: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must print 0. Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green. Then fast-forward main to that exact commit (`git push origin <sha>:main`; GitHub's "Create a merge commit" button is also safe, because the ruleset only lets an up-to-date branch merge, but never squash or rebase-merge: they replace the tested commits, D-134 (6)). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push. Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md "How to ship". If anything goes red, revert or fix your commit before anything else. In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and its line in the Status section of docs/plans/PROCESS-provenance-loader-bounds.md ("PROCESS-provenance-loader-bounds: ..."; the §3b row "PROCESS" is shared by several tasks, so never edit it) to "done — <sha>".
+6. If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.
+7. When you stop, land, open a pull request or get blocked, report to the CEO: `node scripts/next-task.mjs --report <green|red|blocked|review|landed> --task PROCESS-provenance-loader-bounds --as "Instinct · public-model-review-nov10" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with `--avoid PROCESS-provenance-loader-bounds` added instead, and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).
+
+
+Exact c30-to-db0 changed paths:
+docs/DECISIONS.md
+docs/plans/D-093-language.md
+docs/plans/assignments.json
+drizzle/deploy/0121_account_language.sql
+drizzle/schema.ts
+server/accountLanguage.test.ts
+server/accountLanguage.ts
+server/accountPreferences.test.ts
+server/accountPreferences.ts
+server/schemaReconcile.ts
+shared/accountPreferences.ts
+shared/languages.test.ts
+shared/languages.ts
+
 PROCESS-provenance-loader-bounds: automated claim held (D-312 exception) by Dev (Skydive) · d1a4 — 2026-11-10 — branch agent/queue/process-provenance-loader-bounds-glm-nov10-isolated; no source authored: section 5a open prerequisites (final input bytes/digest, free-route recheck, fresh FIFO recheck on current main, six-path/two-wrapper owner composition, actual binding assessment) remain supervisor-owned and unmet, so no dispatch is execution-ready. Question for owner/supervisor: should this automated claim be kept as the dispatch target, or released?
 
 Registration candidate from mainf1adbc, November10,2026. Both default-buffer
