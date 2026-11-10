@@ -245,6 +245,30 @@ export async function collectLandedEvidence({ repo, candidates, firstPage, fetch
   return { evidence, complete, pages: read, cache: { repo, completeAt: complete ? new Date(now).toISOString() : prior, merged } };
 }
 
+/**
+ * BRANCH-HYGIENE "See every pull request": one page of 100 open pull requests hides the oldest rows
+ * (186 were open on Nov 9, so PR #632 sat on page 2), and a row whose pull request is invisible looks
+ * half-built: the picker hands a TAKEOVER on finished work and never its REVIEW or LAND. Pages are read
+ * until one is short. An unreadable or still-full last page is unknown, never "no pull request" (D-085).
+ */
+export const OPEN_PR_PAGE_SIZE = PAGE_SIZE;
+
+export async function collectOpenPulls({ firstPage, fetchPage, maxPages = 20 }) {
+  if (!Array.isArray(firstPage)) return { pulls: [], complete: false, reason: "the first page is not a list" };
+  const pulls = [...firstPage];
+  let page = firstPage, read = 1;
+  while (page.length === OPEN_PR_PAGE_SIZE) {
+    if (read >= maxPages) return { pulls, complete: false, reason: `page ${read} of ${maxPages} is still full` };
+    read += 1;
+    let next;
+    try { next = await fetchPage(read); } catch (e) { return { pulls, complete: false, reason: `page ${read} unreadable: ${e?.message ?? String(e)}` }; }
+    if (!Array.isArray(next)) return { pulls, complete: false, reason: `page ${read} is not a list` };
+    pulls.push(...next);
+    page = next;
+  }
+  return { pulls, complete: true };
+}
+
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
 export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;

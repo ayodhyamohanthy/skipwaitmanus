@@ -36,3 +36,5 @@ Read-only picker correctness. No branch deletion, no `--apply`, no `--local`, no
 ## Status
 
 `PICKER-open-pr-pagination: registered — Qoder · eb18 — 2026-11-09 — implementation on branch agent/queue/picker-open-pr-pagination, its pull request opens once this registration is on main (the queue gate needs the row first)`
+
+`PICKER-open-pr-pagination: in review — Qoder · eb18 — 2026-11-09 — branch agent/queue/picker-open-pr-pagination — PR #1101`
