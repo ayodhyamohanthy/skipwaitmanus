@@ -35,14 +35,23 @@ architect/packet claim. No runtime route or Messages claim/receipt qualifies it.
 Branch: `agent/queue/ui-referrer-privacy-copy-tests`.
 Do not edit the three components, their existing tests, or REL's fetch switches.
 Preserve all held and unpublished work. Any unexpected overlap is coordinated
-through Instinct, not silently taken over. The actual test author is a contributor
+through Instinct, not silently taken over. The coordinator/packet writer retains the CEO/architect responsibility for
+Tier 1 red-first preparation under DELEGATION section 1 and the D-225
+intelligence/development split. The qualified external GLM author produces
+the bounded test-source artifact as the development tool; it does not claim
+to be the CEO or packet writer. The packet writer must inspect, verify and
+integrate the complete byte-identical source into runtime section 7 before
+READY registration. This division is explicit preparation responsibility,
+not a waiver of section 1 or concealment of the actual code author. Its
+adequacy requires independent exact-carrier assessment.
+The actual test author is a contributor
 to the later runtime test source and must be excluded from its independent
 Tier 1 review even though the picker does not automatically connect tasks.
 Proposed prep author: visible GLM 5.3, conservative canonical family key
 `glm-5.3`, grouping observed GLM 5.3/Flash aliases. Actual operator:
 `Instinct · public-model-review-nov10`; proposed build/fix route:
 `referrer-copy-tests-author-macaly-glm-nov10`. Selection observation digest:
-`f0b97cc1d8aac060a4552980dc2c7b22840a63a65d449425662013f31e779f6e`.
+`a97e2f6906f008332d139d0b8aef545149a6c59ec55aa584d3c9ab017296e55c`.
 Provider https://www.macaly.com/ ; actual qualification discussion:
 https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1109 . The proposed route
 is not trusted until independent exact review and normal main admission.
@@ -74,9 +83,21 @@ Recheck before prompting; stop at limits, never upgrade or add billing.
   runtime ready before the real evidence is admitted.
 - @docs/plans/UI-referrer-privacy-copy-tests.md: Status/evidence sections only.
 
+Ownership: the row owns the inert source and the future runtime packet
+explicitly. This prep packet's own Status edits are permitted by the existing
+scope-check packet exception. These are exact docs paths, not authority to
+edit product paths or broad docs. The packet writer integrates the returned
+source into the runtime packet under this explicit scope and retains actual
+GLM authorship; it does not relabel itself as test author.
+
 The final collected path is fixed NOW:
 `client/src/components/referrerPrivacyCopy.test.tsx`.
-Imports in the inert source must work unchanged at that exact path. The source
+The source must begin with `// @vitest-environment jsdom`, as existing
+`client/src/pages/goal/messages/messagesSignInButton.test.tsx:1` does. Current
+`vitest.config.ts` defaults to node; the per-file directive enables actual
+React render assertions without any config change. Missing-environment or
+import/setup errors cannot count as target RED. Imports in the inert source
+must work unchanged at that exact path. The source
 must not be executable merely from its inert location; run it only through the
 scratch transport below. No dependency, configuration, glob, skip, xfail or
 expected-failure wrapper is allowed. Do not create a separate source directory

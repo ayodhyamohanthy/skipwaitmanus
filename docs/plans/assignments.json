@@ -5895,7 +5895,8 @@
       "syncedTo": "D-311",
       "dependsOn": [],
       "owns": [
-        "docs/plans/tests/referrerPrivacyCopy.test.tsx.source"
+        "docs/plans/tests/referrerPrivacyCopy.test.tsx.source",
+        "docs/plans/UI-referrer-privacy-copy.md"
       ],
       "note": "Preparation only, no collected tests or product/config changes. Existing1109 Tier1 admission FINDINGS retained. Runtime UI-referrer-privacy-copy is unregistered/NOTREADY until full packet section7 test source and actual RED proof exist. Exact inert source final imports at client/src/components/referrerPrivacyCopy.test.tsx; temporary untracked identical scratch transport only, assertion-level RED and cleanup/status evidence, no skip/xfail/config edit. Manual packet-only docs allowlist and independent scope/tier review. Actual task-bound free prep route/ordinary BUILD and exact execution admission before completion. Prep author retained and excluded from later independent runtime review across tasks. No FIFO reorder/currentowner takeover or runtime readiness claim."
     }
