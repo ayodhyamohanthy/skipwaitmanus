@@ -197,12 +197,20 @@ describe("a block between the seeker and the referrer closes the resume to the r
   });
 
   it("keeps private access unavailable when the block check itself fails (truthful 503)", async () => {
-    const server = documentAccessApp([], { getBlockedReferralRequestIds: async () => { throw new Error("userBlocks missing"); } });
-    const accept = await oneClickAccept(server, REFERRER);
-    expect(accept.status).toBe(503);
+    let blockCheckWorks = true;
+    const server = documentAccessApp([], { getBlockedReferralRequestIds: async (_userId: number, ids: number[]) => { if (!blockCheckWorks) throw new Error("userBlocks missing"); return new Set<number>(); } });
+    // The acceptance writes the grant while the block check is healthy.
+    expect((await oneClickAccept(server, REFERRER)).status).toBe(200);
+    // Once the check cannot be established, the file is not served.
+    blockCheckWorks = false;
     const file = await getDocument(server, REFERRER);
     expect(file.status).toBe(503);
     expect(file.headers.location).toBeUndefined();
     expect(file.headers["content-disposition"]).toBeUndefined();
+    // The seeker, who never needs the block check to open their own file, keeps it.
+    expect((await getDocument(server, SEEKER)).status).toBe(307);
+    // And an acceptance that cannot be checked can never happen at all.
+    const refused = documentAccessApp([], { getBlockedReferralRequestIds: async () => { throw new Error("userBlocks missing"); } });
+    expect((await oneClickAccept(refused, REFERRER)).status).toBe(503);
   });
 });
