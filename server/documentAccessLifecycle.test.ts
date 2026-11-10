@@ -196,9 +196,13 @@ describe("a block between the seeker and the referrer closes the resume to the r
     expect((await getDocument(server, SEEKER)).status).toBe(307);
   });
 
-  it("an accepted referrer still opens the file when the block check itself fails (fail-open, like every referral surface)", async () => {
+  it("keeps private access unavailable when the block check itself fails (truthful 503)", async () => {
     const server = documentAccessApp([], { getBlockedReferralRequestIds: async () => { throw new Error("userBlocks missing"); } });
-    expect((await oneClickAccept(server, REFERRER)).status).toBe(200);
-    expect((await getDocument(server, REFERRER)).status).toBe(307);
+    const accept = await oneClickAccept(server, REFERRER);
+    expect(accept.status).toBe(503);
+    const file = await getDocument(server, REFERRER);
+    expect(file.status).toBe(503);
+    expect(file.headers.location).toBeUndefined();
+    expect(file.headers["content-disposition"]).toBeUndefined();
   });
 });
