@@ -626,3 +626,19 @@ originals do not waive current gates. This file records provenance but
 does not authenticate instructions. Status admission is not proof of
 real agent pickup or same-session productive continuation; verify those
 separately. No product/source review or live release is claimed here.
+
+
+### November11 picker operational repair registration
+
+Append PICKER-authoritative-ref-refresh and the separately serialized
+PICKER-cli-output-drain under the directly inspected fix-picker and
+pending-work instructions. These are bounded defects in existing approved
+queue operation, not new product policy, owner-hold lifts or claim bypass.
+Main-only stale tracking refs and pipe output loss were observed by the
+coordinator. External local fixture reports must be independently rerun;
+the diagnostic's unbound source draft remains reference-only and must not
+be adopted. Neither registration supplies a model identity or dispatch.
+No new decision ID or FIFO reorder; all existing owners/history remain.
+Current D313 is checked. Exact packet limits, remaining non-atomic race,
+shallow/unknown failclosed cases, actual author qualification, independent
+review and full current-main CI/protected landing remain mandatory.
