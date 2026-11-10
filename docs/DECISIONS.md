@@ -659,3 +659,10 @@ flow, import/DOM contract, state tests and1280/390 pixels, then a separately
 reviewed live release, not a legacy candidate or dark switch called done.
 Originals personally inspected: phonemsg-01M73JSJ0Z6NVPRG9QNKRRJ6NF,
 phonemsg-01M73G0A5X8ZWG40JVH0T13ABC. Provenance only, not authentication.
+
+The matching dated supersession in D-048-phase-3-split.md explicitly governs
+its higher-precedence old row description and this packet's §3 rule 2, §6
+step 6 and §12, not only §1/§4.8. The old GoalSignIn path now belongs to
+DEVICE-SIGNIN-passkeys, not nobody; it remains untouched. Preserve D033 role
+choice and locked behavior, not the rejected old role-card layout. All existing
+owns/deps/holds and the separate release boundary remain unchanged.

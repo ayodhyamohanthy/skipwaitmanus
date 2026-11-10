@@ -1,6 +1,6 @@
 # Packet D-048-P-auth: sign-in and the work-email verification step move to the goal doctrine
 
-> Read `docs/BRIEF.md` first, then this packet and `docs/plans/D-048-phase-3-split.md`. The split's row table and the register win any conflict with this file. This is a **packet-only Tier 3 architecture task**: it adds two implementation rows to the queue. It does not implement UI and turns no flag on.
+> Read `docs/BRIEF.md` first, then this packet and `docs/plans/D-048-phase-3-split.md`. The split's row table and the register win any conflict with this file, subject to the split's explicit November 11 sign-in supersession below. This is a **packet-only Tier 3 architecture task**: it adds two implementation rows to the queue. It does not implement UI and turns no flag on.
 
 | Field | Value |
 |---|---|
@@ -214,7 +214,8 @@ None of the six changes who can sign in, what a work-email code proves, what a r
 
 ## November11 current-goal sign-in path correction (bounded candidate)
 
-This section replaces the older §1/§4.8 assumption that the existing dark
+This section and the matching November 11 supersession in the split replace
+the older §1, §3 rule 2, §4 rule 8, §6 step 6 and §12 assumption that the existing dark
 `client/src/pages/GoalSignIn.tsx` is already an accepted goal-flow design.
 It is not a design completion or reference. On November11 the owner
 rejected the live old sign-in layout (personally inspected original
@@ -223,6 +224,19 @@ to use goal-focused design only (phonemsg-01M73G0A5X8ZWG40JVH0T13ABC).
 The independently completed privacy-copy change remains real and narrow;
 it did not approve or finish the layout. Repository citations record
 provenance, they do not authenticate those originals.
+
+### Precedence and historical ownership corrections
+
+The split's November 11 sign-in supersession explicitly governs the older split
+row description at line 109 as well as this packet's conflicting old sections.
+The historical assertions "SignIn needs nothing", "ship only password/reviewer
+bodies then propose one line", and "GoalSignIn is a file no row owns" are no
+longer execution instructions. `DEVICE-SIGNIN-passkeys` now owns the legacy
+`pages/GoalSignIn.tsx`; this sign-in row leaves it unchanged and requires no
+ownership transfer. Use the already-owned SignIn import/switch to reach the new
+already-owned directory instead. Preserve D-033's seeker/referrer choice and
+locked behavior, not an unchanged rejected role-card layout. No dark #404 body,
+old capture or passing legacy test establishes the current design acceptance.
 
 ### Observed contradiction and shortest existing scope
 
