@@ -5909,7 +5909,7 @@
       "lane": "provenance-loader",
       "branch": "agent/queue/process-provenance-loader-bounds",
       "status": "todo",
-      "syncedTo": "D-311",
+      "syncedTo": "D-312",
       "dependsOn": [],
       "note": "New bounded followup, not revived completed PROCESS row. Actual mainf1adbc registry1620441bytes causes defaultexecFileSync ENOBUFS in BOTH next-task/review-gate trustedloader wrappers. Exact manual allowlist in packet: two wrapper hunks, NEW shared provenanceGitOutput.mjs and realGit provenanceGitOutput.test.ts, MODEL_PROVENANCE bound/error docs, ownStatus. No owns because existing fullstack/QA/fetch-parity rows retain shared path ownership; current split/coordination and full composed manual scope review required, skipped scope is not PASS. Preserve evidence/history/schema/trust/independence/FIFO/failclosed errors, no compression/deletion/registry edits/gate waiver. Tier2/tooling classification subject actual separate review. RealGit above1MiB actual productionpath RED/GREEN + overbound/malformed/unreadable negatives, currentmain/full applicable gates/exactCI/normal protected landing. External claim bootstrap under broken loader remains explicit unresolved check; no candidate selfauthorization or manual fabricated claim. Privacy followthrough stays held until actualloader acceptance."
     }
