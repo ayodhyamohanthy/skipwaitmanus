@@ -1210,9 +1210,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store");
       const access = await loadAccess(userId);
       const failed: string[] = [];
+      // F2: a section whose block decision cannot be established is not a generic failure — it is unavailable, and
+      // the body says so, so no consumer can read a missing inbox as an empty one.
+      const unavailable: string[] = [];
       const section = async <T>(name: string, run: () => Promise<T>, skip = false): Promise<T | null> => {
         if (skip) return null;
-        try { return await run(); } catch { failed.push(name); return null; }
+        try { return await run(); } catch (error) { if (error instanceof BlockCheckUnavailableError) unavailable.push(name); else failed.push(name); return null; }
       };
       const verified = access.verifiedCompanyAccess;
       const [preferences, fresh, completed, profile, impact, thankYous] = await Promise.all([
@@ -1223,7 +1226,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         section("impact", () => (deps.getPrivateReferrerImpactSummary ?? getPrivateReferrerImpactSummary)(userId), !verified),
         section("thankYous", () => (deps.listReferrerThankYous ?? listReferrerThankYous)(userId), !verified),
       ]);
-      res.json({ access, preferences, inboxNew: fresh, inboxCompleted: completed, profile, impact, thankYous, failed });
+      res.json({ access, preferences, inboxNew: fresh, inboxCompleted: completed, profile, impact, thankYous, failed, unavailable });
     } catch { res.status(500).json({ error: "We could not load your referrer home" }); }
   });
   app.post("/api/company-referrals/availability/open", async (req, res) => {

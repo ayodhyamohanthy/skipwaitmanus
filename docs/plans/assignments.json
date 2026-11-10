@@ -3,7 +3,7 @@
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
   "updated": "2026-11-07",
-  "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no work at all until it is (D-134). Run `node scripts/next-task.mjs`.",
+  "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
       "id": "P0-ask-link-signin",
@@ -854,8 +854,8 @@
       "tier": 1,
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
-      "status": "owner",
-      "syncedTo": "D-262",
+      "status": "done",
+      "syncedTo": "D-313",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -920,8 +920,8 @@
       "tier": 1,
       "lane": "observability-client",
       "branch": "agent/queue/rel-client-capture",
-      "status": "owner",
-      "syncedTo": "D-256",
+      "status": "done",
+      "syncedTo": "D-313",
       "dependsOn": [
         "FIX-device-signin"
       ],
@@ -1074,10 +1074,7 @@
         "P0-ask-link-signin",
         "D-132-audit",
         "D-048-F-goal-check",
-        "D-048-fix-start-ask-handoff",
-        "D-174-seeker-journey-build",
-        "D-174-fix-post-binding",
-        "D-176-public-claims"
+        "D-048-fix-start-ask-handoff"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-048-p3",
@@ -1883,7 +1880,7 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-254",
       "dependsOn": [
         "D-048-F-harness",
@@ -1896,9 +1893,10 @@
         "client/src/pages/ThreadAlias.tsx",
         "client/src/pages/goal/inbox/**",
         "client/src/pages/inboxGoal.test.tsx",
-        "design/goal-ui/captures/inbox/**"
+        "design/goal-ui/captures/inbox/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Owns amendment (2026-11-11): adds client/src/test/goalPagesBoundary.test.ts - D-241 (3) boundary now walks each goal page runtime graph and bans goal pages importing modules that are neither goal code nor on the AUDITED list (the pattern of D-284/D-276/D-332); the goal inbox imports the kit page shared data layer client/src/components/inbox/inboxThreads.ts (buildInboxThreads/fetchAskingRows/fetchReferringRows/splitByOwner, packet-mandated unchanged data contract with the privacy invariants), which needs a behavior-only AUDITED entry. Same registration pattern as D-048-p3-admin (e82cad41), D-048-p3-employer (77346d74) and D-048-p3-discovery (329d72ae), whose rows all carry this file in owns."
     },
     {
       "row": "D-048",
@@ -2070,7 +2068,7 @@
       "tier": 1,
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-257",
       "dependsOn": [
         "D-048-F-harness",
@@ -2367,14 +2365,13 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-313",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
         "D-048-F-goal-check",
         "D-048-P-auth",
-        "seeker-passwords",
-        "DEVICE-SIGNIN-passkeys"
+        "seeker-passwords"
       ],
       "owns": [
         "client/src/pages/SignIn.tsx (switch only)",
@@ -2436,8 +2433,8 @@
       "tier": 1,
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
-      "status": "owner",
-      "syncedTo": "D-258",
+      "status": "todo",
+      "syncedTo": "D-319",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2449,9 +2446,12 @@
         "client/src/pages/Work.tsx",
         "client/src/pages/goal/profile/**",
         "client/src/pages/profileGoal.test.tsx",
-        "design/goal-ui/captures/profile/**"
+        "design/goal-ui/captures/profile/**",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/components/profile/profileVisibility.ts",
+        "client/src/components/profile/VisibilityOptions.tsx (import/re-export only)"
       ],
-      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile').",
+      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile'). Owns amendment (D-319, 2026-11-11): adds client/src/test/goalPagesBoundary.test.ts, client/src/components/profile/profileVisibility.ts (new) and client/src/components/profile/VisibilityOptions.tsx (import/re-export only). Reason: D-241 (3) audits each goal page's runtime import graph; the goal /profile and /work pages reach components/profile/workItems.ts and components/profile/VisibilityOptions.tsx, which no earlier version of that test walked. workItems.ts is behavior-only. VisibilityOptions.tsx cannot be behavior-only (it carries literal className) and must not be admitted as goal-styled (it renders legacy --primary/--border/--muted-foreground oklch tokens, not goal tokens), so the pure ProfileVisibility type and asProfileVisibility parser move to a new behavior-only module that VisibilityOptions.tsx re-exports unchanged for its kit callers. No source, flag, consent or pricing rule changes.",
       "epic": "D-048-p3"
     },
     {
@@ -2767,8 +2767,8 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-employer-talent",
-      "status": "owner",
-      "syncedTo": "D-285",
+      "status": "todo",
+      "syncedTo": "D-313",
       "dependsOn": [
         "D-048-p3-employer",
         "D-048-F-goal-check"
@@ -2975,8 +2975,7 @@
         "D-048-F-static-frame",
         "D-048-P-marketing",
         "D-048-F-flags",
-        "D-048-F-goal-check",
-        "D-176-public-claims"
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Home.tsx",
@@ -3098,8 +3097,8 @@
       "tier": 1,
       "lane": "demand-count",
       "branch": "agent/queue/d086-count",
-      "status": "owner",
-      "syncedTo": "D-279",
+      "status": "todo",
+      "syncedTo": "D-313",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-174-company-search"
@@ -3151,8 +3150,7 @@
       "syncedTo": "D-227",
       "epic": "D-086-demand-list",
       "dependsOn": [
-        "D-086.ui",
-        "D-048-p3-live-review-find"
+        "D-086.ui"
       ],
       "owns": [
         "client/src/pages/Explore.tsx (switch only)",
@@ -3335,9 +3333,18 @@
         "server/blocksRoutes.queryCoverage.test.ts",
         "server/blockEnforcement.test.ts",
         "server/documentAccessLifecycle.test.ts",
-        "server/referralBlockAvailability.test.ts"
+        "server/referralBlockAvailability.test.ts",
+        "server/askExpiryRoutes.test.ts",
+        "server/companyIdentityRows.test.ts",
+        "server/conversationRateLimit.test.ts",
+        "server/privateReferralRoutes.integration.test.ts",
+        "server/privateReferralRoutes.pinnedWork.test.ts",
+        "server/referrerOneClickReview.test.ts",
+        "server/referralConversation.test.ts",
+        "server/referralOperatingSystemRoutes.test.ts",
+        "server/statusNotifications.test.ts"
       ],
-      "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required.",
+      "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required. Nov 10 owns amendment (docs/registry only, D-200 (2); Inkling 2 Small Free · b6cb): owns gains exactly server/askExpiryRoutes.test.ts, server/companyIdentityRows.test.ts, server/conversationRateLimit.test.ts, server/privateReferralRoutes.integration.test.ts, server/privateReferralRoutes.pinnedWork.test.ts, server/referrerOneClickReview.test.ts, server/referralConversation.test.ts, server/referralOperatingSystemRoutes.test.ts and server/statusNotifications.test.ts. Reason: the private referral routes now answer a truthful unavailable response when the block/authorization decision cannot be established; these suites never injected a block lookup and rode the old fail-open path (getDb absent in the test env, so the lookup read as not-blocked), and now see 503s. Each deps object gains one no-op lookup returning an empty set, restoring exactly the behavior the suites already pinned; no assertion is removed or weakened. No other owned path, row or dependency changes.",
       "syncedTo": "D-227"
     },
     {
@@ -3704,7 +3711,6 @@
         "D-048-F-flags",
         "D-048-F-routes",
         "D-132-audit",
-        "D-048-dark-mode",
         "D-048-p3-admin",
         "D-093.capture"
       ],
@@ -3969,9 +3975,7 @@
       "status": "todo",
       "syncedTo": "D-279",
       "dependsOn": [
-        "D-174-fix-post-binding",
-        "D-048-p3-live-review-find",
-        "D-099-bonus-line"
+        "D-174-fix-post-binding"
       ],
       "note": "Packet §4.1-4.6 and §6.1 (D-264 (2)): previewJobLink adds optional roleTitle and fetched (additive, no extra request); the composer calls the existing POST /api/job-link/preview behind JOB_LINK_PREFILL_ENABLED = false; F1 (another company's preview disables Send), F2 (no line for a link that was never fetched), F4 (/ask's local match counts only a company's own domains) and the §16 empty-field case are rulings here. Tier 1: owns client/src/pages/Ask.tsx (TIER1_CLIENT). The send body, askSend.ts and the server's employer resolution are untouched.",
       "epic": "D-094-ai-in-ui",
@@ -3998,8 +4002,7 @@
       "status": "todo",
       "syncedTo": "D-279",
       "dependsOn": [
-        "D-090-BYOR",
-        "D-174-held-ask-reconfirm"
+        "D-090-BYOR"
       ],
       "note": "Packet §4.7-4.10 and §6.2 (D-264 (3)): STATUS_HELP keyed by the askView label plus the pending queueStatus (F3); held_for_credit has no entry and keeps requestNote's money line; no entry states a credit movement; STATUS_HELP_ENABLED = false. The builder drafts candidate entries with their sources; the row stops before landing until the catalogue and localisation questions (§4.9-4.10) are accepted through Instinct. Declared Tier 1 above its Tier 2 floor per the Nov 1 coordinator tier ruling (packet §12).",
       "epic": "D-094-ai-in-ui",
@@ -4021,8 +4024,7 @@
       "status": "todo",
       "syncedTo": "D-279",
       "dependsOn": [
-        "D-094-ai-in-ui.job-link",
-        "DEPLOY-gate-docs-sync"
+        "D-094-ai-in-ui.job-link"
       ],
       "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route (waits for DEPLOY-gate-docs-sync, the other open AGENTS.md owner). No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
       "epic": "D-094-ai-in-ui",
@@ -4265,7 +4267,7 @@
       "tier": 1,
       "lane": "d174-fix",
       "branch": "agent/queue/d174-fix-post-binding",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-267",
       "dependsOn": [
         "D-132-audit",
@@ -4457,8 +4459,8 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-sources-more",
-      "status": "owner",
-      "syncedTo": "D-282",
+      "status": "todo",
+      "syncedTo": "D-313",
       "dependsOn": [
         "D-174-job-catalog"
       ],
@@ -4707,8 +4709,7 @@
       "status": "todo",
       "syncedTo": "D-281",
       "dependsOn": [
-        "D-174-fix-post-binding",
-        "D-176-public-claims"
+        "D-174-fix-post-binding"
       ],
       "note": "Packet section 6.1, rulings 1, 3 and 4: no open/not-open header, one primary commit, one verified-mark line, the not-open block and its alert control removed, sent headline in D-180 words. No switch: the live door contradicts D-176. Re-pins only the listed D-176 assertions. Tier 1 at the existing machine floor: owns client/src/pages/Ask.tsx, listed in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
       "epic": "D-174-seeker-journey-build",
@@ -5193,11 +5194,6 @@
       "dependsOn": [
         "PRICING-banded-oct25",
         "D-174-held-ask-reconfirm",
-        "LAUNCH-legal-copy",
-        "D-048-p3-live-review-find",
-        "D-174-fix-post-binding",
-        "D-176-public-claims",
-        "D-048-dark-mode",
         "D-099-bonus-pages"
       ],
       "owns": [
@@ -5223,9 +5219,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/ayo-referral-words",
       "status": "in-review",
-      "dependsOn": [
-        "D-222-referral-count-shell"
-      ],
+      "dependsOn": [],
       "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route.",
       "syncedTo": "D-281",
       "owns": [
@@ -5260,7 +5254,6 @@
         "PRICING-banded-oct25",
         "D-180-a-free-asks-chip",
         "D-222-referral-count-shell",
-        "D-094-ai-in-ui.status-help",
         "D-173-referral-words-goal-ui"
       ],
       "owns": [
@@ -5422,6 +5415,406 @@
       "epic": "D-048-p3"
     },
     {
+      "id": "D-048-R-verify",
+      "title": "Release the goal verify page to production: add \"verify\" to RELEASED (built and landed in D-048-p3-verify) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-verify",
+      "branch": "agent/queue/d048-r-verify",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-verify"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"verify\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=verify); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-verify's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (client/src/pages/loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057): /verify stays the referrer work-email code, referrerSignInHref only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-plans",
+      "title": "Release the goal plans page to production: add \"plans\" to RELEASED (built and landed in D-048-p3-plans) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-plans",
+      "branch": "agent/queue/d048-r-plans",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-plans"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"plans\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=plans); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-plans's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: every visible money line comes from shared/moneyCopy.ts, nothing is offered the code does not grant (D-044), prices and catalog unchanged (D-219, D-123); checkout and recovery paths behave as on the kit page. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-email-review",
+      "title": "Release the goal email-review page to production: add \"email-review\" to RELEASED (built and landed in D-048-p3-email-review) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-email-review",
+      "branch": "agent/queue/d048-r-email-review",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-email-review"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"email-review\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=email-review); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-email-review's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Privacy: no seeker name or file before the referrer's own acceptance (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-links",
+      "title": "Release the goal links page to production: add \"links\" to RELEASED (built and landed in D-048-p3-links) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 2,
+      "lane": "d048-release-links",
+      "branch": "agent/queue/d048-r-links",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-links"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"links\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=links); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-links's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Prerendered output checked live after deploy; link states (active, inactive, blocked) render as the kit did. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-support",
+      "title": "Release the goal support page to production: add \"support\" to RELEASED (built and landed in D-048-p3-support) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 2,
+      "lane": "d048-release-support",
+      "branch": "agent/queue/d048-r-support",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-support"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"support\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=support); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-support's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Promises only what works today (D-153, SUPPORT-A). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-assistants",
+      "title": "Release the goal assistants page to production: add \"assistants\" to RELEASED (built and landed in D-048-p3-assistants) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-assistants",
+      "branch": "agent/queue/d048-r-assistants",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-assistants"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"assistants\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=assistants); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-assistants's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy agent switches stay off (D-201); the page renders correctly with them off. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-employer-billing",
+      "title": "Release the goal employer-billing page to production: add \"employer-billing\" to RELEASED (built and landed in D-048-p3-employer-billing) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-employer-billing",
+      "branch": "agent/queue/d048-r-employer-billing",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-employer-billing"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"employer-billing\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=employer-billing); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-employer-billing's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: employer purchases only labelled ads and tooling (D-040); no new charge or price. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-admin-money",
+      "title": "Release the goal admin-money page to production: add \"admin-money\" to RELEASED (built and landed in D-048-p3-admin-money) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-admin-money",
+      "branch": "agent/queue/d048-r-admin-money",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-admin-money"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-money\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-money); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-money's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; payment review and catalog-sync actions behave exactly as on the kit page (no real-money QA, D-065). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-admin-people",
+      "title": "Release the goal admin-people page to production: add \"admin-people\" to RELEASED (built and landed in D-048-p3-admin-people) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-admin-people",
+      "branch": "agent/queue/d048-r-admin-people",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-admin-people"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-people\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-people); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-people's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; privacy-request and user actions unchanged. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-admin-approvals",
+      "title": "Release the goal admin-approvals page to production: add \"admin-approvals\" to RELEASED (built and landed in D-048-p3-admin-approvals) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-admin-approvals",
+      "branch": "agent/queue/d048-r-admin-approvals",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-admin-approvals"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-approvals\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-approvals); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-approvals's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; approve/decline outcomes and failure copy unchanged. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-inbox",
+      "title": "Release the goal inbox page to production: add \"inbox\" to RELEASED (built and landed in D-048-p3-inbox) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-inbox",
+      "branch": "agent/queue/d048-r-inbox",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-inbox"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"inbox\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=inbox); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-inbox's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Pre-acceptance privacy preserved (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-conversation",
+      "title": "Release the goal conversation page to production: add \"conversation\" to RELEASED (built and landed in D-048-p3-conversation) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-conversation",
+      "branch": "agent/queue/d048-r-conversation",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-conversation"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"conversation\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=conversation); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-conversation's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Referrer decision panels and privacy after acceptance unchanged (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-premium",
+      "title": "Release the goal premium page to production: add \"premium\" to RELEASED (built and landed in D-048-p3-premium) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-premium",
+      "branch": "agent/queue/d048-r-premium",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-premium"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"premium\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=premium); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-premium's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: selected total, retirement and recovery preserved; lines from shared/moneyCopy.ts (D-044, D-219). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-pricing",
+      "title": "Release the goal pricing page to production: add \"pricing\" to RELEASED (built and landed in D-048-p3-pricing) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-pricing",
+      "branch": "agent/queue/d048-r-pricing",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-pricing"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"pricing\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=pricing); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-pricing's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: current price claims unchanged (D-219); fetch-free prerender checked live. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-profile",
+      "title": "Release the goal profile page to production: add \"profile\" to RELEASED (built and landed in D-048-p3-profile) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-profile",
+      "branch": "agent/queue/d048-r-profile",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-profile"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-sign-in",
+      "title": "Release the goal sign-in page to production: add \"sign-in\" to RELEASED (built and landed in D-048-p3-signin) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-sign-in",
+      "branch": "agent/queue/d048-r-sign-in",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-signin"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-employer-talent",
+      "title": "Release the goal employer-talent page to production: add \"employer-talent\" to RELEASED (built and landed in D-048-p3-employer-talent) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-employer-talent",
+      "branch": "agent/queue/d048-r-employer-talent",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-employer-talent"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"employer-talent\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=employer-talent); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-employer-talent's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Seeker data shown only under consent (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-skippy",
+      "title": "Release the goal skippy page to production: add \"skippy\" to RELEASED (built and landed in D-048-p3-skippy) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-skippy",
+      "branch": "agent/queue/d048-r-skippy",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-skippy"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"skippy\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=skippy); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-skippy's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy switches stay off until SKIPPY-fix lands (D-201). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-home-signed-in",
+      "title": "Release the goal home-signed-in page to production: add \"home-signed-in\" to RELEASED (built and landed in D-048-p3-home-signed-in) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 2,
+      "lane": "d048-release-home-signed-in",
+      "branch": "agent/queue/d048-r-home-signed-in",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-home-signed-in"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-R-public-profile",
+      "title": "Release the goal public-profile page to production: add \"public-profile\" to RELEASED (built and landed in D-048-p3-public-profile) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-public-profile",
+      "branch": "agent/queue/d048-r-public-profile",
+      "status": "todo",
+      "syncedTo": "D-317",
+      "dependsOn": [
+        "D-048-p3-public-profile"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"public-profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=public-profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-public-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Shows only what the person's visibility allows (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "epic": "D-048-p3"
+    },
+    {
       "id": "D-048-release-platform",
       "title": "Release the complete Tier 2/3 goal surfaces in one line each (goal design across the platform)",
       "row": "D-048",
@@ -5524,8 +5917,7 @@
       "syncedTo": "D-227",
       "dependsOn": [
         "P1-deploy-green-gate",
-        "D-090-BYOR",
-        "D-099-bonus-pages"
+        "D-090-BYOR"
       ],
       "owns": [
         "AGENTS.md",
@@ -5912,6 +6304,47 @@
       "syncedTo": "D-312",
       "dependsOn": [],
       "note": "New bounded followup, not revived completed PROCESS row. Actual mainf1adbc registry1620441bytes causes defaultexecFileSync ENOBUFS in BOTH next-task/review-gate trustedloader wrappers. Exact manual allowlist in packet: two wrapper hunks, NEW shared provenanceGitOutput.mjs and realGit provenanceGitOutput.test.ts, MODEL_PROVENANCE bound/error docs, ownStatus. No owns because existing fullstack/QA/fetch-parity rows retain shared path ownership; current split/coordination and full composed manual scope review required, skipped scope is not PASS. Preserve evidence/history/schema/trust/independence/FIFO/failclosed errors, no compression/deletion/registry edits/gate waiver. Tier2/tooling classification subject actual separate review. RealGit above1MiB actual productionpath RED/GREEN + overbound/malformed/unreadable negatives, currentmain/full applicable gates/exactCI/normal protected landing. External claim bootstrap under broken loader remains explicit unresolved check; no candidate selfauthorization or manual fabricated claim. Privacy followthrough stays held until actualloader acceptance."
+    },
+    {
+      "id": "UI-referrer-privacy-copy",
+      "title": "Referrer sign-in promises name and resume access only after acceptance",
+      "row": "UI",
+      "packet": "docs/plans/UI-referrer-privacy-copy.md",
+      "tier": 1,
+      "lane": "referrer-privacy-copy",
+      "branch": "agent/queue/ui-referrer-privacy-copy",
+      "status": "done",
+      "syncedTo": "D-313",
+      "dependsOn": [],
+      "note": "Bounded released-copy contradiction found by the existing page-by-page audit on dc6492 at 1280/390. Append-only registration, no FIFO reorder or existing-row change. Exact manual scope: introductory privacy paragraph only in client/src/components/ReferrerOtpSignIn.tsx, client/src/components/WorkEmailSignIn.tsx, client/src/pages/goal/referrer/GoalOtpSignIn.tsx, plus NEW client/src/components/referrerPrivacyCopy.test.tsx. No owns because REL-client-capture retains switch-only ownership in the first two files; exact hunk review and current shared-record split/coordination required, no silence-as-consent or automatic scope pass. Preserve auth handlers/fetch switches/legal/money/flags/current owners and unpublished work. Conservative Tier1, red-first all-three-path regression, actual fresh task-specific qualified author/reviewer and receipts, independent final review/current-main/required CI/normal protected landing, released 1280/390 copy proof. Registration alone grants no execution qualification or privacy-policy change. This is the distinct runtime task, never a replacement for held prep UI-referrer-privacy-copy-tests; preserve its full-task unresolved historical contributor hold. Exact preexisting GLM regression source is33911bytesSHA244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f, source-only receipt already on main, bounded quality Assessment6PASS. GLM and runtime author/everyfixer excluded from final Tier1review. No new route/claim/source accepted before independent registration qualification and manual hunk admission."
+    },
+    {
+      "id": "PICKER-authoritative-ref-refresh",
+      "title": "Refresh authoritative remote refs before picker decisions and invalidate stale write snapshots",
+      "row": "D-085",
+      "packet": "docs/plans/PICKER-authoritative-ref-refresh.md",
+      "tier": 2,
+      "lane": "picker-authoritative-refs",
+      "branch": "agent/queue/picker-authoritative-ref-refresh",
+      "status": "todo",
+      "syncedTo": "D-313",
+      "dependsOn": [],
+      "note": "Bounded tooling correctness under direct fix-picker/pending-work instructions. Exact manual scope scripts/next-task.mjs ref refresh/retry/revalidation only, NEW nextTaskAuthoritativeRefs.test.ts, own packet Status. No owns because existing shared picker ownership retained; manual exact-diff qualification required. Diagnostic implementation draft unbound/reference-only, never adopted. Independently rerun local bare-origin actual CLI fixtures red-first, preserve holders/deleted refs/reports/landing/FIFO/model/unknowns and no config change. Prewrite check is not atomic protocol; remaining cross-ref race cannot be claimed solved, any required protocol change needs packet amendment before dispatch. Ordinary actual qualified free author/independent reviewer/current-main/full CI/protected merge; D312 exception unavailable."
+    },
+    {
+      "id": "PICKER-cli-output-drain",
+      "title": "Drain complete picker CLI output to pipes without losing NEXT or changing exit meanings",
+      "row": "D-085",
+      "packet": "docs/plans/PICKER-cli-output-drain.md",
+      "tier": 2,
+      "lane": "picker-output",
+      "branch": "agent/queue/picker-cli-output-drain",
+      "status": "todo",
+      "syncedTo": "D-313",
+      "dependsOn": [
+        "PICKER-authoritative-ref-refresh"
+      ],
+      "note": "Separate measured CLI output defect, not allocation logic. Serialize shared next-task.mjs changes after authoritative-ref repair. Manual exact scope exit/flush handling only, NEW nextTaskCliOutputDrain.test.ts, packet Status. Actual CLI >64KiB pipe/file identical complete output red-first including NEXT/error/SYNC/WAIT paths, no read-only remote writes or exit-meaning change. Standalone Claude fixture is diagnostic only, unbound source never adopted. Current qualified task author/reviewer/CI/protected path required, no loader exception."
     }
   ]
 }

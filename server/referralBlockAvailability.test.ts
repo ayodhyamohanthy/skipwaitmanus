@@ -210,3 +210,33 @@ describe("blocks routes answer truthful unavailable", () => {
     expect(removed.body).toEqual({ error: "Blocking is temporarily unavailable" });
   });
 });
+
+/*
+ * F2 (Qoder · c431's review on e048f843): the referrer home bundle must not degrade an unavailable block check into a
+ * generic section failure. When loadInbox cannot establish the block decision, the 200 body names those sections
+ * unavailable, so a consumer cannot read a missing inbox as an empty one.
+ */
+describe("GET /api/referrer/home-bundle with an unavailable block check", () => {
+  const app = () => {
+    const a = appFor(failingLookup, {
+      getVerifiedWorkEmailAccess: async () => ({ workEmailDomain: "acme.com", workEmailVerifiedAt: new Date() }),
+      getReferrerPreferences: async () => ({}),
+      getMyProfile: async () => ({}),
+      getPrivateReferrerImpactSummary: async () => ({}),
+      listReferrerThankYous: async () => [],
+    } as Record<string, unknown>);
+    return a;
+  };
+
+  it("names the inbox sections unavailable instead of reporting a generic failure", async () => {
+    const res = await request(app()).get("/api/referrer/home-bundle").set("x-test-user", "referrer");
+    expect(res.status).toBe(200);
+    expect(res.headers["cache-control"]).toBe("private, no-store");
+    expect(Array.isArray(res.body.unavailable)).toBe(true);
+    expect(res.body.unavailable).toEqual(expect.arrayContaining(["inboxNew", "inboxCompleted"]));
+    expect(res.body.inboxNew).toBeNull();
+    expect(res.body.inboxCompleted).toBeNull();
+    // and the unavailable sections are not also reported as a generic failure
+    expect(res.body.failed ?? []).not.toEqual(expect.arrayContaining(["inboxNew", "inboxCompleted"]));
+  });
+});

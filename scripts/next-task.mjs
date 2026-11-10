@@ -28,10 +28,12 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
+import { pathToFileURL } from "node:url";
+import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 
 // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
 // ignores unless NODE_USE_ENV_PROXY=1 (Node >= 22.21); without it the CI read
@@ -48,8 +50,13 @@ const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "l
 const EXIT = { stop: 2, wait: 4, none: 5 };
 const REPORTS = "agent/reports/log";
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
-const git = (...args) => execFileSync("git", args, { encoding: "utf8", env: GIT_ENV, stdio: ["ignore", "pipe", "pipe"] }).trim();
-const tryGit = (...args) => { try { return git(...args); } catch { return null; } };
+// PROCESS-provenance-loader-bounds: both wrappers read Git through the one shared
+// bounded reader. The trusted registry is larger than the legacy 1MiB execFileSync
+// buffer, so the picker used to fail closed on size. Same env, same stdio, same trim,
+// same throw/null split; only the output bound is finite and named. Exported so the
+// regression exercises these exact bindings instead of a copy of them.
+export const git = boundedGitReader({ env: GIT_ENV });
+export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
 const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
 
 function argsOf(argv) {
@@ -324,9 +331,15 @@ async function state() {
       const ci = prCi.get(head);
       if (ci?.state !== "red") continue;
       ci.gateOnly = false;
+      ci.legacyScope = false;
       const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
       if (!Number.isSafeInteger(ci.runId) || !tipSha || ci.sha !== tipSha) continue;
-      try { ci.gateOnly = gateOnlyRedFromJobs(await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`)) === true; }
+      try {
+        const jobs = await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`);
+        ci.gateOnly = gateOnlyRedFromJobs(jobs) === true;
+        // D-314: the same one read tells a pre-D-292 run red only at the old scope-check step (still MAKE GREEN).
+        ci.legacyScope = !ci.gateOnly && legacyScopeRedFromJobs(jobs) === true;
+      }
       catch (e) { console.error(`next-task: ${e.message}`); }
     }
   }
@@ -517,4 +530,8 @@ async function main() {
   fail("three claims in a row were taken by other agents; run again in a minute");
 }
 
-main().catch(e => fail(e.stack ?? String(e)));
+// PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the
+// regression can import these real bindings without starting a picker run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(e => fail(e.stack ?? String(e)));
+}

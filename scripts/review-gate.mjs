@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { isStatusOnlyChange, loadTrustedProvenance, markerReferences, routeIdentity, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance } from "./modelProvenance.mjs";
+import { nullableBoundedGitReader, readGitOutput } from "./provenanceGitOutput.mjs";
 /**
  * PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
  * independent pass verdict on its exact head (D-074, D-151).
@@ -15,8 +16,8 @@ import { isStatusOnlyChange, loadTrustedProvenance, markerReferences, routeIdent
  * row it reads the row's review lock (`agent/review/<slug>`) and passes only when:
  *   1. the newest stage marker is a pass verdict, or a Land claim whose nearest earlier verdict is a pass;
  *   2. that verdict's body `reviewed <sha>` is the head, or every commit after it in the head's own
- *      history that is not on origin/main is a merge or the status commit a landing makes (a merge of
- *      main and the status commit keep the pass, any other new commit does not);
+ *      history that is not on origin/main is a merge, an empty marker commit (D-315) or the status commit
+ *      a landing makes (those keep the pass, any other new commit does not);
  *   3. the verdict's author's model neither built (Claim, Takeover on the task branch) nor fixed
  *      (Fix claim, Fixed on the lock) the work (D-151).
  * A bot comment is never a review. Like the queue gate it fails open, loudly, only on its own
@@ -36,7 +37,10 @@ export const REVIEW_GATE_FAIL = "Tier 1: this head has no independent passing re
 export const TIER_FLOOR_FAIL = "Tier 1: this change touches";
 
 const SHA = /^[0-9a-f]{40}$/;
-const git = args => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+// PROCESS-provenance-loader-bounds: the gate reads through the same bounded reader as
+// the picker, so the two loaders cannot diverge on the supported aggregate size.
+// Exported so the regression exercises this exact binding.
+export const git = args => readGitOutput(args);
 
 /** The row a branch belongs to, by the queue gate's rules 1-2; null when none. */
 export function findGateRow(tasks, branch) {
@@ -69,7 +73,7 @@ export { isStatusOnlyChange } from "./modelProvenance.mjs";
  * needs the independent pass. Returns null to pass, or the failure message.
  */
 export function reviewGateViolation({
-  task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince, isStatusCommit,
+  task, head, workMarkers = [], lockMarkers = [], nonMergeCommitsSince, isStatusCommit, isEmptyCommit,
   tierOf, tierReasonPaths = () => [], changedPaths = [], provenance = null,
 }) {
   if (!task) return null;
@@ -93,8 +97,10 @@ export function reviewGateViolation({
   if (reviewed !== head) {
     const own = typeof nonMergeCommitsSince === "function" ? nonMergeCommitsSince(reviewed) : null;
     if (own === null) return `${raised} The reviewed commit ${reviewed.slice(0, 8)} is not in this head's history.`;
-    const unreviewed = own.filter(sha => !(typeof isStatusCommit === "function" && isStatusCommit(sha)));
-    if (unreviewed.length) return `${raised} ${unreviewed.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main and the landing's status commit keep a pass).`;
+    // D-315: an empty commit (its tree equals its parent's: a picker Claim, Takeover or Land claim marker) changes no
+    // reviewed content, so it keeps the pass like a merge of main or the landing's status commit (#878, D-301).
+    const unreviewed = own.filter(sha => !(typeof isStatusCommit === "function" && isStatusCommit(sha)) && !(typeof isEmptyCommit === "function" && isEmptyCommit(sha)));
+    if (unreviewed.length) return `${raised} ${unreviewed.length} commit(s) of the branch's own came after the reviewed commit ${reviewed.slice(0, 8)} (only merges of main, empty marker commits and the landing's status commit keep a pass).`;
   }
 
   const resolved = resolveTaskProvenance({ taskId: task.id, head,
@@ -139,6 +145,11 @@ function changesOf(sha) {
     }
     return { path, before: show(`${sha}^`, path), after: show(sha, path), removed, added };
   });
+}
+
+/** D-315: true when `sha` changes no file (its tree is its first parent's); false on any doubt. */
+function emptyCommit(sha) {
+  try { return git(["rev-parse", `${sha}^{tree}`]) === git(["rev-parse", `${sha}^1^{tree}`]); } catch { return false; }
 }
 
 /** True when `sha` is the status commit a landing makes; false on any doubt (the commit then counts as unreviewed). */
@@ -279,7 +290,7 @@ export function runReviewGate({ local = false } = {}) {
       console.log(`review-gate: ${task.id} declares Tier ${task.tier} but its paths compute Tier 1 (${tierReasonPaths(changedPaths).join(", ")}).`);
     }
     const workMarkers = markersIn(`origin/main..${head}`);
-    const trusted = loadTrustedProvenance((...args) => { try { return git(args); } catch { return null; } });
+    const trusted = loadTrustedProvenance(nullableBoundedGitReader());
     externalContext = workMarkers.some(m => markerReferences(m.body).external)
       || Boolean(trusted.registry?.routes?.some(r => r.taskId === task.id))
       || (trusted.registryError && trusted.registryError !== "no trusted-main provenance registry");
@@ -290,7 +301,7 @@ export function runReviewGate({ local = false } = {}) {
       return git(["rev-list", "--no-merges", `${sha}..${head}`, "--not", "origin/main"]).split("\n").filter(Boolean);
     };
     const violation = reviewGateViolation({
-      task, head, workMarkers, lockMarkers, nonMergeCommitsSince, isStatusCommit: statusCommit,
+      task, head, workMarkers, lockMarkers, nonMergeCommitsSince, isStatusCommit: statusCommit, isEmptyCommit: emptyCommit,
       tierOf, tierReasonPaths, changedPaths, provenance: { ...trusted, git: (...args) => { try { return git(args); } catch { return null; } } },
     });
 
