@@ -1358,3 +1358,20 @@ exact refs before implementation/integration; pause actual affected overlap
 for coordinator split and combine/review/test both intended outputs. DEVICE's
 older tip missing a newer goal file is not evidence of whole-tip equality.
 Exact external route/registration review and normal admission are still pending.
+
+### D-313 released-loader prerequisite, November 10 at 23:44 IST
+
+D-313's privacy follow-through hold required real loader acceptance. That
+specific prerequisite is now satisfied by PR1127 normal protected merge
+`8569548b977d6d52422894690a0ab5111b493e72`, with actual independent exact
+source review and all required CI success on final head and released main:
+https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/42855876536
+and https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/42863925140.
+Released production picker and review-gate Git bindings each loaded the same
+complete 1,620,440 trimmed bytes (1,620,441 raw) trusted registry, parsing
+five routes and three executions; the released 15-case regression passed.
+This is accepted tooling repair, not API/Pages deployment or customer privacy
+completion. The individual GLM prep receipt now resolves through that real
+loader; historical1112 full-task hold remains a distinct unresolved fact.
+Thus syncedTo D-313 records the checked decision, not a new dependency or
+waiver, and does not bypass this runtime registration/route/claim/review gate.
