@@ -1074,10 +1074,7 @@
         "P0-ask-link-signin",
         "D-132-audit",
         "D-048-F-goal-check",
-        "D-048-fix-start-ask-handoff",
-        "D-174-seeker-journey-build",
-        "D-174-fix-post-binding",
-        "D-176-public-claims"
+        "D-048-fix-start-ask-handoff"
       ],
       "note": "D-150: these pages went live as goal colours on the old layout; redesign UI and flow to the doctrine and contract first. D-149: checks the door and /ask against their kit versions (lost behaviours, lost test pins), moves the remaining retyped money lines into shared/moneyCopy.ts, and builds on what D-048-p3-live-review (#472) verified for /explore. After P0-ask-link-signin (the composer's sign-in branch) and D-132-audit (the composer's quote, top-up and cost lines). Start-to-ask handoff (Main, Oct 23): /start writes bridge-target-url + company binding + savedReferralDraft; useAskComposer reads askPrefill only and ignores the bridge draft, leaving a blank job URL. Bounded fix in this row’s scope: receiver-side prefill honouring the bridge draft with existing draft priority, auth, company binding and clearing semantics preserved (no blind localStorage fallback that could resurrect a stale or wrong-user draft); a receiver-prefill test is required before the start flow is called complete. D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost.",
       "epic": "D-048-p3",
@@ -2373,8 +2370,7 @@
         "D-048-F-primitives",
         "D-048-F-goal-check",
         "D-048-P-auth",
-        "seeker-passwords",
-        "DEVICE-SIGNIN-passkeys"
+        "seeker-passwords"
       ],
       "owns": [
         "client/src/pages/SignIn.tsx (switch only)",
@@ -2975,8 +2971,7 @@
         "D-048-F-static-frame",
         "D-048-P-marketing",
         "D-048-F-flags",
-        "D-048-F-goal-check",
-        "D-176-public-claims"
+        "D-048-F-goal-check"
       ],
       "owns": [
         "client/src/pages/Home.tsx",
@@ -3151,8 +3146,7 @@
       "syncedTo": "D-227",
       "epic": "D-086-demand-list",
       "dependsOn": [
-        "D-086.ui",
-        "D-048-p3-live-review-find"
+        "D-086.ui"
       ],
       "owns": [
         "client/src/pages/Explore.tsx (switch only)",
@@ -3704,7 +3698,6 @@
         "D-048-F-flags",
         "D-048-F-routes",
         "D-132-audit",
-        "D-048-dark-mode",
         "D-048-p3-admin",
         "D-093.capture"
       ],
@@ -3969,9 +3962,7 @@
       "status": "todo",
       "syncedTo": "D-279",
       "dependsOn": [
-        "D-174-fix-post-binding",
-        "D-048-p3-live-review-find",
-        "D-099-bonus-line"
+        "D-174-fix-post-binding"
       ],
       "note": "Packet §4.1-4.6 and §6.1 (D-264 (2)): previewJobLink adds optional roleTitle and fetched (additive, no extra request); the composer calls the existing POST /api/job-link/preview behind JOB_LINK_PREFILL_ENABLED = false; F1 (another company's preview disables Send), F2 (no line for a link that was never fetched), F4 (/ask's local match counts only a company's own domains) and the §16 empty-field case are rulings here. Tier 1: owns client/src/pages/Ask.tsx (TIER1_CLIENT). The send body, askSend.ts and the server's employer resolution are untouched.",
       "epic": "D-094-ai-in-ui",
@@ -3998,8 +3989,7 @@
       "status": "todo",
       "syncedTo": "D-279",
       "dependsOn": [
-        "D-090-BYOR",
-        "D-174-held-ask-reconfirm"
+        "D-090-BYOR"
       ],
       "note": "Packet §4.7-4.10 and §6.2 (D-264 (3)): STATUS_HELP keyed by the askView label plus the pending queueStatus (F3); held_for_credit has no entry and keeps requestNote's money line; no entry states a credit movement; STATUS_HELP_ENABLED = false. The builder drafts candidate entries with their sources; the row stops before landing until the catalogue and localisation questions (§4.9-4.10) are accepted through Instinct. Declared Tier 1 above its Tier 2 floor per the Nov 1 coordinator tier ruling (packet §12).",
       "epic": "D-094-ai-in-ui",
@@ -4021,8 +4011,7 @@
       "status": "todo",
       "syncedTo": "D-279",
       "dependsOn": [
-        "D-094-ai-in-ui.job-link",
-        "DEPLOY-gate-docs-sync"
+        "D-094-ai-in-ui.job-link"
       ],
       "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route (waits for DEPLOY-gate-docs-sync, the other open AGENTS.md owner). No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
       "epic": "D-094-ai-in-ui",
@@ -4707,8 +4696,7 @@
       "status": "todo",
       "syncedTo": "D-281",
       "dependsOn": [
-        "D-174-fix-post-binding",
-        "D-176-public-claims"
+        "D-174-fix-post-binding"
       ],
       "note": "Packet section 6.1, rulings 1, 3 and 4: no open/not-open header, one primary commit, one verified-mark line, the not-open block and its alert control removed, sent headline in D-180 words. No switch: the live door contradicts D-176. Re-pins only the listed D-176 assertions. Tier 1 at the existing machine floor: owns client/src/pages/Ask.tsx, listed in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
       "epic": "D-174-seeker-journey-build",
@@ -5193,11 +5181,6 @@
       "dependsOn": [
         "PRICING-banded-oct25",
         "D-174-held-ask-reconfirm",
-        "LAUNCH-legal-copy",
-        "D-048-p3-live-review-find",
-        "D-174-fix-post-binding",
-        "D-176-public-claims",
-        "D-048-dark-mode",
         "D-099-bonus-pages"
       ],
       "owns": [
@@ -5223,9 +5206,7 @@
       "lane": "d048-foundation",
       "branch": "agent/queue/ayo-referral-words",
       "status": "in-review",
-      "dependsOn": [
-        "D-222-referral-count-shell"
-      ],
+      "dependsOn": [],
       "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route.",
       "syncedTo": "D-281",
       "owns": [
@@ -5260,7 +5241,6 @@
         "PRICING-banded-oct25",
         "D-180-a-free-asks-chip",
         "D-222-referral-count-shell",
-        "D-094-ai-in-ui.status-help",
         "D-173-referral-words-goal-ui"
       ],
       "owns": [
@@ -5524,8 +5504,7 @@
       "syncedTo": "D-227",
       "dependsOn": [
         "P1-deploy-green-gate",
-        "D-090-BYOR",
-        "D-099-bonus-pages"
+        "D-090-BYOR"
       ],
       "owns": [
         "AGENTS.md",
