@@ -281,6 +281,8 @@ repair; it never becomes a reusable route for other work.
 
 ## Status
 
+PROCESS-provenance-loader-bounds: automated claim held (D-312 exception) by Dev (Skydive) · d1a4 — 2026-11-10 — branch agent/queue/process-provenance-loader-bounds-glm-nov10-isolated; no source authored: section 5a open prerequisites (final input bytes/digest, free-route recheck, fresh FIFO recheck on current main, six-path/two-wrapper owner composition, actual binding assessment) remain supervisor-owned and unmet, so no dispatch is execution-ready. Question for owner/supervisor: should this automated claim be kept as the dispatch target, or released?
+
 Registration candidate from mainf1adbc, November10,2026. Both default-buffer
 failures independently reproduced. No implementation, external prompt, route,
 claim, source fix, execution receipt, verdict, completion or deployment is
