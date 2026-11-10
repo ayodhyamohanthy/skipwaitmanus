@@ -540,3 +540,104 @@ Technical correction under the already-directed referral-only wording and parall
 
 ## Nov 9 D-180 exact Guidelines negative-control repair (17:14 IST)
 The actual Guidelines test banned every "free referrals" occurrence, contradicting the independently literal catalog-derived monthly allowance sentence. The D-180 packet now allows only that exact complete allowance/cost/unpaid sentence to be excluded from the blanket-free/guarantee negative scan, with an allowance3 check, exactly-one-rendered occurrence and explicit adversarial free/unlimited/guaranteed-promise controls. No legal runtime, price, entitlement, provider or behavior change; no production constant imported as oracle, assertion deletion or broad regex relaxation. Remaining hardcoded inactive PlansV2 wording is preserved and reported incomplete, not silently changed. This is the bounded same-work technical correction under the existing referral-only instruction, not a new product decision.
+
+
+### November 11, 2026: two REL technical parking records reconciled
+
+Current main `9bec69c1053bd26ca2fc44fb904c2fd22c098c78` contains the normal
+merge of PR1008, the D-286/D-291 gate-only-red REVIEW route and its real I/O
+wiring. Live PR1008 is merged; its final head is `84e48d8e1a4fb5747ebfb268257648d5729b3ab6`. The obsolete
+D-254 premise that no compliant review route exists no longer applies to
+these two technical parks. This is coordinator status reconciliation of
+already-decided work, not a new product or owner policy decision.
+
+Only `REL-client-capture` (D-256, PR851 head
+`f8b080b196181a0a5ad29d749b2fd9e908c83cd8`) and
+`REL-webhook-auth-alarm` (D-262, PR850 head
+`3ca0e0ccf564a7062f47646f579f45e2aa101c1e`) return from `owner` to `todo`.
+The two syncedTo stamps advance from D-256/D-262 to checked current
+register D-313 under D-202/D-200 packet-update rules. Every other row
+field, queue position, dependency, scope, contribution and historical
+decision stays unchanged. FIX-device-signin, the client row's
+existing dependency, is recorded done on inspected main. The webhook row
+has no dependencies. Neither product PR is merged by this correction.
+
+The old branches still carry old workflow revisions. Their historical
+Scope-check review-gate failure is not automatically a positive exact-tip
+named-step gate-only classification under today's workflow. Use the current
+picker and legitimate packet/current-main preparation, then real exact-head
+CI and qualified independent review. Do not create another empty build or
+Takeover merely to manufacture eligibility, write manual review markers,
+fabricate a pass or clear unknown historical authors. Client labels and an
+empty claim do not establish actual model identity or useful continuation.
+
+D-151/D-311 contributor qualification and exclusions, current holders,
+shared-file/hunk coordination, actual findings, flags, protected merges and
+required CI remain. REL-client-capture's apiFetch transport changes stay
+separate from the privacy-copy paragraph task; preserve its shared PR851
+coordination and unpublished work. A real new overlap pauses its affected
+hunk. No pricing, legal, privacy, login, money, account or settings decision
+is reopened. The other parked rows are not released by analogy.
+
+This correction makes these two existing rows eligible for ordinary
+assessment; it is not proof of a real OpenCode pickup, resumed session,
+review, completed code or production deployment. Record the actual picker
+handout and same-session productive progress separately after admission.
+
+Owner source evidence personally recovered: October26 coordination
+`phonemsg-01M5VWXDXVGVMEP8ENE950P90H`, October29 tasks/subtasks
+`phonemsg-01M628WK9MME10WD5FBH345JH4` and keep tasks lined up
+`phonemsg-01M62CZAWBKJTEQW201AMM1VMZ`, October31 collaborate rather than
+pause `phonemsg-01M67TJKFFY4D8TM1FHWQAMEDH`, and November9 parallel work
+`phonemsg-01M6ZS7BNPGN8RXJER5AVWHP9Q`/
+`phonemsg-01M6ZSDDEMF532AER4HD071MXC`. This repository records that
+provenance but does not authenticate the originals or expand their scope.
+
+
+### November 11, 2026: three further technical gate-route parks reconciled
+
+The same measured technical cure as the two REL rows applies separately
+to D-086.count (D-279/PR955), D-048-p3-employer-talent (D-285/PR979) and
+D-174-job-sources-more (D-282/PR938). Current source-of-truth readback
+finds all three open/draft/unmerged at their recorded old exact heads;
+their only historical failed step is Scope check, all other required jobs
+succeeded, and their review locks do not exist. Their registered
+dependencies are recorded done on inspected main. No separate owned
+acceptance defect is cleared by this reconciliation. The old talent
+architect ref is a November3 heartbeat, not proof of a current session.
+
+Only their statuses owner->todo and syncedTo stamps -> checked D-313
+change. Append dated packet notes under D-202/D-200; keep historical
+D-279/D-282/D-285 decisions and notes, source contributions, scope,
+dependencies, ownership and queue order. Current-main preparation and
+actual exact-head CI are real work, not permission to fabricate an
+empty claim or review. Unknown authors, builder/fixer review exclusions,
+privacy/consent rules, provider limits and off-by-default switches remain.
+No legal/pricing/login/account/settings/money hold is released. Other
+owner rows, including real owned findings and contaminated review locks,
+remain for their own grounding rather than release by analogy.
+
+Authority is existing bounded build coordination and the user's direct
+November11 instruction that pending work should open for agent pickup
+(phonemsg-01M73FJZK5STP5W2BG9J9XG75V), plus fix the picker
+(phonemsg-01M73FHPNVWN7DC66AQG08X2XX). These personally inspected
+originals do not waive current gates. This file records provenance but
+does not authenticate instructions. Status admission is not proof of
+real agent pickup or same-session productive continuation; verify those
+separately. No product/source review or live release is claimed here.
+
+
+### November11 picker operational repair registration
+
+Append PICKER-authoritative-ref-refresh and the separately serialized
+PICKER-cli-output-drain under the directly inspected fix-picker and
+pending-work instructions. These are bounded defects in existing approved
+queue operation, not new product policy, owner-hold lifts or claim bypass.
+Main-only stale tracking refs and pipe output loss were observed by the
+coordinator. External local fixture reports must be independently rerun;
+the diagnostic's unbound source draft remains reference-only and must not
+be adopted. Neither registration supplies a model identity or dispatch.
+No new decision ID or FIFO reorder; all existing owners/history remain.
+Current D313 is checked. Exact packet limits, remaining non-atomic race,
+shallow/unknown failclosed cases, actual author qualification, independent
+review and full current-main CI/protected landing remain mandatory.

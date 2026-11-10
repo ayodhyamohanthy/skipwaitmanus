@@ -1,16 +1,21 @@
 # UI-referrer-privacy-copy: truthful resume visibility before acceptance
 
-## Admission status: NOTREADY, unregistered runtime task
+## Admission status: NOTREADY registration candidate, row and routes proposed
+
+Unregistered until normal reviewed merge; no runtime dispatch clearance.
 
 The initial 952d carrier received actual independent FINDINGS: the Tier 1
 packet lacked already-written red-first tests and numbered handoff sections.
 D-311 does not waive DELEGATION's test precondition. The original candidate
 row and two routes are retained in Git history, not admitted or relabeled.
-This revision registers only the separate Tier 3 preparation task in
-`UI-referrer-privacy-copy-tests.md`. It does not register a runtime todo row.
-Runtime sections 5/6/7/10 and complete test bodies will be composed after
-actual accepted prep evidence exists, before any runtime registration.
-No runtime claim or implementation may start from this incomplete packet.
+The separately registered prep source now has its exact GLM execution receipt
+admitted and actual bounded source-quality PASS. This current docs-only
+registration candidate retains aligned runtime sections 5/6/7/10 and complete
+test bodies, and proposes the separate runtime row and two routes append-only.
+They remain unregistered until exact qualification review, required CI and
+normal protected merge. No held historical prep-task clearance or runtime
+implementation permission is implied. Manual copy-hunk admission is recorded
+below; fresh overlap checks still precede implementation and integration.
 
 ## 1. Evidence and purpose
 
@@ -32,8 +37,10 @@ not a new product-policy decision or a priority override.
 
 Tier 1 conservatively: the text explains a privacy boundary on sign-in.
 Use branch `agent/queue/ui-referrer-privacy-copy` after ordinary assignment.
-The earlier registration proposed this runtime task. This revision defers it;
-only the separate prep task is appended without changing existing tasks.
+The earlier deferred proposal remains in history. This revision proposes the
+separate runtime row and exact author/reviewer routes append-only, without
+changing existing tasks. It stays NOTREADY until exact registration/route
+review and required CI pass and normal protected admission lands.
 
 `REL-client-capture` retains its switch-only ownership of the two component
 files. Its fetch/API switches, claims and unpublished work must be preserved.
@@ -110,27 +117,99 @@ payment, provider settings or feature activation during QA.
    SHA and recheck the real released paragraph at both widths. Do not report
    all logins or data privacy end-to-end verified from this copy-only check.
 
-## 5. Deferred runtime scope and registration
+## 5. In scope and exclusions
 
-The exact future product/test paths above remain a scope proposal, NOT a
-ready Tier 1 handoff. This revision does not register the runtime row or its
-two earlier proposed Mistral/DeepSeek routes. Those candidate records remain
-in commits 952d651c through 2cf1ad5f for audit, not current qualification.
-Only UI-referrer-privacy-copy-tests and its separate proposed GLM preparation
-route are in this carrier. Messages routes/receipts do not authorize either
-task. No runtime claim may be made from this incomplete packet.
+This is a draft handoff, not runtime registration or permission to implement.
+The exact section 3 paths are the complete implementation scope: three
+introductory promise paragraphs, one byte-identical new regression, and this
+packet Status only. Preserve all handlers, imports, auth/API switches,
+compact behavior, classes and other wording. No other path is in scope.
+No migration, environment key, dependency, provider setting, feature flag,
+legal text, payment or runtime data projection change is required.
 
-## 6. Deferred implementation sequence
+## 6. Implementation sequence after admission and ordinary assignment
 
-After actual prep completion and independent acceptance, align this packet's
-numbered sections with DELEGATION, qualify the exact future runtime routes,
-and register runtime only when section 7 contains complete tests. Preserve
-REL's switch-only ownership and obtain the current hunk split/coordination.
-The future runtime builder must transport the test source byte-identically,
-retain its actual prep author and prove all Tier 1/runtime/release gates.
-No policy, sign-in, legal, money, migration or flag change is inferred.
+1. Recover current decisions, current main, exact ordinary assignment and
+   admitted task/operator/model routes. This draft admits none. Check all
+   shared-record ownership and unpublished hunk overlaps before editing.
+2. Transport the exact section 7 test bytes to the named collected path.
+   Prove 33,911 bytes and SHA-256
+   `244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f`.
+   Run the focused test before product edits; failures must be the actual
+   misleading promise and missing acceptance/active-access boundaries.
+3. The separately qualified actual runtime author changes only the three
+   paragraphs. State the name/resume acceptance boundary and conditional
+   active file access, retaining decline/context/nothing-sent promises.
+   Ground any role/note promise against the actual current card/server
+   contract first. Do not invent a forwardable packet before it exists.
+   Carry the accepted bounded test limits: file claim first, condition after,
+   in the same comma segment. Do not rewrite or weaken the tests to fit copy.
+4. Run focused and required checks, preserve all actual failures, and compare
+   the final source to current main and every known contribution. The actual
+   runtime author and every fixer must be excluded from final Tier 1 review;
+   GLM 5.3 is also excluded because it authored this regression across tasks.
+5. Open the Tier 1 draft PR. Obtain actual independent exact-version review,
+   current-main composition, exact required green CI, legitimate landing
+   slot and normal protected merge. Then verify released SHA and real web
+   pixels at 1280 and 390. No skipped scope check becomes a scope PASS.
 
-## 7. Actual prepared source candidate, not yet accepted
+## 7. Complete source and exact acceptance boundary
+
+GLM 5.3 authored the exact inert source below. Actual operator was
+`Instinct · public-model-review-nov10`; original claim/input
+`1857d9a6d72a3cf2d4f7d756860af52931fa53fa`; final source output
+`0c4cfae28fbf0120195951900ade6b4846cf282a`.
+The current trusted registry separately admits its source-only execution
+`referrer-copy-tests-glm-build-nov10`. Released production-loader execution
+check on main `8569548b977d6d52422894690a0ab5111b493e72` returned ok=true,
+model glm-5.3. This does not qualify every later prep-task contributor.
+
+Actual DeepSeek Assessment 6 passed integrity and bounded source quality for
+these exact source bytes, not universal language or historical task admission.
+It executed 44 named controls with zero mismatches. Retain its residuals:
+negation masking has known gaps; the separate positive boundary assertion
+must remain; the pre-choice check intentionally over-rejects some truthful
+mixed sentences; access wording requires file claim first and condition after
+in the same comma segment. Fronted, split or non-link access conditions are
+outside this detector. No product copy may be shaped to exploit a false green.
+
+Fresh scratch transport on released main8569 ran 33 tests: 9 assertion failures
+and 24 passes, exit1; it was removed and Git status was clean. The failures
+map exactly to source calls 650/655/660 (misleading promise), 681/686/691
+(missing hidden-until-acceptance boundary), 710/715/720 (missing conditional
+active access), across the three actual render paths. It reproduced
+all three real components without sends or target-component mocks. This is
+RED proof, not runtime GREEN or shipped privacy proof.
+
+Historical prep PR1112 full-task resolver STILL HOLDS because plain unknown-
+model Takeover91c736e5 lacks qualified evidence. That empty commit has the
+same tree as its parent; main mergeebb99798 was independently replayed clean
+with exactly the actual merge tree; e5bdd763 adds only Status prose. Source
+hash is identical throughout. These are contribution facts, not identity or
+historical task-PASS certification. Coordinator is recovering the missing
+actual db07 evidence. This candidate does not erase, relabel or waive that hold.
+Actual DeepSeek composition assessment, corrected on November 10 at 23:17,
+accepts the source leg as preexisting individually qualified prep for this
+separate runtime task. It withdrew its mistaken same-row owner question,
+incomplete-test-body objection and receipt-before-route objection. Historical
+prep-task qualification remains held, but does not gate separate docs work.
+Normal exact-docs review, runtime route qualification and manual hunk admission
+still precede registration and dispatch. This candidate remains NOTREADY and
+unregistered until those concrete gates pass. No D-312 exception applies.
+
+The following fenced body is exactly the accepted inert source, without
+semantic edits by the packet writer. Surrounding prose is a distinct docs
+contribution. Final collected path:
+`client/src/components/referrerPrivacyCopy.test.tsx`.
+
+### Retained historical source-preparation record
+
+The following dated record and actual RED output are preserved verbatim for
+audit. Their old pending-quality/receipt statements describe the state before
+Assessment 6, PR1110 receipt admission and the current composition assessment
+above. They do not override that newer evidence. Historical full-task1112
+qualification is still held. No record is deleted or retrospectively relabeled.
+
 
 The following source is actual GLM 5.3 output, mechanically inserted byte-for-
 byte by the packet writer. The surrounding explanation and evidence labels
@@ -1158,12 +1237,171 @@ that same inert source file; the source-only range excludes packet prose. This s
 its execution are candidates pending separate exact independent admission.
 Coordinator prose here is a distinct docs contribution outside the GLM range.
 
-## 10. Status and retained findings
+## 10. Review questions and Status
 
-NOTREADY, unregistered runtime packet. Existing carrier history and actual
-GLM FINDINGS on 952d651c remain. F2 observation-label/pixel correction and F3
-conditional active-access requirement were bounded follow-ups, not a PASS.
-The phase proposal received COMPLIANT WITH CONDITIONS, not exact-candidate
-admission. An actual test-source and source-only execution candidate now exist above,
-but neither is independently admitted here. No runtime claim or qualified runtime
-route, final source review, deployment or product completion is asserted.
+1. Does each of the three actual render paths state the hidden-until-
+   acceptance name/resume boundary without pre-choice file promises?
+2. Is file access conditional on active access after acceptance, not merely
+   acceptance, and are decline/context/nothing-sent promises unchanged?
+3. Are exact test bytes preserved, their real RED reproduced, no assertions
+   weakened, no target mock/send introduced, and all required checks real?
+4. Do the final source diff, current-main composition and hunk ownership stay
+   inside section 3/5, with all contributor exclusions preserved?
+5. Are runtime routes, claims, exact execution receipts, independent review,
+   required CI and protected landing actually established, not inferred from
+   this draft, a merged docs carrier or a successful pure fixture?
+6. After normal landing, does the real released SHA show readable paragraphs
+   at both widths without overflow, unchanged actions or auth activation?
+
+Status: NOTREADY; unregistered runtime registration candidate. Row and routes
+are proposed in PR1129, not admitted. No runtime code, ordinary runtime claim,
+qualified runtime route, historical1112 full-task PASS, deployment
+or shipped privacy fix is asserted. Actual source-only receipt and independent
+bounded source-quality PASS are separate facts. Historical task qualification
+and next runtime admission remain distinct unresolved checks above.
+
+### Current-main manual hunk audit, November 10 at 23:18 IST
+
+Current fetched main is `8569548b977d6d52422894690a0ab5111b493e72`.
+The actual REL-client-capture source ref remains
+`f8b080b196181a0a5ad29d749b2fd9e908c83cd8`: against its main merge base,
+its two shared-component deltas add apiFetch imports and replace only
+send/verify/enroll fetch calls. It does not edit either intro paragraph.
+DEVICE-SIGNIN-passkeys `af1eb80cb06e2d775df11a21b8aa142afb1cbaf5`
+has no identified held intro-copy edit in its merge-base contribution; its
+older tip lacks the newer GoalOtp file, so this is not a literal tip-byte
+identity or no-history claim. The D-048 sign-in row owns goal/sign-in,
+not goal/referrer/GoalOtpSignIn. These are actual visible contribution facts,
+not consent, a guarantee of no unpublished work or ownership transfer.
+Parent coordination of the manual hunk split/admission remains in progress.
+Preserve every ref and contribution; repeat the check at dispatch/integration.
+Do not fold REL's fetch switches into this three-paragraph repair.
+
+This docs-only candidate claims no machine scope PASS: when no exact owns row
+maps it, a scope-tool SKIP/exit0 is only SKIP. Its manual docs scope is this
+packet alone; future runtime registration and route qualification are separate
+not-yet-completed changes. No runtime/test/config/registry delta is included.
+
+### Registration candidate, November 10 at 23:31 IST
+
+The separate runtime row is proposed append-only at the end of the existing
+queue, with syncedTo D-313 and no invented dependency, FIFO reorder or new
+file ownership. This is not historical prep-task clearance. No runtime claim
+or source dispatch exists. Exact task-specific route qualification, manual
+hunk integration admission, independent exact registration review and required
+CI remain pending. The prior NOTREADY state remains until those gates pass.
+The source-only GLM receipt and bounded quality result are not a route for
+Mistral, DeepSeek or the runtime task; all task/operator/model binding must be
+separately qualified. The registration carrier changes no product/test bytes.
+
+### Manual copy-hunk coordination candidate, November 10 at 23:33 IST
+
+The current shared record is REL PR851 comment
+https://github.com/ayodhyamohanthy/skipwaitmanus/pull/851#issuecomment-6774796479.
+No REL reply, ACK or denial of unpublished overlap is asserted. Current remote
+REL source tip is still f8b080b196181a0a5ad29d749b2fd9e908c83cd8. Its
+main-base diff in the two shared components contains apiFetch import and
+send/verify/enroll replacements only; no introductory paragraph edit. The
+runtime task is distinct and uses a separate branch/worktree. It must not
+apply REL's transport changes or claim its ownership.
+
+The owner's November 9 parallel-development instructions, recorded in D-309
+and BUILD_CONTINUITY, allow distinct isolated tasks sharing a filename and
+assign combined integration responsibility to the coordinator. Existing
+section 2 requires current shared-record coordination and exact hunk review;
+it conditions a pause/split on actual held or unpublished overlap with these
+copy hunks. It does not require an affirmative ACK for distinct inspected
+hunks. A lack of reply is not evidence of consent or of no unpublished work.
+
+Proposed bounded admission for independent review: permit only the three
+introductory copy paragraphs plus byte-identical accepted regression in this
+separate task, preserving all REL switches, current refs and unknown work.
+Check current source/refs and the shared record at dispatch and integration;
+reconcile both intended outputs and test the combined result before landing.
+If overlapping actual unpublished or new source work appears, pause that hunk
+for coordinator split/handoff, never overwrite or infer consent. This is a
+manual hunk decision, not an automated owns/scope PASS or file takeover.
+Exact registration/route qualification review remains pending; this text is
+not a coding claim or dispatch clearance.
+
+### Exact prospective runtime routes, November 10 at 23:34 IST
+
+Carrier https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1129 proposes
+`referrer-copy-author-macaly-mistral-nov10` (build/fix) and
+`referrer-copy-review-macaly-deepseek-nov10` (review/land) for this exact
+runtime task and actual operator `Instinct · public-model-review-nov10`.
+Fresh selection observations at 23:26 show Mistral Large 4 and DeepSeek
+V4.1 Flash, Free capacity, no prompt sent, and no upgrade/payment. Canonical exclusion
+keys retain `mistralai/mistral-large-4-1t-a52b` and `deepseek-v4.1-flash` to
+preserve same-family aliases, not to assert a hidden checkpoint or endpoint.
+GLM 5.3 remains excluded from final runtime review as actual test author.
+The registry diff appends only these two routes; every existing route and
+execution is byte/value-preserved. Structure/digest validation succeeds but
+is not independent qualification. No coding/review execution is asserted.
+Before any source prompt, actual exact route/packet/manual-hunk qualification
+must pass and land normally; then use the real released picker/ordinary claim.
+Actual input/output/patch/pre-send model and free capacity must be retained,
+with the exact completed execution receipt separately reviewed and merged
+before acceptance. This carrier grants no role outside this task.
+
+### Actual coordinator copy-hunk admission, November 10 at 23:34 IST
+
+Current shared-record admission is
+https://github.com/ayodhyamohanthy/skipwaitmanus/pull/851#issuecomment-6775160209.
+The coordinator verified current main5b591416 and RELf8b080b1, recovered the
+D-309 originals and admitted only the three named introductory paragraph
+slots for this distinct task, not final copy wording. Preserve every non-copy byte, element, style,
+compact behavior and transport switch, with separate GLM-test transport
+attribution. This is not holder ACK, consent, file takeover, runtime READY or
+merge approval. Unpublished work remains unknown. Check current thread and
+exact refs before implementation/integration; pause actual affected overlap
+for coordinator split and combine/review/test both intended outputs. DEVICE's
+older tip missing a newer goal file is not evidence of whole-tip equality.
+Exact external route/registration review and normal admission are still pending.
+
+### D-313 released-loader prerequisite, November 10 at 23:44 IST
+
+D-313's privacy follow-through hold required real loader acceptance. That
+specific prerequisite is now satisfied by PR1127 normal protected merge
+`8569548b977d6d52422894690a0ab5111b493e72`, with actual independent exact
+source review and all required CI success on final head and released main:
+https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/42855876536
+and https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/42863925140.
+Released production picker and review-gate Git bindings each loaded the same
+complete 1,620,440 trimmed bytes (1,620,441 raw) trusted registry, parsing
+five routes and three executions; the released 15-case regression passed.
+This is accepted tooling repair, not API/Pages deployment or customer privacy
+completion. The individual GLM prep receipt now resolves through that real
+loader; historical1112 full-task hold remains a distinct unresolved fact.
+Thus syncedTo D-313 records the checked decision, not a new dependency or
+waiver, and does not bypass this runtime registration/route/claim/review gate.
+
+### Runtime copy implementation, November 10 at 23:58 IST
+
+Five paths only: the introductory promise paragraph in
+`client/src/components/ReferrerOtpSignIn.tsx`, in
+`client/src/components/WorkEmailSignIn.tsx` (the noncompact branch only; the
+compact branch renders no copy paragraph), and in
+`client/src/pages/goal/referrer/GoalOtpSignIn.tsx`; the new byte-identical
+regression transport `client/src/components/referrerPrivacyCopy.test.tsx`
+(33,911 bytes, SHA-256
+`244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f`, unchanged
+from the separately qualified GLM 5.3 prep source, transported without edits and
+not authored here); and this Status section.
+
+The new copy states that the role and note can be reviewed before the choice, that
+the seeker's name and resume stay hidden until acceptance, and that post-acceptance
+file access stays conditional on active document access. The decline/context and
+nothing-sent-from-your-account sentences are preserved exactly, and no forwardable
+packet is promised. No handler, import, auth, endpoint, transport, flag, schema,
+dependency or other byte changed.
+
+Verification, all recorded by the operator and none invented here: on the
+unchanged copy the operator reproduced 33 tests with 9 failed and 24 passed, the
+expected RED drivers. With this copy the operator recorded the focused regression
+33/33 PASS at 00:10; the affected sign-in/referrer/login/privacy tests,
+`pnpm check`, the full gate, pixels, review, receipt and landing all remain
+pending. This entry asserts no completion, no claim, no receipt, no verdict, no
+landing and no deployment. Current state: admitted 1129; genuine claim
+`cc2512bea9a7e171afd0da7d5bedb0f384ee272d` in progress on admitted
+`8b0212af36f7ced8cb0b52658ac505e45d3a2655`.
