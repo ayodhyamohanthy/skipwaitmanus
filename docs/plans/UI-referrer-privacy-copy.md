@@ -1,16 +1,17 @@
 # UI-referrer-privacy-copy: truthful resume visibility before acceptance
 
-## Admission status: NOTREADY, unregistered runtime task
+## Admission status: NOTREADY, unregistered docs-only composition candidate
 
 The initial 952d carrier received actual independent FINDINGS: the Tier 1
 packet lacked already-written red-first tests and numbered handoff sections.
 D-311 does not waive DELEGATION's test precondition. The original candidate
 row and two routes are retained in Git history, not admitted or relabeled.
-This revision registers only the separate Tier 3 preparation task in
-`UI-referrer-privacy-copy-tests.md`. It does not register a runtime todo row.
-Runtime sections 5/6/7/10 and complete test bodies will be composed after
-actual accepted prep evidence exists, before any runtime registration.
-No runtime claim or implementation may start from this incomplete packet.
+The separately registered prep source now has its exact GLM execution receipt
+admitted and actual bounded source-quality PASS. This current docs-only
+composition aligns runtime sections 5/6/7/10 and retains complete test bodies.
+It does not register a runtime row or route, certify the held historical prep
+task, or permit implementation. Exact docs review, runtime route qualification
+and manual hunk admission remain pending before registration and dispatch.
 
 ## 1. Evidence and purpose
 
@@ -110,27 +111,99 @@ payment, provider settings or feature activation during QA.
    SHA and recheck the real released paragraph at both widths. Do not report
    all logins or data privacy end-to-end verified from this copy-only check.
 
-## 5. Deferred runtime scope and registration
+## 5. In scope and exclusions
 
-The exact future product/test paths above remain a scope proposal, NOT a
-ready Tier 1 handoff. This revision does not register the runtime row or its
-two earlier proposed Mistral/DeepSeek routes. Those candidate records remain
-in commits 952d651c through 2cf1ad5f for audit, not current qualification.
-Only UI-referrer-privacy-copy-tests and its separate proposed GLM preparation
-route are in this carrier. Messages routes/receipts do not authorize either
-task. No runtime claim may be made from this incomplete packet.
+This is a draft handoff, not runtime registration or permission to implement.
+The exact section 3 paths are the complete implementation scope: three
+introductory promise paragraphs, one byte-identical new regression, and this
+packet Status only. Preserve all handlers, imports, auth/API switches,
+compact behavior, classes and other wording. No other path is in scope.
+No migration, environment key, dependency, provider setting, feature flag,
+legal text, payment or runtime data projection change is required.
 
-## 6. Deferred implementation sequence
+## 6. Implementation sequence after admission and ordinary assignment
 
-After actual prep completion and independent acceptance, align this packet's
-numbered sections with DELEGATION, qualify the exact future runtime routes,
-and register runtime only when section 7 contains complete tests. Preserve
-REL's switch-only ownership and obtain the current hunk split/coordination.
-The future runtime builder must transport the test source byte-identically,
-retain its actual prep author and prove all Tier 1/runtime/release gates.
-No policy, sign-in, legal, money, migration or flag change is inferred.
+1. Recover current decisions, current main, exact ordinary assignment and
+   admitted task/operator/model routes. This draft admits none. Check all
+   shared-record ownership and unpublished hunk overlaps before editing.
+2. Transport the exact section 7 test bytes to the named collected path.
+   Prove 33,911 bytes and SHA-256
+   `244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f`.
+   Run the focused test before product edits; failures must be the actual
+   misleading promise and missing acceptance/active-access boundaries.
+3. The separately qualified actual runtime author changes only the three
+   paragraphs. State the name/resume acceptance boundary and conditional
+   active file access, retaining decline/context/nothing-sent promises.
+   Ground any role/note promise against the actual current card/server
+   contract first. Do not invent a forwardable packet before it exists.
+   Carry the accepted bounded test limits: file claim first, condition after,
+   in the same comma segment. Do not rewrite or weaken the tests to fit copy.
+4. Run focused and required checks, preserve all actual failures, and compare
+   the final source to current main and every known contribution. The actual
+   runtime author and every fixer must be excluded from final Tier 1 review;
+   GLM 5.3 is also excluded because it authored this regression across tasks.
+5. Open the Tier 1 draft PR. Obtain actual independent exact-version review,
+   current-main composition, exact required green CI, legitimate landing
+   slot and normal protected merge. Then verify released SHA and real web
+   pixels at 1280 and 390. No skipped scope check becomes a scope PASS.
 
-## 7. Actual prepared source candidate, not yet accepted
+## 7. Complete source and exact acceptance boundary
+
+GLM 5.3 authored the exact inert source below. Actual operator was
+`Instinct · public-model-review-nov10`; original claim/input
+`1857d9a6d72a3cf2d4f7d756860af52931fa53fa`; final source output
+`0c4cfae28fbf0120195951900ade6b4846cf282a`.
+The current trusted registry separately admits its source-only execution
+`referrer-copy-tests-glm-build-nov10`. Released production-loader execution
+check on main `8569548b977d6d52422894690a0ab5111b493e72` returned ok=true,
+model glm-5.3. This does not qualify every later prep-task contributor.
+
+Actual DeepSeek Assessment 6 passed integrity and bounded source quality for
+these exact source bytes, not universal language or historical task admission.
+It executed 44 named controls with zero mismatches. Retain its residuals:
+negation masking has known gaps; the separate positive boundary assertion
+must remain; the pre-choice check intentionally over-rejects some truthful
+mixed sentences; access wording requires file claim first and condition after
+in the same comma segment. Fronted, split or non-link access conditions are
+outside this detector. No product copy may be shaped to exploit a false green.
+
+Fresh scratch transport on released main8569 ran 33 tests: 9 assertion failures
+and 24 passes, exit1; it was removed and Git status was clean. The failures
+map exactly to source calls 650/655/660 (misleading promise), 681/686/691
+(missing hidden-until-acceptance boundary), 710/715/720 (missing conditional
+active access), across the three actual render paths. It reproduced
+all three real components without sends or target-component mocks. This is
+RED proof, not runtime GREEN or shipped privacy proof.
+
+Historical prep PR1112 full-task resolver STILL HOLDS because plain unknown-
+model Takeover91c736e5 lacks qualified evidence. That empty commit has the
+same tree as its parent; main mergeebb99798 was independently replayed clean
+with exactly the actual merge tree; e5bdd763 adds only Status prose. Source
+hash is identical throughout. These are contribution facts, not identity or
+historical task-PASS certification. Coordinator is recovering the missing
+actual db07 evidence. This candidate does not erase, relabel or waive that hold.
+Actual DeepSeek composition assessment, corrected on November 10 at 23:17,
+accepts the source leg as preexisting individually qualified prep for this
+separate runtime task. It withdrew its mistaken same-row owner question,
+incomplete-test-body objection and receipt-before-route objection. Historical
+prep-task qualification remains held, but does not gate separate docs work.
+Normal exact-docs review, runtime route qualification and manual hunk admission
+still precede registration and dispatch. This candidate remains NOTREADY and
+unregistered until those concrete gates pass. No D-312 exception applies.
+
+The following fenced body is exactly the accepted inert source, without
+semantic edits by the packet writer. Surrounding prose is a distinct docs
+contribution. Final collected path:
+`client/src/components/referrerPrivacyCopy.test.tsx`.
+
+### Retained historical source-preparation record
+
+The following dated record and actual RED output are preserved verbatim for
+audit. Their old pending-quality/receipt statements describe the state before
+Assessment 6, PR1110 receipt admission and the current composition assessment
+above. They do not override that newer evidence. Historical full-task1112
+qualification is still held. No record is deleted or retrospectively relabeled.
+
 
 The following source is actual GLM 5.3 output, mechanically inserted byte-for-
 byte by the packet writer. The surrounding explanation and evidence labels
@@ -1158,12 +1231,44 @@ that same inert source file; the source-only range excludes packet prose. This s
 its execution are candidates pending separate exact independent admission.
 Coordinator prose here is a distinct docs contribution outside the GLM range.
 
-## 10. Status and retained findings
+## 10. Review questions and Status
 
-NOTREADY, unregistered runtime packet. Existing carrier history and actual
-GLM FINDINGS on 952d651c remain. F2 observation-label/pixel correction and F3
-conditional active-access requirement were bounded follow-ups, not a PASS.
-The phase proposal received COMPLIANT WITH CONDITIONS, not exact-candidate
-admission. An actual test-source and source-only execution candidate now exist above,
-but neither is independently admitted here. No runtime claim or qualified runtime
-route, final source review, deployment or product completion is asserted.
+1. Does each of the three actual render paths state the hidden-until-
+   acceptance name/resume boundary without pre-choice file promises?
+2. Is file access conditional on active access after acceptance, not merely
+   acceptance, and are decline/context/nothing-sent promises unchanged?
+3. Are exact test bytes preserved, their real RED reproduced, no assertions
+   weakened, no target mock/send introduced, and all required checks real?
+4. Do the final source diff, current-main composition and hunk ownership stay
+   inside section 3/5, with all contributor exclusions preserved?
+5. Are runtime routes, claims, exact execution receipts, independent review,
+   required CI and protected landing actually established, not inferred from
+   this draft, a merged docs carrier or a successful pure fixture?
+6. After normal landing, does the real released SHA show readable paragraphs
+   at both widths without overflow, unchanged actions or auth activation?
+
+Status: NOTREADY; unregistered docs-only composition draft. No runtime code,
+ordinary runtime claim, runtime route, historical1112 full-task PASS, deployment
+or shipped privacy fix is asserted. Actual source-only receipt and independent
+bounded source-quality PASS are separate facts. Historical task qualification
+and next runtime admission remain distinct unresolved checks above.
+
+### Current-main manual hunk audit, November 10 at 23:18 IST
+
+Current fetched main is `8569548b977d6d52422894690a0ab5111b493e72`.
+The actual REL-client-capture source ref remains
+`f8b080b196181a0a5ad29d749b2fd9e908c83cd8`: against its main merge base,
+its two shared-component deltas add apiFetch imports and replace only
+send/verify/enroll fetch calls. It does not edit either intro paragraph.
+DEVICE-SIGNIN-passkeys `af1eb80cb06e2d775df11a21b8aa142afb1cbaf5`
+has no delta in these three paths. The D-048 sign-in row owns goal/sign-in,
+not goal/referrer/GoalOtpSignIn. These are actual visible contribution facts,
+not consent, a guarantee of no unpublished work or ownership transfer.
+Parent coordination of the manual hunk split/admission remains in progress.
+Preserve every ref and contribution; repeat the check at dispatch/integration.
+Do not fold REL's fetch switches into this three-paragraph repair.
+
+This docs-only candidate claims no machine scope PASS: when no exact owns row
+maps it, a scope-tool SKIP/exit0 is only SKIP. Its manual docs scope is this
+packet alone; future runtime registration and route qualification are separate
+not-yet-completed changes. No runtime/test/config/registry delta is included.
