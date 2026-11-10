@@ -111,7 +111,7 @@ describe("ask drawer", () => {
     expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
     expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
     expect(within(drawer).getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 4 credits"));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 4"));
     // The cost is stated in one shared sentence pair (D-063): no retyped price.
     expect(within(drawer).getByTestId("goal-money-sentence").textContent).toBe(MONEY_SENTENCE);
     expect(within(drawer).getByText("ada-resume.pdf")).toBeTruthy();
@@ -186,7 +186,7 @@ describe("ask drawer", () => {
     await within(drawer).findByText("ada-resume.pdf");
     fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
     const active = await screen.findByTestId("goal-drawer");
-    expect(within(active).getByText(`No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 credit is used and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
+    expect(within(active).getByText(`No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 is deducted from your balance and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
     expect(within(active).getByRole("link", { name: "Track this ask" }).getAttribute("href")).toBe("/conversation/501");
   });
 
@@ -256,7 +256,7 @@ describe("ask drawer", () => {
   it("says there are no credits and suppresses the send before any request", async () => {
     const fetchMock = stub({ credits: 0 });
     const drawer = await openWipro();
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("You have no credits left"));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Your balance is empty"));
     const send = within(drawer).getByRole("button", { name: "Send ask" });
     expect(send.getAttribute("aria-disabled")).toBe("true");
     fillLink(drawer);
