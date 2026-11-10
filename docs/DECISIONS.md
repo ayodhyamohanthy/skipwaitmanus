@@ -540,3 +540,53 @@ Technical correction under the already-directed referral-only wording and parall
 
 ## Nov 9 D-180 exact Guidelines negative-control repair (17:14 IST)
 The actual Guidelines test banned every "free referrals" occurrence, contradicting the independently literal catalog-derived monthly allowance sentence. The D-180 packet now allows only that exact complete allowance/cost/unpaid sentence to be excluded from the blanket-free/guarantee negative scan, with an allowance3 check, exactly-one-rendered occurrence and explicit adversarial free/unlimited/guaranteed-promise controls. No legal runtime, price, entitlement, provider or behavior change; no production constant imported as oracle, assertion deletion or broad regex relaxation. Remaining hardcoded inactive PlansV2 wording is preserved and reported incomplete, not silently changed. This is the bounded same-work technical correction under the existing referral-only instruction, not a new product decision.
+
+
+### November 11, 2026: two REL technical parking records reconciled
+
+Current main `9bec69c1053bd26ca2fc44fb904c2fd22c098c78` contains the normal
+merge of PR1008, the D-286/D-291 gate-only-red REVIEW route and its real I/O
+wiring. Live PR1008 is merged; its final head is `84e48d8e1a4fb5747ebfb268257648d5729b3ab6`. The obsolete
+D-254 premise that no compliant review route exists no longer applies to
+these two technical parks. This is coordinator status reconciliation of
+already-decided work, not a new product or owner policy decision.
+
+Only `REL-client-capture` (D-256, PR851 head
+`f8b080b196181a0a5ad29d749b2fd9e908c83cd8`) and
+`REL-webhook-auth-alarm` (D-262, PR850 head
+`3ca0e0ccf564a7062f47646f579f45e2aa101c1e`) return from `owner` to `todo`.
+Every other row field, queue position, dependency, scope, contribution and
+historical decision stays unchanged. FIX-device-signin, the client row's
+existing dependency, is recorded done on inspected main. The webhook row
+has no dependencies. Neither product PR is merged by this correction.
+
+The old branches still carry old workflow revisions. Their historical
+Scope-check review-gate failure is not automatically a positive exact-tip
+named-step gate-only classification under today's workflow. Use the current
+picker and legitimate packet/current-main preparation, then real exact-head
+CI and qualified independent review. Do not create another empty build or
+Takeover merely to manufacture eligibility, write manual review markers,
+fabricate a pass or clear unknown historical authors. Client labels and an
+empty claim do not establish actual model identity or useful continuation.
+
+D-151/D-311 contributor qualification and exclusions, current holders,
+shared-file/hunk coordination, actual findings, flags, protected merges and
+required CI remain. REL-client-capture's apiFetch transport changes stay
+separate from the privacy-copy paragraph task; preserve its shared PR851
+coordination and unpublished work. A real new overlap pauses its affected
+hunk. No pricing, legal, privacy, login, money, account or settings decision
+is reopened. The other parked rows are not released by analogy.
+
+This correction makes these two existing rows eligible for ordinary
+assessment; it is not proof of a real OpenCode pickup, resumed session,
+review, completed code or production deployment. Record the actual picker
+handout and same-session productive progress separately after admission.
+
+Owner source evidence personally recovered: October26 coordination
+`phonemsg-01M5VWXDXVGVMEP8ENE950P90H`, October29 tasks/subtasks
+`phonemsg-01M628WK9MME10WD5FBH345JH4` and keep tasks lined up
+`phonemsg-01M62CZAWBKJTEQW201AMM1VMZ`, October31 collaborate rather than
+pause `phonemsg-01M67TJKFFY4D8TM1FHWQAMEDH`, and November9 parallel work
+`phonemsg-01M6ZS7BNPGN8RXJER5AVWHP9Q`/
+`phonemsg-01M6ZSDDEMF532AER4HD071MXC`. This repository records that
+provenance but does not authenticate the originals or expand their scope.

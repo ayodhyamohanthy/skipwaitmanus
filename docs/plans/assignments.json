@@ -854,7 +854,7 @@
       "tier": 1,
       "lane": "payments-ops",
       "branch": "agent/queue/rel-webhook-auth-alarm",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-262",
       "dependsOn": [],
       "epic": "D-212",
@@ -920,7 +920,7 @@
       "tier": 1,
       "lane": "observability-client",
       "branch": "agent/queue/rel-client-capture",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-256",
       "dependsOn": [
         "FIX-device-signin"
