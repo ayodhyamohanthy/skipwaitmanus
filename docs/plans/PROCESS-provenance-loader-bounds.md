@@ -159,9 +159,14 @@ before source dispatch; open fields below are blockers, not implied approvals.
   avoid was used. This is ordinary eligibility, not a priority exception.
   Main has since moved to92fc6ebc; rerun fresh after binding admission/main
   movement and account for its actual merged prep, retaining exact outputs.
-- Source branch: `agent/queue/process-provenance-loader-bounds`, absent at the
-  supervisor's prebinding check. Start it from the admitted, independently
-  reviewed binding on current main; no ordinary claim marker is asserted.
+- Source branch: `agent/queue/process-provenance-loader-bounds`. Prior absence
+  is historical: at15:45:28 IST another actual session created empty Claim
+  `77b9962d2f2f858ac6a1db2f005e792e54bfe79c`, Qoder · 5f11, parent92fc6ebc.
+  Its real model, source and unpublished work are unresolved. Preserve that
+  claim/history; no overwrite, reclaim or duplicate GLM dispatch. The named
+  GLM record above remains a proposed author, NOT this holder's identity or
+  execution. Current-holder coordination must settle the actual author route
+  and source composition before generation; do not relabel the real claim.
 - Source transport: only public repository input, the exact section 4 scope
   and required tests. Retain final supplied bytes/digest, exact raw generated
   output, byte-for-byte patch application, every actual author/fixer range,
