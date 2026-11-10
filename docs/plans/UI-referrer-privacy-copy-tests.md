@@ -229,3 +229,14 @@ was mechanically embedded with actual29tests9FAIL20PASS/exit1/cleanstatus.
 This is not independent source acceptance. Bounded-contract quality, polarity
 and illegal-promise controls require genuine exact evaluation. Coordinator prose
 remains separate from source-only execution; no prior PASS transfers.
+
+### Fifth actual source candidate
+
+After actual fourth DeepSeek quality FINDINGS, GLM authoredb0c934a7
+parent9a009. The one1857 cumulative BUILD candidate now ends atb0c934;
+earlier source legs, evaluations and raw exchanges are retained. Exact32578
+byte source SHA27123ffc7ab5cce55f30bd7d250371db701ceecdfd5bb1f5714dcca7f51dce1d
+was mechanically embedded with actual32tests9assertionFAIL23PASS/exit1,
+cleanupclean. No independent quality PASS/admission/completion is inferred.
+Full exact bounded-contract evaluation remains required; coordinator prose
+continues outside the actual source-only GLM execution range.
