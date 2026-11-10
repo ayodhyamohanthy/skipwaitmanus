@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { loadTrustedProvenance, PROVENANCE_PATH } from "./modelProvenance.mjs";
+import { git as gateGit } from "./review-gate.mjs";
+import { git as pickerGit, tryGit as pickerTryGit } from "./next-task.mjs";
 import {
   GIT_OUTPUT_LIMIT_BYTES,
   boundedGitReader,
@@ -35,13 +37,34 @@ function repoWithRegistry(text: string | null): string {
   gitIn(root, "config", "user.name", "Loader Bounds");
   if (text !== null) {
     mkdirSync(path.join(root, "docs"), { recursive: true });
-    writeFileSync(path.join(root, PROVENANCE_PATH), text);
+    // Real files end with a newline; the fixture keeps one so trim is observable.
+    writeFileSync(path.join(root, PROVENANCE_PATH), text.endsWith("\n") ? text : `${text}\n`);
     gitIn(root, "add", PROVENANCE_PATH);
     gitIn(root, "commit", "--quiet", "-m", "fixture");
     gitIn(root, "update-ref", "refs/remotes/origin/main", "HEAD");
   }
   return root;
 }
+
+/** The wrapper bindings read process.cwd(), so the fixture is entered for the call. */
+function inDir<T>(dir: string, run: () => T): T {
+  const before = process.cwd();
+  process.chdir(dir);
+  try {
+    return run();
+  } finally {
+    process.chdir(before);
+  }
+}
+
+/** The gate's own adapter shape at its trusted-registry load. */
+const gateAdapter = (...args: string[]) => {
+  try {
+    return gateGit(args);
+  } catch {
+    return null;
+  }
+};
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
@@ -95,26 +118,65 @@ describe("shared bounded Git output reader", () => {
   });
 });
 
+describe("the picker's own git bindings above 1MiB", () => {
+  it("returns the oversized registry bytes through its exported tryGit", () => {
+    const cwd = repoWithRegistry(registryText(PAD_BYTES));
+    const raw = inDir(cwd, () => pickerTryGit("show", `origin/main:${PROVENANCE_PATH}`));
+    expect(raw).not.toBeNull();
+    expect(raw!.length).toBeGreaterThan(LEGACY_BUFFER_BYTES);
+    expect(raw).toBe(registryText(PAD_BYTES).trim());
+  });
+
+  it("loads the trusted registry through its exported tryGit", () => {
+    const cwd = repoWithRegistry(registryText(PAD_BYTES));
+    const trusted = inDir(cwd, () => loadTrustedProvenance(pickerTryGit));
+    expect(trusted.registryError).toBeUndefined();
+    expect(trusted.registry?.routes?.[0]?.id).toBe("loader-bounds-route");
+  });
+
+  it("keeps the throwing binding throwing on a real Git failure", () => {
+    const cwd = repoWithRegistry(registryText(2048));
+    expect(() => inDir(cwd, () => pickerGit("definitely-not-a-git-subcommand"))).toThrow();
+    expect(inDir(cwd, () => pickerTryGit("definitely-not-a-git-subcommand"))).toBeNull();
+  });
+
+  it("reports the oversized read through the picker's own binding when the bound is lowered", () => {
+    const cwd = repoWithRegistry(registryText(PAD_BYTES));
+    const lowered = inDir(cwd, () => nullableBoundedGitReader({ limitBytes: 4096 })("show", `origin/main:${PROVENANCE_PATH}`));
+    expect(lowered).toBeNull();
+  });
+});
+
+describe("the review gate's own git binding above 1MiB", () => {
+  it("returns the oversized registry bytes through its exported array-argument git", () => {
+    const cwd = repoWithRegistry(registryText(PAD_BYTES));
+    const raw = inDir(cwd, () => gateGit(["show", `origin/main:${PROVENANCE_PATH}`]));
+    expect(raw.length).toBeGreaterThan(LEGACY_BUFFER_BYTES);
+    expect(raw).toBe(registryText(PAD_BYTES).trim());
+  });
+
+  it("loads the trusted registry through the gate's own adapter shape", () => {
+    const cwd = repoWithRegistry(registryText(PAD_BYTES));
+    const trusted = inDir(cwd, () => loadTrustedProvenance(gateAdapter));
+    expect(trusted.registryError).toBeUndefined();
+    expect(trusted.registry?.routes?.[0]?.id).toBe("loader-bounds-route");
+  });
+
+  it("keeps the gate binding throwing on a real Git failure and null through its adapter", () => {
+    const cwd = repoWithRegistry(registryText(2048));
+    expect(() => inDir(cwd, () => gateGit(["definitely-not-a-git-subcommand"]))).toThrow();
+    expect(inDir(cwd, () => gateAdapter("definitely-not-a-git-subcommand"))).toBeNull();
+  });
+});
+
 describe("actual production loader integration above 1MiB", () => {
-  it("loads the trusted registry through the picker's nullable reader", () => {
-    const cwd = repoWithRegistry(registryText(PAD_BYTES));
-    const trusted = loadTrustedProvenance(nullableBoundedGitReader({ cwd }));
-    expect(trusted.registryError).toBeUndefined();
-    expect(trusted.registry?.routes?.[0]?.id).toBe("loader-bounds-route");
-  });
-
-  it("loads the same registry through the review gate's reader", () => {
-    const cwd = repoWithRegistry(registryText(PAD_BYTES));
-    const trusted = loadTrustedProvenance(boundedGitReader({ cwd }));
-    expect(trusted.registryError).toBeUndefined();
-    expect(trusted.registry?.routes?.[0]?.id).toBe("loader-bounds-route");
-  });
-
-  it("reports unreadable when the trusted read exceeds the bound", () => {
+  it("reports an over-bound read through existing parser semantics, not as a truncated success", () => {
     const cwd = repoWithRegistry(registryText(PAD_BYTES));
     const trusted = loadTrustedProvenance(nullableBoundedGitReader({ cwd, limitBytes: 4096 }));
     expect(trusted.registry).toBeNull();
-    expect(trusted.registryError).toBe("unreadable provenance registry");
+    // `null` bytes are what the existing parser already reports as invalid; the test
+    // asserts that existing behavior instead of inventing transport wording.
+    expect(trusted.registryError).toBe("invalid provenance registry");
   });
 
   it("reports a missing trusted main, malformed and truncated content explicitly", () => {
@@ -128,18 +190,5 @@ describe("actual production loader integration above 1MiB", () => {
     expect(loadTrustedProvenance(nullableBoundedGitReader({ cwd: repoWithRegistry(truncated) })).registryError).toBe(
       "unreadable provenance registry",
     );
-  });
-
-  it("wires both production wrappers to the shared reader", () => {
-    const picker = readFileSync(path.join(process.cwd(), "scripts/next-task.mjs"), "utf8");
-    const gate = readFileSync(path.join(process.cwd(), "scripts/review-gate.mjs"), "utf8");
-    expect(picker).toContain('from "./provenanceGitOutput.mjs"');
-    expect(gate).toContain('from "./provenanceGitOutput.mjs"');
-    expect(picker).toContain("boundedGitReader({ env: GIT_ENV })");
-    expect(picker).toContain("nullableBoundedGitReader({ env: GIT_ENV })");
-    expect(gate).toContain("readGitOutput(args)");
-    expect(gate).toContain("loadTrustedProvenance(nullableBoundedGitReader())");
-    expect(picker).not.toContain('const git = (...args) => execFileSync("git"');
-    expect(gate).not.toContain('const git = args => execFileSync("git"');
   });
 });

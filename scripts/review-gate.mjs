@@ -39,7 +39,8 @@ export const TIER_FLOOR_FAIL = "Tier 1: this change touches";
 const SHA = /^[0-9a-f]{40}$/;
 // PROCESS-provenance-loader-bounds: the gate reads through the same bounded reader as
 // the picker, so the two loaders cannot diverge on the supported aggregate size.
-const git = args => readGitOutput(args);
+// Exported so the regression exercises this exact binding.
+export const git = args => readGitOutput(args);
 
 /** The row a branch belongs to, by the queue gate's rules 1-2; null when none. */
 export function findGateRow(tasks, branch) {

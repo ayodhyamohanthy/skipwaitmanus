@@ -407,7 +407,7 @@ source dispatch, claim, implementation readiness or customer completion.
 
 Routing registration candidate, November 10 at17:47 IST: old PR1114 is reference-only, preserved and unmerged; the proposed isolated route is not execution-ready. No new source generation, ordinary BUILD claim, identity certification or customer completion is asserted.
 
-### Bounded loader transport implementation, November 10 at 21:05 IST
+### Bounded loader transport implementation, November 10 at 21:26:54 IST
 
 Fresh GLM 5.3 authoring from current main `0bd16da75e4ce4cb521da880f258b81c2d9b6e60`
 on the isolated row branch. No source from the reference-only PR1114 carrier was
@@ -415,34 +415,46 @@ supplied or reused, and this record asserts no claim, receipt, verdict, admissio
 completion or deployment.
 
 Six paths, exactly section 4: `scripts/next-task.mjs` and `scripts/review-gate.mjs`
-wire their existing wrappers to one shared reader; `scripts/provenanceGitOutput.mjs`
-is the new bounded transport helper (no policy, network, claim, registry edit or
-trust decision); `scripts/provenanceGitOutput.test.ts` is the new deterministic
-real-Git regression; `docs/MODEL_PROVENANCE.md` records the supported aggregate
-bound and the real-loader versus pure-resolver distinction; this Status section
-records the outcome. No registry compression, receipt edit, schema change,
-dependency, workflow or protection change.
+wire their existing wrappers to one shared reader and export those real bindings for
+the regression; `scripts/provenanceGitOutput.mjs` is the new bounded transport
+helper (no policy, network, claim, registry edit or trust decision);
+`scripts/provenanceGitOutput.test.ts` is the new deterministic real-Git regression;
+`docs/MODEL_PROVENANCE.md` records the supported aggregate bound and the
+real-loader versus pure-resolver distinction; this Status section records the
+outcome. No registry compression, receipt edit, schema change, dependency, workflow
+or protection change.
 
 Bound and rationale: 64MiB of aggregate stdout per read. Measured registry about
 1.6MiB, per-artifact schema limit 16MiB, several artifacts per read possible, and
 the same 64MiB figure already used by the review gate's source readers. Above the
 bound the read throws; the wrappers' nullable adapters still return `null`, so the
-loader reports missing or unreadable rather than a truncated success.
+loader reports its existing `invalid provenance registry` result for `null` bytes
+and `unreadable provenance registry` for unparseable bytes. Neither is a truncated
+success, and this section claims no fail-closed behavior for unrelated preexisting
+paths.
 
 Preserved semantics: `next-task` keeps `GIT_ENV` (`GIT_TERMINAL_PROMPT=0`), stdio
 `["ignore","pipe","pipe"]`, `trim()`, and the `git` throw / `tryGit` null split;
 `review-gate` keeps its array-argument reader and its nullable adapter at the
-trusted-registry load. CLI parsing, claim/avoid/role/holder/FIFO behavior, review
-classification, protected checks, origin/main trust, model aliases, gates,
+trusted-registry load. The picker's `main()` now runs only when the file is executed
+as a CLI, which is how every existing invocation starts it; importing the module no
+longer starts a picker run. CLI parsing, claim/avoid/role/holder/FIFO behavior,
+review classification, protected checks, origin/main trust, model aliases, gates,
 contribution resolution and every existing test are untouched.
 
-Regression-first evidence required before landing: the new test proves the legacy
-default buffer aborts with ENOBUFS on a real repository whose valid registry
-exceeds 1MiB, that the shared reader loads the same bytes, and that both production
-loaders compose it successfully above 1MiB. Negatives covered: read above the
-bound, process failure, missing trusted main, malformed and truncated content.
-RED on the unchanged wrappers and GREEN with this patch must be recorded in the
-repair pull request, together with the exact command, exit status and output.
+Regression-first evidence required before landing: the test imports both production
+modules and calls their exported real bindings against a real Git repository whose
+valid registry exceeds 1MiB, so the picker's `tryGit` and the gate's `git` must both
+return those bytes and `loadTrustedProvenance` must parse them. The legacy
+`execFileSync` read of the same object is asserted to abort with ENOBUFS, so the
+fixture is above the old cap. Negatives covered: read above the bound, process
+failure, missing trusted main, malformed and truncated content.
+
+CLI-level output was tried and rejected as evidence: neither CLI prints the loaded
+registry, and a spawned CLI passed with and without the fix, so those probes proved
+nothing and were removed instead of kept. RED on the unchanged wrappers and GREEN
+with this patch must still be recorded in the repair pull request with the exact
+command, exit status and output.
 
 Actual author, exact supplied input bytes/digest, raw output, applied byte range,
 RED/GREEN output and independent findings/revisions remain to be retained in that

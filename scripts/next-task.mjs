@@ -32,6 +32,7 @@ import {
   mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
+import { pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 
 // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
@@ -50,11 +51,12 @@ const EXIT = { stop: 2, wait: 4, none: 5 };
 const REPORTS = "agent/reports/log";
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 // PROCESS-provenance-loader-bounds: both wrappers read Git through the one shared
-// bounded reader. The trusted registry is larger than the legacy 1MiB
-// execFileSync buffer, so the picker used to fail closed on size. Same env, same
-// stdio, same trim, same throw/null split; only the output bound is now finite and named.
-const git = boundedGitReader({ env: GIT_ENV });
-const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
+// bounded reader. The trusted registry is larger than the legacy 1MiB execFileSync
+// buffer, so the picker used to fail closed on size. Same env, same stdio, same trim,
+// same throw/null split; only the output bound is finite and named. Exported so the
+// regression exercises these exact bindings instead of a copy of them.
+export const git = boundedGitReader({ env: GIT_ENV });
+export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
 const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
 
 function argsOf(argv) {
@@ -522,4 +524,8 @@ async function main() {
   fail("three claims in a row were taken by other agents; run again in a minute");
 }
 
-main().catch(e => fail(e.stack ?? String(e)));
+// PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the
+// regression can import these real bindings without starting a picker run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(e => fail(e.stack ?? String(e)));
+}

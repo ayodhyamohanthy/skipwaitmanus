@@ -80,13 +80,17 @@ several artifacts, so 64MiB matches the existing source-reader precedent in the
 review gate. The bound is finite and named; it is not an unbounded allocation and
 the 16MiB per-artifact limit does not imply an unlimited aggregate.
 
-Error behavior is unchanged and fail-closed. A Git that cannot start, a non-zero
-status, or output above the bound throws; each wrapper's nullable adapter turns
-that throw into `null`, and the loader then reports the registry as missing or
-unreadable. There is no truncated success, no stale fallback, no candidate-local
-substitution, no legacy fallback and no silent internal-error approval. Raising the
-output buffer is a transport fix; it does not add trust, change the evidence
-schema or weaken a gate.
+Error behavior is unchanged. A Git that cannot start, a non-zero status, or output
+above the bound throws; each wrapper's nullable adapter turns that throw into
+`null`, and `loadTrustedProvenance` reports the result through its existing parser
+semantics rather than new transport wording: `null` bytes are `invalid provenance
+registry`, unparseable bytes are `unreadable provenance registry`, and an absent
+trusted main is `no trusted-main provenance registry`. An over-bound read is
+therefore a reported failure, not a truncated success, stale fallback,
+candidate-local substitution, legacy fallback or silent internal-error approval.
+Raising the output buffer is a transport fix; it does not add trust, change the
+evidence schema or weaken a gate, and nothing here claims fail-closed behavior for
+unrelated preexisting paths.
 
 Real loaders and the pure resolver are different evidence. `loadTrustedProvenance`
 composes the actual reader with the actual registry parser, so an integration test
@@ -94,3 +98,8 @@ against a real Git repository exercises the production path. A pure resolver
 fixture that calls `resolveTaskProvenance` with an in-memory registry proves only
 the resolver; it cannot show that the trusted registry is readable at its real
 size, which is exactly how the 1MiB defect stayed hidden.
+
+Both wrappers export their real Git bindings (`git`/`tryGit` in the picker, `git`
+in the gate) for that regression, and the picker runs `main()` only when executed
+as a CLI. Those exports change no decision: they expose the same bindings the
+loaders already call, so a test cannot pass against a copy of the reader.

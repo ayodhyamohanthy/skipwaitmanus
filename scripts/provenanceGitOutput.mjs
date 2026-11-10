@@ -1,6 +1,6 @@
 /**
- * PROCESS-provenance-loader-bounds: the single bounded Git output reader that
- * both production provenance loaders use.
+ * PROCESS-provenance-loader-bounds: the single bounded Git output reader that both
+ * production provenance loaders use.
  *
  * The trusted registry on main is already 1,620,441 bytes, and `execFileSync`
  * aborts a read above its default 1MiB output buffer with ENOBUFS/SIGTERM. Both
@@ -12,10 +12,10 @@
  * a spawn error, a non-zero status or output above the bound throws, and each
  * wrapper's nullable adapter turns that throw into `null` as before.
  *
- * Bound: 64MiB of aggregate stdout for one read. Rationale: the measured
- * registry is about 1.6MiB, the per-artifact schema limit is 16MiB, and a read
- * may legitimately carry several artifacts; the existing source-reader precedent
- * in scripts/review-gate.mjs uses the same 64MiB figure. The bound is finite and
+ * Bound: 64MiB of aggregate stdout for one read. Rationale: the measured registry
+ * is about 1.6MiB, the per-artifact schema limit is 16MiB, and a read may
+ * legitimately carry several artifacts; the existing source-reader precedent in
+ * scripts/review-gate.mjs uses the same 64MiB figure. The bound is finite and
  * named so the aggregate read cannot become an unbounded allocation, and a read
  * above it fails closed instead of returning a truncated buffer. Truncated bytes
  * must never be parsed as evidence.
