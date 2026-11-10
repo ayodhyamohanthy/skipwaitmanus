@@ -36,6 +36,7 @@ function unlistedReferrerRoutes(source: string): string[] {
 
 const privateSource = readFileSync(new URL("./privateReferralRoutes.ts", import.meta.url), "utf8");
 const profileSource = readFileSync(new URL("./profileRoutes.ts", import.meta.url), "utf8");
+const askInviteSource = readFileSync(new URL("./askInviteRoutes.ts", import.meta.url), "utf8");
 const indexSource = readFileSync(new URL("./_core/index.ts", import.meta.url), "utf8");
 
 describe("referrer action route list (§4.4 pin)", () => {
@@ -50,11 +51,12 @@ describe("referrer action route list (§4.4 pin)", () => {
   });
 
   it("names each listed route exactly as the router registers it, and every allowlist entry has a reason", () => {
-    const registered = new Set([...routesOf(privateSource), ...routesOf(profileSource)].map(route => `${route.method} ${route.path}`));
+    const registered = new Set([...routesOf(privateSource), ...routesOf(profileSource), ...routesOf(askInviteSource)].map(route => `${route.method} ${route.path}`));
     for (const route of [...REFERRER_ACTION_ROUTES, ...REFERRER_GATE_ALLOWLIST]) expect(registered.has(`${route.method} ${route.path}`), `${route.method} ${route.path}`).toBe(true);
     for (const entry of REFERRER_GATE_ALLOWLIST) expect(entry.reason.length).toBeGreaterThan(10);
     expect(REFERRER_ACTION_ROUTES.map(route => `${route.method} ${route.path}`)).toEqual(expect.arrayContaining([
       "post /api/company-referrals/:requestId/claim",
+      "post /api/ask-invites/:token/claim",
       "post /api/company-referrals/:requestId/review",
       "post /api/company-referrals/:requestId/one-click-review",
       "get /api/referrer-review-links/:linkToken",
@@ -111,7 +113,7 @@ describe("every listed route refuses a WorkOS session of a verified referrer bef
     registerProfileRoutes(app, deps as unknown as Parameters<typeof registerProfileRoutes>[1]);
     return { app, spies };
   }
-  const concrete = (path: string) => path.replace(":requestId", "701").replace(":linkToken", "tok_abcdefghijklmnop").replace(":id", "9");
+  const concrete = (path: string) => path.replace(":requestId", "701").replace(":linkToken", "tok_abcdefghijklmnop").replace(":token", "tok_abcdefghijklmnop").replace(":id", "9");
 
   it.each(REFERRER_ACTION_ROUTES.map(route => [route.method, route.path] as const))("%s %s answers 403 work_email_code_required", async (method, path) => {
     const { app, spies } = harness("workos");

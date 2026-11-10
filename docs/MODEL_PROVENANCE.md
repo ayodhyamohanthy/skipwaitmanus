@@ -12,6 +12,19 @@ After the actual run, separately review and merge the exact execution receipt on
 
 Qualification changes are their own bounded docs work, not candidate self-approval. A qualified route/receipt is an independently reviewed assertion, not a signed provider receipt. Code checks its structure, digests, binding and contribution independence; human/model review establishes whether the asserted observation is true. Revoke a route with `revoked: true`; do not relabel history to clear a hold.
 
+## One-task loader repair exception (D-312)
+
+The owner approved one exception to the automated task-claim requirement only
+for `PROCESS-provenance-loader-bounds`, because the trusted registry loader
+blocks claiming its own repair. Its packet section 5a records the exact
+pre-dispatch binding and landing review. Approval alone is not a qualified
+author, claim, receipt, implementation acceptance or a working gate path.
+Document the task and actual free code author before work starts. Preserve
+independent exact-version review, real tests, protected merges, no spending
+and every other rule. No other task, old unknown contributor, route or
+execution is grandfathered. Do not insert a fabricated normal claim or use
+a candidate loader to authorize itself. If the independently reviewed
+mechanics cannot preserve the remaining gates, hold and report the exact gap.
 ## Supported size, transport and failure behavior
 
 Both real consumers — `scripts/next-task.mjs` and `scripts/review-gate.mjs` — read the trusted registry through one shared reader in `scripts/provenanceGitOutput.mjs`, so the two paths cannot silently drift apart. The supported aggregate output bound is **64 MiB** (`TRUSTED_GIT_OUTPUT_MAX_BYTES`), the same finite bound the gate's existing source readers use. It is transport only, not a trust decision: it exists because Node's `execFileSync` default is 1 MiB, while the trusted registry measured 1,620,441 bytes on main `f1adbc2a`, and a quiet default turned a readable registry into an `ENOBUFS` error.
