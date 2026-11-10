@@ -42,6 +42,8 @@ const AUDITED: AuditEntry[] = [
   { file: "components/plans/billingApi.ts", kind: "behavior-only", reason: "billing API calls, no UI" },
   { file: "components/plans/format.ts", kind: "behavior-only", reason: "price and date formatting, no UI" },
   { file: "components/plans/planCatalog.ts", kind: "behavior-only", reason: "plan catalogue data, no UI" },
+  { file: "components/profile/workItems.ts", kind: "behavior-only", reason: "work-showcase contract (types, WORK_KINDS, workKindLabel, WORK_VISIBILITY_LABELS), no JSX and no className; the goal /profile and /work pages read it read-only (D-048-p3-profile)" },
+  { file: "components/profile/VisibilityOptions.tsx", kind: "goal-styled", reason: "the goal /profile page imports only the pure asProfileVisibility parser, never renders the kit option cards; the module uses theme tokens only (no arbitrary colour literal) and imports no kit, ui or kit stylesheet (D-048-p3-profile)" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
   { file: "components/employer/employerData.ts", kind: "behavior-only", reason: "employer REST contracts (zod schemas), fetchers and stats helpers, no UI; imported read-only by the goal employer pages (D-048-p3-employer, D-276)" },
   { file: "components/employer/employerPlans.ts", kind: "behavior-only", reason: "employer plan catalogue types and price-formatting helper, no UI; imported read-only by the goal /for-companies page (D-048-p3-for-companies, D-296)" },
