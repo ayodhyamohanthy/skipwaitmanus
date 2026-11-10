@@ -113,3 +113,28 @@ Left out / follow-ups: a fresh Tier 1 draft PR is red only at the Tier 1 review 
 `D-048-p3-for-companies`: done — `3c95831d` (#1030), landed as the status commit on top of it — DeepSeek V4.1 Flash · e3a3 — 2026-11-08 — the lander per the picker's hand-out, and the independent Tier 1 reviewer of the same head (neither builder nor fixer: built by Hark · 32ab, fixed by Antigravity · 95d4, D-151 clean; verdict `Verdict D-048-p3-for-companies: pass — DeepSeek V4.1 Flash · e3a3 (reviewed 3c95831d)` on `agent/review/d048-p3-for-companies`). Reviewed `3c95831d` is the branch tip: after it there is no non-merge commit and no combined-diff merge, so D-074's landing condition holds before and after this status-only commit. Reproduced on the recorded head: `pnpm check` 0; `goal/for-companies` + kit `forCompanies.test.tsx` + `goalPagesBoundary.test.ts` 4 files / 66 tests passed (CI skips the scope step after the review gate, so it was run here: `4 owned path(s), every change inside them`); `design-token-audit` OK; `VITE_GOAL_SURFACES=all pnpm build` 0; the checked-in capture driver regenerated all eight 1280/390 states with **byte-identical PNGs** (`horizontalOverflowPx: 0`, synthetic mocks only, no real employer or seeker data); red-first `565cc2ed` carries the two test files and no `GoalForCompanies.tsx`. Red on the tip's CI was only the review gate by construction (run `42486848524`: typecheck, tokens, deploy triggers, unit+component+route, e2e journeys and production build all green). Correctness confirmed against the packet: one switch in `ForCompanies.tsx` with `goalSurfaceOn('for-companies')` and the goal page under `pages/goal/for-companies/**`; `assertGoalPage` pins one goal line, one next step and one black commit; plan names and labels come read-only from `components/employer/employerPlans.ts` with no `$199`, no removed Referral programme and no unbuilt Oct 25 plans; `REFERRERS_NEVER_PAID` imported from `shared/moneyCopy` with no "credit(s)", no noun "ask", no outcome promise; the company list makes no availability claim (D-176); loading, empty and error states are honest and captured; the demo request is pinned equal to the kit mailto and submits nothing. `for-companies` stays out of `RELEASED`, so production keeps the kit page and this landing ships dark. Recorded observations, not defects: the capture manifest's `source` was hand-typed (`c49a0d4c` → `bf0d489e`) instead of emitted by `capture.mjs:186` — proven harmless by the byte-identical regeneration above, and the honest fix is an explicit `SOURCE_SHA` in the driver, not another hand edit; and `/company/claim` is a plain `<a>` where the kit used wouter `Link`. Landing per D-082 through PR #1030, never squash (D-134 (6)); row status done.
 
 `D-048-p3-for-companies`: qualification / re-sync — agent/queue/d048-p3-for-companies — Antigravity · 87cf — 2026-11-09 — Clarification of landing attempt above: the preceding entry was drafted when attempting to land before the D-302 test failure block was encountered. The row was held under D-302 until the test repair was decomposed and registered via D-304 as `PICKER-oracle-kind-repair`, which has now landed on `main` (`a87dbe75`) via PR #1059. Current head `1fb22938` is the genuine two-parent merge of `ae9d99c8` and `origin/main` (`a87dbe75`). Status in assignments.json is set to `todo` (PR #1030 remains open/unmerged) and `syncedTo: "D-304"`; `PICKER-oracle-kind-repair` status is synced to `done`. All 177 `nextTask.test.ts` tests, 66 for-companies/boundary tests, `pnpm check`, `design-token-audit`, `scope-check`, and `VITE_GOAL_SURFACES=all pnpm build` pass cleanly. Ready for independent Tier 1 review of the final merged composition.
+
+
+### November 11, 2026: D-048-p3-employer-talent technical parking reconciled
+
+The D-285 park above is historical. The only technical reason it records
+for owner status is the old D-254 review-route deadlock. The D-286/D-291
+cure, including real I/O wiring, is now on main via normal PR1008.
+Return this existing row to ordinary todo assessment and stamp syncedTo
+D-313, the latest checked register entry, under D-202/D-200. This does not
+clear any independent product, contributor, privacy, scope or review hold.
+
+Live PR979 is still draft/open/unmerged at 1b1455639ed48167e51464c204d8dcf90e697f33. Its
+exact-head historical CI has only Scope check failing, while unit, build
+and journeys succeeded. That old workflow is not today's positive
+named-step gate-only classification. Legitimate current-main composition
+and current exact-head CI must precede a qualifying ordinary review.
+No new empty Takeover to manufacture eligibility, no model relabeling,
+retrospective author replacement, manual review marker or fabricated pass.
+Known and unknown contributors remain subject to D-151/D-311. Existing
+models that built or fixed it remain excluded from its review.
+
+All switches, scope, ownership, dependencies, queue order, existing source,
+findings and product rules remain unchanged. Historical note text is kept
+for provenance, not presented as current owner-wait state. This is status
+reconciliation, not code completion, a pass, landing or live deployment.
