@@ -1,5 +1,17 @@
 # UI-referrer-privacy-copy: truthful resume visibility before acceptance
 
+## Admission status: NOTREADY, unregistered runtime task
+
+The initial 952d carrier received actual independent FINDINGS: the Tier 1
+packet lacked already-written red-first tests and numbered handoff sections.
+D-311 does not waive DELEGATION's test precondition. The original candidate
+row and two routes are retained in Git history, not admitted or relabeled.
+This revision registers only the separate Tier 3 preparation task in
+`UI-referrer-privacy-copy-tests.md`. It does not register a runtime todo row.
+Runtime sections 5/6/7/10 and complete test bodies will be composed after
+actual accepted prep evidence exists, before any runtime registration.
+No runtime claim or implementation may start from this incomplete packet.
+
 ## 1. Evidence and purpose
 
 The released `dc6492b337dcdec0696848fad93101606e3cc1d7` sign-in page at
@@ -93,59 +105,46 @@ payment, provider settings or feature activation during QA.
    SHA and recheck the real released paragraph at both widths. Do not report
    all logins or data privacy end-to-end verified from this copy-only check.
 
-## 5. Provenance and publication boundaries
+## 5. Deferred runtime scope and registration
 
-This carrier contains requirements, registration and two prospective routes,
-not product/test implementation, successful external execution or a receipt.
-Both routes use actual operator `Instinct · public-model-review-nov10` and
-provider `https://www.macaly.com/`:
+The exact future product/test paths above remain a scope proposal, NOT a
+ready Tier 1 handoff. This revision does not register the runtime row or its
+two earlier proposed Mistral/DeepSeek routes. Those candidate records remain
+in commits 952d651c through 2cf1ad5f for audit, not current qualification.
+Only UI-referrer-privacy-copy-tests and its separate proposed GLM preparation
+route are in this carrier. Messages routes/receipts do not authorize either
+task. No runtime claim may be made from this incomplete packet.
 
-- `referrer-copy-author-macaly-mistral-nov10`: build/fix; selected public name
-  `Mistral Large 4`; conservative existing canonical exclusion key
-  `mistralai/mistral-large-4-1t-a52b`.
-- `referrer-copy-review-macaly-deepseek-nov10`: review/land; selected public name
-  `DeepSeek V4.1 Flash`; existing canonical key `deepseek-v4.1-flash`.
+## 6. Deferred implementation sequence
 
-The retained fresh observation digest is
-`187ff8e5f040437e15e91fa1a247dd66c18d79b6bd006376fccf168a710f6d4a`.
-Earlier 865c92da observation bytes remain in carrier history; this revision
-distinguishes AX labels from literal pixel text/lock icons and retains the
-provider EU badge/menu-note context without verifying execution location.
-The earlier shorthand keys were withdrawn; these keys preserve known-family
-exclusions, not evidence of a hidden checkpoint, endpoint or cryptographic
-provider authorship. Fresh observed homepage selections and Free allowance
-(3.3M at the observed check) are prospective, not actual task execution.
-The qualification discussion is this actual carrier:
-https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1109 . Neither a link nor
-a candidate record supplies a PASS. Independent exact-record review and
-normal admission on main must precede any runtime claim or execution.
+After actual prep completion and independent acceptance, align this packet's
+numbered sections with DELEGATION, qualify the exact future runtime routes,
+and register runtime only when section 7 contains complete tests. Preserve
+REL's switch-only ownership and obtain the current hunk split/coordination.
+The future runtime builder must transport the test source byte-identically,
+retain its actual prep author and prove all Tier 1/runtime/release gates.
+No policy, sign-in, legal, money, migration or flag change is inferred.
 
-Before the actual task prompt, re-select and inspect the intended model in the
-actual new task composer, including any project override; retain that evidence
-with exact public input/output and applied bytes. The future operator must
-confirm current free capacity and service rights before runtime execution.
-[Macaly terms](https://www.macaly.com/terms-of-service) sections 3.10 and 3.12
-permit commercial generated-code use subject to their restrictions; sections
-3.11 and 8.3 permit service use and Free-content public exposure. Only owner-
-authorized public project source and sanitized requirements may be submitted,
-never private context, account data, secrets or unreleased confidential work.
-[Pricing](https://www.macaly.com/docs/en/welcome/pricing) makes top-ups paid:
-stop at the free limit, never upgrade or add billing. A free allowance is not
-proof of model identity, productive execution or production acceptance. Messages routes, claims and receipts are task-specific and cannot
-be reused as qualification for this task. No spending, paid upgrade or public
-submission of private information is approved. Preserve full actual input,
-output and selection evidence; use separately reviewed receipt admission
-under the current provenance contract before supported completion markers.
+## 7. Test source prerequisite: NOT YET SUPPLIED
 
-The carrier itself requires separate exact delta review, focused tests,
-required green CI and ordinary non-packet-writer landing. A candidate is not
-trusted on main and this packet does not qualify itself. Packet authorship is
-not runtime authorship, and the packet writer does not land its own carrier.
+No test body, assertion-level RED result or prep execution exists yet. This
+section is intentionally incomplete and is NOT a ready packet under
+DELEGATION section 3. Its absence was material finding F1 on exact 952d651c.
+D-311 changes provenance representation, not this already-written-test rule.
 
-## Status
+The separate prep task must supply the full executable source here, with
+actual prep route, ordinary claim SHA, independently admitted execution ID,
+source digest, exact patch digest, full scratch assertion-level RED command
+and output, cleanup/status proof and immutable-source retention rule. A
+prospective route, a static review or a source outline is not that evidence.
+Prep contributor exclusion from final independent Tier 1 runtime review is
+manual across tasks and must be explicitly checked, not assumed from CI.
 
-Registration candidate, November 10, 2026, based on main
-`dc6492b337dcdec0696848fad93101606e3cc1d7`. No runtime claim, implementation,
-admitted route, review verdict, deployment or completion is asserted.
-The two proposed registry records remain candidates pending independent review
-and normal non-writer admission.
+## 10. Status and retained findings
+
+NOTREADY, unregistered runtime packet. Existing carrier history and actual
+GLM FINDINGS on 952d651c remain. F2 observation-label/pixel correction and F3
+conditional active-access requirement were bounded follow-ups, not a PASS.
+The phase proposal received COMPLIANT WITH CONDITIONS, not exact-candidate
+admission. No test source, runtime claim, execution receipt, qualified runtime
+route, final source review, deployment or product completion is asserted.
