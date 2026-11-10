@@ -1,6 +1,8 @@
 # UI-referrer-privacy-copy: truthful resume visibility before acceptance
 
-## Admission status: NOTREADY, unregistered docs-only composition candidate
+## Admission status: NOTREADY registration candidate, row and routes proposed
+
+Unregistered until normal reviewed merge; no runtime dispatch clearance.
 
 The initial 952d carrier received actual independent FINDINGS: the Tier 1
 packet lacked already-written red-first tests and numbered handoff sections.
@@ -8,10 +10,12 @@ D-311 does not waive DELEGATION's test precondition. The original candidate
 row and two routes are retained in Git history, not admitted or relabeled.
 The separately registered prep source now has its exact GLM execution receipt
 admitted and actual bounded source-quality PASS. This current docs-only
-composition aligns runtime sections 5/6/7/10 and retains complete test bodies.
-It does not register a runtime row or route, certify the held historical prep
-task, or permit implementation. Exact docs review, runtime route qualification
-and manual hunk admission remain pending before registration and dispatch.
+registration candidate retains aligned runtime sections 5/6/7/10 and complete
+test bodies, and proposes the separate runtime row and two routes append-only.
+They remain unregistered until exact qualification review, required CI and
+normal protected merge. No held historical prep-task clearance or runtime
+implementation permission is implied. Manual copy-hunk admission is recorded
+below; fresh overlap checks still precede implementation and integration.
 
 ## 1. Evidence and purpose
 
@@ -33,8 +37,10 @@ not a new product-policy decision or a priority override.
 
 Tier 1 conservatively: the text explains a privacy boundary on sign-in.
 Use branch `agent/queue/ui-referrer-privacy-copy` after ordinary assignment.
-The earlier registration proposed this runtime task. This revision defers it;
-only the separate prep task is appended without changing existing tasks.
+The earlier deferred proposal remains in history. This revision proposes the
+separate runtime row and exact author/reviewer routes append-only, without
+changing existing tasks. It stays NOTREADY until exact registration/route
+review and required CI pass and normal protected admission lands.
 
 `REL-client-capture` retains its switch-only ownership of the two component
 files. Its fetch/API switches, claims and unpublished work must be preserved.
@@ -1247,8 +1253,9 @@ Coordinator prose here is a distinct docs contribution outside the GLM range.
 6. After normal landing, does the real released SHA show readable paragraphs
    at both widths without overflow, unchanged actions or auth activation?
 
-Status: NOTREADY; unregistered docs-only composition draft. No runtime code,
-ordinary runtime claim, runtime route, historical1112 full-task PASS, deployment
+Status: NOTREADY; unregistered runtime registration candidate. Row and routes
+are proposed in PR1129, not admitted. No runtime code, ordinary runtime claim,
+qualified runtime route, historical1112 full-task PASS, deployment
 or shipped privacy fix is asserted. Actual source-only receipt and independent
 bounded source-quality PASS are separate facts. Historical task qualification
 and next runtime admission remain distinct unresolved checks above.
@@ -1324,7 +1331,7 @@ Carrier https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1129 proposes
 `referrer-copy-review-macaly-deepseek-nov10` (review/land) for this exact
 runtime task and actual operator `Instinct · public-model-review-nov10`.
 Fresh selection observations at 23:26 show Mistral Large 4 and DeepSeek
-V4.1 Flash, Free capacity and no prompt/upgrade/payment. Canonical exclusion
+V4.1 Flash, Free capacity, no prompt sent, and no upgrade/payment. Canonical exclusion
 keys retain `mistralai/mistral-large-4-1t-a52b` and `deepseek-v4.1-flash` to
 preserve same-family aliases, not to assert a hidden checkpoint or endpoint.
 GLM 5.3 remains excluded from final runtime review as actual test author.
@@ -1343,7 +1350,7 @@ Current shared-record admission is
 https://github.com/ayodhyamohanthy/skipwaitmanus/pull/851#issuecomment-6775160209.
 The coordinator verified current main5b591416 and RELf8b080b1, recovered the
 D-309 originals and admitted only the three named introductory paragraph
-texts for this distinct task. Preserve every non-copy byte, element, style,
+slots for this distinct task, not final copy wording. Preserve every non-copy byte, element, style,
 compact behavior and transport switch, with separate GLM-test transport
 attribution. This is not holder ACK, consent, file takeover, runtime READY or
 merge approval. Unpublished work remains unknown. Check current thread and
