@@ -5882,6 +5882,19 @@
         "client/src/pages/goal/messages/messagesSignInButton.test.tsx"
       ],
       "note": "Tier 1 sign-in work per docs/DELEGATION.md section 3, despite bounded markup. Actual underlying builder-model independence evidence is unresolved; do not manufacture a review identity or marker. Bounded signed-out markup repair only: replace SignInButton wrapping GoalButton with one GoalButton calling existing useAuth.openSignIn with no arguments. No auth mechanism/destination/cookies/policy/server/GET/POST or message privacy changes. Preserve all existing signed-in behavior and tests. Exact independent final review and all required CI/current-main checks before normal protected merge; real provider continuity is not established by local synthetic captures. Prospective D-311 amendment preserves old FAIL/unused unknown prep; only a fresh pristine-main, actually evidenced external implementation may start after this carrier and task-specific routes receive independent qualification and normal landing. Packet writer is not thereby a product-code contributor; no actual historical contribution is washed."
+    },
+    {
+      "id": "UI-referrer-privacy-copy",
+      "title": "Referrer sign-in promises name and resume access only after acceptance",
+      "row": "UI",
+      "packet": "docs/plans/UI-referrer-privacy-copy.md",
+      "tier": 1,
+      "lane": "referrer-privacy-copy",
+      "branch": "agent/queue/ui-referrer-privacy-copy",
+      "status": "todo",
+      "syncedTo": "D-311",
+      "dependsOn": [],
+      "note": "Bounded released-copy contradiction found by the existing page-by-page audit on dc6492 at 1280/390. Append-only registration, no FIFO reorder or existing-row change. Exact manual scope: introductory privacy paragraph only in client/src/components/ReferrerOtpSignIn.tsx, client/src/components/WorkEmailSignIn.tsx, client/src/pages/goal/referrer/GoalOtpSignIn.tsx, plus NEW client/src/components/referrerPrivacyCopy.test.tsx. No owns because REL-client-capture retains switch-only ownership in the first two files; exact hunk review and current shared-record split/coordination required, no silence-as-consent or automatic scope pass. Preserve auth handlers/fetch switches/legal/money/flags/current owners and unpublished work. Conservative Tier1, red-first all-three-path regression, actual fresh task-specific qualified author/reviewer and receipts, independent final review/current-main/required CI/normal protected landing, released 1280/390 copy proof. Registration alone grants no execution qualification or privacy-policy change."
     }
   ]
 }
