@@ -22,6 +22,7 @@
 // switches branches or touches the working tree. It does read the local clone
 // to report work that origin cannot see (D-085). NEXT_TASK_LIST_REF=<ref> reads
 // the list from another ref; it exists only to test the picker itself.
+import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -59,7 +60,7 @@ function argsOf(argv) {
     else if (a === "--heartbeat") out.heartbeat = true;
     else if (a === "--status") out.status = true;
     else if (a === "--landed") out.landed = true;
-    else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid"].includes(a)) {
+    else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid", "--provenance", "--execution"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
       out[a.slice(2)] = v;
@@ -96,12 +97,12 @@ async function github(repo, path) {
  * commit that changes files is work, whatever its subject says (D-190).
  */
 function commitsOn(ref) {
-  return parseBranchLog(tryGit("log", "--reverse", "--no-merges", `--format=${BRANCH_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
+  return parseProvenanceLog(tryGit("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
 }
 
-const markersOn = commits => commits.flatMap(({ subject, files }) => {
+const markersOn = commits => commits.flatMap(({ sha, subject, body, files }) => {
   const m = files.length ? null : parseMarker(subject);
-  return m ? [m] : [];
+  return m ? [{ ...m, sha, body, ...(m.verb === "Verdict" ? { reviewed: /^reviewed ([a-f0-9]{40})$/m.exec(body)?.[1] ?? null } : {}) }] : [];
 });
 
 function loadBranches(tasks) {
@@ -213,7 +214,16 @@ function pushMarker(branch, parent, subject, body) {
  * the ref a takeover pushes to (first push wins); a fresh one gets a heartbeat.
  * Returns false when another agent took it first.
  */
-function keepClaim(pick, who, branches) {
+function keepClaim(pick, who, branches, provenanceBody) {
+  const all = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
+  const external = all.some(m => m.id === pick.task?.id && markerReferences(m.body).external);
+  const leasePreview = leaseFor(pick, branches, Date.now());
+  if (external && (leasePreview.verb !== "Heartbeat" || pick.of === "land")) {
+    const refs = markerReferences(provenanceBody);
+    const role = ({ review: "review", land: "land", fix: "fix", build: "build" })[pick.of];
+    const result = routeIdentity(loadTrustedProvenance(tryGit).registry, refs.route, who, pick.task.id, role);
+    if (refs.invalid || !result.ok) fail("external reclaim requires its actual qualified operator route");
+  }
   if (pick.of === "land") {
     const slot = landingSlot(branches, Date.now());
     // PICKER-heartbeat-slot-safety: another lander's fresh slot is theirs. Renewing this holder's own LAND lease
@@ -221,20 +231,20 @@ function keepClaim(pick, who, branches) {
     const othersFresh = Boolean(slot.holder) && slot.holder !== who && !slot.quiet;
     if (!othersFresh && (slot.holder !== who || slot.quiet)) {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
-      const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who));
+      const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
       if (!took) return false;
     }
   }
   const lease = leaseFor(pick, branches, Date.now());
   const subject = markerSubject(lease.verb, lease.id, who);
   let parent = base(lease.ref);
-  let sha = pushMarker(lease.ref, parent, subject);
+  let sha = pushMarker(lease.ref, parent, subject, lease.verb === "Heartbeat" ? undefined : provenanceBody);
   if (!sha && lease.retry) {
     // Only this holder writes its side heartbeat; a refused one is a stale view, so read it again once.
     // A refused push on a shared lock or a takeover ref means another agent won it: never retry on top of them.
     tryGit("fetch", "-q", "origin", lease.ref);
     parent = base(lease.ref);
-    sha = pushMarker(lease.ref, parent, subject);
+    sha = pushMarker(lease.ref, parent, subject, lease.verb === "Heartbeat" ? undefined : provenanceBody);
   }
   if (!sha) return false;
   // A reclaim adds an empty commit to your own branch: move your local copy onto it so your next push is a fast-forward.
@@ -330,28 +340,30 @@ async function state() {
   return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports: loadReports() };
 }
 
-function claim(pick, who, branches) {
+function claim(pick, who, branches, provenanceBody) {
+  const history = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
+  if (!provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
   const origin = () => git("rev-parse", "origin/main");
   switch (pick.kind) {
-    case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who)));
+    case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody));
     case "takeover":
-    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
+    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody));
     case "land": {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
-      const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who));
+      const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
       if (!tookSlot) return false;
       if (pick.tier1) {
-        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who)));
+        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who), provenanceBody));
       }
-      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who)));
+      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody));
     }
-    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who)));
+    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody));
     case "architect":
     case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
     case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
-    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who)));
-    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who)));
-    case "continue": return keepClaim(pick, who, branches);
+    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody));
+    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody));
+    case "continue": return keepClaim(pick, who, branches, provenanceBody);
     default: return false;
   }
 }
@@ -394,7 +406,19 @@ async function main() {
     const architect = architectLockOf(task);
     const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
     const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
-    if (!pushMarker(lockName, tip(lockName), subject, reviewed ? `reviewed ${reviewed}` : undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    const body = [reviewed ? `reviewed ${reviewed}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
+    const history = [...(branches.get(reviewedBranch)?.markers ?? []), ...(lock?.markers ?? [])];
+    if (args.provenance || history.some(m => markerReferences(m.body).external)) {
+      if (!args.provenance || !args.execution) fail("external completion requires qualified route and execution IDs");
+      const head = reviewed || tip(task.branch);
+      const marker = { id: task.id, who: args.as, verb: args.verdict ? "Verdict" : "Fixed", verdict: args.verdict, reviewed, body };
+      const trusted = loadTrustedProvenance(tryGit);
+      const result = resolveTaskProvenance({ taskId: task.id, head, workMarkers: branches.get(reviewedBranch)?.markers ?? [], lockMarkers: [...(lock?.markers ?? []), marker], ...trusted, git: tryGit });
+      if (!result.ok) fail(`external completion held: ${result.reason}`);
+      const model = result.reviewers?.get(args.as);
+      if (args.verdict && (!model || [...result.builders, ...result.fixers].includes(model))) fail("external reviewer also built or fixed this work");
+    }
+    if (!pushMarker(lockName, tip(lockName), subject, body || undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
     console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}`);
     return;
   }
@@ -446,7 +470,7 @@ async function main() {
     const sync = localSyncIssues({ local, branches, claimant: args.as, mainBehind, tasks: doc.tasks });
     const unpushed = helds.map(h => h.work ?? h.lock).filter(b => sync.unpushed.includes(b));
     if (unpushed.length) { printSync(sync); fail(`push your commits on ${unpushed.join(", ")} first (that push keeps the claim alive), then run this again`, 3); }
-    const lost = helds.filter(h => !keepClaim(h, args.as, branches));
+    const lost = helds.filter(h => !keepClaim(h, args.as, branches, args.provenance ? `provenance ${args.provenance}` : undefined));
     for (const h of helds.filter(h => !lost.includes(h))) console.log(`Heartbeat recorded: ${h.of === "fix-main" ? h.lock : h.task.id} stays yours for the next 2 hours.`);
     if (lost.length) fail(`another agent took ${lost.map(h => h.task?.id ?? h.lock).join(", ")} first; run --claim "${args.as}" to see what is yours`);
     return;
@@ -458,7 +482,9 @@ async function main() {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
-    const pick = pickNextTask({ tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, reports, now, claimant: who, avoid, register });
+    const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, reports, now, claimant: who, avoid, register });
+    if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prBehind, reports, now, register });
     if (pick.kind === "ceo") pick.board = board;
@@ -476,7 +502,13 @@ async function main() {
       console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register }));
       process.exit(EXIT[pick.kind] ?? 0);
     }
-    if (claim(pick, who, branches)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    if (args.provenance) {
+      const role = ({ build: "build", takeover: "build", green: "build", review: "review", fix: "fix", land: "land" })[pick.kind === "continue" ? pick.of : pick.kind];
+      if (!role) fail("external provenance is unsupported for this picked stage");
+      const route = routeIdentity(provenance.registry, args.provenance, who, pick.task.id, role);
+      if (!route.ok) fail(route.reason);
+    }
+    if (claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("three claims in a row were taken by other agents; run again in a minute");
