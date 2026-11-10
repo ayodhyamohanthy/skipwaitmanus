@@ -1261,7 +1261,9 @@ The actual REL-client-capture source ref remains
 its two shared-component deltas add apiFetch imports and replace only
 send/verify/enroll fetch calls. It does not edit either intro paragraph.
 DEVICE-SIGNIN-passkeys `af1eb80cb06e2d775df11a21b8aa142afb1cbaf5`
-has no delta in these three paths. The D-048 sign-in row owns goal/sign-in,
+has no identified held intro-copy edit in its merge-base contribution; its
+older tip lacks the newer GoalOtp file, so this is not a literal tip-byte
+identity or no-history claim. The D-048 sign-in row owns goal/sign-in,
 not goal/referrer/GoalOtpSignIn. These are actual visible contribution facts,
 not consent, a guarantee of no unpublished work or ownership transfer.
 Parent coordination of the manual hunk split/admission remains in progress.
@@ -1334,3 +1336,18 @@ must pass and land normally; then use the real released picker/ordinary claim.
 Actual input/output/patch/pre-send model and free capacity must be retained,
 with the exact completed execution receipt separately reviewed and merged
 before acceptance. This carrier grants no role outside this task.
+
+### Actual coordinator copy-hunk admission, November 10 at 23:34 IST
+
+Current shared-record admission is
+https://github.com/ayodhyamohanthy/skipwaitmanus/pull/851#issuecomment-6775160209.
+The coordinator verified current main5b591416 and RELf8b080b1, recovered the
+D-309 originals and admitted only the three named introductory paragraph
+texts for this distinct task. Preserve every non-copy byte, element, style,
+compact behavior and transport switch, with separate GLM-test transport
+attribution. This is not holder ACK, consent, file takeover, runtime READY or
+merge approval. Unpublished work remains unknown. Check current thread and
+exact refs before implementation/integration; pause actual affected overlap
+for coordinator split and combine/review/test both intended outputs. DEVICE's
+older tip missing a newer goal file is not evidence of whole-tip equality.
+Exact external route/registration review and normal admission are still pending.
