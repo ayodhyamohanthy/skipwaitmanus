@@ -240,3 +240,13 @@ was mechanically embedded with actual32tests9assertionFAIL23PASS/exit1,
 cleanupclean. No independent quality PASS/admission/completion is inferred.
 Full exact bounded-contract evaluation remains required; coordinator prose
 continues outside the actual source-only GLM execution range.
+
+### Sixth actual source candidate
+
+After actual fifth DeepSeek quality FINDINGS P1, GLM authored0c4cfae2
+parentb0c934. The one1857 cumulative candidate retains all six source legs.
+Exact33911byte source SHA244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f
+was mechanically embedded with real33tests9assertionFAIL24PASS/exit1 and
+cleancleanup. This is not source-quality PASS/admission/prep completion or
+runtimeREADY. Independent exact full bounded-contract evaluation remains
+required; coordinator prose stays outside the source-only GLM execution.

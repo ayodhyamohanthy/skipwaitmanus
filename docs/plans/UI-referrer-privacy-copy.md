@@ -142,11 +142,11 @@ Proposed execution: `referrer-copy-tests-glm-build-nov10`, route
 `UI-referrer-privacy-copy-tests`, actual operator
 `Instinct · public-model-review-nov10`. Actual ordinary claim/input:
 `1857d9a6d72a3cf2d4f7d756860af52931fa53fa`; pure source output commit:
-`b0c934a783bcf6b2e8fe9ece998ea8bdfb284177` (after four retained source legs).
+`0c4cfae28fbf0120195951900ade6b4846cf282a` (after five retained source legs).
 Exact CLI-trimmed binary patch digest:
-`1a4434bc88c8e3a57343899a5e2a9e33c926dcfab26baa1e8bb2cc7d14789737`.
-Source: 32578 UTF-8 bytes, SHA-256
-`27123ffc7ab5cce55f30bd7d250371db701ceecdfd5bb1f5714dcca7f51dce1d`.
+`1b688a414433323389501646f30138e78b2ab600738dbc0e4d0ea0ab04d81875`.
+Source: 33911 UTF-8 bytes, SHA-256
+`244b5622c5fcfa2bbb5ad698e4e6036bfaa38725db1ee6f9ea75f55369c35f1f`.
 Final collected path remains `client/src/components/referrerPrivacyCopy.test.tsx`.
 The inert source is retained as the immutable source of record; future accepted
 transport must prove byte equality and name actual contributors. GLM now authored
@@ -155,7 +155,7 @@ tasks. No runtime claim or route is admitted here.
 
 Actual command on unchanged main product was
 `pnpm vitest run client/src/components/referrerPrivacyCopy.test.tsx`.
-It exited 1: 32 tests, 9 assertion failures and 23 passes. This is actual RED,
+It exited 1: 33 tests, 9 assertion failures and 24 passes. This is actual RED,
 not a green test result, full privacy acceptance or mutation-strength proof.
 The temporary collected-path copy was removed; no collected test, product or
 config edit is included in this docs carrier or the source-only execution.
@@ -191,20 +191,25 @@ controls. It accepted bounded architecture, not source acceptance. Actual GLM
 then authored fifth source b0c934a7. All four earlier source legs, evaluations
 and raw multi-turn exchanges remain in the cumulative record and Git history.
 
-The fifth 32-case run remains RED on unchanged product, not independent
-quality acceptance. Genuine bounded-contract evaluation must assess known
-controls, timing/object bindings, truthful wording acceptance, illegal promises,
-active-access polarity and maintainability. Twenty-three passing cases do not
-prove these concerns resolved. Any additional source correction returns to
-the actual author under the legitimate ongoing BUILD. No integrity-only
-assessment or prior result transfers a PASS, admission or completion.
+The actual fifth DeepSeek source evaluation of b0c934a7/073a8de7 returned
+source-quality FINDINGS P1. It closed four earlier findings but still found
+an explicit pre-choice file claim could pass when the same sentence also says
+after acceptance. Actual GLM authored sixth source 0c4cfae2 in response.
+All five earlier source legs and evaluations remain retained, not relabeled.
+
+The sixth 33-case run remains RED on unchanged product, not independent
+quality acceptance. Genuine full bounded-contract evaluation must reassess
+known controls, timing interactions, active-access polarity, truthful wording
+and maintainability. Twenty-four passing controls do not establish quality
+PASS or admission. No integrity-only assessment or prior result transfers
+source acceptance, prep completion or runtime readiness to this candidate.
 
 ### Complete exact source candidate
 
 ```tsx
 // @vitest-environment jsdom
 /**
- * Referrer privacy-copy regression, red-first, revision 5.
+ * Referrer privacy-copy regression, red-first, revision 6.
  * Packet: docs/plans/UI-referrer-privacy-copy-tests.md
  *
  * Final collected path: client/src/components/referrerPrivacyCopy.test.tsx
@@ -225,9 +230,11 @@ assessment or prior result transfers a PASS, admission or completion.
  * How the copy is judged (three bounded checks, no clause grammar, no prose engine):
  *  - Promise check: a resume visibility claim is exempt only when an
  *    acceptance-anchored marker ends before the claim verb, or when the marker
- *    sits in the claim's own comma segment and no immediacy word ("now",
- *    "immediately", "right away", "today", "already") is detached from that
- *    marker. Every pre-choice marker in the sentence being denied also exempts.
+ *    sits in the claim's own comma segment AND the sentence carries no undenied
+ *    pre-choice marker AND no immediacy word ("now", "immediately", "right
+ *    away", "today", "already") is detached from that marker. A pre-choice
+ *    marker being present and undenied therefore always keeps the claim a
+ *    promise, whatever post marker shares the segment.
  *  - Boundary check: name, resume, concealment and a pre-choice marker must all
  *    appear in ONE sentence, in the first or third person.
  *  - Access check: inside one comma segment, document-qualified access must carry
@@ -245,8 +252,9 @@ assessment or prior result transfers a PASS, admission or completion.
  *    a condition placed in a different comma segment from the file claim does not
  *    count.
  *  - A FRONTED condition ("While your document access is active, you can open the
- *    file after you accept") is deliberately NOT covered, because the file verb
- *    follows the access phrase there and that shape is also the bleed pattern.
+ *    file after you accept") is deliberately NOT covered, and neither is a file
+ *    claim split from its condition by other clauses. Future repair copy is
+ *    constrained to: file claim first, condition after, same comma segment.
  *  - Access must be document-qualified ("document access", "access to the
  *    files"); bare "your access" is deliberately not accepted.
  *  - Cross-sentence conditionality is refused on purpose, because accepting it is
@@ -377,7 +385,8 @@ const NOUN_NEGATION = /\b(?:not|never|no)\b(?:\s+\w+){0,2}\s*$/i;
 const IMMEDIACY = /\b(?:now|immediately|right away|today|already)\b/gi;
 
 /* ------------------------------------------------------------------ *
- * Promise check: negation scope, comma-segment locality, immediacy guard
+ * Promise check: negation scope, comma-segment locality, immediacy and
+ * undenied pre-choice markers
  * ------------------------------------------------------------------ */
 
 function negatedVerb(sentence: string, verbIndex: number): boolean {
@@ -428,21 +437,6 @@ function immediacyBlocksPostfixScope(sentence: string, segment: Segment, verbInd
   });
 }
 
-/**
- * A claim is post-acceptance scoped when an acceptance-anchored marker ends
- * before the claim verb, or sits in the claim's own comma segment with no
- * detached immediacy word. A marker in another comma segment never exempts.
- */
-function claimIsPostScoped(sentence: string, verbIndex: number): boolean {
-  const posts = matchesOf(sentence, POST_ACCEPTANCE);
-  if (posts.some(marker => marker.end <= verbIndex)) return true;
-  const segment = segmentOf(sentence, verbIndex);
-  if (segment === null) return false;
-  const sameSegment = posts.some(marker => marker.index >= segment.start && marker.index < segment.end);
-  if (!sameSegment) return false;
-  return !immediacyBlocksPostfixScope(sentence, segment, verbIndex);
-}
-
 /** A pre-choice marker that is itself denied ("but not before you choose"). */
 function negationBefore(sentence: string, index: number): boolean {
   const prefix = sentence.slice(0, index);
@@ -453,6 +447,28 @@ function negationBefore(sentence: string, index: number): boolean {
 function preMarkersAllDenied(sentence: string): boolean {
   const markers = matchesOf(sentence, PRE_ACCEPTANCE);
   return markers.length > 0 && markers.every(marker => negationBefore(sentence, marker.index));
+}
+
+/** Any pre-choice marker that is not itself denied keeps the claim a promise. */
+function hasUndeniedPreMarker(sentence: string): boolean {
+  return matchesOf(sentence, PRE_ACCEPTANCE).some(marker => !negationBefore(sentence, marker.index));
+}
+
+/**
+ * A claim is post-acceptance scoped when an acceptance-anchored marker ends
+ * before the claim verb. The weaker same-segment exemption applies only when the
+ * sentence carries no undenied pre-choice marker and no detached immediacy word,
+ * so an explicit "before you choose" in the same sentence always wins.
+ */
+function claimIsPostScoped(sentence: string, verbIndex: number): boolean {
+  const posts = matchesOf(sentence, POST_ACCEPTANCE);
+  if (posts.some(marker => marker.end <= verbIndex)) return true;
+  const segment = segmentOf(sentence, verbIndex);
+  if (segment === null) return false;
+  const sameSegment = posts.some(marker => marker.index >= segment.start && marker.index < segment.end);
+  if (!sameSegment) return false;
+  if (hasUndeniedPreMarker(sentence)) return false;
+  return !immediacyBlocksPostfixScope(sentence, segment, verbIndex);
 }
 
 /**
@@ -663,6 +679,23 @@ describe("sanity: pre-choice resume-promise detector", () => {
     );
     expect(
       promisesResumeBeforeChoice("You can read the resume right away and after you accept you can message them."),
+    ).toBe(true);
+  });
+
+  it("does not let a later condition outrank an explicit pre-choice marker", () => {
+    expect(
+      promisesResumeBeforeChoice("You can open the resume before you choose and after you accept you can message them."),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice(
+        "You can see the role and resume before you choose and after you accept you can message them.",
+      ),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice("You can see the role and resume before you choose and message them after you accept."),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice("See the role and resume before you choose and message them once you accept."),
     ).toBe(true);
   });
 
@@ -914,13 +947,14 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/tmp/referrer-external-test-prep[39m
 
 [90mstdout[2m | client/src/components/referrerPrivacyCopy.test.tsx
-[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
 
- [31m❯[39m client/src/components/referrerPrivacyCopy.test.tsx [2m([22m[2m32 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[32m 215[2mms[22m[39m
+ [31m❯[39m client/src/components/referrerPrivacyCopy.test.tsx [2m([22m[2m33 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[32m 220[2mms[22m[39m
      [32m✓[39m flags the released promise and other pre-choice visibility claims[32m 4[2mms[22m[39m
      [32m✓[39m does not exempt a claim just because some other time word appears[32m 0[2mms[22m[39m
      [32m✓[39m does not let a later condition exempt a current claim without a comma[32m 2[2mms[22m[39m
+     [32m✓[39m does not let a later condition outrank an explicit pre-choice marker[32m 0[2mms[22m[39m
      [32m✓[39m still flags a real promise when an unrelated negation sits in the window[32m 0[2mms[22m[39m
      [32m✓[39m does not flag cannot, won't or will not phrasing[32m 0[2mms[22m[39m
      [32m✓[39m does not flag a noun-level denial[32m 0[2mms[22m[39m
@@ -939,17 +973,17 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
      [32m✓[39m rejects a permanence claim even when a conditional clause is present[32m 0[2mms[22m[39m
      [32m✓[39m rejects unrelated sentences stitched together and conditions with no acceptance timing[32m 0[2mms[22m[39m
 [31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 107[2mms[22m[39m
-[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 12[2mms[22m[39m
+[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 13[2mms[22m[39m
 [31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 9[2mms[22m[39m
-     [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 8[2mms[22m[39m
-[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 8[2mms[22m[39m
-[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 10[2mms[22m[39m
-[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 6[2mms[22m[39m
      [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 7[2mms[22m[39m
-[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 14[2mms[22m[39m
-[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 6[2mms[22m[39m
+[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 9[2mms[22m[39m
 [31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 6[2mms[22m[39m
-     [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 8[2mms[22m[39m
+     [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 14[2mms[22m[39m
+[31m     [31m×[31m does not promise the resume before the referrer chooses[39m[32m 13[2mms[22m[39m
+[31m     [31m×[31m states that the name and resume stay hidden until acceptance[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m makes post-acceptance file access conditional on active access[39m[32m 5[2mms[22m[39m
+     [32m✓[39m keeps the work-email control, the decline/context/no-send promises and sends nothing[32m 5[2mms[22m[39m
 
 [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 9 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
 
@@ -964,40 +998,40 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [31m+   "See the role, resume, and forwardable note before you choose.",[39m
 [31m+ ][39m
 
-[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m362:5[22m[39m
-    [90m360|[39m     offending[33m,[39m
-    [90m361|[39m     `pre-choice copy still promises resume visibility before the choic…
-    [90m362|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m373:5[22m[39m
+    [90m371|[39m     offending[33m,[39m
+    [90m372|[39m     `pre-choice copy still promises resume visibility before the choic…
+    [90m373|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
     [90m   |[39m     [31m^[39m
-    [90m363|[39m }
-    [90m364|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m622:5[22m[39m
+    [90m374|[39m }
+    [90m375|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m650:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mReferrerOtpSignIn pre-choice privacy copy[2m > [22mstates that the name and resume stay hidden until acceptance
 [31m[1mAssertionError[22m: pre-choice copy must state in one sentence that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m371:9[22m[39m
-    [90m369|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
-    [90m370|[39m     `pre-choice copy must state in one sentence that the seeker's name…
-    [90m371|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m382:9[22m[39m
+    [90m380|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
+    [90m381|[39m     `pre-choice copy must state in one sentence that the seeker's name…
+    [90m382|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m372|[39m }
-    [90m373|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m627:5[22m[39m
+    [90m383|[39m }
+    [90m384|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m655:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mReferrerOtpSignIn pre-choice privacy copy[2m > [22mmakes post-acceptance file access conditional on active access
 [31m[1mAssertionError[22m: post-acceptance file access must be described as conditional on active document access in one sentence; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m380:9[22m[39m
-    [90m378|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
-    [90m379|[39m     `post-acceptance file access must be described as conditional on a…
-    [90m380|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m391:9[22m[39m
+    [90m389|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
+    [90m390|[39m     `post-acceptance file access must be described as conditional on a…
+    [90m391|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m381|[39m }
-    [90m382|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m632:5[22m[39m
+    [90m392|[39m }
+    [90m393|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m660:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯[22m[39m
 
@@ -1012,40 +1046,40 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [31m+   "See the role, resume, and forwardable note before you choose.",[39m
 [31m+ ][39m
 
-[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m362:5[22m[39m
-    [90m360|[39m     offending[33m,[39m
-    [90m361|[39m     `pre-choice copy still promises resume visibility before the choic…
-    [90m362|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m373:5[22m[39m
+    [90m371|[39m     offending[33m,[39m
+    [90m372|[39m     `pre-choice copy still promises resume visibility before the choic…
+    [90m373|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
     [90m   |[39m     [31m^[39m
-    [90m363|[39m }
-    [90m364|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m653:5[22m[39m
+    [90m374|[39m }
+    [90m375|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m681:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mWorkEmailSignIn (noncompact) pre-choice privacy copy[2m > [22mstates that the name and resume stay hidden until acceptance
 [31m[1mAssertionError[22m: pre-choice copy must state in one sentence that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private.","We email a one-time code to verify this company address.","Personal email providers are not accepted."]: expected null not to be null[39m
-[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m371:9[22m[39m
-    [90m369|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
-    [90m370|[39m     `pre-choice copy must state in one sentence that the seeker's name…
-    [90m371|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m382:9[22m[39m
+    [90m380|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
+    [90m381|[39m     `pre-choice copy must state in one sentence that the seeker's name…
+    [90m382|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m372|[39m }
-    [90m373|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m658:5[22m[39m
+    [90m383|[39m }
+    [90m384|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m686:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mWorkEmailSignIn (noncompact) pre-choice privacy copy[2m > [22mmakes post-acceptance file access conditional on active access
 [31m[1mAssertionError[22m: post-acceptance file access must be described as conditional on active document access in one sentence; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private.","We email a one-time code to verify this company address.","Personal email providers are not accepted."]: expected null not to be null[39m
-[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m380:9[22m[39m
-    [90m378|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
-    [90m379|[39m     `post-acceptance file access must be described as conditional on a…
-    [90m380|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m391:9[22m[39m
+    [90m389|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
+    [90m390|[39m     `post-acceptance file access must be described as conditional on a…
+    [90m391|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m381|[39m }
-    [90m382|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m663:5[22m[39m
+    [90m392|[39m }
+    [90m393|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m691:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯[22m[39m
 
@@ -1060,48 +1094,48 @@ describe("GoalOtpSignIn pre-choice privacy copy", () => {
 [31m+   "See the role, resume, and forwardable note before you choose.",[39m
 [31m+ ][39m
 
-[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m362:5[22m[39m
-    [90m360|[39m     offending[33m,[39m
-    [90m361|[39m     `pre-choice copy still promises resume visibility before the choic…
-    [90m362|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+[36m [2m❯[22m expectNoPreChoiceResumePromise client/src/components/referrerPrivacyCopy.test.tsx:[2m373:5[22m[39m
+    [90m371|[39m     offending[33m,[39m
+    [90m372|[39m     `pre-choice copy still promises resume visibility before the choic…
+    [90m373|[39m   )[33m.[39m[34mtoEqual[39m([])[33m;[39m
     [90m   |[39m     [31m^[39m
-    [90m363|[39m }
-    [90m364|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m682:5[22m[39m
+    [90m374|[39m }
+    [90m375|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m710:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mGoalOtpSignIn pre-choice privacy copy[2m > [22mstates that the name and resume stay hidden until acceptance
 [31m[1mAssertionError[22m: pre-choice copy must state in one sentence that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m371:9[22m[39m
-    [90m369|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
-    [90m370|[39m     `pre-choice copy must state in one sentence that the seeker's name…
-    [90m371|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectHiddenUntilAcceptanceBoundary client/src/components/referrerPrivacyCopy.test.tsx:[2m382:9[22m[39m
+    [90m380|[39m     [34mfindHiddenUntilAcceptance[39m(sentences)[33m,[39m
+    [90m381|[39m     `pre-choice copy must state in one sentence that the seeker's name…
+    [90m382|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m372|[39m }
-    [90m373|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m687:5[22m[39m
+    [90m383|[39m }
+    [90m384|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m715:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯[22m[39m
 
 [41m[1m FAIL [22m[49m client/src/components/referrerPrivacyCopy.test.tsx[2m > [22mGoalOtpSignIn pre-choice privacy copy[2m > [22mmakes post-acceptance file access conditional on active access
 [31m[1mAssertionError[22m: post-acceptance file access must be described as conditional on active document access in one sentence; rendered sentences: ["See the role, resume, and forwardable note before you choose.","Decline or ask for context.","Nothing is sent from your account.","Work email verifies company access; it stays private."]: expected null not to be null[39m
-[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m380:9[22m[39m
-    [90m378|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
-    [90m379|[39m     `post-acceptance file access must be described as conditional on a…
-    [90m380|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
+[36m [2m❯[22m expectConditionalFileAccess client/src/components/referrerPrivacyCopy.test.tsx:[2m391:9[22m[39m
+    [90m389|[39m     [34mfindConditionalFileAccess[39m(sentences)[33m,[39m
+    [90m390|[39m     `post-acceptance file access must be described as conditional on a…
+    [90m391|[39m   )[33m.[39mnot[33m.[39m[34mtoBeNull[39m()[33m;[39m
     [90m   |[39m         [31m^[39m
-    [90m381|[39m }
-    [90m382|[39m
-[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m692:5[22m[39m
+    [90m392|[39m }
+    [90m393|[39m
+[90m [2m❯[22m client/src/components/referrerPrivacyCopy.test.tsx:[2m720:5[22m[39m
 
 [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯[22m[39m
 
 
 [2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
-[2m      Tests [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m23 passed[39m[22m[90m (32)[39m
-[2m   Start at [22m 04:35:58
-[2m   Duration [22m 1.50s[2m (transform 439ms, setup 49ms, import 694ms, tests 215ms, environment 428ms)[22m
+[2m      Tests [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m24 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 04:45:23
+[2m   Duration [22m 1.51s[2m (transform 360ms, setup 44ms, import 689ms, tests 220ms, environment 455ms)[22m
 
 
 EXIT_STATUS=1
@@ -1114,12 +1148,12 @@ Original af0ed run before cleanup (historical, not revised-run status):
 ?? client/src/components/referrerPrivacyCopy.test.tsx
 ?? docs/plans/tests/
 ```
-Fifth b0c934 run after temporary cleanup (empty output means clean):
+Sixth 0c4cfae run after temporary cleanup (empty output means clean):
 ```text
 ```
 
 The original af0ed run left only its intended inert source untracked. The
-revised run cleanup was clean. All five source legs from af0ed through b0c934a7 change only
+revised run cleanup was clean. All six source legs from af0ed through 0c4cfae2 change only
 that same inert source file; the source-only range excludes packet prose. This source and
 its execution are candidates pending separate exact independent admission.
 Coordinator prose here is a distinct docs contribution outside the GLM range.
