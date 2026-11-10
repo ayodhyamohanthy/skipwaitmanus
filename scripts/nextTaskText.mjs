@@ -299,6 +299,7 @@ function pickText(pick, { who, date, claimed, register = null }) {
     case "build": return head(`BUILD ${pick.task.id} — ${pick.task.title}`, [
       `Tier ${pick.task.tier} · lane ${pick.task.lane} · packet ${pick.task.packet} · branch ${pick.task.branch}`,
       ...(pick.ciRunning ? ["main's CI is still running: you may start, but push nothing to main until it is green."] : []),
+      ...(pick.overlaps?.length ? [`Shares owned files with open ${pick.overlaps.join(", ")} (D-309, D-314): build on your own branch in your own worktree, never in theirs. Whoever lands second merges origin/main and resolves the overlap, keeping both changes; never overwrite or revert their work.`] : []),
       buildSteps(pick.task, who, date, pick.task.branch),
     ]) + take;
     case "continue": {

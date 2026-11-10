@@ -67,20 +67,24 @@ describe("D-309 parallel eligibility: independent work is offered", () => {
     expect(outcome(picked)).toEqual({ kind: "build", id: "B" });
   });
 
-  it("control 2 diagnostic: core currently holds an overlapping file; isolated-preparation target remains unmet", () => {
+  it("control 2: a red task's shared file does not hold an independent task; the build names the overlap (D-309, D-314)", () => {
     const shared = redA(["server/shared.ts"]);
     const b = task("B", { lane: "inbox", owns: ["server/shared.ts"] });
     const picked = pick([shared.task, b], {
       branches: [shared.branch], prs: [shared.pr], prCi: [shared.ci], reports: [redReport("A", "Qwen · s1")],
       claimant: "Mistral · r2",
     });
-    // The measured cause: core.filesBusy skips B because A owns the same file, so the picker waits on A.
-    // D-309 permits bounded overlap on an isolated branch with a truthful integration handoff; aligning
-    // core is a separate bounded amendment (this row owns the text and this control only).
-    // This is a diagnostic, NOT a passing target contract. The separately executed
-    // single-expectation BUILD target fails; keep that gap explicit in the packet.
-    expect(picked).toMatchObject({ kind: "wait", gate: "A" });
-    expect(outcome(picked)).toEqual({ kind: "wait", id: null });
+    // D-314 aligns core with D-309: B builds on its own branch, and the hand-out names A so the
+    // second lander merges main and keeps both changes. A's lane and A's dependents stay held.
+    expect(picked).toMatchObject({ kind: "build", task: { id: "B" }, overlaps: ["A"] });
+    expect(renderPick(picked, ctx("Mistral · r2"))).toContain("Whoever lands second merges origin/main");
+    // A real output dependency still holds: B waits while A, which it needs, is red.
+    const dependent = task("B", { lane: "inbox", owns: ["server/shared.ts"], dependsOn: ["A"] });
+    const held = pick([shared.task, dependent], {
+      branches: [shared.branch], prs: [shared.pr], prCi: [shared.ci], reports: [redReport("A", "Qwen · s1")],
+      claimant: "Mistral · r2",
+    });
+    expect(outcome(held)).toEqual({ kind: "wait", id: null });
   });
 
   it("control 3: FIFO picks the earliest eligible independent task, and --avoid keeps a real hold", () => {

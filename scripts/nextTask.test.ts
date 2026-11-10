@@ -1684,15 +1684,14 @@ describe("PICKER-owns-scope: declared file ownership", () => {
     expect(core.ownsEntry("shared/planCatalog.ts").switchOnly).toBe(false);
   });
 
-  it("refuses two live tasks that own overlapping paths", () => {
+  it("accepts two live tasks that own overlapping paths with no dependency between them (D-309, D-314)", () => {
     const doc = {
       version: 1, repo: "o/r", tasks: [
         task("A", { owns: ["client/src/pages/"] }),
         task("B", { owns: ["client/src/pages/Landed.tsx"] }),
       ],
     };
-    const errors = validateAssignments(doc, exists).join("\n");
-    expect(errors).toContain("tasks A and B own overlapping paths and neither waits for the other");
+    expect(validateAssignments(doc, exists)).toEqual([]);
   });
 
   it("allows the same overlap when one task waits for the other", () => {
@@ -1714,12 +1713,15 @@ describe("PICKER-owns-scope: declared file ownership", () => {
     expect(validateAssignments(empty, exists).join("\n")).toContain("owns must be a non-empty array of paths");
   });
 
-  it("holds a build while another lane's open task owns an overlapping path, and frees it when they differ", () => {
+  it("hands out a build that shares files with another lane's open task, naming it; no overlap names nothing (D-309, D-314)", () => {
     const claimant = "workbuddy · b0eb";
-    const held = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
-    expect(JSON.stringify(held)).toContain("owns the same files");
+    const shared = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
+    expect(shared).toMatchObject({ kind: "build", task: { id: "B" }, overlaps: ["A"] });
+    expect(renderPick(shared, { who: claimant, date: "2026-11-10", claimed: false })).toContain("Shares owned files with open A (D-309, D-314)");
     const free = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })], { claimant });
     expect(free.kind).toBe("build");
+    expect(free).not.toHaveProperty("overlaps");
+    expect(renderPick(free, { who: claimant, date: "2026-11-10", claimed: false })).not.toContain("Shares owned files");
   });
 });
 /*
@@ -1894,14 +1896,16 @@ describe("switch-only claims share a file", () => {
     expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/"])).toBe(true);
   });
 
-  it("the registry accepts two open tasks that each hold a switch-only claim on one file", () => {
+  it("the registry accepts two open tasks that each hold a switch-only claim on one file, and since D-314 a full claim too", () => {
     const doc = { version: 1, repo: "o/r", tasks: [
       { ...task("A"), packet: "docs/plans/p.md", owns: ["server/a.ts", "server/_core/index.ts (switch only)"] },
       { ...task("B"), packet: "docs/plans/p.md", owns: ["server/b.ts", "server/_core/index.ts (switch only)"] },
     ] };
-    expect(validateAssignments(doc, () => true).filter(e => e.includes("overlapping"))).toEqual([]);
+    expect(validateAssignments(doc, () => true)).toEqual([]);
+    // D-309/D-314: the full claim still overlaps (ownsOverlap, above), but an overlap no longer needs a dependency.
     const full = { ...doc, tasks: [doc.tasks[0], { ...doc.tasks[1], owns: ["server/b.ts", "server/_core/index.ts"] }] };
-    expect(validateAssignments(full, () => true).filter(e => e.includes("overlapping"))).toHaveLength(1);
+    expect(core.ownsOverlap(full.tasks[0].owns, full.tasks[1].owns)).toBe(true);
+    expect(validateAssignments(full, () => true)).toEqual([]);
   });
 });
 

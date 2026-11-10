@@ -86,8 +86,9 @@ const under = (child, parent) => !parent || child === parent || child.startsWith
 /**
  * Do two `owns` lists overlap? Compared by the literal part of each pattern, so exact
  * paths, folder prefixes and globs that share a folder are caught. Two globs with
- * unrelated prefixes are treated as disjoint: the runtime guards (filesBusy and
- * scripts/scope-check.mjs) are the backstop, this is the cheap static check.
+ * unrelated prefixes are treated as disjoint. Since D-309/D-314 an overlap holds no build and needs
+ * no dependency: it is reported with the build hand-out, and scripts/scope-check.mjs still keeps
+ * each pull request inside its own owns.
  */
 export function ownsOverlap(a, b) {
   const left = Array.isArray(a) ? a : [];
@@ -541,17 +542,9 @@ export function validateAssignments(doc, packetExists, register = null) {
     visiting.delete(id); seen.add(id);
   };
   for (const t of doc.tasks) visit(t.id);
-  // PICKER-owns-scope: two tasks that are not done may not own the same files unless one
-  // waits for the other (a dependent runs after its dependency has landed, so it may edit
-  // the same file). Checked on the literal part of each pattern (ownsOverlap).
-  const waitsFor = (from, target, seenIds = new Set()) => (from.dependsOn ?? []).some(d => d === target || (!seenIds.has(d) && seenIds.add(d) && byId.has(d) && waitsFor(byId.get(d), target, seenIds)));
-  const owning = doc.tasks.filter(t => t.status !== "done" && Array.isArray(t.owns) && t.owns.length);
-  for (let i = 0; i < owning.length; i += 1) for (let j = i + 1; j < owning.length; j += 1) {
-    const a = owning[i], b = owning[j];
-    if (!ownsOverlap(a.owns, b.owns)) continue;
-    if (waitsFor(a, b.id) || waitsFor(b, a.id)) continue;
-    errors.push(`tasks ${a.id} and ${b.id} own overlapping paths and neither waits for the other`);
-  }
+  // D-309, D-314: two unfinished tasks may own overlapping paths without a dependency between
+  // them. Each builds on its own branch; the second to land merges main and resolves the overlap.
+  // A `dependsOn` edge means "needs that task's output" (D-223 rule 9), never "shares a file".
   return errors;
 }
 
@@ -754,10 +747,10 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   const building = o => !o.pr || !["green", "red", "running", "running-after-red"].includes(o.ci)
     || (o.ci !== "green" && !quiet(workAt(o)));
   const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && (building(o) || !disjoint(o, v)));
-  // PICKER-owns-scope: lanes are labels, so two lanes could edit one file unseen. A build also
-  // waits while an open task — being built or waiting for review — owns an overlapping path,
-  // unless it waits for that task (a dependent may edit the same file after its dependency lands).
-  const filesBusy = v => Boolean(v.task.owns?.length) && view.some(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && ownsOverlap(v.task.owns, o.task.owns));
+  // PICKER-owns-scope, amended by D-309/D-314: lanes are labels, so two lanes can edit one file. A shared
+  // file no longer holds a build. The build is handed out with the open tasks (being built or waiting for
+  // review) whose owns overlap, so the builder works in its own worktree and the second lander merges.
+  const sharedFilesWith = v => (v.task.owns?.length ? view.filter(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && ownsOverlap(v.task.owns, o.task.owns)).map(o => o.task.id) : []);
   const ceo = isArchitect(claimant);
 
   const skipped = [];
@@ -929,8 +922,8 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     const unmet = unmetOf(v);
     if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
     if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
-    if (filesBusy(v)) return skip(v, "an open task owns the same files");
-    return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
+    const overlaps = sharedFilesWith(v);
+    return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ...(overlaps.length ? { overlaps } : {}) };
   };
 
   const owned = claimant ? ownWorkList(view, claimant) : null;
