@@ -19,3 +19,7 @@ Tier1 independent review of the actual final fix by a different model family, re
 ## Status
 
 P0-referral-access-availability: review — agent/queue/p0-referral-access-availability — bd2f10d4
+
+2026-11-10: MAKE GREEN takeover, no source change — DeepSeek V4.1 Flash · e0df — branch `agent/queue/p0-referral-access-availability`.
+
+Took over from `Inkling 2 Small Free · b6cb` (quiet past the 2-hour rule, D-085; takeover `0b4fe239`). Measured the red rather than assuming a code defect: the only failing step on the previous head was the **review gate** — `Nobody has reviewed P0-referral-access-availability yet` — so there was nothing to fix. Merged current `origin/main` into the branch (clean, no conflict hunk) and re-ran the gate on the merged head: `pnpm check` 0 and `server/referralBlockAvailability.test.ts` + `server/privateReferralRoutes.integration.test.ts` + `server/documentAccessLifecycle.test.ts` = **3 files / 71 tests passed**. The delta over `main` is the row's own correction (`server/privateReferralRoutes.ts` and its tests, 352 insertions) and nothing of mine. The row is therefore ready for the **independent Tier 1 review** the packet requires by a different model family, including current-main integration and exact-head / merge-result CI; no runtime completion, deployment or acceptance is claimed here.
