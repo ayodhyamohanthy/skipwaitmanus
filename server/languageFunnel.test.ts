@@ -152,8 +152,15 @@ describe("GET /api/admin/language-funnel", () => {
   });
 
   it("answers 503 when the database is unavailable", async () => {
-    mocks.createPool.mockRejectedValue(new Error("fixture pool down"));
-    const response = await request(setup()).get("/api/admin/language-funnel").set("x-test-user", "admin");
+    const app = express();
+    app.use(express.json());
+    registerLanguageFunnelRoutes(app, {
+      resolveIdentity: async (req: express.Request) => (req.header("x-test-user") === "admin" ? ADMIN : undefined),
+      enabled: () => true,
+      now: () => NOW,
+      getDb: async () => null,
+    });
+    const response = await request(app).get("/api/admin/language-funnel").set("x-test-user", "admin");
     expect(response.status).toBe(503);
     expect(response.headers["cache-control"]).toBe("private, no-store");
     expect(response.body).toEqual({ error: "Database unavailable" });
