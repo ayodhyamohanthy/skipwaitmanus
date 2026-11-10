@@ -33,6 +33,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/` | `pages/Home` | `D-048-p3-home`, `D-048-p3-home-signed-in` | D-048-p3-home: done; D-048-p3-home-signed-in: to be added by its lane packet |
 | `/fast/:linkCode` | `pages/FastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/refer/:companySlug/:vanityAlias` | `pages/VanityFastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
+| `/r/:token` | `pages/AskInviteLink` | `D-090-BYOR` | D-090-BYOR: fix round in progress on #632 |
 | `/share-card/:token` | `pages/ShareCard` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/email-review/:linkToken` | `pages/EmailReviewAction` | `D-048-p3-email-review` | D-048-p3-email-review: todo |
 | `/start` | `pages/Onboarding` | `D-048-p3-start` | D-048-p3-start: todo |
@@ -166,6 +167,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`

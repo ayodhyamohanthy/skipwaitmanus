@@ -104,6 +104,14 @@ jobs:
       # broken tool never blocks a real fix - but a definite change outside `owns` fails.
       # A verified empty diff has no files to judge and no queue row to read (marker
       # branches never merge), so the classifier is the only thing that may skip it.
+      # PICKER-gate-red-review-route (D-286): the review gate under its own step name. It is the same script and
+      # exit code scope-check runs next (scope-check calls it again and gets the same answer), so nothing is
+      # added, waived or reordered in what must pass; the name only lets the picker tell "red because the Tier 1
+      # review is still to be done" from every other red, and hand that head its REVIEW. The step name is read by
+      # scripts/nextTaskCore.mjs (GATE_STEP); keep the two identical. The job and its required-check name are unchanged.
+      - name: Review gate (independent Tier 1 pass)
+        if: ${{ github.event_name == 'pull_request' && steps.classify.outputs.marker_only != 'true' }}
+        run: node scripts/review-gate.mjs
       - name: Scope check (declared file ownership)
         if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: node scripts/scope-check.mjs --branch

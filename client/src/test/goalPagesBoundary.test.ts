@@ -44,6 +44,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/plans/planCatalog.ts", kind: "behavior-only", reason: "plan catalogue data, no UI" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
   { file: "components/employer/employerData.ts", kind: "behavior-only", reason: "employer REST contracts (zod schemas), fetchers and stats helpers, no UI; imported read-only by the goal employer pages (D-048-p3-employer, D-276)" },
+  { file: "components/employer/employerPlans.ts", kind: "behavior-only", reason: "employer plan catalogue types and price-formatting helper, no UI; imported read-only by the goal /for-companies page (D-048-p3-for-companies, D-296)" },
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
   { file: "components/settings/settingsApi.ts", kind: "behavior-only", reason: "settings API fetchers, schemas and error constants, no UI" },
   { file: "components/settings/settingsQueries.ts", kind: "behavior-only", reason: "work-email access query hook, no UI" },
@@ -51,6 +52,9 @@ const AUDITED: AuditEntry[] = [
   { file: "components/developers/consoleMeta.ts", kind: "behavior-only", reason: "developer console app kinds, scopes and status metadata constants, no UI" },
   { file: "components/developers/consoleRoute.ts", kind: "behavior-only", reason: "developer console view and URL search query parser and serializer, no UI" },
   { file: "components/developers/mcpTools.ts", kind: "behavior-only", reason: "documented MCP tools list, endpoint constant and description pairs, no UI" },
+  { file: "components/admin/adminApi.ts", kind: "behavior-only", reason: "admin REST contracts (zod schemas) and fetchers, no UI; imported read-only by the goal admin pages (D-048-p3-admin, D-284)" },
+  { file: "components/admin/reviewCases.ts", kind: "behavior-only", reason: "review-queue case kinds, decisions and status helpers over adminApi types, no UI; imported read-only by the goal admin review page (D-048-p3-admin, D-284)" },
+  { file: "components/admin/paymentReviewCopy.ts", kind: "behavior-only", reason: "payment-review copy and formatting helpers (dates, amounts, decision labels), no UI; imported read-only by the goal money pages (D-048-p3-admin-money, packet §3)" },
 ];
 
 type Read = (file: string) => string | null;
@@ -167,14 +171,17 @@ describe("moved-page import boundary", () => {
     const offenders: string[] = [];
     for (const page of movedPages) {
       const sources = new Map<string, string>([[page, readFileSync(page, "utf8")]]);
-      for (const spec of importSpecifiers(sources.get(page)!)) {
+      // Runtime edges only: a type-only import renders nothing, so it can neither
+      // pull the kit into a goal page nor make its module a direct component.
+      // The D-241 walker below already treats `import type` as a non-edge.
+      for (const spec of runtimeSpecifiers(sources.get(page)!)) {
         const resolved = resolveSpecifier(spec, page);
         if (resolved && resolved.startsWith(COMPONENTS_DIR) && !sources.has(resolved)) {
           sources.set(resolved, readFileSync(resolved, "utf8"));
         }
       }
       for (const [file, source] of sources) {
-        for (const spec of importSpecifiers(source)) {
+        for (const spec of runtimeSpecifiers(source)) {
           const resolved = resolveSpecifier(spec, file);
           const probe = resolved ?? spec;
           if (BANNED.test(probe)) offenders.push(`${relative(CLIENT_SRC, file)} -> ${spec}`);

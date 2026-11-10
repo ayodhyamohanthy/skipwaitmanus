@@ -1,0 +1,103 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/flow-health",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "health": {
+          "funnel": {
+            "requestsCreated": 12,
+            "requestsClaimed": 5,
+            "decisionsRecorded": 4,
+            "waitingForCoverage": 3
+          },
+          "coverageGaps": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/safety-reports",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "reports": [
+          {
+            "id": 48,
+            "reason": "Spam or repeated asks",
+            "details": "Same note sent 14 times in one day",
+            "referralRequestId": 12,
+            "reportedUserId": null,
+            "urgent": true,
+            "status": "open",
+            "createdAt": "2026-10-07T08:00:00.000Z"
+          },
+          {
+            "id": 41,
+            "reason": "Something else",
+            "details": null,
+            "referralRequestId": null,
+            "reportedUserId": null,
+            "urgent": false,
+            "status": "resolved",
+            "createdAt": "2026-10-01T08:00:00.000Z",
+            "updatedAt": "2026-10-02T08:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/company-suggestions",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "suggestions": [
+          {
+            "id": 5,
+            "companyName": "Acme Corp",
+            "website": "https://acme.example",
+            "jobFunction": "Design",
+            "votes": 3,
+            "role": "seeker",
+            "status": "open",
+            "createdAt": "2026-10-05T08:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/approval-queue",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "kind": "referrer_enrollment",
+            "id": 31,
+            "status": "pending",
+            "companyDomain": "example-co.example",
+            "createdAt": "2026-10-06T06:00:00.000Z",
+            "updatedAt": "2026-10-06T06:00:00.000Z",
+            "summary": "",
+            "meta": {}
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Open the oldest case"
+    }
+  ]
+}

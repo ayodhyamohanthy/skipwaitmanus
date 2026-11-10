@@ -27,6 +27,7 @@ import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 import { applySeo } from "@/lib/seo";
 import { GoalOtpSignIn } from "./GoalOtpSignIn";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
 
 type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; request?: ClaimedCompanyRequest };
 type View = "overview" | "setup";
@@ -410,6 +411,8 @@ export default function GoalReferrer() {
     if (access.status === "checking") return <div className="mt-6 max-w-[640px]"><GoalSkeletonRows density="company" count={3} /></div>;
     if (access.status === "error") return <div className="mt-6 max-w-[640px]"><GoalErrorState title="We could not check your verification." body={access.error.message || "Check your connection and try again."} retry={{ label: access.retrying ? "Trying again…" : "Try again", onClick: access.retry }} /></div>;
     if (access.status === "unverified") return <GoalVerifyGate />;
+    // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+    if (access.status === "code_required") return <GoalWorkEmailStepUp access={access.access} />;
     return view === "setup" ? <GoalCapacityPanel isSignedIn getToken={getToken} onSignIn={() => setSignInOpen(true)} /> : <GoalOverview onPreviewAsks={() => go("/queue")} />;
   })();
 
