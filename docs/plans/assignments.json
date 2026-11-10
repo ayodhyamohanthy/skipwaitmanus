@@ -920,7 +920,7 @@
       "tier": 1,
       "lane": "observability-client",
       "branch": "agent/queue/rel-client-capture",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-313",
       "dependsOn": [
         "FIX-device-signin"
