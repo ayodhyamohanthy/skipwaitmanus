@@ -1314,3 +1314,23 @@ for coordinator split/handoff, never overwrite or infer consent. This is a
 manual hunk decision, not an automated owns/scope PASS or file takeover.
 Exact registration/route qualification review remains pending; this text is
 not a coding claim or dispatch clearance.
+
+### Exact prospective runtime routes, November 10 at 23:34 IST
+
+Carrier https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1129 proposes
+`referrer-copy-author-macaly-mistral-nov10` (build/fix) and
+`referrer-copy-review-macaly-deepseek-nov10` (review/land) for this exact
+runtime task and actual operator `Instinct · public-model-review-nov10`.
+Fresh selection observations at 23:26 show Mistral Large 4 and DeepSeek
+V4.1 Flash, Free capacity and no prompt/upgrade/payment. Canonical exclusion
+keys retain `mistralai/mistral-large-4-1t-a52b` and `deepseek-v4.1-flash` to
+preserve same-family aliases, not to assert a hidden checkpoint or endpoint.
+GLM 5.3 remains excluded from final runtime review as actual test author.
+The registry diff appends only these two routes; every existing route and
+execution is byte/value-preserved. Structure/digest validation succeeds but
+is not independent qualification. No coding/review execution is asserted.
+Before any source prompt, actual exact route/packet/manual-hunk qualification
+must pass and land normally; then use the real released picker/ordinary claim.
+Actual input/output/patch/pre-send model and free capacity must be retained,
+with the exact completed execution receipt separately reviewed and merged
+before acceptance. This carrier grants no role outside this task.
