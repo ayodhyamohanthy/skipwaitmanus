@@ -1,17 +1,23 @@
-// Company door (D-048 phase 3 W2; comp design/goal-ui/w2/company-*.png): one
-// goal line in the seeker's words, one black commit opening the W1 ask drawer
-// in place, then the honest facts - responsiveness (never an invented figure),
-// open roles as rows with mono dates, the three ask-quality points and the
-// privacy preview. Availability is the server's openToReferrals fact; a
-// not-open company keeps the waiting-ask rule (COVERAGE_WAIT_DAYS) with a
-// ghost "Ask anyway" and says the wait honestly. Every number from
-// /api/companies/:slug, /api/companies/:slug/opportunities and the live send.
+// Company door, redesigned to the doctrine (D-048-p3-live-review-find;
+// contract "Get referred at {Company}." in docs/plans/GOAL_UI_MIGRATION.md):
+// one goal line in the seeker's words, one "Your next step" block whose
+// single black commit ("Ask for a referral") opens the W1 ask drawer in
+// place, with the cost stated before the ask from the shared money copy and
+// the full money sentence beside it. Then the honest facts - responsiveness
+// from the shared companySignalCopy (never an invented figure), open roles as
+// rows with mono dates, the three ask-quality points, the privacy preview and
+// the "Claim this company" link. A not-open company keeps the waiting-ask
+// rule (COVERAGE_WAIT_DAYS) and says the wait honestly in the commit's own
+// line (D-176: availability is the post-save truth, never an open/not-open
+// pill). Every number from /api/companies/:slug,
+// /api/companies/:slug/opportunities and the live send.
 import { ArrowLeft, ArrowRight, CalendarDays, LockKeyhole } from "lucide-react";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link, useRoute } from "wouter";
 import {
   GoalAppShell,
   GoalButton,
+  GoalNextStep,
   GoalNum,
   GoalSkeletonRows,
 } from "@/components/goal";
@@ -21,7 +27,8 @@ import { useCompanyResponseSignal } from "@/lib/companyResponseSignal";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
 import type { CompanyResponseSignal } from "@shared/companyResponseSignal";
-import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
+import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
 import { COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { NotFoundContent } from "./NotFound";
 import { AskDrawer } from "./explore/AskDrawer";
@@ -42,7 +49,18 @@ export default function ExploreCompany() {
   const slug = params?.slug ?? "";
   const company = useCompany(slug);
   // An unknown or hidden slug is the app's 404 (keep).
-  if (company.error instanceof CompanyNotFoundError) return <NotFoundContent />;
+  // An unknown or hidden slug is the app's 404 (keep), rendered inside the
+  // goal frame so the seeker keeps their bearings (packet item 4).
+  if (company.error instanceof CompanyNotFoundError) {
+    return (
+      <GoalAppShell active="find" pageTitle="Find a referral">
+        <div data-skipwait-screen="explore-company-not-found" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6">
+          <BackLink />
+          <NotFoundContent />
+        </div>
+      </GoalAppShell>
+    );
+  }
   if (company.data) return <CompanyPage company={company.data} />;
   if (company.isError) {
     return (
@@ -82,6 +100,14 @@ function CompanyPage({ company }: { company: PublicCompany }) {
     applySeo({ title: `Referrals at ${company.name}`, description: `Request a private introduction to someone at ${company.name}. ${ASK_COST_SENTENCE}`, path: `/explore/${company.slug}` });
   }, [company.name, company.slug]);
   const open = company.openToReferrals;
+  // The door's own drawer close: after a sent ask, reopening starts a new ask
+  // (the sent confirmation belongs to the send, not the door) - the same
+  // fresh-form rule the directory drawer applies (packet item 4).
+  const closeDrawer = (next: boolean) => {
+    setDrawerOpen(next);
+    if (!next && composer.sent) composer.clearAfterClose();
+    if (!next && composer.postSelection) composer.selectPost(null);
+  };
   return (
     <GoalAppShell
       active="find"
@@ -89,7 +115,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
       drawer={
         <AskDrawer
           open={drawerOpen}
-          onOpenChange={open => { setDrawerOpen(open); if (!open && composer.postSelection) composer.selectPost(null); }}
+          onOpenChange={closeDrawer}
           company={company}
           context={composer.sent ? null : composer.context}
           signedIn={composer.signedIn}
@@ -126,42 +152,26 @@ function CompanyPage({ company }: { company: PublicCompany }) {
       <div data-skipwait-screen="explore-company" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
         <BackLink />
         <header className="mt-6">
-          {open ? (
-            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-g-ink-2">
-              <span aria-hidden="true" className="size-(--g-dot) rounded-full bg-g-ink" />
-              People open to referral requests
-            </p>
-          ) : (
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-g-ink-3">
-              <span className="inline-flex items-center gap-2">
-                <span aria-hidden="true" className="size-(--g-dot) rounded-full border-[1.5px] border-g-control-edge" />
-                Not open yet
-              </span>
-              <Link href="/alerts" className="font-normal normal-case tracking-normal text-g-meta text-g-ink-2 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Alert me</Link>
-            </p>
-          )}
-          <div className="mt-4 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <span aria-hidden="true" className="inline-flex size-12 shrink-0 items-center justify-center rounded-g-tile bg-g-surface-selected text-[16px] font-semibold tracking-[0.02em] text-g-ink-2">
               {company.initials}
             </span>
             <div className="min-w-0">
-              <h1 className="truncate text-g-display text-g-ink">{company.name}</h1>
               <p className="truncate text-g-meta text-g-ink-3">{company.functions.join(" · ")}</p>
+              <h1 className="truncate text-g-display text-g-ink">{`Get referred at ${company.name}.`}</h1>
             </div>
           </div>
         </header>
 
-        <p className="mt-6 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
-        <div className="mt-5 max-gdesk:grid">
-          {open ? (
+        <div className="mt-6">
+          <GoalNextStep reason={open ? "One request to a verified employee of this company." : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}>
             <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask for a referral</GoalButton>
-          ) : (
-            <GoalButton variant="outline" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask anyway</GoalButton>
-          )}
+            <p className="mt-3 text-g-meta text-g-ink-3">{ASK_COST_SENTENCE}</p>
+            <p className="mt-1 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+          </GoalNextStep>
         </div>
-        <p className="mt-3 text-g-meta text-g-ink-3">
-          {open ? ASK_COST_SENTENCE : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}
-        </p>
+        {!open ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/alerts" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Alert me</Link> when this company opens up.</p> : null}
+        <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/company/claim" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Claim this company</Link> if you work here.</p>
 
         <Responsiveness slug={company.slug} />
         <CompanyOpenings
@@ -212,17 +222,26 @@ function CompanyPage({ company }: { company: PublicCompany }) {
   );
 }
 
-// Company responsiveness (D-104): keep the shipped read - nothing renders
-// while the flag is off or the read fails. With too little data, the honest
-// line; never an invented figure. Shown numbers are mono, averages only.
+// Company responsiveness (D-104, packet item 4): the shared companySignalCopy
+// (content.json-synced) supplies every word, including its disclaimer. Nothing
+// renders while the flag is off or the read fails. With too little data, the
+// honest line; never an invented figure. Shown numbers are mono, averages only.
 function Responsiveness({ slug }: { slug: string }) {
   const { data } = useCompanyResponseSignal(slug);
   if (!data) return null;
   return (
     <section className="mt-10 border-t border-g-hairline pt-6" data-testid="company-response-signal" aria-label="Company responsiveness">
-      <h2 className={EYEBROW}>Company responsiveness</h2>
-      {data.state === "shown" ? <ShownSignal data={data} /> : (
-        <p className="mt-3 text-g-meta text-g-ink-2">Not enough requests yet to show a response signal. We never show a number we can’t back.</p>
+      <h2 className={EYEBROW}>{COMPANY_SIGNAL_COPY.intro}</h2>
+      {data.state === "shown" ? (
+        <>
+          <ShownSignal data={data} />
+          <p className="mt-3 text-g-meta text-g-ink-3">{COMPANY_SIGNAL_COPY.disclaimer}</p>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-g-meta text-g-ink-2">{COMPANY_SIGNAL_COPY.insufficient}</p>
+          <p className="mt-1 text-g-meta text-g-ink-3">{COMPANY_SIGNAL_COPY.disclaimer}</p>
+        </>
       )}
     </section>
   );
@@ -231,9 +250,9 @@ function Responsiveness({ slug }: { slug: string }) {
 function ShownSignal({ data }: { data: CompanyResponseSignal }) {
   if (data.state !== "shown") return null;
   const rows: [string, number, string][] = [
-    ["usual first reply", data.usualFirstReplyDays, data.usualFirstReplyDays === 1 ? "day" : "days"],
-    ["asks answered this month", data.answeredThisMonth, ""],
-    ["referrers inside", data.referrersInside, ""],
+    [COMPANY_SIGNAL_COPY.usualFirstReply, data.usualFirstReplyDays, data.usualFirstReplyDays === 1 ? COMPANY_SIGNAL_COPY.day : COMPANY_SIGNAL_COPY.days],
+    [COMPANY_SIGNAL_COPY.answeredThisMonth, data.answeredThisMonth, ""],
+    [COMPANY_SIGNAL_COPY.referrersInside, data.referrersInside, ""],
   ];
   return (
     <dl className="mt-3 grid gap-2">

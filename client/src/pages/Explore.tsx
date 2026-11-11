@@ -1,22 +1,32 @@
-// Find a referral (D-048 phase 3; approved comp design/goal-ui/pick/find-a-referral.*):
-// the company directory with search and filter chips, and the ask drawer
-// (desktop: docked 480px column, no scrim; phone: full-height sheet). Every
-// number comes from GET /api/companies, /api/credits/summary and the live send
-// response; D-176: availability never appears in the directory - it only routes the sent ask.
-// The composer machinery is useAskComposer, shared with the company page.
+// Find a referral, redesigned to the doctrine (D-048-p3-live-review-find;
+// contract "Get referred." in docs/plans/GOAL_UI_MIGRATION.md): the seeker
+// home of the contract. It opens with the goal line, holds the search inside
+// the single "Your next step" block with one black commit ("Find your
+// company": opens the door when the search names exactly one company, routes
+// an unlisted company to the paste-a-link path on /ask, and otherwise hands
+// the seeker to the filtered list), states the free-credit line from the
+// shared money copy, and closes with the three-step how-it-goes. The ask
+// drawer (desktop: docked 480px column, no scrim; phone: full-height sheet)
+// and its composer machinery (useAskComposer, shared with the company page)
+// are unchanged; every number comes from GET /api/companies,
+// /api/credits/summary and the live send response; D-176: availability never
+// appears in the directory - it only routes the sent ask.
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
   GoalAppShell,
+  GoalButton,
   GoalCompanyRow,
   GoalEmptyState,
   GoalErrorState,
   GoalFilterChip,
+  GoalNextStep,
   GoalNum,
   GoalSearchInput,
   GoalSkeletonRows,
 } from "@/components/goal";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import { exploreDescription, useCompanyDirectory } from "@/lib/companyDirectory";
 import { trackClarityEvent } from "@/lib/clarity";
 import { applySeo } from "@/lib/seo";
@@ -25,6 +35,10 @@ import { AskDrawer } from "./explore/AskDrawer";
 import { directorySummary, filterCompanies, FILTER_FUNCTIONS } from "./explore/findModel";
 import { useAskComposer } from "./explore/useAskComposer";
 import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState } from "./explore/useCompanySearch";
+
+// The moved-page contract (GOAL_UI_COVERAGE §1.7): the seeker's goal in their
+// words. The directory IS the next step, so the search lives inside the block.
+export const GOAL_PAGE = { goalLine: "Get referred." } as const;
 
 export default function Explore() {
   const [, navigate] = useLocation();
@@ -102,6 +116,18 @@ export default function Explore() {
 
   const clearFilters = () => { setQuery(""); setFn(null); };
 
+  // The next step's single black commit: an unambiguous search opens the
+  // company's door; nothing listed routes to /ask's paste-a-link path (the
+  // same hand-off the typeahead's no-match state offers); anything else hands
+  // the seeker to the filtered list.
+  const findCompany = () => {
+    if (!query.trim()) return;
+    if (shown.length === 1) { selectCompany(shown[0].slug); return; }
+    if (shown.length === 0) { navigate("/ask"); return; }
+    listRef.current?.focus();
+  };
+  const listRef = useRef<HTMLUListElement | null>(null);
+
   let directoryBody: ReactNode;
   if (directory.isError) {
     directoryBody = <GoalErrorState className="px-0" title="We couldn’t load companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: () => { void directory.refetch(); } }} />;
@@ -122,7 +148,7 @@ export default function Explore() {
         <p data-testid="goal-directory-summary" className="mt-7 text-g-meta text-g-ink-3 max-gdesk:mt-6">
           <GoalNum className="text-g-ink-2">{summary.total}</GoalNum> {summary.total === 1 ? "company" : "companies"}
         </p>
-        <ul aria-label="Companies" className="-mx-2 mt-2 grid max-gdesk:mx-0">
+        <ul ref={listRef} tabIndex={-1} aria-label="Companies" className="-mx-2 mt-2 grid max-gdesk:mx-0 focus:outline-none">
           {shown.map(item => (
             <GoalCompanyRow
               key={item.slug}
@@ -183,15 +209,31 @@ export default function Explore() {
       ) : undefined}
     >
       <div data-skipwait-screen="find-a-referral" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
-        <h1 className="text-balance text-g-display text-g-ink">Where do you want a referral?</h1>
+        <h1 className="text-balance text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
         <p className="mt-2 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
         <div className="mt-6 max-gdesk:mt-5">
-          {typeahead ? (
-            <CompanyTypeahead value={query} onChange={setQuery} search={companySearch} unlisted={noMatch} onOpen={slug => navigate(`/explore/${slug}`)} />
-          ) : (
-            <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
-          )}
+        <GoalNextStep reason="Search for your company, then request a referral.">
+          <div>
+            {typeahead ? (
+              <CompanyTypeahead value={query} onChange={setQuery} search={companySearch} unlisted={noMatch} onOpen={slug => navigate(`/explore/${slug}`)} />
+            ) : (
+              <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
+            )}
+          </div>
+          <div className="mt-3 max-gdesk:grid">
+            <GoalButton
+              variant="primary"
+              touch="large"
+              className="gdesk:min-w-[240px]"
+              disabledReason={query.trim() ? undefined : "Type a company name to search."}
+              onClick={findCompany}
+            >
+              Find your company
+            </GoalButton>
+          </div>
+        </GoalNextStep>
         </div>
+        <p className="mt-3 text-g-meta text-g-ink-3">{FREE_ASKS_CHIP}.</p>
         <div role="group" aria-label="Filter companies" className="mt-4 flex flex-wrap gap-2 max-gdesk:gap-y-3">
           <GoalFilterChip label="All companies" pressed={fn === null} onPressedChange={() => { setFn(null); }} />
           {FILTER_FUNCTIONS.map(item => (
@@ -199,6 +241,24 @@ export default function Explore() {
           ))}
         </div>
         {directoryBody}
+        <section className="mt-10" aria-label="How it goes">
+          <h2 className="text-g-heading text-g-ink">How it goes</h2>
+          <ol className="mt-3 divide-y divide-g-hairline border-t border-g-hairline">
+            {[
+              ["Find your company", "Search the directory of verified employers."],
+              ["Paste the job link and say why you fit", "One link and three short reasons. Your name and resume stay private until an employee accepts."],
+              ["A verified employee accepts and refers", "You get their answer in your asks. No referral is guaranteed."],
+            ].map(([title, body], index) => (
+              <li key={title} className="flex gap-4 py-4">
+                <span aria-hidden="true" className="font-g-mono text-g-meta text-g-ink-3">{`0${index + 1}`}</span>
+                <div className="min-w-0">
+                  <p className="text-g-label text-g-ink">{title}</p>
+                  <p className="mt-0.5 text-g-meta text-g-ink-3">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
     </GoalAppShell>
   );

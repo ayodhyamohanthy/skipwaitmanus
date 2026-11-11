@@ -10,6 +10,19 @@ import type { PublicOpportunityPost } from "@shared/companyOpportunities";
 
 import Explore from "./Explore";
 import ExploreCompany from "./ExploreCompany";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { GOAL_NEXT_STEP_LABEL, GOAL_NEXT_STEP_HEADING_ID } from "@/components/goal/GoalNextStep";
+import { FREE_ASKS_CHIP, ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
+
+// The kit-class set, read from the stylesheet exactly as the page-contract
+// helper does (kit classes share no prefix).
+function kitClassNames(): Set<string> {
+  const css = readFileSync(join(__dirname, "..", "styles", "kit.css"), "utf8");
+  const names = new Set<string>();
+  for (const match of Array.from(css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/g))) names.add(match[1]);
+  return names;
+}
 
 const { go, routeState, searchState, authState, accessState } = vi.hoisted(() => ({
   go: vi.fn(),
@@ -98,7 +111,7 @@ describe("Find a referral directory", () => {
   it("renders the goal directory in alphabetical order from GET /api/companies", async () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<Explore />);
-    expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
+    expect(await screen.findByText("Get referred.")).toBeTruthy();
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^5 companies$/);
     const list = screen.getByRole("list", { name: "Companies" });
     expect(within(list).getAllByRole("link").map(row => row.getAttribute("aria-label"))).toEqual(rowNames);
@@ -228,7 +241,7 @@ describe("Find a referral directory", () => {
 });
 const heroName = async () => {
   await waitFor(() => expect(document.querySelector('[data-skipwait-screen="explore-company"]')).toBeTruthy());
-  return within(document.querySelector('[data-skipwait-screen="explore-company"]') as HTMLElement).getByRole("heading", { name: "Wipro" });
+  return within(document.querySelector('[data-skipwait-screen="explore-company"]') as HTMLElement).getByRole("heading", { name: "Get referred at Wipro." });
 };
 
 describe("Explore company door (goal, W2)", () => {
@@ -304,8 +317,8 @@ describe("Explore company door (goal, W2)", () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<ExploreCompany />);
     expect(await heroName()).toBeTruthy();
-    expect(screen.getByText("People open to referral requests")).toBeTruthy();
-    expect(screen.getByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
+    // D-176: no open/not-open pill; the goal line and the commit carry the truth.
+    expect(screen.queryByText("People open to referral requests")).toBeNull();
     expect(screen.getByRole("button", { name: "Ask for a referral" }).getAttribute("data-g-primary")).toBe("true");
     expect(screen.getByText("3 free referrals every month; extra referral requests use your balance.")).toBeTruthy();
     // Company mark is initials, never a logo; functions join the hero, not the old kit meta.
@@ -326,17 +339,17 @@ describe("Explore company door (goal, W2)", () => {
     expect(companyPaths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities"]);
   });
 
-  it("not open: ring dot with Not open yet, a quiet Alert me link, and a ghost Ask anyway that states the wait honestly", async () => {
+  it("not open: the wait is stated honestly in the commit's line, the cost is still stated first, and Alert me stays", async () => {
     stubDirectory(directoryOf([company("wipro", false)]));
     renderWithQuery(<ExploreCompany />);
     expect(await heroName()).toBeTruthy();
-    expect(screen.queryByText("People open to referral requests")).toBeNull();
-    expect(screen.getByText("Not open yet")).toBeTruthy();
+    // One black commit in both states: the ask is the goal either way; the
+    // honesty lives in the reason line (D-176 post-save truth, D-180 wording).
+    const commit = screen.getByRole("button", { name: "Ask for a referral" });
+    expect(commit.getAttribute("data-g-primary")).toBe("true");
     expect(screen.getByRole("link", { name: "Alert me" }).getAttribute("href")).toBe("/alerts");
-    const commit = screen.getByRole("button", { name: "Ask anyway" });
-    expect(commit.getAttribute("data-g-primary")).toBeNull();
     expect(screen.getByText(/waits free until one can/)).toBeTruthy();
-    expect(screen.queryByText(/3 free referrals every month/)).toBeNull();
+    expect(screen.getAllByText(/3 free referrals every month/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("explains a failed load with Try again instead of a 404", async () => {
@@ -405,5 +418,109 @@ describe("Explore company door (goal, W2)", () => {
     expect(within(drawer).getByText("Wipro")).toBeTruthy();
     // The remote draft for wipro fills the job link; nothing is sent.
     await waitFor(() => expect((within(drawer).getByLabelText(/Job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1"));
+  });
+});
+
+// The goal redesign (D-048-p3-live-review-find, D-150/D-167): every surface
+// opens with the goal line, carries exactly one "Your next step" block with
+// the page's single black commit inside it, states the free-credit line from
+// the shared money copy, and never imports a kit class (GOAL_UI_COVERAGE §1).
+describe("Goal redesign of the find surfaces", () => {
+  // The contract pieces (GOAL_UI_COVERAGE §1) asserted on the rendered page.
+  // §1.7's assertGoalPage h1-count is NOT asserted: the goal shell renders a
+  // second h1 of its own (GoalShell.tsx:150, foundation-owned), the recorded
+  // blocker that keeps every GoalAppShell page from claiming §1.7.
+  const assertGoalPieces = (container: HTMLElement, goalLine: string) => {
+    const pageH1s = Array.from(container.querySelectorAll("h1")).filter(h1 => h1.textContent === goalLine);
+    expect(pageH1s).toHaveLength(1);
+    const regions = Array.from(container.querySelectorAll(`section[aria-labelledby="${GOAL_NEXT_STEP_HEADING_ID}"]`));
+    expect(regions).toHaveLength(1);
+    const primaries = Array.from(container.querySelectorAll("[data-g-primary]"));
+    expect(primaries).toHaveLength(1);
+    expect(regions[0].contains(primaries[0])).toBe(true);
+    const kit = kitClassNames();
+    const offenders: string[] = [];
+    for (const el of Array.from(container.querySelectorAll("*"))) {
+      for (const cls of Array.from(el.classList)) if (kit.has(cls)) { offenders.push(cls); break; }
+    }
+    expect(offenders).toEqual([]);
+  };
+
+  it("/explore meets the goal contract: goal line, one next step, one black commit, no kit", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<Explore />);
+    await waitFor(() => expect(screen.getByTestId("goal-directory-summary")).toBeTruthy());
+    assertGoalPieces(container, "Get referred.");
+    expect(screen.getByText(`${FREE_ASKS_CHIP}.`)).toBeTruthy();
+    // The three-step how-it-goes names the real steps, referral-only (D-180).
+    const steps = screen.getByRole("region", { name: "How it goes" });
+    expect(within(steps).getAllByRole("listitem").map(item => item.querySelector("p")?.textContent)).toEqual([
+      "Find your company",
+      "Paste the job link and say why you fit",
+      "A verified employee accepts and refers",
+    ]);
+  });
+
+  it("/explore's black commit opens the door when the search names exactly one company", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<Explore />);
+    await waitFor(() => expect(screen.getByTestId("goal-directory-summary")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
+    fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
+    expect(go).toHaveBeenCalledWith("/explore?company=wipro", { replace: true });
+    expect(container).toBeTruthy();
+  });
+
+  it("/explore's black commit routes an unlisted company to /ask's paste-a-link path", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<Explore />);
+    await waitFor(() => expect(screen.getByTestId("goal-directory-summary")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Unlisted Widgets" } });
+    fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
+    expect(go).toHaveBeenCalledWith("/ask");
+    expect(container).toBeTruthy();
+  });
+
+  it("the door meets the goal contract: goal line, one next step, one black commit", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<ExploreCompany />);
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Get referred at Wipro." })).toBeTruthy());
+    assertGoalPieces(container, "Get referred at Wipro.");
+    // The cost is stated before the ask, from the shared money copy only.
+    expect(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByText(ASK_COST_SENTENCE)).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByText(MONEY_SENTENCE)).toBeTruthy();
+  });
+
+  it("the door offers 'Claim this company' if you work here", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<ExploreCompany />);
+    const claim = await screen.findByRole("link", { name: "Claim this company" });
+    expect(claim.getAttribute("href")).toBe("/company/claim");
+    expect(container).toBeTruthy();
+  });
+
+  it("an unknown slug renders inside the goal frame, with the way back", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const path = String(input);
+      if (path === "/api/companies/nobody") return json(404, { error: "This door doesn't lead anywhere" });
+      if (path === "/api/companies") return json(200, ALL_OPEN);
+      return json(404, { error: "not found" });
+    }));
+    routeState.slug = "nobody";
+    const { container } = renderWithQuery(<ExploreCompany />);
+    expect(await screen.findByText("This door doesn't lead anywhere.")).toBeTruthy();
+    expect(container.querySelector("[data-skipwait-screen='explore-company-not-found']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='goal-shell']")).toBeTruthy();
+  });
+
+  it("after a send, closing and reopening the door's drawer starts a new ask, not the old sent view", async () => {
+    stubDirectory();
+    renderWithQuery(<ExploreCompany />);
+    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
+    const drawer = await screen.findByTestId("goal-drawer");
+    fireEvent.click(within(drawer).getByRole("button", { name: /Close/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
+    // The fresh drawer shows the composer, not the previous send's confirmation.
+    expect(within(await screen.findByTestId("goal-drawer")).getByLabelText(/Job link/)).toBeTruthy();
   });
 });
