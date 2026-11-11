@@ -2,6 +2,24 @@
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first. Decided by Claude Code as CEO under D-109 on Oct 21 2026, from a read-only study of the code (eight agents: surface map, rollout map, shared hotspots, picker mechanics; three designs judged). The register wins any conflict. Nobody picks a row from this file by hand: rows enter `docs/plans/assignments.json` as described below and `node scripts/next-task.mjs` hands them out.
 
+## November 11 sign-in scope supersession (existing row only)
+
+For `D-048-p3-signin`, the November 11 current-goal correction in
+`D-048-auth.md` supersedes this split's old row-table description that #404's
+dark body is already the goal sign-in and that only two password pages remain.
+It also supersedes "D-033 role cards move unchanged" as a pixel/layout rule:
+preserve the required seeker/referrer choice and locked authentication behavior,
+not the rejected old cards' arrangement or copy. The old row text stays as
+history, not as a higher-precedence instruction to reuse that body.
+
+The current sign-in row uses its EXISTING `SignIn.tsx` switch-only path (within
+the 12-line cap) to select a NEW goal-native entry under its EXISTING
+`pages/goal/sign-in/**` ownership. No new row, path ownership, dependency, tier,
+queue order, flag or release is added. The legacy `pages/GoalSignIn.tsx` is owned
+by `DEVICE-SIGNIN-passkeys` in the current assignments register, not unowned;
+this correction does not edit or transfer that file. The split's existing
+behavior, independent review, auth holds and separate release checks still apply.
+
 ## Why the rollout was serial
 All D-048 rows shared the lane `design`, and the picker allows one open pull request per lane, so phase 3 could only move one page at a time. Lanes are free strings: splitting the lane is a data change. What makes parallel work unsafe is a short list of shared files, which one foundation chain now owns: the route table (`client/src/App.tsx`, all 87 routes on one line), the app shell, `client/src/components/goal/**`, the goal boundary test's allowlist, tokens and kit files.
 
