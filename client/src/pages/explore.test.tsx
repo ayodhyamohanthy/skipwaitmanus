@@ -320,7 +320,7 @@ describe("Explore company door (goal, W2)", () => {
     // D-176: no open/not-open pill; the goal line and the commit carry the truth.
     expect(screen.queryByText("People open to referral requests")).toBeNull();
     expect(screen.getByRole("button", { name: "Ask for a referral" }).getAttribute("data-g-primary")).toBe("true");
-    expect(screen.getByText("3 free referrals every month; extra referral requests use your balance.")).toBeTruthy();
+    expect(screen.getByText(MONEY_SENTENCE)).toBeTruthy();
     // Company mark is initials, never a logo; functions join the hero, not the old kit meta.
     expect(screen.getByText("W", { exact: true })).toBeTruthy();
     expect(screen.getByText(/Find a role on the company’s own careers site/)).toBeTruthy();
@@ -486,8 +486,8 @@ describe("Goal redesign of the find surfaces", () => {
     const { container } = renderWithQuery(<ExploreCompany />);
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Get referred at Wipro." })).toBeTruthy());
     assertGoalPieces(container, "Get referred at Wipro.");
-    // The cost is stated before the ask, from the shared money copy only.
-    expect(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByText(ASK_COST_SENTENCE)).toBeTruthy();
+    // The cost is stated before the ask, from the shared money copy only
+    // (the money sentence carries the cost sentence inside it).
     expect(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByText(MONEY_SENTENCE)).toBeTruthy();
   });
 

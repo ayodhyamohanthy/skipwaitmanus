@@ -28,6 +28,8 @@ import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
 import type { CompanyResponseSignal } from "@shared/companyResponseSignal";
 import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
+// ASK_COST_SENTENCE stays for the SEO description below; the block states the
+// cost once, through MONEY_SENTENCE.
 import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
 import { COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { NotFoundContent } from "./NotFound";
@@ -166,8 +168,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         <div className="mt-6">
           <GoalNextStep reason={open ? "One request to a verified employee of this company." : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}>
             <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={() => setDrawerOpen(true)}>Ask for a referral</GoalButton>
-            <p className="mt-3 text-g-meta text-g-ink-3">{ASK_COST_SENTENCE}</p>
-            <p className="mt-1 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+            <p className="mt-3 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
           </GoalNextStep>
         </div>
         {!open ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/alerts" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Alert me</Link> when this company opens up.</p> : null}
