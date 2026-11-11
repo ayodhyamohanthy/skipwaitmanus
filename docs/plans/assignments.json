@@ -2969,7 +2969,7 @@
       "tier": 2,
       "lane": "d048-home",
       "branch": "agent/queue/d048-p3-home-signed-in",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
