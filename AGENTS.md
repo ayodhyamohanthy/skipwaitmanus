@@ -497,6 +497,13 @@ which rules were adopted or rejected when this section changes.
   as moved only under its §1 definition (goal line, one next-step block with one
   black commit, no kit imports, the flow rebuilt rather than recoloured,
   `assertGoalPage`, captures). Every surface row depends on `D-048-F-goal-check`.
+- **D-324 (owner, Nov 11): the old design is removed completely and the change is forced.**
+  Each surface goes build, release (`D-048-R-<id>`, directly after its build row),
+  7 days live, then its retirement row `D-048-K-<surface>` deletes the kit page and the
+  switch; `D-048-K-kit` deletes the kit layer last (`docs/plans/D-048-retire.md`). Never
+  delete an old page before its goal page is live (D-019). Never add a kit import, a new
+  old/new switch or take a released surface out of `RELEASED`; `GATE-goal-design-ratchet`
+  makes CI refuse all three. Report the old design as removed only when `D-048-K-kit` has landed.
 - **D-048 phase 2 shipped (Oct 19):** `DESIGN.md` is the goal-UI visual contract
   (comps approved by D-071, `design/goal-ui/pick/`). It governs each surface as
   the migration moves it to `client/src/components/goal/` (tokens: the phase-2

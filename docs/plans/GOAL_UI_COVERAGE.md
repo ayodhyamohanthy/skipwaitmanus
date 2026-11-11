@@ -244,7 +244,9 @@ The split's row text now names them, so their lane packet writer adds them:
   1. the foundation rows (`D-048-F-*`, with §6.1 and §6.2);
   2. the redesign rows of the live pages (`D-048-p3-live-review-*`);
   3. the lane rows, top down in `docs/plans/assignments.json`;
-  4. `D-048-K-kit` last.
+  4. each surface's release row `D-048-R-<id>` directly after its build row (D-317, D-324);
+  5. each surface's retirement row `D-048-K-<surface>` 7 days after its release (`docs/plans/D-048-retire.md`, D-324);
+  6. `D-048-K-kit` last.
 - **Every surface row depends on `D-048-F-goal-check`.** Lane packets add it to each row they add.
 - **A new route or component** needs its line here (§2-§5) in the same PR (D-167). Ask the CEO with `--report blocked` when no row fits.
 
