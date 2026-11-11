@@ -8,7 +8,7 @@ import { CircleAlert, ExternalLink, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { GoalButton, GoalIconButton } from "@/components/goal";
 import { WORK_KINDS, WORK_VISIBILITY_LABELS, workKindLabel, type WorkItem, type WorkKind } from "@/components/profile/workItems";
-import type { ProfileVisibility } from "@/components/profile/VisibilityOptions";
+import type { ProfileVisibility } from "@/components/profile/profileVisibility";
 import { readApiJson } from "@/lib/apiResponse";
 
 export const GOAL_LINE = "Choose what referrers see.";
