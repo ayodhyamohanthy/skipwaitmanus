@@ -34,7 +34,7 @@ export function HomeSignedIn() {
 
   if (access.status === "error") {
     return (
-      <GoalStaticFrame status="We couldn't check your referral access">
+      <GoalStaticFrame>
         <GoalErrorState
           className="px-0"
           title="We couldn't check your referral access."
