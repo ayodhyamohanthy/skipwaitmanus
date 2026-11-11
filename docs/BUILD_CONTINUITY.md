@@ -42,6 +42,24 @@ These instructions apply only inside an active session. They install no schedule
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
 
+
+## Coordinator checklist: keep work moving (D-321, November 11)
+
+Owner, November 10-11: "no blockers", "as many agents work parallely", "just a build command lets agents pick tasks and work", "push to live if some tasks have passed test", and of the coordinator, "let instinct make no mistakes too". These rules bind Instinct and any session coordinating. Each one answers a mistake measured in D-316, D-317 or the November 10 audit.
+
+1. **Park a row at `owner` only for the owner's own call:** prices or what is on sale, legal text, the login rule, repository settings and secrets, spending, a post in his name. A row at `owner` gets no work from the picker, so findings, conflicts and missing reviews are never a reason to park: leave it `todo` and the picker hands the fix, make-green or review.
+2. **Every hold names its release condition, and the pull request that meets the condition releases the row.** After any picker or gate fix lands, re-read every hold that cited it the same day.
+3. **Never write "the owner's restriction" or "owner comment" without the owner's own message.** A coordinator recommendation, an agent's report or a pull-request comment is labelled as what it is. Every agent posts from one GitHub account, so a comment's author proves nothing.
+4. **A hold that waits on evidence only the coordinator can supply is the coordinator's task, due the same day** (for example the private contract `P0-referral-access-availability` waits on, D-318/D-320). If it cannot be supplied, say so and give the row another route.
+5. **Tier 2 and 3 land on green required CI, with no extra review round (D-200 (4)).** Tier 1 needs one independent pass, nothing more.
+6. **Land what has passed.** At least twice a day run `node scripts/next-task.mjs --status`. For each Tier 1 pull request showing "review passed" and red CI: the review-gate step often ran seconds before the verdict was recorded. Run `node scripts/review-gate.mjs` on its head; if it passes, merge `origin/main` into the branch (a two-parent merge) so CI re-runs, then merge when every check is green and main is green. Do not hand it MAKE GREEN again.
+7. **A built page is not live until its release row lands (D-317).** When a goal surface's build row is done, check its `D-048-R-<id>` row is picked; registering new switched-off work without its release row is how production kept the old design.
+8. **Register the next rows before the queue runs dry.** If a simulation or the board shows sessions getting AHEAD work only, decompose the next decided priority into rows the same day (D-223).
+9. **Tell every session to `git pull --ff-only` main before `build`.** The picker runs the local `scripts/` against the task list on `origin/main`; an old copy rejects a newer list.
+10. **Do not hold a task with a claim only the coordinator can continue.** A coordinator claim quiet for 2 hours is free like anyone's (D-085); an external-model route must not make its row untakeable.
+
+These rules change no product, price, login, legal, settings or spending decision and waive no review or CI.
+
 ## Ask Instinct before asking the owner manually
 
 Owner instruction, October 29, 2026: "Whatever the coding sessions are they will ask you before asking me manually." The owner then asked to push this rule to the instructions and repo. This applies to coding sessions on every platform, not just one client. The owner explicitly named OpenCode, Cline, Qoder, Perch CLI, Claude, Freebuff and WorkBuddy, and any number of sessions; these names do not imply a verified connection to each app.
