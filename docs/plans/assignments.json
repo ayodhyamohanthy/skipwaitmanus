@@ -2433,7 +2433,7 @@
       "tier": 1,
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-319",
       "dependsOn": [
         "D-048-F-harness",
