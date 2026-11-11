@@ -283,3 +283,5 @@ All switches, scope, ownership, dependencies, queue order, existing source,
 findings and product rules remain unchanged. Historical note text is kept
 for provenance, not presented as current owner-wait state. This is status
 reconciliation, not code completion, a pass, landing or live deployment.
+
+D-174-job-sources-more: done — `8b52adc9` — Tier 1 re-review PASS by Inkling 2 Small Free · eaba (2026-11-11); merged main, status done in the registry, landed via PR #938 as `5f297cb68f403bb62ef0247c6c4e820e95e03743`; exact-head CI green (typecheck/unit/build/e2e), API and web deploys green, live at `5f297cb` CONVERGED; `JOB_CATALOG_ENABLED` stays false.
