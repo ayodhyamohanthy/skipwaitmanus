@@ -71,6 +71,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/privacy",
   "/profile",
   "/queue",
+  "/r/:token",
   "/refer/:companySlug/:vanityAlias",
   "/referrer",
   "/referrer-home",

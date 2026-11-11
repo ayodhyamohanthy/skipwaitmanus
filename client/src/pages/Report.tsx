@@ -1,5 +1,7 @@
 import { ArrowLeft, ArrowRight, Ban, Check, Flag, LifeBuoy, ShieldAlert, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalReport = lazy(() => import("./goal/support/GoalReport"));
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/kit/button";
@@ -17,6 +19,10 @@ const REASONS = [
 ] as const;
 
 export default function Report() {
+  return goalSurfaceOn("support") ? <Suspense fallback={null}><GoalReport /></Suspense> : <KitReport />;
+}
+
+function KitReport() {
   const [, go] = useLocation();
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);

@@ -4,11 +4,13 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
+import { publicRoute } from "@shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
 import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
 import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 import GoalLandingV9 from "./GoalLandingV9";
+import HomeSignedIn from "./goal/home/HomeSignedIn";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import CookieConsent from "@/components/CookieConsent";
 
@@ -27,11 +29,16 @@ export default function Home() {
   // flag (off in production until QA verifies). Signed-in visitors keep the
   // existing page until the Home surface migrates.
   const goalLanding = goalSurfaceOn("home") && isLoaded && !isSignedIn;
+  // D-048-p3-home-signed-in: with the switch on, a signed-in visitor and the
+  // auth-loading moment render the goal router instead of this page, so nobody
+  // sees the landing first. Signed-out visitors are untouched.
+  const goalSignedIn = goalSurfaceOn("home-signed-in") && (isLoaded === false || isSignedIn);
   useEffect(() => {
-    if (goalLanding) return;
-    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `skipwait.me connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
-  }, [goalLanding]);
+    if (goalLanding || goalSignedIn) return;
+    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: publicRoute("/")!.description, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
+  }, [goalLanding, goalSignedIn]);
   if (goalLanding) return <GoalLandingV9 />;
+  if (goalSignedIn) return <HomeSignedIn />;
 
   return (
     <div className="launch-page">

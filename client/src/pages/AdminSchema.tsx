@@ -1,9 +1,10 @@
 import { SignInButton, useAuth } from "@/_core/auth";
 import { ArrowRight, CheckCircle2, Database, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, lazy, Suspense, useState } from "react";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type StatementResult = { statement: string; ok: boolean; error?: string };
 type SchemaSnapshot = { reconciled: boolean; results: StatementResult[]; firstError: string | null };
@@ -14,7 +15,12 @@ type SchemaSnapshot = { reconciled: boolean; results: StatementResult[]; firstEr
  * (the fixed ALTER/CREATE list in server/schemaReconcile.ts) from the app —
  * no shell or migration client needed. There is no free-form SQL input.
  */
+// D-048-p3-admin-ops: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-ops).
+const GoalAdminSchema = lazy(() => import("./goal/admin-ops/GoalAdminSchema"));
+
 export default function AdminSchema() {
+  if (goalSurfaceOn("admin-ops")) return <Suspense fallback={null}><GoalAdminSchema /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [snapshot, setSnapshot] = useState<SchemaSnapshot | null>(null);
   const [loading, setLoading] = useState(false);

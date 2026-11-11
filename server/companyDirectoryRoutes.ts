@@ -1,5 +1,6 @@
 // Company directory REST surface.
 //   GET  /api/companies            public, cacheable: listed companies + openCount
+//   GET  /api/companies/search?q=  public, cacheable: at most 10 companies by name or alias (D-174)
 //   GET  /api/companies/:slug      public, cacheable: one listed company, 404 otherwise
 //   GET  /api/companies/:slug/opportunities  public, cacheable: a company's live
 //                                  employee-posted roles (D-022), newest first
@@ -9,7 +10,8 @@
 //   PATCH /api/admin/companies/:id admin: edit, hide/list, add/remove alias domains
 // Contracts live in shared/companies.ts; services are injectable for tests.
 import express, { type Express, type Request, type Response } from "express";
-import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
+import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, companySearchQuerySchema, companySearchResponseSchema, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
+import { searchCompanies } from "./companySearch";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
 import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
@@ -75,6 +77,18 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
   app.get("/api/companies", async (_req, res) => {
     try { const directory = await list(); res.set("Cache-Control", PUBLIC_CACHE).json(directory); }
     catch (error) { failure(res, error, "We could not load companies"); }
+  });
+
+  // D-174 company search: name and alias only, at most 10, no availability
+  // field (D-176). Registered before /:slug or "search" would read as a slug.
+  app.get("/api/companies/search", async (req, res) => {
+    const parsed = companySearchQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).set("Cache-Control", "no-store").json({ error: "Invalid search" });
+    try {
+      const { companies } = await list();
+      const results = searchCompanies(companies, parsed.data.q).map(({ openToReferrals: _open, ...rest }) => rest);
+      res.set("Cache-Control", PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results }));
+    } catch (error) { failure(res, error, "We could not search companies"); }
   });
 
   app.get("/api/companies/:slug", async (req, res) => {

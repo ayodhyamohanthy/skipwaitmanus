@@ -1,0 +1,1052 @@
+{
+  "source": "501adf59e02c79de24d0c15b2add520020f56a7b",
+  "sourceTreeDirty": false,
+  "build": "VITE_GOAL_SURFACES=admin-ops (local vite dev server, every /api call mocked in the browser)",
+  "command": "node design/goal-ui/captures/admin-ops/capture.mjs",
+  "synthetic": true,
+  "clock": "2026-10-08T10:00:00+05:30 fixed",
+  "results": [
+    {
+      "file": "goal-admin-ops-activity-default-390.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/activity -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-empty-390.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/activity -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-error-390.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/activity -> 500"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "[API Query Error] Error: We could not load operational activity\n    at loadActivity (http://localhost:5199/src/pages/goal/admin-ops/adminOpsApi.ts:48:27)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-signed-out-390.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-default-390.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-no-baseline-390.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-error-390.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 500",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "[API Query Error] Error: We could not load referral flow health\n    at loadFlowHealth (http://localhost:5199/src/pages/goal/admin-ops/adminOpsApi.ts:72:33)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-pending-390.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-reconciled-390.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-smoke-roles-390.png",
+      "route": "/admin/smoke",
+      "screen": "admin-smoke",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/smoke/status -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Open the synthetic smoke fixture."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-smoke-active-390.png",
+      "route": "/admin/smoke",
+      "screen": "admin-smoke",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/smoke/status -> 200",
+          "GET /api/admin/smoke/snapshot -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Open the synthetic smoke fixture."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-smoke-disabled-390.png",
+      "route": "/admin/smoke",
+      "screen": "not-found",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/smoke/status -> 404"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Not found"
+      ],
+      "nextStepBlocks": 0,
+      "primaryCommits": 0,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-modules-390.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-sponsored-390.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": [
+          "/^Sponsored roles/"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-end-choice-390.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": [
+          "/^Sponsored roles/",
+          "{\"check\":\"Senior Frontend Engineer\"}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-denied-390.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners-forbidden",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 403",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 0,
+      "primaryCommits": 0,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "[API Query Error] AdminAccessError: Administrator access is required.\n    at loadPartnerInventory (http://localhost:5199/src/pages/goal/admin-ops/adminOpsApi.ts:153:80)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-empty-390.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-signed-out-390.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-default-1280.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/activity -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-empty-1280.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/activity -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-error-1280.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/activity -> 500"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "[API Query Error] Error: We could not load operational activity\n    at loadActivity (http://localhost:5199/src/pages/goal/admin-ops/adminOpsApi.ts:48:27)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-activity-signed-out-1280.png",
+      "route": "/admin/activity",
+      "screen": "admin-activity-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Diagnose the referral journey."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-default-1280.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-no-baseline-1280.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-error-1280.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 500",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "[API Query Error] Error: We could not load referral flow health\n    at loadFlowHealth (http://localhost:5199/src/pages/goal/admin-ops/adminOpsApi.ts:72:33)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-pending-1280.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-reconciled-1280.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-smoke-roles-1280.png",
+      "route": "/admin/smoke",
+      "screen": "admin-smoke",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/smoke/status -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Open the synthetic smoke fixture."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-smoke-active-1280.png",
+      "route": "/admin/smoke",
+      "screen": "admin-smoke",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/smoke/status -> 200",
+          "GET /api/admin/smoke/snapshot -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Open the synthetic smoke fixture."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-smoke-disabled-1280.png",
+      "route": "/admin/smoke",
+      "screen": "not-found",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/smoke/status -> 404"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Not found"
+      ],
+      "nextStepBlocks": 0,
+      "primaryCommits": 0,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-modules-1280.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-sponsored-1280.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": [
+          "/^Sponsored roles/"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-end-choice-1280.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": [
+          "/^Sponsored roles/",
+          "{\"check\":\"Senior Frontend Engineer\"}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-denied-1280.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners-forbidden",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 403",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 0,
+      "primaryCommits": 0,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "[API Query Error] AdminAccessError: Administrator access is required.\n    at loadPartnerInventory (http://localhost:5199/src/pages/goal/admin-ops/adminOpsApi.ts:153:80)"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-empty-1280.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/partners -> 200",
+          "GET /api/admin/sponsorships -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-partners-signed-out-1280.png",
+      "route": "/admin/partners",
+      "screen": "admin-partners-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Curate partner slots and sponsored roles."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    }
+  ]
+}

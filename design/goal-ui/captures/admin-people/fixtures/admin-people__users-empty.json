@@ -1,0 +1,7 @@
+{
+  "signedIn": { "id": 1, "name": "Ops Admin", "email": "ops@example.com", "role": "admin" },
+  "routes": [
+    { "method": "GET", "path": "/api/admin/users", "match": "prefix", "status": 200, "body": { "users": [] } }
+  ],
+  "actions": [{ "waitFor": "text=No accounts yet" }]
+}

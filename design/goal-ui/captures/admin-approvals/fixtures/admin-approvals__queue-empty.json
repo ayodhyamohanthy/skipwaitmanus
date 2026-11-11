@@ -1,0 +1,20 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/approval-queue",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "items": []
+      }
+    }
+  ],
+  "route": "/admin/approvals"
+}

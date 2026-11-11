@@ -1,0 +1,90 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "account": {
+          "id": 7,
+          "companyName": "Northwind Robotics",
+          "billingEmail": "hire@northwind.example",
+          "credits": 8,
+          "budgetMonthlyUsdCents": 5000,
+          "approvalStatus": "approved"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/opportunities",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "opportunities": [
+          {
+            "id": 1,
+            "companyDomain": "northwind.example",
+            "kind": "hiring_now",
+            "roleTitle": "Battery engineer",
+            "location": "Pune",
+            "compensation": null,
+            "isActive": true,
+            "sponsoredTier": "featured",
+            "sponsoredUntil": null,
+            "isSponsored": true
+          },
+          {
+            "id": 2,
+            "companyDomain": "northwind.example",
+            "kind": "walk_in",
+            "roleTitle": "Controls intern",
+            "location": null,
+            "compensation": null,
+            "isActive": true,
+            "sponsoredTier": null,
+            "sponsoredUntil": null,
+            "isSponsored": false
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/spend-history",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "spend": [
+          {
+            "kind": "credit_purchase",
+            "creditsAdded": 10,
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 2,
+            "createdAt": "2026-10-06T11:00:00.000Z"
+          },
+          {
+            "kind": "sponsorship",
+            "creditsSpent": 10,
+            "createdAt": "2026-10-02T11:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Spend · last 30 days"
+    }
+  ]
+}

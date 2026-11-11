@@ -7,6 +7,7 @@ import { isWorkEmailDomain } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { workEmailOtpService } from "../workEmailOtp";
+import { revokeReferrerStepUpsForSessionToken } from "../referrerStepUp";
 
 /**
  * Referrer OTP-first login: the work-email OTP IS the sign-in.
@@ -69,7 +70,7 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       if (account.suspended) return res.status(403).json({ error: "We could not complete sign-in." });
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
       if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
-      const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
+      const token = await sdk.createSessionToken(openId, { name: account.name ?? email, amr: "work_email_otp" });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       res.json({ signedIn: true, role: account.role, email });
     } catch (error) {
@@ -81,6 +82,8 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
 
   app.post("/api/auth/otp/logout", async (req: Request, res: Response) => {
     const token = req.headers.cookie?.match(/(?:^|;\s*)app_session_id=([^;]+)/)?.[1];
+    // D-057 §0b.3: mark this account's step-up proofs revoked for the audit trail (the revocation below already ends them).
+    await revokeReferrerStepUpsForSessionToken(token);
     await sdk.revokeSession(token);
     res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
     res.json({ signedOut: true });
