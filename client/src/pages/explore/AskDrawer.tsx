@@ -51,6 +51,10 @@ export type AskDrawerProps = {
   work: PinnedWorkState;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
   cost: AskCostLine;
+  /** D-174: whether a posted role is selected, showing read-only link and Change role */
+  isPostSelected?: boolean;
+  postSelection?: { opportunityId?: number | null } | null;
+  onChangeRole?: () => void;
   /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): set when the by-level quote is short; the primary action becomes the top-up. */
   topUp: { shortfall: number; href?: string } | null;
   onTopUp?: (event?: React.MouseEvent) => void;
@@ -70,6 +74,7 @@ export type AskDrawerProps = {
 
 export function AskDrawer(props: AskDrawerProps) {
   const { company, sent } = props;
+  const isPostSelected = Boolean(props.isPostSelected || props.postSelection?.opportunityId);
   const linkId = useId();
   const resumeId = useId();
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -147,20 +152,44 @@ export function AskDrawer(props: AskDrawerProps) {
             hint={props.hint && props.hint.tone !== "error" ? { icon: Info, text: props.hint.text, tone: props.hint.tone === "pass" ? "pass" : "muted" } : undefined}
             error={props.hint?.tone === "error" ? props.hint.text : undefined}
           >
-            <GoalTextInput
-              id={linkId}
-              autoFocus
-              type="url"
-              inputMode="url"
-              autoCapitalize="none"
-              autoComplete="url"
-              spellCheck={false}
-              placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
-              value={props.url}
-              invalid={props.hint?.tone === "error"}
-              onChange={event => props.onUrlChange(event.target.value)}
-              onBlur={props.onUrlBlur}
-            />
+            {isPostSelected ? (
+              <div className="flex items-center gap-2">
+                <GoalTextInput
+                  id={linkId}
+                  readOnly
+                  aria-readonly="true"
+                  type="url"
+                  value={props.url}
+                  className="bg-g-surface-sunken text-g-ink-2"
+                />
+                {props.onChangeRole ? (
+                  <GoalButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-g-meta text-g-ink-2 hover:text-g-ink"
+                    onClick={props.onChangeRole}
+                  >
+                    Change role
+                  </GoalButton>
+                ) : null}
+              </div>
+            ) : (
+              <GoalTextInput
+                id={linkId}
+                autoFocus
+                type="url"
+                inputMode="url"
+                autoCapitalize="none"
+                autoComplete="url"
+                spellCheck={false}
+                placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
+                value={props.url}
+                invalid={props.hint?.tone === "error"}
+                onChange={event => props.onUrlChange(event.target.value)}
+                onBlur={props.onUrlBlur}
+              />
+            )}
           </GoalField>
 
           <GoalField
