@@ -107,7 +107,7 @@ describe("D-309: the holds that stay unchanged", () => {
   it("control 4: red main, review independence, owner/stale holds and the landing slot behave as before", () => {
     // Red main still selects the one legitimate fix-main, never a lower landing.
     expect(pick([task("A")], { ci: { state: "red", sha: "c".repeat(40), url: "https://ci/run/2" } })).toMatchObject({ kind: "fix-main" });
-    // D-322: while main's CI re-runs after a failure, branch work goes on (marked), and with none left it is the wait.
+    // D-324: while main's CI re-runs after a failure, branch work goes on (marked), and with none left it is the wait.
     expect(pick([task("A")], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "build", mainRedNote: true });
     expect(pick([task("A", { status: "owner" })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
 
@@ -195,7 +195,7 @@ describe("D-309: the printed WAIT, report and CEO text state the real hold", () 
     expect(ceo).not.toContain("before anything lower moves");
 
     const mainRed = renderPick({ kind: "wait", mainRed: true, reason: "main is red" }, ctx("Qwen · s1"));
-    // D-322: this wait is printed only when no non-landing work is left; it still says nothing lands while main is red.
+    // D-324: this wait is printed only when no non-landing work is left; it still says nothing lands while main is red.
     expect(mainRed).toContain("nothing lands while main is red");
     expect(mainRed).not.toContain("Do not start other work");
   });

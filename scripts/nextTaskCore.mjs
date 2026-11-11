@@ -733,7 +733,7 @@ export function decisionsSince(register, syncedTo) {
 /** D-085: the one thing the next agent should do (D-083). */
 function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
-  // D-322 (owner, Nov 11: "0 waits 0 blocks"): red main holds every LANDING, not every session. Its one fix is still
+  // D-324 (owner, Nov 11: "0 waits 0 blocks"): red main holds every LANDING, not every session. Its one fix is still
   // handed out first; while that fix is in hand (or main's CI is re-running after it) everyone else is handed
   // non-landing work on branches, and this wait is the answer only when nothing else is eligible.
   let mainHold = null;
@@ -961,7 +961,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // do not: you are handed other work, and only when there is none at all does the picker answer with that wait.
   let ownBlocked = null;
   if (mine?.kind === "wait") { ownBlocked = mine; mine = null; }
-  // D-322: while main is red your own landing waits with every other landing; you are handed other work meanwhile.
+  // D-324: while main is red your own landing waits with every other landing; you are handed other work meanwhile.
   if (mainHold && mine?.kind === "continue" && mine.of === "land") mine = null;
   // D-202: a holder continuing an out-of-sync task is handed the re-sync first, not its build
   // (a blocked wait still comes first: the block is cleared before the packet moves).
@@ -1010,7 +1010,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     // --avoid: a session that may not take a task (its own instruction or a missing tool) is handed something else;
     // the task is never reported blocked for that reason, and a red or blocked one still holds its lane (gate).
     let action = actionFor(view[i]);
-    // D-322: no landing is handed out while main is red; the row is passed over and holds nothing.
+    // D-324: no landing is handed out while main is red; the row is passed over and holds nothing.
     if (mainHold && action && (action.kind === "land" || (action.kind === "wait" && action.landing))) action = skip(view[i], "main is red: its landing waits until main is green");
     if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) {
       // PICKER-avoid-land (D-109): avoiding a red or blocked task's hand-out (unblock, make green, fix, takeover)
@@ -1347,12 +1347,12 @@ export function pickNextTask(input) {
   const avoid = new Set(input.avoid ?? []);
   let firstHeld = null;
   const mainRed = input.mainCi?.state === "red" || input.mainCi?.state === "running-after-red";
-  // D-322: every pick handed out while main is red says so, and that nothing lands until main is green.
+  // D-324: every pick handed out while main is red says so, and that nothing lands until main is green.
   const done = pick => (pick.kind === "none" && firstHeld ? firstHeld : (mainRed && pick.task ? { ...pick, mainRedNote: true } : pick));
   for (let attempt = 0; attempt < 25; attempt++) {
     const pick = pickNextTaskLegacy({ ...input, avoid });
     const stage = pick.kind === "continue" ? pick.of : pick.kind;
-    // D-322: a task whose claim or history names an external model route (D-311) can only be claimed with that
+    // D-324: a task whose claim or history names an external model route (D-311) can only be claimed with that
     // route: `scripts/next-task.mjs` refuses any other claim. Handing it to a session without one made that session
     // fail at the claim and be handed the same task on every retry, so it is passed over as --avoid would.
     if (pick.task && pick.kind !== "continue" && !input.provenance?.routeId && hasExternalHistory(input.branches, pick)) {

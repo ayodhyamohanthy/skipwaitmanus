@@ -114,7 +114,7 @@ describe("PICKER-landing-wait-fallthrough", () => {
     expect(result).toMatchObject({ kind: "build", task: { id: "O" }, overlaps: ["L"] });
   });
 
-  it("D-322: red main holds every landing, never the branch work: N is built, L is not landed, and alone it is the wait", () => {
+  it("D-324: red main holds every landing, never the branch work: N is built, L is not landed, and alone it is the wait", () => {
     const opts = { branches: [built("L")] as [string, Branch][], prs: [pr("L")] as [string, string][], prCi: [greenPr("L")] as [string, string][], mainCi: { state: "running-after-red" } };
     const result = pick([task("L"), task("N")], opts);
     expect(result).toMatchObject({ kind: "build", task: { id: "N" }, mainRedNote: true });

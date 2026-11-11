@@ -494,7 +494,7 @@ async function main() {
   // D-085: a bare model name gets a unique session tag, so two sessions of one model never share a claim.
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
-  // D-322: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
+  // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
   for (let attempt = 1; attempt <= 6; attempt++) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();

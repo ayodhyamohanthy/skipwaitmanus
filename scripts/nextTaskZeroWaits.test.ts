@@ -1,5 +1,5 @@
 // @vitest-environment node
-// D-322 (owner, Nov 11: "no blockers for letting agents automatically pick work tasks 0 waits 0 blocks").
+// D-324 (owner, Nov 11: "no blockers for letting agents automatically pick work tasks 0 waits 0 blocks").
 // 1. A task whose claim history names an external model route (D-311) can only be claimed with that route: the CLI
 //    refuses any other claim. Handing it to a session without one made the session fail at the claim and get the
 //    same task on every retry (measured Nov 11: 26 of 30 simulated sessions). It is now passed over.
@@ -31,7 +31,7 @@ const EXTERNAL = "provenance route-free-model-1";
 const quietExternal: [string, Branch] = ["agent/queue/x", { tipMs: NOW - 10 * HOUR, tipSha: "b".repeat(40), merged: false, markers: [{ verb: "Claim", id: "X", who: "Instinct · op1", body: EXTERNAL }] }];
 const quietPlain: [string, Branch] = ["agent/queue/x", { tipMs: NOW - 10 * HOUR, tipSha: "b".repeat(40), merged: false, markers: [{ verb: "Claim", id: "X", who: "Qwen · q1" }] }];
 
-describe("D-322: a task only an external route can claim is never handed to a session without one", () => {
+describe("D-324: a task only an external route can claim is never handed to a session without one", () => {
   it("control: the same quiet task with an ordinary claim is handed as a takeover", () => {
     expect(pick([task("X"), task("N")], { branches: [quietPlain] })).toMatchObject({ kind: "takeover", task: { id: "X" } });
   });
@@ -61,7 +61,7 @@ describe("D-322: a task only an external route can claim is never handed to a se
   });
 });
 
-describe("D-322: red main holds landings, not sessions", () => {
+describe("D-324: red main holds landings, not sessions", () => {
   const red = { state: "red", sha: "c".repeat(40), url: "https://ci/red" };
   const fixing: [string, Branch] = ["agent/queue/fix-main-cccccccc", { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Claim", id: "fix-main-cccccccc", who: "Qwen · q1" }] }];
   const built = (id: string): [string, Branch] => [`agent/queue/${id.toLowerCase()}`, { tipMs: NOW - 3 * HOUR, tipSha: "b".repeat(40), merged: false, markers: [{ verb: "Claim", id, who: "DeepSeek · d1" }] }];
@@ -74,7 +74,7 @@ describe("D-322: red main holds landings, not sessions", () => {
     const opts = { ci: red, branches: [fixing, built("L")], prs: [["agent/queue/l", "https://github.com/o/r/pull/5"]] as [string, string][], prCi: [["agent/queue/l", "green"]] as [string, string][] };
     const got = pick([task("L"), task("N")], opts);
     expect(got).toMatchObject({ kind: "build", task: { id: "N" }, mainRedNote: true });
-    expect(renderPick(got, { who: "Kimi · k1", date: "2026-11-11", claimed: false })).toContain("main is red right now (D-322)");
+    expect(renderPick(got, { who: "Kimi · k1", date: "2026-11-11", claimed: false })).toContain("main is red right now (D-324)");
     expect(pick([task("L")], opts)).toMatchObject({ kind: "wait", mainRed: true });
   });
 
