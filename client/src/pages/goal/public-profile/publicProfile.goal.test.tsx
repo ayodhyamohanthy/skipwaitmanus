@@ -49,8 +49,9 @@ vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit
   if (url.startsWith("/api/p/") && method === "GET") return resolveReply(server.profileReply ?? { status: 200, body: { profile: server.profile } });
   if (url === "/api/profile/me" && method === "PUT") {
     if (server.putReply) return resolveReply(server.putReply);
-    const patch = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
-    server.profile = { ...(server.profile as Record<string, unknown>), ...patch };
+    // The write stores profileVisibility; the public read returns it as `visibility`.
+    const { profileVisibility, ...rest } = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    server.profile = { ...(server.profile as Record<string, unknown>), ...rest, ...(profileVisibility ? { visibility: profileVisibility } : {}) };
     return respond({ status: 200, body: { profile: server.profile } });
   }
   throw new Error(`unexpected fetch ${method} ${url}`);
