@@ -1,8 +1,8 @@
-# STORY-trust-matching: the landing and the employer-rules answer tell the trust and matching story (D-321)
+# STORY-trust-matching: the landing and the employer-rules answer tell the trust and matching story (D-323)
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first, then [`docs/POSITIONING.md`](../POSITIONING.md), which is the source for every string below.
 
-**Decision:** D-321 (owner, Nov 11, 2026). **Rows:** `STORY-trust-landing` and `STORY-employer-rules-answer`, both Tier 2, both `todo`. **Written by:** a Claude session (intelligence and reasoning, D-225). **Built by:** any other capable tool, from the picker.
+**Decision:** D-323 (owner, Nov 11, 2026). **Rows:** `STORY-trust-landing` and `STORY-employer-rules-answer`, both Tier 2, both `todo`. **Written by:** a Claude session (intelligence and reasoning, D-225). **Built by:** any other capable tool, from the picker.
 
 ## 0. Why
 

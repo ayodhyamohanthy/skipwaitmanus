@@ -1,8 +1,8 @@
-# How we talk about SkipWait (D-321)
+# How we talk about SkipWait (D-323)
 
 > Read [`docs/BRIEF.md`](./BRIEF.md) first. This page is the source for marketing language: the landing page, search snippets, outreach, replies to recruiters and anything written in SkipWait's voice. `docs/DECISIONS.md` wins any conflict. Money sentences still come only from `shared/moneyCopy.ts`, and legal text stays the owner's.
 
-Owner direction, Nov 11, 2026 (D-321): SkipWait is presented as a trust and matching product, never as paid referrals, and a calm answer is ready on how it works within employer rules.
+Owner direction, Nov 11, 2026 (D-323): SkipWait is presented as a trust and matching product, never as paid referrals, and a calm answer is ready on how it works within employer rules.
 
 ## 1. The story in one breath
 
@@ -94,7 +94,7 @@ No. You pay to send a verified, private request to people who work at that compa
 
 ## 6. Where the product still contradicts the story (owner-reserved, rated)
 
-These are not fixed by D-321 or its packet. Each is the owner's call. Ratings are how much each one matters to the pivot, 1 to 10.
+These are not fixed by D-323 or its packet. Each is the owner's call. Ratings are how much each one matters to the pivot, 1 to 10.
 
 ### 6.1 Money lines count "referrals", not "referral requests" - 9/10
 
