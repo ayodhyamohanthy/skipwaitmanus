@@ -36,10 +36,13 @@ import { directorySummary, filterCompanies, FILTER_FUNCTIONS } from "./explore/f
 import { useAskComposer } from "./explore/useAskComposer";
 import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState } from "./explore/useCompanySearch";
 
-// The moved-page contract (GOAL_UI_COVERAGE §1.7): the seeker's goal in their
-// words. The directory IS the next step, so the search lives inside the block.
-export const GOAL_PAGE = { goalLine: "Get referred." } as const;
-
+// The goal line is the seeker's goal in their words; the directory IS the
+// next step, so the search lives inside the block. The page does not export
+// GOAL_PAGE yet: §1.7's assertGoalPage needs exactly one h1, and the goal
+// shell renders a second h1 of its own (GoalShell.tsx:150, foundation-owned)
+// — the recorded blocker for every GoalAppShell page (D-048-p3-live-review-
+// conversation's landing record). Exporting it before that passes would be a
+// claim the page's own test could not make.
 export default function Explore() {
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -209,7 +212,7 @@ export default function Explore() {
       ) : undefined}
     >
       <div data-skipwait-screen="find-a-referral" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
-        <h1 className="text-balance text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
+        <h1 className="text-balance text-g-display text-g-ink">Get referred.</h1>
         <p className="mt-2 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
         <div className="mt-6 max-gdesk:mt-5">
         <GoalNextStep reason="Search for your company, then request a referral.">
