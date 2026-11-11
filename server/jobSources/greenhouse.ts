@@ -40,7 +40,7 @@ export type FetchJobBoardResult =
   | { ok: true; jobs: NormalizedCatalogJob[]; bytes: number }
   | (GuardedFetchFailure | { ok: false; reason: "invalid_payload" });
 
-export async function fetchJobBoard(
+export async function fetchGreenhouseJobBoard(
   source: { provider: string; boardToken: string },
   opts: { fetchImpl?: typeof undiciFetch } = {}
 ): Promise<FetchJobBoardResult> {
@@ -54,6 +54,24 @@ export async function fetchJobBoard(
   const parsed = greenhouseBoardResponseSchema.safeParse(res.payload);
   if (!parsed.success) return { ok: false, reason: "invalid_payload" };
   return { ok: true, jobs: parseGreenhouseJobs(parsed.data), bytes: res.bytes };
+}
+
+export async function fetchJobBoard(
+  source: { provider: string; boardToken: string; host?: string; evidenceUrl?: string },
+  opts: { fetchImpl?: typeof undiciFetch; host?: string; skipCrawlDelay?: boolean } = {}
+): Promise<FetchJobBoardResult> {
+  if (source.provider === "greenhouse") {
+    return fetchGreenhouseJobBoard(source, opts);
+  }
+  if (source.provider === "ashby") {
+    const { fetchAshbyJobBoard } = await import("./ashby");
+    return fetchAshbyJobBoard(source, opts);
+  }
+  if (source.provider === "lever") {
+    const { fetchLeverJobBoard } = await import("./lever");
+    return fetchLeverJobBoard(source, opts);
+  }
+  return { ok: false, reason: "invalid_input" };
 }
 
 // Region/country tokens: a comma part matching one of these means the label
