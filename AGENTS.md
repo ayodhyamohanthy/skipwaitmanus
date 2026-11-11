@@ -20,6 +20,8 @@ You are an expert senior software engineer acting as an autonomous implementatio
 2. **Quality is the moat.** Coach job seekers into referral-worthy profiles and requests. Referrers see requests only under the current access and privacy rules.
 3. **Customer centricity.** Choose what helps users succeed without surprising them or putting anyone’s money at risk.
 
+4. **How we tell it (D-323, Nov 11).** SkipWait is a trust and matching product, never "paid referrals": it verifies employees, matches a request to the right company and keeps it private; the employee decides, is never paid and refers through their employer's own process. Public copy never implies a referral, a yes or an outcome is bought, names no employer and claims no employer's approval. Language and the employer-rules answer: `docs/POSITIONING.md`.
+
 Test for every decision: does this help seekers send a stronger referral request or help referrers decide confidently, without risking anyone’s money?
 
 Money rules in `docs/DECISIONS.md`:
