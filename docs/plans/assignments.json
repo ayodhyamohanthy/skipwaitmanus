@@ -2433,7 +2433,7 @@
       "tier": 1,
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-319",
       "dependsOn": [
         "D-048-F-harness",
@@ -2449,9 +2449,9 @@
         "design/goal-ui/captures/profile/**",
         "client/src/test/goalPagesBoundary.test.ts",
         "client/src/components/profile/profileVisibility.ts",
-        "client/src/components/profile/VisibilityOptions.tsx (import/re-export only)"
+        "client/src/components/profile/VisibilityOptions.tsx (switch only)"
       ],
-      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile'). Owns amendment (D-319, 2026-11-11): adds client/src/test/goalPagesBoundary.test.ts, client/src/components/profile/profileVisibility.ts (new) and client/src/components/profile/VisibilityOptions.tsx (import/re-export only). Reason: D-241 (3) audits each goal page's runtime import graph; the goal /profile and /work pages reach components/profile/workItems.ts and components/profile/VisibilityOptions.tsx, which no earlier version of that test walked. workItems.ts is behavior-only. VisibilityOptions.tsx cannot be behavior-only (it carries literal className) and must not be admitted as goal-styled (it renders legacy --primary/--border/--muted-foreground oklch tokens, not goal tokens), so the pure ProfileVisibility type and asProfileVisibility parser move to a new behavior-only module that VisibilityOptions.tsx re-exports unchanged for its kit callers. No source, flag, consent or pricing rule changes.",
+      "note": "Implementation row from the D-048-account.md packet (AYO-11 design lane). flag: goalSurfaceOn('profile'). Owns amendment (D-319, 2026-11-11): adds client/src/test/goalPagesBoundary.test.ts, client/src/components/profile/profileVisibility.ts (new) and client/src/components/profile/VisibilityOptions.tsx (import/re-export only). Reason: D-241 (3) audits each goal page's runtime import graph; the goal /profile and /work pages reach components/profile/workItems.ts and components/profile/VisibilityOptions.tsx, which no earlier version of that test walked. workItems.ts is behavior-only. VisibilityOptions.tsx cannot be behavior-only (it carries literal className) and must not be admitted as goal-styled (it renders legacy --primary/--border/--muted-foreground oklch tokens, not goal tokens), so the pure ProfileVisibility type and asProfileVisibility parser move to a new behavior-only module that VisibilityOptions.tsx re-exports unchanged for its kit callers. No source, flag, consent or pricing rule changes. Owns-entry suffix correction (Nov 11): the '(import/re-export only)' qualifier is not a suffix the scope check parses, so the entry matched nothing; it is now the parseable '(switch only)' form, capping this path at 12 changed lines. This row's actual change to the kit card is 4 additions + 5 deletions, import/re-export only; D-319's intent is unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -4459,7 +4459,7 @@
       "tier": 1,
       "lane": "d174-jobs",
       "branch": "agent/queue/d174-job-sources-more",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-313",
       "dependsOn": [
         "D-174-job-catalog"
