@@ -20,13 +20,13 @@ type AccessState =
   | { status: "verified"; access: unknown };
 
 const { flag, auth, access, navigate } = vi.hoisted(() => ({
-  flag: { on: false, asked: [] as string[] },
+  flag: { ids: new Set<string>(), asked: [] as string[] },
   auth: { isLoaded: true as boolean | undefined, isSignedIn: false },
   access: { value: { status: "signed-out" } as unknown },
   navigate: vi.fn(),
 }));
 
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
+vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.ids.has(id); } }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => auth,
   useUser: () => ({ user: null }),
@@ -42,7 +42,7 @@ const verdict = (value: AccessState) => { access.value = value; };
 const retry = vi.fn();
 
 beforeEach(() => {
-  flag.on = false;
+  flag.ids = new Set<string>();
   flag.asked = [];
   auth.isLoaded = true;
   auth.isSignedIn = false;
@@ -62,7 +62,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("shows the fetch-free frame while auth loads, never the landing", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     auth.isLoaded = false;
     render(<Home />);
     expect(screen.getByRole("status").textContent).toContain("Opening skipwait.me");
@@ -72,7 +72,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("keeps the frame while the server verdict is being checked", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     auth.isSignedIn = true;
     verdict({ status: "checking" });
     render(<Home />);
@@ -81,7 +81,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("sends a verified referrer to /referrer-home by the server verdict (D-055)", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     auth.isSignedIn = true;
     verdict({ status: "verified", access: { verified: true } });
     render(<Home />);
@@ -89,7 +89,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("still routes a verified referrer whose session needs the work-email step-up to /referrer-home", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     auth.isSignedIn = true;
     verdict({ status: "code_required", access: { verified: true, codeRequired: true } });
     render(<Home />);
@@ -97,7 +97,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("sends a seeker with no verified work email to /explore", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     auth.isSignedIn = true;
     verdict({ status: "unverified", access: { verified: false } });
     render(<Home />);
@@ -105,7 +105,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("never guesses a destination when the verdict check fails: it says so and retries", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     auth.isSignedIn = true;
     verdict({ status: "error", error: new Error("We could not check access"), retrying: false, retry });
     render(<Home />);
@@ -116,7 +116,7 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
   });
 
   it("leaves the signed-out visitor page alone even with the signed-in flag on", () => {
-    flag.on = true;
+    flag.ids.add("home-signed-in");
     render(<Home />);
     expect(screen.getByRole("navigation", { name: "Website navigation" })).toBeTruthy();
     expect(navigate).not.toHaveBeenCalled();
