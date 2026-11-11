@@ -1068,7 +1068,7 @@
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review-find",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-322",
       "dependsOn": [
         "D-048-fix-send-ask-blocker",
         "P0-ask-link-signin",
@@ -1089,7 +1089,12 @@
         "client/src/pages/askSignIn.test.tsx",
         "design/goal-ui/captures/explore/**",
         "design/goal-ui/captures/ask/**",
-        "design/goal-ui/captures/explore-company/**"
+        "design/goal-ui/captures/explore-company/**",
+        "design/goal-ui/tools/fixtures/explore__*.json",
+        "design/goal-ui/tools/fixtures/explore-company__*.json",
+        "design/goal-ui/tools/fixtures/ask__*.json",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "docs/plans/GOAL_UI_MIGRATION.md (switch only)"
       ]
     },
     {
