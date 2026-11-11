@@ -123,3 +123,11 @@ Evidence: design/goal-ui/captures/requests/oct23-redesign contains 1280/390 fixt
 Community-source review: https://docs.21st.dev/community/components/s/task considered for task-card hierarchy; shipped code reuses existing GoalButton/tokens instead, without installing a dependency or copying unverified-license code.
 
 D-048-p3-live-review-requests: done — landing by Gemini 3.8 Flash · ffbb after independent review passed (Qoder · b644) on PR #533.
+
+`D-048-p3-live-review-find`: measured starting point — Qoder · db13 — 2026-11-11 — branch `agent/queue/d048-live-review-find`, head `b965d3d7`, on `main` `dad9354a`. No source work has started (the previous holder, Qoder · a340, stopped before building). Measured against the row contract on this head, with no code changed:
+
+- **`/explore` (`client/src/pages/Explore.tsx`, 299 lines):** no `GOAL_PAGE`, no `GoalNextStep` and no `data-g-primary` anywhere; its `h1` is "Where do you want a referral?" (`:186`), not the contract's "Get referred."; it already imports goal primitives from `@/components/goal` (`:19`).
+- **`/explore/:slug` (`client/src/pages/ExploreCompany.tsx`, 343 lines):** no `GOAL_PAGE`, no `GoalNextStep`, no `data-g-primary`; its `h1` is the company name alone (`:148`), not "Get referred at <company>."; it imports goal primitives (`:17`).
+- **`/ask` (`client/src/pages/Ask.tsx`, 203 lines):** no `GOAL_PAGE`, no `GoalNextStep`, no `data-g-primary`; the sent state's `h1` is "Ask sent to <company>." (`:78`) and the composer's is "Ask for a referral" (`:90`); it imports goal primitives (`:21`).
+
+So the doctrine half of this row (`GOAL_UI_COVERAGE.md` §1 items 1, 2 and 7) is entirely unbuilt on all three surfaces, and the parity half (§1 item 5, packet items 1-6) is unspecified until the redesign exists. This is a three-surface Tier 1 redesign, not a small fix; it needs a session that can carry red-first tests, the parity list and 1280/390 captures for all three surfaces in one pass. No test, capture or source file was changed by this status commit, and nothing in `/explore`, `/explore/:slug` or `/ask` behaves differently.
