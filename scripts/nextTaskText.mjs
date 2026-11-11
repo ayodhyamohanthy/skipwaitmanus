@@ -193,7 +193,7 @@ function decisionsBlock(pick, register) {
 
 /** WAIT: for red main, for a red priority above you, or for your own blocked one, which another session or the owner clears (D-200). */
 function waitLines(pick, who) {
-  if (pick.mainRed) return [pick.reason, `Do not start other work and do not push to main until main is green. If you hold a claim, keep it alive: \`${CMD} --heartbeat --as "${who}"\`.`];
+  if (pick.mainRed) return [pick.reason, `The picker found no non-landing work for you right now (D-322), and nothing lands while main is red. Run this again in a few minutes. If you hold a claim, keep it alive: \`${CMD} --heartbeat --as "${who}"\`.`];
   if (pick.landing) return [pick.reason, `Only one landing at a time (D-082, PICKER-landing-slot). Run this again once ${pick.holder} finishes and releases agent/queue/landing, and keep any claim you hold alive with \`${CMD} --heartbeat --as "${who}"\`.`];
   if (pick.own) return [`${pick.reason}.`, `Push your work on ${pick.work}, tell the owner exactly what you need to go on, and stop. Run \`${CMD} --claim "${who}"\` again once it is unblocked.`];
   if (pick.blocked) return [`${pick.reason}. The block holds ${pick.gate}'s lane and the tasks that depend on it, not every lower independent task (D-109, D-309).`, `The picker found no other eligible independent work for you right now. Do not start anything ranked below ${pick.gate} that shares its lane or depends on it. Tell the owner you are waiting on ${pick.gate}; run this again after another session or the owner unblocks it (D-200).`];
@@ -328,6 +328,8 @@ function pickText(pick, { who, date, claimed, register = null }) {
 
 /** D-311: never ask an operator to impersonate the external model. */
 export function renderPick(pick, context) {
-  const text = renderPickLegacy(pick, context);
+  const base = renderPickLegacy(pick, context);
+  // D-322: work goes on while main is red; landings do not.
+  const text = pick.mainRedNote ? base + "\nmain is red right now (D-322): do this work on its own branch as usual, but land nothing and merge nothing into main until main's CI is green again. Merge origin/main into your branch once it is.\n" : base;
   return pick.provenanceRoute ? text + `\nExternal model route: ${pick.provenanceRoute}. Keep your actual operator/session name. Preserve --provenance on claims/reclaims and add --execution for a completed exact-head verdict/fix. Read docs/MODEL_PROVENANCE.md; route qualification alone is not execution evidence.\n` : text;
 }

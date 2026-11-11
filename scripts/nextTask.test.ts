@@ -268,18 +268,24 @@ describe("main's CI decides first (D-082)", () => {
     expect(ciStateFromRuns([]).state).toBe("unknown");
   });
 
-  it("while main is red, the only task is fixing it, and only one agent gets it", () => {
+  it("while main is red, fixing it comes first and only one agent gets it; the rest get non-landing work (D-322)", () => {
     const red = { state: "red", sha: "c".repeat(40), url: "https://ci/red" };
     expect(pick([task("A")], { ci: red })).toMatchObject({ kind: "fix-main", lock: "agent/queue/fix-main-cccccccc", parent: null });
     const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc")];
-    expect(pick([task("A")], { ci: red, branches: [held] })).toMatchObject({ kind: "wait" });
+    // The fix is in hand: nobody is handed a second fix-main; the next session builds on a branch and is told nothing lands.
+    const other = pick([task("A")], { ci: red, branches: [held] });
+    expect(other).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
+    expect(renderPick(other, { who: "Qwen · s1", date: "2026-11-11", claimed: false })).toContain("land nothing and merge nothing into main until main's CI is green");
+    // With nothing else eligible the honest answer is still red main's wait.
+    expect(pick([task("A", { status: "owner" })], { ci: red, branches: [held] })).toMatchObject({ kind: "wait", mainRed: true });
     const stale: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc", 30)];
     expect(pick([task("A")], { ci: red, branches: [stale] })).toMatchObject({ kind: "fix-main", parent: "agent/queue/fix-main-cccccccc" });
   });
 
-  it("stops when CI cannot be read, and waits while CI re-runs after a failure", () => {
+  it("stops when CI cannot be read; while CI re-runs after a failure, work goes on and landings wait (D-322)", () => {
     expect(pick([task("A")], { ci: { state: "unknown" } }).kind).toBe("stop");
-    expect(pick([task("A")], { ci: { state: "running-after-red" } }).kind).toBe("wait");
+    expect(pick([task("A")], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
+    expect(pick([task("A", { status: "owner" })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
     expect(pick([task("A")], { ci: { state: "running" } })).toMatchObject({ kind: "build", ciRunning: true });
   });
 });
@@ -431,7 +437,8 @@ describe("own work first, then strict priority (D-085)", () => {
   it("while main is red, the agent holding the fix lock continues it instead of waiting on itself, and red main still beats own work", () => {
     const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc")];
     expect(pick([task("A")], { ci: red, branches: [held], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
-    expect(pick([task("A")], { ci: red, branches: [held], claimant: "Qwen · s1" }).kind).toBe("wait");
+    // D-322: another session is never handed a second fix; it works on a branch meanwhile.
+    expect(pick([task("A")], { ci: red, branches: [held], claimant: "Qwen · s1" })).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
     expect(pick([task("A")], { ci: red, branches: [mine], claimant: "Qwen · s1" }).kind).toBe("fix-main");
   });
 });
@@ -1324,7 +1331,10 @@ describe("hardening from the second D-085 review", () => {
   it("F11: one fix-main lock at a time, even when a newer commit is red", () => {
     const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc", 1)];
     const newer = { state: "red", sha: "d".repeat(40), url: "https://ci/red2" };
-    expect(pick([task("A")], { ci: newer, branches: [held], claimant: "Gemini · s3" }).kind).toBe("wait");
+    // D-322: still one lock only; the other session gets branch work, never a second fix-main.
+    const second = pick([task("A")], { ci: newer, branches: [held], claimant: "Gemini · s3" });
+    expect(second.kind).not.toBe("fix-main");
+    expect(second).toMatchObject({ kind: "build", mainRedNote: true });
     expect(pick([task("A")], { ci: newer, branches: [held], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
     expect(core.heldBy({ tasks: [task("A")], branches: new Map([held]), openPrs: new Map(), claimant: "Kimi · s2", mainSha: "d".repeat(40) })).toMatchObject({ of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
   });
