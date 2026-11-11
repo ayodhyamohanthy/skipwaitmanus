@@ -1,16 +1,22 @@
 import { ArrowLeft, Sparkles, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-employer: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/employer).
+const GoalEmployerOpportunities = lazy(() => import("./goal/employer/GoalEmployerOpportunities"));
 
 type Opportunity = { id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string; location: string | null; compensation: string | null; isActive: boolean; sponsoredTier: "featured" | "spotlight" | null; sponsoredUntil: string | null; isSponsored: boolean };
 type Tier = "featured" | "spotlight";
 const SPONSOR_TIERS: Array<{ id: Tier; label: string; days: number; cost: number }> = [{ id: "featured", label: "Featured", days: 7, cost: 10 }, { id: "spotlight", label: "Spotlight", days: 30, cost: 25 }];
 
 export default function EmployerOpportunities() {
+  if (goalSurfaceOn("employer")) return <Suspense fallback={null}><GoalEmployerOpportunities /></Suspense>;
   const [, go] = useLocation();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
