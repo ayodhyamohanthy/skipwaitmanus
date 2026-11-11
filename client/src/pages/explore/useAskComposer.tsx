@@ -22,6 +22,7 @@ import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
+import { canShowNudge, markNudgeShown } from "@/lib/upgradeNudges";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
@@ -509,7 +510,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       const capped = parseSlotCapReached(response.status, payload);
       if (capped) {
         const copy = slotCapNudgeCopy(capped.slots);
-        setSendError(<><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>);
+        // Packet item 5: the upgrade nudge shows once per session (per
+        // account, UPGRADE_NUDGES.md); the send's failure reason is always
+        // shown, so later sends state the cap plainly without the CTA.
+        const account = userId ?? "signed-out";
+        const nudge = canShowNudge("slot_cap", account);
+        if (nudge) markNudgeShown("slot_cap", account);
+        setSendError(nudge
+          ? <><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>
+          : <>{copy.title}. {copy.body}</>);
         return;
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {

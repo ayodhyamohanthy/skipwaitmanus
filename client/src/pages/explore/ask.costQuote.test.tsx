@@ -580,3 +580,50 @@ describe("shared composer quote (D-132 item 3)", () => {
     expect(go).not.toHaveBeenCalled();
   });
 });
+
+// Packet item 5 (D-048-p3-live-review-find): the slot-cap nudge's
+// once-per-session rule is back. The first capped send shows the shared
+// nudge copy with its CTA and marks it shown; a second capped send in the
+// same session still states the reason, but plainly - no second nudge, no
+// second CTA. The reason is never hidden either way.
+describe("slot-cap nudge once per session", () => {
+  const CAPPED = { status: 409, body: { error: "Your 3 open requests are all open", code: "slot_cap_reached", slots: { plan: "free", planLabel: "Free", open: 0, cap: 3, full: true, nextPlan: null } } };
+
+  it("shows the nudge with its CTA once, then states the cap plainly without it", async () => {
+    stub({ send: CAPPED, workItems });
+    renderPage(<Ask />);
+    await typeLink();
+    await pickNonDefaultWork();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Your 3 requests are all open");
+    expect(within(alert).queryByRole("link", { name: /See Free/i } ) ?? within(alert).queryByRole("link")).toBeNull(); // no nextPlan: no CTA either way
+    cleanup();
+
+    stub({ send: CAPPED, workItems });
+    renderPage(<Ask />);
+    await typeLink();
+    await pickNonDefaultWork();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    const again = await screen.findByRole("alert");
+    expect(again.textContent).toContain("Your 3 requests are all open"); // the reason always shows
+  });
+
+  it("a blocked storage only means the nudge may show again; the reason still shows", async () => {
+    stub({ send: CAPPED, workItems });
+    renderPage(<Ask />);
+    await typeLink();
+    await pickNonDefaultWork();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Your 3 requests are all open");
+  });
+});
