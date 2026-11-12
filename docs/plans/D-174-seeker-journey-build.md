@@ -133,6 +133,10 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 
 ## Status
 
+D-174-seeker-journey-build.door-neutral: in progress — Qoder · 6536 — 2026-11-13 — branch agent/queue/d174-journey-door. Built AHEAD of D-174-fix-post-binding (still todo), so it stays a draft and must not land first (D-315).
+
+
+
 D-174-seeker-journey-build (packet): drafted — Claude Opus 5.5 · e52d — 2026-11-01 — on `agent/architect/d174-seeker-journey`, verified against `main` `f5b9afb9`. Not landed: the §4 rulings' register entry is not allocated and no pull request is open, both held for the coordinator by that session's own scope rule (not a repo block). The next session that takes this packet allocates the entry after checking the IDs reserved by open PRs, then opens the packet PR.
 
 D-174-seeker-journey-build (packet): review — Hark · 5de4 — 2026-11-02 — idle takeover `544ce429` (holder quiet about 25h); `main` `3ece6dd4` merged (in `06bf0cc2`; first labelled `a6c08936`, corrected below), cited code re-verified (only the company-search files changed, §3.7 and §6.4 updated, §6.1 notes the owner-parked `D-174-fix-post-binding`); register entry D-281 allocated after checking open branches (D-280 reserved by `D-089-request-inbox`); `syncedTo` set to D-281 on the release row and its six pieces. The writer does not land it (D-190): it needs a review and a lander from a model other than the builder lineage. Hark's underlying model is unverified; no D-151 independence claim.
