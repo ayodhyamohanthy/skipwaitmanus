@@ -71,37 +71,69 @@ export async function createManagePaymentSourcesPage(credentials: ChargebeeCrede
   return body.hosted_page.url;
 }
 
-/** D-100.provider-recon: one payment as Chargebee lists it, reduced to the ids and amounts a reconciliation needs. */
+/**
+ * D-100.provider-recon: one payment transaction as Chargebee documents it
+ * (apidocs.chargebee.com/docs/api/transactions), reduced to the ids and amounts a
+ * reconciliation needs. Chargebee has no payments list endpoint: a payment IS a
+ * transaction (`type=payment`), and the invoices it paid are in `linked_invoices`
+ * (each with `invoice_id` and `applied_amount`, in the currency's smallest unit).
+ */
 export const providerPaymentSchema = z.object({
   id: z.string().min(1).max(80),
-  invoice_id: z.string().min(1).max(80).optional(),
-  amount: z.number().int().nonnegative(),
+  amount: z.number().int().nonnegative().optional(),
   currency_code: z.string().length(3),
   date: providerDate,
   status: z.string().min(1).max(40),
+  linked_invoices: z.array(z.object({
+    invoice_id: z.string().min(1).max(80),
+    applied_amount: z.number().int().nonnegative(),
+  })).optional(),
 });
-export type ProviderPayment = { id: string; invoiceId: string | null; amount: number; currency: string; status: string; date: Date };
-const paymentListSchema = z.object({ list: z.array(z.object({ payment: providerPaymentSchema })).default([]) });
+export type ProviderPayment = {
+  id: string;
+  /** The transaction's own amount, in the currency's smallest unit. */
+  amount: number;
+  currency: string;
+  status: string;
+  date: Date;
+  /** The invoices this transaction paid, with the amount applied to each. */
+  applications: { invoiceId: string; amount: number }[];
+};
+const paymentListSchema = z.object({
+  next_offset: z.string().max(1000).optional(),
+  transaction: z.array(providerPaymentSchema).default([]),
+});
 export const PROVIDER_RECON_PAGE_SIZE = 100;
 export const PROVIDER_RECON_MAX_PAGES = 5;
 
 /**
- * D-100.provider-recon: the provider's payments since `since`, newest first, read only.
- * Pages stop at a short batch or the page cap; the caller reports the cap as a finding
- * rather than pretending a truncated read was complete. Card data and customer ids are
- * never part of the parsed shape.
+ * D-100.provider-recon: Chargebee's payment transactions in [since, until], newest
+ * first, read only. Paged by the opaque `next_offset` Chargebee returns (a number is
+ * not an offset); pages stop when no offset comes back or at the page cap, and the
+ * caller reports the cap as a finding rather than pretending a truncated read was
+ * complete. Card data and customer ids are never part of the parsed shape.
  */
-export async function listRecentPayments(credentials: ChargebeeCredentials, input: { since: Date; maxPages?: number }): Promise<ProviderPayment[]> {
+export async function listRecentPayments(credentials: ChargebeeCredentials, input: { since: Date; until: Date; maxPages?: number }): Promise<ProviderPayment[]> {
   const after = Math.floor(input.since.getTime() / 1000);
+  const before = Math.floor(input.until.getTime() / 1000);
   const pages = Math.max(1, Math.min(input.maxPages ?? PROVIDER_RECON_MAX_PAGES, PROVIDER_RECON_MAX_PAGES));
   const payments: ProviderPayment[] = [];
+  let offset: string | undefined;
   for (let page = 0; page < pages; page += 1) {
-    const query = new URLSearchParams({ "date[after]": String(after), limit: String(PROVIDER_RECON_PAGE_SIZE), "sort_by[desc]": "date" });
-    if (page > 0) query.set("offset", String(page * PROVIDER_RECON_PAGE_SIZE));
-    const body = await chargebeeRequest(credentials, { method: "GET", path: "/payments", query, timeoutMs: 10_000 }, paymentListSchema);
-    const batch = body.list.map(entry => entry.payment);
-    for (const payment of batch) payments.push({ id: payment.id, invoiceId: payment.invoice_id ?? null, amount: payment.amount, currency: payment.currency_code.toUpperCase(), status: payment.status, date: payment.date });
-    if (batch.length < PROVIDER_RECON_PAGE_SIZE) break;
+    const query = new URLSearchParams({ "type[is]": "payment", "date[after]": String(after), "date[before]": String(before), limit: String(PROVIDER_RECON_PAGE_SIZE), "sort_by[desc]": "date" });
+    if (offset) query.set("offset", offset);
+    const body = await chargebeeRequest(credentials, { method: "GET", path: "/transactions", query, timeoutMs: 10_000 }, paymentListSchema);
+    const batch = body.transaction;
+    for (const payment of batch) payments.push({
+      id: payment.id,
+      amount: payment.amount ?? 0,
+      currency: payment.currency_code.toUpperCase(),
+      status: payment.status,
+      date: payment.date,
+      applications: (payment.linked_invoices ?? []).map(link => ({ invoiceId: link.invoice_id, amount: link.applied_amount })),
+    });
+    if (!body.next_offset) break;
+    offset = body.next_offset;
   }
   return payments;
 }

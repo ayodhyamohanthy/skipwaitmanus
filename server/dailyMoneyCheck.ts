@@ -58,12 +58,17 @@ const MONEY_CHECK_RECIPIENT = "ayodhya@skipwait.me";
 export const PROVIDER_RECON_ENABLED = false;
 /** The receipt page this check reads; a full page is reported as truncated, never as complete. */
 export const RECEIPT_RECON_BATCH = 500;
-/** Chargebee payment statuses that mean money moved (a refunded payment still moved it). */
-const MONEY_MOVED_PAYMENT_STATUSES = new Set(["success", "refunded", "partially_refunded"]);
+/** Chargebee payment-transaction statuses that mean money moved. */
+const MONEY_MOVED_PAYMENT_STATUSES = new Set(["success"]);
 /** Receipt statuses that mean we recorded a payment (a refunded one still had a payment). */
 const MONEY_RECORDED_RECEIPT_STATUSES = new Set(["paid", "refunded", "partially_refunded"]);
 export type ProviderReceiptRow = { providerInvoiceId: string; amount: number; currency: string; status: string; paidAt: Date | null };
-export type ProviderPaymentForRecon = { id: string; invoiceId: string | null; amount: number; currency: string; status: string };
+/** One payment transaction: the invoices it paid, with the amount applied to each (F2). */
+export type ProviderPaymentForRecon = { id: string; amount: number; currency: string; status: string; date: Date; applications: readonly { invoiceId: string; amount: number }[] };
+/** F3: provider payments are compared between 48h and 1h ago; receipts are read over a wider 72h. */
+export const PROVIDER_RECON_LOOKBACK_MS = 48 * 60 * 60 * 1000;
+export const PROVIDER_RECON_EDGE_MS = 60 * 60 * 1000;
+export const RECEIPT_RECON_LOOKBACK_MS = 72 * 60 * 60 * 1000;
 
 export type WalletAuditResult = { checkedWallets: number; mismatches: Array<Record<string, unknown>>; integrity: Array<Record<string, unknown>> };
 export type CreditedPaymentRow = { id: number; userId: number; role: string; tokenCount: number };
@@ -103,8 +108,8 @@ export type DailyMoneyCheckDeps = {
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   /** D-212: Chargebee webhook deliveries refused for a bad or missing secret since `since` (optional so older callers stay valid). */
   countWebhookUnauthorizedSince?: (since: Date) => Promise<number>;
-  /** D-100.provider-recon: Chargebee's payments since `since`, read only (optional so older callers stay valid). */
-  listProviderPaymentsSince?: (since: Date) => Promise<ProviderPayment[]>;
+  /** D-100.provider-recon: Chargebee's payment transactions in [since, until], read only (optional so older callers stay valid). */
+  listProviderPaymentsSince?: (since: Date, until: Date) => Promise<ProviderPayment[]>;
   /** D-100.provider-recon: our receipts paid since `since`, from `billingInvoices` (optional so older callers stay valid). */
   listReceiptsPaidSince?: (since: Date) => Promise<ProviderReceiptRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
@@ -444,23 +449,52 @@ async function listReceiptsPaidSince(since: Date): Promise<ProviderReceiptRow[]>
  * never recorded, a receipt with no provider payment behind it, and an amount or currency
  * that differs. Statuses that moved no money are ignored both ways.
  */
-export function compareProviderPayments(input: { providerPayments: ProviderPaymentForRecon[]; receipts: ProviderReceiptRow[]; limit: number }): string[] {
+export function compareProviderPayments(input: { providerPayments: ProviderPaymentForRecon[]; receipts: ProviderReceiptRow[]; limit: number; nowMs: number }): string[] {
   const findings: string[] = [];
+  const windowEnd = input.nowMs - PROVIDER_RECON_EDGE_MS;
+  const windowStart = input.nowMs - PROVIDER_RECON_LOOKBACK_MS;
   const receiptByInvoice = new Map<string, ProviderReceiptRow>();
   const recordedReceipts = input.receipts.filter(receipt => MONEY_RECORDED_RECEIPT_STATUSES.has(receipt.status));
   for (const receipt of recordedReceipts) if (!receiptByInvoice.has(receipt.providerInvoiceId)) receiptByInvoice.set(receipt.providerInvoiceId, receipt);
-  const matched = new Set<string>();
+  // F2: one transaction can pay several invoices and one invoice can be paid by
+  // several transactions, so the provider side is summed per invoice before it is
+  // compared with the single receipt we recorded for that invoice.
+  const appliedByInvoice = new Map<string, { amount: number; currency: string; paymentIds: string[] }>();
   for (const payment of input.providerPayments) {
-    if (!MONEY_MOVED_PAYMENT_STATUSES.has(payment.status) || findings.length >= input.limit) continue;
-    if (!payment.invoiceId) { findings.push(`provider_payment_unlinked: Chargebee payment ${payment.id} (${payment.amount} ${payment.currency}) has no invoice id, so it cannot be matched`); continue; }
-    const receipt = receiptByInvoice.get(payment.invoiceId);
-    if (!receipt) { findings.push(`provider_payment_unrecorded: Chargebee payment ${payment.id} (${payment.amount} ${payment.currency}, invoice ${payment.invoiceId}) has no receipt recorded by us`); continue; }
-    matched.add(payment.invoiceId);
-    if (receipt.amount !== payment.amount || receipt.currency !== payment.currency) findings.push(`provider_amount_mismatch: invoice ${payment.invoiceId} is recorded as ${receipt.amount} ${receipt.currency}, Chargebee payment ${payment.id} says ${payment.amount} ${payment.currency}`);
+    if (!MONEY_MOVED_PAYMENT_STATUSES.has(payment.status)) continue;
+    const occurredAt = payment.date.getTime();
+    if (occurredAt < windowStart || occurredAt > windowEnd) continue;
+    if (payment.applications.length === 0) {
+      if (findings.length >= input.limit) continue;
+      findings.push(`provider_payment_unlinked: Chargebee payment ${payment.id} (${payment.amount} ${payment.currency}) has no invoice id, so it cannot be matched`);
+      continue;
+    }
+    for (const link of payment.applications) {
+      const entry = appliedByInvoice.get(link.invoiceId) ?? { amount: 0, currency: payment.currency, paymentIds: [] };
+      entry.amount += link.amount;
+      if (!entry.paymentIds.includes(payment.id)) entry.paymentIds.push(payment.id);
+      appliedByInvoice.set(link.invoiceId, entry);
+    }
+  }
+  for (const [invoiceId, applied] of Array.from(appliedByInvoice)) {
+    if (findings.length >= input.limit) break;
+    const receipt = receiptByInvoice.get(invoiceId);
+    if (!receipt) {
+      const [first] = applied.paymentIds;
+      findings.push(`provider_payment_unrecorded: Chargebee payment ${first} (${applied.amount} ${applied.currency}, invoice ${invoiceId}) has no receipt recorded by us`);
+      continue;
+    }
+    if (receipt.amount !== applied.amount || receipt.currency !== applied.currency) {
+      const named = applied.paymentIds.length === 1 ? `Chargebee payment ${applied.paymentIds[0]} says` : `Chargebee payments ${applied.paymentIds.join(", ")} say`;
+      findings.push(`provider_amount_mismatch: invoice ${invoiceId} is recorded as ${receipt.amount} ${receipt.currency}, ${named} ${applied.amount} ${applied.currency}`);
+    }
   }
   for (const receipt of recordedReceipts) {
     if (findings.length >= input.limit) break;
-    if (matched.has(receipt.providerInvoiceId)) continue;
+    if (appliedByInvoice.has(receipt.providerInvoiceId)) continue;
+    // F3: only receipts whose own stamp falls in the provider window are compared
+    // in the reverse direction; an older receipt's payment is outside what we read.
+    if (receipt.paidAt !== null && (receipt.paidAt.getTime() < windowStart || receipt.paidAt.getTime() > windowEnd)) continue;
     findings.push(`receipt_without_provider_payment: invoice ${receipt.providerInvoiceId} (${receipt.amount} ${receipt.currency}) is recorded as paid, but Chargebee lists no successful payment for it in the window`);
   }
   if (input.receipts.length >= RECEIPT_RECON_BATCH) findings.unshift(`provider_recon_truncated: the receipt read stopped at ${RECEIPT_RECON_BATCH} rows, so some receipts in the window were not compared`);
@@ -495,7 +529,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listRefundsAfterPickup,
   listReferredPastDeadline,
   countWebhookUnauthorizedSince,
-  listProviderPaymentsSince: (since: Date) => listRecentPayments(currentChargebeeSite(), { since }),
+  listProviderPaymentsSince: (since: Date, until: Date) => listRecentPayments(currentChargebeeSite(), { since, until }),
   listReceiptsPaidSince,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
@@ -603,11 +637,16 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // receipts. Nothing is written; an unreachable provider is a visible finding, never a
     // silent pass, because a missed comparison is exactly what this check exists to catch.
     if (providerReconEnabled && deps.listProviderPaymentsSince && deps.listReceiptsPaidSince) {
-      const since = new Date(nowMs - DAY_MS);
+      // F3: exclude the last hour (a payment's webhook may still be in flight) and
+      // read receipts over a wider window than the payments, so a receipt stamped
+      // a moment before its payment is still found.
+      const providerSince = new Date(nowMs - PROVIDER_RECON_LOOKBACK_MS);
+      const providerUntil = new Date(nowMs - PROVIDER_RECON_EDGE_MS);
+      const receiptSince = new Date(nowMs - RECEIPT_RECON_LOOKBACK_MS);
       try {
-        const providerPayments = await deps.listProviderPaymentsSince(since);
-        const receipts = await deps.listReceiptsPaidSince(since);
-        findings.push(...compareProviderPayments({ providerPayments, receipts, limit: FINDINGS_PREVIEW_LIMIT }));
+        const providerPayments = await deps.listProviderPaymentsSince(providerSince, providerUntil);
+        const receipts = await deps.listReceiptsPaidSince(receiptSince);
+        findings.push(...compareProviderPayments({ providerPayments, receipts, limit: FINDINGS_PREVIEW_LIMIT, nowMs }));
       } catch (error) {
         const message = error instanceof Error ? error.message.replace(/[\r\n\t]+/g, " ").slice(0, 200) : "provider or database read failed";
         findings.push(`provider_recon_unavailable: Chargebee's recent payments could not be compared (${message}); nothing was written`);
