@@ -3176,7 +3176,7 @@
       "tier": 2,
       "lane": "demand-admit",
       "branch": "agent/queue/d086-admit",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-328",
       "epic": "D-086-demand-list",
       "dependsOn": [
