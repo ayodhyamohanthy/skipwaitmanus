@@ -13,7 +13,7 @@ import ExploreCompany from "./ExploreCompany";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { GOAL_NEXT_STEP_LABEL, GOAL_NEXT_STEP_HEADING_ID } from "@/components/goal/GoalNextStep";
-import { FREE_ASKS_CHIP, ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
+import { FREE_ASKS_CHIP, ASK_COST_SENTENCE, COVERAGE_WAIT_REASON, MONEY_SENTENCE } from "@shared/moneyCopy";
 
 // The kit-class set, read from the stylesheet exactly as the page-contract
 // helper does (kit classes share no prefix).
@@ -59,17 +59,22 @@ const json = (status: number, body: unknown) => ({ ok: status >= 200 && status <
 // openings section reads /api/companies/:slug/opportunities, so the stub must
 // answer that before the generic slug branch treats it as a company.
 const post = (over: Partial<PublicOpportunityPost> = {}): PublicOpportunityPost => ({ id: 91, companyDomain: "wipro.com", kind: "hiring_now" as const, roleTitle: "Product Designer", targetRoleUrl: "https://careers.wipro.com/jobs/1", location: "Bengaluru", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-10-10T09:00:00.000Z", expiresAt: "2026-11-09T09:00:00.000Z", poster: { kind: "anonymous" as const }, ...over });
+// A created ask, the shape POST /api/company-referrals answers with (the
+// drawer's own CREATED in exploreDrawer.test.tsx).
+const CREATED = { requestId: 501, companyDomain: "wipro.com", coverageStatus: "visible", fastTrack: false, slots: { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: null } };
 
 /** The goal shell reads the balance and the seeker's setup beside the directory. */
 const setup = (resume: { id: number; fileName: string } | null = null) => ({ goal: "Actively looking", roles: [], level: "", links: [], city: "", countries: "", remote: true, visa: "No sponsorship needed", resume });
 
-function stubDirectory(directory: CompanyDirectoryResponse = ALL_OPEN, opportunities: PublicOpportunityPost[] = [], options: { credits?: number; resume?: { id: number; fileName: string } | null } = {}) {
-  const fetchMock = vi.fn(async (input: string) => {
+function stubDirectory(directory: CompanyDirectoryResponse = ALL_OPEN, opportunities: PublicOpportunityPost[] = [], options: { credits?: number; resume?: { id: number; fileName: string } | null; send?: { status: number; body: unknown } } = {}) {
+  const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
+    const method = init?.method ?? "GET";
     if (path === "/api/companies") return json(200, directory);
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: options.credits ?? 4 } });
     if (path === "/api/profile/setup") return json(200, setup(options.resume ?? null));
     if (path === "/api/ask-drafts") return json(200, { draft: { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Shipped a design system used by 40 teams.", updatedAt: "x" } });
+    if (path === "/api/company-referrals" && method === "POST") return json(options.send?.status ?? 200, options.send?.body ?? CREATED);
     if (path.endsWith("/opportunities")) return json(200, { opportunities });
     const slug = path.startsWith("/api/companies/") ? decodeURIComponent(path.slice("/api/companies/".length)) : "";
     const found = directory.companies.find(item => item.slug === slug);
@@ -348,8 +353,20 @@ describe("Explore company door (goal, W2)", () => {
     const commit = screen.getByRole("button", { name: "Ask for a referral" });
     expect(commit.getAttribute("data-g-primary")).toBe("true");
     expect(screen.getByRole("link", { name: "Alert me" }).getAttribute("href")).toBe("/alerts");
-    expect(screen.getByText(/waits free until one can/)).toBeTruthy();
+    expect(screen.getByText(/waits at no cost until one can/)).toBeTruthy();
     expect(screen.getAllByText(/3 free referrals every month/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("the not-open reason is the shared money copy, in referral-only words (F4)", async () => {
+    // Red-first binding: on the reviewed head the door rendered its own retyped
+    // literal ("...waits free... no credit is used..."), so this reason never
+    // matched the shared helper. The helper carries no "credit" and no noun
+    // "asks" (D-173/D-180), and the door shows it verbatim.
+    stubDirectory(directoryOf([company("wipro", false)]));
+    renderWithQuery(<ExploreCompany />);
+    expect(await screen.findByText(COVERAGE_WAIT_REASON)).toBeTruthy();
+    expect(COVERAGE_WAIT_REASON.includes("credit")).toBe(false);
+    expect(COVERAGE_WAIT_REASON.toLowerCase().includes("asks")).toBe(false);
   });
 
   it("explains a failed load with Try again instead of a 404", async () => {
@@ -481,6 +498,50 @@ describe("Goal redesign of the find surfaces", () => {
     expect(container).toBeTruthy();
   });
 
+  // F1 (PR #1161 review): the black commit never calls a listed company
+  // "unlisted". All three probes fail on the reviewed head (go was called
+  // with /ask) and pass with the answered-read gate.
+  it("the black commit never routes a listed company to /ask while the directory is still loading", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (String(input) === "/api/companies") return new Promise(() => {}); // the read never resolves
+      return json(404, { error: "not found" });
+    }));
+    const { container } = renderWithQuery(<Explore />);
+    await screen.findByRole("button", { name: "Find your company" });
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
+    const commit = within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" });
+    expect(commit.getAttribute("aria-disabled")).toBe("true"); // the commit waits, honestly
+    fireEvent.click(commit);
+    expect(go).not.toHaveBeenCalledWith("/ask");
+    expect(container).toBeTruthy();
+  });
+
+  it("the black commit never routes a listed company to /ask when the directory failed to load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (String(input) === "/api/companies") return json(500, { error: "down" });
+      return json(404, { error: "not found" });
+    }));
+    const { container } = renderWithQuery(<Explore />);
+    await screen.findByText("We couldn’t load companies.");
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
+    const commit = within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" });
+    expect(commit.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(commit);
+    expect(go).not.toHaveBeenCalledWith("/ask");
+    expect(container).toBeTruthy();
+  });
+
+  it("the black commit never routes a listed company to /ask because a filter chip hides it", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<Explore />);
+    await waitFor(() => expect(screen.getByTestId("goal-directory-summary")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Design" })); // Wipro has no Design function; the query still matches
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
+    fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
+    expect(go).not.toHaveBeenCalledWith("/ask");
+    expect(container).toBeTruthy();
+  });
+
   it("the door meets the goal contract: goal line, one next step, one black commit", async () => {
     stubDirectory();
     const { container } = renderWithQuery(<ExploreCompany />);
@@ -514,13 +575,28 @@ describe("Goal redesign of the find surfaces", () => {
   });
 
   it("after a send, closing and reopening the door's drawer starts a new ask, not the old sent view", async () => {
-    stubDirectory();
+    // F3 (PR #1161 review): the earlier version of this test never sent, so it
+    // bound to nothing (it passed with ExploreCompany.tsx reverted). This one
+    // completes a real send through the drawer first, so the reopened drawer
+    // genuinely has a sent view to recover from.
+    stubDirectory(ALL_OPEN, [], { resume: { id: 77, fileName: "ada-resume.pdf" }, send: { status: 200, body: CREATED } });
     renderWithQuery(<ExploreCompany />);
     fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
     const drawer = await screen.findByTestId("goal-drawer");
-    fireEvent.click(within(drawer).getByRole("button", { name: /Close/ }));
+    await within(drawer).findByText("ada-resume.pdf");
+    const link = "https://careers.wipro.com/jobs/1234567-product-designer";
+    fireEvent.change(within(drawer).getByLabelText("Job link"), { target: { value: link } });
+    fireEvent.blur(within(drawer).getByLabelText("Job link"));
+    fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(within(drawer).getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(within(drawer).getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    await waitFor(() => expect(within(screen.getByTestId("goal-drawer")).getByText("Ask sent to Wipro.")).toBeTruthy());
+    fireEvent.click(within(screen.getByTestId("goal-drawer")).getByRole("button", { name: /Close/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
     // The fresh drawer shows the composer, not the previous send's confirmation.
-    expect(within(await screen.findByTestId("goal-drawer")).getByLabelText(/Job link/)).toBeTruthy();
+    const fresh = await screen.findByTestId("goal-drawer");
+    expect(within(fresh).getByLabelText(/Job link/)).toBeTruthy();
+    expect(within(fresh).queryByText("Ask sent to Wipro.")).toBeNull();
   });
 });

@@ -120,13 +120,22 @@ export default function Explore() {
   const clearFilters = () => { setQuery(""); setFn(null); };
 
   // The next step's single black commit: an unambiguous search opens the
-  // company's door; nothing listed routes to /ask's paste-a-link path (the
-  // same hand-off the typeahead's no-match state offers); anything else hands
-  // the seeker to the filtered list.
+  // company's door; an answered no-match routes to /ask's paste-a-link path
+  // (the same hand-off the typeahead's no-match state offers); anything else
+  // hands the seeker to the filtered list. Unlisted needs an answered read
+  // (the file's own invariant above): /ask is never the answer while the
+  // directory is loading or failed, and the query alone decides — the active
+  // function chip only narrows the list, so it never makes a company unlisted.
+  const directoryUnresolved = !companies || directory.isError;
+  const unlistedAnswered = noMatch || (!typeahead && Boolean(companies) && !directory.isError && !queryMatched);
   const findCompany = () => {
     if (!query.trim()) return;
     if (shown.length === 1) { selectCompany(shown[0].slug); return; }
-    if (shown.length === 0) { navigate("/ask"); return; }
+    if (shown.length === 0) {
+      if (unlistedAnswered) { navigate("/ask"); return; }
+      listRef.current?.focus();
+      return;
+    }
     listRef.current?.focus();
   };
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -228,7 +237,17 @@ export default function Explore() {
               variant="primary"
               touch="large"
               className="gdesk:min-w-[240px]"
-              disabledReason={query.trim() ? undefined : "Type a company name to search."}
+              disabledReason={
+                !query.trim()
+                  ? "Type a company name to search."
+                  : directory.isError
+                    ? "Companies could not load. Try again, then search."
+                    : !companies
+                      ? "Still loading companies."
+                      : typeahead && companySearch.status === "loading"
+                        ? "Still checking that name."
+                        : undefined
+              }
               onClick={findCompany}
             >
               Find your company

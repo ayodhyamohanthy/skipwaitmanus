@@ -27,11 +27,10 @@ import { useCompanyResponseSignal } from "@/lib/companyResponseSignal";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
 import type { CompanyResponseSignal } from "@shared/companyResponseSignal";
-import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, COVERAGE_WAIT_REASON, MONEY_SENTENCE } from "@shared/moneyCopy";
 // ASK_COST_SENTENCE stays for the SEO description below; the block states the
 // cost once, through MONEY_SENTENCE.
 import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
-import { COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { NotFoundContent } from "./NotFound";
 import { AskDrawer } from "./explore/AskDrawer";
 import { useAskComposer } from "./explore/useAskComposer";
@@ -193,7 +192,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         </header>
 
         <div className="mt-6">
-          <GoalNextStep reason={open ? "One request to a verified employee of this company." : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}>
+          <GoalNextStep reason={open ? "One request to a verified employee of this company." : COVERAGE_WAIT_REASON}>
             <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
             <p className="mt-3 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
           </GoalNextStep>

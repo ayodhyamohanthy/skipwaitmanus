@@ -587,7 +587,11 @@ describe("shared composer quote (D-132 item 3)", () => {
 // same session still states the reason, but plainly - no second nudge, no
 // second CTA. The reason is never hidden either way.
 describe("slot-cap nudge once per session", () => {
-  const CAPPED = { status: 409, body: { error: "Your 3 open requests are all open", code: "slot_cap_reached", slots: { plan: "free", planLabel: "Free", open: 0, cap: 3, full: true, nextPlan: null } } };
+  // F2 (PR #1161 review): the earlier fixture carried nextPlan: null, so the
+  // shared copy never produced a CTA and the once-per-session tests passed
+  // with useAskComposer.tsx reverted (they bound to nothing). A real next plan
+  // makes the CTA exist, so "shown once, then plain" is actually pinned.
+  const CAPPED = { status: 409, body: { error: "Your 3 open requests are all open", code: "slot_cap_reached", slots: { plan: "free", planLabel: "Free", open: 0, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } } };
 
   it("shows the nudge with its CTA once, then states the cap plainly without it", async () => {
     stub({ send: CAPPED, workItems });
@@ -600,9 +604,11 @@ describe("slot-cap nudge once per session", () => {
     fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Your 3 requests are all open");
-    expect(within(alert).queryByRole("link", { name: /See Free/i } ) ?? within(alert).queryByRole("link")).toBeNull(); // no nextPlan: no CTA either way
+    expect(within(alert).getByRole("link", { name: /See Momentum/i })).toBeTruthy();
     cleanup();
 
+    // The same browser session marks the nudge shown; the reason is never
+    // hidden, but the second capped send states the cap plainly, no CTA.
     stub({ send: CAPPED, workItems });
     renderPage(<Ask />);
     await typeLink();
@@ -613,6 +619,7 @@ describe("slot-cap nudge once per session", () => {
     fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
     const again = await screen.findByRole("alert");
     expect(again.textContent).toContain("Your 3 requests are all open"); // the reason always shows
+    expect(within(again).queryByRole("link", { name: /See Momentum/i })).toBeNull();
   });
 
   it("a blocked storage only means the nudge may show again; the reason still shows", async () => {
