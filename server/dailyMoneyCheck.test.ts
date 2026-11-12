@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { paymentFulfillments, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { runMoneyCheckNow, createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { runMoneyCheckNow, createDailyMoneyCheck, compareProviderPayments, PROVIDER_RECON_ENABLED, FINDINGS_EMAIL_LINE_LIMIT, FINDINGS_PREVIEW_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -665,5 +665,103 @@ describe("runMoneyCheckNow (on-demand admin run)", () => {
     const result = await runMoneyCheckNow(NOW.getTime(), deps);
     expect(result).toEqual({ emailSent: false, findingsEmailed: false, subject: null, text: null });
     expect(sent).toEqual([]);
+  });
+});
+
+// D-100.provider-recon: the daily check compares Chargebee's recent payments with our receipts.
+// Read-only: it never writes a payment, receipt, wallet or ledger row.
+describe("provider payment reconciliation (D-100.provider-recon)", () => {
+  const providerPayment = (overrides: Record<string, unknown> = {}) => ({
+    id: "pm_1", invoiceId: "inv_1", amount: 9900, currency: "INR", status: "success", date: new Date(NOW.getTime() - 60_000), ...overrides,
+  });
+  const receipt = (overrides: Record<string, unknown> = {}) => ({
+    providerInvoiceId: "inv_1", amount: 9900, currency: "INR", status: "paid", paidAt: new Date(NOW.getTime() - 60_000), ...overrides,
+  });
+
+  it("R1: while PROVIDER_RECON_ENABLED is false the job never asks Chargebee and reports nothing", async () => {
+    const listProviderPaymentsSince = vi.fn(async () => [providerPayment()]);
+    const listReceiptsPaidSince = vi.fn(async () => []);
+    const { deps, sent } = makeDeps({ listProviderPaymentsSince, listReceiptsPaidSince });
+    await runJob(deps);
+    expect(PROVIDER_RECON_ENABLED).toBe(false);
+    expect(listProviderPaymentsSince).not.toHaveBeenCalled();
+    expect(listReceiptsPaidSince).not.toHaveBeenCalled();
+    expect(sent).toEqual([]);
+  });
+
+  it("R2: with the switch enabled a matching payment and receipt report nothing, and the window is the last day", async () => {
+    const listProviderPaymentsSince = vi.fn(async () => [providerPayment()]);
+    const listReceiptsPaidSince = vi.fn(async () => [receipt()]);
+    const { deps, sent } = makeDeps({ listProviderPaymentsSince, listReceiptsPaidSince });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "2026-10-19T02:00Z" });
+    expect(listProviderPaymentsSince).toHaveBeenCalledTimes(1);
+    expect(listReceiptsPaidSince).toHaveBeenCalledTimes(1);
+    expect(listProviderPaymentsSince.mock.calls[0]![0]).toEqual(new Date(NOW.getTime() - DAY));
+    expect(listReceiptsPaidSince.mock.calls[0]![0]).toEqual(new Date(NOW.getTime() - DAY));
+    expect(sent).toEqual([]);
+  });
+
+  it("R3: a Chargebee payment we never recorded is one finding with ids and amounts only", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => [providerPayment({ id: "pm_9", invoiceId: "inv_9", amount: 499, currency: "USD" })]),
+      listReceiptsPaidSince: vi.fn(async () => []),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("provider_payment_unrecorded: Chargebee payment pm_9 (499 USD, invoice inv_9) has no receipt recorded by us");
+    expect(sent[0]!.text).not.toContain("@");
+  });
+
+  it("R4: a receipt we recorded with no Chargebee payment behind it is one finding", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => []),
+      listReceiptsPaidSince: vi.fn(async () => [receipt({ providerInvoiceId: "inv_7", amount: 1999, currency: "USD" })]),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent[0]!.text).toContain("receipt_without_provider_payment: invoice inv_7 (1999 USD) is recorded as paid, but Chargebee lists no successful payment for it in the window");
+  });
+
+  it("R5: an amount or currency mismatch between the receipt and Chargebee is one finding", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => [providerPayment({ id: "pm_3", amount: 499, currency: "USD" })]),
+      listReceiptsPaidSince: vi.fn(async () => [receipt({ amount: 9900, currency: "INR" })]),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent[0]!.text).toContain("provider_amount_mismatch: invoice inv_1 is recorded as 9900 INR, Chargebee payment pm_3 says 499 USD");
+  });
+
+  it("R6: statuses that moved no money are ignored in both directions", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => [providerPayment({ id: "pm_pending", status: "pending" }), providerPayment({ id: "pm_void", invoiceId: "inv_void", status: "voided" })]),
+      listReceiptsPaidSince: vi.fn(async () => [receipt({ providerInvoiceId: "inv_due", status: "payment_due" })]),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent).toEqual([]);
+  });
+
+  it("R7: a refused or unavailable Chargebee read is a visible finding, never a silent pass", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => { throw new Error("Chargebee request failed (401, api_not_configured)"); }),
+      listReceiptsPaidSince: vi.fn(async () => []),
+    });
+    const output = await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(output.failed).toBe(0);
+    expect(sent[0]!.text).toContain("provider_recon_unavailable: Chargebee's recent payments could not be compared (Chargebee request failed (401, api_not_configured)); nothing was written");
+  });
+
+  it("R8: a payment with no invoice id cannot be matched and is reported as unlinked", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => [providerPayment({ id: "pm_4", invoiceId: undefined })]),
+      listReceiptsPaidSince: vi.fn(async () => []),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent[0]!.text).toContain("provider_payment_unlinked: Chargebee payment pm_4 (9900 INR) has no invoice id, so it cannot be matched");
+  });
+
+  it("R9: compareProviderPayments is pure and caps its output at the preview limit", () => {
+    const payments = Array.from({ length: FINDINGS_PREVIEW_LIMIT + 5 }, (_, i) => providerPayment({ id: `pm_${i}`, invoiceId: `inv_missing_${i}` }));
+    const findings = compareProviderPayments({ providerPayments: payments, receipts: [], limit: FINDINGS_PREVIEW_LIMIT });
+    expect(findings).toHaveLength(FINDINGS_PREVIEW_LIMIT);
+    expect(findings[0]).toContain("provider_payment_unrecorded");
   });
 });
