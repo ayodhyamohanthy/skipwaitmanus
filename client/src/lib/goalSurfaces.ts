@@ -86,6 +86,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "start",
   "suggest-company",
   "system",
+  "verify",
 ];
 
 export function releasedGoalSurfaces(): readonly GoalSurfaceId[] {
