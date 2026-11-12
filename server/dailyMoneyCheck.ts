@@ -19,9 +19,12 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // ids, amounts, currencies and reasons — never names, emails, or request content.
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { PENDING_MAX_AGE_MS } from "./chargebeePendingReconcile";
-import { askCosts, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { askCosts, billingInvoices, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { currentChargebeeSite } from "./chargebeeApi";
+import { listRecentPayments, type ProviderPayment } from "./chargebeeAccountApi";
+import { resolveBillingEnvironment } from "./chargebeeEnvironment";
 import { ABANDONED_CHECKOUT_REASON } from "./abandonedCheckouts";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
@@ -46,6 +49,21 @@ export const FINDINGS_PREVIEW_LIMIT = 50;
 /** The most finding lines one email carries; the subject keeps the full count. */
 export const FINDINGS_EMAIL_LINE_LIMIT = 60;
 const MONEY_CHECK_RECIPIENT = "ayodhya@skipwait.me";
+
+/**
+ * D-100.provider-recon: compare Chargebee's recent payments with our receipts once a day.
+ * Starts off; the release row flips it after this row's review. While false the job never
+ * calls Chargebee and every payload is byte-identical to before this row.
+ */
+export const PROVIDER_RECON_ENABLED = false;
+/** The receipt page this check reads; a full page is reported as truncated, never as complete. */
+export const RECEIPT_RECON_BATCH = 500;
+/** Chargebee payment statuses that mean money moved (a refunded payment still moved it). */
+const MONEY_MOVED_PAYMENT_STATUSES = new Set(["success", "refunded", "partially_refunded"]);
+/** Receipt statuses that mean we recorded a payment (a refunded one still had a payment). */
+const MONEY_RECORDED_RECEIPT_STATUSES = new Set(["paid", "refunded", "partially_refunded"]);
+export type ProviderReceiptRow = { providerInvoiceId: string; amount: number; currency: string; status: string; paidAt: Date | null };
+export type ProviderPaymentForRecon = { id: string; invoiceId: string | null; amount: number; currency: string; status: string };
 
 export type WalletAuditResult = { checkedWallets: number; mismatches: Array<Record<string, unknown>>; integrity: Array<Record<string, unknown>> };
 export type CreditedPaymentRow = { id: number; userId: number; role: string; tokenCount: number };
@@ -85,6 +103,10 @@ export type DailyMoneyCheckDeps = {
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
   /** D-212: Chargebee webhook deliveries refused for a bad or missing secret since `since` (optional so older callers stay valid). */
   countWebhookUnauthorizedSince?: (since: Date) => Promise<number>;
+  /** D-100.provider-recon: Chargebee's payments since `since`, read only (optional so older callers stay valid). */
+  listProviderPaymentsSince?: (since: Date) => Promise<ProviderPayment[]>;
+  /** D-100.provider-recon: our receipts paid since `since`, from `billingInvoices` (optional so older callers stay valid). */
+  listReceiptsPaidSince?: (since: Date) => Promise<ProviderReceiptRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -407,6 +429,44 @@ export async function countWebhookUnauthorizedSince(since: Date): Promise<number
   return Number(row?.total ?? 0);
 }
 
+/** Our paid receipts for the current billing site, in the window. Read only. */
+async function listReceiptsPaidSince(since: Date): Promise<ProviderReceiptRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ providerInvoiceId: billingInvoices.providerInvoiceId, amount: billingInvoices.amount, currency: billingInvoices.currency, status: billingInvoices.status, paidAt: billingInvoices.paidAt })
+    .from(billingInvoices)
+    .where(and(eq(billingInvoices.site, resolveBillingEnvironment()), gte(billingInvoices.paidAt, since), inArray(billingInvoices.status, ["paid", "refunded", "partially_refunded"])))
+    .orderBy(asc(billingInvoices.paidAt)).limit(RECEIPT_RECON_BATCH);
+}
+
+/**
+ * D-100.provider-recon: the comparison itself, pure and provider-agnostic so it is tested
+ * without a live Chargebee. Each direction is a separate finding: a provider payment we
+ * never recorded, a receipt with no provider payment behind it, and an amount or currency
+ * that differs. Statuses that moved no money are ignored both ways.
+ */
+export function compareProviderPayments(input: { providerPayments: ProviderPaymentForRecon[]; receipts: ProviderReceiptRow[]; limit: number }): string[] {
+  const findings: string[] = [];
+  const receiptByInvoice = new Map<string, ProviderReceiptRow>();
+  const recordedReceipts = input.receipts.filter(receipt => MONEY_RECORDED_RECEIPT_STATUSES.has(receipt.status));
+  for (const receipt of recordedReceipts) if (!receiptByInvoice.has(receipt.providerInvoiceId)) receiptByInvoice.set(receipt.providerInvoiceId, receipt);
+  const matched = new Set<string>();
+  for (const payment of input.providerPayments) {
+    if (!MONEY_MOVED_PAYMENT_STATUSES.has(payment.status) || findings.length >= input.limit) continue;
+    if (!payment.invoiceId) { findings.push(`provider_payment_unlinked: Chargebee payment ${payment.id} (${payment.amount} ${payment.currency}) has no invoice id, so it cannot be matched`); continue; }
+    const receipt = receiptByInvoice.get(payment.invoiceId);
+    if (!receipt) { findings.push(`provider_payment_unrecorded: Chargebee payment ${payment.id} (${payment.amount} ${payment.currency}, invoice ${payment.invoiceId}) has no receipt recorded by us`); continue; }
+    matched.add(payment.invoiceId);
+    if (receipt.amount !== payment.amount || receipt.currency !== payment.currency) findings.push(`provider_amount_mismatch: invoice ${payment.invoiceId} is recorded as ${receipt.amount} ${receipt.currency}, Chargebee payment ${payment.id} says ${payment.amount} ${payment.currency}`);
+  }
+  for (const receipt of recordedReceipts) {
+    if (findings.length >= input.limit) break;
+    if (matched.has(receipt.providerInvoiceId)) continue;
+    findings.push(`receipt_without_provider_payment: invoice ${receipt.providerInvoiceId} (${receipt.amount} ${receipt.currency}) is recorded as paid, but Chargebee lists no successful payment for it in the window`);
+  }
+  if (input.receipts.length >= RECEIPT_RECON_BATCH && findings.length > 0) findings.unshift(`provider_recon_truncated: the receipt read stopped at ${RECEIPT_RECON_BATCH} rows, so some receipts in the window were not compared`);
+  return findings.slice(0, input.limit);
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
@@ -435,11 +495,14 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listRefundsAfterPickup,
   listReferredPastDeadline,
   countWebhookUnauthorizedSince,
+  listProviderPaymentsSince: (since: Date) => listRecentPayments(currentChargebeeSite(), { since }),
+  listReceiptsPaidSince,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 };
 
-export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCheckDeps) {
+export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCheckDeps, options: { providerReconEnabled?: boolean } = {}) {
+  const providerReconEnabled = options.providerReconEnabled ?? PROVIDER_RECON_ENABLED;
   return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
     const findings: string[] = [];
 
@@ -535,6 +598,21 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // D-212: a webhook refused for its secret means refund, card-validation and renewal events may be refused too.
     const refusedWebhooks = deps.countWebhookUnauthorizedSince ? await deps.countWebhookUnauthorizedSince(new Date(nowMs - DAY_MS)) : 0;
     if (refusedWebhooks > 0) findings.push(`webhook_unauthorized_24h: ${refusedWebhooks} Chargebee webhook ${refusedWebhooks === 1 ? "delivery was" : "deliveries were"} refused for a bad or missing secret in the last 24 hours; if the webhook secret drifted, refund, card-validation and renewal events are being refused too (compare the Chargebee webhook settings with CHARGEBEE_WEBHOOK_SECRET)`);
+
+    // D-100.provider-recon: read Chargebee's recent payments and compare them with our
+    // receipts. Nothing is written; an unreachable provider is a visible finding, never a
+    // silent pass, because a missed comparison is exactly what this check exists to catch.
+    if (providerReconEnabled && deps.listProviderPaymentsSince && deps.listReceiptsPaidSince) {
+      const since = new Date(nowMs - DAY_MS);
+      try {
+        const providerPayments = await deps.listProviderPaymentsSince(since);
+        const receipts = await deps.listReceiptsPaidSince(since);
+        findings.push(...compareProviderPayments({ providerPayments, receipts, limit: FINDINGS_PREVIEW_LIMIT }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message.replace(/[\r\n\t]+/g, " ").slice(0, 200) : "provider or database read failed";
+        findings.push(`provider_recon_unavailable: Chargebee's recent payments could not be compared (${message}); nothing was written`);
+      }
+    }
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

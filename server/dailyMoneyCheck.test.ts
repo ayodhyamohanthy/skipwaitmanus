@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { paymentFulfillments, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
+import { listRecentPayments } from "./chargebeeAccountApi";
 import { runMoneyCheckNow, createDailyMoneyCheck, compareProviderPayments, PROVIDER_RECON_ENABLED, FINDINGS_EMAIL_LINE_LIMIT, FINDINGS_PREVIEW_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
@@ -756,6 +757,27 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
     });
     await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
     expect(sent[0]!.text).toContain("provider_payment_unlinked: Chargebee payment pm_4 (9900 INR) has no invoice id, so it cannot be matched");
+  });
+
+  it("R10: listRecentPayments asks for the window newest first, parses ids and amounts, and drops card data", async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn(async (url: string) => {
+      calls.push(String(url));
+      return { ok: true, json: async () => ({ list: [{ payment: { id: "pm_1", invoice_id: "inv_1", amount: 9900, currency_code: "inr", date: 1700000000, status: "success", customer_id: "c_1", card: { last4: "4242" } } }] }) } as unknown as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const payments = await listRecentPayments({ site: "fixture-test", apiKey: "k" }, { since: new Date("2026-10-18T02:00:00Z") });
+      expect(payments).toEqual([{ id: "pm_1", invoiceId: "inv_1", amount: 9900, currency: "INR", status: "success", date: new Date(1700000000 * 1000) }]);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toContain("https://fixture-test.chargebee.com/api/v2/payments?");
+      expect(calls[0]).toContain("date%5Bafter%5D=");
+      expect(calls[0]).toContain("sort_by%5Bdesc%5D=date");
+      expect(JSON.stringify(payments)).not.toContain("4242");
+      expect(JSON.stringify(payments)).not.toContain("c_1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("R9: compareProviderPayments is pure and caps its output at the preview limit", () => {
