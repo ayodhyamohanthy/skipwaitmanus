@@ -463,7 +463,7 @@ export function compareProviderPayments(input: { providerPayments: ProviderPayme
     if (matched.has(receipt.providerInvoiceId)) continue;
     findings.push(`receipt_without_provider_payment: invoice ${receipt.providerInvoiceId} (${receipt.amount} ${receipt.currency}) is recorded as paid, but Chargebee lists no successful payment for it in the window`);
   }
-  if (input.receipts.length >= RECEIPT_RECON_BATCH && findings.length > 0) findings.unshift(`provider_recon_truncated: the receipt read stopped at ${RECEIPT_RECON_BATCH} rows, so some receipts in the window were not compared`);
+  if (input.receipts.length >= RECEIPT_RECON_BATCH) findings.unshift(`provider_recon_truncated: the receipt read stopped at ${RECEIPT_RECON_BATCH} rows, so some receipts in the window were not compared`);
   return findings.slice(0, input.limit);
 }
 

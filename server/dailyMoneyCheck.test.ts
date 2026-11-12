@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { paymentFulfillments, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
 import { listRecentPayments } from "./chargebeeAccountApi";
-import { runMoneyCheckNow, createDailyMoneyCheck, compareProviderPayments, PROVIDER_RECON_ENABLED, FINDINGS_EMAIL_LINE_LIMIT, FINDINGS_PREVIEW_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { runMoneyCheckNow, createDailyMoneyCheck, compareProviderPayments, PROVIDER_RECON_ENABLED, RECEIPT_RECON_BATCH, FINDINGS_EMAIL_LINE_LIMIT, FINDINGS_PREVIEW_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -757,6 +757,14 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
     });
     await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
     expect(sent[0]!.text).toContain("provider_payment_unlinked: Chargebee payment pm_4 (9900 INR) has no invoice id, so it cannot be matched");
+  });
+
+  it("R11: a full receipt page is reported as truncated, never as a complete comparison", () => {
+    const receipts = Array.from({ length: RECEIPT_RECON_BATCH }, (_, i) => receipt({ providerInvoiceId: `inv_${i}` }));
+    const payments = receipts.map((row, i) => providerPayment({ id: `pm_${i}`, invoiceId: row.providerInvoiceId }));
+    const findings = compareProviderPayments({ providerPayments: payments, receipts, limit: FINDINGS_PREVIEW_LIMIT });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toContain("provider_recon_truncated: the receipt read stopped at");
   });
 
   it("R10: listRecentPayments asks for the window newest first, parses ids and amounts, and drops card data", async () => {
