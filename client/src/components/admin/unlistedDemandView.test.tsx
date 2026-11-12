@@ -116,6 +116,23 @@ describe("unlisted demand queue (D-086.admit)", () => {
     expect(container.textContent).not.toContain("ada@example.com");
   });
 
+// D-328: the visible mount is the goal /admin overview, not the legacy
+// companies view (that view never renders while `admin` is in RELEASED). The
+// page keeps exactly one h1 and one next step; the queue is a section below.
+it("mounts as a section on the goal /admin overview without a second h1 or next step", async () => {
+  stub(queue([{ domain: "acme-robotics.example", people: 5 }]));
+  const GoalAdminOverview = (await import("@/pages/goal/admin/GoalAdminOverview")).default;
+  const { container } = render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><GoalAdminOverview /></QueryClientProvider>);
+  expect(await screen.findByText("acme-robotics.example")).toBeTruthy();
+  expect(screen.getByText("Requests for unlisted companies")).toBeTruthy();
+  expect(container.querySelectorAll("h1")).toHaveLength(1);
+  // The section sits outside the page's one next-step block; the block itself and
+  // its single black commit are pinned by admin.goal.test.tsx.
+  const section = container.querySelector('[aria-labelledby="unlisted-demand"]');
+  expect(section).toBeTruthy();
+  expect(container.querySelector('[aria-label="Your next step"] [aria-labelledby="unlisted-demand"]')).toBeNull();
+});
+
   it("retries the read when the admin asks again", async () => {
     // adminRetry allows one automatic retry, so the button appears after two failures.
     const fetchMock = vi.fn()

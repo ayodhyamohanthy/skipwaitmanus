@@ -9,7 +9,6 @@ import { useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { unlistedDemandAdminResponseSchema } from "@shared/companyDemand";
-import { AdminHeading } from "./AdminShell";
 import { adminRetry } from "./adminApi";
 
 /** Local to this view: adminApi.ts belongs to other rows (packet §6). */
@@ -53,14 +52,17 @@ export function UnlistedDemandView() {
       : queue.error ? QUEUE_LOAD_FAILED
         : queue.data?.length ? "Domains people asked for that are not in the company directory. Read-only." : QUEUE_EMPTY;
   return <>
-    <AdminHeading eyebrow="COMPANY OPERATIONS" title="Requests for unlisted companies." body={body} />
-    {queue.error && !off ? <p role="alert"><button type="button" onClick={() => { void queue.refetch(); }}>Try again</button></p> : null}
+    <section aria-labelledby="unlisted-demand" className="border-t border-g-hairline pt-5">
+      <h2 id="unlisted-demand" className="text-g-label text-g-ink">Requests for unlisted companies</h2>
+      <p className="mt-1 text-g-meta text-g-ink-2">{body}</p>
+    </section>
+    {queue.error && !off ? <p role="alert" className="mt-3 text-g-meta text-g-ink-2"><button type="button" className="underline underline-offset-[3px]" onClick={() => { void queue.refetch(); }}>Try again</button></p> : null}
     {queue.data?.length ? (
-      <section className="admin-table" aria-label="Unlisted companies">
-        <header><span>Domain</span><span>People asking</span></header>
-        {queue.data.map(row => <div key={row.domain}><span className="table-primary">{row.domain}</span><span>{row.people}</span></div>)}
+      <section className="mt-4 border border-g-hairline bg-g-surface" aria-label="Unlisted companies">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-g-hairline px-4 py-2 text-g-meta text-g-ink-3"><span>Domain</span><span>People asking</span></header>
+        {queue.data.map(row => <div key={row.domain} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-g-hairline px-4 py-3 last:border-b-0"><span className="min-w-0 truncate text-g-label text-g-ink">{row.domain}</span><span className="text-g-label text-g-ink">{row.people}</span></div>)}
       </section>
     ) : null}
-    <p>{QUEUE_LISTING_HELP}</p>
+    <p className="mt-3 text-g-meta text-g-ink-3">{QUEUE_LISTING_HELP}</p>
   </>;
 }
