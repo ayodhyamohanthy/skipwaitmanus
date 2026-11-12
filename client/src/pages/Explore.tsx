@@ -70,7 +70,8 @@ export default function Explore() {
   // "Unlisted" needs both: an answered search with no company and no directory row for the query.
   // Whether the company exists is a question about the query alone: the active
   // function chip only narrows what the directory shows, so it never makes a company unlisted.
-  const queryMatched = useMemo(() => filterCompanies(companies ?? [], { query, fn: null }).length > 0, [companies, query]);
+  const queryMatches = useMemo(() => filterCompanies(companies ?? [], { query, fn: null }), [companies, query]);
+  const queryMatched = queryMatches.length > 0;
   const noMatch = typeahead && Boolean(companies) && companySearch.status === "ready" && companySearch.noMatch && !queryMatched;
   // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
   // When the query does match rows the chip hides, the filter empty state is the truthful line and stays.
@@ -126,14 +127,25 @@ export default function Explore() {
   // (the file's own invariant above): /ask is never the answer while the
   // directory is loading or failed, and the query alone decides — the active
   // function chip only narrows the list, so it never makes a company unlisted.
-  const directoryUnresolved = !companies || directory.isError;
   const unlistedAnswered = noMatch || (!typeahead && Boolean(companies) && !directory.isError && !queryMatched);
+  // An enabled commit must always do something (N6): the one remaining no-op is
+  // an empty filtered list where the query names several (or no) companies.
+  const commitDoesNothing = shown.length === 0 && !unlistedAnswered && queryMatches.length !== 1;
+  const commitBlockedReason = commitDoesNothing
+    ? searchSpeaks
+      ? "Pick a company from the suggestions."
+      : queryMatched
+        ? "Clear the filters to see matching companies."
+        : "Widen the name to see matches."
+    : undefined;
   const findCompany = () => {
     if (!query.trim()) return;
     if (shown.length === 1) { selectCompany(shown[0].slug); return; }
     if (shown.length === 0) {
       if (unlistedAnswered) { navigate("/ask"); return; }
-      listRef.current?.focus();
+      // The query alone decides: one named company opens even while a chip
+      // hides its row, so an enabled commit always does something (N6).
+      if (queryMatches.length === 1) { selectCompany(queryMatches[0].slug); return; }
       return;
     }
     listRef.current?.focus();
@@ -246,7 +258,7 @@ export default function Explore() {
                       ? "Still loading companies."
                       : typeahead && companySearch.status === "loading"
                         ? "Still checking that name."
-                        : undefined
+                        : commitBlockedReason
               }
               onClick={findCompany}
             >
@@ -267,9 +279,9 @@ export default function Explore() {
           <h2 className="text-g-heading text-g-ink">How it goes</h2>
           <ol className="mt-3 divide-y divide-g-hairline border-t border-g-hairline">
             {[
-              ["Find your company", "Search the directory of verified employers."],
+              ["Find your company", "Search companies where verified employees can review requests."],
               ["Paste the job link and say why you fit", "One link and three short reasons. Your name and resume stay private until an employee accepts."],
-              ["A verified employee accepts and refers", "You get their answer in your asks. No referral is guaranteed."],
+              ["A verified employee accepts and refers", "You see their answer in My asks. No referral is guaranteed."],
             ].map(([title, body], index) => (
               <li key={title} className="flex gap-4 py-4">
                 <span aria-hidden="true" className="font-g-mono text-g-meta text-g-ink-3">{`0${index + 1}`}</span>

@@ -102,7 +102,7 @@ beforeEach(() => {
   stubMatchMedia();
   go.mockReset();
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 const companyPaths = (fetchMock: ReturnType<typeof vi.fn>) => paths(fetchMock).filter(path => path.startsWith("/api/companies"));
 
@@ -254,8 +254,9 @@ describe("Explore company door (goal, W2)", () => {
     routeState.slug = "no-such-company";
     stubDirectory();
     renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByRole("heading", { name: "This door doesn't lead anywhere." })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
+    expect(await screen.findByText("This door doesn’t lead anywhere.")).toBeTruthy();
+    expect(screen.getByTestId("goal-empty-state")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Explore companies" })).toBeNull(); // no kit action inside the goal shell
     expect(screen.queryByRole("button", { name: /Ask for a referral/ })).toBeNull();
   });
 
@@ -542,6 +543,45 @@ describe("Goal redesign of the find surfaces", () => {
     expect(container).toBeTruthy();
   });
 
+  // N4 (PR #1161 re-review): new public copy said "verified employers" (SkipWait
+  // verifies employees, never employers) and used the noun "asks" outside the
+  // menu label D-180 permits.
+  it("the how-it-goes copy names no employer verification and no stray 'asks' noun", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<Explore />);
+    await screen.findByTestId("goal-directory-summary");
+    const how = container.querySelector('section[aria-label="How it goes"]') as HTMLElement;
+    expect(how.textContent).not.toMatch(/verified employers/i);
+    expect(how.textContent).toContain("Search companies where verified employees can review requests.");
+    expect(how.textContent).toContain("You see their answer in My asks.");
+    expect(how.textContent).not.toMatch(/your asks/i);
+  });
+
+  // N6 (PR #1161 re-review): with the query matching a company the active chip
+  // hides, the list is not mounted, so focusing it did nothing and the enabled
+  // commit was a no-op. The query alone decides; the commit opens that company.
+  it("the black commit opens the one company the query names even when a chip hides it", async () => {
+    stubDirectory();
+    const { container } = renderWithQuery(<Explore />);
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.click(screen.getByRole("button", { name: "Design" })); // Wipro has no Design function
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
+    fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
+    expect(go).toHaveBeenCalledWith("/explore?company=wipro", { replace: true });
+    expect(container).toBeTruthy();
+  });
+
+  it("the black commit is disabled with a reason when a chip hides every company the query names", async () => {
+    stubDirectory();
+    renderWithQuery(<Explore />);
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.click(screen.getByRole("button", { name: "Design" })); // Wipro and TCS have no Design function
+    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "technology services" } });
+    const step = screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL });
+    expect(within(step).getByRole("button", { name: "Find your company" }).getAttribute("aria-disabled")).toBe("true");
+    expect(within(step).getByText("Clear the filters to see matching companies.")).toBeTruthy();
+  });
+
   it("the door meets the goal contract: goal line, one next step, one black commit", async () => {
     stubDirectory();
     const { container } = renderWithQuery(<ExploreCompany />);
@@ -552,15 +592,35 @@ describe("Goal redesign of the find surfaces", () => {
     expect(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByText(MONEY_SENTENCE)).toBeTruthy();
   });
 
-  it("the door offers 'Claim this company' if you work here", async () => {
+  // N1 (PR #1161 re-review): the claim page is behind VITE_COMPANY_CLAIM, which
+  // is off (`.env.example: false`); the door must gate the link exactly as
+  // ForCompanies and GoalForCompanies do, or every company door is a dead link.
+  it("the door's claim link follows the company-claim switch, like the other two pages", async () => {
     stubDirectory();
-    const { container } = renderWithQuery(<ExploreCompany />);
+    vi.stubEnv("VITE_COMPANY_CLAIM", "false");
+    const off = renderWithQuery(<ExploreCompany />);
+    await screen.findByRole("heading", { level: 1, name: "Get referred at Wipro." });
+    expect(screen.queryByRole("link", { name: "Claim this company" })).toBeNull();
+    off.unmount();
+    vi.stubEnv("VITE_COMPANY_CLAIM", "true");
+    renderWithQuery(<ExploreCompany />);
     const claim = await screen.findByRole("link", { name: "Claim this company" });
     expect(claim.getAttribute("href")).toBe("/company/claim");
-    expect(container).toBeTruthy();
   });
 
-  it("an unknown slug renders inside the goal frame, with the way back", async () => {
+  // N2 (PR #1161 re-review): the goal line held only a company name when it got
+  // `truncate`; at 390 any name longer than about six characters lost its end.
+  // The browser measurement lives in the row's captures; this pins the fix.
+  it("the door's goal line wraps instead of truncating", async () => {
+    stubDirectory();
+    renderWithQuery(<ExploreCompany />);
+    const heading = await screen.findByRole("heading", { level: 1, name: "Get referred at Wipro." });
+    expect(heading.className).not.toMatch(/(^|\s)truncate(\s|$)/);
+  });
+
+  // N3 (PR #1161 re-review): the kit not-found nested a second <main> inside the
+  // goal shell's, drew the kit wordmark and an electric-blue kit pill.
+  it("an unknown slug renders one goal main, no kit wordmark, and a goal control back", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
       const path = String(input);
       if (path === "/api/companies/nobody") return json(404, { error: "This door doesn't lead anywhere" });
@@ -569,7 +629,24 @@ describe("Goal redesign of the find surfaces", () => {
     }));
     routeState.slug = "nobody";
     const { container } = renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByText("This door doesn't lead anywhere.")).toBeTruthy();
+    expect(await screen.findByText("This door doesn’t lead anywhere.")).toBeTruthy();
+    expect(container.querySelectorAll("main")).toHaveLength(1);
+    expect(container.querySelector(".wordmark")).toBeNull();
+    expect(container.querySelector("[data-testid='goal-empty-state']")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "All companies" }));
+    expect(go).toHaveBeenCalledWith("/explore");
+  });
+
+  it("an unknown slug keeps the seeker's bearings inside the goal frame", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const path = String(input);
+      if (path === "/api/companies/nobody") return json(404, { error: "This door doesn't lead anywhere" });
+      if (path === "/api/companies") return json(200, ALL_OPEN);
+      return json(404, { error: "not found" });
+    }));
+    routeState.slug = "nobody";
+    const { container } = renderWithQuery(<ExploreCompany />);
+    expect(await screen.findByText("This door doesn’t lead anywhere.")).toBeTruthy();
     expect(container.querySelector("[data-skipwait-screen='explore-company-not-found']")).toBeTruthy();
     expect(container.querySelector("[data-testid='goal-shell']")).toBeTruthy();
   });
