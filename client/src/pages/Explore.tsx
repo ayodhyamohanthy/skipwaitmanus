@@ -18,6 +18,7 @@ import {
   GoalSkeletonRows,
 } from "@/components/goal";
 import { exploreDescription, useCompanyDirectory } from "@/lib/companyDirectory";
+import { CompanyDemandList } from "@/components/demand/CompanyDemandList";
 import { trackClarityEvent } from "@/lib/clarity";
 import { applySeo } from "@/lib/seo";
 import { publicRoute } from "@shared/publicRoutes";
@@ -199,6 +200,8 @@ export default function Explore() {
           ))}
         </div>
         {directoryBody}
+        {/* D-086.mount: the browse state only (empty search); renders nothing while the switch is off. */}
+        {!query.trim() && !fn ? <div className="mt-10"><CompanyDemandList /></div> : null}
       </div>
     </GoalAppShell>
   );
