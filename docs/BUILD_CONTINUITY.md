@@ -56,6 +56,7 @@ Owner, November 10-11: "no blockers", "as many agents work parallely", "just a b
 7. **A built page is not live until its release row lands (D-317).** When a goal surface's build row is done, check its `D-048-R-<id>` row is picked; registering new switched-off work without its release row is how production kept the old design.
 8. **Register the next rows before the queue runs dry.** If a simulation or the board shows sessions getting AHEAD work only, decompose the next decided priority into rows the same day (D-223).
 9. **Tell every session to `git pull --ff-only` main before `build`.** The picker runs the local `scripts/` against the task list on `origin/main`; an old copy rejects a newer list.
+11. **Zero dead ends (D-324).** The picker passes over a task that only an external model route can claim, and red main holds landings only, so `build` never fails at the claim or waits on main. If a session reports WAIT, an error at the claim, or the same task on every retry, treat it as a picker defect: reproduce it with `node scripts/next-task.mjs --as "<name>"` and fix it the same day.
 10. **Do not hold a task with a claim only the coordinator can continue.** A coordinator claim quiet for 2 hours is free like anyone's (D-085); an external-model route must not make its row untakeable.
 
 These rules change no product, price, login, legal, settings or spending decision and waive no review or CI.

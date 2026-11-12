@@ -733,7 +733,11 @@ export function decisionsSince(register, syncedTo) {
 /** D-085: the one thing the next agent should do (D-083). */
 function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
-  if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
+  // D-324 (owner, Nov 11: "0 waits 0 blocks"): red main holds every LANDING, not every session. Its one fix is still
+  // handed out first; while that fix is in hand (or main's CI is re-running after it) everyone else is handed
+  // non-landing work on branches, and this wait is the answer only when nothing else is eligible.
+  let mainHold = null;
+  if (mainCi.state === "running-after-red") mainHold = { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
     // One fix-main lock at a time: a newer red commit while someone is fixing main does not open a second lock.
     const current = fixMainLockOf(mainCi.sha);
@@ -741,9 +745,11 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     const mine = claimant ? locks.find(l => l.holder === claimant && (!l.quiet || l.lock === current)) : null;
     if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, url: mainCi.url, lock: mine.lock };
     const busy = locks.find(l => !l.quiet);
-    if (busy) return { kind: "wait", mainRed: true, reason: `main is red; ${busy.holder ?? "another agent"} is fixing it on ${busy.lock}` };
-    const held = locks.find(l => l.lock === current);
-    return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock: current, parent: held ? current : null, from: held ? held.holder : null };
+    if (busy) mainHold = { kind: "wait", mainRed: true, reason: `main is red; ${busy.holder ?? "another agent"} is fixing it on ${busy.lock}` };
+    else {
+      const held = locks.find(l => l.lock === current);
+      return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock: current, parent: held ? current : null, from: held ? held.holder : null };
+    }
   }
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
@@ -955,6 +961,8 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // do not: you are handed other work, and only when there is none at all does the picker answer with that wait.
   let ownBlocked = null;
   if (mine?.kind === "wait") { ownBlocked = mine; mine = null; }
+  // D-324: while main is red your own landing waits with every other landing; you are handed other work meanwhile.
+  if (mainHold && mine?.kind === "continue" && mine.of === "land") mine = null;
   // D-202: a holder continuing an out-of-sync task is handed the re-sync first, not its build
   // (a blocked wait still comes first: the block is cleared before the packet moves).
   if (mine && mine.kind !== "wait" && mine.task) {
@@ -1002,6 +1010,8 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     // --avoid: a session that may not take a task (its own instruction or a missing tool) is handed something else;
     // the task is never reported blocked for that reason, and a red or blocked one still holds its lane (gate).
     let action = actionFor(view[i]);
+    // D-324: no landing is handed out while main is red; the row is passed over and holds nothing.
+    if (mainHold && action && (action.kind === "land" || (action.kind === "wait" && action.landing))) action = skip(view[i], "main is red: its landing waits until main is green");
     if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) {
       // PICKER-avoid-land (D-109): avoiding a red or blocked task's hand-out (unblock, make green, fix, takeover)
       // never frees its lane or its dependents for this session; it holds them as it would for anyone else.
@@ -1044,7 +1054,8 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     const ahead = aheadPick();
     if (ahead) return withHold(ahead);
   }
-  // Nothing at all was eligible: the honest answer is the landing wait, with the slot holder and the reason.
+  // Nothing at all was eligible: the honest answer is red main's wait, or the landing wait with the slot holder.
+  if (mainHold) return mainHold;
   if (landingWait) return landingWait;
   if (ownBlocked) { const { at, ...wait } = ownBlocked; return wait; }
   // A Claude Code session that raised a block waits like anyone else; it never gets the CEO review telling it to clear its own block.
@@ -1322,21 +1333,40 @@ export function epicSummaries(rows) {
 }
 
 /** D-311: continuations must pass the same identity checks as new handouts. */
+/** D-311: a marker body naming an external route or execution (the same lines `markerReferences` reads). */
+const EXTERNAL_MARKER = /(?:^|\n)(?:provenance|execution)(?: |\n|$)/;
+/** The claim history the CLI checks before any claim: the task's work branch and the pick's lock. */
+function hasExternalHistory(branches, pick) {
+  const history = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
+  return history.some(m => m.id === pick.task?.id && EXTERNAL_MARKER.test(String(m.body ?? "")));
+}
+
 export function pickNextTask(input) {
   // D-315: a review or landing held by external provenance is passed over for this session (as --avoid would), so the
   // next eligible task is handed out instead of a WAIT; the held stage itself is never handed out or waived.
   const avoid = new Set(input.avoid ?? []);
   let firstHeld = null;
+  const mainRed = input.mainCi?.state === "red" || input.mainCi?.state === "running-after-red";
+  // D-324: every pick handed out while main is red says so, and that nothing lands until main is green.
+  const done = pick => (pick.kind === "none" && firstHeld ? firstHeld : (mainRed && pick.task ? { ...pick, mainRedNote: true } : pick));
   for (let attempt = 0; attempt < 25; attempt++) {
     const pick = pickNextTaskLegacy({ ...input, avoid });
     const stage = pick.kind === "continue" ? pick.of : pick.kind;
-    if (!["review", "land"].includes(stage) || !pick.task) return pick.kind === "none" && firstHeld ? firstHeld : pick;
+    // D-324: a task whose claim or history names an external model route (D-311) can only be claimed with that
+    // route: `scripts/next-task.mjs` refuses any other claim. Handing it to a session without one made that session
+    // fail at the claim and be handed the same task on every retry, so it is passed over as --avoid would.
+    if (pick.task && pick.kind !== "continue" && !input.provenance?.routeId && hasExternalHistory(input.branches, pick)) {
+      firstHeld ??= { kind: "wait", reason: `external provenance held: ${pick.task.id} can only be claimed with its qualified operator route` };
+      avoid.add(pick.task.id);
+      continue;
+    }
+    if (!["review", "land"].includes(stage) || !pick.task) return done(pick);
     const work = input.branches.get(pick.work || pick.task.branch);
     const lock = input.branches.get(reviewLockOf(pick.task));
     const resolved = resolveTaskProvenance({ taskId: pick.task.id, head: work?.tipSha,
       workMarkers: work?.markers ?? [], lockMarkers: lock?.markers ?? [],
       ...(input.provenance ?? {}), claimant: input.claimant, candidateRole: stage });
-    if (!(resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate)))) return pick;
+    if (!(resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate)))) return done(pick);
     firstHeld ??= { kind: "wait", reason: `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}` };
     avoid.add(pick.task.id);
   }
