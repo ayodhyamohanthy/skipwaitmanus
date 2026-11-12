@@ -3352,7 +3352,7 @@
         "server/statusNotifications.test.ts"
       ],
       "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required. Nov 10 owns amendment (docs/registry only, D-200 (2); Inkling 2 Small Free · b6cb): owns gains exactly server/askExpiryRoutes.test.ts, server/companyIdentityRows.test.ts, server/conversationRateLimit.test.ts, server/privateReferralRoutes.integration.test.ts, server/privateReferralRoutes.pinnedWork.test.ts, server/referrerOneClickReview.test.ts, server/referralConversation.test.ts, server/referralOperatingSystemRoutes.test.ts and server/statusNotifications.test.ts. Reason: the private referral routes now answer a truthful unavailable response when the block/authorization decision cannot be established; these suites never injected a block lookup and rode the old fail-open path (getDb absent in the test env, so the lookup read as not-blocked), and now see 503s. Each deps object gains one no-op lookup returning an empty set, restoring exactly the behavior the suites already pinned; no assertion is removed or weakened. No other owned path, row or dependency changes.",
-      "syncedTo": "D-227"
+      "syncedTo": "D-326"
     },
     {
       "id": "D-057-session-gate",
