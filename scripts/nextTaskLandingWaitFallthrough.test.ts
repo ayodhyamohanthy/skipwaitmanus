@@ -114,14 +114,13 @@ describe("PICKER-landing-wait-fallthrough", () => {
     expect(result).toMatchObject({ kind: "build", task: { id: "O" }, overlaps: ["L"] });
   });
 
-  it("keeps red-main precedence: a red main still returns its wait, not N", () => {
-    const result = pick([task("L"), task("N")], {
-      branches: [built("L"), slotHeld()],
-      prs: [pr("L")],
-      prCi: [greenPr("L")],
-      mainCi: { state: "running-after-red" },
-    });
-    expect(result).toMatchObject({ kind: "wait", mainRed: true });
+  it("D-324: red main holds every landing, never the branch work: N is built, L is not landed, and alone it is the wait", () => {
+    const opts = { branches: [built("L")] as [string, Branch][], prs: [pr("L")] as [string, string][], prCi: [greenPr("L")] as [string, string][], mainCi: { state: "running-after-red" } };
+    const result = pick([task("L"), task("N")], opts);
+    expect(result).toMatchObject({ kind: "build", task: { id: "N" }, mainRedNote: true });
+    // With the slot free and main green L would be a LAND (the control above); under red main it is never handed out.
+    expect(pick([task("L")], opts)).toMatchObject({ kind: "wait", mainRed: true });
+    expect(pick([task("L"), task("N")], { ...opts, branches: [built("L"), slotHeld()] })).toMatchObject({ kind: "build", task: { id: "N" } });
   });
 
   it("keeps blocked-lane holds: a red task above the landing still holds its own lane while N is handed out", () => {
