@@ -3176,7 +3176,7 @@
       "lane": "demand-admit",
       "branch": "agent/queue/d086-admit",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-328",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-086.count",
@@ -3187,9 +3187,11 @@
         "client/src/components/admin/UnlistedDemandView.tsx",
         "client/src/components/admin/unlistedDemandView.test.tsx",
         "client/src/pages/AdminOverview.tsx (switch only)",
+        "client/src/pages/goal/admin/GoalAdminOverview.tsx (switch only)",
+        "client/src/test/goalPagesBoundary.test.ts",
         "docs/plans/GOAL_UI_COVERAGE.md"
       ],
-      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON."
+      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON. D-328 (2026-11-12): the block was real - admin is in RELEASED, so the packet's legacy mount never renders in production. The visible mount is a read-only section on the goal /admin overview (not an /admin-review tab: the review tabs are decision cases), the view draws with goal tokens and no h1 (one h1 stays on the page), and the goal-page boundary admits components/admin/UnlistedDemandView.tsx as goal-styled. The legacy AdminOverview mount stays as the flag-off path."
     },
     {
       "id": "D-086-demand-list",
