@@ -18,7 +18,7 @@ vi.mock("@/_core/auth", () => ({
 const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, url: "", json: async () => body });
 
 function stub(reply: { status: number; body: unknown }) {
-  const fetchMock = vi.fn(async () => json(reply.status, reply.body));
+  const fetchMock = vi.fn(async (_input: string, _init?: RequestInit) => json(reply.status, reply.body));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
@@ -117,13 +117,15 @@ describe("unlisted demand queue (D-086.admit)", () => {
   });
 
   it("retries the read when the admin asks again", async () => {
+    // adminRetry allows one automatic retry, so the button appears after two failures.
     const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(500, { error: "Something went wrong on our side" }))
       .mockResolvedValueOnce(json(500, { error: "Something went wrong on our side" }))
       .mockResolvedValueOnce(json(200, { domains: [{ domain: "acme-robotics.example", people: 3 }] }));
     vi.stubGlobal("fetch", fetchMock);
     renderView();
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByText("acme-robotics.example")).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
