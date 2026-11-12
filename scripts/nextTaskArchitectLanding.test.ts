@@ -63,10 +63,11 @@ describe("a packet pull request on its architect lock branch (D-190)", () => {
     expect(row[0]).toMatchObject({ id: "P", state: "packet", pr: null });
   });
 
-  it("goes through the landing slot: a busy slot makes the lander wait", () => {
+  it("goes through the landing slot: a busy slot never hands its landing; other work (D-315) or, with none, the wait", () => {
     const slot: Branch = { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Land claim", id: "X", who: "GPT · g1" }] };
-    const got = pick({ branches: [[LOCK, lock()], ["agent/queue/landing", slot]], prs: [[LOCK, PR]], ci: [[LOCK, "green"]], claimant: "Qwen · s1" });
-    expect(got).toMatchObject({ kind: "wait", landing: true, holder: "GPT · g1" });
+    const opts = { branches: [[LOCK, lock()], ["agent/queue/landing", slot]] as [string, Branch][], prs: [[LOCK, PR]] as [string, string][], ci: [[LOCK, "green"]] as [string, string][], claimant: "Qwen · s1" };
+    expect(pick(opts)).toMatchObject({ kind: "build", task: { id: "B" } });
+    expect(pick({ ...opts, tasks: [packetTask] })).toMatchObject({ kind: "wait", landing: true, holder: "GPT · g1" });
   });
 
   it("its lander continues the landing, and nobody else is handed it meanwhile", () => {

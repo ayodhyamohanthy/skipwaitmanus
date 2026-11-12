@@ -11,6 +11,15 @@ import { pinnedDispatcher } from "../jobLinkPreview";
 export const JOB_SOURCE_TIMEOUT_MS = 20_000;
 export const JOB_SOURCE_MAX_BYTES = 25 * 1024 * 1024;
 
+/** Allowlisted hosts for external job board APIs (D-174-job-catalog, D-174-job-sources-more). */
+export const ALLOWED_JOB_SOURCE_HOSTS = [
+  "boards-api.greenhouse.io",
+  "api.ashbyhq.com",
+  "api.lever.co",
+  "api.eu.lever.co",
+] as const;
+export type AllowedJobSourceHost = (typeof ALLOWED_JOB_SOURCE_HOSTS)[number];
+
 export type GuardedFetchFailure =
   | { ok: false; reason: "refused_host" | "redirect_refused" | "http_error" | "over_cap" | "invalid_json" | "network_error" | "unsafe_destination"; status?: number }
   | { ok: false; reason: "invalid_input" };
@@ -18,7 +27,7 @@ export type GuardedFetchResult = { ok: true; payload: unknown; bytes: number } |
 
 export async function fetchGuardedJson(
   url: string,
-  opts: { allowedHost: string; fetchImpl?: typeof undiciFetch }
+  opts: { allowedHost: string | readonly string[]; fetchImpl?: typeof undiciFetch }
 ): Promise<GuardedFetchResult> {
   let parsed: URL;
   try {
@@ -26,7 +35,10 @@ export async function fetchGuardedJson(
   } catch {
     return { ok: false, reason: "invalid_input" };
   }
-  if (parsed.protocol !== "https:" || parsed.hostname !== opts.allowedHost) {
+  const isAllowedHost = Array.isArray(opts.allowedHost)
+    ? opts.allowedHost.includes(parsed.hostname)
+    : parsed.hostname === opts.allowedHost;
+  if (parsed.protocol !== "https:" || !isAllowedHost) {
     return { ok: false, reason: "refused_host" };
   }
   let response;

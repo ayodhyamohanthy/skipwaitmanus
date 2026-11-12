@@ -1,8 +1,8 @@
 // @vitest-environment node
 // PICKER-landing-wait-fallthrough (D-200): a pending landing that cannot start because another session holds the
-// landing slot no longer ends pass 1. The claimant is handed the next eligible, disjoint work instead; the slot is
-// never touched, no concurrent landing is handed out, and with nothing else eligible the answer is an honest WAIT
-// naming the slot holder. An own LAND still waiting on the slot stays a wait (separate case, not broadened).
+// landing slot no longer ends pass 1. The claimant is handed the next eligible work instead (overlapping files too,
+// D-314/D-315); the slot is never touched, no concurrent landing is handed out, and with nothing else eligible the
+// answer is an honest WAIT naming the slot holder. An own LAND still waiting on the slot stays a wait.
 import { describe, expect, it } from "vitest";
 import { pickNextTask } from "./nextTaskCore.mjs";
 
@@ -93,25 +93,25 @@ describe("PICKER-landing-wait-fallthrough", () => {
       .toMatchObject({ kind: "wait", landing: true, holder: HOLDER, task: "Z", reason: expect.stringContaining(HOLDER) });
   });
 
-  it("a dependent of the pending landing, a same-lane task and a same-files task stay held and are not handed out", () => {
-    const tasks = [
-      task("L"),
-      task("D", { dependsOn: ["L"] }),
-      task("S", { lane: "l", owns: [] }),
-      task("F", { lane: "f", owns: ["scripts/l.mjs"] }),
-    ];
-    expect(pick(tasks, { branches: [built("L"), slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] }))
-      .toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+  it("D-314/D-315: a same-files task is built naming the overlap, a dependent only ahead, a same-lane task stays held", () => {
+    const opts = { branches: [built("L"), slotHeld()] as [string, Branch][], prs: [pr("L")] as [string, string][], prCi: [greenPr("L")] as [string, string][] };
+    const F = task("F", { lane: "f", owns: ["scripts/l.mjs"] });
+    const D = task("D", { dependsOn: ["L"] });
+    const S = task("S", { lane: "l", owns: [] });
+    expect(pick([task("L"), D, S, F], opts)).toMatchObject({ kind: "build", task: { id: "F" }, overlaps: ["L"] });
+    expect(pick([task("L"), D, S], opts)).toMatchObject({ kind: "build", task: { id: "D" }, ahead: ["L"] });
+    expect(pick([task("L"), S], opts)).toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
   });
 
-  it("work with no declared owns (ownership unknown) is not proven disjoint: the landing wait is kept", () => {
+  it("D-315: work with no declared owns is handed out too; it names no overlap", () => {
     const result = pick([task("L"), task("U", { owns: undefined })], { branches: [built("L"), slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] });
-    expect(result).toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+    expect(result).toMatchObject({ kind: "build", task: { id: "U" } });
+    expect(result).not.toHaveProperty("overlaps");
   });
 
-  it("work whose owns overlap the pending landing's is not handed out; the landing wait is kept", () => {
+  it("D-314/D-315: work whose owns overlap the pending landing's is handed out, naming the overlap; the landing is not", () => {
     const result = pick([task("L"), task("O", { lane: "o", owns: ["scripts/l.mjs"] })], { branches: [built("L"), slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] });
-    expect(result).toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+    expect(result).toMatchObject({ kind: "build", task: { id: "O" }, overlaps: ["L"] });
   });
 
   it("keeps red-main precedence: a red main still returns its wait, not N", () => {
@@ -140,10 +140,10 @@ describe("PICKER-landing-wait-fallthrough", () => {
       .toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
   });
 
-  it("own unfinished work ranked below a blocked pending landing is not reordered: still the landing wait", () => {
+  it("D-315: own unfinished work ranked below a pending landing that waits for the slot is continued, not a wait", () => {
     const own: [string, Branch] = ["agent/queue/m", { tipSha: "a".repeat(40), tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Claim", id: "M", who: ME }] }];
     expect(pick([task("L"), task("M"), task("N")], { branches: [built("L"), own, slotHeld()], prs: [pr("L")], prCi: [greenPr("L")] }))
-      .toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+      .toMatchObject({ kind: "continue", task: { id: "M" } });
   });
 
   it("the quiet slot (idle past the landing timeout) is not a wait: the pending landing is handed out as before", () => {
