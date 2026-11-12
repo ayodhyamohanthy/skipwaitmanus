@@ -3129,7 +3129,7 @@
       "lane": "demand-ui",
       "branch": "agent/queue/d086-ui",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-326",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-086.count",
@@ -3140,9 +3140,10 @@
         "client/src/components/demand/CompanyDemandList.tsx",
         "client/src/components/demand/useCompanyDemand.ts",
         "client/src/components/demand/companyDemand.test.tsx",
+        "client/src/components/goal/goalBoundary.test.ts",
         "docs/plans/GOAL_UI_COVERAGE.md"
       ],
-      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test."
+      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test. D-326 adds client/src/components/goal/goalBoundary.test.ts to owns so the two new goal-native components can be admitted to MOVED_SURFACES there (they render only through D-086.mount on the already-moved Explore pages)."
     },
     {
       "id": "D-086.mount",
