@@ -172,7 +172,7 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     check(outcomeOf(pickNextTask({ tasks: behind, register: stamped, ...emptyBoard }))).toEqual({ kind: "resync", id: firstId });
     const cleared = real.tasks.map((t: { id?: string }) => (t.id === firstId ? { ...t, syncedTo: "D-2" } : t));
     const clearedPick = pickNextTask({ tasks: cleared, register: stamped, ...emptyBoard });
-    check(outcomeOf(clearedPick)).toEqual({ kind: "build", id: firstId });
+    check(outcomeOf(clearedPick)).toEqual({ kind: oracle.kind, id: firstId });
     check(outcomeOf(clearedPick)).toEqual(emptyBoardEligibleRow(cleared, stamped));
     // 7. Unconditional assertion-count pin: nothing above returns early, so the property always runs exactly these
     //    ten assertions. A property that exits with zero assertions, or silently skips a phase, cannot satisfy it.
@@ -268,18 +268,24 @@ describe("main's CI decides first (D-082)", () => {
     expect(ciStateFromRuns([]).state).toBe("unknown");
   });
 
-  it("while main is red, the only task is fixing it, and only one agent gets it", () => {
+  it("while main is red, fixing it comes first and only one agent gets it; the rest get non-landing work (D-324)", () => {
     const red = { state: "red", sha: "c".repeat(40), url: "https://ci/red" };
     expect(pick([task("A")], { ci: red })).toMatchObject({ kind: "fix-main", lock: "agent/queue/fix-main-cccccccc", parent: null });
     const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc")];
-    expect(pick([task("A")], { ci: red, branches: [held] })).toMatchObject({ kind: "wait" });
+    // The fix is in hand: nobody is handed a second fix-main; the next session builds on a branch and is told nothing lands.
+    const other = pick([task("A")], { ci: red, branches: [held] });
+    expect(other).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
+    expect(renderPick(other, { who: "Qwen · s1", date: "2026-11-11", claimed: false })).toContain("land nothing and merge nothing into main until main's CI is green");
+    // With nothing else eligible the honest answer is still red main's wait.
+    expect(pick([task("A", { status: "owner" })], { ci: red, branches: [held] })).toMatchObject({ kind: "wait", mainRed: true });
     const stale: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc", 30)];
     expect(pick([task("A")], { ci: red, branches: [stale] })).toMatchObject({ kind: "fix-main", parent: "agent/queue/fix-main-cccccccc" });
   });
 
-  it("stops when CI cannot be read, and waits while CI re-runs after a failure", () => {
+  it("stops when CI cannot be read; while CI re-runs after a failure, work goes on and landings wait (D-324)", () => {
     expect(pick([task("A")], { ci: { state: "unknown" } }).kind).toBe("stop");
-    expect(pick([task("A")], { ci: { state: "running-after-red" } }).kind).toBe("wait");
+    expect(pick([task("A")], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
+    expect(pick([task("A", { status: "owner" })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
     expect(pick([task("A")], { ci: { state: "running" } })).toMatchObject({ kind: "build", ciRunning: true });
   });
 });
@@ -431,7 +437,8 @@ describe("own work first, then strict priority (D-085)", () => {
   it("while main is red, the agent holding the fix lock continues it instead of waiting on itself, and red main still beats own work", () => {
     const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc")];
     expect(pick([task("A")], { ci: red, branches: [held], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
-    expect(pick([task("A")], { ci: red, branches: [held], claimant: "Qwen · s1" }).kind).toBe("wait");
+    // D-324: another session is never handed a second fix; it works on a branch meanwhile.
+    expect(pick([task("A")], { ci: red, branches: [held], claimant: "Qwen · s1" })).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
     expect(pick([task("A")], { ci: red, branches: [mine], claimant: "Qwen · s1" }).kind).toBe("fix-main");
   });
 });
@@ -1134,7 +1141,9 @@ describe("hardening from the D-085 review", () => {
 
   it("a blocked task waits for another session or the owner: its holder is told so, any other session gets the unblock", () => {
     const busyA: [string, Branch] = ["agent/queue/a", claimBy("Qwen · s1", "A", 1)];
-    const own = pick([task("A"), task("B")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" });
+    // D-315: the holder is never handed its own unblock, but is handed other work (B); the wait comes only when nothing is left.
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    const own = pick([task("A")], { branches: [busyA], reports: [blocked], claimant: "Qwen · s1" });
     expect(own).toMatchObject({ kind: "wait", gate: "A", blocked: true, own: true });
     expect(renderPick(own, { who: "Qwen · s1", date: "2026-10-20", claimed: true })).toContain("neither raised the block nor holds the task, or the owner");
     const ctx = { who: "Kimi · s2", date: "2026-10-20", claimed: false };
@@ -1322,7 +1331,10 @@ describe("hardening from the second D-085 review", () => {
   it("F11: one fix-main lock at a time, even when a newer commit is red", () => {
     const held: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc", 1)];
     const newer = { state: "red", sha: "d".repeat(40), url: "https://ci/red2" };
-    expect(pick([task("A")], { ci: newer, branches: [held], claimant: "Gemini · s3" }).kind).toBe("wait");
+    // D-324: still one lock only; the other session gets branch work, never a second fix-main.
+    const second = pick([task("A")], { ci: newer, branches: [held], claimant: "Gemini · s3" });
+    expect(second.kind).not.toBe("fix-main");
+    expect(second).toMatchObject({ kind: "build", mainRedNote: true });
     expect(pick([task("A")], { ci: newer, branches: [held], claimant: "Kimi · s2" })).toMatchObject({ kind: "continue", of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
     expect(core.heldBy({ tasks: [task("A")], branches: new Map([held]), openPrs: new Map(), claimant: "Kimi · s2", mainSha: "d".repeat(40) })).toMatchObject({ of: "fix-main", lock: "agent/queue/fix-main-cccccccc" });
   });
@@ -1684,15 +1696,14 @@ describe("PICKER-owns-scope: declared file ownership", () => {
     expect(core.ownsEntry("shared/planCatalog.ts").switchOnly).toBe(false);
   });
 
-  it("refuses two live tasks that own overlapping paths", () => {
+  it("accepts two live tasks that own overlapping paths with no dependency between them (D-309, D-314)", () => {
     const doc = {
       version: 1, repo: "o/r", tasks: [
         task("A", { owns: ["client/src/pages/"] }),
         task("B", { owns: ["client/src/pages/Landed.tsx"] }),
       ],
     };
-    const errors = validateAssignments(doc, exists).join("\n");
-    expect(errors).toContain("tasks A and B own overlapping paths and neither waits for the other");
+    expect(validateAssignments(doc, exists)).toEqual([]);
   });
 
   it("allows the same overlap when one task waits for the other", () => {
@@ -1714,12 +1725,15 @@ describe("PICKER-owns-scope: declared file ownership", () => {
     expect(validateAssignments(empty, exists).join("\n")).toContain("owns must be a non-empty array of paths");
   });
 
-  it("holds a build while another lane's open task owns an overlapping path, and frees it when they differ", () => {
+  it("hands out a build that shares files with another lane's open task, naming it; no overlap names nothing (D-309, D-314)", () => {
     const claimant = "workbuddy · b0eb";
-    const held = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
-    expect(JSON.stringify(held)).toContain("owns the same files");
+    const shared = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["client/src/pages/Landed.tsx"] })], { claimant });
+    expect(shared).toMatchObject({ kind: "build", task: { id: "B" }, overlaps: ["A"] });
+    expect(renderPick(shared, { who: claimant, date: "2026-11-10", claimed: false })).toContain("Shares owned files with open A (D-309, D-314)");
     const free = pick([task("A", { status: "in-review", owns: ["client/src/pages/"] }), task("B", { owns: ["server/db.ts"] })], { claimant });
     expect(free.kind).toBe("build");
+    expect(free).not.toHaveProperty("overlaps");
+    expect(renderPick(free, { who: claimant, date: "2026-11-10", claimed: false })).not.toContain("Shares owned files");
   });
 });
 /*
@@ -1837,7 +1851,9 @@ describe("D-200 block rule: nobody clears a block they raised or a task they hol
 
   it("the holder of a task someone else blocked is not offered the unblock, and only its green or landed report clears it", () => {
     const blocked = [rep("Mistral · r1", "blocked", 1)];
-    expect(pick([task("A"), task("B")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "wait", gate: "A", own: true });
+    // D-315: other work first (never the unblock of its own task); the own wait only when nothing else is eligible.
+    expect(pick([task("A"), task("B")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "build", task: { id: "B" } });
+    expect(pick([task("A")], { branches: [busyA], reports: blocked, claimant: "Qwen · s1" })).toMatchObject({ kind: "wait", gate: "A", own: true });
     expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "review", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "unblock", task: { id: "A" } });
     expect(pick([task("A"), task("B")], { branches: [busyA], reports: [rep("Qwen · s1", "green", 0.5), ...blocked], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "B" } });
     const rows = statusBoard({ tasks: [task("A")], branches: new Map([busyA]), openPrs: new Map(), reports: [rep("Qwen · s1", "review", 0.5), ...blocked], now: NOW });
@@ -1894,14 +1910,16 @@ describe("switch-only claims share a file", () => {
     expect(core.ownsOverlap(["server/_core/index.ts (switch only)"], ["server/_core/"])).toBe(true);
   });
 
-  it("the registry accepts two open tasks that each hold a switch-only claim on one file", () => {
+  it("the registry accepts two open tasks that each hold a switch-only claim on one file, and since D-314 a full claim too", () => {
     const doc = { version: 1, repo: "o/r", tasks: [
       { ...task("A"), packet: "docs/plans/p.md", owns: ["server/a.ts", "server/_core/index.ts (switch only)"] },
       { ...task("B"), packet: "docs/plans/p.md", owns: ["server/b.ts", "server/_core/index.ts (switch only)"] },
     ] };
-    expect(validateAssignments(doc, () => true).filter(e => e.includes("overlapping"))).toEqual([]);
+    expect(validateAssignments(doc, () => true)).toEqual([]);
+    // D-309/D-314: the full claim still overlaps (ownsOverlap, above), but an overlap no longer needs a dependency.
     const full = { ...doc, tasks: [doc.tasks[0], { ...doc.tasks[1], owns: ["server/b.ts", "server/_core/index.ts"] }] };
-    expect(validateAssignments(full, () => true).filter(e => e.includes("overlapping"))).toHaveLength(1);
+    expect(core.ownsOverlap(full.tasks[0].owns, full.tasks[1].owns)).toBe(true);
+    expect(validateAssignments(full, () => true)).toEqual([]);
   });
 });
 

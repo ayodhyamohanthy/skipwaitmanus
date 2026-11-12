@@ -29,8 +29,8 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | W0 goal shell (PR #361) | L6 | build | live (#361) |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
 | Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
-| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; building now, ahead of the demand list (owner word, D-162) |
-| Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-289): screen name on the referral link, direct-request marker, one switch starting off | build after idea 2 and the demand list; its two build rows (`D-089.server`, `D-089.ui`) are registered (D-289, Nov 7) and queue behind their dependencies; the release row flips the switch only after both rows, QA and the owner's look at the captures |
+| BYOR one-time link (idea 2) | L2 | build | landed (`D-090-BYOR`, PR #632, reviewed); flags `BYOR_LINK_ENABLED`/`VITE_BYOR_LINK` stay OFF until its release row |
+| Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-327): screen name on the referral link, direct-request marker, one switch starting off | build after idea 2 and the demand list; its two build rows (`D-089.server`, `D-089.ui`) are registered (D-327, Nov 12) and queue behind their dependencies; the release row flips the switch only after both rows, QA and the owner's look at the captures |
 | Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
@@ -45,6 +45,7 @@ Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COM
 ## Go-to-market (D-102, changeable)
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
+- Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 

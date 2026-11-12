@@ -10,6 +10,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
+import type { PublicOpportunityPost } from "@shared/companyOpportunities";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { CREDIT_ENDED_CAVEAT, MONEY_SENTENCE } from "@shared/moneyCopy";
@@ -17,12 +18,15 @@ import { COMPANY_CAP_REACHED, companyCapCopy, SLOT_CAP_REACHED } from "@shared/o
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
 import { ASK_NETWORK_ERROR } from "@/components/ask/askApi";
 import Explore from "./Explore";
+import ExploreCompany from "./ExploreCompany";
 
-const { go, authState, accessState, signIn } = vi.hoisted(() => ({
+const { go, authState, accessState, signIn, routeState, searchState } = vi.hoisted(() => ({
   go: vi.fn(),
   authState: { isLoaded: true, isSignedIn: true },
   accessState: { status: "unverified" as "unverified" | "verified" | "signed-out" },
   signIn: vi.fn(),
+  routeState: { path: "/explore", slug: "wipro", isDoor: false },
+  searchState: { value: "" },
 }));
 
 vi.mock("@/_core/auth", () => ({
@@ -33,9 +37,9 @@ vi.mock("@/_core/auth", () => ({
 vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => accessState }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
-  useLocation: () => ["/explore", go],
-  useSearch: () => "",
-  useRoute: () => [false, null],
+  useLocation: () => [routeState.path, go],
+  useSearch: () => searchState.value,
+  useRoute: () => [routeState.isDoor, { slug: routeState.slug }],
 }));
 vi.mock("./explore/signInHandoff", async importOriginal => ({
   ...await importOriginal<typeof import("./explore/signInHandoff")>(),
@@ -56,11 +60,13 @@ const CREATED = { requestId: 501, companyDomain: "wipro.com", coverageStatus: "v
 
 type Reply = { status: number; body: unknown };
 
-function stub(options: { directory?: CompanyDirectoryResponse; credits?: number; send?: () => Reply; alert?: () => Reply } = {}) {
+function stub(options: { directory?: CompanyDirectoryResponse; opportunities?: PublicOpportunityPost[]; company?: PublicCompany; credits?: number; send?: () => Reply; alert?: () => Reply } = {}) {
   const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
     const path = String(input);
     const method = init?.method ?? "GET";
     if (path === "/api/companies") return json(200, options.directory ?? ALL_OPEN);
+    if (path.endsWith("/opportunities")) return json(200, { opportunities: options.opportunities ?? [] });
+    if (path.startsWith("/api/companies/")) return json(200, { company: options.company ?? company("wipro") });
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: options.credits ?? 4 } });
     if (path === "/api/profile/setup") return json(200, setup);
     if (path === "/api/ask-drafts" && method === "GET") return json(200, { draft: null });
@@ -75,6 +81,7 @@ function stub(options: { directory?: CompanyDirectoryResponse; credits?: number;
 }
 
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Explore /></QueryClientProvider>);
+const renderCompanyDoor = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ExploreCompany /></QueryClientProvider>);
 const openWipro = async () => {
   renderPage();
   fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
@@ -100,6 +107,11 @@ beforeEach(() => {
   sessionStorage.clear();
   signIn.mockReset();
   go.mockReset();
+  routeState.isDoor = false;
+  routeState.path = "/explore";
+  routeState.slug = "wipro";
+  searchState.value = "";
+  window.history.replaceState({}, "", "/explore");
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -111,7 +123,7 @@ describe("ask drawer", () => {
     expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
     expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
     expect(within(drawer).getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 4 credits"));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 4"));
     // The cost is stated in one shared sentence pair (D-063): no retyped price.
     expect(within(drawer).getByTestId("goal-money-sentence").textContent).toBe(MONEY_SENTENCE);
     expect(within(drawer).getByText("ada-resume.pdf")).toBeTruthy();
@@ -186,7 +198,7 @@ describe("ask drawer", () => {
     await within(drawer).findByText("ada-resume.pdf");
     fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
     const active = await screen.findByTestId("goal-drawer");
-    expect(within(active).getByText(`No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 credit is used and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
+    expect(within(active).getByText(`No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 is deducted from your balance and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
     expect(within(active).getByRole("link", { name: "Track this ask" }).getAttribute("href")).toBe("/conversation/501");
   });
 
@@ -256,7 +268,7 @@ describe("ask drawer", () => {
   it("says there are no credits and suppresses the send before any request", async () => {
     const fetchMock = stub({ credits: 0 });
     const drawer = await openWipro();
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("You have no credits left"));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Your balance is empty"));
     const send = within(drawer).getByRole("button", { name: "Send ask" });
     expect(send.getAttribute("aria-disabled")).toBe("true");
     fillLink(drawer);
@@ -317,5 +329,139 @@ describe("ask drawer", () => {
     const alert = fetchMock.mock.calls.find(([path, init]) => String(path) === "/api/seeker-alerts" && (init as RequestInit | undefined)?.method === "POST");
     expect(JSON.parse(String((alert?.[1] as RequestInit | undefined)?.body))).toEqual({ companyDomain: "wipro.com" });
     expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
+  });
+
+  it("the link field is read-only while a post is selected, and 'Change role' clears it", async () => {
+    routeState.isDoor = true;
+    routeState.path = "/explore/wipro";
+    window.history.replaceState({}, "", "/explore/wipro");
+    const testPost: PublicOpportunityPost = {
+      id: 88,
+      companyDomain: "wipro.com",
+      kind: "hiring_now",
+      roleTitle: "Frontend Lead",
+      targetRoleUrl: "https://careers.wipro.com/jobs/lead",
+      location: "Remote",
+      compensation: null,
+      walkInAt: null,
+      walkInEndsAt: null,
+      postedAt: "2026-10-20T00:00:00.000Z",
+      expiresAt: "2026-11-20T00:00:00.000Z",
+      poster: { kind: "anonymous" },
+    };
+    stub({ opportunities: [testPost] });
+    renderCompanyDoor();
+    const row = (await screen.findByText("Frontend Lead")).closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: /Ask for a referral/ }));
+    const drawer = await screen.findByTestId("goal-drawer");
+    const linkInput = within(drawer).getByLabelText("Job link") as HTMLInputElement;
+    expect(linkInput.value).toBe("https://careers.wipro.com/jobs/lead");
+    expect(linkInput.readOnly || linkInput.getAttribute("aria-readonly") === "true").toBe(true);
+    const changeRoleBtn = within(drawer).getByRole("button", { name: "Change role" });
+    expect(changeRoleBtn).toBeTruthy();
+
+    fireEvent.click(changeRoleBtn);
+    const updatedInput = within(drawer).getByLabelText("Job link") as HTMLInputElement;
+    expect(updatedInput.readOnly).toBe(false);
+    expect(within(drawer).queryByRole("button", { name: "Change role" })).toBeNull();
+  });
+
+  it("pick a post, close the drawer, open the hero ask, send → no opportunityId", async () => {
+    routeState.isDoor = true;
+    routeState.path = "/explore/wipro";
+    window.history.replaceState({}, "", "/explore/wipro");
+    const testPost: PublicOpportunityPost = {
+      id: 88,
+      companyDomain: "wipro.com",
+      kind: "hiring_now",
+      roleTitle: "Frontend Lead",
+      targetRoleUrl: "https://careers.wipro.com/jobs/lead",
+      location: "Remote",
+      compensation: null,
+      walkInAt: null,
+      walkInEndsAt: null,
+      postedAt: "2026-10-20T00:00:00.000Z",
+      expiresAt: "2026-11-20T00:00:00.000Z",
+      poster: { kind: "anonymous" },
+    };
+    const fetchMock = stub({ opportunities: [testPost] });
+    renderCompanyDoor();
+    const row = (await screen.findByText("Frontend Lead")).closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: /Ask for a referral/ }));
+    let drawer = await screen.findByTestId("goal-drawer");
+    expect(within(drawer).getByLabelText("Job link")).toBeTruthy();
+
+    // Close the drawer
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
+
+    // Open hero ask
+    const heroButton = screen.getAllByRole("button", { name: "Ask for a referral" })[0];
+    fireEvent.click(heroButton);
+    drawer = await screen.findByTestId("goal-drawer");
+
+    const linkInput = within(drawer).getByLabelText("Job link") as HTMLInputElement;
+    expect(linkInput.readOnly).toBe(false);
+    expect(within(drawer).queryByRole("button", { name: "Change role" })).toBeNull();
+
+    fillLink(drawer, "https://careers.wipro.com/jobs/custom-hero");
+    fillReasons(drawer);
+    await within(drawer).findByText("ada-resume.pdf");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+
+    await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
+    const sentBody = JSON.parse(String(posts(fetchMock)[0][1]?.body));
+    expect(sentBody.opportunityId).toBeUndefined();
+  });
+
+  it("signed-out pick → sign in → the send body carries the same opportunityId", async () => {
+    authState.isSignedIn = false;
+    routeState.isDoor = true;
+    routeState.path = "/explore/wipro";
+    window.history.replaceState({}, "", "/explore/wipro");
+    const testPost: PublicOpportunityPost = {
+      id: 88,
+      companyDomain: "wipro.com",
+      kind: "hiring_now",
+      roleTitle: "Frontend Lead",
+      targetRoleUrl: "https://careers.wipro.com/jobs/lead",
+      location: "Remote",
+      compensation: null,
+      walkInAt: null,
+      walkInEndsAt: null,
+      postedAt: "2026-10-20T00:00:00.000Z",
+      expiresAt: "2026-11-20T00:00:00.000Z",
+      poster: { kind: "anonymous" },
+    };
+    const fetchMock = stub({ opportunities: [testPost] });
+    const { unmount } = renderCompanyDoor();
+    const row = (await screen.findByText("Frontend Lead")).closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: /Ask for a referral/ }));
+    const drawer = await screen.findByTestId("goal-drawer");
+
+    fillReasons(drawer);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Sign in and send" }));
+
+    expect(signIn).toHaveBeenCalledWith("/explore/wipro?open=1&post=88");
+    const prefill = JSON.parse(sessionStorage.getItem(ASK_PREFILL_KEY) ?? "null") as Record<string, unknown>;
+    expect(prefill).toMatchObject({
+      companySlug: "wipro",
+      targetRoleUrl: "https://careers.wipro.com/jobs/lead",
+      opportunityId: 88,
+    });
+
+    unmount();
+    authState.isSignedIn = true;
+    searchState.value = "?open=1&post=88";
+    window.history.replaceState({}, "", "/explore/wipro?open=1&post=88");
+
+    renderCompanyDoor();
+    const restoredDrawer = await screen.findByTestId("goal-drawer");
+    await within(restoredDrawer).findByText("ada-resume.pdf");
+
+    fireEvent.click(within(restoredDrawer).getByRole("button", { name: "Send ask" }));
+    await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
+    const sentBody = JSON.parse(String(posts(fetchMock)[0][1]?.body));
+    expect(sentBody.opportunityId).toBe(88);
   });
 });

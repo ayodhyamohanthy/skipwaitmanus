@@ -197,3 +197,52 @@ describe("PICKER-avoid-land condition pins (#976 review)", () => {
     expectHonestNone(pick([M({ tier: 2, syncedTo: "D-100" }), L()], { ...opts, avoid: ["M"] }), [{ id: "M", reason: AVOIDED }, { id: "L", reason: HELD_BY_M }]);
   });
 });
+
+// A session holding two owned LAND continuations that avoids the first must be handed the second,
+// not fresh work. Before the fix ownWork() returned found[0], the avoid branch nulled it, and the
+// normal pass fell through to a new build. The blockedOwn fallback is deliberately unchanged: it
+// applies only when nothing else is owned, so an avoided continuation plus an own blocked task
+// still hands out eligible fresh work rather than a wait.
+describe("multi-owned continuation", () => {
+  const SECOND = () => task("SECOND", { tier: 1, lane: "second", owns: ["scripts/second.mjs"] });
+  const builtSecond: [string, Branch] = ["agent/queue/second", { tipSha: "a".repeat(40), tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Claim", id: "SECOND", who: BUILDER }] }];
+  const passSecond: [string, Branch] = ["agent/review/second", {
+    tipMs: NOW - 0.2 * HOUR,
+    merged: false,
+    markers: [{ verb: "Review claim", id: "SECOND", who: REVIEWER }, { verb: "Verdict", id: "SECOND", who: REVIEWER, verdict: "pass" }],
+  }];
+  const prSecond: [string, string] = ["agent/queue/second", "https://github.com/o/r/pull/10"];
+  const twoOwned = {
+    branches: [builtM, freshPass, builtSecond, passSecond],
+    prs: [prM, prSecond],
+    prCi: [["agent/queue/m", "green"], ["agent/queue/second", "green"]] as [string, string][],
+    claimant: REVIEWER,
+  };
+
+  it("control: without --avoid the first owned landing is continued", () => {
+    expect(pick([M(), SECOND(), N()], twoOwned)).toMatchObject({ kind: "continue", of: "land", task: { id: "M" } });
+  });
+
+  it("avoiding the first owned landing continues the second, not fresh work", () => {
+    expect(pick([M(), SECOND(), N()], { ...twoOwned, avoid: ["M"] })).toMatchObject({ kind: "continue", of: "land", task: { id: "SECOND" } });
+  });
+
+  it("avoiding both owned landings falls through to fresh work", () => {
+    expect(pick([M(), SECOND(), N()], { ...twoOwned, avoid: ["M", "SECOND"] })).toMatchObject({ kind: "build", task: { id: "N" } });
+  });
+
+  it("keeps the blockedOwn fallback: an avoided continuation plus an own blocked task still hands out fresh work", () => {
+    const ownBlocked = { id: "B", status: "blocked", who: REVIEWER, at: NOW - 2 * HOUR, note: "awaiting a ruling" };
+    // B must be the reviewer's own held task, or ownWorkList never populates blockedOwn.
+    const claimedB: [string, Branch] = ["agent/queue/b", { tipSha: "b".repeat(40), tipMs: NOW - 4 * HOUR, merged: false, markers: [{ verb: "Claim", id: "B", who: REVIEWER }] }];
+    const opts = { branches: [builtM, freshPass, claimedB], prs: [prM], prCi: [["agent/queue/m", "green"]] as [string, string][], reports: [ownBlocked], claimant: REVIEWER };
+    const tasks = [M(), task("B", { lane: "b", owns: ["scripts/b.mjs"] }), N()];
+    // The owned continuation outranks the own blocked task, so it is continued first.
+    expect(pick(tasks, opts)).toMatchObject({ kind: "continue", of: "land", task: { id: "M" } });
+    // Avoiding it leaves nothing owned to continue: fresh work, never a wait on the own block.
+    const avoided = pick(tasks, { ...opts, avoid: ["M"] });
+    expect(avoided).toMatchObject({ kind: "build" });
+    expect(avoided).not.toMatchObject({ kind: "wait", own: true });
+    expect(avoided.task.id).not.toBe("M");
+  });
+});

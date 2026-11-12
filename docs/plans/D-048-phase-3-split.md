@@ -2,6 +2,24 @@
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first. Decided by Claude Code as CEO under D-109 on Oct 21 2026, from a read-only study of the code (eight agents: surface map, rollout map, shared hotspots, picker mechanics; three designs judged). The register wins any conflict. Nobody picks a row from this file by hand: rows enter `docs/plans/assignments.json` as described below and `node scripts/next-task.mjs` hands them out.
 
+## November 11 sign-in scope supersession (existing row only)
+
+For `D-048-p3-signin`, the November 11 current-goal correction in
+`D-048-auth.md` supersedes this split's old row-table description that #404's
+dark body is already the goal sign-in and that only two password pages remain.
+It also supersedes "D-033 role cards move unchanged" as a pixel/layout rule:
+preserve the required seeker/referrer choice and locked authentication behavior,
+not the rejected old cards' arrangement or copy. The old row text stays as
+history, not as a higher-precedence instruction to reuse that body.
+
+The current sign-in row uses its EXISTING `SignIn.tsx` switch-only path (within
+the 12-line cap) to select a NEW goal-native entry under its EXISTING
+`pages/goal/sign-in/**` ownership. No new row, path ownership, dependency, tier,
+queue order, flag or release is added. The legacy `pages/GoalSignIn.tsx` is owned
+by `DEVICE-SIGNIN-passkeys` in the current assignments register, not unowned;
+this correction does not edit or transfer that file. The split's existing
+behavior, independent review, auth holds and separate release checks still apply.
+
 ## Why the rollout was serial
 All D-048 rows shared the lane `design`, and the picker allows one open pull request per lane, so phase 3 could only move one page at a time. Lanes are free strings: splitting the lane is a data change. What makes parallel work unsafe is a short list of shared files, which one foundation chain now owns: the route table (`client/src/App.tsx`, all 87 routes on one line), the app shell, `client/src/components/goal/**`, the goal boundary test's allowlist, tokens and kit files.
 
@@ -182,6 +200,7 @@ A packet's pull request adds exactly these rows (as the table lists them: lane, 
 - `D-048-P-employer` adds: `D-048-p3-employer`, `D-048-p3-employer-talent`, `D-048-p3-employer-billing`, `D-048-p3-for-companies`
 - `D-048-P-public` adds: `D-048-p3-policy`, `D-048-p3-system`, `D-048-p3-links`
 - `D-048-P-marketing` adds: `D-048-p3-home-signed-in`, `D-048-p3-discovery`, `D-048-p3-public-profile`
+> **Nov 10 (D-317):** the R1-R8 waves below were never registered except R4, so built goal surfaces stayed off in production. They are replaced by per-surface release rows `D-048-R-<id>` (twenty, after `D-048-R4` in `docs/plans/assignments.json`), each depending only on its own build row; the gates in item 4 above still apply to each.
 - The CEO adds (release rows once their surfaces land; retirement rows after their release): `D-048-R1`, `D-048-R2`, `D-048-R3`, `D-048-R4`, `D-048-R5`, `D-048-R6`, `D-048-R7`, `D-048-R8`, `D-048-K1`, `D-048-K2`, `D-048-K3`, `D-048-K4`, `D-048-K5`, `D-048-K-kit`
 - Already in `docs/plans/assignments.json`: `D-048-p3-map`, `D-048-phase-3`, `D-048-F-typescale`, `D-048-p3-w0-shell`, `D-048-P-seeker`, `D-048-P-referrer`, `D-048-P-money`, `D-048-P-auth`, `D-048-P-account`, `D-048-P-admin`, `D-048-P-employer`, `D-048-P-public`, `D-048-P-marketing`, `D-048-p3-requests`, `D-048-p3-explore`, `D-048-p3-home`, `D-048-p3-queue`, `D-048-p3-company`, `D-048-p3-ask` (done)
 

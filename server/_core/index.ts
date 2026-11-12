@@ -46,6 +46,7 @@ import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
+import { askInviteFeatureGateMiddleware, registerAskInviteRoutes } from "../askInviteRoutes";
 import { registerJobCatalogRoutesWithDrizzle } from "../jobCatalogRoutes";
 import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
@@ -77,9 +78,11 @@ import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { registerAdminCatalogSyncRoutes } from "../adminCatalogSyncRoutes";
 import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
+import { registerLanguageFunnelRoutes } from "../languageFunnel";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { httpErrorCaptureMiddleware, markErrorReported, isClientTrpcCode } from "../httpErrorCapture";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -91,6 +94,7 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { registerReferrerStepUpRoutes } from "../referrerStepUpRoutes";
 import { registerReviewerLoginRoutes } from "./reviewerLogin";
 import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
@@ -144,6 +148,9 @@ async function startServer() {
   app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
+  // Every API 5xx must reach Sentry and the owner, sign-in and webhooks included.
+  app.use(httpErrorCaptureMiddleware);
+  app.use(materialErrorAlertMiddleware);
   // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register
   // before the global JSON parser: the Razorpay handler must HMAC the exact
   // raw request bytes the provider signed, so it parses its own body.
@@ -163,9 +170,11 @@ async function startServer() {
     : async (req: express.Request) => {
     const identity = await resolveDevIdentity(req);
     if (!identity) return undefined;
-    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
+    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses, sessionAmr: identity.sessionAmr, sessionKey: identity.sessionKey };
   };
   registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
+  // BYOR off must answer before body parsers and session renewal can reach any user/database state.
+  app.use(askInviteFeatureGateMiddleware);
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
@@ -179,7 +188,7 @@ async function startServer() {
     }) as typeof res.writeHead;
     res.on("finish", () => {
       const ms = Math.round(performance.now() - started);
-      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${req.baseUrl}${req.path} ${res.statusCode} ${ms}ms`);
+      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${scrubSentryPath(`${req.baseUrl}${req.path}`)} ${res.statusCode} ${ms}ms`);
     });
     next();
   });
@@ -212,11 +221,13 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Referrer OTP-first login is a public surface, always registered.
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
+  // D-057-session-gate: the in-session work-email step-up and the referrer session gate, before the routes it guards.
+  registerReferrerStepUpRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerReviewerLoginRoutes(app);
   registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else registerDevAuthRoutes(app);
-  app.use(materialErrorAlertMiddleware);
+  registerAskInviteRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerStorageProxy(app);
   registerDbDocumentRoute(app, { resolveIdentity });
   registerPrivateReferralRoutes(app, { resolveIdentity, dataUrlToBuffer, sanitizeDocumentName, storagePut, storageGetSignedUrl, storageGetBytes, createReferralAttachment: db.createReferralAttachment, getAccessibleReferralAttachment: db.getAccessibleReferralAttachment, createResumeUploadSession: db.createResumeUploadSession, getResumeUploadSession: db.getResumeUploadSession, appendResumeUploadChunk: db.appendResumeUploadChunk, claimResumeUploadFinalization: db.claimResumeUploadFinalization, clearUnattachedResumeUploads: db.clearUnattachedResumeUploads, completeResumeUploadSession: db.completeResumeUploadSession, saveVerifiedWorkEmail: db.saveVerifiedWorkEmail, getVerifiedWorkEmailAccess: db.getVerifiedWorkEmailAccess, fulfillCompanyCoverageInvitation: db.fulfillCompanyCoverageInvitation, createCompanyReferralRequest: db.createCompanyReferralRequest, prepareReferrerReviewEmailNotifications: db.prepareReferrerReviewEmailNotifications, claimReferralReviewDelivery: db.claimReferralReviewDelivery, completeReferralReviewDelivery: db.completeReferralReviewDelivery, resolveReferrerReviewEmailLink: db.resolveReferrerReviewEmailLink, consumeReferrerReviewEmailLink: db.consumeReferrerReviewEmailLink, oneClickReviewReferralRequest: db.oneClickReviewReferralRequest, sendReferrerReviewEmail, saveReferrerSlackWebhook: db.saveReferrerSlackWebhook, getReferrerSlackWebhookStatus: db.getReferrerSlackWebhookStatus, deactivateReferrerSlackWebhook: db.deactivateReferrerSlackWebhook, getActiveReferrerSlackWebhooks: db.getActiveReferrerSlackWebhooks, sendWorkEmailOtp: ({ email, ip }) => workEmailOtpService.sendCode(email, { ip }), verifyWorkEmailOtp: ({ email, code, ip }) => workEmailOtpService.verifyCode(email, code, { ip }), registerWorkEmailOtpFailure: ({ email, code }) => workEmailOtpService.registerFailedAttempt(email, code), issueWorkEmailEnrollmentReceipt: ({ email, userId }) => workEmailOtpService.issueEnrollmentReceipt(email, userId), completeWorkEmailOtpEnrollment: db.completeWorkEmailOtpEnrollment, getSlotOpenedAlertRecipients: db.getSlotOpenedAlertRecipients, sendSlotOpenedAlertEmail, getPublicReferralImpact: db.getPublicReferralImpact, getReferrerImpactSummary: db.getReferrerImpactSummary, getOwnedResumeAttachmentForPitch: db.getOwnedResumeAttachmentForPitch, draftSmartReferralPitch, getOrCreateReferralShareCard: db.getOrCreateReferralShareCard, revokeReferralShareCard: db.revokeReferralShareCard, getPublicReferralShareCard: db.getPublicReferralShareCard, getOrCreateReferrerFastTrackLink: db.getOrCreateReferrerFastTrackLink, getPublicReferrerFastTrackLink: db.getPublicReferrerFastTrackLink, getPublicReferrerFastTrackVanityLink: db.getPublicReferrerFastTrackVanityLink, deactivateReferrerFastTrackLink: db.deactivateReferrerFastTrackLink, openCompanyReferralAvailability: db.openCompanyReferralAvailability, listCompanyReferralInbox: db.listCompanyReferralInbox, listCompanyReferralInboxByState: db.listCompanyReferralInboxByState, getUnclaimedCompanyReferralPreview: db.getUnclaimedCompanyReferralPreview, listJobSeekerCompanyReferrals: db.listJobSeekerCompanyReferrals, hasEverCreatedReferralRequest: db.hasEverCreatedReferralRequest, hasEverReviewedReferral: db.hasEverReviewedReferral, reconcileExpiredPendingReferrals: db.reconcileExpiredPendingReferrals, getOpenAskSlots: db.getOpenAskSlots, saveCompanyReferralRequest: db.saveCompanyReferralRequest, withdrawCompanyReferralRequest: db.withdrawCompanyReferralRequest, listRequiresReviewPayments: db.listRequiresReviewPayments, resolveRequiresReviewPayment: db.resolveRequiresReviewPayment, listRecentPayments: db.listRecentPayments, revokeCreditedPaymentCredits: db.revokeCreditedPaymentCredits, getRevenueSummary: db.getRevenueSummary, claimCompanyReferralRequest: db.claimCompanyReferralRequest, getClaimedCompanyReferralDetail: db.getClaimedCompanyReferralDetail, reviewReferralRequest: db.reviewReferralRequest, updateReferralProgress: db.updateReferralProgress, getApprovedReferralProgressStatus: db.getApprovedReferralProgressStatus, extendReferredDeadlineTx: db.extendReferredDeadlineForUser, stepBackFromReferral: db.stepBackFromReferralForUser, confirmReferredBySeeker: db.confirmReferredBySeekerForUser, lapseReferredTx: db.lapseReferredTx, listReferralConversation: db.listReferralConversation, sendReferralConversationMessage: db.sendReferralConversationMessage, recordLandedJourney: db.recordLandedJourney, listReferrerThankYous: db.listReferrerThankYous, listPublicCompanyOpportunities: db.listPublicCompanyOpportunitiesWithSponsorship, publishCompanyOpportunity: db.publishCompanyOpportunity, listMyCompanyOpportunities: db.listMyCompanyOpportunities, renewCompanyOpportunity: db.renewCompanyOpportunity, closeCompanyOpportunity: db.closeCompanyOpportunity, recordActivity: db.recordOperationalActivity, listOperationalActivity: db.listOperationalActivity, listMyUploadStarts: db.listMyUploadStarts, getReferralFlowHealth: db.getReferralFlowHealth, getReferralFlowBaseline, getCreditLedgerAudit: db.getCreditLedgerAudit, getDomainIntegrity: db.getDomainIntegrity, findUsersForTokenRecovery: db.findUsersForTokenRecovery, listAdminTokenAdjustments: db.listAdminTokenAdjustments, grantAdminTokenAdjustment: db.grantAdminTokenAdjustment, getCreditSummary: db.getTokenWallet, reconcileCardValidation: async (userId: number) => { try { await reconcileCardValidationFromProvider({ userId }); } catch (error) { console.error("[Chargebee] card-validation reconcile failed", error); void createCardValidationAlerter()({ reason: "provider_reconcile_failed" }).catch(() => undefined); } }, getOrCreatePersonalReferralInvite: db.getOrCreatePersonalReferralInvite, getPersonalReferralInviteState: db.getPersonalReferralInviteState, claimPersonalReferralInvite: db.claimPersonalReferralInvite, exportUserData: db.exportUserData, requestDataExport: userId => requestDataExport(userId), getLatestDataExport, getDataExportFile: (userId, id) => getDataExportFile(userId, id), listMyPrivacyRequests: db.listMyPrivacyRequests, createPrivacyErasureRequest: db.createPrivacyErasureRequest, listAdminPrivacyRequests: db.listAdminPrivacyRequests, reviewPrivacyRequest: db.reviewPrivacyRequest, listNotifications: db.listNotifications, markNotificationRead: db.markNotificationRead, countRecentMessagesBySender: db.countRecentMessagesBySender, listReferralLedger: db.listReferralLedger, getUserEmailById: db.getUserEmailById, createNotification: db.createNotification, listJobs: publicCatalogJobs(db.listJobs), listSavedRoles: db.listSavedRoles, setSavedRole: db.setSavedRole, listUsersAdmin: db.listUsersAdmin, setUserSuspended: db.setUserSuspended, sendEmail: async ({ to, subject, html }) => sendTransactionalEmail({ to, subject, html, text: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() }) });
@@ -313,6 +324,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
   registerPlansCatalogRoutes(app);
   registerAdminBillingLedgerRoutes(app, { resolveIdentity, loadRows: db.listBillingLedgerRows });
+  // D-093.metrics: admin-only language funnel (aggregate only; 404 while capture is off).
+  registerLanguageFunnelRoutes(app, { resolveIdentity });
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
@@ -355,6 +368,10 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       router: appRouter,
       createContext,
       onError({ error, path, req }) {
+        // Caller-fixable codes never spend Sentry quota, and a captured
+        // error is marked so the finish-hook does not report it twice.
+        if (isClientTrpcCode(error.code)) return;
+        if (req.res) req.res.locals.errorReported = true;
         captureServerError(error, {
           trpcPath: scrubSentryPath(typeof path === "string" ? `/${path}` : req.path),
           code: error.code,
@@ -382,6 +399,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   }
   // Error-reporting middleware sits after every route so forwarded errors are
   // captured by Sentry (when configured) before the final handlers respond.
+  app.use(markErrorReported);
   app.use(sentryErrorMiddleware);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {

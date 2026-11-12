@@ -1,3 +1,14 @@
+// Keep the legacy standalone core usable by queue/scope fixture consumers.
+// Missing provenance support may NEVER admit an external claim or history.
+let resolveTaskProvenance;
+try { ({ resolveTaskProvenance } = await import("./modelProvenance.mjs")); }
+catch (error) {
+  if (error.code !== "ERR_MODULE_NOT_FOUND") throw error;
+  resolveTaskProvenance = ({ taskId, registry, routeId, workMarkers = [], lockMarkers = [] }) => {
+    const active = Boolean(routeId) || registry?.routes?.some(r => r.taskId === taskId) || [...workMarkers, ...lockMarkers].some(m => /(?:^|\n)(?:provenance|execution)(?: |$)/.test(m.body ?? ""));
+    return active ? { active: true, ok: false, reason: "external provenance support unavailable" } : { active: false, ok: true };
+  };
+}
 // D-083: the queue picker's pure logic. `scripts/next-task.mjs` does the git
 // and GitHub I/O and passes plain data in; everything here is deterministic,
 // so `scripts/nextTask.test.ts` can pin each decision.
@@ -75,8 +86,9 @@ const under = (child, parent) => !parent || child === parent || child.startsWith
 /**
  * Do two `owns` lists overlap? Compared by the literal part of each pattern, so exact
  * paths, folder prefixes and globs that share a folder are caught. Two globs with
- * unrelated prefixes are treated as disjoint: the runtime guards (filesBusy and
- * scripts/scope-check.mjs) are the backstop, this is the cheap static check.
+ * unrelated prefixes are treated as disjoint. Since D-309/D-314 an overlap holds no build and needs
+ * no dependency: it is reported with the build hand-out, and scripts/scope-check.mjs still keeps
+ * each pull request inside its own owns.
  */
 export function ownsOverlap(a, b) {
   const left = Array.isArray(a) ? a : [];
@@ -234,6 +246,30 @@ export async function collectLandedEvidence({ repo, candidates, firstPage, fetch
   return { evidence, complete, pages: read, cache: { repo, completeAt: complete ? new Date(now).toISOString() : prior, merged } };
 }
 
+/**
+ * BRANCH-HYGIENE "See every pull request": one page of 100 open pull requests hides the oldest rows
+ * (186 were open on Nov 9, so PR #632 sat on page 2), and a row whose pull request is invisible looks
+ * half-built: the picker hands a TAKEOVER on finished work and never its REVIEW or LAND. Pages are read
+ * until one is short. An unreadable or still-full last page is unknown, never "no pull request" (D-085).
+ */
+export const OPEN_PR_PAGE_SIZE = PAGE_SIZE;
+
+export async function collectOpenPulls({ firstPage, fetchPage, maxPages = 20 }) {
+  if (!Array.isArray(firstPage)) return { pulls: [], complete: false, reason: "the first page is not a list" };
+  const pulls = [...firstPage];
+  let page = firstPage, read = 1;
+  while (page.length === OPEN_PR_PAGE_SIZE) {
+    if (read >= maxPages) return { pulls, complete: false, reason: `page ${read} of ${maxPages} is still full` };
+    read += 1;
+    let next;
+    try { next = await fetchPage(read); } catch (e) { return { pulls, complete: false, reason: `page ${read} unreadable: ${e?.message ?? String(e)}` }; }
+    if (!Array.isArray(next)) return { pulls, complete: false, reason: `page ${read} is not a list` };
+    pulls.push(...next);
+    page = next;
+  }
+  return { pulls, complete: true };
+}
+
 /** `extra` is the verdict (pass|findings) for a Verdict and the status for a Report. */
 export function markerSubject(verb, id, who, extra) {
   return verb === "Verdict" || verb === "Report" ? `${verb} ${id}: ${extra} — ${who}` : `${verb} ${id}: ${who}`;
@@ -342,6 +378,21 @@ const JOB_OK = new Set(["success", "skipped"]);
  * picker keeps handing MAKE GREEN (fail closed).
  */
 export function gateOnlyRedFromJobs(jobs) {
+  return onlyTypecheckStepRed(jobs, GATE_STEP);
+}
+
+/**
+ * D-314: before REVIEW-GATE-fetch-parity (D-292) named the review gate's own step, CI ran it inside this
+ * step. A run older than that, red at exactly this step, cannot be told apart from a real scope failure,
+ * so it is never treated as gate-only; the picker still hands MAKE GREEN, but says the cure first: merge
+ * origin/main so CI re-runs with the current workflow, where a review-only red shows on its own.
+ */
+export const LEGACY_SCOPE_STEP = "Scope check (declared file ownership)";
+export function legacyScopeRedFromJobs(jobs) {
+  return onlyTypecheckStepRed(jobs, LEGACY_SCOPE_STEP);
+}
+
+function onlyTypecheckStepRed(jobs, stepName) {
   const list = Array.isArray(jobs) ? jobs : Array.isArray(jobs?.jobs) ? jobs.jobs : null;
   if (!list?.length) return false;
   let failed = 0;
@@ -356,7 +407,7 @@ export function gateOnlyRedFromJobs(jobs) {
     for (const step of steps) {
       if (!step || typeof step.name !== "string") return false;
       if (JOB_OK.has(step.conclusion)) continue;
-      if (step.conclusion !== "failure" || step.name !== GATE_STEP) return false;
+      if (step.conclusion !== "failure" || step.name !== stepName) return false;
       stepsFailed += 1;
     }
     if (stepsFailed !== 1) return false;
@@ -506,17 +557,9 @@ export function validateAssignments(doc, packetExists, register = null) {
     visiting.delete(id); seen.add(id);
   };
   for (const t of doc.tasks) visit(t.id);
-  // PICKER-owns-scope: two tasks that are not done may not own the same files unless one
-  // waits for the other (a dependent runs after its dependency has landed, so it may edit
-  // the same file). Checked on the literal part of each pattern (ownsOverlap).
-  const waitsFor = (from, target, seenIds = new Set()) => (from.dependsOn ?? []).some(d => d === target || (!seenIds.has(d) && seenIds.add(d) && byId.has(d) && waitsFor(byId.get(d), target, seenIds)));
-  const owning = doc.tasks.filter(t => t.status !== "done" && Array.isArray(t.owns) && t.owns.length);
-  for (let i = 0; i < owning.length; i += 1) for (let j = i + 1; j < owning.length; j += 1) {
-    const a = owning[i], b = owning[j];
-    if (!ownsOverlap(a.owns, b.owns)) continue;
-    if (waitsFor(a, b.id) || waitsFor(b, a.id)) continue;
-    errors.push(`tasks ${a.id} and ${b.id} own overlapping paths and neither waits for the other`);
-  }
+  // D-309, D-314: two unfinished tasks may own overlapping paths without a dependency between
+  // them. Each builds on its own branch; the second to land merges main and resolves the overlap.
+  // A `dependsOn` edge means "needs that task's output" (D-223 rule 9), never "shares a file".
   return errors;
 }
 
@@ -635,6 +678,8 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       unblocker: archMarkers.at(-1)?.verb === "Unblock" ? archMarkers.at(-1).who : null,
       // PICKER-gate-red-review-route: red CI that is only the review gate, read from this exact head's own run.
       gateOnlyRed: ci.state === "red" && ci.gateOnly === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
+      // D-314: red only at the pre-D-292 scope-check step on this exact head: a run from before the workflow change.
+      legacyScopeRed: ci.state === "red" && ci.legacyScope === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
       done: task.status === "done" || ((task.status === "todo" || packet) && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
       packet, writers: packet ? everyone(archMarkers, ["Claim", "Takeover"]) : [],
@@ -686,9 +731,13 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null }) {
+function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null }) {
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
-  if (mainCi.state === "running-after-red") return { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
+  // D-324 (owner, Nov 11: "0 waits 0 blocks"): red main holds every LANDING, not every session. Its one fix is still
+  // handed out first; while that fix is in hand (or main's CI is re-running after it) everyone else is handed
+  // non-landing work on branches, and this wait is the answer only when nothing else is eligible.
+  let mainHold = null;
+  if (mainCi.state === "running-after-red") mainHold = { kind: "wait", mainRed: true, reason: "main's CI is running again after a failure; run this again when it finishes" };
   if (mainCi.state === "red") {
     // One fix-main lock at a time: a newer red commit while someone is fixing main does not open a second lock.
     const current = fixMainLockOf(mainCi.sha);
@@ -696,9 +745,11 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     const mine = claimant ? locks.find(l => l.holder === claimant && (!l.quiet || l.lock === current)) : null;
     if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, url: mainCi.url, lock: mine.lock };
     const busy = locks.find(l => !l.quiet);
-    if (busy) return { kind: "wait", mainRed: true, reason: `main is red; ${busy.holder ?? "another agent"} is fixing it on ${busy.lock}` };
-    const held = locks.find(l => l.lock === current);
-    return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock: current, parent: held ? current : null, from: held ? held.holder : null };
+    if (busy) mainHold = { kind: "wait", mainRed: true, reason: `main is red; ${busy.holder ?? "another agent"} is fixing it on ${busy.lock}` };
+    else {
+      const held = locks.find(l => l.lock === current);
+      return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock: current, parent: held ? current : null, from: held ? held.holder : null };
+    }
   }
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
@@ -719,10 +770,10 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   const building = o => !o.pr || !["green", "red", "running", "running-after-red"].includes(o.ci)
     || (o.ci !== "green" && !quiet(workAt(o)));
   const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && (building(o) || !disjoint(o, v)));
-  // PICKER-owns-scope: lanes are labels, so two lanes could edit one file unseen. A build also
-  // waits while an open task — being built or waiting for review — owns an overlapping path,
-  // unless it waits for that task (a dependent may edit the same file after its dependency lands).
-  const filesBusy = v => Boolean(v.task.owns?.length) && view.some(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && ownsOverlap(v.task.owns, o.task.owns));
+  // PICKER-owns-scope, amended by D-309/D-314: lanes are labels, so two lanes can edit one file. A shared
+  // file no longer holds a build. The build is handed out with the open tasks (being built or waiting for
+  // review) whose owns overlap, so the builder works in its own worktree and the second lander merges.
+  const sharedFilesWith = v => (v.task.owns?.length ? view.filter(o => o !== v && Boolean(o.task.owns?.length) && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && ownsOverlap(v.task.owns, o.task.owns)).map(o => o.task.id) : []);
   const ceo = isArchitect(claimant);
 
   const skipped = [];
@@ -730,8 +781,19 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-085, narrowed by D-109: a priority that is red (CI, or its team reported red or blocked) holds its own lane
   // and every task that depends on it, never unrelated lanes; red main (above) still holds everything.
   const gate = (reason, extra = {}) => ({ kind: "gate", reason, ...extra });
-  const did = (v, roles) => Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
-  const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why });
+  const did = (v, roles, candidateRole = "review") => {
+    const resolved = resolveTaskProvenance({ taskId: v.task.id, head: v.tipSha,
+      workMarkers: v.info?.markers ?? [], lockMarkers: v.lock?.markers ?? [],
+      ...(provenance ?? {}), claimant, candidateRole });
+    if (resolved.active) {
+      const members = { builders: resolved.builders ?? [], fixers: resolved.fixers ?? [], reviewers: [...(resolved.reviewers?.values() ?? [])] };
+      return !resolved.ok || !resolved.candidate || roles.some(role => members[role]?.includes(resolved.candidate));
+    }
+    return Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
+  };
+  // D-314: a red only at the pre-D-292 scope-check step is first a stale workflow, not a code failure to hunt for.
+  const legacyWhy = v => `Pull request ${v.pr}'s red run predates the current CI workflow: it failed only at the old "${LEGACY_SCOPE_STEP}" step, which then also ran the review gate. First merge the latest origin/main into ${v.work} (a two-parent merge, never a rebase; resolve conflicts keeping both sides) and push, so CI re-runs with the current workflow. Finding no code to fix is not "nothing to fix": if the new run is red only at the review gate, the picker hands its REVIEW; any other red is yours to fix`;
+  const green = (v, why) => ({ kind: "green", task: v.task, work: v.work, pr: v.pr, from: v.owner, since: workAt(v), why: v.legacyScopeRed ? legacyWhy(v) : why, ...(v.legacyScopeRed ? { legacyScope: true } : {}) });
   // D-202: updating the packet is a docs job on the architect lock; any capable session may take it (D-200).
   const resync = v => ({ kind: "resync", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: v.arch ? holderOf(v.arch, v.task.id) : null, decisions: decisionsSince(register, v.task.syncedTo) });
   const reportWhy = said => `${said.who} reported it ${said.status}${said.note ? `: ${said.note}` : ""}`;
@@ -746,16 +808,23 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // D-286: a head whose only red is the review gate is waiting for the one stage that clears it, so it is not
     // "red" here while its review is still to be done; the review hand-out below applies the same builder/fixer bar.
     const gateOnlyWaiting = v.gateOnlyRed && (state === "needs-review" || (state === "in-review" && lockQuiet));
+    // An unchanged head red only at the review gate needs its verdict re-evaluated,
+    // not another source FIX that overwrites the pass with empty Fix/Fixed markers.
+    if (v.gateOnlyRed && (state === "passed" || state === "landing")) {
+      if (!lockQuiet || state === "landing") return skip(v, "review verdict recorded; re-run exact-head CI before any landing, not a source fix");
+      if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you built or fixed it");
+      return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
+    }
     if (v.ci === "red" && !gateOnlyWaiting) {
       if (state === "fixing" && !lockQuiet) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.fixer} is on it`);
       // Red after a passed review: the change goes through a fix stage and is reviewed again, never landed as it is.
       const afterPass = state === "passed" || state === "landing";
       if (state === "needs-fix" || state === "fixing" || afterPass) {
-        if (did(v, ["reviewers"]) || (v.lander && claimant === v.lander)) return gate(`${v.task.id} is red (CI on ${v.pr}) and you reviewed or are landing it, so someone else fixes it`);
+        if (did(v, ["reviewers"], "fix") || (v.lander && claimant === v.lander)) return gate(`${v.task.id} is red (CI on ${v.pr}) and you reviewed or are landing it, so someone else fixes it`);
         return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, ...(afterPass ? { why: `CI on ${v.pr} turned red after its review passed; fix it red-first, then it is reviewed again` } : {}) };
       }
       if (!quiet(workAt(v))) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.owner ?? "its builder"} is making it green`);
-      if (did(v, ["reviewers"])) return gate(`${v.task.id} is red (CI on ${v.pr}); you reviewed it, so someone else makes it green`);
+      if (did(v, ["reviewers"], "build")) return gate(`${v.task.id} is red (CI on ${v.pr}); you reviewed it, so someone else makes it green`);
       return green(v, `Pull request ${v.pr} has red CI`);
     }
     if (v.ci === "running" || v.ci === "running-after-red") return skip(v, `CI is running on ${v.pr}`);
@@ -768,7 +837,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       return { kind: "review", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner };
     }
     if (state === "needs-fix" || (state === "fixing" && lockQuiet)) {
-      if (did(v, ["reviewers"])) return skip(v, "needs its review findings fixed, and you reviewed it");
+      if (did(v, ["reviewers"], "fix")) return skip(v, "needs its review findings fixed, and you reviewed it");
       return { kind: "fix", task: v.task, work: v.work, pr: v.pr, lock: v.lockName };
     }
     if ((state === "passed" || state === "landing") && lockQuiet) {
@@ -776,7 +845,7 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
         const tip8 = (v.tipSha ?? v.info?.tipSha ?? "").slice(0, 8);
         return skip(v, `waiting for CI on the tip ${tip8} of ${v.pr}`);
       }
-      if (did(v, ["builders", "fixers"])) return skip(v, "its review passed, and you built or fixed it");
+      if (did(v, ["builders", "fixers"], "land")) return skip(v, "its review passed, and you built or fixed it");
       if (slotBusyFor(claimant)) return waitLanding();
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.lander ?? v.reviewer };
     }
@@ -851,7 +920,18 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
     // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
     if (v.packet && v.pr && Number(v.task.tier) === 1 && v.gateOnlyRed) {
-      if (v.review === "passed") return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      // D-307: a passed stage on an exact-tip gate-only red cannot be cleared by re-running CI when the pass names
+      // an earlier head (a post-review empty claim plus a clean main merge, #878). Once the lock and the work branch
+      // are genuinely quiet, hand the ordinary REVIEW again — the one stage that can record this head. An active
+      // stage keeps the rerun answer, and builder/writer/fixer models stay out of it (D-151, D-190).
+      if (v.review === "passed" && !quiet(lockAt(v))) return skip(v, `review passed; re-run CI on ${v.pr} on its exact head`);
+      if (v.review === "passed") {
+        // A standing block is never cleared by this routing: an architect row is not `open`, so the ordinary blocked
+        // hand-out cannot see it, and this route must report it truthfully instead of handing a review over it.
+        if (v.said?.status === "blocked") return skip(v, `${v.task.id} is blocked (${v.said.who} reported it blocked: ${v.said.note ?? "no note"}); a session that neither raised the block nor holds the task clears it (D-200)`);
+        if (did(v, ["builders", "fixers"]) || (claimant && v.writers.includes(claimant))) return skip(v, "its review passed; another session re-reviews this exact head");
+        return { kind: "review", task: v.task, work: v.archName, pr: v.pr, lock: v.lockName, lockExists: Boolean(v.lock), builder: v.owner, packet: true };
+      }
       if (v.review === "in-review" && !quiet(lockAt(v))) return skip(v, `under review by ${v.reviewer}`);
       if (v.review === "needs-review" || (v.review === "in-review" && quiet(lockAt(v)))) {
         if (did(v, ["builders", "fixers"])) return skip(v, "needs a review, and you wrote or fixed its packet");
@@ -867,14 +947,22 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     const unmet = unmetOf(v);
     if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
     if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
-    if (filesBusy(v)) return skip(v, "an open task owns the same files");
-    return { kind: "build", task: v.task, ciRunning: mainCi.state === "running" };
+    const overlaps = sharedFilesWith(v);
+    return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ...(overlaps.length ? { overlaps } : {}) };
   };
 
-  let mine = claimant ? ownWork(view, claimant) : null;
+  const owned = claimant ? ownWorkList(view, claimant) : null;
+  let mine = owned?.found.find(pick => !(pick.kind === "continue" && pick.task && avoid.has(pick.task.id)))
+    ?? (owned?.found.length ? null : owned?.blockedOwn ?? null);
   // --avoid also applies when the claimant already holds a continuation: let the
   // normal pass preserve blocked-lane holds and select another eligible task.
   if (mine?.kind === "continue" && mine.task && avoid.has(mine.task.id)) mine = null;
+  // D-315 (owner, Nov 10: "no wait no block"): your own blocked task waits for another session or the owner, but you
+  // do not: you are handed other work, and only when there is none at all does the picker answer with that wait.
+  let ownBlocked = null;
+  if (mine?.kind === "wait") { ownBlocked = mine; mine = null; }
+  // D-324: while main is red your own landing waits with every other landing; you are handed other work meanwhile.
+  if (mainHold && mine?.kind === "continue" && mine.of === "land") mine = null;
   // D-202: a holder continuing an out-of-sync task is handed the re-sync first, not its build
   // (a blocked wait still comes first: the block is cleared before the packet moves).
   if (mine && mine.kind !== "wait" && mine.task) {
@@ -884,18 +972,33 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   // D-134: whether a pick's plan row is shared by several tasks (their status then goes in their packet's Status section).
   const sharedRows = new Set(view.map(v => v.task.row).filter((r, k, all) => all.indexOf(r) !== k));
   const withHold = pick => (pick?.task && sharedRows.has(pick.task.row) ? { ...pick, task: { ...pick.task, sharedRow: true } } : pick);
+  // D-315: the oldest task held only by unfinished dependencies, as work to do ahead of them (FIFO; tasks whose unmet
+  // dependencies wait for the owner come after every other). A re-sync or packet comes first when the task needs one;
+  // a branch somebody is pushing to, or one with a pull request already, is theirs and is passed over.
+  const aheadPick = () => {
+    const parkedDep = v => unmetOf(v).some(d => byId.get(d)?.task.status === "owner");
+    const held = view.filter(v => !v.done && unmetOf(v).length > 0 && !avoid.has(v.task.id) && (v.task.status === "todo" || v.task.status === "architect"));
+    for (const v of [...held.filter(v => !parkedDep(v)), ...held.filter(parkedDep)]) {
+      const ahead = unmetOf(v);
+      const writer = v.arch ? holderOf(v.arch, v.task.id) : null;
+      const writing = Boolean(writer) && !quiet(archAt(v));
+      if (staleOf(v)) { if (!writing) return { ...resync(v), ahead }; continue; }
+      if (v.task.status === "architect") { if (!writing) return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer, ahead }; continue; }
+      if (v.pr) continue;
+      if (v.info) { if (quiet(workAt(v))) return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), ahead }; continue; }
+      return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ahead };
+    }
+    return null;
+  };
 
   // Pass 1: pending work top down, stopping at your own work; pass 2: new work. A red or
   // blocked priority holds only its lane and its dependents (D-109). D-200: Claude Code builds too.
   const actions = [];
   let gateAt = -1, gateAction = null;
-  // PICKER-landing-wait-fallthrough: a pending landing that waits only for another session's landing slot is
-  // remembered, not returned at once: later eligible work is still handed out (the slot is never touched), but
-  // only work whose declared owns are provably disjoint from every waiting landing's. Unknown or overlapping
-  // ownership keeps the old landing wait (see `disjoint`: missing ownership never proves concurrent work is safe).
+  // PICKER-landing-wait-fallthrough, widened by D-314/D-315: a pending landing that waits only for another session's
+  // landing slot is remembered, not returned: later eligible work is still handed out (the slot is never touched),
+  // overlapping files included (D-309: the second lander merges main). The wait is the answer only when nothing is left.
   let landingWait = null;
-  const landingViews = [];
-  const clearOfLandings = v => landingViews.every(l => disjoint(l, v));
   const heldLanes = new Map(), heldIds = new Map();
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
   // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
@@ -907,6 +1010,8 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
     // --avoid: a session that may not take a task (its own instruction or a missing tool) is handed something else;
     // the task is never reported blocked for that reason, and a red or blocked one still holds its lane (gate).
     let action = actionFor(view[i]);
+    // D-324: no landing is handed out while main is red; the row is passed over and holds nothing.
+    if (mainHold && action && (action.kind === "land" || (action.kind === "wait" && action.landing))) action = skip(view[i], "main is red: its landing waits until main is green");
     if (action && action.kind !== "gate" && avoid.has(view[i].task.id)) {
       // PICKER-avoid-land (D-109): avoiding a red or blocked task's hand-out (unblock, make green, fix, takeover)
       // never frees its lane or its dependents for this session; it holds them as it would for anyone else.
@@ -922,18 +1027,16 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
       continue;
     }
     if (action.kind === "wait") {
-      if (action.landing) { landingWait ??= action; landingViews.push(view[i]); actions[i] = null; continue; }
+      if (action.landing) { landingWait ??= action; actions[i] = null; continue; }
       return action;
     }
     if (!PENDING_KINDS.has(action.kind)) continue;
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
-    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
-  // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it).
-  // A pending landing above it that waits for the slot keeps the old wait: own work is not reordered by this fall-through.
+  // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it),
+  // and neither does another session's landing that waits for the slot (D-315). Your own landing needs the slot.
   if (mine) {
-    if (landingWait) return landingWait;
     if (mine.of === "land" && slotBusyFor(claimant)) return waitLanding();
     const { at, ...pick } = mine;
     return withHold(pick);
@@ -941,11 +1044,20 @@ export function pickNextTask({ tasks, mainCi, branches, openPrs, prCi = new Map(
   for (let i = 0; i < view.length; i++) {
     const action = actions[i];
     if (!action || action.kind === "gate" || PENDING_KINDS.has(action.kind)) continue;
-    if (landingWait && !clearOfLandings(view[i])) return landingWait;
     return withHold(action);
   }
-  // Nothing else was eligible: the honest answer is the landing wait, with the slot holder and the reason.
+  // D-315 (owner, Nov 10: "when i say build in agents they should get a task to work . no wait no block"): with nothing
+  // above eligible, a session works AHEAD on the oldest task held only by unfinished dependencies, on that task's own
+  // branch, so nobody idles. Nothing lands early: review, fix and landing stay withheld until every dependency is done
+  // (D-134 holds those stages in actionFor). A Claude Code session keeps its CEO review instead (D-225).
+  if (!ceo) {
+    const ahead = aheadPick();
+    if (ahead) return withHold(ahead);
+  }
+  // Nothing at all was eligible: the honest answer is red main's wait, or the landing wait with the slot holder.
+  if (mainHold) return mainHold;
   if (landingWait) return landingWait;
+  if (ownBlocked) { const { at, ...wait } = ownBlocked; return wait; }
   // A Claude Code session that raised a block waits like anyone else; it never gets the CEO review telling it to clear its own block.
   if (gateAt >= 0 && (!ceo || gateAction.blocked)) return { kind: "wait", gate: view[gateAt].task.id, blocked: Boolean(gateAction.blocked), reason: gateAction.reason };
   return ceo ? { kind: "ceo", skipped } : { kind: "none", skipped };
@@ -1218,4 +1330,45 @@ export function epicSummaries(rows) {
     if (row.health === "red") summary.red++;
   }
   return [...epics.values()];
+}
+
+/** D-311: continuations must pass the same identity checks as new handouts. */
+/** D-311: a marker body naming an external route or execution (the same lines `markerReferences` reads). */
+const EXTERNAL_MARKER = /(?:^|\n)(?:provenance|execution)(?: |\n|$)/;
+/** The claim history the CLI checks before any claim: the task's work branch and the pick's lock. */
+function hasExternalHistory(branches, pick) {
+  const history = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
+  return history.some(m => m.id === pick.task?.id && EXTERNAL_MARKER.test(String(m.body ?? "")));
+}
+
+export function pickNextTask(input) {
+  // D-315: a review or landing held by external provenance is passed over for this session (as --avoid would), so the
+  // next eligible task is handed out instead of a WAIT; the held stage itself is never handed out or waived.
+  const avoid = new Set(input.avoid ?? []);
+  let firstHeld = null;
+  const mainRed = input.mainCi?.state === "red" || input.mainCi?.state === "running-after-red";
+  // D-324: every pick handed out while main is red says so, and that nothing lands until main is green.
+  const done = pick => (pick.kind === "none" && firstHeld ? firstHeld : (mainRed && pick.task ? { ...pick, mainRedNote: true } : pick));
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const pick = pickNextTaskLegacy({ ...input, avoid });
+    const stage = pick.kind === "continue" ? pick.of : pick.kind;
+    // D-324: a task whose claim or history names an external model route (D-311) can only be claimed with that
+    // route: `scripts/next-task.mjs` refuses any other claim. Handing it to a session without one made that session
+    // fail at the claim and be handed the same task on every retry, so it is passed over as --avoid would.
+    if (pick.task && pick.kind !== "continue" && !input.provenance?.routeId && hasExternalHistory(input.branches, pick)) {
+      firstHeld ??= { kind: "wait", reason: `external provenance held: ${pick.task.id} can only be claimed with its qualified operator route` };
+      avoid.add(pick.task.id);
+      continue;
+    }
+    if (!["review", "land"].includes(stage) || !pick.task) return done(pick);
+    const work = input.branches.get(pick.work || pick.task.branch);
+    const lock = input.branches.get(reviewLockOf(pick.task));
+    const resolved = resolveTaskProvenance({ taskId: pick.task.id, head: work?.tipSha,
+      workMarkers: work?.markers ?? [], lockMarkers: lock?.markers ?? [],
+      ...(input.provenance ?? {}), claimant: input.claimant, candidateRole: stage });
+    if (!(resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate)))) return done(pick);
+    firstHeld ??= { kind: "wait", reason: `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}` };
+    avoid.add(pick.task.id);
+  }
+  return firstHeld;
 }

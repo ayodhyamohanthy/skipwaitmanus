@@ -419,3 +419,32 @@ D-086-demand-list: revision3 reviewed source packet f81236e8; coordinator regist
 
 
 Coordinator review: f81236e8 locally integrated with main e67f7785 (not protected-merged);218registry rows/0errors,35baselinePASS,662scriptPASS. Original owner demand/journey messages recovered. No implementation, deployment or switch activation. Historical43 includes8rev2 disposable contract probes.
+
+
+### November 11, 2026: D-086.count technical parking reconciled
+
+The D-279 park above is historical. The only technical reason it records
+for owner status is the old D-254 review-route deadlock. The D-286/D-291
+cure, including real I/O wiring, is now on main via normal PR1008.
+Return this existing row to ordinary todo assessment and stamp syncedTo
+D-313, the latest checked register entry, under D-202/D-200. This does not
+clear any independent product, contributor, privacy, scope or review hold.
+
+Live PR955 is still draft/open/unmerged at 4700fc10dc9d41843a96cb52229630487378f166. Its
+exact-head historical CI has only Scope check failing, while unit, build
+and journeys succeeded. That old workflow is not today's positive
+named-step gate-only classification. Legitimate current-main composition
+and current exact-head CI must precede a qualifying ordinary review.
+No new empty Takeover to manufacture eligibility, no model relabeling,
+retrospective author replacement, manual review marker or fabricated pass.
+Known and unknown contributors remain subject to D-151/D-311. Existing
+models that built or fixed it remain excluded from its review.
+
+All switches, scope, ownership, dependencies, queue order, existing source,
+findings and product rules remain unchanged. Historical note text is kept
+for provenance, not presented as current owner-wait state. This is status
+reconciliation, not code completion, a pass, landing or live deployment.
+
+`D-086.count`: review — agent/queue/d086-count — 8b562508 (make-green takeover by Qoder · d12e, 2026-11-11; DeepSeek V4.1 Flash Free · 0eed's commits `38b6c98e`..`3564223c` and the takeover marker are preserved, nothing rebuilt; current main d6b3b658 merged). Measured on this composition: `pnpm check` 0, demand focused 61/61 across `shared/companyDemand.test.ts`, `server/companyDemand.fixture.test.ts` and `server/companyDemandRoutes.test.ts`, `pnpm build` success, token audit / deploy triggers / migrations lint / `test-integrity` 0, and `scope-check --branch` clean on the 7 owned paths, so the Nov 2 `Scope check` failure is gone on composition. Exact-head CI run 42903821217 is green on `unit + component + route tests`, `production build` and `e2e journeys`, and red only at the Tier 1 review gate ("Tier 1: this head has no independent passing review"). Both demand switches stay false. The full local suite had six parallel-load failures on this host that all pass alone and in combination, and this branch changes no such route. Prior builders and fixers stay excluded from its review (D-151).
+
+`D-086.ui`: done — 58a68cd1 (PR #1167; Qoder · 09ef, 2026-11-12). Renders the public demand payload only: the line (count sentence with N in `GoalNum`, "A few people", the work-email help link via `referrerSignInHref()` and the employer-bonus line) and the list (server order, `/explore/:slug` links, the two unlisted-company lines), switching off in loading, error, offline and `none`. 18/18 component tests, `goalBoundary` 3/3 and `goalUiCoverage` 4/4; `pnpm check` 0, token audit OK, migration lint 0, deploy triggers 0, `pnpm build` success; exact-head CI green (unit + component + route tests 8m1s). D-326 widened owns with `client/src/components/goal/goalBoundary.test.ts` and admitted both components to `MOVED_SURFACES`; both demand switches stay false. Mounting is `D-086.mount`.
