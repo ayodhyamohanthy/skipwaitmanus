@@ -8,6 +8,7 @@
 // assertGoalPage is not called here: both pages satisfy it only after
 // D-048-p3-live-review-find lands (this row's dependency), so this test pins the
 // invariants the mount can break today and the row does not land before it.
+import { readFileSync } from "node:fs";
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -15,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { GOAL_NEXT_STEP_HEADING_ID } from "@/components/goal/GoalNextStep";
+import { companyDemandDetailResponseSchema, companyDemandListResponseSchema } from "@shared/companyDemand";
 
 const { routeState, searchState, authState, accessState, flag } = vi.hoisted(() => ({
   routeState: { path: "/explore", slug: "wipro" },
@@ -91,6 +93,20 @@ beforeEach(() => {
   stubMatchMedia();
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe("capture fixtures (design/goal-ui/captures/demand/)", () => {
+  // The capture driver serves a fixture's body verbatim, so a drifted body would
+  // photograph a state the page never claims. Each demand body must parse.
+  const files = ["explore-company__count", "explore-company__few", "explore-company__none", "explore__list", "explore__off"];
+  it.each(files)("%s carries demand bodies the shared schemas accept", async file => {
+    const raw = readFileSync(`design/goal-ui/captures/demand/${file}.json`, "utf8");
+    const fixture = JSON.parse(raw) as { routes: Array<{ path: string; body: unknown }> };
+    const detailRoute = fixture.routes.find(route => route.path.startsWith("/api/company-demand/"));
+    if (detailRoute) expect(companyDemandDetailResponseSchema.safeParse(detailRoute.body).success).toBe(true);
+    const listRoute = fixture.routes.find(route => route.path === "/api/company-demand");
+    if (listRoute) expect(companyDemandListResponseSchema.safeParse(listRoute.body).success).toBe(true);
+  });
+});
 
 describe("switch off (shipped state)", () => {
   it("the directory renders as before, with no demand read and no list", async () => {
