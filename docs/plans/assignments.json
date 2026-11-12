@@ -1068,7 +1068,7 @@
       "lane": "d048-find",
       "branch": "agent/queue/d048-live-review-find",
       "status": "todo",
-      "syncedTo": "D-322",
+      "syncedTo": "D-325",
       "dependsOn": [
         "D-048-fix-send-ask-blocker",
         "P0-ask-link-signin",
@@ -1094,6 +1094,7 @@
         "design/goal-ui/tools/fixtures/explore-company__*.json",
         "design/goal-ui/tools/fixtures/ask__*.json",
         "client/src/test/goalPagesBoundary.test.ts",
+        "shared/moneyCopy.ts",
         "docs/plans/GOAL_UI_MIGRATION.md (switch only)"
       ]
     },
