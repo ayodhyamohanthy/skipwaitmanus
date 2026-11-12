@@ -15,8 +15,8 @@ import {
   GoalNum,
   GoalSkeletonRows,
 } from "@/components/goal";
-import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/companyDirectory";
-import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
+import { CompanyDemandLine } from "@/components/demand/CompanyDemandLine";
+import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/companyDirectory";import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
 import { useCompanyResponseSignal } from "@/lib/companyResponseSignal";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
@@ -197,6 +197,11 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         <p className="mt-3 text-g-meta text-g-ink-3">
           {open ? ASK_COST_SENTENCE : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}
         </p>
+
+        {/* D-086.mount: below the hero and outside the next-step block; renders nothing while the switch is off. */}
+        <div className="mt-8">
+          <CompanyDemandLine slug={company.slug} companyName={company.name} />
+        </div>
 
         <Responsiveness slug={company.slug} />
         <CompanyOpenings
