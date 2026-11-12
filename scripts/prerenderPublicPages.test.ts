@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 import { breadcrumbsHtml, homeLinks, renderPublicPage } from "./prerenderSeo";
 import { GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, LANDING_EXPLORE, LANDING_SUMMARY } from "../shared/landingContent";
@@ -151,10 +153,25 @@ describe("crawlable landing and public snapshots", () => {
   it("describes /explore with the launch companies the page lists, and links every company page", () => {
     const explore = publicSnapshots().find(snapshot => snapshot.route === "/explore")!;
     const names = new Intl.ListFormat("en-US", { type: "conjunction" }).format(LAUNCH_COMPANY_SEED.map(company => company.name));
-    expect(explore.description).toBe(`Find people open to referral requests at ${names}.`);
+    expect(explore.description).toBe(`Request a referral at ${names}.`);
     expect(explore.markup).toContain("<h1>Where would you love to work next?</h1>");
     for (const company of LAUNCH_COMPANY_SEED) expect(explore.markup).toContain(`href="/explore/${company.slug}"`);
     expect(landingSnapshot(policyLinks)).toContain('href="/explore"');
+  });
+
+  it("advertises no employee availability on Home's launch-company block or in any public route description (D-176)", () => {
+    // D-176: availability is backend routing, never a visible status. A public
+    // route description is read without the page, so it must not promise that
+    // anyone at a company is open to referrals.
+    const availability = /open to referral requests?|available referrers?|availability|people at these companies|open doors? at launch/i;
+    for (const publicRoute of PUBLIC_ROUTES) expect(publicRoute.description, publicRoute.route).not.toMatch(availability);
+    const home = readFileSync(join(__dirname, "..", "client/src/pages/Home.tsx"), "utf8");
+    const start = home.indexOf("launch-companies");
+    const end = home.indexOf("launch-steps");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(home.slice(start, end)).not.toMatch(availability);
+    expect(home).not.toMatch(/available referrers/i);
   });
 
   it("never publishes a person, an address, or a fabricated claim in a snapshot", () => {
