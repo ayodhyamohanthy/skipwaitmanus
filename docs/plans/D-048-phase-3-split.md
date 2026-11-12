@@ -231,5 +231,6 @@ Releases follow the owner's sequence: landing (/), seeker home (/explore), compa
 
 ## Status
 The D-048 rows share the plan row "D-048", so nobody edits that row: each task writes one line, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live, in the Status section of the packet its task row names (here only for rows whose packet is this file; the picker prints which) (D-134). The CEO rolls the plan row up.
+- D-048-R-verify: in progress — Qoder · 3c3d — 2026-11-13 — branch agent/queue/d048-r-verify
 - D-048-p3-home: done — `e5208a07` (#409, signed-out visitors)
 - D-048-R4: review — agent/queue/d048-r4 — fe8fd984 — Antigravity · 92b1 — 2026-11-07 — Release 4, referrer: referrer, referrer-home, invite, post-opportunity added to RELEASED in client/src/lib/goalSurfaces.ts; behavior tests re-run with ids on (61/61 green); all gate checks green (check, token audit, scope-check, both builds); 1280 and 390 captures verified for all 4 surfaces; draft PR ready for independent review
