@@ -3128,7 +3128,7 @@
       "tier": 2,
       "lane": "demand-ui",
       "branch": "agent/queue/d086-ui",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-326",
       "epic": "D-086-demand-list",
       "dependsOn": [
