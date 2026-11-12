@@ -494,7 +494,8 @@ async function main() {
   // D-085: a bare model name gets a unique session tag, so two sessions of one model never share a claim.
   const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
+  for (let attempt = 1; attempt <= 6; attempt++) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
     const now = Date.now();
     const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
@@ -527,7 +528,7 @@ async function main() {
     if (claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
-  fail("three claims in a row were taken by other agents; run again in a minute");
+  fail("six claims in a row were taken by other agents; run again in a minute");
 }
 
 // PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the

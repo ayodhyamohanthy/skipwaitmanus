@@ -2075,7 +2075,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-257",
+      "syncedTo": "D-331",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2091,6 +2091,7 @@
         "client/src/pages/conversation/ReferrerConversation.tsx",
         "client/src/pages/conversation/ReferrerConversation.goal.test.tsx",
         "client/src/pages/referralConversation.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts",
         "design/goal-ui/captures/conversation/**"
       ],
       "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). Oct 27: waits for D-048-p3-live-review-conversation (claimed), which also owns referralConversation.test.tsx (its seeker cases) and the conversation captures folder; this row then builds on the redesigned seeker page.",
@@ -3128,8 +3129,8 @@
       "tier": 2,
       "lane": "demand-ui",
       "branch": "agent/queue/d086-ui",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-326",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-086.count",
@@ -3140,9 +3141,10 @@
         "client/src/components/demand/CompanyDemandList.tsx",
         "client/src/components/demand/useCompanyDemand.ts",
         "client/src/components/demand/companyDemand.test.tsx",
+        "client/src/components/goal/goalBoundary.test.ts",
         "docs/plans/GOAL_UI_COVERAGE.md"
       ],
-      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test."
+      "note": "D-086 packet §5.2. Waits for D-090-BYOR because both own GOAL_UI_COVERAGE.md (D-167 line per new component). No black commit; login rule pinned by its own test. D-326 adds client/src/components/goal/goalBoundary.test.ts to owns so the two new goal-native components can be admitted to MOVED_SURFACES there (they render only through D-086.mount on the already-moved Explore pages)."
     },
     {
       "id": "D-086.mount",
@@ -3153,10 +3155,11 @@
       "lane": "demand-mount",
       "branch": "agent/queue/d086-mount",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-330",
       "epic": "D-086-demand-list",
       "dependsOn": [
-        "D-086.ui"
+        "D-086.ui",
+        "D-048-p3-live-review-find"
       ],
       "owns": [
         "client/src/pages/Explore.tsx (switch only)",
@@ -3174,8 +3177,8 @@
       "tier": 2,
       "lane": "demand-admit",
       "branch": "agent/queue/d086-admit",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-328",
       "epic": "D-086-demand-list",
       "dependsOn": [
         "D-086.count",
@@ -3186,9 +3189,11 @@
         "client/src/components/admin/UnlistedDemandView.tsx",
         "client/src/components/admin/unlistedDemandView.test.tsx",
         "client/src/pages/AdminOverview.tsx (switch only)",
+        "client/src/pages/goal/admin/GoalAdminOverview.tsx (switch only)",
+        "client/src/test/goalPagesBoundary.test.ts",
         "docs/plans/GOAL_UI_COVERAGE.md"
       ],
-      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON."
+      "note": "D-086 packet §5.5. Admin only and read-only: no create form, prefill or listing control (none exists on main). Listing stays a manual authenticated POST /api/admin/companies (D-101); nothing is listed automatically. Not a dependency of the release row; until it lands admins read the queue as JSON. D-328 (2026-11-12): the block was real - admin is in RELEASED, so the packet's legacy mount never renders in production. The visible mount is a read-only section on the goal /admin overview (not an /admin-review tab: the review tabs are decision cases), the view draws with goal tokens and no h1 (one h1 stays on the page), and the goal-page boundary admits components/admin/UnlistedDemandView.tsx as goal-styled. The legacy AdminOverview mount stays as the flag-off path."
     },
     {
       "id": "D-086-demand-list",
@@ -3351,7 +3356,7 @@
         "server/statusNotifications.test.ts"
       ],
       "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required. Nov 10 owns amendment (docs/registry only, D-200 (2); Inkling 2 Small Free · b6cb): owns gains exactly server/askExpiryRoutes.test.ts, server/companyIdentityRows.test.ts, server/conversationRateLimit.test.ts, server/privateReferralRoutes.integration.test.ts, server/privateReferralRoutes.pinnedWork.test.ts, server/referrerOneClickReview.test.ts, server/referralConversation.test.ts, server/referralOperatingSystemRoutes.test.ts and server/statusNotifications.test.ts. Reason: the private referral routes now answer a truthful unavailable response when the block/authorization decision cannot be established; these suites never injected a block lookup and rode the old fail-open path (getDb absent in the test env, so the lookup read as not-blocked), and now see 503s. Each deps object gains one no-op lookup returning an empty set, restoring exactly the behavior the suites already pinned; no assertion is removed or weakened. No other owned path, row or dependency changes.",
-      "syncedTo": "D-227"
+      "syncedTo": "D-326"
     },
     {
       "id": "D-057-session-gate",
@@ -4399,8 +4404,8 @@
       "tier": 2,
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-330",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
@@ -5488,16 +5493,17 @@
       "tier": 2,
       "lane": "d048-release-links",
       "branch": "agent/queue/d048-r-links",
-      "status": "todo",
-      "syncedTo": "D-317",
+      "status": "done",
+      "syncedTo": "D-329",
       "dependsOn": [
         "D-048-p3-links"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "e2e/personal-link.e2e.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"links\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=links); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-links's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Prerendered output checked live after deploy; link states (active, inactive, blocked) render as the kit did. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"links\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. D-329 (2026-11-13): owns also gains e2e/personal-link.e2e.ts, because the release moves that journey's signed-out heading from the kit line to the goal page's 'Get referred at <domain>.'; only that one assertion line is re-pinned. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=links); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-links's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Prerendered output checked live after deploy; link states (active, inactive, blocked) render as the kit did. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
       "epic": "D-048-p3"
     },
     {
