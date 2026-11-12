@@ -4403,8 +4403,8 @@
       "tier": 2,
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-330",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
