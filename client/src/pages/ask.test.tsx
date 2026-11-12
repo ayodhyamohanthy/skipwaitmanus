@@ -101,9 +101,9 @@ describe("Ask composer page (goal, W2)", () => {
     expect(screen.getByText("Shared after a referrer accepts")).toBeTruthy();
     expect(screen.getByText("Why me")).toBeTruthy();
     expect(screen.getAllByText(/\/ 140|\/140/).length).toBe(3);
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 credit when a verified employee can see it"));
-    expect(screen.getByText(/Comes back if you withdraw before anyone picks it up/)).toBeTruthy();
-    expect(screen.getByText(/Once picked up, it stays spent, even if they pass\./)).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
+    expect(screen.getByText(/The charge is refunded if you withdraw before anyone picks it up/)).toBeTruthy();
+    expect(screen.getByText(/Once picked up, it stays charged, even if they pass\./)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send ask" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save draft" })).toBeTruthy();
     // No kit composer survives: no strength meter, no function eyebrow, no panels.
@@ -124,7 +124,7 @@ describe("Ask composer page (goal, W2)", () => {
     expect(screen.getByText("Matches Wipro’s careers site")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Wipro/ }).getAttribute("href")).toBe("/explore/wipro");
     expect(screen.getByText("Wipro · Product Designer")).toBeTruthy();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 4 credits"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 4"));
   });
 
   it("keeps composing behind sign-in and hands the draft to sign-in on send", async () => {

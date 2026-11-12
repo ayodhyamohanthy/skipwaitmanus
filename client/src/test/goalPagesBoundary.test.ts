@@ -42,8 +42,11 @@ const AUDITED: AuditEntry[] = [
   { file: "components/plans/billingApi.ts", kind: "behavior-only", reason: "billing API calls, no UI" },
   { file: "components/plans/format.ts", kind: "behavior-only", reason: "price and date formatting, no UI" },
   { file: "components/plans/planCatalog.ts", kind: "behavior-only", reason: "plan catalogue data, no UI" },
+  { file: "components/profile/workItems.ts", kind: "behavior-only", reason: "work-showcase contract (types, WORK_KINDS, workKindLabel, WORK_VISIBILITY_LABELS), no JSX and no className; the goal /profile and /work pages read it read-only (D-048-p3-profile)" },
+  { file: "components/profile/profileVisibility.ts", kind: "behavior-only", reason: "the visibility value and its parser extracted from the kit card so the goal pages read the same rules without reaching kit styling; no JSX and no className (D-048-p3-profile, D-319 (4))" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
   { file: "components/employer/employerData.ts", kind: "behavior-only", reason: "employer REST contracts (zod schemas), fetchers and stats helpers, no UI; imported read-only by the goal employer pages (D-048-p3-employer, D-276)" },
+  { file: "components/employer/employerPlans.ts", kind: "behavior-only", reason: "employer plan catalogue types and price-formatting helper, no UI; imported read-only by the goal /for-companies page (D-048-p3-for-companies, D-296)" },
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
   { file: "components/settings/settingsApi.ts", kind: "behavior-only", reason: "settings API fetchers, schemas and error constants, no UI" },
   { file: "components/settings/settingsQueries.ts", kind: "behavior-only", reason: "work-email access query hook, no UI" },
@@ -51,6 +54,10 @@ const AUDITED: AuditEntry[] = [
   { file: "components/developers/consoleMeta.ts", kind: "behavior-only", reason: "developer console app kinds, scopes and status metadata constants, no UI" },
   { file: "components/developers/consoleRoute.ts", kind: "behavior-only", reason: "developer console view and URL search query parser and serializer, no UI" },
   { file: "components/developers/mcpTools.ts", kind: "behavior-only", reason: "documented MCP tools list, endpoint constant and description pairs, no UI" },
+  { file: "components/admin/adminApi.ts", kind: "behavior-only", reason: "admin REST contracts (zod schemas) and fetchers, no UI; imported read-only by the goal admin pages (D-048-p3-admin, D-284)" },
+  { file: "components/admin/reviewCases.ts", kind: "behavior-only", reason: "review-queue case kinds, decisions and status helpers over adminApi types, no UI; imported read-only by the goal admin review page (D-048-p3-admin, D-284)" },
+  { file: "components/admin/paymentReviewCopy.ts", kind: "behavior-only", reason: "payment-review copy and formatting helpers (dates, amounts, decision labels), no UI; imported read-only by the goal money pages (D-048-p3-admin-money, packet §3)" },
+  { file: "components/inbox/inboxThreads.ts", kind: "behavior-only", reason: "inbox data loading and threading model (zod contracts, fetchers, split logic), no UI; the goal inbox imports it read-only for the packet-mandated shared data contract carrying the pre-acceptance privacy invariants (D-048-p3-inbox)" },
 ];
 
 type Read = (file: string) => string | null;
@@ -100,6 +107,8 @@ const inGoal = (file: string) => GOAL_DIRS.some(dir => file.startsWith(dir));
 const needsAudit = (file: string) => !inGoal(file) && ((file.endsWith(".tsx") && file.startsWith(CLIENT_SRC + sep)) || file.startsWith(COMPONENTS_DIR + sep));
 
 const LITERAL_STYLING = /className\s*=\s*(?:["'`]|\{\s*["'`]|\{\s*(?:cn|clsx|cx)\()|style\s*=\s*\{\{/;
+/** Legacy kit oklch token utilities (`--primary`, `--border`, `--muted-foreground`, …) — never goal tokens. */
+const LEGACY_TOKEN_CLASS = /\b(?:bg|text|border|ring|fill|stroke|from|to|via|decoration|outline|divide|placeholder|caret|accent)-(?:primary|secondary|accent|muted(?:-foreground)?|border|ring|background|foreground|card|popover|destructive|input)\b/;
 const COLOUR_LITERAL = /\[#[0-9a-fA-F]{3,8}\]/;
 
 /** A list entry's own mechanical check (D-241 (3)); returns the reason it fails, or null. */
@@ -108,6 +117,10 @@ function kindFailure(entry: AuditEntry, source: string | null, reached: Map<stri
   if (importSpecifiers(source).some(spec => BANNED.test(spec))) return "imports kit, ui or the kit stylesheet";
   if (entry.kind === "behavior-only" && LITERAL_STYLING.test(source)) return "behavior-only module carries a literal className or style";
   if (entry.kind === "goal-styled" && COLOUR_LITERAL.test(source)) return "goal-styled module uses an arbitrary colour literal";
+  // F1 (D-319 (3)/(6)): `goal-styled` means goal tokens only. The mechanical colour check alone let a kit card through
+  // because its legacy oklch token classes (`border-primary`, `bg-primary/5`, `text-muted-foreground`) carry no hex
+  // literal, which would state something untrue to get a green.
+  if (entry.kind === "goal-styled" && LEGACY_TOKEN_CLASS.test(source)) return "goal-styled module uses legacy kit token classes, not goal tokens";
   if (entry.kind === "dual-tone") {
     if (!entry.goalCallSites?.length) return "dual-tone entry names no components";
     for (const [file, text] of reached) {
@@ -167,14 +180,17 @@ describe("moved-page import boundary", () => {
     const offenders: string[] = [];
     for (const page of movedPages) {
       const sources = new Map<string, string>([[page, readFileSync(page, "utf8")]]);
-      for (const spec of importSpecifiers(sources.get(page)!)) {
+      // Runtime edges only: a type-only import renders nothing, so it can neither
+      // pull the kit into a goal page nor make its module a direct component.
+      // The D-241 walker below already treats `import type` as a non-edge.
+      for (const spec of runtimeSpecifiers(sources.get(page)!)) {
         const resolved = resolveSpecifier(spec, page);
         if (resolved && resolved.startsWith(COMPONENTS_DIR) && !sources.has(resolved)) {
           sources.set(resolved, readFileSync(resolved, "utf8"));
         }
       }
       for (const [file, source] of sources) {
-        for (const spec of importSpecifiers(source)) {
+        for (const spec of runtimeSpecifiers(source)) {
           const resolved = resolveSpecifier(spec, file);
           const probe = resolved ?? spec;
           if (BANNED.test(probe)) offenders.push(`${relative(CLIENT_SRC, file)} -> ${spec}`);
