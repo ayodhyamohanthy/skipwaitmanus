@@ -163,6 +163,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/ComponentShowcase.tsx`: `AIChatBox.tsx`
 - `pages/DeveloperConsole.tsx`: `developers/AppDetails.tsx`, `developers/RegisterAppForm.tsx`
 - `pages/EmployerDashboard.tsx`: `employer/EmployerFrame.tsx`, `employer/EmployerOverview.tsx`
+- `pages/Explore.tsx` and `pages/ExploreCompany.tsx` (components mounted by row `D-086.mount`, page redesign still `D-048-p3-live-review-find`): `demand/CompanyDemandLine.tsx`, `demand/CompanyDemandList.tsx`
 - `pages/Home.tsx`: `VisualJourney.tsx`
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
