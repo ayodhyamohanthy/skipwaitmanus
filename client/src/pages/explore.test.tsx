@@ -110,17 +110,18 @@ describe("Find a referral directory", () => {
     expect(document.querySelector("[data-skipwait-screen='find-a-referral']")).toBeTruthy();
   });
 
-  it("shows no availability count for a mixed directory and still opens the drawer with the honest company state (D-176)", async () => {
+  it("shows no availability count for a mixed directory and opens the same drawer for a company the directory marks closed (D-176, D-174 door-neutral)", async () => {
     stubDirectory(directoryOf([company("skipwait", false), company("wipro"), company("go-neutrinos", false), company("tcs"), company("merkle", false)]));
     renderWithQuery(<Explore />);
     expect((await screen.findByTestId("goal-directory-summary")).textContent).toMatch(/^5 companies$/);
     expect(screen.queryAllByTestId("goal-availability")).toHaveLength(0);
     fireEvent.click(screen.getByRole("link", { name: "Merkle" }));
     const drawer = await screen.findByTestId("goal-drawer");
-    expect(within(drawer).getByText("No verified employee at Merkle can take a new ask right now.")).toBeTruthy();
-    expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
-    expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it");
-    expect(within(drawer).queryByTestId("goal-verified-mark")).toBeNull();
+    // D-176: availability only routes the sent request, so the drawer names no
+    // state and offers no alert; the cost line below it is §6.2's to neutralise.
+    expect(within(drawer).getByText("Goes to verified Merkle employees")).toBeTruthy();
+    expect(within(drawer).queryByText(/No verified employee/i)).toBeNull();
+    expect(within(drawer).queryByText(/Get told when a referrer joins/i)).toBeNull();
   });
 
   it("filters by search and job-function chips, then clears back to every company", async () => {
@@ -300,11 +301,11 @@ describe("Explore company door (goal, W2)", () => {
     expect(screen.getByText("Backend Engineer")).toBeTruthy();
   });
 
-  it("renders the goal door from GET /api/companies/:slug: availability, goal line, one black commit, cost sentence", async () => {
+  it("renders the goal door from GET /api/companies/:slug: goal line, one black commit, cost sentence, no availability label (D-176, D-174 door-neutral)", async () => {
     const fetchMock = stubDirectory();
     renderWithQuery(<ExploreCompany />);
     expect(await heroName()).toBeTruthy();
-    expect(screen.getByText("People open to referral requests")).toBeTruthy();
+    expect(screen.queryByText("People open to referral requests")).toBeNull();
     expect(screen.getByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ask for a referral" }).getAttribute("data-g-primary")).toBe("true");
     expect(screen.getByText("3 free referrals every month; extra referral requests use your balance.")).toBeTruthy();
@@ -326,17 +327,17 @@ describe("Explore company door (goal, W2)", () => {
     expect(companyPaths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities"]);
   });
 
-  it("not open: ring dot with Not open yet, a quiet Alert me link, and a ghost Ask anyway that states the wait honestly", async () => {
+  it("a company the directory marks closed gets the same door: no Not open yet, no Alert me, the same one primary commit (D-176, D-174 door-neutral)", async () => {
     stubDirectory(directoryOf([company("wipro", false)]));
     renderWithQuery(<ExploreCompany />);
     expect(await heroName()).toBeTruthy();
+    expect(screen.queryByText("Not open yet")).toBeNull();
     expect(screen.queryByText("People open to referral requests")).toBeNull();
-    expect(screen.getByText("Not open yet")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Alert me" }).getAttribute("href")).toBe("/alerts");
-    const commit = screen.getByRole("button", { name: "Ask anyway" });
-    expect(commit.getAttribute("data-g-primary")).toBeNull();
-    expect(screen.getByText(/waits free until one can/)).toBeTruthy();
-    expect(screen.queryByText(/3 free referrals every month/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Alert me" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ask anyway" })).toBeNull();
+    const commit = screen.getByRole("button", { name: "Ask for a referral" });
+    expect(commit.getAttribute("data-g-primary")).toBe("true");
+    expect(screen.getByText("3 free referrals every month; extra referral requests use your balance.")).toBeTruthy();
   });
 
   it("explains a failed load with Try again instead of a 404", async () => {

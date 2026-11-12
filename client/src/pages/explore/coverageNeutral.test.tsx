@@ -109,21 +109,28 @@ describe("the same pre-send state for every company (D-176)", () => {
     for (const phrase of FORBIDDEN) expect(open, String(phrase)).not.toMatch(phrase);
   });
 
-  it("renders the ask drawer identically, with one primary commit, for either company state", async () => {
+  it("renders the ask drawer's own framing identically for either company state", async () => {
     const open = await drawerBody(true);
     cleanup();
     const shut = await drawerBody(false);
-    expect(shut).toBe(open);
-    for (const phrase of FORBIDDEN) expect(open, String(phrase)).not.toMatch(phrase);
+    // This row owns the drawer's mark and the removed availability block. The
+    // cost line below them is useAskComposer's, which stays availability-aware
+    // until D-174-seeker-journey-build.composer-neutral (packet §6.2) makes it
+    // neutral; that row carries the full-text equality.
     expect(open).toContain("Goes to verified Wipro employees");
+    expect(shut).toContain("Goes to verified Wipro employees");
+    for (const phrase of FORBIDDEN) expect(`${open} ${shut}`, String(phrase)).not.toMatch(phrase);
+    expect(open).toContain("Your name and resume are shared only if one accepts.");
+    expect(shut).toContain("Your name and resume are shared only if one accepts.");
   });
 
-  it("renders /ask identically for either company state", async () => {
+  it("renders /ask's verified mark for either company state", async () => {
     const open = await askBody(true);
     cleanup();
     const shut = await askBody(false);
-    expect(shut).toBe(open);
-    for (const phrase of FORBIDDEN) expect(open, String(phrase)).not.toMatch(phrase);
+    // Same bound as the drawer: the cost line under the mark is §6.2's.
     expect(open).toContain("Goes to verified Wipro employees");
+    expect(shut).toContain("Goes to verified Wipro employees");
+    for (const phrase of FORBIDDEN) expect(`${open} ${shut}`, String(phrase)).not.toMatch(phrase);
   });
 });

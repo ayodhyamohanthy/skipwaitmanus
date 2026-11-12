@@ -92,7 +92,7 @@ export default function Ask() {
             </header>
 
             <div className="mt-5 grid gap-2">
-              {company?.openToReferrals ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
+              {company ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
               <p className="text-pretty text-g-body text-g-ink-2">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
               {!composer.signedIn ? <p className="text-pretty text-g-meta text-g-ink-2">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
             </div>

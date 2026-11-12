@@ -3,7 +3,7 @@
 // accepts), "Why me" as three reasons of up to 140 characters (D-077(4)), and
 // the cost line beside Send ask from the first moment. The parent owns the
 // form state, so closing the drawer keeps the draft.
-import { Bell, FileText, Info, Lock } from "lucide-react";
+import { FileText, Info, Lock } from "lucide-react";
 import { useId, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
@@ -120,31 +120,17 @@ export function AskDrawer(props: AskDrawerProps) {
     <GoalDrawer open={props.open} onOpenChange={props.onOpenChange} title={sent ? "Ask sent" : "Ask for a referral"} context={props.context ?? undefined} closeLabel="Close" footer={footer}>
       {sent ? (
         <div className="grid gap-2" role="status">
-          <p className="text-g-heading text-g-ink">Ask sent to {sent.company}.</p>
+          <p className="text-g-heading text-g-ink">Referral request sent to {sent.company}.</p>
           <p className="text-pretty text-g-body text-g-ink-2">{sent.detail}</p>
           {sent.slots ? <p className="text-g-meta text-g-ink-2">{sent.slots}</p> : null}
         </div>
       ) : (
         <div className="contents" onKeyDown={onKeyDown}>
           <div className="grid gap-2">
-            {company?.openToReferrals ? <GoalVerifiedMark>{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
+            {company ? <GoalVerifiedMark>{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
             <p className="text-pretty text-g-meta text-g-ink-2">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
             {!props.signedIn ? <p className="text-pretty text-g-meta text-g-ink">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
           </div>
-
-          {company && !company.openToReferrals && props.watch ? (
-            <div className="grid gap-1 rounded-g-tile border border-g-hairline bg-g-surface-sunken px-4 py-3.5">
-              <p className="text-pretty text-g-label text-g-ink">No verified employee at {company.name} can take a new ask right now.</p>
-              <p className="text-pretty text-g-meta text-g-ink-2">You can still send it: it waits for free until one can. Or get told when a referrer joins.</p>
-              <div className="-ml-3 mt-1">
-                <GoalButton variant="ghost" size="sm" leadingIcon={Bell} busy={props.watch.state === "busy"} busyLabel="Saving your alert…" onClick={props.watch.onWatch} disabledReason={props.watch.state === "done" ? "Your alert is saved." : undefined}>
-                  Get told when a referrer joins
-                </GoalButton>
-              </div>
-              <p role="status" className="text-g-meta text-g-ink-2">{props.watch.message}</p>
-              <p className="text-g-meta text-g-ink-3">An alert is not a referral.</p>
-            </div>
-          ) : null}
 
           <GoalField
             label="Job link"

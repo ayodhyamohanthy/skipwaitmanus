@@ -2,9 +2,8 @@
 // goal line in the seeker's words, one black commit opening the W1 ask drawer
 // in place, then the honest facts - responsiveness (never an invented figure),
 // open roles as rows with mono dates, the three ask-quality points and the
-// privacy preview. Availability is the server's openToReferrals fact; a
-// not-open company keeps the waiting-ask rule (COVERAGE_WAIT_DAYS) with a
-// ghost "Ask anyway" and says the wait honestly. Every number from
+// privacy preview. Availability only routes the sent request (D-176), so the
+// door shows every company the same pre-send state. Every number from
 // /api/companies/:slug, /api/companies/:slug/opportunities and the live send.
 import { ArrowLeft, ArrowRight, CalendarDays, LockKeyhole } from "lucide-react";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
@@ -22,7 +21,6 @@ import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
 import type { CompanyResponseSignal } from "@shared/companyResponseSignal";
 import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
-import { COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { NotFoundContent } from "./NotFound";
 import { AskDrawer } from "./explore/AskDrawer";
 import { useAskComposer } from "./explore/useAskComposer";
@@ -114,7 +112,6 @@ function CompanyPage({ company }: { company: PublicCompany }) {
     setDrawerOpen(true);
   };
 
-  const open = company.openToReferrals;
   return (
     <GoalAppShell
       active="find"
@@ -161,21 +158,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
       <div data-skipwait-screen="explore-company" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
         <BackLink />
         <header className="mt-6">
-          {open ? (
-            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-g-ink-2">
-              <span aria-hidden="true" className="size-(--g-dot) rounded-full bg-g-ink" />
-              People open to referral requests
-            </p>
-          ) : (
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-g-ink-3">
-              <span className="inline-flex items-center gap-2">
-                <span aria-hidden="true" className="size-(--g-dot) rounded-full border-[1.5px] border-g-control-edge" />
-                Not open yet
-              </span>
-              <Link href="/alerts" className="font-normal normal-case tracking-normal text-g-meta text-g-ink-2 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Alert me</Link>
-            </p>
-          )}
-          <div className="mt-4 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <span aria-hidden="true" className="inline-flex size-12 shrink-0 items-center justify-center rounded-g-tile bg-g-surface-selected text-[16px] font-semibold tracking-[0.02em] text-g-ink-2">
               {company.initials}
             </span>
@@ -188,15 +171,9 @@ function CompanyPage({ company }: { company: PublicCompany }) {
 
         <p className="mt-6 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
         <div className="mt-5 max-gdesk:grid">
-          {open ? (
-            <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
-          ) : (
-            <GoalButton variant="outline" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask anyway</GoalButton>
-          )}
+          <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
         </div>
-        <p className="mt-3 text-g-meta text-g-ink-3">
-          {open ? ASK_COST_SENTENCE : `No verified employee can see asks yet. Yours waits free until one can - up to ${COVERAGE_WAIT_DAYS} days - and no credit is used until then.`}
-        </p>
+        <p className="mt-3 text-g-meta text-g-ink-3">{ASK_COST_SENTENCE}</p>
 
         <Responsiveness slug={company.slug} />
         <CompanyOpenings
