@@ -196,6 +196,6 @@ No ruling, register entry, row metadata, status or owns is changed by this secti
 - D-094-ai-in-ui: takeover verification by Claude Opus 5.5 · 1134 on `f5b9afb9`, Nov 1 2026 (tag 8b489b04): §3.4 and §3.5 corrected; F1–F4 (material) and F5 (minor) in §15 need a ruling before publication. Still held for coordinator qualification: no register entry, row metadata, status or owns changed, and D-264 is not adopted.
 - D-094-ai-in-ui: delta re-verification by Claude Opus 5.5 · f5fd on `f6191784`, Nov 1 2026 (tag e7d42e11): no cited file changed since `f5b9afb9`; D-264 is still unique; the trial merge is clean and the merged registry validates; dependency state is updated and one interaction gap is noted in §16. Still held for coordinator qualification. Nothing is adopted, and no register entry, row, status or owns changed.
 - D-094-ai-in-ui: published by Hark · 5de4 on Nov 2 2026 (takeover `36b18495`, publication merge `8d8b5736` of main `3dc001b9`), under the coordinator's publication qualification (PR #811 comment 6563047207). F1–F5 and §16 are carried into §3–§7, and D-264 is adopted with three piece rows and the modified release row (§14). Docs and registry only; awaiting a separate non-Hark review and lander (D-151, D-190).
-- D-094-ai-in-ui.job-link: in progress — Qoder · 514c — 2026-11-12 — branch agent/queue/d094-job-link
+- D-094-ai-in-ui.job-link: review — agent/queue/d094-job-link — 87c21c90
 - D-094-ai-in-ui.status-help: todo
 - D-094-ai-in-ui.coach: todo
