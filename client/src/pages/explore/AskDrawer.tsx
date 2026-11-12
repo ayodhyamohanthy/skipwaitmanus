@@ -21,6 +21,7 @@ import { WHY_ME_MAX } from "@shared/whyMe";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import type { LinkHint } from "./findModel";
+import { JobLinkFromPosting } from "./JobLinkFromPosting";
 
 export type AskResume = { name: string } | null;
 export type AskSentView = { company: string; detail: string; slots: string | null; trackHref: string };
@@ -191,6 +192,9 @@ export function AskDrawer(props: AskDrawerProps) {
               />
             )}
           </GoalField>
+
+          {/* D-094 item 2 (switch off): what the posting says, under its link. */}
+          <JobLinkFromPosting url={props.url} company={company} />
 
           <GoalField
             label="Resume"

@@ -28,6 +28,8 @@ import { applySeo } from "@/lib/seo";
 import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
 import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
+import { domainBelongsToCompany, isSafePreview, jobLinkPrefillEnabled } from "./explore/jobLinkPrefill";
+import { JobLinkFromPosting } from "./explore/JobLinkFromPosting";
 import { useAskComposer } from "./explore/useAskComposer";
 
 const PLACEHOLDERS = [
@@ -57,9 +59,21 @@ export default function Ask() {
   useEffect(() => {
     const companies = directory.data?.companies;
     if (!companies || !isValidTargetRoleUrl(composer.url.trim())) { setUrlCompany(null); return; }
-    setUrlCompany(companies.find(item => jobLinkFitsCompany(composer.url, item.domains)) ?? null);
+    if (!jobLinkPrefillEnabled()) {
+      setUrlCompany(companies.find(item => jobLinkFitsCompany(composer.url, item.domains)) ?? null);
+      return;
+    }
+    // D-094 item 2 (packet §4.5): with the switch on, only a company's own
+    // domains match locally. A hosted link takes its company only from a safe
+    // preview domain a directory company owns, and otherwise from none.
+    let host = "";
+    try { host = new URL(composer.url.trim()).hostname; } catch { host = ""; }
+    const direct = host ? companies.find(item => domainBelongsToCompany(host, item.domains)) ?? null : null;
+    if (direct) { setUrlCompany(direct); return; }
+    const preview = composer.jobLinkPreview;
+    setUrlCompany(preview && isSafePreview(preview) ? companies.find(item => domainBelongsToCompany(preview.companyDomain, item.domains)) ?? null : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composer.url, directory.data]);
+  }, [composer.url, directory.data, composer.jobLinkPreview]);
 
   useEffect(() => {
     applySeo({ title: "Ask for a referral", description: "Ask a verified employee for a referral. Your name and resume stay private until one accepts.", path: "/ask" });
@@ -98,7 +112,7 @@ export default function Ask() {
             </div>
 
             <div className="mt-8 grid gap-6">
-              <AskFields composer={composer} company={company} />
+              <AskFields composer={composer} company={company} companies={directory.data?.companies} />
             </div>
 
             <div className="mt-8 border-t border-g-hairline pt-5">
@@ -133,7 +147,7 @@ export default function Ask() {
 
 type Composer = ReturnType<typeof useAskComposer>;
 
-function AskFields({ composer, company }: { composer: Composer; company: PublicCompany | null }) {
+function AskFields({ composer, company, companies }: { composer: Composer; company: PublicCompany | null; companies?: readonly PublicCompany[] }) {
   const linkId = useId();
   const resumeId = useId();
   return (
@@ -158,6 +172,8 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
           onBlur={composer.onUrlBlur}
         />
       </GoalField>
+      {/* D-094 item 2 (switch off): what the posting says, under its link. */}
+      <JobLinkFromPosting url={composer.url} company={company} companies={companies} />
       {composer.postSelection ? (
         <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.</p>
       ) : null}

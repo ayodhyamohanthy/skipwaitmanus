@@ -10,7 +10,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
-import { setJobLinkPrefillForTests, type JobLinkPreview } from "./explore/jobLinkPrefill";
+import { resetJobLinkPreviewForTests, setJobLinkPrefillForTests, type JobLinkPreview } from "./explore/jobLinkPrefill";
 import Ask from "./Ask";
 
 const { go, searchState, authState, signIn } = vi.hoisted(() => ({
@@ -109,6 +109,7 @@ beforeEach(() => {
   sessionStorage.clear();
   signIn.mockReset();
   go.mockReset();
+  resetJobLinkPreviewForTests();
   setJobLinkPrefillForTests(true);
   window.history.replaceState(null, "", "/ask");
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));

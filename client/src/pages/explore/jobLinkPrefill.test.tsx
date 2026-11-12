@@ -14,6 +14,7 @@ import ExploreCompany from "../ExploreCompany";
 import {
   JOB_LINK_PREFILL_ENABLED,
   jobLinkLine,
+  resetJobLinkPreviewForTests,
   setJobLinkPrefillForTests,
   type JobLinkPreview,
 } from "./jobLinkPrefill";
@@ -113,6 +114,7 @@ beforeEach(() => {
   go.mockReset();
   routeState.isDoor = true;
   routeState.slug = "wipro";
+  resetJobLinkPreviewForTests();
   setJobLinkPrefillForTests(null);
   window.history.replaceState({}, "", "/explore/wipro?open");
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
@@ -147,7 +149,7 @@ describe("the line builder (packet T3)", () => {
 
   it("names another company's posting when the door is a different company", () => {
     const other = preview("https://boards.greenhouse.io/infosys/jobs/42", { companyDomain: "infosys.com", companyName: "Infosys" });
-    expect(jobLinkLine({ url: "https://boards.greenhouse.io/infosys/jobs/42", preview: other, company: WIPRO })).toBe("This posting looks like Infosys’s, not Wipro’s.");
+    expect(jobLinkLine({ url: "https://boards.greenhouse.io/infosys/jobs/42", preview: other, company: WIPRO })).toBe("This posting looks like Infosys’, not Wipro’s.");
   });
 
   it("uses the domain when the other company has no display name", () => {
@@ -180,7 +182,7 @@ describe("the drawer on a company door (packet T4/T5/T6/T6b)", () => {
   beforeEach(() => setJobLinkPrefillForTests(true));
 
   it("shows the role line for the door company and keeps Send enabled (T4)", async () => {
-    const fetchMock = stub();
+    const fetchMock = stub({ previewReply: url => ({ status: 200, body: preview(url, { roleTitle: "Analyst" }) }) });
     const drawer = await openDoorDrawer();
     fillLink(drawer, "https://boards.greenhouse.io/wipro/jobs/42");
     expect(await within(drawer).findByText("From the posting: Analyst at Wipro")).toBeTruthy();
@@ -207,10 +209,10 @@ describe("the drawer on a company door (packet T4/T5/T6/T6b)", () => {
     });
     const drawer = await openDoorDrawer();
     fillLink(drawer, "https://boards.greenhouse.io/infosys/jobs/42");
-    expect(await within(drawer).findByText("This posting looks like Infosys’s, not Wipro’s.")).toBeTruthy();
+    await waitFor(() => expect(within(drawer).getByTestId("job-link-from-posting").textContent).toBe("This posting looks like Infosys’, not Wipro’s."));
     await waitFor(() => expect(sendButton(drawer).getAttribute("aria-disabled")).toBe("true"));
     fillLink(drawer, "https://boards.greenhouse.io/wipro/jobs/42");
-    expect(await within(drawer).findByText("From the posting: Analyst at Wipro")).toBeTruthy();
+    await waitFor(() => expect(within(drawer).getByTestId("job-link-from-posting").textContent).toBe("From the posting: Analyst at Wipro"));
     await waitFor(() => expect(sendButton(drawer).getAttribute("aria-disabled")).toBeNull());
   });
 

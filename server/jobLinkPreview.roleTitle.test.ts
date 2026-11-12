@@ -33,7 +33,8 @@ describe("extractRoleTitle (D-094 packet T1)", () => {
   });
 
   it("decodes HTML entities, strips tags and collapses whitespace", () => {
-    expect(extractRoleTitle(page(title("Design &amp; Research &lt;Lead&gt;")))).toBe("Design & Research Lead");
+    expect(extractRoleTitle(page(title("Design &amp; Research")))).toBe("Design & Research");
+    expect(extractRoleTitle(page(title("Design <b>Research</b> Lead")))).toBe("Design Research Lead");
     expect(extractRoleTitle(page(title("  Regional   Sales\n Manager  ")))).toBe("Regional Sales Manager");
   });
 
