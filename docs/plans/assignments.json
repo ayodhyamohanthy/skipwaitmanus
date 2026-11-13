@@ -3458,16 +3458,26 @@
     },
     {
       "id": "D-089-request-inbox",
-      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): release row - flips REQUEST_INBOX_LINK_ENABLED after its rows, QA and the owner's look at the captures",
       "row": "D-089",
-      "packet": null,
+      "packet": "docs/plans/D-089-request-inbox.md",
       "tier": 1,
       "lane": "supply-inbox",
       "branch": "agent/queue/d089-request-inbox",
-      "status": "architect",
-      "syncedTo": "D-227",
-      "dependsOn": [],
-      "note": "D-163: the owner's order puts idea 1 between BYOR and the bonus pages (D-089 (3), D-099), and it had no row, so D-099 could never start. Write the packet now (D-109); its build follows D-090-BYOR, so the packet PR adds D-090-BYOR (and D-086-demand-list, which ideas 1 and 3 still follow) to this row's dependsOn. Start from what is live: the referrer fast-track link already routes asks to one employee (/fast/:linkCode and /refer/:companySlug/:vanityAlias, D-050; client/src/pages/FastTrackLink.tsx, VanityFastTrackLink.tsx, getOrCreateReferrerFastTrackLink). The packet decides what 'with screen name' adds on top, reusing the D-106 screen name if #382 has landed, never the referrer's real name before an accept (D-019(e)), and names its owned paths. Tier 1: referrer identity on a public link."
+      "status": "todo",
+      "syncedTo": "D-280",
+      "dependsOn": [
+        "D-089.server",
+        "D-089.ui"
+      ],
+      "note": "D-280 packet §5.3 (release row, D-223 (3)): flips REQUEST_INBOX_LINK_ENABLED after D-089.server and D-089.ui land; no-money QA on a preview (name set, copy, pause/resume, signed-out seeker sends through the vanity link, marker shows); 1280/390 captures go to the owner before the flip (D-089 (3), BACKLOG item 10; packet §4.10) together with the independent Tier 1 review (public payload, real-name check, D-019(e)); syncs AGENTS.md, PRD, BACKLOG item 10 and the §3b row D-089. Registered by D-280 (Nov 2): the Oct 31 \"new rows paused\" clause was the coordinator's recommendation, not an owner restriction (D-274 correction, provenance), so the two build rows are rows on main and this row waits on them directly; the temporary D-090-BYOR and D-086-demand-list edges are dropped per packet §11 and the PICKER-owns-scope overlap clears through the build rows (scripts/nextTaskCore.mjs:350-356). D-099-bonus-pages keeps waiting for this row.",
+      "owns": [
+        "shared/requestInboxLink.ts (switch only)",
+        "AGENTS.md",
+        "docs/PRD.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/BACKLOG.md"
+      ]
     },
     {
       "id": "D-095-one-tap",
@@ -6412,6 +6422,67 @@
         "design/goal-ui/captures/story-employer-rules/**"
       ],
       "note": "Packet section 3. New shared/employerRulesCopy.ts carries docs/POSITIONING.md section 4.3 word for word; rendered as a section of /how-employees-refer-candidates and one /safety answer (kit page live, goal page for its later release). Names no employer and claims no approval or compliance; a test pins that. Independent of STORY-trust-landing. Referrer pages are out of scope (Tier 1 sign-in code)."
+    },
+    {
+      "id": "D-089.server",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): server - screen name, resume, public payload and askedYouDirectly behind REQUEST_INBOX_LINK_ENABLED",
+      "row": "D-089",
+      "packet": "docs/plans/D-089-request-inbox.md",
+      "tier": 1,
+      "lane": "request-inbox-server",
+      "branch": "agent/queue/d089-server",
+      "status": "todo",
+      "syncedTo": "D-280",
+      "dependsOn": [
+        "D-090-BYOR",
+        "D-086-demand-list",
+        "D-174-pool-nudges"
+      ],
+      "note": "D-280 packet §5.1 (Tier 1: referrer identity on a public payload and referrer inbox data; D-223 (3)). Builds shared/requestInboxLink.ts (switch REQUEST_INBOX_LINK_ENABLED=false, screenNameInputSchema strict, normalizeScreenName, isIdentifyingScreenName, publicReferralLinkSchema, inboxDirectFlagSchema, §4.3/§4.4/§4.9 copy; moves isSafeFastTrackAlias here, server/db.ts re-exports), server/referrerScreenName.ts (setReferrerScreenName: 409 from the unique index, never a pre-read race; mints a row first through getOrCreateReferrerFastTrackLink when absent), resumeReferrerFastTrackLink (verified employee only, fresh linkCode, alias kept - fixes the permanent-pause defect in §3.3), screenName in the two public resolvers under the switch (null while generated, so a seeker never sees ref-), askedYouDirectly in listCompanyReferralInboxByState (§4.7), PUT /me/screen-name and POST /me/resume added to D-057's gated list with its pin test, and the tests T1-T12 of §5.1 (T8 and T12 are regression pins, not red-first; the rest of §5.1's stated red-first set must fail on main for the stated reason). db.ts ownership is only the named functions and the one inbox field, after D-174-pool-nudges; docs are the release row's. The rename/alias paths carry the packet's coordinator/source qualification (PR #878 comments 6530077048 and 6531453655 - coordinator/source findings, not new owner policy) of the recipient-stability contract (packet §4.4, tests T9-T11 red-first and T12 a regression pin): a previously resolved name later reaches its original person or refuses, and a refusal creates no request, no spend and no notification — the builder stops and reports when durable protection needs schema, and no identity policy is adopted.",
+      "epic": "D-089-request-inbox",
+      "owns": [
+        "shared/requestInboxLink.ts",
+        "shared/requestInboxLink.test.ts",
+        "server/referrerScreenName.ts",
+        "server/referrerScreenName.test.ts",
+        "server/db.ts",
+        "server/privateReferralRoutes.ts",
+        "server/referrerFastTrackLinks.test.ts",
+        "server/privateReferralRoutes.requestInboxLink.test.ts",
+        "server/referrerSessionGate*.test.ts"
+      ]
+    },
+    {
+      "id": "D-089.ui",
+      "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): goal UI - link panel, inbox marker and landing line behind the switch",
+      "row": "D-089",
+      "packet": "docs/plans/D-089-request-inbox.md",
+      "tier": 1,
+      "lane": "request-inbox-ui",
+      "branch": "agent/queue/d089-ui",
+      "status": "todo",
+      "syncedTo": "D-280",
+      "dependsOn": [
+        "D-089.server",
+        "D-048-p3-links",
+        "D-086.admit"
+      ],
+      "note": "D-280 packet §5.2 (Tier 1: renders the server payloads behind the switch; S-M). Builds the goal-native panel GoalReferralLinkPanel.tsx with referralLinkApi.ts through referrerData's shared fetch helpers (so the D-057 403 handling applies), mounts it once in GoalReferrerHome.tsx under the switch, adds the askedYouDirectly field to referrerData.ts, the 'Sent to you directly' dot-and-text marker on MyCompanyInbox.tsx queue rows, the §4.9 landing line in the D-048-p3-links goal landings and the switch-only FastTrackLink/VanityFastTrackLink pages, one GOAL_UI_COVERAGE.md component line, captures at 1280 and 390 (panel generated, named, editing, taken-name error, paused, step-up; landing with and without a name; queue row with the marker) into design/goal-ui/captures/request-inbox/, and the red-first tests U1-U7 of §5.2. Goal pages stay kit-import-free (D-241 boundary); Tier 1 is declared because MyCompanyInbox.tsx computes Tier 1 (declared-above-computed is not used to relax the review); not buildable until the D-089 (3) pre-build design/placement gate is met (packet §4.10) — release captures are not a waiver.",
+      "epic": "D-089-request-inbox",
+      "owns": [
+        "client/src/components/referrer-home/GoalReferralLinkPanel.tsx",
+        "client/src/components/referrer-home/referralLinkApi.ts",
+        "client/src/components/referrer-home/goalReferralLinkPanel.test.tsx",
+        "client/src/pages/goal/referrer-home/GoalReferrerHome.tsx (switch only)",
+        "client/src/components/referrer-home/referrerData.ts",
+        "client/src/pages/MyCompanyInbox.tsx",
+        "client/src/pages/goal/links/**",
+        "client/src/pages/FastTrackLink.tsx (switch only)",
+        "client/src/pages/VanityFastTrackLink.tsx (switch only)",
+        "client/src/pages/requestInboxLanding.test.tsx",
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "design/goal-ui/captures/request-inbox/**"
+      ]
     }
   ]
 }
