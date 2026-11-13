@@ -6412,6 +6412,41 @@
         "design/goal-ui/captures/story-employer-rules/**"
       ],
       "note": "Packet section 3. New shared/employerRulesCopy.ts carries docs/POSITIONING.md section 4.3 word for word; rendered as a section of /how-employees-refer-candidates and one /safety answer (kit page live, goal page for its later release). Names no employer and claims no approval or compliance; a test pins that. Independent of STORY-trust-landing. Referrer pages are out of scope (Tier 1 sign-in code)."
+    },
+    {
+      "id": "D-057-stepup-access-error",
+      "title": "The email-review step-up panel shows a plain error with Try again when the access read fails, instead of 'Checking your work email…' forever",
+      "row": "D-057-stepup",
+      "packet": "docs/plans/FIX-nov13-stepup-avoid.md",
+      "tier": 1,
+      "lane": "email-review-stepup",
+      "branch": "agent/queue/d057-stepup-access-error",
+      "status": "todo",
+      "syncedTo": "D-331",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/email-review/GoalEmailReviewAction.tsx",
+        "client/src/pages/goal/email-review/goalEmailReview.stepUp.test.tsx"
+      ],
+      "note": "Packet section 1. Reproduced live-equivalent on PR #1179 head 6892f33f (review comment 6839438450): StepUpPanel has no isError branch, so a failed or rejected access read leaves 'Checking your work email…' on screen forever; the kit page renders the same island, so it is live today. Error state + Try again (refetch) only; no change to the step-up proof, its endpoints, the account binding, the review link or the decision (D-057, D-245). Tier 1: independent review (D-151), red-first tests, captures of the error state at 1280 and 390."
+    },
+    {
+      "id": "PICKER-avoid-repeat",
+      "title": "Repeated --avoid flags accumulate instead of the last one silently replacing the others, and the hand-out names the accepted forms",
+      "row": "D-321",
+      "packet": "docs/plans/FIX-nov13-stepup-avoid.md",
+      "tier": 2,
+      "lane": "picker-avoid-repeat",
+      "branch": "agent/queue/picker-avoid-repeat",
+      "status": "todo",
+      "syncedTo": "D-331",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskAvoidRepeat.test.ts"
+      ],
+      "note": "Packet section 2 (D-321 rule 11 dead end). argsOf stores out[a.slice(2)] = v, so --avoid A --avoid B keeps only B, while every hand-out says to re-run 'with --avoid <id> added'; picks then alternate forever. The Qoder 9c29 D-089 report attributed this to nextTaskCore.mjs:955, which is not the cause. Change argsOf's avoid parse and the one hand-out sentence only; every other flag keeps last-wins. Shares next-task.mjs and nextTaskText.mjs with open picker rows: no dependency (D-314), the later lander merges main."
     }
   ]
 }
