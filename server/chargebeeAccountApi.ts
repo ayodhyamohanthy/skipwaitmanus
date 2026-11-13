@@ -65,10 +65,10 @@ export async function assignPrimaryPaymentSource(credentials: ChargebeeCredentia
 }
 
 /** Chargebee's hosted page where the member adds, removes or updates cards, UPI AutoPay and PayPal. */
-export async function createManagePaymentSourcesPage(credentials: ChargebeeCredentials, input: { customerId: string; redirectUrl: string }): Promise<string> {
+export async function createManagePaymentSourcesPage(credentials: ChargebeeCredentials, input: { customerId: string; redirectUrl: string }): Promise<{ url: string; hostedPageId: string }> {
   const form = new URLSearchParams({ "customer[id]": input.customerId, redirect_url: input.redirectUrl });
-  const body = await chargebeeRequest(credentials, { method: "POST", path: "/hosted_pages/manage_payment_sources", form }, z.object({ hosted_page: z.object({ url: z.string().url() }) }));
-  return body.hosted_page.url;
+  const body = await chargebeeRequest(credentials, { method: "POST", path: "/hosted_pages/manage_payment_sources", form }, z.object({ hosted_page: z.object({ id: z.string(), url: z.string().url() }) }));
+  return { url: body.hosted_page.url, hostedPageId: body.hosted_page.id };
 }
 
 /** A short-lived download link for the invoice PDF. The caller redirects; nobody stores or logs it. */
