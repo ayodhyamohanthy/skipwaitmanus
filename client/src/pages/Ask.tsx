@@ -1,10 +1,14 @@
-// The ask composer as a page (D-048 phase 3 W2; comp design/goal-ui/w2/ask-*.png):
-// the W1 drawer's anatomy at full width - job link with an honest hint, the
-// resume (shared only after a referrer accepts), "Why me" as three reasons of
-// up to 140 characters (D-077(4)), and the cost line with the refund rules
-// beside one black Send ask from the first moment (no drip pricing). The form,
-// draft, caps and the live send come from useAskComposer, shared with the
-// directory drawer and the company door. Flags off: "Uses 1 of your N credits".
+// The ask composer as a page, redesigned to the doctrine (D-048-p3-live-review-find;
+// contract proposed in docs/plans/GOAL_UI_MIGRATION.md): the W1 drawer's
+// anatomy at full width under the goal line ("Get referred.", or "Get referred
+// at <Company>." once the ask's company resolves). While sign-in resolves,
+// an auth-loading frame renders instead of the composer (packet item 5) — a
+// signed-out visitor never sees a form that cannot send yet. The cost line
+// and the refund rules sit inside the single "Your next step" block beside
+// one black Send ask from the first moment (no drip pricing), with the full
+// money sentence beside them. The form, draft, caps and the live send come
+// from useAskComposer, shared with the directory drawer and the company door.
+// Flags off: "Uses 1 of your N credits".
 import { ArrowLeft, FileText, Info, Lock } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Link } from "wouter";
@@ -13,12 +17,14 @@ import {
   GoalAppShell,
   GoalButton,
   GoalField,
+  GoalNextStep,
   GoalNum,
   GoalReasonInput,
   GoalStatus,
   GoalTextInput,
   GoalVerifiedMark,
 } from "@/components/goal";
+import { MONEY_SENTENCE } from "@shared/moneyCopy";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readAskPrefill } from "@/lib/askPrefill";
@@ -66,6 +72,19 @@ export default function Ask() {
   }, []);
 
   const sent = composer.sent;
+  const goalLine = company ? `Get referred at ${company.name}.` : "Get referred.";
+  // While sign-in resolves, the composer must not render (packet item 5): the
+  // signed-out form exists for reading, but a send under an unresolved
+  // identity is never offered — the frame says what is happening instead.
+  if (!isLoaded) {
+    return (
+      <GoalAppShell active="find" pageTitle="Ask for a referral">
+        <div data-skipwait-screen="ask-auth-loading" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6" aria-busy="true">
+          <p role="status" className="text-g-body text-g-ink-2">Checking sign-in — one moment.</p>
+        </div>
+      </GoalAppShell>
+    );
+  }
   return (
     <GoalAppShell active="find" pageTitle="Ask for a referral">
       <div data-skipwait-screen="ask" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
@@ -87,7 +106,7 @@ export default function Ask() {
         ) : (
           <>
             <header className="mt-6">
-              <h1 className="text-g-display text-g-ink">Ask for a referral</h1>
+              <h1 className="text-g-display text-g-ink">{goalLine}</h1>
               {composer.context ? <p className="mt-1 truncate text-g-meta text-g-ink-3">{composer.context}</p> : null}
             </header>
 
@@ -101,13 +120,15 @@ export default function Ask() {
               <AskFields composer={composer} company={company} />
             </div>
 
-            <div className="mt-8 border-t border-g-hairline pt-5">
-              <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{composer.cost.line}</p>
-              <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{composer.cost.detail}</p>
-              {composer.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-3 text-pretty text-g-meta text-g-ink">{composer.sendGuidance}</p> : null}
-              {composer.creditRecovery ? <Link href="/plans" className="mt-2 inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
-              {composer.sendError ? <div role="alert" className="mt-2 text-pretty text-g-meta text-g-ink">{composer.sendError}</div> : null}
-              <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-1">
+            <div className="mt-8">
+              <GoalNextStep reason={composer.cost.detail}>
+                {/* Packet item 5: the page says which file is attached before sending. */}
+                {composer.resumeView ? <p className="text-g-meta text-g-ink-2">Attached resume: {composer.resumeView.name}</p> : null}
+                <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{composer.cost.line}</p>
+                {composer.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-3 text-pretty text-g-meta text-g-ink">{composer.sendGuidance}</p> : null}
+                {composer.creditRecovery ? <Link href="/plans" className="mt-2 inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
+                {composer.sendError ? <div role="alert" className="mt-2 text-pretty text-g-meta text-g-ink">{composer.sendError}</div> : null}
+                <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-1">
                 {composer.onSaveDraft ? (
                   <GoalButton variant="ghost" touch="large" className="max-gdesk:w-full" busy={composer.draftState === "saving"} busyLabel="Saving…" onClick={composer.onSaveDraft}>
                     {composer.draftState === "saved" ? "Draft saved" : "Save draft"}
@@ -123,6 +144,8 @@ export default function Ask() {
                   </GoalButton>
                 )}
               </div>
+                <p className="mt-3 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+              </GoalNextStep>
             </div>
           </>
         )}

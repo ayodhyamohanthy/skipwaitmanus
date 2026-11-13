@@ -2075,7 +2075,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-257",
+      "syncedTo": "D-331",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2091,6 +2091,7 @@
         "client/src/pages/conversation/ReferrerConversation.tsx",
         "client/src/pages/conversation/ReferrerConversation.goal.test.tsx",
         "client/src/pages/referralConversation.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts",
         "design/goal-ui/captures/conversation/**"
       ],
       "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). Oct 27: waits for D-048-p3-live-review-conversation (claimed), which also owns referralConversation.test.tsx (its seeker cases) and the conversation captures folder; this row then builds on the redesigned seeker page.",
@@ -3154,10 +3155,11 @@
       "lane": "demand-mount",
       "branch": "agent/queue/d086-mount",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-330",
       "epic": "D-086-demand-list",
       "dependsOn": [
-        "D-086.ui"
+        "D-086.ui",
+        "D-048-p3-live-review-find"
       ],
       "owns": [
         "client/src/pages/Explore.tsx (switch only)",
@@ -3175,7 +3177,7 @@
       "tier": 2,
       "lane": "demand-admit",
       "branch": "agent/queue/d086-admit",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-328",
       "epic": "D-086-demand-list",
       "dependsOn": [
@@ -4402,8 +4404,8 @@
       "tier": 2,
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-330",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",

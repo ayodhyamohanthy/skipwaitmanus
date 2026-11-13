@@ -10,7 +10,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import Ask from "./Ask";
+import { GOAL_NEXT_STEP_LABEL, GOAL_NEXT_STEP_HEADING_ID } from "@/components/goal/GoalNextStep";
+import { MONEY_SENTENCE } from "@shared/moneyCopy";
+
+// The kit-class set, read from the stylesheet exactly as the page-contract
+// helper does (kit classes share no prefix).
+function kitClassNames(): Set<string> {
+  const css = readFileSync(join(__dirname, "..", "styles", "kit.css"), "utf8");
+  const names = new Set<string>();
+  for (const match of Array.from(css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/g))) names.add(match[1]);
+  return names;
+}
 
 const { go, searchState, authState, signIn } = vi.hoisted(() => ({
   go: vi.fn(),
@@ -94,7 +107,7 @@ describe("Ask composer page (goal, W2)", () => {
   it("renders the goal composer: one black Send ask, the cost line and the refund rules from the first moment, no kit chrome", async () => {
     stub();
     renderPage();
-    await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
+    await waitFor(() => expect(page().getByRole("heading", { name: "Get referred." })).toBeTruthy());
     expect(screen.getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
     expect(screen.getByLabelText("Job link")).toBeTruthy();
     expect(screen.getByText("ada-resume.pdf")).toBeTruthy();
@@ -131,7 +144,7 @@ describe("Ask composer page (goal, W2)", () => {
     authState.isSignedIn = false;
     stub();
     renderPage();
-    await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
+    await waitFor(() => expect(page().getByRole("heading", { name: "Get referred." })).toBeTruthy());
     expect(screen.getByText("You’ll sign in before it’s sent. We keep your link and reasons.")).toBeTruthy();
     fillLink();
     fillReasons();
@@ -194,7 +207,7 @@ describe("Ask composer page (goal, W2)", () => {
   it("rejects an unsupported resume type before any upload", async () => {
     const fetchMock = stub();
     renderPage();
-    await waitFor(() => expect(page().getByRole("heading", { name: "Ask for a referral" })).toBeTruthy());
+    await waitFor(() => expect(page().getByRole("heading", { name: "Get referred." })).toBeTruthy());
     const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(picker, { target: { files: [new File(["x"], "resume.txt", { type: "text/plain" })] } });
     expect(screen.getByText(/Use a PDF, Word document, PNG, or JPEG resume/)).toBeTruthy();
@@ -211,5 +224,69 @@ describe("Ask composer page (goal, W2)", () => {
     await screen.findByRole("button", { name: "Draft saved" });
     const put = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/ask-drafts" && (init as RequestInit | undefined)?.method === "PUT");
     expect(JSON.parse(String((put as unknown as [string, { body: string }])[1].body))).toMatchObject({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer" });
+  });
+});
+
+// The goal redesign (D-048-p3-live-review-find, D-150/D-167): the ask page
+// opens with the goal line, holds its single black commit inside one "Your
+// next step" block, states the cost from the shared money copy with the full
+// money sentence, and never shows a composer while sign-in is still loading.
+describe("Goal redesign of /ask", () => {
+  // The contract pieces (GOAL_UI_COVERAGE §1) on the rendered page. §1.7's
+  // assertGoalPage h1-count is NOT asserted: the goal shell renders a second
+  // h1 of its own (GoalShell.tsx:150, foundation-owned), the recorded blocker
+  // that keeps every GoalAppShell page from claiming §1.7.
+  const assertGoalPieces = (container: HTMLElement, goalLine: string) => {
+    const pageH1s = Array.from(container.querySelectorAll("h1")).filter(h1 => h1.textContent === goalLine);
+    expect(pageH1s).toHaveLength(1);
+    const regions = Array.from(container.querySelectorAll(`section[aria-labelledby="${GOAL_NEXT_STEP_HEADING_ID}"]`));
+    expect(regions).toHaveLength(1);
+    const primaries = Array.from(container.querySelectorAll("[data-g-primary]"));
+    expect(primaries).toHaveLength(1);
+    expect(regions[0].contains(primaries[0])).toBe(true);
+    const kit = kitClassNames();
+    const offenders: string[] = [];
+    for (const el of Array.from(container.querySelectorAll("*"))) {
+      for (const cls of Array.from(el.classList)) if (kit.has(cls)) { offenders.push(cls); break; }
+    }
+    expect(offenders).toEqual([]);
+  };
+
+  it("meets the goal contract with no company resolved", async () => {
+    stub();
+    const { container } = renderPage();
+    expect(await screen.findByRole("heading", { name: "Get referred." })).toBeTruthy();
+    assertGoalPieces(container, "Get referred.");
+  });
+
+  it("meets the goal contract with the prefill's company resolved", async () => {
+    sessionStorage.setItem(ASK_PREFILL_KEY, JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/9", note: "Shipped payments at scale.", savedAt: Date.now() }));
+    stub();
+    const { container } = renderPage();
+    expect(await screen.findByRole("heading", { name: "Get referred at Wipro." })).toBeTruthy();
+    assertGoalPieces(container, "Get referred at Wipro.");
+  });
+
+  it("shows an auth-loading frame instead of the composer while sign-in resolves", async () => {
+    authState.isLoaded = false;
+    stub();
+    renderPage();
+    expect(screen.getByRole("status").textContent).toContain("Checking sign-in");
+    expect(screen.queryByLabelText(/Job link/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Send/ })).toBeNull();
+  });
+
+  it("states the cost with the full money sentence beside the commit", async () => {
+    stub();
+    renderPage();
+    expect(await screen.findByTestId("goal-ask-cost")).toBeTruthy();
+    expect(screen.getByText(MONEY_SENTENCE)).toBeTruthy();
+  });
+
+  it("says which resume file is attached before sending, from the profile by default", async () => {
+    stub();
+    renderPage();
+    expect(await screen.findByText("ada-resume.pdf")).toBeTruthy();
+    expect(screen.getByText(/Attached resume: ada-resume\.pdf/)).toBeTruthy();
   });
 });
