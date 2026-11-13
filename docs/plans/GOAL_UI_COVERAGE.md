@@ -33,6 +33,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/` | `pages/Home` | `D-048-p3-home`, `D-048-p3-home-signed-in` | D-048-p3-home: done; D-048-p3-home-signed-in: to be added by its lane packet |
 | `/fast/:linkCode` | `pages/FastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/refer/:companySlug/:vanityAlias` | `pages/VanityFastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
+| `/r/:token` | `pages/AskInviteLink` | `D-090-BYOR` | D-090-BYOR: fix round in progress on #632 |
 | `/share-card/:token` | `pages/ShareCard` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/email-review/:linkToken` | `pages/EmailReviewAction` | `D-048-p3-email-review` | D-048-p3-email-review: todo |
 | `/start` | `pages/Onboarding` | `D-048-p3-start` | D-048-p3-start: todo |
@@ -75,8 +76,8 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/reset-password` | `pages/ResetPassword` | `D-048-p3-signin` | D-048-p3-signin: to be added by its lane packet |
 | `/wallet` | — | none: redirect to /plans | — |
 | `/thread` | `ThreadListAlias` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
-| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
-| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
+| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
+| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
 | `/messages` | `pages/Messages` | `D-048-p3-messages` | D-048-p3-messages: to be added by its lane packet |
 | `/share` | `pages/ShareHub` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
 | `/inbox` | `pages/UnifiedInbox` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
@@ -139,6 +140,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 | `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx` | sign-in, the goal sign-in, `/referrer`, company claim | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`) |
 | `WorkEmailSignIn.tsx` | `/email-review`, `/referrer` | `D-048-p3-verify` | Work-email code only (D-030) |
 | `ask/PinnedWorkPicker.tsx` | `/ask`, the drawer, the composer | `D-048-p3-live-review-find` | |
+| `admin/UnlistedDemandView.tsx` | `/admin`, the companies view | `D-086.admit` (D-086) | Read-only admission queue of unlisted domains; no create, list or prefill control, and nothing is listed automatically (D-101) |
 | `OneTapShareActions.tsx` | `/wall`, `/referrer` | `D-048-p3-referrer` | `D-048-p3-discovery` adopts it after |
 | `profile/ProfileLinkSheet.tsx`, `profile/VisibilityOptions.tsx` | `/profile`, `/work`, `/p/:handle` | `D-048-p3-profile` | `D-048-p3-public-profile` adopts after |
 | `referrer/ReferrerSetupDialog.tsx`, `referrer/ReferrerWorkspace.tsx` | `/referrer`, `/referrer/impact` | `D-048-p3-referrer` | |
@@ -162,10 +164,12 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/ComponentShowcase.tsx`: `AIChatBox.tsx`
 - `pages/DeveloperConsole.tsx`: `developers/AppDetails.tsx`, `developers/RegisterAppForm.tsx`
 - `pages/EmployerDashboard.tsx`: `employer/EmployerFrame.tsx`, `employer/EmployerOverview.tsx`
+- `pages/Explore.tsx` and `pages/ExploreCompany.tsx` (components mounted by row `D-086.mount`, page redesign still `D-048-p3-live-review-find`): `demand/CompanyDemandLine.tsx`, `demand/CompanyDemandList.tsx`
 - `pages/Home.tsx`: `VisualJourney.tsx`
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`
@@ -242,13 +246,15 @@ The split's row text now names them, so their lane packet writer adds them:
   1. the foundation rows (`D-048-F-*`, with §6.1 and §6.2);
   2. the redesign rows of the live pages (`D-048-p3-live-review-*`);
   3. the lane rows, top down in `docs/plans/assignments.json`;
-  4. `D-048-K-kit` last.
+  4. each surface's release row `D-048-R-<id>` directly after its build row (D-317, D-332);
+  5. each surface's retirement row `D-048-K-<surface>` 7 days after its release (`docs/plans/D-048-retire.md`, D-332);
+  6. `D-048-K-kit` last.
 - **Every surface row depends on `D-048-F-goal-check`.** Lane packets add it to each row they add.
 - **A new route or component** needs its line here (§2-§5) in the same PR (D-167). Ask the CEO with `--report blocked` when no row fits.
 
 ## Status
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
-- D-048-F-shell-parts: todo; waits for D-048-F-credits and D-048-F-goal-check.
+- D-048-F-shell-parts: todo (Nov 13, D-333 (2): the owner released the hold; both dependencies are done). `AccountMenu.tsx` returns to this row (D-057 §0b.8c, D-333 (7)). Tier 2: merge current `main` into #767 and land on green required CI (D-200 (4)).
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
 - D-048-p3-agents: done — landed `157447ab` — the goal body (`pages/goal/assistants/GoalSeekerAgents.tsx`, #563) behind the shared `assistants` surface (flag off), kit page kept as the fallback; `client/src/pages/seekerAgents.test.tsx` pins the switch, every D-141 control and the not-enabled/error/signed-out/offline states. **Not moved:** no captures are delivered and §1.6/§1.7 are not claimed; the capture `owns` amendment rides #777, and the goal-contract and draft-only-copy defects are routed to `D-048-p3-assistants`, which owns `client/src/pages/goal/assistants/**`. **Landing (Oct 29):** the reviewed head `28106b84` carried an independent pass; `main` `5a13c7e3` merged into it with no conflict hunk; the packet was checked against D-225–D-232 and none affects this row; the code landed as `157447ab` through draft PR #778 (`/agents` renders the kit page in production until the `assistants` surface is released).

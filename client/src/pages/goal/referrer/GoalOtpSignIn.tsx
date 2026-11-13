@@ -44,7 +44,7 @@ export function GoalOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) 
   if (stage === "email") {
     return (
       <div className="w-full">
-        <p className="text-g-small leading-[1.6] text-g-ink">See the role, resume, and forwardable note before you choose. Decline or ask for context. Nothing is sent from your account.</p>
+        <p className="text-g-small leading-[1.6] text-g-ink">You can review the role and note before you choose. The seeker's name and resume stay hidden until you accept. After you accept, you can open the resume only while your document access is active. Decline or ask for context. Nothing is sent from your account.</p>
         <p className="mt-2 text-g-meta text-g-ink-3">Work email verifies company access; it stays private.</p>
         <div className="mt-4">
           <GoalField label="Company email" htmlFor="goal-otp-referrer-email">

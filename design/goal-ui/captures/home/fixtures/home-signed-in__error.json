@@ -1,0 +1,7 @@
+{
+  "signedIn": { "id": 7, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "route": "/",
+  "routes": [
+    { "method": "GET", "path": "/api/company-referrals/access", "status": 500, "body": { "error": "We could not check your work-email verification." } }
+  ]
+}

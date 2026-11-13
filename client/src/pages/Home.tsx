@@ -4,17 +4,19 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
+import { publicRoute } from "@shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
 import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
 import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 import GoalLandingV9 from "./GoalLandingV9";
+import HomeSignedIn from "./goal/home/HomeSignedIn";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
   ["What does asking for a referral cost?", `${MONEY_SENTENCE} There is no referral commission and no paid priority: a referral is a voluntary introduction, not a purchase.`],
-  ["Do I need to know someone at the company?", "No existing connection is required. Explore companies with available referrers, find a relevant role, and send a thoughtful request. Each referrer chooses which requests to accept."],
+  ["Do I need to know someone at the company?", "No existing connection is required. Explore the directory, find a relevant role, and send a thoughtful request. Each employee decides which referral requests to accept."],
   ["What does verification mean?", "Work-email verification confirms ownership of an address on an approved company domain. It does not prove current employment or imply an employer’s endorsement."],
   ["Does a referral guarantee an interview?", "No. A referral is an introduction, not a promise. Employers independently decide who to interview and hire."],
 ];
@@ -27,11 +29,16 @@ export default function Home() {
   // flag (off in production until QA verifies). Signed-in visitors keep the
   // existing page until the Home surface migrates.
   const goalLanding = goalSurfaceOn("home") && isLoaded && !isSignedIn;
+  // D-048-p3-home-signed-in: with the switch on, a signed-in visitor and the
+  // auth-loading moment render the goal router instead of this page, so nobody
+  // sees the landing first. Signed-out visitors are untouched.
+  const goalSignedIn = goalSurfaceOn("home-signed-in") && (isLoaded === false || isSignedIn);
   useEffect(() => {
-    if (goalLanding) return;
-    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `skipwait.me connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
-  }, [goalLanding]);
+    if (goalLanding || goalSignedIn) return;
+    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: publicRoute("/")!.description, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
+  }, [goalLanding, goalSignedIn]);
   if (goalLanding) return <GoalLandingV9 />;
+  if (goalSignedIn) return <HomeSignedIn />;
 
   return (
     <div className="launch-page">
@@ -64,7 +71,7 @@ export default function Home() {
         </section>
         <section className="launch-trust-strip" aria-label="Our commitments"><span><HeartHandshake />{REFERRERS_NEVER_PAID}</span><span><LockKeyhole />Private by default.</span><span><ShieldCheck />No job guarantees.</span></section>
         <section className="launch-section launch-companies">
-          <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told skipwait.me they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
+          <div className="section-intro"><span className="eyebrow">START SOMEWHERE REAL</span><h2>Start somewhere real.</h2><p>Begin with a company below, or explore the full directory. Every employee chooses each referral request themselves.</p></div>
           <div className="launch-company-row">
             {LAUNCH_COMPANY_SEED.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
           </div>

@@ -14,6 +14,12 @@ import Settings from "./Settings";
 import NotFound from "./NotFound";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
+import { FREE_PLAN, firstPackClaim } from "@shared/planCatalog";
+
+
+// Independent literal, not MONEY_SENTENCE imported as its own oracle.
+const EXPECTED_ALLOWANCE_COST = "3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.";
+const noBlanketReferralPromise = (text: string) => text.replace(EXPECTED_ALLOWANCE_COST, "");
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
 vi.mock("@/_core/auth", () => ({
@@ -45,6 +51,15 @@ beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: a
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const policyLinks = (container: HTMLElement) => Array.from(container.querySelectorAll('nav[aria-label="Policies"] a')).map(a => a.getAttribute("href"));
+
+it("rejects extra free or guaranteed referral promises outside the exact allowance", () => {
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST)).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Referrals are free.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited free referrals.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited referrals.")).toMatch(/unlimited referrals/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited requests.")).toMatch(/unlimited requests/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " A guaranteed referral.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+});
 
 describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Terms restate credit and privacy behaviour and never promise a hiring outcome", () => {
@@ -85,8 +100,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     expect(screen.getByText("Never pay a referrer, and never ask a seeker for money.")).toBeTruthy();
-    expect(screen.getByText("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/Referrals are free|free referrals/i);
+    expect(screen.getByText("3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(FREE_PLAN.creditsPerMonth).toBe(3);
+    expect((document.body.textContent ?? "").split(EXPECTED_ALLOWANCE_COST)).toHaveLength(2);
+    expect(noBlanketReferralPromise(document.body.textContent ?? "")).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
     expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
     expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");
@@ -98,8 +115,8 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/The moment one can see your ask, 1 credit is used/)).toBeTruthy();
-    expect(screen.getByText(/withdraw before someone picks the ask up/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your referral request, 1 is deducted from your balance/)).toBeTruthy();
+    expect(screen.getByText(/withdraw before someone picks it up/)).toBeTruthy();
     expect(screen.getByText(/not on sale right now/)).toBeTruthy();
     expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
@@ -131,6 +148,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
       expect(screen.getByText(money(planFeeMinor(plan.id, "INR"), "INR"))).toBeTruthy();
       expect(screen.getByText(money(planFeeMinor(plan.id, "USD"), "USD"))).toBeTruthy();
     }
+    // D-219 (6) / D-214 (3): the legacy credit packs are paused, so /pricing
+    // states the pause and never lists a pack price. Re-enabling packs on this
+    // page therefore fails this guard until the copy is updated on purpose.
+    expect(screen.getByText(/the old credit packs are paused/)).toBeTruthy();
+    expect(screen.queryByText(firstPackClaim("INR")!)).toBeNull();
     const text = document.body.textContent ?? "";
     // "₹1,299" was the old Max price and now equals the frozen Senior to Executive INR price - dropped from the retired list.
     for (const retired of ["₹599", "$7/month", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
@@ -164,7 +186,7 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
   it("Terms say a decline does not return the credit", () => {
     const { container } = render(<Terms />);
     const text = container.textContent ?? "";
-    expect(text).toContain("the credit stays spent, even if they pass");
+    expect(text).toContain("it stays charged, even if they pass");
     expect(text).not.toMatch(/reserved when a request is sent/);
     expect(text).not.toMatch(/Momentum|Keep warm/);
   });
