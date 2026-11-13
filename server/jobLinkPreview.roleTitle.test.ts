@@ -90,3 +90,44 @@ describe("previewJobLink roleTitle and fetched (D-094 packet T1/T2/T6b)", () => 
     expect(Object.keys(first).sort()).toEqual(["canonicalUrl", "companyDomain", "employerConfidence", "fetched", "reason", "recoveryAction", "roleTitle", "status"].sort());
   });
 });
+
+// F1 (PR #1172 review): the body comes from whatever link a visitor pastes
+// (any public domain, no sign-in, 12 previews/min/IP, cached per URL so a query
+// string defeats the cache), and this runs on the public route whatever
+// JOB_LINK_PREFILL_ENABLED says. Three regexes scanned to the end of the body
+// from every unclosed tag, so a 512 KB body of repeated opening tags blocked the
+// event loop for ~16-17 seconds per request. These cases pin a linear read.
+describe("extractRoleTitle is linear on hostile bodies (F1)", () => {
+  const LIMIT = 512_000;
+  const hostile = (fragment: string) => fragment.repeat(Math.ceil(LIMIT / fragment.length)).slice(0, LIMIT);
+  const elapsed = (html: string) => {
+    const start = performance.now();
+    const result = extractRoleTitle(html);
+    return { ms: performance.now() - start, result };
+  };
+  // 1,000 ms is far above a linear scan of 512 KB (single-digit ms) and far
+  // below the 16,175 ms / 17,076 ms measured on the reviewed head.
+  const BOUND = 1_000;
+
+  it("returns promptly when every <title> is unclosed", () => {
+    const { ms } = elapsed(hostile("<title>"));
+    expect(ms).toBeLessThan(BOUND);
+  });
+
+  it("returns promptly when every <meta is unclosed", () => {
+    const { ms } = elapsed(hostile("<meta "));
+    expect(ms).toBeLessThan(BOUND);
+  });
+
+  it("returns promptly when every JSON-LD <script> is unclosed", () => {
+    const { ms } = elapsed(hostile('<script type="application/ld+json">'));
+    expect(ms).toBeLessThan(BOUND);
+  });
+
+  it("still finds a JSON-LD JobPosting that sits after a large body, not only in the head", () => {
+    const padding = `<div>${"x".repeat(200)}</div>`.repeat(2_000);
+    const html = `<!doctype html><html><head>${og("Staff Engineer at Acme")}</head><body>${padding}<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", title: "Late Posting" })}</script></body></html>`;
+    // Documented precedence is JSON-LD > og:title > <title>, so the late posting wins.
+    expect(extractRoleTitle(html)).toBe("Late Posting");
+  });
+});

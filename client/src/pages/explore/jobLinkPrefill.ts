@@ -86,20 +86,32 @@ const CACHE_LIMIT = 50;
 /** The last answer per normalized URL, including "no preview", so one link is asked about once. */
 const cache = new Map<string, JobLinkPreview | null>();
 const inFlight = new Map<string, Promise<JobLinkPreview | null>>();
+/** When a request last failed, so sibling consumers of one edit coalesce (F2). */
+const failures = new Map<string, number>();
+/** A failure is retried after this long; inside it, one typing gesture makes one request. */
+export const FAILURE_COALESCE_MS = 3_000;
 
-export function resetJobLinkPreviewForTests(): void { cache.clear(); inFlight.clear(); }
+export function resetJobLinkPreviewForTests(): void { cache.clear(); inFlight.clear(); failures.clear(); }
 
 async function requestPreview(normalizedUrl: string): Promise<JobLinkPreview | null> {
   const cached = cache.get(normalizedUrl);
   if (cached !== undefined) return cached;
   const active = inFlight.get(normalizedUrl);
   if (active) return active;
+  // F2 (PR #1172 review): a timeout, a 429/5xx or a dropped connection is a
+  // transport failure, not a verdict on the link. It is never cached as "no
+  // preview" for the session; a sibling consumer of the same edit reuses the
+  // failure briefly, then the next paste retries the link.
+  const failedAt = failures.get(normalizedUrl);
+  if (failedAt !== undefined && Date.now() - failedAt < FAILURE_COALESCE_MS) return null;
   const request = (async () => {
-    const settle = (value: JobLinkPreview | null) => {
+    const settle = (value: JobLinkPreview) => {
       if (cache.size >= CACHE_LIMIT) { const oldest = cache.keys().next().value; if (oldest !== undefined) cache.delete(oldest); }
       cache.set(normalizedUrl, value);
+      failures.delete(normalizedUrl);
       return value;
     };
+    const fail = () => { failures.set(normalizedUrl, Date.now()); return null; };
     try {
       const response = await fetch("/api/job-link/preview", {
         method: "POST",
@@ -107,12 +119,12 @@ async function requestPreview(normalizedUrl: string): Promise<JobLinkPreview | n
         body: JSON.stringify({ url: normalizedUrl }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      if (!response.ok) return settle(null);
+      if (!response.ok) return fail();
       const parsed = jobLinkPreviewSchema.safeParse(await response.json());
-      if (!parsed.success || normalizeTargetRoleUrl(parsed.data.canonicalUrl) !== normalizedUrl) return settle(null);
+      if (!parsed.success || normalizeTargetRoleUrl(parsed.data.canonicalUrl) !== normalizedUrl) return fail();
       return settle(parsed.data);
     } catch {
-      return settle(null);
+      return fail();
     } finally {
       inFlight.delete(normalizedUrl);
     }

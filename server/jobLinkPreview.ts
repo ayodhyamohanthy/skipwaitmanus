@@ -23,6 +23,47 @@ const allowedHostedApi=(url:URL)=>
   (url.hostname==="www.linkedin.com"&&url.pathname.startsWith("/jobs-guest/jobs/api/jobPosting/")) ||
   ((url.hostname==="boards.greenhouse.io"||url.hostname==="job-boards.greenhouse.io") && /^\/[a-z0-9._-]+(?:\/|$)/i.test(url.pathname));
 export async function fetchPublicJobLink(input:string){let current=new URL(input);for(let redirect=0;redirect<8;redirect++){if(!["http:","https:"].includes(current.protocol))throw Error("unsupported_protocol");if(isHostedJobPlatform(current.hostname)&&!allowedHostedApi(current))throw Error("hosted_redirect_blocked");const dispatcher=await pinnedDispatcher(current.hostname);const response=await undiciFetch(current,{dispatcher,redirect:"manual",signal:AbortSignal.timeout(5000),headers:{"user-agent":"skipwait.me job preview","accept":"text/html,application/xhtml+xml"}});if(response.status>=300&&response.status<400){const location=response.headers.get("location");if(!location)throw Error("bad_redirect");current=new URL(location,current);continue}if(!response.ok)throw Error("unreachable");const length=Number(response.headers.get("content-length")||0);if(length>512000){await response.body?.cancel();return {canonicalUrl:current.toString(),body:""}};const reader=response.body?.getReader();let total=0;const chunks:Uint8Array[]=[];while(reader){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>512000){await reader.cancel();return {canonicalUrl:current.toString(),body:""}}chunks.push(value)}return {canonicalUrl:current.toString(),body:Buffer.concat(chunks).toString("utf8")}}throw Error("redirect_limit")}
+/**
+ * F1 (PR #1172 review): the body is attacker-controlled - any public domain can be
+ * pasted, the route needs no sign-in, and a query string defeats the cache - so tag
+ * scanning must never rescan the rest of the body from every unclosed tag. Every pass
+ * below walks forward with indexOf from a monotonically increasing position and gives
+ * up when a tag cannot close, so a 512 KB body of repeated opening tags costs one
+ * linear pass instead of ~17 seconds. The candidate count is bounded as well.
+ */
+const TAG_SCAN_LIMIT = 500;
+type OpenTag = { attributes: string; contentStart: number };
+/** The next `<name ...>` at or after `from`, or undefined; never rescans backwards. */
+function nextOpenTag(body: string, name: string, from: number, seen: number): (OpenTag & { at: number }) | undefined {
+  if (seen >= TAG_SCAN_LIMIT) return undefined;
+  const open = body.indexOf(`<${name}`, from);
+  if (open < 0) return undefined;
+  const after = open + name.length + 1;
+  const boundary = body[after];
+  if (boundary === undefined) return undefined;
+  if (boundary !== ">" && boundary !== "/" && !/\s/.test(boundary)) return nextOpenTag(body, name, after, seen + 1);
+  const close = body.indexOf(">", after);
+  if (close < 0) return undefined; // the tag never closes: nothing after it can be a real tag
+  return { attributes: body.slice(after, close), contentStart: close + 1, at: open };
+}
+/** The inner text of the first well-formed `<name ...>…</name>`, or undefined. */
+function tagText(body: string, name: string): string | undefined {
+  let from = 0;
+  for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
+    const tag = nextOpenTag(body, name, from, 0);
+    if (!tag) return undefined;
+    const close = body.indexOf(`</${name}`, tag.contentStart);
+    if (close < 0) return undefined; // no closing tag anywhere after it
+    const nextOpen = body.indexOf(`<${name}`, tag.contentStart);
+    if (nextOpen >= 0 && nextOpen < close) {
+      // A nested opening tag before the close: this one is malformed, resume at the next.
+      from = nextOpen;
+      continue;
+    }
+    return body.slice(tag.contentStart, close);
+  }
+  return undefined;
+}
 const ROLE_TITLE_LIMIT = 120;
 const HTML_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 function decodeHtmlEntities(value: string) {
@@ -49,21 +90,36 @@ function jsonLdRecords(value: unknown): Record<string, unknown>[] {
   return [record, ...["@graph", "itemListElement", "mainEntity"].flatMap(key => (key in record ? jsonLdRecords(record[key]) : []))];
 }
 function jobPostingTitle(body: string): string | undefined {
-  for (const match of Array.from(body.matchAll(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))) {
+  let from = 0;
+  for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
+    const tag = nextOpenTag(body, "script", from, 0);
+    if (!tag) return undefined;
+    if (!/\btype\s*=\s*["']?application\/ld\+json["']?/i.test(tag.attributes)) { from = tag.contentStart; continue; }
+    const close = body.indexOf("</script", tag.contentStart);
+    if (close < 0) return undefined; // unclosed JSON-LD: nothing after it is parseable
     let parsed: unknown;
-    try { parsed = JSON.parse(match[1]); } catch { continue; }
+    try { parsed = JSON.parse(body.slice(tag.contentStart, close)); } catch { from = tag.contentStart; continue; }
     for (const record of jsonLdRecords(parsed)) {
       const type = record["@type"];
       const isJobPosting = type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"));
       if (isJobPosting && typeof record.title === "string" && record.title.trim()) return record.title;
     }
+    from = tag.contentStart;
   }
   return undefined;
 }
 /** The role title from a body already fetched, or undefined: JSON-LD JobPosting, og:title, <title>. Never a second request (D-094 item 2). */
 export function extractRoleTitle(body: string, companyName?: string): string | undefined {
-  const ogTitle = Array.from(body.matchAll(/<meta\b[^>]*>/gi)).map(tag => metaContent(tag[0], "og:title")).find(value => typeof value === "string" && value.trim());
-  const documentTitle = body.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  let ogTitle: string | undefined;
+  let from = 0;
+  for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
+    const tag = nextOpenTag(body, "meta", from, 0);
+    if (!tag) break;
+    const value = metaContent(`<meta${tag.attributes}>`, "og:title");
+    if (typeof value === "string" && value.trim()) { ogTitle = value; break; }
+    from = tag.contentStart;
+  }
+  const documentTitle = tagText(body, "title");
   const raw = jobPostingTitle(body) ?? ogTitle ?? documentTitle;
   if (typeof raw !== "string") return undefined;
   const title = cleanTitle(raw).slice(0, ROLE_TITLE_LIMIT).trim();

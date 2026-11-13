@@ -12,6 +12,7 @@ import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies"
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import ExploreCompany from "../ExploreCompany";
 import {
+  FAILURE_COALESCE_MS,
   JOB_LINK_PREFILL_ENABLED,
   jobLinkLine,
   resetJobLinkPreviewForTests,
@@ -228,6 +229,25 @@ describe("the drawer on a company door (packet T4/T5/T6/T6b)", () => {
     expect(previewUrl(fetchMock)).toBe("https://boards.greenhouse.io/wipro/jobs/42");
     expect(within(drawer).queryAllByRole("alert")).toHaveLength(0);
     expect(within(drawer).queryByText(/Too many previews/)).toBeNull();
+  });
+
+  // F2 (PR #1172 review): a transport failure is not an answer. Caching one as
+  // "no preview" meant the same link never got a preview again for the session.
+  it("retries the same link after a failed request instead of caching the failure (F2)", async () => {
+    let fail = true;
+    const fetchMock = stub({ previewReply: url => (fail ? "network" : { status: 200, body: preview(url, { roleTitle: "Product Designer" }) }) });
+    const drawer = await openDoorDrawer();
+    const input = within(drawer).getByLabelText("Job link");
+    fireEvent.change(input, { target: { value: "https://boards.greenhouse.io/wipro/jobs/51" } });
+    await waitFor(() => expect(previewCalls(fetchMock)).toHaveLength(1));
+    fail = false;
+    // Past the brief coalescing window a failure is not remembered: the seeker
+    // clears the field and pastes the same link again, and it is retried.
+    await new Promise(resolve => setTimeout(resolve, FAILURE_COALESCE_MS + 100));
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.change(input, { target: { value: "https://boards.greenhouse.io/wipro/jobs/51" } });
+    await waitFor(() => expect(previewCalls(fetchMock)).toHaveLength(2));
+    expect(await within(drawer).findByText(/Product Designer/)).toBeTruthy();
   });
 
   it("never claims a link it did not fetch could not be reached (T6b)", async () => {
