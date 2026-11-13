@@ -42,7 +42,7 @@ NOT fulfil this; the full feature (discovery + our referral action instead
 of sending people away to apply) needs implementation after #660 lands.
 
 ## 5. Device-saved sign-in (passkeys / Face ID / automatic prompts)
-Lives in: PR #667 (docs/DEVICE-SIGNIN-REQUIREMENTS.md - behavior,
+Lives in: PR #667 (docs/plans/DEVICE-SIGNIN-REQUIREMENTS.md - behavior,
 constraints, current shipped truth, open questions). Route: re-verify the
 WorkOS headless-passkey capability against current docs, then implement
 session-restore-first + automatic offers + provider prompts per the record.
