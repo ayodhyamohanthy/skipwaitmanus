@@ -51,7 +51,7 @@ export const STATUS_HELP: Readonly<Record<StatusHelpKey, StatusHelp>> = {
   },
   "waiting:available_for_review": {
     title: "With the company's verified employees",
-    body: "Verified employees at this company can see your request now. They keep your name and files private until they accept, and you'll see an update when one of them decides.",
+    body: "Verified employees at this company can see your request now. They can't see your name or files until one of them accepts, and you'll see an update when one decides.",
   },
   "waiting:default": {
     title: "Waiting for a verified employee",
@@ -71,7 +71,7 @@ export const STATUS_HELP: Readonly<Record<StatusHelpKey, StatusHelp>> = {
   },
   interviewing: {
     title: "Interview in progress",
-    body: "An interview milestone was recorded for this referral. Keep the conversation private and update the status only when the next real step happens.",
+    body: "An interview milestone was recorded for this referral. You or the referrer can update the status when the next real step happens; keep the conversation private.",
   },
   offer: {
     title: "Offer recorded",
@@ -79,19 +79,19 @@ export const STATUS_HELP: Readonly<Record<StatusHelpKey, StatusHelp>> = {
   },
   declined: {
     title: "The referrer declined",
-    body: "This request is closed. Your documents stay private, and you can request a referral at this or another company any time.",
+    body: "This request is closed. Your documents stay private, and you can send a new referral request, at this company or another, while you are under your limit.",
   },
   withdrawn: {
     title: "You withdrew this request",
-    body: "It is closed and no longer shown to employees. You can request a referral again any time.",
+    body: "It is closed and no longer shown to employees. You can send a new referral request while you are under your limit.",
   },
   closed: {
     title: "This request is closed",
-    body: "Your private request history and documents remain protected.",
+    body: "This request is no longer active. Your history and documents stay private. You can send a new referral request while you are under your limit.",
   },
   expired: {
     title: "This request ended without a referrer",
-    body: "No verified employee picked it up before it ended. You can request a referral at this or another company any time.",
+    body: "No verified employee picked it up before it ended. You can send a new referral request, at this company or another, while you are under your limit.",
   },
 };
 

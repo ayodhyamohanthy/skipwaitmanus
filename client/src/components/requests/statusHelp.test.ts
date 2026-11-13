@@ -54,6 +54,37 @@ describe("status help catalogue (D-094 item 3)", () => {
     }
   });
 
+  // C1 (PR #1174 review): the rule is that employees CANNOT see the seeker's
+  // name or files until one accepts (D-019(e)), not that they hold them and
+  // choose to keep them private. The wrong reading tells a seeker their resume
+  // is already in a stranger's hands.
+  it("never says employees hold the seeker's name or files (C1)", () => {
+    for (const [key, entry] of Object.entries(STATUS_HELP)) {
+      expect(`${entry.title} ${entry.body}`, key).not.toMatch(/keep your name|keep your (?:files|resume)|keeps your name/i);
+    }
+    // Positive form: the available-for-review line says they cannot see them.
+    const line = STATUS_HELP["waiting:available_for_review"].body;
+    expect(line).toMatch(/can(?:no|')t see your name or files until/i);
+  });
+
+  // C2/C4 (PR #1174 review, D-153): "any time" promises something the
+  // open-request limit and the two-per-company cap can refuse (D-006), and a
+  // closed entry should say what happened and what to do next.
+  it("never promises a new request any time, and names the limit instead (C2, C4)", () => {
+    for (const [key, entry] of Object.entries(STATUS_HELP)) {
+      expect(`${entry.title} ${entry.body}`, key).not.toMatch(/any time\.?$/i);
+      expect(`${entry.title} ${entry.body}`, key).not.toMatch(/request a referral (?:at this or another company )?any time/i);
+    }
+    expect(STATUS_HELP.closed.body).toMatch(/no longer active/i);
+    expect(STATUS_HELP.closed.body).toMatch(/under your limit/i);
+    expect(STATUS_HELP.expired.body).toMatch(/You can send a new referral request/i);
+  });
+
+  // C3 (PR #1174 review): an instruction to "update the status" must say who does it.
+  it("names who records a milestone in the interviewing entry (C3)", () => {
+    expect(STATUS_HELP.interviewing.body).toMatch(/whoever hears first|you or the referrer|either of you/i);
+  });
+
   it("keys the catalogue by the waiting sub-state, not by the raw status alone", () => {
     expect(statusHelpKeyFor(source({ status: "pending", referrerId: null, queueStatus: "waiting_for_coverage" }))).toBe("waiting:waiting_for_coverage");
     expect(statusHelpKeyFor(source({ status: "pending", referrerId: null, queueStatus: null }))).toBe("waiting:default");
