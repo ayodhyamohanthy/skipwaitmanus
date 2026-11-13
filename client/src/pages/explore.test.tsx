@@ -177,7 +177,7 @@ describe("Find a referral directory", () => {
     renderWithQuery(<Explore />);
     await screen.findByTestId("goal-directory-summary");
     await waitFor(() => expect(document.title).toBe("Find a referral · skipwait.me"));
-    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."));
+    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a referral at skipwait.me, Wipro, Neutrinos, TCS, and Merkle."));
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 

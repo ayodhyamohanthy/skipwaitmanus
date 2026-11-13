@@ -2075,7 +2075,7 @@
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
       "status": "todo",
-      "syncedTo": "D-257",
+      "syncedTo": "D-331",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2091,6 +2091,7 @@
         "client/src/pages/conversation/ReferrerConversation.tsx",
         "client/src/pages/conversation/ReferrerConversation.goal.test.tsx",
         "client/src/pages/referralConversation.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts",
         "design/goal-ui/captures/conversation/**"
       ],
       "note": "Implementation row from the D-048 referrer packet; flag: in place under D-149, or goalSurfaceOn('conversation') if dark. D-035 dropped from dependsOn: rejected by the founder (D-147) (attribution unverified - no recovered owner original; register state and refund behavior unchanged); the decline panels keep today's rule (CEO, Oct 23). D-199: legacy PR #566 (agent/instinct/ayo7-conversation-goal, Instinct Agent) holds candidate changes for this surface. Reuse what still fits D-174 and D-176 under this row's own review and owns; #566 itself never lands (packet docs/plans/LEGACY-BRANCHES-oct24.md section 4). Oct 27: waits for D-048-p3-live-review-conversation (claimed), which also owns referralConversation.test.tsx (its seeker cases) and the conversation captures folder; this row then builds on the redesigned seeker page.",
@@ -3154,10 +3155,11 @@
       "lane": "demand-mount",
       "branch": "agent/queue/d086-mount",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-330",
       "epic": "D-086-demand-list",
       "dependsOn": [
-        "D-086.ui"
+        "D-086.ui",
+        "D-048-p3-live-review-find"
       ],
       "owns": [
         "client/src/pages/Explore.tsx (switch only)",
@@ -3175,7 +3177,7 @@
       "tier": 2,
       "lane": "demand-admit",
       "branch": "agent/queue/d086-admit",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-328",
       "epic": "D-086-demand-list",
       "dependsOn": [
@@ -4402,8 +4404,8 @@
       "tier": 2,
       "lane": "d176-claims",
       "branch": "agent/queue/d176-public-claims",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-330",
       "dependsOn": [
         "D-176-availability-framing-removal",
         "D-048-fix-landing-flash-snapshot-v2",
@@ -5491,16 +5493,17 @@
       "tier": 2,
       "lane": "d048-release-links",
       "branch": "agent/queue/d048-r-links",
-      "status": "todo",
-      "syncedTo": "D-317",
+      "status": "done",
+      "syncedTo": "D-329",
       "dependsOn": [
         "D-048-p3-links"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "e2e/personal-link.e2e.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"links\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=links); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-links's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Prerendered output checked live after deploy; link states (active, inactive, blocked) render as the kit did. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"links\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. D-329 (2026-11-13): owns also gains e2e/personal-link.e2e.ts, because the release moves that journey's signed-out heading from the kit line to the goal page's 'Get referred at <domain>.'; only that one assertion line is re-pinned. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=links); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-links's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Prerendered output checked live after deploy; link states (active, inactive, blocked) render as the kit did. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list.",
       "epic": "D-048-p3"
     },
     {
