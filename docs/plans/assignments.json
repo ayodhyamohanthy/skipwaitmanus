@@ -2533,7 +2533,7 @@
       "tier": 1,
       "lane": "d048-release-verify",
       "branch": "agent/queue/d048-r-verify",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-332",
       "dependsOn": [
         "D-048-p3-verify"
@@ -2542,7 +2542,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"verify\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=verify); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-verify's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (client/src/pages/loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057): /verify stays the referrer work-email code, referrerSignInHref only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"verify\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=verify); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-verify's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (client/src/pages/loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057): /verify stays the referrer work-email code, referrerSignInHref only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. Landed as 62c67595 (PR #1177; skipwait.me served git-commit 62c67595 and /verify rendered the goal page at 1280 and 390) on Nov 13 by the coordinating session on the owner's instruction (D-333 (1)), after an independent Tier 1 pass and green required CI on the exact head.",
       "epic": "D-048-p3"
     },
     {
@@ -3414,7 +3414,7 @@
       "tier": 1,
       "lane": "d048-profile",
       "branch": "agent/queue/d048-p3-public-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -3427,7 +3427,7 @@
         "client/src/pages/goal/public-profile/**",
         "design/goal-ui/captures/public-profile/**"
       ],
-      "note": "Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('public-profile').",
+      "note": "Implementation row from the D-048-marketing.md packet (AYO-11 design lane). flag: goalSurfaceOn('public-profile'). Landed as 8855f4a4 (PR #1162, switch still off) on Nov 13 by the coordinating session on the owner's instruction (D-333 (1)), after an independent Tier 1 pass and green required CI on the exact head.",
       "epic": "D-048-p3"
     },
     {
