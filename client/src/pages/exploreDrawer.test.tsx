@@ -154,7 +154,7 @@ describe("ask drawer", () => {
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
     fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
-    const sent = await screen.findByText("Ask sent to Wipro.");
+    const sent = await screen.findByText("Referral request sent to Wipro.");
     expect(sent).toBeTruthy();
     const call = posts(fetchMock)[0];
     if (!call) throw new Error("the ask was never posted");
@@ -238,7 +238,7 @@ describe("ask drawer", () => {
     const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toContain("Your 3 requests are all open.");
     expect(alert.textContent).toContain("Queue position stays equal either way.");
-    expect(screen.queryByText(/Ask sent to/)).toBeNull();
+    expect(screen.queryByText(/Referral request sent to/)).toBeNull();
     expect(within(drawer).getByLabelText("Job link")).toBeTruthy();
   });
 
@@ -319,16 +319,16 @@ describe("ask drawer", () => {
     expect(within(next).getByText("ada-resume.pdf")).toBeTruthy();
   });
 
-  it("offers the alert on a company that is not open, and says an alert is not a referral", async () => {
+  it("offers no alert on a company the directory marks closed, because that would reveal availability (D-176, D-174 door-neutral)", async () => {
     const fetchMock = stub({ directory: WIPRO_CLOSED });
     renderPage();
     fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
     const drawer = await screen.findByTestId("goal-drawer");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Get told when a referrer joins" }));
-    expect(await within(drawer).findByText("We’ll tell you when a verified employee at Wipro joins.")).toBeTruthy();
-    const alert = fetchMock.mock.calls.find(([path, init]) => String(path) === "/api/seeker-alerts" && (init as RequestInit | undefined)?.method === "POST");
-    expect(JSON.parse(String((alert?.[1] as RequestInit | undefined)?.body))).toEqual({ companyDomain: "wipro.com" });
-    expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
+    expect(within(drawer).queryByRole("button", { name: "Get told when a referrer joins" })).toBeNull();
+    expect(within(drawer).queryByText(/No verified employee/i)).toBeNull();
+    expect(within(drawer).queryByText(/An alert is not a referral/i)).toBeNull();
+    expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/seeker-alerts")).toBe(false);
+    expect(within(drawer).getByText("Goes to verified Wipro employees")).toBeTruthy();
   });
 
   it("the link field is read-only while a post is selected, and 'Change role' clears it", async () => {
