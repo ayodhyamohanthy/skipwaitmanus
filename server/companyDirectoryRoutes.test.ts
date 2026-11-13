@@ -6,6 +6,19 @@ import { CompanyConflictError, CompanyNotFoundError } from "./companyDirectoryAd
 import { registerCompanyDirectoryRoutes, type CompanyDirectoryRouteDeps } from "./companyDirectoryRoutes";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 
+// The seed-fallback test below asserts the "without a database" contract: with
+// no DB and not production, GET /api/companies serves the five launch companies
+// with openCount 0. Whether resolveCompanySource() reaches that fallback depends
+// on getDb() being empty — but vitest.setup.ts loads .env, and a developer's
+// DATABASE_URL would otherwise resolve a live pool and make openCount reflect
+// real rows. Pin getDb() empty so the no-database branch is deterministic while
+// the real resolveCompanySource() and seedCompanySource() logic still run.
+// (Overrides only getDb; the rest of ./db stays real.)
+vi.mock("./db", async importOriginal => {
+  const actual = await importOriginal<typeof import("./db")>();
+  return { ...actual, getDb: vi.fn(async () => null) };
+});
+
 const wipro: PublicCompany = { slug: "wipro", name: "Wipro", initials: "W", industry: "Technology services", location: "Global", functions: ["Engineering", "Data", "Operations"], blurb: "Explore roles across technology, consulting, and business operations.", domains: ["wipro.com"], openToReferrals: true };
 const adminWipro: AdminCompany = { ...wipro, id: 2, status: "listed", sortOrder: 20, primaryDomain: "wipro.com", updatedAt: "2026-10-01T00:00:00.000Z" };
 const identities: Record<string, { account: { id: number; role: "user" | "admin" } }> = { admin: { account: { id: 1, role: "admin" } }, member: { account: { id: 2, role: "user" } } };
