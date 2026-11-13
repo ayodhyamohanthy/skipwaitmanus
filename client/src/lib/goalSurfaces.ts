@@ -86,6 +86,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "share",
   "start",
   "suggest-company",
+  "support",
   "system",
 ];
 
