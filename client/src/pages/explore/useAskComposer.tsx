@@ -40,6 +40,7 @@ import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReaso
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
 import { linkHint, roleTitleFromUrl, type AskCostQuote, type LinkHint } from "./findModel";
+import { jobLinkMismatch, jobLinkPrefillEnabled, useJobLinkPreview, type JobLinkPreview } from "./jobLinkPrefill";
 import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
@@ -246,6 +247,8 @@ export type AskComposer = {
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
+  /** D-094 item 2 (switch off): the preview for the current link, read by /ask's company rule (§4.5). */
+  jobLinkPreview: JobLinkPreview | null;
   /** D-174: pick a posted role in place. Replaces the whole selection - a
    * linkless pick clears any stale link and identity from an earlier pick. */
   selectPost(selection: OpportunityAskSearch | null): void;
@@ -383,7 +386,16 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   const resumeView: AskResume = resumeFile ? { name: resumeFile.name } : uploaded ? { name: uploaded.fileName } : setup?.resume ? { name: setup.resume.fileName } : null;
   const resumeDoc = uploaded ?? (resumeFile ? null : setup?.resume ?? null);
   const hint = linkHint(url, company, linkTouched || attempted);
-  const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
+  // D-094 item 2 (D-264 (2), packet §4.2–4.4): the switch ships false, so this
+  // makes no request and changes no check until the release row flips it. On a
+  // company door a safe preview naming another company blocks Send before the
+  // press; no preview, or one that is not safe, keeps today's server decision.
+  const previewState = useJobLinkPreview(url, { enabled: jobLinkPrefillEnabled() });
+  const jobLinkPreview = previewState.preview;
+  const jobLinkBlocked = jobLinkPrefillEnabled() && options?.companyDoor === true && company !== null && jobLinkPreview !== null
+    ? jobLinkMismatch(jobLinkPreview, company)
+    : null;
+  const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains)) && !jobLinkBlocked;
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
   // D-132 item 3 (flag VITE_ASK_LEVEL_COST): the single shared by-level quote
@@ -429,12 +441,12 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
-    ? (hint?.tone === "error" ? hint.text : "Add the official job link first.")
+    ? (jobLinkBlocked ?? (hint?.tone === "error" ? hint.text : "Add the official job link first."))
     : isSignedIn && !resumeView ? "Add your resume first."
       : tooLong ? `Keep each reason to ${WHY_ME_MAX} characters.`
         : words < MIN_WORDS ? "Write your reasons first (at least a sentence or two)."
           : null;
-  const blocked = !online ? "You’re offline. Sending needs a connection." : isSignedIn ? cost.blockedReason ?? undefined : undefined;
+  const blocked = !online ? "You’re offline. Sending needs a connection." : isSignedIn ? cost.blockedReason ?? jobLinkBlocked ?? undefined : jobLinkBlocked ?? undefined;
 
   const resetForm = (options?: { clearResume?: boolean }) => {
     setUrl("");
@@ -701,6 +713,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     },
     postSelection,
     selectPost,
+    jobLinkPreview,
     resetForm,
     clearAfterClose,
   };
