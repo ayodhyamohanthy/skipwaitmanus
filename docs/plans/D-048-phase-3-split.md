@@ -201,6 +201,8 @@ A packet's pull request adds exactly these rows (as the table lists them: lane, 
 - `D-048-P-public` adds: `D-048-p3-policy`, `D-048-p3-system`, `D-048-p3-links`
 - `D-048-P-marketing` adds: `D-048-p3-home-signed-in`, `D-048-p3-discovery`, `D-048-p3-public-profile`
 > **Nov 10 (D-317):** the R1-R8 waves below were never registered except R4, so built goal surfaces stayed off in production. They are replaced by per-surface release rows `D-048-R-<id>` (twenty, after `D-048-R4` in `docs/plans/assignments.json`), each depending only on its own build row; the gates in item 4 above still apply to each.
+>
+> **Nov 11 (D-332):** each release row now sits directly after its own build row in `docs/plans/assignments.json` (a built page's release is that row's unfinished acceptance). The retirement rows `D-048-K1` to `D-048-K5` in the table above were never registered either; they are replaced by per-surface rows `D-048-K-<surface>`, `D-048-K-inplace` and `D-048-K-kit`, with their method in `docs/plans/D-048-retire.md`. Rule 5 (retire only after 7 days live with no new Sentry issue) is unchanged.
 - The CEO adds (release rows once their surfaces land; retirement rows after their release): `D-048-R1`, `D-048-R2`, `D-048-R3`, `D-048-R4`, `D-048-R5`, `D-048-R6`, `D-048-R7`, `D-048-R8`, `D-048-K1`, `D-048-K2`, `D-048-K3`, `D-048-K4`, `D-048-K5`, `D-048-K-kit`
 - Already in `docs/plans/assignments.json`: `D-048-p3-map`, `D-048-phase-3`, `D-048-F-typescale`, `D-048-p3-w0-shell`, `D-048-P-seeker`, `D-048-P-referrer`, `D-048-P-money`, `D-048-P-auth`, `D-048-P-account`, `D-048-P-admin`, `D-048-P-employer`, `D-048-P-public`, `D-048-P-marketing`, `D-048-p3-requests`, `D-048-p3-explore`, `D-048-p3-home`, `D-048-p3-queue`, `D-048-p3-company`, `D-048-p3-ask` (done)
 
