@@ -2,6 +2,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReferralRequest from "./ReferralRequest";
 
 const authState = vi.hoisted(() => ({ signedIn: false, openSignIn: vi.fn() }));
@@ -42,7 +43,7 @@ describe("ReferralRequest secure resume handoff", () => {
   afterEach(() => cleanup());
 
   it("persists an unsigned resume through sign-in and continues secure upload", async () => {
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText(/monthly credit/i)).toBeNull();
 
@@ -63,7 +64,7 @@ describe("ReferralRequest secure resume handoff", () => {
     cleanup();
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/complete") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : String(input).includes("/chunks") ? { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) } : String(input).includes("/api/documents/uploads") ? { ok: true, json: async () => ({ sessionId: "upload-71", chunkBytes: 49152 }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith("/api/documents/uploads"))).toBe(true));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/chunks"))).toBe(true));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/complete"))).toBe(true));
@@ -90,7 +91,7 @@ describe("ReferralRequest secure resume handoff", () => {
   it("does not preload resume filenames or on-device file bytes while signed out", async () => {
     localStorage.setItem("bridge-seeker-attachments", JSON.stringify([{ id: "71", fileName: "private-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }]));
     pendingResume.files = [new File(["resume"], "private-pending.pdf", { type: "application/pdf" })];
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(screen.queryByText("private-resume.pdf")).toBeNull();
     expect(screen.queryByText("private-pending.pdf")).toBeNull();
@@ -102,7 +103,7 @@ describe("ReferralRequest secure resume handoff", () => {
     pendingResume.files = [new File(["resume"], "private-pending.pdf", { type: "application/pdf" })];
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) })));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     await waitFor(() => expect(screen.getByText("private-resume.pdf")).toBeTruthy());
     await waitFor(() => expect(screen.getByText("private-pending.pdf")).toBeTruthy());
     expect(pendingResume.restore).toHaveBeenCalledTimes(1);
@@ -110,7 +111,7 @@ describe("ReferralRequest secure resume handoff", () => {
   });
 
   it("uses the primary action to open the resume picker before a document is selected", async () => {
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const openFileChooser = vi.spyOn(fileInput, "click");
     const primaryAction = screen.getAllByRole("button", { name: "Add your resume" }).at(-1) as HTMLButtonElement;
@@ -121,7 +122,7 @@ describe("ReferralRequest secure resume handoff", () => {
 
   it("does not disable the post-resume CTA while IndexedDB restoration is pending", async () => {
     pendingResume.restore.mockImplementation(() => new Promise<File[]>(() => undefined));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
     const send = await screen.findByRole("button", { name: /sign in & send private request/i }) as HTMLButtonElement;
@@ -129,7 +130,7 @@ describe("ReferralRequest secure resume handoff", () => {
   });
 
   it("rejects unsupported files before storing or uploading a resume", () => {
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["script"], "resume.html", { type: "text/html" })] } });
     expect(screen.getByText(/Use a PDF, Word document, PNG, or JPEG resume/i)).toBeTruthy();
@@ -138,14 +139,14 @@ describe("ReferralRequest secure resume handoff", () => {
 
   it("does not reveal a cached credit count before the Job Seeker signs in", () => {
     localStorage.setItem("bridge-tokens", "5");
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     expect(screen.queryByText(/5 credits available/i)).toBeNull();
     expect(screen.queryByText(/monthly credit/i)).toBeNull();
   });
 
   it("shows the real file chooser once the Job Seeker is signed in", () => {
     authState.signedIn = true;
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
     expect(fileInput).not.toBeNull();
@@ -159,7 +160,7 @@ describe("ReferralRequest secure resume handoff", () => {
   it("offers an optional note for the exact-company Referrer once a resume is attached", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/complete") ? { ok: true, json: async () => ({ id: "73", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/73", url: "/api/documents/73" }) } : String(input).includes("/chunks") ? { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) } : String(input).includes("/api/documents/uploads") ? { ok: true, json: async () => ({ sessionId: "upload-73", chunkBytes: 49152 }) } : { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) }));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
     await waitFor(() => expect(screen.getByRole("button", { name: /add a note for the referrer/i })).toBeTruthy());
@@ -173,7 +174,7 @@ describe("ReferralRequest secure resume handoff", () => {
   it("confirms that all available credits are used before showing the optional purchase action", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 0, purchasedCreditsRemaining: 0, totalAvailable: 0, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) })));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
 
     await waitFor(() => expect(screen.getByText("You have used all available referral credits.")).toBeTruthy());
     expect(screen.getByText(/0 of 3 free monthly credits left/)).toBeTruthy();
@@ -185,7 +186,7 @@ describe("ReferralRequest secure resume handoff", () => {
   it("reads a catalog pass summary: its plan credits, never 'free monthly' ones", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 4, purchasedCreditsRemaining: 0, totalAvailable: 4, cycleKey: "2026-10", subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" } }) })));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     await waitFor(() => expect(screen.getByText(/4 of 10 monthly plan credits left/)).toBeTruthy());
     expect(screen.queryByText(/free monthly credits/i)).toBeNull();
     vi.unstubAllGlobals();
@@ -202,7 +203,7 @@ describe("ReferralRequest secure resume handoff", () => {
       if (String(input).includes("/api/company-referrals")) { sent = true; return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "routed", remainingTokens: 9, creditSummary: startSummary(9) }) }; }
       return { ok: true, json: async () => ({ summary: startSummary(sent ? 9 : 10) }) };
     }));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
     const sendButton = await screen.findByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
@@ -224,7 +225,7 @@ describe("ReferralRequest secure resume handoff", () => {
       if (String(input).includes("/api/company-referrals")) return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", remainingTokens: 2, creditSummary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 2, purchasedCreditsRemaining: 0, totalAvailable: 2, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
       return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
     }));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
     const sendButton = await screen.findByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
@@ -241,13 +242,13 @@ describe("ReferralRequest secure resume handoff", () => {
 
   it("shows the pay range carried from the Opportunity Wall on the resume step", () => {
     localStorage.setItem("bridge-target-compensation", "₹12–18 LPA");
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     expect(screen.getByText("Compensation: ₹12–18 LPA")).toBeTruthy();
   });
 
   it("tells signed-in seekers the resume stays private instead of promising a later sign-in", () => {
     authState.signedIn = true;
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     expect(screen.getByText("Only you and the assigned referrer can open it.")).toBeTruthy();
     expect(screen.queryByText("You will sign in only when you send.")).toBeNull();
   });
@@ -259,7 +260,7 @@ describe("ReferralRequest secure resume handoff", () => {
       if (String(input).includes("/api/documents/uploads")) { uploadAttempts += 1; return { ok: false, json: async () => ({ error: "We could not prepare your private resume upload. Please try again." }) }; }
       return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
     }));
-    render(<ReferralRequest />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ReferralRequest /></QueryClientProvider>);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "kept-resume.pdf", { type: "application/pdf" })] } });
     await waitFor(() => expect(screen.getByText("We could not prepare your private resume upload. Please try again.")).toBeTruthy());
