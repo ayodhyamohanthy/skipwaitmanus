@@ -9,6 +9,8 @@ import { VerifiedPanel, VerifyLayout, VerifyProgress } from "@/components/verify
 import { VerifyRequestError, checkWorkEmailCode, enrollWorkEmail, sendWorkEmailCode } from "@/components/verify/verifyApi";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { useCompanyDirectory } from "@/lib/companyDirectory";
+import GoalVerify from "@/pages/goal/verify/GoalVerify";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "proton.me"];
 const MAX_ATTEMPTS = 5;
@@ -25,6 +27,9 @@ const messageOf = (reason: unknown, fallback: string) => (reason instanceof Erro
 const countdown = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
 export default function Verify() {
+  // Goal-UI migration (D-120): the goal verify page replaces this page when its
+  // build flag is on; the kit page below stays the default until QA passes.
+  if (goalSurfaceOn("verify")) return <GoalVerify />;
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [step, setStep] = useState<Step>("company");

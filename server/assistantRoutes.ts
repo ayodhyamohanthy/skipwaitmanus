@@ -19,6 +19,8 @@ import {
   updateDeveloperAppWebhook,
 } from "./db";
 import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
+import { readApprovalCosts } from "./assistantApprovalCost";
+import { approvalCostChangedMessage, approvalCostSchema, sameApprovalCost } from "../shared/assistantApprovalCost";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -44,6 +46,7 @@ export type AssistantRouteDeps = {
   updateDeveloperAppWebhook?: typeof updateDeveloperAppWebhook;
   submitDeveloperAppForReview?: typeof submitDeveloperAppForReview;
   getAssistantAccess?: typeof getAssistantAccess;
+  readApprovalCosts?: typeof readApprovalCosts;
 };
 
 const parseId = (raw: string | undefined) => {
@@ -82,6 +85,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   const doUpdateWebhook = deps.updateDeveloperAppWebhook ?? updateDeveloperAppWebhook;
   const doSubmitApp = deps.submitDeveloperAppForReview ?? submitDeveloperAppForReview;
   const access = deps.getAssistantAccess ?? getAssistantAccess;
+  const readCosts = deps.readApprovalCosts ?? readApprovalCosts;
 
   app.get("/api/assistants/access", async (req, res) => {
     try {
@@ -171,8 +175,12 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to review approvals" });
+      const approvals = await listApprovals(identity.account.id);
+      // #644: each pending ask carries what it would charge if approved now, so the card
+      // shows the cost the decision route will hold the owner to.
+      const costs = await readCosts(identity.account.id, approvals.filter(approval => approval.status === "pending" && approval.kind === "ask_send").map(approval => approval.id));
       res.set("Cache-Control", "private, no-store");
-      res.json({ approvals: await listApprovals(identity.account.id) });
+      res.json({ approvals: approvals.map(approval => { const cost = costs.get(approval.id); return cost ? { ...approval, cost } : approval; }) });
     } catch { res.status(500).json({ error: "We could not load your approvals" }); }
   });
 
@@ -215,6 +223,19 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
       if (!approvalId) return res.status(400).json({ error: "Invalid approval" });
       const decision = req.body?.decision === "approved" || req.body?.decision === "declined" ? req.body.decision : null;
       if (!decision) return res.status(400).json({ error: "Choose approve or decline" });
+      // #644: an approve that would charge runs only at the cost the owner saw. A missing or
+      // different cost is answered 409 with the current one before anything is charged, and the
+      // approval stays pending, so re-approving at the new cost never loops. The cost depends only
+      // on the stored job link and the deploy-time ASK_LEVEL_COST flag, so the one window left is a
+      // flag flip between this read and the executor's, which no user can trigger.
+      if (decision === "approved") {
+        const current = (await readCosts(identity.account.id, [approvalId])).get(approvalId);
+        const shown = approvalCostSchema.safeParse(req.body?.expectedCost);
+        if (current && (!shown.success || !sameApprovalCost(shown.data, current))) {
+          record({ actorUserId: identity.account.id, action: "assistant.approval_cost_changed", outcome: "denied", resourceType: "assistant_approval", resourceId: approvalId, metadata: { shownCost: shown.success ? shown.data.cost : null, shownLevel: shown.success ? shown.data.level : null, cost: current.cost, level: current.level } });
+          return res.status(409).json({ error: approvalCostChangedMessage(current), code: "cost_changed", cost: current });
+        }
+      }
       const result = await doDecide(identity.account.id, approvalId, decision);
       record({ actorUserId: identity.account.id, action: `assistant.approval_${decision}`, outcome: "success", resourceType: "assistant_approval", resourceId: approvalId, metadata: { kind: req.body?.kind } });
       res.json({ approval: result });

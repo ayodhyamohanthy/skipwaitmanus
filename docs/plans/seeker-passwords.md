@@ -14,6 +14,10 @@
 | Do not run at the same time as | FND-4 (same Sentry files), D-057-session-gate (next) |
 | Verified against | `main` `e6b87f8`/`681ea79` (merge trial: tsc 0, 259/259 focused tests) and the branch tip `5653b3b` (217/217) |
 
+## Status
+
+- **Nov 13, D-333 (6): unparked to `todo`.** The D-163 condition is met (`D-057-session-gate` is done). The landing gate stays: the owner's WorkOS dashboard steps in §5 step 5 come **before** the deploy. Without the owner's recorded confirmation, the lander stops with `--report blocked` and does not land.
+
 ## 1. Goal
 Seekers sign in only on skipwait.me, never on an authkit.app page. They use Google, Microsoft, GitHub, LinkedIn or Slack, or personal email and password, with forgot and reset through WorkOS. There are no sign-in codes for seekers at all. Referrers keep the work-email code on every visit and can never get a password. Nothing links or merges on an unverified email, and a refused sign-in leaves no trace.
 

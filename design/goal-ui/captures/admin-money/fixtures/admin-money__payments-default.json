@@ -1,0 +1,81 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops-admin@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/payments/review",
+      "status": 200,
+      "body": {
+        "payments": [
+          {
+            "id": 7,
+            "provider": "chargebee",
+            "providerHostedPageId": "hosted-7",
+            "checkoutIntentId": null,
+            "userId": 3,
+            "role": "job_seeker",
+            "tokenCount": 3,
+            "amount": 499,
+            "currency": "INR",
+            "reconciliationReason": "Held for reconciliation",
+            "createdAt": "2026-11-04T00:00:00.000Z",
+            "userEmail": "fixture-user@example.com",
+            "reviewKind": "awaiting_credit",
+            "refunds": null
+          },
+          {
+            "id": 5,
+            "provider": "chargebee",
+            "providerHostedPageId": "hosted-5",
+            "checkoutIntentId": null,
+            "userId": 4,
+            "role": "referrer",
+            "tokenCount": 5,
+            "amount": 999,
+            "currency": "INR",
+            "reconciliationReason": "refund_partial",
+            "createdAt": "2026-11-03T00:00:00.000Z",
+            "userEmail": "fixture-referrer@example.com",
+            "reviewKind": "refunded_after_credit",
+            "refunds": {
+              "count": 1,
+              "latestAmount": 999,
+              "latestCurrency": "INR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ]
+}

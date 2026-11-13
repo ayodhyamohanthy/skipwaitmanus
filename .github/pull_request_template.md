@@ -6,6 +6,9 @@
 
 ## Docs touched (D-088: DECISIONS.md / PRD / AGENTS.md / BRIEF / content.json)
 
+## Ported assertions
+<!-- Fill only when a test file ends with fewer assertion lines (expect/assert): a table with columns File and "Where each removed assertion now lives", one row per file, full path. CI reads this from the pull request event, so after editing it push again (an empty commit is fine). Pinned login and money tests need a "test-integrity: <file> — D-<n>" commit instead (D-212). -->
+
 ## Checks
 - [ ] typecheck + tests + build green on this exact commit
 - [ ] before/after captures at 1280 and 390 (UI slices)

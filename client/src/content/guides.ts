@@ -77,7 +77,7 @@ const JOB_REFERRAL_PLATFORMS: Guide = {
       ],
       points: [
         "Free allowance for seekers, with a cap. Usually a handful of referral requests a month, and no charge at all for the employee reviewing one.",
-        "Per-referral credit, kept only once an employee picks up your request. The credit leaves your balance when you send a request, comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays spent once someone has picked it up, even if they pass. If a service keeps the credit when nobody ever picks up your request, that is the single most important thing to notice.",
+        "Per-referral credit. A referral request is used only when a verified employee can see it. It comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays used once someone has picked it up, even if they pass. If a service keeps the charge when nobody ever picks up your request, that is the single most important thing to notice.",
         "Subscription for recurring volume. A monthly fee that includes a set number of credits, for people applying to many roles a month.",
         "Employer sponsorship. Companies pay to promote roles into seeker feeds. This costs a job seeker nothing, which is why it is the healthiest of the four from the seeker's side.",
       ],

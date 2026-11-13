@@ -38,7 +38,10 @@ function MenuItem({ icon: Icon, label, disabled = false, onSelect }: { icon: Luc
 function ReferrerMenuItems() {
   const [, setLocation] = useLocation();
   const access = useReferrerAccess();
-  if (access.status !== "verified") return null;
+  // D-057 (§0b.8c): a server-verified referrer whose session is code_required keeps
+  // their navigation — the referrer surfaces themselves show the in-place step-up.
+  // A signed-in person is never sent to the standalone code sign-in from here.
+  if (access.status !== "verified" && access.status !== "code_required") return null;
   return <>
     <MenuItem icon={BriefcaseBusiness} label="My Company Inbox" onSelect={() => setLocation("/inbox")} />
     <MenuItem icon={BarChart3} label="My impact" onSelect={() => setLocation("/referrer/impact")} />

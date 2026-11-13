@@ -1,9 +1,13 @@
+import { lazy, Suspense } from "react";
 import { RefreshCw, WifiOff } from "lucide-react";
 import { readReferralDraft } from "@/lib/pwaContinuity";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalOffline = lazy(() => import("./goal/system/GoalOffline"));
 
 // Kit v4 app state "Offline": saved-info banner, centered icon, "No connection.",
 // draft reassurance, and a brand Try again button.
 export default function Offline() {
+  if (goalSurfaceOn("system")) return <Suspense fallback={null}><GoalOffline /></Suspense>;
   const draft = typeof window !== "undefined" ? readReferralDraft() : null;
   const hasDraft = Boolean(draft?.targetUrl);
   return (

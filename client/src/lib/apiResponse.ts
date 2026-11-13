@@ -1,4 +1,5 @@
-import { captureClientError, scrubSentryUrl } from "./sentry";
+import { scrubTelemetryUrl } from "@shared/telemetryScrub";
+import { captureClientError } from "./sentry";
 
 export async function readApiJson<T extends Record<string, unknown>>(response: Response, fallbackMessage: string): Promise<T> {
   if (!response.ok && response.status >= 500) {
@@ -6,7 +7,7 @@ export async function readApiJson<T extends Record<string, unknown>>(response: R
     captureClientError(new Error(`API ${response.status}: ${fallbackMessage}`), {
       source: "api-response",
       status: response.status,
-      url: scrubSentryUrl(response.url, origin),
+      url: scrubTelemetryUrl(response.url, origin),
     });
   }
   try {

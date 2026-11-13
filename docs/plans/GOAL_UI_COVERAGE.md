@@ -33,6 +33,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/` | `pages/Home` | `D-048-p3-home`, `D-048-p3-home-signed-in` | D-048-p3-home: done; D-048-p3-home-signed-in: to be added by its lane packet |
 | `/fast/:linkCode` | `pages/FastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/refer/:companySlug/:vanityAlias` | `pages/VanityFastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
+| `/r/:token` | `pages/AskInviteLink` | `D-090-BYOR` | D-090-BYOR: fix round in progress on #632 |
 | `/share-card/:token` | `pages/ShareCard` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/email-review/:linkToken` | `pages/EmailReviewAction` | `D-048-p3-email-review` | D-048-p3-email-review: todo |
 | `/start` | `pages/Onboarding` | `D-048-p3-start` | D-048-p3-start: todo |
@@ -67,7 +68,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/developers` | `pages/Developers` | `D-048-p3-dev` | D-048-p3-dev: to be added by its lane packet |
 | `/assistants` | `pages/Assistants` | `D-048-p3-assistants` | D-048-p3-assistants: todo |
 | `/skippy` | `pages/Skippy` | `D-048-p3-skippy` (D-167) | D-048-p3-skippy: to be added by its lane packet |
-| `/agents` | `pages/SeekerAgents` | `D-048-p3-agents` (D-167) | D-048-p3-agents: to be added by its lane packet |
+| `/agents` | `pages/SeekerAgents` | `D-048-p3-agents` (D-167) | D-048-p3-agents: done — wired behind the assistants surface (flag off); kit body kept; not moved (no captures, §1.7 not claimed) |
 | `/approve` | `pages/Approve` | `D-048-p3-assistants` | D-048-p3-assistants: todo |
 | `/connect-assistant` | `pages/ConnectAssistant` | `D-048-p3-assistants` | D-048-p3-assistants: todo |
 | `/developer-console` | `pages/DeveloperConsole` | `D-048-p3-dev` | D-048-p3-dev: to be added by its lane packet |
@@ -75,8 +76,8 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/reset-password` | `pages/ResetPassword` | `D-048-p3-signin` | D-048-p3-signin: to be added by its lane packet |
 | `/wallet` | — | none: redirect to /plans | — |
 | `/thread` | `ThreadListAlias` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
-| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
-| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: todo |
+| `/thread/:requestId` | `ThreadDetailAlias` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
+| `/conversation/:requestId` | `pages/ReferralConversation` | `D-048-p3-conversation`, `D-048-p3-live-review-conversation` | D-048-p3-conversation: todo; D-048-p3-live-review-conversation: done (seeker side) — landed `99f8a1f2` (#786); not moved (§1.6 states and §1.7 not claimed) |
 | `/messages` | `pages/Messages` | `D-048-p3-messages` | D-048-p3-messages: to be added by its lane packet |
 | `/share` | `pages/ShareHub` | `D-048-p3-seeker-small` | D-048-p3-seeker-small: todo |
 | `/inbox` | `pages/UnifiedInbox` | `D-048-p3-inbox` | D-048-p3-inbox: todo |
@@ -139,6 +140,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 | `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx` | sign-in, the goal sign-in, `/referrer`, company claim | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`) |
 | `WorkEmailSignIn.tsx` | `/email-review`, `/referrer` | `D-048-p3-verify` | Work-email code only (D-030) |
 | `ask/PinnedWorkPicker.tsx` | `/ask`, the drawer, the composer | `D-048-p3-live-review-find` | |
+| `admin/UnlistedDemandView.tsx` | `/admin`, the companies view | `D-086.admit` (D-086) | Read-only admission queue of unlisted domains; no create, list or prefill control, and nothing is listed automatically (D-101) |
 | `OneTapShareActions.tsx` | `/wall`, `/referrer` | `D-048-p3-referrer` | `D-048-p3-discovery` adopts it after |
 | `profile/ProfileLinkSheet.tsx`, `profile/VisibilityOptions.tsx` | `/profile`, `/work`, `/p/:handle` | `D-048-p3-profile` | `D-048-p3-public-profile` adopts after |
 | `referrer/ReferrerSetupDialog.tsx`, `referrer/ReferrerWorkspace.tsx` | `/referrer`, `/referrer/impact` | `D-048-p3-referrer` | |
@@ -148,7 +150,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 ## 4. Single-page components move with their page's row
 Each listed component is redesigned by the row that owns its page (§2), in the same PR, one component per commit where the row is large. A component not listed here or in §3 must get an owner in this file before anyone edits it.
 
-- `App.tsx`: `ErrorBoundary.tsx`, `PwaStatus.tsx`
+- `App.tsx` (owner row `D-048-F-app-wrapper`, with the global toaster; packet `docs/plans/D-048-F-app-wrapper.md`): `ErrorBoundary.tsx`, `PwaStatus.tsx`
 - `pages/AdminFlowHealth.tsx`: `admin/BaselineMetricsPanel.tsx`
 - `pages/AdminOverview.tsx`: `admin/AdminOverviewView.tsx`, `admin/AdminSectionViews.tsx`, `admin/AdminShell.tsx`
 - `pages/AdminPaymentsReview.tsx`: `admin/PaymentReviewRow.tsx`
@@ -162,10 +164,12 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/ComponentShowcase.tsx`: `AIChatBox.tsx`
 - `pages/DeveloperConsole.tsx`: `developers/AppDetails.tsx`, `developers/RegisterAppForm.tsx`
 - `pages/EmployerDashboard.tsx`: `employer/EmployerFrame.tsx`, `employer/EmployerOverview.tsx`
+- `pages/Explore.tsx` and `pages/ExploreCompany.tsx` (components mounted by row `D-086.mount`, page redesign still `D-048-p3-live-review-find`): `demand/CompanyDemandLine.tsx`, `demand/CompanyDemandList.tsx`
 - `pages/Home.tsx`: `VisualJourney.tsx`
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`
@@ -223,7 +227,14 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - **Scope:** `/agents`, the seeker's agent grants (`client/src/pages/SeekerAgents.tsx`, 197 lines).
 - **Goal line (proposed):** "Let an assistant help, on your terms." **Next step:** "Grant access". Every limit, expiry, revoke and pause-all control stays visible (D-141); the key is shown once.
 - **Holds:** behind `SKIPPIE_AGENT_ENABLED` (off).
-- **Owns:** `client/src/pages/SeekerAgents.tsx` and a new `client/src/pages/seekerAgents.test.tsx`.
+- **Owns:** `client/src/pages/SeekerAgents.tsx` and a new `client/src/pages/seekerAgents.test.tsx`. **This row owns no capture folder and claims no §1.6 proof.** No capture was ever committed on the wiring head `9dd7236e` (`git ls-tree -r 9dd7236e --name-only -- design/goal-ui/captures/agents/` is empty), and the capture owns amendment is carried by the separate registry pull request #777 (`agent/registry/d048-agents-captures`, open, unmerged) so exactly one route registers it. Until that lands and its captures are committed and inspected, this row states none. §1.6 also binds a page that counts as moved, and this row disclaims §1.7 below, so it cannot invoke §1.6 for itself.
+- **Delivered (Oct 28):** the goal body already existed as `client/src/pages/goal/assistants/GoalSeekerAgents.tsx` (built and reviewed with `D-048-p3-assistants`, #563). This row wires it on the shared `assistants` surface id — the same id that owns the `/agents` route in `client/src/lib/goalSurfaces.ts` — keeps the kit page as `LegacySeekerAgents` when the flag is off, and pins every D-141 control plus the not-enabled, error/retry, signed-out and offline states in `client/src/pages/seekerAgents.test.tsx` (10 tests; the 7 goal tests fail against the kit page before the switch). Delivered is the wiring and its tests: **no captures, no flag change, nothing enabled.**
+- **Goal-line note:** the shipped h1 is "Let your agent prepare a better referral" (#563), not the proposed line above. The body uses `AssistantLayout`'s next-step block like the other assistant surfaces and does not export `GOAL_PAGE`, so this row does not claim §1.7's moved contract; moving all assistant surfaces onto `GoalNextStep`/`GOAL_PAGE` is future work, not this row's. Because the contract is not satisfied, the row's test does not call `assertGoalPage` — an assertion it could not pass would be a false claim, not proof.
+- **Routed, not fixed here (all three outside this row's `owns`):**
+  1. *Goal contract.* `client/src/pages/goal/assistants/AssistantLayout.tsx:21` renders `<section aria-label="Your next step">`, while `client/src/test/goalPageContract.ts:14` selects `section[aria-labelledby="…"]`, and `GoalSeekerAgents.tsx` exports no `GOAL_PAGE`. Both files sit in `client/src/pages/goal/assistants/**`, owned by `D-048-p3-assistants`. Changing `AssistantLayout` would also restyle `/assistants`, `/approve` and `/connect-assistant`, which this row must not touch.
+  2. *Draft-only copy.* `GoalSeekerAgents.tsx:108` labels the four limits "Referrals per send", "Referrals per day", "Referrals per week" and "Sends per day", and `:115` repeats "referrals/send … sends/day", while `:105` promises "No sends, purchases or automatic applications." The server counts draft creations and their quote-cost (`server/seekerAgentRoutes.ts:89`, `server/seekerAgentDeps.ts:46`), so the labels describe a capability the product does not have. Same owner row, same file. This row removed the tests' dependence on those nouns instead (below) so the copy fix is not blocked by a test that certifies the wrong wording.
+  3. *Server event detail.* The activity list renders `ev.detail` verbatim (`GoalSeekerAgents.tsx:116`) and server draft/limit events carry internal credit wording. That is a server-owned string, a separate bounded follow-up, and no server file is edited here.
+- **Test wording note (finding 2, in-owns half):** `client/src/pages/seekerAgents.test.tsx` no longer asserts the disputed limit labels by their text; it pins the same four limit controls by their ids (`limit-creditsPerAsk`, `limit-creditsPerDay`, `limit-creditsPerWeek`, `limit-asksPerDay`) plus the promise that the agent cannot send. Coverage is the same four controls and one stronger promise assertion; no behaviour assertion was dropped, and the POST body still pins all four limit keys.
 
 ### 6.6 Gap pages folded into rows whose lane packets are not written yet
 The split's row text now names them, so their lane packet writer adds them:
@@ -239,13 +250,15 @@ The split's row text now names them, so their lane packet writer adds them:
   1. the foundation rows (`D-048-F-*`, with §6.1 and §6.2);
   2. the redesign rows of the live pages (`D-048-p3-live-review-*`);
   3. the lane rows, top down in `docs/plans/assignments.json`;
-  4. `D-048-K-kit` last.
+  4. each surface's release row `D-048-R-<id>` directly after its build row (D-317, D-332);
+  5. each surface's retirement row `D-048-K-<surface>` 7 days after its release (`docs/plans/D-048-retire.md`, D-332);
+  6. `D-048-K-kit` last.
 - **Every surface row depends on `D-048-F-goal-check`.** Lane packets add it to each row they add.
 - **A new route or component** needs its line here (§2-§5) in the same PR (D-167). Ask the CEO with `--report blocked` when no row fits.
 
 ## Status
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
-- D-048-F-shell-parts: review — branch agent/queue/d048-f-shell-parts — 2026-10-28 — DeepSeek-V4.1-Flash Cline local · 2a19: AccountMenu, NotificationBell, BetaNotice and CookieConsent are on goal tokens with behaviour pinned (30 new assertions; every existing suite kept) and no colour literal left; draft PR open, not merged (owner instruction). Two calls are not this row's to make, so they are reported instead of widened: (1) `GoalButton` in the consent banner needs `client/src/components/goal/goalBoundary.test.ts` (MOVED_SURFACES; owned by D-048-F-flags / D-048-p3-assistants / D-090-BYOR) to list this row's four parts, and its `primary` variant would also break `GoalLanding.test.tsx`'s document-wide one-primary count, so the banner's actions carry the GoalButton recipe in tokens; (2) the 390px duplicate chrome (GoalShell.tsx renders its own Alerts bell beside the phone slot's menu bell, and the menu element renders twice) is in GoalShell.tsx / index.css, neither in this row's owns.
+- D-048-F-shell-parts: todo (Nov 13, D-333 (2): the owner released the hold; both dependencies are done). `AccountMenu.tsx` returns to this row (D-057 §0b.8c, D-333 (7)). Tier 2: merge current `main` into #767 and land on green required CI (D-200 (4)).
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
-- D-048-p3-agents: todo; waits for the foundation rows.
+- D-048-p3-agents: done — landed `157447ab` — the goal body (`pages/goal/assistants/GoalSeekerAgents.tsx`, #563) behind the shared `assistants` surface (flag off), kit page kept as the fallback; `client/src/pages/seekerAgents.test.tsx` pins the switch, every D-141 control and the not-enabled/error/signed-out/offline states. **Not moved:** no captures are delivered and §1.6/§1.7 are not claimed; the capture `owns` amendment rides #777, and the goal-contract and draft-only-copy defects are routed to `D-048-p3-assistants`, which owns `client/src/pages/goal/assistants/**`. **Landing (Oct 29):** the reviewed head `28106b84` carried an independent pass; `main` `5a13c7e3` merged into it with no conflict hunk; the packet was checked against D-225–D-232 and none affects this row; the code landed as `157447ab` through draft PR #778 (`/agents` renders the kit page in production until the `assistants` surface is released).

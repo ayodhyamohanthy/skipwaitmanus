@@ -2,7 +2,18 @@
 
 This review covers PRs [#465](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/465), [#478](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/478), [#534](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/534), [#535](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/535), [#506](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/506), [#517](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/517), [#482](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/482), [#490](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/490), [#479](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/479), and [#510](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/510), against their merged changes and current `main`.
 
-## Findings needing follow-up
+## Follow-up status (re-checked against `main` on 2026-10-28)
+
+All four findings are fixed on `main` by row `POSTMERGE-oct22-fixes`, each with a regression test that fails without the fix. No finding here is open, nothing is waiting on a code change, and no further fix row is needed from this audit.
+
+| Finding | Fix on `main` | Regression test |
+|---|---|---|
+| P1 #482, a held ask repriced across an activation | `821399d4`, delivery charges the stored row or the flat one-credit price (`server/db.ts`) | `server/db.askCostStored.test.ts:366` |
+| P2 #478, no test proves the live catalog price reaches the page | `09891b3b` | `client/src/pages/plans.kit.test.tsx:90` |
+| P2 #534, pack-price copy duplicates the catalog | `91e0b6c8`, copy composed through `firstPackClaim()` in `shared/planCatalog.ts` | `client/src/pages/policyPages.test.tsx` |
+| P2 #506, the stale-checkout sample can name aged-out rows | `01928e67` + `5ff7ef2c` | `server/dailyMoneyCheck.test.ts:569` |
+
+## Findings as found (each one now fixed)
 
 ### P1 — #482: a held ask can be repriced when `ASK_LEVEL_COST` is enabled
 
@@ -10,17 +21,25 @@ The feature-off path creates a waiting ask without an `askCosts` row; migration 
 
 The added tests cover flag-off creation and flag-on creation/replay, but not an ask that waits across a flag change (`server/db.askCostStored.test.ts`). Before enabling level pricing, preserve the creation-time flat price for missing-row legacy asks (or snapshot the pricing mode for waiting asks) and add a regression test that creates a waiting ask with the flag off, turns it on, then delivers it without repricing. The plan currently records the D-132 feature flags as off, so this should be fixed before activation.
 
+**Fixed on `main` (`821399d4`).** Delivery now charges the stored `askCosts` row when one exists and the flat one-credit price when none does, so an ask that waited across the activation is never reclassified against the flag as it stands at delivery. The regression test creates a waiting ask with the flag off, turns the flag on, delivers it, and asserts one credit (`server/db.askCostStored.test.ts:366`).
+
 ### P2 — #478: UI tests no longer verify that a live catalog price is displayed
 
 The PR replaced assertions for the displayed `$1 a credit` / `₹99 a credit` and price-strip values with generic `Credits` / `Packs` fallback assertions. This remains in `client/src/pages/plans.kit.test.tsx:67,72`, `client/src/pages/plans.paymentRecovery.test.tsx:60`, and `client/src/pages/plans.paymentRoute.test.tsx:31,38,52,55`. The added `creditFrom()` unit test checks price-range calculation, but no component test verifies that loaded catalog prices reach the price badge and cost strip. A missing or incorrect page-level price can therefore pass these tests. Add rendered-page tests with successful USD and INR catalog responses, asserting the displayed catalog-derived range; keep a separate test for the no-catalog fallback.
+
+**Fixed on `main` (`09891b3b`).** `client/src/pages/plans.kit.test.tsx:90` renders the page against a real catalog response for both USD and INR, asserts the catalog-derived per-credit range in the price badge and the cost strip, and keeps the no-catalog fallback as its own case.
 
 ### P2 — #534: public pack-price copy duplicates the catalog values
 
 The user-facing text hard-codes the first-pack claims (`₹99 for 2 credits in India` and `$5 for 5 credits elsewhere`) in `client/src/pages/Pricing.tsx:23` and `shared/landingContent.ts:94`. The canonical current pack values live in `shared/planCatalog.ts:146-160`; the pricing guide says pack prices are derived from the catalog (`docs/PRICING.md:37`). The current literals match the first packs, but a later catalog change could leave the landing and pricing copy stale. `client/src/pages/policyPages.test.tsx:127-128` asserts those same literals rather than tying them to the catalog. Compose the copy from the shared catalog or a helper backed by it, then test the rendered values against that source.
 
+**Fixed on `main` (`91e0b6c8`).** `firstPackClaim()` in `shared/planCatalog.ts` composes the claim from the catalog packs, and both `client/src/pages/Pricing.tsx` and `shared/landingContent.ts` read it instead of holding literals, so a catalog change moves the copy with it.
+
 ### P2 — #506: the stale-checkout sample can include aged-out checkouts
 
 The stale summary covers pending checkouts older than one day but younger than seven days, using both `staleCutoff` and `agedOutCutoff`. Its sample query currently receives only `staleCutoff`, so it can return older-than-seven-day checkout IDs whose provider status is unverified under the separate aged-out rule. This can make the “stale checkouts” line name examples outside its stated window. Add the same seven-day lower bound to the sample query and a regression test with one 1–7-day row and one older-than-seven-day row; assert the aged-out ID is absent. Relevant code: [`server/dailyMoneyCheck.ts`](https://github.com/ayodhyamohanthy/skipwaitmanus/blob/main/server/dailyMoneyCheck.ts#L459-L473).
+
+**Fixed on `main` (`01928e67`, `5ff7ef2c`).** The sample query receives `agedOutCutoff` as its lower bound, and `server/dailyMoneyCheck.test.ts:569` runs the real query over an in-memory database with one in-window row and one aged-out row and asserts the aged-out ID is absent.
 
 ## Resolved items and clean reviews
 
@@ -30,4 +49,6 @@ The stale summary covers pending checkouts older than one day but younger than s
 
 ## Validation note
 
-This audit worktree has no local `node_modules/.bin/vitest`, so a complete local suite was not available here. The review compared each exact merged diff with its first parent and checked the resulting code/tests; required CI on the findings PR remains the gate. No production database or checkout was accessed.
+The audit itself (Oct 22-24) ran in a worktree with no local `node_modules/.bin/vitest`, so a complete local suite was not available then. The review compared each exact merged diff with its first parent and checked the resulting code and tests; required CI on the findings pull request was the gate. No production database or checkout was accessed.
+
+The follow-up status above was re-checked on 2026-10-28 by reading each fix commit and its regression test on `main`, and by running the four named test files against `main` in a clean checkout. This pull request changes documentation only, so required CI is the gate for it.
