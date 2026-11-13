@@ -2825,7 +2825,7 @@
     },
     {
       "id": "D-048-p3-admin-money",
-      "title": "W6 /admin/payments, /admin/catalog-sync, /admin/token-recovery",
+      "title": "W6 /admin/payments, /admin/catalog-sync, /admin/token-recovery and /admin/money-check (D-167)",
       "row": "D-048",
       "packet": "docs/plans/D-048-admin.md",
       "tier": 1,
@@ -2841,6 +2841,7 @@
         "client/src/pages/AdminPaymentsReview.tsx",
         "client/src/pages/AdminCatalogSync.tsx",
         "client/src/pages/AdminTokenRecovery.tsx",
+        "client/src/pages/AdminMoneyCheck.tsx",
         "client/src/pages/goal/admin-money/**",
         "design/goal-ui/captures/admin-money/**",
         "client/src/test/goalPagesBoundary.test.ts"
