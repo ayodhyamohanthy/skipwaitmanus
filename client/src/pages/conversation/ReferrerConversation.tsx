@@ -167,9 +167,11 @@ export function ReferrerConversation(props: ReferrerConversationProps) {
   let reason: string;
   if (passed) reason = "The request stays active for other verified employees. Your identity was never revealed.";
   else if (colleagueHolds) reason = `Another verified employee at ${company} is deciding on it. Nothing is needed from you.`;
-  else if (deciding) reason = request.decisionDueAt
-    ? `Accept or pass by ${new Date(request.decisionDueAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}. After that it goes back to your colleagues, and nothing is held against you.`
-    : referrerPendingCopy(request);
+  // #831 F1: no decision deadline here. `GET /api/company-referrals/:id` serves
+  // buildClaimedAskDetailView, whose allow-list carries no decisionDueAt, so no
+  // client source can fill that line; the deadline payload belongs to the P0
+  // acceptance lane and is not promised until it is actually served.
+  else if (deciding) reason = referrerPendingCopy(request);
   else if (stage === "Accepted") reason = REFERRED_DEADLINE_ENABLED && request.referredDueAt
     ? `Submit it through ${company}’s official referral process, then mark it Referred by ${new Date(request.referredDueAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} so the seeker knows.`
     : `Submit it through ${company}’s official referral process, then mark it Referred so the seeker knows.`;

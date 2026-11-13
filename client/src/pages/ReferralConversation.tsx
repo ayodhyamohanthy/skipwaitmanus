@@ -10,29 +10,13 @@ import { AppShell } from "@/components/AppShell";
 import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
 import { ReferrerConversation } from "./conversation/ReferrerConversation";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
-import { captureClientError } from "@/lib/sentry";
 import { ShareWinCard } from "@/components/thread/ShareWinCard";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { authedFetch, decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
+import { decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
 import { trpc } from "@/lib/trpc";
-import { z } from "zod";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
-
-// #831 F2: the unclaimed preview answers first and carries no decision-due
-// time, so the goal page reads the claimed detail (which only ever serves an
-// ask assigned to this account). The answer is parsed at the boundary, never
-// cast, and the one expected refusal — "not assigned to your verified employee
-// account" (404) — is the only failure that leaves the preview as it is.
-const NOT_ASSIGNED = "This private request is not assigned to your verified employee account";
-const claimedDetailProbe = z.object({
-  request: z.object({
-    status: z.string(),
-    referrerId: z.number().nullish(),
-    decisionDueAt: z.string().nullish(),
-  }),
-});
 
 export default function ReferralConversation({ framed = false }: { framed?: boolean } = {}) {
   const [, params] = useRoute("/conversation/:requestId");
@@ -71,22 +55,6 @@ export default function ReferralConversation({ framed = false }: { framed?: bool
     setLoading(true); setError("");
     try {
       const thread = await loadThread(requestId, fetchToken);
-      // #831 F2: the unclaimed preview answers first even for an ask allocated
-      // to this referrer, and it carries no decision-due time. On the goal page
-      // the claimed detail (which only ever serves an ask assigned to this
-      // account) supplies the server's decisionDueAt; a 404 means unassigned.
-      if (goalSurfaceOn("conversation") && thread.role === "referrer-pending" && !thread.request.decisionDueAt) {
-        try {
-          const parsed = claimedDetailProbe.safeParse(await authedFetch(`/api/company-referrals/${requestId}`, fetchToken));
-          if (!parsed.success) captureClientError(parsed.error, { source: "conversation.detail-probe", requestId });
-          else if (parsed.data.request.status === "pending" && typeof parsed.data.request.referrerId === "number") {
-            thread.request = { ...thread.request, referrerId: parsed.data.request.referrerId, decisionDueAt: parsed.data.request.decisionDueAt ?? null };
-          }
-        } catch (reason) {
-          // Only the expected not-assigned answer leaves the preview as it is.
-          if (!(reason instanceof Error && reason.message === NOT_ASSIGNED)) captureClientError(reason, { source: "conversation.detail-probe", requestId });
-        }
-      }
       setRole(thread.role); setRequest(thread.request);
       if (!canMessage(thread.role, thread.request)) { setMessages([]); return; }
       try {

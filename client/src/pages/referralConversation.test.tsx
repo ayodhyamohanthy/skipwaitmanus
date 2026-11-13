@@ -695,60 +695,57 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     expect(within(page).queryByRole("button", { name: /Accept & connect/ })).toBeNull();
   });
 
-  it("shows the server decision-due time on a pending ask assigned to this referrer, even when the preview answers first (#831 F2)", async () => {
+  // #831 F1 (Qoder · 6792): `GET /api/company-referrals/:id` serves
+  // buildClaimedAskDetailView, whose allow-list has no decisionDueAt, so the
+  // probe could never fill the deadline line. The page now reads only what the
+  // routes actually serve; the deadline line is a server-field question for the
+  // P0 lane and is not promised here.
+  it("reads only the preview for a pending ask and never probes the claimed detail (#831 F1)", async () => {
     goalOn();
-    const due = "2026-11-03T09:00:00.000Z";
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.endsWith("/mine")) return ok({ requests: [] });
-      if (url.endsWith("/preview")) return ok({ request: referrerPreview });
-      if (url.endsWith("/api/company-referrals/601")) return ok({ request: { ...referrerPreview, status: "pending", referrerId: 9, candidateName: null, attachments: [], decisionDueAt: due } });
+      if (String(url).endsWith("/mine")) return ok({ requests: [] });
+      if (String(url).endsWith("/preview")) return ok({ request: referrerPreview });
+      if (String(url).includes("/messages")) return ok({ messages: [] });
       return fail(404, "gone");
     });
     stubFetch(fetchMock);
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
-    expect(await within(page).findByText(/^Accept or pass by /)).toBeTruthy();
-    expect(within(page).getByRole("button", { name: /Accept & connect/ })).toBeTruthy();
-    expect(screen.queryByText(/Asha R\./)).toBeNull();
-  });
-
-  it("keeps the preview's pending card when no assignment exists (claimed detail 404s) (#831 F2)", async () => {
-    goalOn();
-    stubFetch(pendingFetch());
-    renderPage();
-    const page = await screen.findByTestId("goal-referrer-conversation");
     expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
+    expect(within(page).getByRole("button", { name: /Pass privately/ })).toBeTruthy();
+    expect(within(page).getByText(/No reply needed to pass/)).toBeTruthy();
     expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
-  });
-
-  it("treats the expected not-assigned answer as 'not mine' without reporting it (#831 note)", async () => {
-    goalOn();
-    stubFetch(pendingFetch(url => (url.endsWith("/api/company-referrals/601") ? fail(404, "This private request is not assigned to your verified employee account") : undefined)));
-    renderPage();
-    const page = await screen.findByTestId("goal-referrer-conversation");
-    expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
-    expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
+    expect(fetchMock.mock.calls.map(call => String(call[0])).filter(url => url.endsWith("/api/company-referrals/601"))).toEqual([]);
     expect(captureSpy).not.toHaveBeenCalled();
   });
 
-  it("reports an unexpected failure of the decision-due detail and keeps the preview (#831 note)", async () => {
+  it("keeps the preview's pending card when no assignment exists, with no extra request (#831 F1)", async () => {
     goalOn();
-    stubFetch(pendingFetch(url => (url.endsWith("/api/company-referrals/601") ? fail(500, "We could not load this private referral request") : undefined)));
+    const fetchMock = pendingFetch();
+    stubFetch(fetchMock);
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
     expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
     expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
-    await waitFor(() => expect(captureSpy).toHaveBeenCalledWith(expect.any(Error), { source: "conversation.detail-probe", requestId: 601 }));
+    expect(fetchMock.mock.calls.map(call => String(call[0])).filter(url => url.endsWith("/api/company-referrals/601"))).toEqual([]);
+    expect(captureSpy).not.toHaveBeenCalled();
   });
 
-  it("parses the claimed detail at the boundary: a malformed answer never sets a due time (#831 note)", async () => {
+  it("never renders a decision deadline from a field the server does not serve, even if a payload carries one (#831 F1)", async () => {
     goalOn();
-    stubFetch(pendingFetch(url => (url.endsWith("/api/company-referrals/601") ? ok({ request: { status: "pending", referrerId: "9", decisionDueAt: 42 } }) : undefined)));
+    stubFetch(vi.fn(async (url: string) => {
+      if (String(url).endsWith("/mine")) return ok({ requests: [] });
+      if (String(url).endsWith("/preview")) return ok({ request: { ...referrerPreview, decisionDueAt: "2026-11-14T09:00:00.000Z" } });
+      if (String(url).includes("/messages")) return ok({ messages: [] });
+      return fail(404, "gone");
+    }));
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
     expect(await within(page).findByRole("button", { name: /Accept & connect/ })).toBeTruthy();
     expect(within(page).queryByText(/^Accept or pass by /)).toBeNull();
-    await waitFor(() => expect(captureSpy).toHaveBeenCalledTimes(1));
+    expect(within(page).getByText(/No reply needed to pass/)).toBeTruthy();
+    expect(screen.queryByText(/nothing is held against you/i)).toBeNull();
+    expect(captureSpy).not.toHaveBeenCalled();
   });
 
   it("opens the pass reasons as a bottom sheet on a phone, so the header and the ask stay unclipped (#831 F3)", async () => {
