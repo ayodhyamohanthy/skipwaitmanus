@@ -4,7 +4,7 @@
 // download links are never logged. Mocked in tests.
 import { z } from "zod";
 import { paymentFailureReasonFrom, type PaymentFailureReason, type PaymentMethod } from "../shared/billingAccount";
-import { ChargebeeApiError, chargebeeRequest, idPath, type ChargebeeCredentials } from "./chargebeeApi";
+import { ChargebeeApiError, chargebeeRequest, idPath, providerDate, type ChargebeeCredentials } from "./chargebeeApi";
 
 const customerSchema = z.object({ customer: z.object({ id: z.string().min(1).max(80), primary_payment_source_id: z.string().optional() }) });
 
@@ -69,6 +69,73 @@ export async function createManagePaymentSourcesPage(credentials: ChargebeeCrede
   const form = new URLSearchParams({ "customer[id]": input.customerId, redirect_url: input.redirectUrl });
   const body = await chargebeeRequest(credentials, { method: "POST", path: "/hosted_pages/manage_payment_sources", form }, z.object({ hosted_page: z.object({ url: z.string().url() }) }));
   return body.hosted_page.url;
+}
+
+/**
+ * D-100.provider-recon: one payment transaction as Chargebee documents it
+ * (apidocs.chargebee.com/docs/api/transactions), reduced to the ids and amounts a
+ * reconciliation needs. Chargebee has no payments list endpoint: a payment IS a
+ * transaction (`type=payment`), and the invoices it paid are in `linked_invoices`
+ * (each with `invoice_id` and `applied_amount`, in the currency's smallest unit).
+ */
+export const providerPaymentSchema = z.object({
+  id: z.string().min(1).max(80),
+  amount: z.number().int().nonnegative().optional(),
+  currency_code: z.string().length(3),
+  date: providerDate,
+  status: z.string().min(1).max(40),
+  linked_invoices: z.array(z.object({
+    invoice_id: z.string().min(1).max(80),
+    applied_amount: z.number().int().nonnegative(),
+  })).optional(),
+});
+export type ProviderPayment = {
+  id: string;
+  /** The transaction's own amount, in the currency's smallest unit. */
+  amount: number;
+  currency: string;
+  status: string;
+  date: Date;
+  /** The invoices this transaction paid, with the amount applied to each. */
+  applications: { invoiceId: string; amount: number }[];
+};
+const paymentListSchema = z.object({
+  next_offset: z.string().max(1000).optional(),
+  transaction: z.array(providerPaymentSchema).default([]),
+});
+export const PROVIDER_RECON_PAGE_SIZE = 100;
+export const PROVIDER_RECON_MAX_PAGES = 5;
+
+/**
+ * D-100.provider-recon: Chargebee's payment transactions in [since, until], newest
+ * first, read only. Paged by the opaque `next_offset` Chargebee returns (a number is
+ * not an offset); pages stop when no offset comes back or at the page cap, and the
+ * caller reports the cap as a finding rather than pretending a truncated read was
+ * complete. Card data and customer ids are never part of the parsed shape.
+ */
+export async function listRecentPayments(credentials: ChargebeeCredentials, input: { since: Date; until: Date; maxPages?: number }): Promise<ProviderPayment[]> {
+  const after = Math.floor(input.since.getTime() / 1000);
+  const before = Math.floor(input.until.getTime() / 1000);
+  const pages = Math.max(1, Math.min(input.maxPages ?? PROVIDER_RECON_MAX_PAGES, PROVIDER_RECON_MAX_PAGES));
+  const payments: ProviderPayment[] = [];
+  let offset: string | undefined;
+  for (let page = 0; page < pages; page += 1) {
+    const query = new URLSearchParams({ "type[is]": "payment", "date[after]": String(after), "date[before]": String(before), limit: String(PROVIDER_RECON_PAGE_SIZE), "sort_by[desc]": "date" });
+    if (offset) query.set("offset", offset);
+    const body = await chargebeeRequest(credentials, { method: "GET", path: "/transactions", query, timeoutMs: 10_000 }, paymentListSchema);
+    const batch = body.transaction;
+    for (const payment of batch) payments.push({
+      id: payment.id,
+      amount: payment.amount ?? 0,
+      currency: payment.currency_code.toUpperCase(),
+      status: payment.status,
+      date: payment.date,
+      applications: (payment.linked_invoices ?? []).map(link => ({ invoiceId: link.invoice_id, amount: link.applied_amount })),
+    });
+    if (!body.next_offset) break;
+    offset = body.next_offset;
+  }
+  return payments;
 }
 
 /** A short-lived download link for the invoice PDF. The caller redirects; nobody stores or logs it. */
