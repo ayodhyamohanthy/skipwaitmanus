@@ -23,7 +23,7 @@ function mockFetch(handler: Handler) {
   });
 }
 
-const QUOTE = { level: 5, cost: 1, totalAvailable: 2, shortfall: 0 };
+const QUOTE = { level: 5, cost: 1, totalAvailable: 2, shortfall: 0, covered: true };
 const fullSession = { step: "quote", note: "My own note.", quote: QUOTE, jobSource: "link", requirements: [], facts: [], matches: [], gaps: [] };
 
 describe("Skippy page", () => {
@@ -78,6 +78,38 @@ describe("Skippy page", () => {
     await screen.findByText("Your ask is in.");
     expect(created).toEqual([{ kind: "confirm_send", send: true }]);
     await screen.findByText("Track it under My asks");
+  });
+
+  it("known-uncovered company with a short wallet: Send it stays, no top-up swap", async () => {
+    const uncoveredSession = { ...fullSession, quote: { level: 6, cost: 6, totalAvailable: 0, shortfall: 6, covered: false } };
+    const created: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: uncoveredSession, resumes: [] }), { status: 200 });
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      if (body.kind === "confirm_send") { created.push(body); return new Response(JSON.stringify({ replies: ["Your ask is saved."], session: { ...uncoveredSession, step: "done", createdRequestId: 888, coverageStatus: "waiting_for_company_coverage" } }), { status: 200 }); }
+      return new Response(JSON.stringify({ replies: [], session: uncoveredSession }), { status: 200 });
+    }));
+    render(<Skippy />);
+    await screen.findByText(/waits - free - until one is/);
+    await screen.findByText(/uses 6 credits only at that moment/);
+    expect(screen.queryByRole("link", { name: /Add credits/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Send it" }));
+    await screen.findByText("Your ask is saved.");
+    expect(created).toEqual([{ kind: "confirm_send", send: true }]);
+  });
+
+  it("covered company with a short wallet keeps the top-up swap", async () => {
+    const coveredSession = { ...fullSession, quote: { level: 6, cost: 6, totalAvailable: 0, shortfall: 6, covered: true } };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: coveredSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: coveredSession }), { status: 200 });
+    }));
+    render(<Skippy />);
+    await screen.findByText(/costs 6 credits/);
+    const topUp = screen.getByRole("link", { name: "Add credits on /plans" }) as HTMLAnchorElement;
+    expect(topUp.getAttribute("href")).toBe("/plans#packs");
+    expect(screen.queryByRole("button", { name: "Send it" })).toBeNull();
   });
 
   it("surfaces a server error instead of failing silently", async () => {

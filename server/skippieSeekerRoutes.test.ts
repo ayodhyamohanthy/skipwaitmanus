@@ -12,7 +12,7 @@ function makeSkippieDeps(overrides: Partial<SkippieSeekerDeps> = {}): SkippieSee
     fetchJobText: vi.fn(async () => JOB),
     extractResumeText: vi.fn(async () => RESUME),
     analyzeFit: vi.fn(async input => rulesAnalyzeFit(input)),
-    getQuote: vi.fn(async () => ({ level: 5, cost: 1, totalAvailable: 3, shortfall: 0 })),
+    getQuote: vi.fn(async () => ({ level: 5, cost: 1, totalAvailable: 3, shortfall: 0, covered: true })),
     getOwnedResume: vi.fn(async (_u, id) => (id === 11 ? { id: 11, fileName: "a.pdf", fileKey: "k/11", mimeType: "application/pdf" } : undefined)),
     createAsk: vi.fn(async () => ({ requestId: 42, companyDomain: "acme.com", coverageStatus: "covered" as const })),
     saveTailoredResume: vi.fn(async () => ({ id: 12, fileName: "t.docx" })),
