@@ -3857,6 +3857,25 @@
       "note": "D-163: no longer waits for seeker-passwords; shared/telemetryScrub.ts is new on main and #324 picks it up when it merges main. Scope per the packet's CEO addendum (§0): adds the vanity alias and /api/documents/by-key/:key; alerts drop the query."
     },
     {
+      "id": "PICKER-packet-findings-exit",
+      "title": "A Tier 1 packet with a findings verdict can leave that stage: its architect-lock holder records --fixed after addressing the findings, and the packet returns to independent review (D-334)",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-packet-findings-exit.md",
+      "tier": 2,
+      "lane": "picker-packet-findings",
+      "branch": "agent/queue/picker-packet-findings-exit",
+      "status": "todo",
+      "syncedTo": "D-334",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskPacketFindingsExit.test.ts"
+      ],
+      "note": "D-334 (Nov 14, decided under D-200 and D-321 (11); changeable): picker defect, measured on main 80aeba16. A packet review lock at needs-fix has no exit: REVIEW is handed only at needs-review/in-review/passed, packets get no FIX stage (D-299 R7), and --fixed needs a Fix claim, so every session is handed WRITE THE PACKET again. PR #878 (D-089-request-inbox) took four takeovers after its Nov 11 findings verdict, with the finding already cured. Placed directly before the row it unblocks. Its own lane, so a red elsewhere in the picker lanes does not hold it; it shares files with other picker rows, so the second lander merges main and keeps both changes (D-309, D-314). Exclusions, verdict rules, the review gate and CI are unchanged."
+    },
+    {
       "id": "D-089-request-inbox",
       "title": "Employee request-inbox link with screen name (idea 1, loop L4, D-089 (3)): write the packet",
       "row": "D-089",
