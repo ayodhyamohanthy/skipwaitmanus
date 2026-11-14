@@ -203,6 +203,10 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - Redesign `AccountMenu.tsx`, `NotificationBell.tsx`, `BetaNotice.tsx` and `CookieConsent.tsx` with goal primitives and tokens only.
   - Behaviour is unchanged: the same menu entries and links; the bell's count, routing and polling as today; the beta notice's dismissal; and the cookie choices with `applyAnalyticsConsent` exactly as today.
   - Every existing test is kept, and captures are taken on a signed-in page and on the landing.
+- **CEO ruling on the builder's two calls (#767, Oct 28):**
+  - *Primitives.* For these four global parts, goal tokens plus the Radix primitive the goal tree builds on count as goal primitives: `AccountMenu` uses `@radix-ui/react-dropdown-menu` directly, as `GoalDrawer` and `GoalSheet` use theirs. Where a goal primitive exists, the part wears its recipe class for class, and its test renders the primitive and compares, so the two cannot drift. Importing `GoalButton` into a part waits until `goalBoundary.test.ts` lists that part; the file's owning row makes that edit, not this one.
+  - *One black commit.* The cookie banner floats over pages that each own the one black commit on their screen (DESIGN.md §1), so neither choice is black. "Essential only" and "Accept all" both wear `GoalButton variant="outline" touch="large"`, and refusing looks exactly as easy as accepting. The words, the choices, the stored value and `applyAnalyticsConsent` are unchanged.
+  - *Two bells.* Signed in, the shell shows two bells at both widths: the account menu's counted bell and `GoalShell`'s own Alerts link. Both open `/alerts`, because `/notifications` redirects there. Removing one needs `GoalShell.tsx` or `AppShell.tsx` and must keep the unread count, so it belongs to a follow-up row, not this one.
 - **Owns:** the four components and their tests.
 
 ### 6.3 `D-048-F-coverage` (Tier 3, lane `design-check`, after `D-048-F-goal-check`)
@@ -246,13 +250,15 @@ The split's row text now names them, so their lane packet writer adds them:
   1. the foundation rows (`D-048-F-*`, with §6.1 and §6.2);
   2. the redesign rows of the live pages (`D-048-p3-live-review-*`);
   3. the lane rows, top down in `docs/plans/assignments.json`;
-  4. `D-048-K-kit` last.
+  4. each surface's release row `D-048-R-<id>` directly after its build row (D-317, D-332);
+  5. each surface's retirement row `D-048-K-<surface>` 7 days after its release (`docs/plans/D-048-retire.md`, D-332);
+  6. `D-048-K-kit` last.
 - **Every surface row depends on `D-048-F-goal-check`.** Lane packets add it to each row they add.
 - **A new route or component** needs its line here (§2-§5) in the same PR (D-167). Ask the CEO with `--report blocked` when no row fits.
 
 ## Status
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
-- D-048-F-shell-parts: todo; waits for D-048-F-credits and D-048-F-goal-check.
+- D-048-F-shell-parts: done — `fb98c70a` (Nov 13, D-333 (2) Tier 2 landing). AccountMenu, NotificationBell, BetaNotice and CookieConsent are on goal tokens with behaviour pinned (`client/src/components/shellParts.goal.test.tsx`, 31 assertions; every existing suite kept) and no colour literal left. Current `main` merged at `fb98c70a` with both conflicts resolved keeping both sides: this row's goal-styled menu entries, plus D-057 §0b.8c's `code_required` referrer navigation in `AccountMenu.tsx`. Every required check is green on that exact head (typecheck, unit + component + route tests, production build, e2e journeys). Two calls were never this row's to make and stay reported, not widened: (1) `GoalButton` in the consent banner needs `client/src/components/goal/goalBoundary.test.ts` (`MOVED_SURFACES`, owned by D-048-F-flags / D-048-p3-assistants / D-090-BYOR), and its `primary` variant would also break `GoalLanding.test.tsx`'s document-wide one-primary count, so the banner's actions carry the GoalButton recipe in tokens; (2) the 390px duplicate chrome (GoalShell.tsx renders its own Alerts bell beside the phone slot's menu bell, and the menu element renders twice) lives in GoalShell.tsx / index.css, neither in this row's owns.
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
 - D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
 - D-048-p3-agents: done — landed `157447ab` — the goal body (`pages/goal/assistants/GoalSeekerAgents.tsx`, #563) behind the shared `assistants` surface (flag off), kit page kept as the fallback; `client/src/pages/seekerAgents.test.tsx` pins the switch, every D-141 control and the not-enabled/error/signed-out/offline states. **Not moved:** no captures are delivered and §1.6/§1.7 are not claimed; the capture `owns` amendment rides #777, and the goal-contract and draft-only-copy defects are routed to `D-048-p3-assistants`, which owns `client/src/pages/goal/assistants/**`. **Landing (Oct 29):** the reviewed head `28106b84` carried an independent pass; `main` `5a13c7e3` merged into it with no conflict hunk; the packet was checked against D-225–D-232 and none affects this row; the code landed as `157447ab` through draft PR #778 (`/agents` renders the kit page in production until the `assistants` surface is released).

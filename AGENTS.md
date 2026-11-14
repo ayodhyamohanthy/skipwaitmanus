@@ -38,7 +38,7 @@ Money rules in `docs/DECISIONS.md`:
 - **D-057 (owner, Oct 18):** a referrer may add a personal login (personal email + password, or Google) from inside the portal so their private track record survives a job change or a gap; a new employer is added by verifying its work email with a code inside the portal. The referrer-facing sign-in stays the work-email code, and reviewing or accepting asks needs a work-email code in that session. Linking never merges two people who each have their own credits, asks or referrals. **D-245 (Oct 30):** in a personal-login session that code is an in-session step-up (`/api/referrer/step-up/send|verify`): a server-side proof bound to the account, session, exact work email and purpose, never the standalone code login (which would make another account); packet `docs/plans/D-057-session-gate.md` §0b.
 - **Referrer login = work email org verification ONLY** (work-email OTP). No personal email, no social logins, on any referrer-facing sign-in (`/sign-in` with "Give a referral", `/referrer` dialog, `/referrer-setup`, `/referrer-home`, `/referrer/impact`, `/verify`). Use `referrerSignInHref()` (`client/src/lib/referrerSignIn.ts`), never `SignInButton` or `openSignIn` on a referrer surface.
 - Pinned by `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx`; a failing pin means the rule drifted. Decision register: D-030.
-- **D-172/D-209 (Oct 23-26): device-saved sign-in is a separate build, and it does not move this rule.** The owner wants the device's saved passkey/account offered on arrival (D-172) and approved SimpleWebAuthn (MIT) for native passkey sign-in on skipwait.me (Oct 25); row `DEVICE-SIGNIN-passkeys` (`docs/plans/DEVICE-SIGNIN-passkeys.md`) is the only place that lands, never a sign-in fix's branch. Until it does: seekers use the methods above, referrers keep the work-email code only, and two points stay the owner's - a passkey for a referrer, and Sign in with Apple (D-209 (4); defaults: neither).
+- **D-172/D-209 (Oct 23-26): device-saved sign-in is a separate build, and it does not move this rule.** The owner wants the device's saved passkey/account offered on arrival (D-172) and approved SimpleWebAuthn (MIT) for native passkey sign-in on skipwait.me (Oct 25); row `DEVICE-SIGNIN-passkeys` (`docs/plans/DEVICE-SIGNIN-passkeys.md`) is the only place that lands, never a sign-in fix's branch. Until it does: seekers use the methods above, referrers keep the work-email code only, and the owner answered both D-209 (4) points on Nov 13 (D-333): no passkey for a referrer, and no Sign in with Apple.
 
 ## Team rules (owner standing instructions, Oct 16 2026, relayed by the parent - numbered, binding for every agent and model)
 0. **Frozen decisions bind.** once the founder freezes a decision it is the single source every agent follows from then on. No agent builds against anything older unless the founder reopens it. Record it in DECISIONS.md first. (D-146)
@@ -497,6 +497,13 @@ which rules were adopted or rejected when this section changes.
   as moved only under its §1 definition (goal line, one next-step block with one
   black commit, no kit imports, the flow rebuilt rather than recoloured,
   `assertGoalPage`, captures). Every surface row depends on `D-048-F-goal-check`.
+- **D-332 (owner, Nov 11): the old design is removed completely and the change is forced.**
+  Each surface goes build, release (`D-048-R-<id>`, directly after its build row),
+  7 days live, then its retirement row `D-048-K-<surface>` deletes the kit page and the
+  switch; `D-048-K-kit` deletes the kit layer last (`docs/plans/D-048-retire.md`). Never
+  delete an old page before its goal page is live (D-019). Never add a kit import, a new
+  old/new switch or take a released surface out of `RELEASED`; `GATE-goal-design-ratchet`
+  makes CI refuse all three. Report the old design as removed only when `D-048-K-kit` has landed.
 - **D-048 phase 2 shipped (Oct 19):** `DESIGN.md` is the goal-UI visual contract
   (comps approved by D-071, `design/goal-ui/pick/`). It governs each surface as
   the migration moves it to `client/src/components/goal/` (tokens: the phase-2
