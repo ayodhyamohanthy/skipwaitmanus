@@ -1713,7 +1713,7 @@
       "tier": 2,
       "lane": "design-shell",
       "branch": "agent/queue/d048-f-shell-parts",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-333",
       "dependsOn": [
         "D-048-F-credits",
