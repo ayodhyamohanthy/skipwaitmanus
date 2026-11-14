@@ -149,7 +149,9 @@ export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook; seeker
           : "Founding-member global prices - set by your profile location, confirmed against your card's billing country at checkout."}
       </p>
       <p className="mt-2 max-w-[640px] text-g-small text-g-ink-3">Plan names say which referrers you can reach, not how senior you are.</p>
+      <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
       <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Bands overlap at Mid and Senior on purpose. The free allowance spans every level, Executive included.</p>
+      <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Counts are referral requests that reach a verified employee; they never promise or guarantee an accepted, submitted or completed referral.</p>
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
         <PlanCard planId="early_to_mid" book={book} />
         <PlanCard planId="mid_to_senior" book={book} />

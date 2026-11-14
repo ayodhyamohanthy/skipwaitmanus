@@ -60,4 +60,15 @@ describe("PlansV2 frozen banded render", () => {
     expect(document.body.textContent).not.toContain("checkoutUrl");
     expect(document.body.textContent).not.toMatch(/Start Early|Start Mid|Apply for/);
   });
+
+  it("states queue-fairness: reach sets who you can ask, never your place in a queue (F2, D-006/D-040)", () => {
+    render(<PlansV2 book="INR" />);
+    expect(document.body.textContent).toContain("Reach sets who you can ask. It never changes your place in a queue.");
+  });
+
+  it("states that counts are referral requests that reach a verified employee and never guarantee acceptance (F1, D-219)", () => {
+    render(<PlansV2 book="INR" />);
+    expect(document.body.textContent).toMatch(/referral requests that reach a verified employee/i);
+    expect(document.body.textContent).toMatch(/never promise or guarantee an accepted/i);
+  });
 });
