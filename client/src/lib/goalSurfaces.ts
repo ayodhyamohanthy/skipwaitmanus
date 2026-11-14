@@ -75,12 +75,14 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "alerts",
   "developers",
   "discovery",
+  "email-review",
   "employer",
   "for-companies",
   "landed",
   "links",
   "messages",
   "onboarding",
+  "plans",
   "policy",
   "settings",
   "share",
@@ -88,6 +90,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "suggest-company",
   "support",
   "system",
+  "verify",
 ];
 
 export function releasedGoalSurfaces(): readonly GoalSurfaceId[] {

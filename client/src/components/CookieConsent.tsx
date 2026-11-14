@@ -5,6 +5,14 @@ import { isClarityActive } from "@/lib/clarity";
 
 const STORAGE_KEY = "skipwait:cookie-consent";
 
+// Both choices wear GoalButton's ink-outline recipe at the large phone height
+// (variant="outline" touch="large"), class for class: the page under the banner
+// owns the one black commit on its screen (DESIGN.md §1), and refusing looks
+// exactly as easy as accepting. shellParts.goal.test.tsx compares these classes
+// with GoalButton itself; importing it here waits for goalBoundary.test.ts to
+// list this file.
+const CHOICE_CLASS = "inline-flex items-center justify-center gap-2 rounded-g-control border border-g-ink text-g-label text-g-ink whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-12";
+
 export type CookieConsentChoice = "essential" | "all";
 
 function parseChoice(value: string | null): CookieConsentChoice | null {
@@ -84,11 +92,15 @@ export default function CookieConsent() {
   return (
     <>
       <div aria-hidden="true" style={{ height: bannerHeight }} data-testid="cookie-consent-spacer" />
-      <div ref={bannerRef} role="dialog" aria-label="Cookie choices" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-2xl border border-g-control-edge bg-g-surface p-5 shadow-xl md:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <p className="text-sm text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
+      {/* Goal system (D-048-F-shell-parts): a floating dialog, so it follows the
+          popover rules - goal radius and popover shadow, no kit elevation - and
+          it carries .g-scope itself because it renders outside the app shell on
+          the signed-out landing. The words and the two choices are unchanged. */}
+      <div ref={bannerRef} role="dialog" aria-label="Cookie choices" className="g-scope fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto max-w-xl rounded-g-popover border border-g-control-edge bg-g-surface p-5 shadow-g-popover gdesk:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <p className="text-g-body text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button type="button" onClick={() => save("essential")} className="rounded-full border border-g-control-edge bg-g-surface px-4 py-2 text-sm font-medium text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover">Essential only</button>
-          <button type="button" onClick={() => save("all")} className="rounded-full bg-g-ink px-4 py-2 text-sm font-medium text-g-ink-inverse transition-colors duration-(--g-dur-hover) ease-g-out hover:opacity-90">Accept all</button>
+          <button type="button" onClick={() => save("essential")} className={CHOICE_CLASS}>Essential only</button>
+          <button type="button" onClick={() => save("all")} className={CHOICE_CLASS}>Accept all</button>
         </div>
       </div>
     </>
