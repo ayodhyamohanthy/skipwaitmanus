@@ -4542,12 +4542,12 @@
       "tier": 1,
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
-      "status": "todo",
-      "syncedTo": "D-333",
+      "status": "owner",
+      "syncedTo": "D-336",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. The lander needs the owner's recorded confirmation of those steps, and without it stops with --report blocked \"seeker-passwords: owner dashboard steps unconfirmed\" instead of landing."
+      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. D-336 (2026-11-15): parked at owner pending the five production WorkOS dashboard steps (enable Email+Password, reset URL, default mailer, no seeker MFA/Radar, Google connection confirmed); returns to todo to land once confirmed."
     },
     {
       "id": "SYNC-LOG-off-main",
@@ -5579,22 +5579,28 @@
       "lane": "auth-device",
       "branch": "agent/queue/device-signin-passkeys",
       "status": "todo",
-      "syncedTo": "D-333",
+      "syncedTo": "D-337",
       "dependsOn": [
         "FIX-device-signin"
       ],
       "owns": [
-        "client/src/components/SeekerSignIn.tsx",
-        "client/src/pages/SignIn.tsx",
+        ".env.example",
+        "client/src/components/goal/GoalPasskeySignIn.tsx",
+        "client/src/components/goal/GoalPasskeySignIn.test.tsx",
+        "client/src/components/goal/GoalSeekerSignIn.tsx",
+        "client/src/components/passkeyGoalGate.test.tsx",
         "client/src/pages/GoalSignIn.tsx",
-        "client/src/lib/passkeys.ts",
-        "client/src/lib/passkeys.test.ts",
-        "server/passkeys.ts",
-        "server/passkeys.test.ts",
-        "server/passkeyRoutes.ts",
-        "server/passkeyRoutes.test.ts"
+        "drizzle/deploy/0115_passkey_credentials.sql",
+        "drizzle/schema.ts",
+        "package.json",
+        "pnpm-lock.yaml",
+        "server/_core/index.ts",
+        "server/_core/passkeyLogin.ts",
+        "server/_core/passkeyLogin.test.ts",
+        "server/_core/passkeyStore.ts",
+        "src/worker.ts"
       ],
-      "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows. D-333 (5), owner in session Nov 13, answering D-209 (4): (a) no referrer passkey: the work-email code stays a referrer's only sign-in (D-030, D-057); (b) no Sign in with Apple. The login rule is unchanged. The row is todo under its packet and an independent Tier 1 review."
+      "note": "D-209 (1): the device-saved sign-in the owner asked for (D-172, docs/DEVICE-SIGNIN-REQUIREMENTS.md) never rides a sign-in fix's branch. Mechanism approved by the owner Oct 25 (SimpleWebAuthn, MIT, native passkey sign-in on skipwait.me; no authkit.app, no paid provider, no forced prompt). Waits in owner status for D-209 (4): may a referrer add a passkey (default no, D-057), and is Sign in with Apple in (default no, D-030). Packet phases A-C only after those answers; phase D is blocked. Build extends owns in its own PR as D-200 (2) allows. D-333 (5), owner in session Nov 13, answering D-209 (4): (a) no referrer passkey: the work-email code stays a referrer's only sign-in (D-030, D-057); (b) no Sign in with Apple. The login rule is unchanged. The row is todo under its packet and an independent Tier 1 review. D-337 (Nov 16, Gemini · 42c3): owns gains the 14 actual implementation paths under SimpleWebAuthn (.env.example, client/src/components/goal/GoalPasskeySignIn.tsx, client/src/components/goal/GoalPasskeySignIn.test.tsx, client/src/components/goal/GoalSeekerSignIn.tsx, client/src/components/passkeyGoalGate.test.tsx, drizzle/deploy/0115_passkey_credentials.sql, drizzle/schema.ts, package.json, pnpm-lock.yaml, server/_core/index.ts, server/_core/passkeyLogin.ts, server/_core/passkeyLogin.test.ts, server/_core/passkeyStore.ts, src/worker.ts) and drops the unused planned paths, satisfying scope-check on PR #697."
     },
     {
       "id": "D-180-a-free-asks-chip",
