@@ -2136,7 +2136,7 @@
       "tier": 1,
       "lane": "d048-thread",
       "branch": "agent/queue/d048-p3-conversation",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-331",
       "dependsOn": [
         "D-048-F-harness",
