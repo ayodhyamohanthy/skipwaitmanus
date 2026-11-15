@@ -58,6 +58,7 @@ Owner, November 10-11: "no blockers", "as many agents work parallely", "just a b
 9. **Tell every session to `git pull --ff-only` main before `build`.** The picker runs the local `scripts/` against the task list on `origin/main`; an old copy rejects a newer list.
 11. **Zero dead ends (D-324).** The picker passes over a task that only an external model route can claim, and red main holds landings only, so `build` never fails at the claim or waits on main. If a session reports WAIT, an error at the claim, or the same task on every retry, treat it as a picker defect: reproduce it with `node scripts/next-task.mjs --as "<name>"` and fix it the same day.
 10. **Do not hold a task with a claim only the coordinator can continue.** A coordinator claim quiet for 2 hours is free like anyone's (D-085); an external-model route must not make its row untakeable.
+12. **Anyone clears blocks (D-338, owner, Nov 16: "no blockers", "let [GPT-6.1 Sol] clear if any blockers are there not only you").** These rules bind every session that takes an `unblock`, not only Instinct or Claude: any capable session of any model that did not raise the block may rule on it. Push only what passes every required test on its exact head (D-082); Tier 1 keeps its one independent pass.
 
 These rules change no product, price, login, legal, settings or spending decision and waive no review or CI.
 

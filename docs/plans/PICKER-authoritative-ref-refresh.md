@@ -106,3 +106,10 @@ fixture PASS, then check the complete released CLI in a nonclaim live run.
 
 PICKER-authoritative-ref-refresh: registration candidate only; no source
 claim, source dispatch, independently rerun fixture PASS or runtime fix.
+
+PICKER-authoritative-ref-refresh: re-routed — D-338 — 2026-11-16 — branch
+agent/queue/picker-authoritative-ref-refresh-2. The old branch held only two
+external-route claim markers and no code, so D-324 passed the row over for
+every session for 118 hours. The fresh branch lets the picker make the real
+ordinary assignment this packet's handoff section asks for; every other
+requirement here is unchanged. The old branch is untouched and reference-only.
