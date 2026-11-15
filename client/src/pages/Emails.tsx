@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "wouter";
 import { MONEY_SENTENCE } from "@shared/moneyCopy";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalEmails = lazy(() => import("./goal/system/GoalEmails"));
 
 /**
  * /emails — reference for every transactional message skipwait.me sends, in
@@ -49,12 +51,12 @@ const TEMPLATES = [
   {
     name: "Request claimed",
     channel: "Email + in-app",
-    trigger: "A verified employee claims a pending ask. Seeker sees company domain only.",
+    trigger: "A verified employee claims a pending referral request. Seeker sees company domain only.",
     subject: "Your referral request was claimed — ⟨company⟩",
     body: ["A verified employee at ⟨company⟩ claimed your private referral request."],
   },
   {
-    name: "Ask accepted",
+    name: "Referral accepted",
     channel: "Email + in-app",
     trigger: "A referrer accepts. Messaging opens; identities follow the accept rules.",
     subject: "Your referral was accepted — ⟨company⟩",
@@ -62,19 +64,19 @@ const TEMPLATES = [
     cta: "Open conversation",
   },
   {
-    name: "Ask passed",
+    name: "Referral passed",
     channel: "Email + in-app",
-    trigger: "A referrer passes. The ask stays active for other employees; the slot is not freed.",
+    trigger: "A referrer passes. The referral request stays active for other employees; the slot is not freed.",
     subject: "Update on your referral request — ⟨company⟩",
     body: ["Your request at ⟨company⟩ remains visible to other verified employees."],
     cta: "Find another referrer",
   },
   { name: "New message", channel: "In-app", trigger: "A private message arrives in an accepted conversation." },
-  { name: "Waiting for coverage", channel: "In-app", trigger: "An ask has no verified employees available yet at the company." },
+  { name: "Waiting for coverage", channel: "In-app", trigger: "A referral request has no verified employees available yet at the company." },
   {
     name: "Slot opened",
     channel: "Email",
-    trigger: "A referrer opens capacity and waiting asks become reviewable.",
+    trigger: "A referrer opens capacity and waiting referral requests become reviewable.",
     subject: "Private referral review available at ⟨company⟩",
     body: ["A referral review is now available at ⟨company⟩", "A verified employee opened review capacity for your private request. This does not guarantee an introduction, interview, or hiring outcome."],
     cta: "View private request",
@@ -95,6 +97,7 @@ const TEMPLATES = [
 const SENDER = "skipwait.me <noreply@skipwait.me>";
 
 export default function Emails() {
+  if (goalSurfaceOn("system")) return <Suspense fallback={null}><GoalEmails /></Suspense>;
   const [selected, setSelected] = useState<string>(TEMPLATES[0].name);
   const template: Template = TEMPLATES.find(item => item.name === selected) ?? TEMPLATES[0];
   const emailed = template.channel !== "In-app";

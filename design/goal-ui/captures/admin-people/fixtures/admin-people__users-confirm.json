@@ -1,0 +1,27 @@
+{
+  "signedIn": { "id": 1, "name": "Ops Admin", "email": "ops@example.com", "role": "admin" },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "users": [
+          { "id": 9, "email": "avery@example.com", "name": "Avery Nair", "accountType": "job_seeker", "company": null, "workEmailVerifiedAt": null, "suspended": false, "createdAt": "2026-10-07T04:00:00.000Z" },
+          { "id": 12, "email": "ravi@example.com", "name": "Ravi Menon", "accountType": "referrer", "company": "Acme Corp", "workEmailVerifiedAt": "2026-10-03T04:00:00.000Z", "suspended": true, "createdAt": "2026-10-01T04:00:00.000Z" },
+          { "id": 14, "email": "meera@example.com", "name": "Meera Iyer", "accountType": "job_seeker", "company": null, "workEmailVerifiedAt": null, "suspended": false, "createdAt": "2026-10-05T04:00:00.000Z" },
+          { "id": 17, "email": "sara@example.com", "name": "Sara Fernandes", "accountType": "referrer", "company": "Northwind Labs", "workEmailVerifiedAt": "2026-10-02T04:00:00.000Z", "suspended": false, "createdAt": "2026-10-04T04:00:00.000Z" },
+          { "id": 21, "email": null, "name": null, "accountType": null, "company": null, "workEmailVerifiedAt": null, "suspended": false, "createdAt": "2026-10-06T04:00:00.000Z" },
+          { "id": 23, "email": "kabir@example.com", "name": "Kabir Shah", "accountType": "job_seeker", "company": null, "workEmailVerifiedAt": null, "suspended": false, "createdAt": "2026-10-02T04:00:00.000Z" }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    { "waitFor": "text=avery@example.com" },
+    { "click": "role=button[name*=\"avery@example.com\"]" },
+    { "click": "role=button[name=\"Suspend account\"]" },
+    { "waitFor": "text=Suspend this user?" }
+  ]
+}

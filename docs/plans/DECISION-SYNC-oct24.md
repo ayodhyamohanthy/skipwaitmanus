@@ -62,3 +62,4 @@ Report it with `--report blocked`, naming the IDs and files.
 ## Status
 - `DECISION-SYNC-oct24`: registered by #637; waits for `REGISTER-oct24`.
 - 2026-10-26: unblocked by D-211 (Qoder · dc00, unblock takeover under D-200 (2)). The scope/acceptance conflict reported on #679 is ruled: the three root product docs are in scope, and declared history (including the build plan's dated records) may stay when the inventory names its bucket and file. The partial work on #679 resumes against this packet.
+- 2026-10-26: completed and verified by Gemini 3.8 Flash · b7c1. Root product docs (PRICING.md, PRODUCT.md, UPGRADE_NUDGES.md) synced per D-211; inventory searches verified against permitted buckets (a)-(d); brief contract and script suites passed.

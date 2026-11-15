@@ -3,9 +3,11 @@
 // lives in the URL (?section=region|notifications|app|privacy|account).
 // Region and App work signed out; account sections ask to sign in first.
 import { useLocation, useSearch } from "wouter";
+import { lazy, Suspense } from "react";
 import { useAuth } from "@/_core/auth";
 import { Heading } from "@/components/kit/preview-kit";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { AccountPanels } from "@/components/settings/AccountPanels";
 import { AppPanel } from "@/components/settings/AppPanel";
 import { NotificationPanels } from "@/components/settings/NotificationPanels";
@@ -14,6 +16,8 @@ import { RegionPanel } from "@/components/settings/RegionPanel";
 import { SettingsNav, parseSettingsSection, type SettingsSection } from "@/components/settings/SettingsNav";
 import { Loading, SignInPanel } from "@/components/settings/settingsUi";
 
+const GoalSettings = lazy(() => import("./goal/settings/GoalSettings"));
+
 const SIGNED_OUT: Record<"notifications" | "privacy" | "account", { title: string; text: string }> = {
   notifications: { title: "Notifications", text: "Sign in to see how skipwait.me reaches you." },
   privacy: { title: "Privacy", text: "Sign in to manage blocked people, talent discovery consent, assistants and your data." },
@@ -21,6 +25,7 @@ const SIGNED_OUT: Record<"notifications" | "privacy" | "account", { title: strin
 };
 
 export default function Settings() {
+  if (goalSurfaceOn("settings")) return <Suspense fallback={null}><GoalSettings /></Suspense>;
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [path, navigate] = useLocation();

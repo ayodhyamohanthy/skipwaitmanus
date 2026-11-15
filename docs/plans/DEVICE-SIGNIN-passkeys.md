@@ -109,6 +109,7 @@ owner (above). Do not pre-build them behind a flag.
 
 ## Status
 
+- **Nov 13, D-333 (5): the owner answered (a) and (b).** (a) No referrer passkey: the work-email code stays a referrer's only sign-in. (b) No Sign in with Apple. The row is `todo`; build under this packet, then one independent Tier 1 review (D-151).
 - Registered by DeepSeek V4.1 Flash Free · 8c0f under D-209 (docs only). Build
   waits for the owner's answers to (a) and (b); the picker hands out no work on
   this row before then.

@@ -1,3 +1,5 @@
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { useEffect, useState, type ReactNode } from "react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { Link, useLocation } from "wouter";
@@ -36,7 +38,7 @@ function Stat({ value, label }: { value: number; label: string }) {
   return <span><strong>{value}</strong>{label}</span>;
 }
 
-export default function ReferrerImpact() {
+function KitReferrerImpact() {
   const [, go] = useLocation();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [summary, setSummary] = useState<ReferrerImpactSummary | null>(null);
@@ -72,6 +74,10 @@ export default function ReferrerImpact() {
   if (access.status === "error") return frame("referrer-impact-access-error", <ImpactState icon={RefreshCw} eyebrow="SOMETHING WENT WRONG" title="We could not check your verification." text={access.error.message || "Check your connection and try again."} alert>
     <Button type="button" className="mt-8" disabled={access.retrying} onClick={access.retry}><RefreshCw />{access.retrying ? "Trying again…" : "Try again"}</Button>
   </ImpactState>);
+
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  // The step-up is goal-native: the goal impact page renders it in place.
+  if (access.status === "code_required") return <Suspense fallback={null}><GoalReferrerImpact /></Suspense>;
 
   if (!hasVerifiedWorkEmail) return frame("referrer-impact-setup", <ImpactState icon={ShieldCheck} eyebrow="PRIVATE BY DEFAULT" title="Verify your work email" text="Confirm a company email with a one-time code to unlock your private referral impact.">
     <Button asChild className="mt-8"><Link href="/referrer?setup=work-email">Add work email <ArrowRight /></Link></Button>
@@ -112,4 +118,17 @@ export default function ReferrerImpact() {
     </nav>
     <small className="mt-8 flex max-w-xl items-start gap-2 text-left text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />Your identity stays hidden unless you accept a request. Job Seekers never see your work email.</small>
   </ImpactState>);
+}
+
+const GoalReferrerImpact = lazy(() => import("./goal/referrer/GoalReferrerImpact"));
+
+export default function ReferrerImpact() {
+  if (goalSurfaceOn("referrer")) {
+    return (
+      <Suspense fallback={null}>
+        <GoalReferrerImpact />
+      </Suspense>
+    );
+  }
+  return <KitReferrerImpact />;
 }

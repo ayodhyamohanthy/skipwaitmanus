@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PostOpportunity from "../../PostOpportunity";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 
 const { authState, go, surfaces } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn(), surfaces: { on: new Set<string>() } }));
 const getToken = vi.fn().mockResolvedValue("test-token");
@@ -42,8 +43,11 @@ describe("Goal /post-opportunity access gate", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok(unverified)));
     renderPost();
     expect(await screen.findByText("Verify your work email first.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Verify work email" }));
-    expect(go).toHaveBeenCalledWith("/referrer?returnTo=%2Fpost-opportunity");
+    // Packet guardrail 2: a referrer sign-in link is the canonical helper href, never a
+    // hand-written URL. referrerSignInHref("/post-opportunity") is the single source.
+    const link = screen.getByRole("link", { name: "Verify work email" });
+    expect(link.getAttribute("href")).toBe(referrerSignInHref("/post-opportunity"));
+    expect(link.getAttribute("href")).toBe("/sign-in?intent=referrer&returnTo=%2Fpost-opportunity");
     expect(screen.queryByLabelText("Role or job title")).toBeNull();
   });
 

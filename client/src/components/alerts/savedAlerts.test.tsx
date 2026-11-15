@@ -42,7 +42,8 @@ describe("Saved alerts tab", () => {
     expect(screen.getByText("Notified — door open")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Resume alert for tata-consultancy.com" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pause alert for merkle.com" })).toBeTruthy();
-    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts")).toBeTruthy();
+  expect(screen.queryByText(/Momentum and Land/)).toBeNull();
   });
 
   it("surfaces the server's Free cap message and keeps the typed domain", async () => {
@@ -65,7 +66,8 @@ describe("Saved alerts tab", () => {
     const fetchMock = serve(() => undefined);
     renderSaved();
     await screen.findByText("merkle.com");
-    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts")).toBeTruthy();
+  expect(screen.queryByText(/Momentum and Land/)).toBeNull();
     expect(screen.queryByText(/used\)/)).toBeNull();
     // Only the watch list and the public directory (for row names): no plan or quota read.
     await waitFor(() => expect(fetchMock.mock.calls.map(([url]) => String(url)).sort()).toEqual(["/api/companies", "/api/seeker-alerts"]));
@@ -113,7 +115,8 @@ describe("Saved alerts tab", () => {
     expect(await screen.findByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
     expect(screen.queryByText("Loading your saved alerts…")).toBeNull();
     expect(screen.queryByText(/Merkle|merkle/)).toBeNull();
-    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts")).toBeTruthy();
+  expect(screen.queryByText(/Momentum and Land/)).toBeNull();
   });
 
   it("surfaces a load error and recovers on Try again", async () => {

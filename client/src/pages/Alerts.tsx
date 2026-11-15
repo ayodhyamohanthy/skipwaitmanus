@@ -12,6 +12,9 @@ import { notificationListSchema, orderNotifications, type NotificationItem } fro
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalAlerts = lazy(() => import("./goal/alerts/GoalAlerts"));
 
 const TABS = ["Notifications", "Saved alerts"] as const;
 const FILTERS = ["All", "Unread"] as const;
@@ -22,6 +25,7 @@ const HEADING = { eyebrow: "STAY IN THE LOOP", title: "Alerts", text: "Only thin
 const HIT_AREA_Y = "relative before:absolute before:inset-x-0";
 
 export default function Alerts() {
+  if (goalSurfaceOn("alerts")) return <Suspense fallback={null}><GoalAlerts /></Suspense>;
   const [, go] = useLocation();
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
@@ -121,6 +125,9 @@ export default function Alerts() {
     );
   }
 
+  // D-057: a personal-login session's referral routing starts with the in-session work-email step-up,
+  // which is goal-native; the goal alerts page renders it in place (never the code sign-in).
+  if (access.status === "code_required") return <Suspense fallback={null}><GoalAlerts /></Suspense>;
   return (
     <main data-skipwait-screen="alerts" className="page-content">
       <Heading {...HEADING} />

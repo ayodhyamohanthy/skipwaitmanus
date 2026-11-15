@@ -82,13 +82,18 @@ Related: level pricing (D-110) is direction + draft-scope tapback only - flag-of
 | D-038-A/B lapse rules + timers job | #353 | draft, Tier 1 | #372 landed its reconcile; remainder in review |
 | Seeker passwords (task 2, D-049/D-078) | #324 | draft, Tier 1, review passed | landing blocked by D-080 + WorkOS dashboard steps |
 
+### In progress (no PR yet)
+
+| Item | Branch | Status | Blocker |
+| --- | --- | --- | --- |
+| BYOR one-time link (D-090, loop L2) | `agent/claude/d090-byor` | in review on draft PR; C1–C6 complete; `/r/:token` in `functions/_middleware.ts`; full local gate and route coverage pass; flags OFF | Ready for independent Tier 1 review |
+
 ### Approved by the owner, not yet built
 
 | Item | Decision | Evidence |
 | --- | --- | --- |
 | Public per-company demand counts; asks for unlisted companies | D-086 | owner Oct 21 ~02:53 IST (recorded in D-086) |
 | Growth loops L1-L6; build order: demand list, then L2, L4, L5 (BYOR, L2, moved ahead of the demand list by D-162) | D-087 | owner Oct 21 02:53-03:02 IST |
-| BYOR one-time link (idea 2, loop L2) | D-090 | phonemsg-01M5DM4784BC7W6YMF2CV0G0PS |
 | Language experience: 6-language picker, consent line, no silent redirect | D-093 | owner Oct 21 03:15 IST |
 | AI-in-UI wave 1: reasons coach, job-link auto-fill, plain-language status help | D-094 | owner Oct 21 03:15 IST |
 | One-tap rule + first queue (purchase sign-in etc.) | D-095 | owner Oct 21 03:35 IST; first item shipped in #368 |

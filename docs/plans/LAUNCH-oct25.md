@@ -71,6 +71,8 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 - In scope: `docs/BUGFREE_GATE.md` and `docs/qa/` (new evidence files only).
 - Out of scope: any code. File each defect found as its own row through a docs-only pull request (D-200 (2)).
 
+**Recoverability-only exception, October 31, 2026.** The additive `docs/qa/launch-live-qa-harness/` folder may persist the reviewed non-secret rebuilt anonymous `/plans` scripts, dependency lock, README and hash manifest, with a separate recovery guide. This exception permits local reconstruction, dependency installation with scripts disabled, hash and syntax checks only. It grants no new production probe, sign-in, OTP, account, checkout, payment, settings or data action. Do not run the scripts merely because they are now persisted: they make live website requests and need an applicable current test scope. No application code, existing evidence or row ownership/status changes. `LAUNCH-live-qa` stays `owner`, #710 stays draft, and D-216 / #709 and every missing signed-in, crawl, API and E2E leg remain open. This is a rebuilt subset, not an identical restoration or QA pass.
+
 **Never:**
 - pay, or pass the hosted payment form (D-065);
 - request a code for an inbox you cannot read.

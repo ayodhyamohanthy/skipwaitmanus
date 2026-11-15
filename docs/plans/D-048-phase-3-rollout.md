@@ -109,6 +109,10 @@ shell and the type scale; their words are the owner's (agents never edit legal t
 keeps D-130's warm hero band (`.g-hero-warm`, `--g-warm-1/2/3`); every other block on every public
 page stays ink-on-white.
 
+## 3b. Status
+
+- D-048-release-platform: done — landed `c1f65aaa` (PR #1074, merge commit, never squash — D-134 (6); status commit `7781e23b`). Takeover by Qoder · 3c83 on `848ce1a1` (the previous writer pushed nothing since 2026-11-09T09:23:48Z, D-085). Released the wired Tier 2/3 ids; `links` and `support` stay off until their journey tests move (#993). Gate on the landed head: `pnpm check` clean, `goalSurfaces` 6/6, goal pages 576/576, `goalUiCoverage` 4/4, scope-check on 2 owned paths, all four required checks green on exact head `39f314dd`; main CI green on `c1f65aaa` with `release-gate`, `deploy` and `verify` success. Live proof: `skipwait.me` serves `git-commit c1f65aaa…`; the deployed bundle's `RELEASED` is exactly the 16 new ids with `links` and `support` absent; `/settings`, `/landed` and `/alerts` render `data-testid="goal-shell"` with 0 kit classes, `/for-companies`, `/developers` and `/privacy` render their goal pages, and `/help` still renders the kit page (the `support` hold holds).
+
 ## 4. What must not move, in any wave
 
 - D-033's two sign-in role cards.

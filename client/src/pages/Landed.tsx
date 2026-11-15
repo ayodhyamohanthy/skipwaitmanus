@@ -11,6 +11,9 @@ import { DEFAULT_THANK_YOU, UNDELIVERED_ERROR, hiresOf, referrerGreeting, sendLa
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { THANK_YOU_MAX_LENGTH, type LandedJourneyRequest, type PayForwardChoice } from "@shared/landedJourney";
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalLanded = lazy(() => import("./goal/seeker-small/GoalLanded"));
 
 const STEPS = ["Celebrate", "Thank", "Pay it forward", "Done"] as const;
 const PAY_IT_FORWARD = [
@@ -27,6 +30,7 @@ const PAY_IT_FORWARD = [
  * nothing is invented and nothing is copied-and-hoped-for.
  */
 export default function Landed() {
+  if (goalSurfaceOn("landed")) return <Suspense fallback={null}><GoalLanded /></Suspense>;
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const requested = Number(new URLSearchParams(useSearch()).get("request"));

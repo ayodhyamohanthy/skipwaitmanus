@@ -40,7 +40,19 @@ A person can switch the product to dark and back, on every goal-UI surface, desk
 - `client/src/components/goal/GoalMoreMenu.tsx` and `client/src/components/goal/goalMoreMenu.test.tsx`.
 - `client/index.html (switch only)`: the pre-paint script.
 - `DESIGN.md`.
+- `scripts/designTokenAuditCore.mjs` and `scripts/designTokenAudit.test.ts` (bounded dark-token compatibility only, below).
 - Out of scope: every page component. A page that hard-codes a colour outside the tokens is listed in the pull request for its own row, never patched here.
+
+## Audit compatibility contract (unblocks the existing row, no palette change)
+
+The existing R8 audit permits only `index.css` and `kit.css` and rejects every `--g-*` occurrence outside `index.css`. That contradicts this packet's required `goalDark.css`. The row owns the audit core and its fixture tests solely to admit that exact dark counterpart while keeping the light source of truth frozen:
+
+- Permit the exact path `client/src/styles/goalDark.css`, not another CSS directory or a wildcard; the new check is R9 in `scripts/designTokenAuditCore.mjs` (D-224). R8 continues rejecting every other extra stylesheet and every `--g-*` declaration outside the two exact token sources.
+- In that file permit only the `.dark .g-scope` block, `color-scheme: dark` and overrides of existing goal colour tokens. No light selectors, `:root`, unrelated declarations, imports, nested rules, font/layout/motion token overrides, or new token names. Invalid syntax fails closed. Comments must not hide a second rule or bypass a check.
+- Keep the index.css A3 allowlist, R7 exact light token tables, R2 trust-mark-only use and every other existing audit rule unchanged. Do not add the dark blue to the global light allowlist or allow arbitrary hexes everywhere.
+- Test approved dark counterpart coverage separately: every existing goal colour token is covered once, no duplicate overrides or missing tokens, verified-mark blue and commit colours match the source-grounded approved counterpart, and contrast meets this packet's AA bar. The light palette is not inferred from dark fixtures.
+- Red-first audit fixtures must reject a wrong path, unscoped/light selector, an extra rule, a layout token, an unknown token, missing/duplicate colour override, and a changed light palette. They must accept the scoped complete dark counterpart. Existing audit fixtures remain green. The CLI audit must pass with the actual new stylesheet, not only a synthetic fixture.
+- The scope extension is not permission to weaken tests or change the approved colour treatment. If original approval evidence for a specific value cannot be recovered, report that value as unverified and pause that affected implementation, rather than inventing approval or a new default.
 
 ## 5. Tests first (red on today's code)
 - The provider defaults to light with no stored choice.
@@ -62,3 +74,8 @@ A person can switch the product to dark and back, on every goal-UI surface, desk
 A value needed to pass AA would visibly change the light palette, or the owner's captures contradict a token here. Ask the owner with the two captures side by side.
 
 ## Status
+- 2026-10-28: blocked on a packet-versus-guard conflict (R8 forbids the new CSS file and `--g-` outside `index.css`; the audit was outside this row's `owns`). Unblocked by the audit compatibility contract above (#763) and recorded as D-224: the file stays, the audit admits it by exact path, and the row owns the audit core and its fixtures. `todo` and startable again.
+- 2026-10-28 (D-230): the row is with the **owner**, not with the queue, and `status: "owner"` says so. PR #766 stays draft: no session lands it, marks it `--landed` or calls it done. His five checkpoints on that pull request (Oct 28, 06:23, 08:26, 08:37, 08:38, 08:56 UTC) hold product landing until three things pass - **containment** (the saved dark choice applies only while switchable and on explicitly proven dark-ready routes, exact routes with their aliases deliberately tested, provider and pre-paint script agreeing so navigation shows no wrong-theme frame, the class staying on `html` so owned portals inherit it); **the cross-fade dip** (the smallest theme-switch-only suppression of the inherited colour interpolation inside these owned files, or a report naming the exact missing owner and path - no global transition change, no palette change, no animation exemption); and **both-mode 1280 and 390 captures of every rendered state, including the fictional signed-in fixture states, for each admitted route** - a signed-out-only report does not prove a route. Legacy `/plans` and every other uncaptured surface stay light and are other rows' calls.
+  - Already built and passing on `fc6072a4`, so it is not rebuilt: `client/src/styles/goalDark.css` with the 27 colour tokens, the R9 admission and its fixtures in `scripts/designTokenAuditCore.mjs`, the switchable provider, `sw-theme` persistence and the pre-paint script. Proof: `node scripts/design-token-audit.mjs` exits 0 on that head (`377 files · 1274 approved tokens`).
+  - Not implemented on that head, which is why the landing is held: `client/index.html:9` adds `dark` from `sw-theme` with no route test and `ThemeContext.tsx` toggles `document.documentElement` with none, so the retired kit surfaces flip too.
+  - Wait for the owner's word. His question and both options are recorded in `docs/DECISIONS.md` under D-230 in "Open owner questions"; the answer sets this row back to `todo` and names the scope.

@@ -48,3 +48,27 @@ describe("drift watch expects the commit main actually deploys", () => {
     expect(expected).not.toBe(inner);
   });
 });
+
+
+describe("source-only historical import retirement", () => {
+  it("excludes only the exact retired import from expected runtime selection", () => {
+    expect(expectedLine).toContain(":!drizzle/deploy/0063_clerk_roster_import.sql");
+    expect(expectedLine.match(/:![^ ]+/g)).toEqual([":!drizzle/deploy/0063_clerk_roster_import.sql"]);
+  });
+  it("keeps the prior runtime target after a cleanup-only merge", () => {
+    const {dir, merge} = repoWithMergedRuntimeChange();
+    const git=(...args: string[])=>execFileSync("git",args,{cwd:dir,encoding:"utf8"}).trim();
+    mkdirSync(join(dir,"drizzle/deploy"),{recursive:true});
+    writeFileSync(join(dir,"drizzle/deploy/0063_clerk_roster_import.sql"),"-- synthetic fixture only\n");
+    git("add",".");git("commit","-qm","fixture seed");
+    // Adding this exact retired path is excluded too: all earlier rows below
+    // must still produce the genuine runtime merge, not the seed or deletion.
+    git("checkout","-qb","cleanup");
+    rmSync(join(dir,"drizzle/deploy/0063_clerk_roster_import.sql"));
+    git("add","-A");git("commit","-qm","delete synthetic import");
+    git("checkout","-q","main");git("merge","--no-ff","-qm","merge cleanup","cleanup");
+    git("update-ref","refs/remotes/origin/main","HEAD");
+    const actual=execFileSync("git",expectedLine.split(/\s+/).slice(1),{cwd:dir,encoding:"utf8"}).trim();
+    expect(actual).toBe(merge);
+  });
+});
