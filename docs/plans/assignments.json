@@ -4542,12 +4542,12 @@
       "tier": 1,
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
-      "status": "todo",
-      "syncedTo": "D-333",
+      "status": "owner",
+      "syncedTo": "D-336",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. The lander needs the owner's recorded confirmation of those steps, and without it stops with --report blocked \"seeker-passwords: owner dashboard steps unconfirmed\" instead of landing."
+      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. D-336 (2026-11-15): parked at owner pending the five production WorkOS dashboard steps (enable Email+Password, reset URL, default mailer, no seeker MFA/Radar, Google connection confirmed); returns to todo to land once confirmed."
     },
     {
       "id": "SYNC-LOG-off-main",
