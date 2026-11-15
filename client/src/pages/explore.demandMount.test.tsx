@@ -112,7 +112,7 @@ describe("switch off (shipped state)", () => {
   it("the directory renders as before, with no demand read and no list", async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<Explore />);
-    expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
+    expect(await screen.findByText("Get referred.")).toBeTruthy();
     expect(await screen.findByTestId("goal-directory-summary")).toBeTruthy();
     await waitFor(() => expect(paths(fetchMock)).toContain("/api/companies"));
     expect(demandPaths(fetchMock)).toEqual([]);
@@ -122,7 +122,7 @@ describe("switch off (shipped state)", () => {
   it("the company page renders as before, with no demand read and no line", async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
+    expect(await screen.findByText("Get referred at Wipro.")).toBeTruthy();
     await new Promise(resolve => setTimeout(resolve, 30));
     expect(demandPaths(fetchMock)).toEqual([]);
     expect(screen.queryByTestId("company-demand-line")).toBeNull();
@@ -134,7 +134,7 @@ describe("switch on (mocked payload)", () => {
     flag.publicOn = true;
     stubFetch({ detail: { demand: { state: "count", people: 7 } } });
     const { container } = renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByText("Ask a verified employee. Your name and resume stay private until they accept.")).toBeTruthy();
+    expect(await screen.findByText("Get referred at Wipro.")).toBeTruthy();
     const line = await screen.findByTestId("company-demand-line");
     const nextStep = container.querySelector(`section[aria-labelledby="${GOAL_NEXT_STEP_HEADING_ID}"]`);
     if (nextStep) expect(nextStep.contains(line)).toBe(false);
@@ -151,7 +151,7 @@ describe("switch on (mocked payload)", () => {
 
     searchState.value = "q=wip";
     renderWithQuery(<Explore />);
-    expect(await screen.findByText("Where do you want a referral?")).toBeTruthy();
+    expect(await screen.findByText("Get referred.")).toBeTruthy();
     await new Promise(resolve => setTimeout(resolve, 30));
     expect(screen.queryByTestId("company-demand-list")).toBeNull();
   });
@@ -165,6 +165,6 @@ describe("switch on (mocked payload)", () => {
     await screen.findByTestId("company-demand-list");
     const after = Array.from(list.querySelectorAll("a")).map(row => row.getAttribute("aria-label"));
     expect(after).toEqual(before);
-    expect(container.querySelectorAll("[data-g-primary]").length).toBe(0);
+    expect(container.querySelectorAll("[data-g-primary]").length).toBe(1);
   });
 });
