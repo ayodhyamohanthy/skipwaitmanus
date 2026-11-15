@@ -1,26 +1,36 @@
-// Company door (D-048 phase 3 W2; comp design/goal-ui/w2/company-*.png): one
-// goal line in the seeker's words, one black commit opening the W1 ask drawer
-// in place, then the honest facts - responsiveness (never an invented figure),
-// open roles as rows with mono dates, the three ask-quality points and the
-// privacy preview. Availability only routes the sent request (D-176), so the
-// door shows every company the same pre-send state. Every number from
-// /api/companies/:slug, /api/companies/:slug/opportunities and the live send.
+// Company door, redesigned to the doctrine (D-048-p3-live-review-find;
+// contract "Get referred at {Company}." in docs/plans/GOAL_UI_MIGRATION.md):
+// one goal line in the seeker's words, one "Your next step" block whose
+// single black commit ("Ask for a referral") opens the W1 ask drawer in
+// place, with the cost stated before the ask from the shared money copy and
+// the full money sentence beside it. Availability only routes the sent
+// request (D-176), so the door shows every company the same pre-send state.
+// Then the honest facts - responsiveness from the shared companySignalCopy
+// (never an invented figure), open roles as rows with mono dates, the three
+// ask-quality points, the privacy preview and the "Claim this company" link
+// while VITE_COMPANY_CLAIM is on. Every number from /api/companies/:slug,
+// /api/companies/:slug/opportunities and the live send.
 import { ArrowLeft, ArrowRight, CalendarDays, LockKeyhole } from "lucide-react";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import {
   GoalAppShell,
   GoalButton,
+  GoalEmptyState,
+  GoalNextStep,
   GoalNum,
   GoalSkeletonRows,
 } from "@/components/goal";
-import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/companyDirectory";
-import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
+import { CompanyDemandLine } from "@/components/demand/CompanyDemandLine";
+import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/companyDirectory";import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
 import { useCompanyResponseSignal } from "@/lib/companyResponseSignal";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
 import type { CompanyResponseSignal } from "@shared/companyResponseSignal";
-import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
+// ASK_COST_SENTENCE stays for the SEO description below; the block states the
+// cost once, through MONEY_SENTENCE.
+import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
 import { NotFoundContent } from "./NotFound";
 import { AskDrawer } from "./explore/AskDrawer";
 import { useAskComposer } from "./explore/useAskComposer";
@@ -37,10 +47,26 @@ function BackLink() {
 
 export default function ExploreCompany() {
   const [, params] = useRoute("/explore/:slug");
+  const [, go] = useLocation();
   const slug = params?.slug ?? "";
   const company = useCompany(slug);
   // An unknown or hidden slug is the app's 404 (keep).
-  if (company.error instanceof CompanyNotFoundError) return <NotFoundContent />;
+  // An unknown or hidden slug is the app's 404 (keep), rendered inside the
+  // goal frame so the seeker keeps their bearings (packet item 4).
+  if (company.error instanceof CompanyNotFoundError) {
+    return (
+      <GoalAppShell active="find" pageTitle="Find a referral">
+        <div data-skipwait-screen="explore-company-not-found" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6">
+          <GoalEmptyState
+            className="px-0"
+            title="This door doesn’t lead anywhere."
+            body="The company may have moved, or the link was mistyped."
+            action={{ label: "All companies", onClick: () => go("/explore") }}
+          />
+        </div>
+      </GoalAppShell>
+    );
+  }
   if (company.data) return <CompanyPage company={company.data} />;
   if (company.isError) {
     return (
@@ -163,17 +189,24 @@ function CompanyPage({ company }: { company: PublicCompany }) {
               {company.initials}
             </span>
             <div className="min-w-0">
-              <h1 className="truncate text-g-display text-g-ink">{company.name}</h1>
               <p className="truncate text-g-meta text-g-ink-3">{company.functions.join(" · ")}</p>
+              <h1 className="text-balance text-g-display text-g-ink">{`Get referred at ${company.name}.`}</h1>
             </div>
           </div>
         </header>
 
-        <p className="mt-6 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
-        <div className="mt-5 max-gdesk:grid">
-          <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
+        <div className="mt-6">
+          <GoalNextStep reason="One request to a verified employee of this company.">
+            <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
+            <p className="mt-3 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+          </GoalNextStep>
         </div>
-        <p className="mt-3 text-g-meta text-g-ink-3">{ASK_COST_SENTENCE}</p>
+        {import.meta.env.VITE_COMPANY_CLAIM === "true" ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/company/claim" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Claim this company</Link> if you work here.</p> : null}
+
+        {/* D-086.mount: below the hero and outside the next-step block; renders nothing while the switch is off. */}
+        <div className="mt-8">
+          <CompanyDemandLine slug={company.slug} companyName={company.name} />
+        </div>
 
         <Responsiveness slug={company.slug} />
         <CompanyOpenings
@@ -224,17 +257,26 @@ function CompanyPage({ company }: { company: PublicCompany }) {
   );
 }
 
-// Company responsiveness (D-104): keep the shipped read - nothing renders
-// while the flag is off or the read fails. With too little data, the honest
-// line; never an invented figure. Shown numbers are mono, averages only.
+// Company responsiveness (D-104, packet item 4): the shared companySignalCopy
+// (content.json-synced) supplies every word, including its disclaimer. Nothing
+// renders while the flag is off or the read fails. With too little data, the
+// honest line; never an invented figure. Shown numbers are mono, averages only.
 function Responsiveness({ slug }: { slug: string }) {
   const { data } = useCompanyResponseSignal(slug);
   if (!data) return null;
   return (
     <section className="mt-10 border-t border-g-hairline pt-6" data-testid="company-response-signal" aria-label="Company responsiveness">
-      <h2 className={EYEBROW}>Company responsiveness</h2>
-      {data.state === "shown" ? <ShownSignal data={data} /> : (
-        <p className="mt-3 text-g-meta text-g-ink-2">Not enough requests yet to show a response signal. We never show a number we can’t back.</p>
+      <h2 className={EYEBROW}>{COMPANY_SIGNAL_COPY.intro}</h2>
+      {data.state === "shown" ? (
+        <>
+          <ShownSignal data={data} />
+          <p className="mt-3 text-g-meta text-g-ink-3">{COMPANY_SIGNAL_COPY.disclaimer}</p>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-g-meta text-g-ink-2">{COMPANY_SIGNAL_COPY.insufficient}</p>
+          <p className="mt-1 text-g-meta text-g-ink-3">{COMPANY_SIGNAL_COPY.disclaimer}</p>
+        </>
       )}
     </section>
   );
@@ -243,9 +285,9 @@ function Responsiveness({ slug }: { slug: string }) {
 function ShownSignal({ data }: { data: CompanyResponseSignal }) {
   if (data.state !== "shown") return null;
   const rows: [string, number, string][] = [
-    ["usual first reply", data.usualFirstReplyDays, data.usualFirstReplyDays === 1 ? "day" : "days"],
-    ["asks answered this month", data.answeredThisMonth, ""],
-    ["referrers inside", data.referrersInside, ""],
+    [COMPANY_SIGNAL_COPY.usualFirstReply, data.usualFirstReplyDays, data.usualFirstReplyDays === 1 ? COMPANY_SIGNAL_COPY.day : COMPANY_SIGNAL_COPY.days],
+    [COMPANY_SIGNAL_COPY.answeredThisMonth, data.answeredThisMonth, ""],
+    [COMPANY_SIGNAL_COPY.referrersInside, data.referrersInside, ""],
   ];
   return (
     <dl className="mt-3 grid gap-2">

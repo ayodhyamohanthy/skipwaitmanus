@@ -35,6 +35,14 @@ export const MONEY_SENTENCE = `${ASK_COST_SENTENCE} ${REFERRER_MONEY_SENTENCE}`;
 export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID}`;
 
 /**
+ * The company door's not-open reason (D-132 audit item 7): the waiting rule in
+ * one shared place, never retyped per surface. Referral-only wording (D-173,
+ * D-180): "referral requests", never the noun "asks", and the cost says
+ * "nothing is used", never "credit".
+ */
+export const COVERAGE_WAIT_REASON = `No verified employee can see referral requests yet. Yours waits at no cost until one can - up to ${COVERAGE_WAIT_DAYS} days - and nothing is used until then.`;
+
+/**
  * The credit rule exactly as the ledger keeps it today (server/db.ts):
  * an ask at a company where no verified employee is available yet waits at no
  * cost (D-034); the moment one can first see it, create..delivery spends 1

@@ -88,7 +88,7 @@ test("seeker on accepted conversation reports with ask id, admin reads evidence,
   await seekerPage.getByRole("button", { name: "Submit report" }).click();
   const reportRes = await reportPost;
   expect(reportRes.status()).toBe(201);
-  await expect(seekerPage.getByText("Thanks. We're on it.")).toBeVisible();
+  await expect(seekerPage.getByText("Thanks. Your report is filed.")).toBeVisible();
 
   // Admin read: read e2e/.auth/seed.json directly
   const seedPath = join(dirname(fileURLToPath(import.meta.url)), ".auth", "seed.json");
