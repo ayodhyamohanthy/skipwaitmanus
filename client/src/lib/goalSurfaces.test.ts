@@ -23,7 +23,7 @@ describe("goalSurfaces flag module", () => {
     }
     // Vitest runs in MODE=test, so the env is empty by default: an unreleased
     // id is off, and even the released `home` is off (test-mode rule below).
-    expect(goalSurfaceOn("inbox")).toBe(false);
+    expect(goalSurfaceOn("skippy")).toBe(false);
   });
 
   it("unknown ids are refused and no route is declared twice", () => {
