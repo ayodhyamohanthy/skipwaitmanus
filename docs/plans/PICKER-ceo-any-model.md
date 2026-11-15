@@ -38,4 +38,4 @@ Owner-reserved calls (D-321 rule 1), review independence and CI. This row lets m
 
 ## Status
 
-PICKER-ceo-any-model: registered — D-338 — 2026-11-16 — not started.
+PICKER-ceo-any-model: registered — D-338 — 2026-11-16 — not started. Owner, same session: "moveup", so the row is first among open rows in `docs/plans/assignments.json` (owner exception to FIFO, this row only).
