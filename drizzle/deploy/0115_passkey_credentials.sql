@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `passkeyCredentials` (
  UNIQUE INDEX `passkey_credential_id_unique` (`credentialId`),
  INDEX `passkey_openid_idx` (`openId`)
 );
---> statement-breakpoint
+
 CREATE TABLE IF NOT EXISTS `passkeyChallenges` (
  `id` int AUTO_INCREMENT PRIMARY KEY,
  `openId` varchar(64) NULL,
