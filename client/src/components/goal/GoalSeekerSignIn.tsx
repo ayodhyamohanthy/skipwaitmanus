@@ -45,7 +45,18 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
       const { ok, data } = await post("/api/auth/workos/email-code/verify", { email: email.trim().toLowerCase(), code: code.trim() });
       if (!ok || !data.signedIn) { setError(String(data.error || "That code could not be verified.")); return; }
       rememberSignInEmail("seeker", email);
-      if (window.PublicKeyCredential) { setStage("enroll"); return; }
+      const cleanEmail = email.trim().toLowerCase();
+      let alreadyOffered = false;
+      try {
+        alreadyOffered = Boolean(
+          localStorage.getItem("skipwait_passkey_enrolled_" + cleanEmail) ||
+          localStorage.getItem("skipwait_passkey_dismissed_" + cleanEmail)
+        );
+      } catch { /* storage restricted */ }
+      if (window.PublicKeyCredential && !alreadyOffered) {
+        setStage("enroll");
+        return;
+      }
       window.location.assign(returnTo);
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   }

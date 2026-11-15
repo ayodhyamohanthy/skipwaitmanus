@@ -107,8 +107,46 @@ owner (above). Do not pre-build them behind a flag.
   path, and what happens when the platform credential was deleted on the device.
 - Owner decision recorded for (a) and (b) before either ships.
 
+### Written Security Review (SimpleWebAuthn native passkey implementation)
+
+1. **Challenge Lifecycle & Ceremony Isolation:**
+   - Server-side generation using `@simplewebauthn/server` (`generateRegistrationOptions`, `generateAuthenticationOptions`).
+   - Every challenge is persisted to `passkeyChallenges` with a 5-minute TTL (`expiresAt`).
+   - For login options, an exact `ceremonyId` is returned to the client and required on verify, preventing challenge collisions or concurrent unauthenticated request invalidations.
+   - Challenge consumption (`consumePasskeyChallenge`) atomically queries and deletes the row, guaranteeing single-use protection against replay attacks.
+   - Expired challenges are swept on write and rejected immediately on verification attempt.
+
+2. **Origin & Relying Party Binding:**
+   - RP ID is strictly validated against `PASSKEY_RP_ID` (defaulting to `skipwait.me`).
+   - Origin is strictly validated against `PASSKEY_ORIGIN` (defaulting to `https://skipwait.me`).
+   - Browser client credentials cannot be replayed or used against different origins or relying parties.
+
+3. **Rate Limiting & Denial of Service Protection:**
+   - In-memory client IP rate limiter (`checkPasskeyRateLimit` using `resolveTrustedClientIp`) caps unauthenticated requests at 10 requests per minute per IP, responding with 429 when exceeded.
+   - Table size is bounded by challenge expiry and atomic deletion upon consumption.
+
+4. **Revocation Path & Credential Management:**
+   - Authenticated seekers can inspect their registered devices via `GET /api/auth/passkey/list`.
+   - Any registered passkey can be immediately revoked via `POST /api/auth/passkey/revoke` by credential ID, deleting the public key from `passkeyCredentials`.
+   - Revoked credentials fail authentication immediately upon subsequent sign-in attempts.
+
+5. **Deleted Device / Platform Credential Lifecycle:**
+   - If a credential is removed from the user's platform authenticator (e.g., deleted from Apple Keychain or Google Password Manager), WebAuthn prompts in the browser fail gracefully with cancellation or unknown credential.
+   - The user seamlessly falls back to standard personal email code or social login with zero data loss and no account lockout.
+
 ## Status
 
+- **Nov 16, 2026 (Gemini · 42c3): review findings F1–F9 resolved on PR #697 (`agent/queue/device-signin-passkeys`).**
+  - **F1 (Scope check):** Registry amendment D-337 landed in PR #1200; `scope-check.mjs` passes with 15/15 owned paths.
+  - **F2 (Referrer exclusion):** Tested red-first; `isReferrerAccount` refuses accounts with verified work email access or `workemail_*` prefix (403 on register, 400 on login verify); `createSessionToken` not called.
+  - **F3 (Rate limiting):** In-memory IP rate limiting implemented using `resolveTrustedClientIp`, capping rapid requests at 10/min with 429 responses; pinned by tests.
+  - **F4 (Ceremony isolation):** `login/options` issues a unique `ceremonyId` consumed on verify; concurrent ceremonies verified independent and non-colliding.
+  - **F5 (Observability):** Route catch blocks log errors and capture in Sentry via `captureException` when active; returns scrubbed 500 error messages.
+  - **F6 (Typing):** Removed `any` in `GoalPasskeySignIn.tsx` in favor of `PasskeyApiResponse`.
+  - **F7 (List/Revoke & Security Review):** Added `GET /api/auth/passkey/list` and `POST /api/auth/passkey/revoke` for authenticated seekers; written security review documented above.
+  - **F8 (Referrer surface pin):** Added pin in `passkeyGoalGate.test.tsx` asserting `GoalSignIn` with referrer intent renders no passkey affordance; status documented.
+  - **F9 (Enrollment offer lifecycle):** Moved unsupported platform redirect from render body to `useEffect`; remembers enrollment and dismissal in localStorage to avoid repeated offers on subsequent email code sign-ins.
+  - **Flag state:** In-code constant `PASSKEY_SIGNIN_ENABLED = false` remains off in production (D-097 pattern), ready for QA verification.
 - **Nov 13, D-333 (5): the owner answered (a) and (b).** (a) No referrer passkey: the work-email code stays a referrer's only sign-in. (b) No Sign in with Apple. The row is `todo`; build under this packet, then one independent Tier 1 review (D-151).
 - Registered by DeepSeek V4.1 Flash Free · 8c0f under D-209 (docs only). Build
   waits for the owner's answers to (a) and (b); the picker hands out no work on
