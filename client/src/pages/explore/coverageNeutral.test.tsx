@@ -76,14 +76,14 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 async function doorBody(openToReferrals: boolean): Promise<string> {
   stub(openToReferrals);
   renderWithQuery(<ExploreCompany />);
-  await waitFor(() => expect(text(document.querySelector('[data-skipwait-screen="explore-company"]'))).toContain("Ask a verified employee"));
+  await waitFor(() => expect(text(document.querySelector('[data-skipwait-screen="explore-company"]'))).toContain("One request to a verified employee"));
   return text(document.querySelector('[data-skipwait-screen="explore-company"]'));
 }
 
 async function drawerBody(openToReferrals: boolean): Promise<string> {
   stub(openToReferrals);
   renderWithQuery(<ExploreCompany />);
-  await waitFor(() => expect(text(document.querySelector('[data-skipwait-screen="explore-company"]'))).toContain("Ask a verified employee"));
+  await waitFor(() => expect(text(document.querySelector('[data-skipwait-screen="explore-company"]'))).toContain("One request to a verified employee"));
   fireEvent.click(screen.getByRole("button", { name: /referral/i }));
   const drawer = await screen.findByTestId("goal-drawer");
   return text(drawer);

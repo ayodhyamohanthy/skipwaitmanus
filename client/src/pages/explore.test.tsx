@@ -372,7 +372,6 @@ describe("Explore company door (goal, W2)", () => {
     expect(COVERAGE_WAIT_REASON.includes("credit")).toBe(false);
     expect(COVERAGE_WAIT_REASON.toLowerCase().includes("asks")).toBe(false);
   });
-  });
 
   it("explains a failed load with Try again instead of a 404", async () => {
     let fail = true;
@@ -672,12 +671,12 @@ describe("Goal redesign of the find surfaces", () => {
     fireEvent.change(within(drawer).getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(within(drawer).getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
     fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
-    await waitFor(() => expect(within(screen.getByTestId("goal-drawer")).getByText("Ask sent to Wipro.")).toBeTruthy());
+    await waitFor(() => expect(within(screen.getByTestId("goal-drawer")).getByText("Referral request sent to Wipro.")).toBeTruthy());
     fireEvent.click(within(screen.getByTestId("goal-drawer")).getByRole("button", { name: /Close/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));
     // The fresh drawer shows the composer, not the previous send's confirmation.
     const fresh = await screen.findByTestId("goal-drawer");
     expect(within(fresh).getByLabelText(/Job link/)).toBeTruthy();
-    expect(within(fresh).queryByText("Ask sent to Wipro.")).toBeNull();
+    expect(within(fresh).queryByText("Referral request sent to Wipro.")).toBeNull();
   });
 });
