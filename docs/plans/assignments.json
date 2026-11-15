@@ -180,6 +180,26 @@
       ]
     },
     {
+      "id": "PICKER-ceo-any-model",
+      "title": "No picker stage waits on a Claude session: the CEO review and the right to report on any task go to every model in a registry list (Claude, GPT-6.1 Sol) (D-338)",
+      "row": "D-338",
+      "packet": "docs/plans/PICKER-ceo-any-model.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-ceo-any-model",
+      "status": "todo",
+      "syncedTo": "D-338",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCeoModels.test.ts",
+        "docs/plans/assignments.json",
+        "docs/plans/PICKER-ceo-any-model.md"
+      ],
+      "note": "D-338 (7), owner Nov 16: Claude session timeouts must not hold decisions. Replace the two /^claude/i gates (isArchitect at nextTaskCore.mjs:777/1063 CEO review, :1252 mayReport) with a top-level ceoModels list in assignments.json, first value [\"Claude\", \"GPT-6.1 Sol\"], default [\"Claude\"] when missing. Red-first tests in the new nextTaskCeoModels.test.ts; existing nextTask*.test.ts unchanged. Any non-Claude tool builds it (D-225). Owner, Nov 16 (\"moveup\"): moved to the front of the open queue, ahead of PRICING-banded-oct25; the owner's own exception to FIFO for this row only."
+    },
+    {
       "id": "PRICING-banded-oct25",
       "title": "Frozen banded plan family (owner freeze Oct 25) replaces fee+credits model",
       "row": "PRICING",
@@ -718,8 +738,8 @@
       "tier": 1,
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
-      "status": "owner",
-      "syncedTo": "D-255",
+      "status": "todo",
+      "syncedTo": "D-338",
       "dependsOn": [
         "D-174-job-catalog"
       ],
@@ -731,8 +751,12 @@
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
         "server/emailDelivery.ts",
-        "server/emailDelivery*.test.ts"
-      ]
+        "server/emailDelivery*.test.ts",
+        "server/db.ts (claimReferralReviewDelivery only)",
+        "drizzle/schema.ts (referral review delivery columns only)",
+        "drizzle/deploy/*_review_delivery_alert*.sql"
+      ],
+      "note": "D-338 (Nov 16): back to todo. D-255 parked it on the misattributed Oct 31 migration pause (withdrawn by D-308) and on db.ts serialization (removed by D-309/D-314). The two D-255 (2) findings stand: stale claim allows a sixth send and a second owner alert; a {sent:false} owner alert is discarded with no durable retry. The reviewer records them as findings; the fix adds both failing tests first, then the atomic cap-preserving claim and durable alert state; any migration goes through GATE-migration-apply. Tier 1 independent review unchanged."
     },
     {
       "id": "REL-5xx-capture",
@@ -3759,8 +3783,8 @@
         "server/referralOperatingSystemRoutes.test.ts",
         "server/statusNotifications.test.ts"
       ],
-      "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required. Nov 10 owns amendment (docs/registry only, D-200 (2); Inkling 2 Small Free · b6cb): owns gains exactly server/askExpiryRoutes.test.ts, server/companyIdentityRows.test.ts, server/conversationRateLimit.test.ts, server/privateReferralRoutes.integration.test.ts, server/privateReferralRoutes.pinnedWork.test.ts, server/referrerOneClickReview.test.ts, server/referralConversation.test.ts, server/referralOperatingSystemRoutes.test.ts and server/statusNotifications.test.ts. Reason: the private referral routes now answer a truthful unavailable response when the block/authorization decision cannot be established; these suites never injected a block lookup and rode the old fail-open path (getDb absent in the test env, so the lookup read as not-blocked), and now see 503s. Each deps object gains one no-op lookup returning an empty set, restoring exactly the behavior the suites already pinned; no assertion is removed or weakened. No other owned path, row or dependency changes.",
-      "syncedTo": "D-326"
+      "note": "Coordinator-scoped existing-access-rule reliability correction; private reviewed contract governs exact cases. Registration is not implementation or acceptance. Shared route is serialized behind active BYOR #632 pending actual holder limited handoff/ACK and reviewed reordering. D-132-item3 waits for this row and BYOR, preserving all existing work and holds. No anonymous-summary/consent redesign, delivery-policy change, pricing/expiry/refund change or activation. Tier1 independent final fix review, exact required CI/current-main integration, protected landing and postmerge verification remain required. Nov 10 owns amendment (docs/registry only, D-200 (2); Inkling 2 Small Free · b6cb): owns gains exactly server/askExpiryRoutes.test.ts, server/companyIdentityRows.test.ts, server/conversationRateLimit.test.ts, server/privateReferralRoutes.integration.test.ts, server/privateReferralRoutes.pinnedWork.test.ts, server/referrerOneClickReview.test.ts, server/referralConversation.test.ts, server/referralOperatingSystemRoutes.test.ts and server/statusNotifications.test.ts. Reason: the private referral routes now answer a truthful unavailable response when the block/authorization decision cannot be established; these suites never injected a block lookup and rode the old fail-open path (getDb absent in the test env, so the lookup read as not-blocked), and now see 503s. Each deps object gains one no-op lookup returning an empty set, restoring exactly the behavior the suites already pinned; no assertion is removed or weakened. No other owned path, row or dependency changes. D-338 (Nov 16): F1 no longer holds the row (D-321 rule 4: its private evidence was due Nov 11 and is still undelivered); the fix stage closes on F2 with --fixed naming D-338, a different-family reviewer reviews the exact head against the public packet, and F1 becomes a new finding the day its evidence reaches an authorized session.",
+      "syncedTo": "D-338"
     },
     {
       "id": "D-057-session-gate",
@@ -6347,11 +6371,11 @@
       "packet": "docs/plans/PICKER-authoritative-ref-refresh.md",
       "tier": 2,
       "lane": "picker-authoritative-refs",
-      "branch": "agent/queue/picker-authoritative-ref-refresh",
+      "branch": "agent/queue/picker-authoritative-ref-refresh-2",
       "status": "todo",
-      "syncedTo": "D-313",
+      "syncedTo": "D-338",
       "dependsOn": [],
-      "note": "Bounded tooling correctness under direct fix-picker/pending-work instructions. Exact manual scope scripts/next-task.mjs ref refresh/retry/revalidation only, NEW nextTaskAuthoritativeRefs.test.ts, own packet Status. No owns because existing shared picker ownership retained; manual exact-diff qualification required. Diagnostic implementation draft unbound/reference-only, never adopted. Independently rerun local bare-origin actual CLI fixtures red-first, preserve holders/deleted refs/reports/landing/FIFO/model/unknowns and no config change. Prewrite check is not atomic protocol; remaining cross-ref race cannot be claimed solved, any required protocol change needs packet amendment before dispatch. Ordinary actual qualified free author/independent reviewer/current-main/full CI/protected merge; D312 exception unavailable."
+      "note": "Bounded tooling correctness under direct fix-picker/pending-work instructions. Exact manual scope scripts/next-task.mjs ref refresh/retry/revalidation only, NEW nextTaskAuthoritativeRefs.test.ts, own packet Status. No owns because existing shared picker ownership retained; manual exact-diff qualification required. Diagnostic implementation draft unbound/reference-only, never adopted. Independently rerun local bare-origin actual CLI fixtures red-first, preserve holders/deleted refs/reports/landing/FIFO/model/unknowns and no config change. Prewrite check is not atomic protocol; remaining cross-ref race cannot be claimed solved, any required protocol change needs packet amendment before dispatch. Ordinary actual qualified free author/independent reviewer/current-main/full CI/protected merge; D312 exception unavailable. D-338 (Nov 16): branch moved to agent/queue/picker-authoritative-ref-refresh-2 because the old branch held only external-route claim markers and no code, so D-324 passed the row over for every session (D-321 rule 10). The old branch stays untouched and reference-only."
     },
     {
       "id": "PICKER-cli-output-drain",
