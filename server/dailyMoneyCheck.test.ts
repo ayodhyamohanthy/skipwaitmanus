@@ -676,11 +676,11 @@ describe("runMoneyCheckNow (on-demand admin run)", () => {
 // paid through linked_invoices[].invoice_id + applied_amount, paged by the opaque next_offset.
 describe("provider payment reconciliation (D-100.provider-recon)", () => {
   const providerPayment = (overrides: Record<string, unknown> = {}) => ({
-    id: "pm_1", amount: 9900, currency: "INR", status: "success", date: new Date(NOW.getTime() - 2 * 3_600_000),
+    id: "pm_1", amount: 9900, currency: "INR", status: "success", date: new Date(NOW.getTime() - 10 * 3_600_000),
     applications: [{ invoiceId: "inv_1", amount: 9900 }], ...overrides,
   });
   const receipt = (overrides: Record<string, unknown> = {}) => ({
-    providerInvoiceId: "inv_1", amount: 9900, currency: "INR", status: "paid", paidAt: new Date(NOW.getTime() - 2 * 3_600_000), ...overrides,
+    providerInvoiceId: "inv_1", amount: 9900, currency: "INR", status: "paid", paidAt: new Date(NOW.getTime() - 10 * 3_600_000), ...overrides,
   });
   const HOUR = 3_600_000;
 
@@ -751,6 +751,24 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
     const { deps, sent } = makeDeps({
       listProviderPaymentsSince: vi.fn(async () => []),
       listReceiptsPaidSince: vi.fn(async () => [receipt({ providerInvoiceId: "inv_old", paidAt: new Date(NOW.getTime() - 60 * HOUR) })]),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent).toEqual([]);
+  });
+
+  it("R4c: a receipt stamped at 47h 59m ago whose payment occurred outside the 48h window is not reported as missing (G2)", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => []),
+      listReceiptsPaidSince: vi.fn(async () => [receipt({ providerInvoiceId: "inv_edge", paidAt: new Date(NOW.getTime() - 47 * HOUR - 59 * 60_000) })]),
+    });
+    await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+    expect(sent).toEqual([]);
+  });
+
+  it("R4d: a receipt stamped 90 minutes ago is within the 2h end margin and is not reported as missing (G2)", async () => {
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: vi.fn(async () => []),
+      listReceiptsPaidSince: vi.fn(async () => [receipt({ providerInvoiceId: "inv_fresh_receipt", paidAt: new Date(NOW.getTime() - 90 * 60_000) })]),
     });
     await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
     expect(sent).toEqual([]);
@@ -834,7 +852,7 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
     expect(findings[0]).toContain("provider_recon_truncated: the receipt read stopped at");
   });
 
-  it("R10: listRecentPayments reads Chargebee payment transactions by the documented contract, pages by next_offset, and drops card data (F1)", async () => {
+  it("R10: listRecentPayments reads Chargebee payment transactions by the documented contract, pages by next_offset, and drops card data (F1, G1)", async () => {
     const calls: string[] = [];
     const fetchMock = vi.fn(async (url: string) => {
       calls.push(String(url));
@@ -843,15 +861,17 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
         ok: true,
         json: async () => ({
           next_offset: second ? undefined : "opaque-next-token",
-          transaction: [{
-            id: second ? "txn_2" : "txn_1",
-            amount: second ? 499 : 9900,
-            currency_code: second ? "usd" : "inr",
-            date: 1700000000,
-            status: "success",
-            customer_id: "c_1",
-            card: { last4: "4242" },
-            linked_invoices: second ? [] : [{ invoice_id: "inv_1", applied_amount: 9900, applied_at: 1700000000, invoice_status: "paid" }],
+          list: [{
+            transaction: {
+              id: second ? "txn_2" : "txn_1",
+              amount: second ? 499 : 9900,
+              currency_code: second ? "usd" : "inr",
+              date: 1700000000,
+              status: "success",
+              customer_id: "c_1",
+              card: { last4: "4242" },
+              linked_invoices: second ? [] : [{ invoice_id: "inv_1", applied_amount: 9900, applied_at: 1700000000, invoice_status: "paid" }],
+            },
           }],
         }),
       } as unknown as Response;
@@ -874,6 +894,21 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
       expect(calls[1]).toContain("offset=opaque-next-token");
       expect(JSON.stringify(payments)).not.toContain("4242");
       expect(JSON.stringify(payments)).not.toContain("c_1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("R10b: a Chargebee response missing the list wrapper throws a validation error (G1)", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        transaction: [{ id: "txn_old", amount: 1000, currency_code: "usd", date: 1700000000, status: "success" }],
+      }),
+    } as unknown as Response));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      await expect(listRecentPayments({ site: "fixture-test", apiKey: "k" }, { since: new Date("2026-10-18T02:00:00Z"), until: new Date("2026-10-19T01:00:00Z") })).rejects.toThrow();
     } finally {
       vi.unstubAllGlobals();
     }

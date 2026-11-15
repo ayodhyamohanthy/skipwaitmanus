@@ -101,7 +101,7 @@ export type ProviderPayment = {
 };
 const paymentListSchema = z.object({
   next_offset: z.string().max(1000).optional(),
-  transaction: z.array(providerPaymentSchema).default([]),
+  list: z.array(z.object({ transaction: providerPaymentSchema })),
 });
 export const PROVIDER_RECON_PAGE_SIZE = 100;
 export const PROVIDER_RECON_MAX_PAGES = 5;
@@ -123,15 +123,17 @@ export async function listRecentPayments(credentials: ChargebeeCredentials, inpu
     const query = new URLSearchParams({ "type[is]": "payment", "date[after]": String(after), "date[before]": String(before), limit: String(PROVIDER_RECON_PAGE_SIZE), "sort_by[desc]": "date" });
     if (offset) query.set("offset", offset);
     const body = await chargebeeRequest(credentials, { method: "GET", path: "/transactions", query, timeoutMs: 10_000 }, paymentListSchema);
-    const batch = body.transaction;
-    for (const payment of batch) payments.push({
-      id: payment.id,
-      amount: payment.amount ?? 0,
-      currency: payment.currency_code.toUpperCase(),
-      status: payment.status,
-      date: payment.date,
-      applications: (payment.linked_invoices ?? []).map(link => ({ invoiceId: link.invoice_id, amount: link.applied_amount })),
-    });
+    for (const entry of body.list) {
+      const payment = entry.transaction;
+      payments.push({
+        id: payment.id,
+        amount: payment.amount ?? 0,
+        currency: payment.currency_code.toUpperCase(),
+        status: payment.status,
+        date: payment.date,
+        applications: (payment.linked_invoices ?? []).map(link => ({ invoiceId: link.invoice_id, amount: link.applied_amount })),
+      });
+    }
     if (!body.next_offset) break;
     offset = body.next_offset;
   }

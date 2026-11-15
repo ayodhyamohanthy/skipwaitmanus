@@ -69,6 +69,9 @@ export type ProviderPaymentForRecon = { id: string; amount: number; currency: st
 export const PROVIDER_RECON_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 export const PROVIDER_RECON_EDGE_MS = 60 * 60 * 1000;
 export const RECEIPT_RECON_LOOKBACK_MS = 72 * 60 * 60 * 1000;
+/** G2: the reverse check (receipt -> provider) is narrowed to [now - 47h, now - 2h] so edge skew between payment and receipt never causes false alarms. */
+export const RECEIPT_REVERSE_LOOKBACK_MS = 47 * 60 * 60 * 1000;
+export const RECEIPT_REVERSE_EDGE_MS = 2 * 60 * 60 * 1000;
 
 export type WalletAuditResult = { checkedWallets: number; mismatches: Array<Record<string, unknown>>; integrity: Array<Record<string, unknown>> };
 export type CreditedPaymentRow = { id: number; userId: number; role: string; tokenCount: number };
@@ -453,6 +456,8 @@ export function compareProviderPayments(input: { providerPayments: ProviderPayme
   const findings: string[] = [];
   const windowEnd = input.nowMs - PROVIDER_RECON_EDGE_MS;
   const windowStart = input.nowMs - PROVIDER_RECON_LOOKBACK_MS;
+  const reverseReceiptStart = input.nowMs - RECEIPT_REVERSE_LOOKBACK_MS;
+  const reverseReceiptEnd = input.nowMs - RECEIPT_REVERSE_EDGE_MS;
   const receiptByInvoice = new Map<string, ProviderReceiptRow>();
   const recordedReceipts = input.receipts.filter(receipt => MONEY_RECORDED_RECEIPT_STATUSES.has(receipt.status));
   for (const receipt of recordedReceipts) if (!receiptByInvoice.has(receipt.providerInvoiceId)) receiptByInvoice.set(receipt.providerInvoiceId, receipt);
@@ -492,9 +497,10 @@ export function compareProviderPayments(input: { providerPayments: ProviderPayme
   for (const receipt of recordedReceipts) {
     if (findings.length >= input.limit) break;
     if (appliedByInvoice.has(receipt.providerInvoiceId)) continue;
-    // F3: only receipts whose own stamp falls in the provider window are compared
-    // in the reverse direction; an older receipt's payment is outside what we read.
-    if (receipt.paidAt !== null && (receipt.paidAt.getTime() < windowStart || receipt.paidAt.getTime() > windowEnd)) continue;
+    // G2: only receipts whose own stamp falls within [now-47h, now-2h] are compared
+    // in the reverse direction; edge margins prevent false alarms when a payment
+    // occurred just outside the provider window or in flight.
+    if (receipt.paidAt !== null && (receipt.paidAt.getTime() < reverseReceiptStart || receipt.paidAt.getTime() > reverseReceiptEnd)) continue;
     findings.push(`receipt_without_provider_payment: invoice ${receipt.providerInvoiceId} (${receipt.amount} ${receipt.currency}) is recorded as paid, but Chargebee lists no successful payment for it in the window`);
   }
   if (input.receipts.length >= RECEIPT_RECON_BATCH) findings.unshift(`provider_recon_truncated: the receipt read stopped at ${RECEIPT_RECON_BATCH} rows, so some receipts in the window were not compared`);
