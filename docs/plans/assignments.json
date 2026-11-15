@@ -7473,6 +7473,26 @@
       ],
       "note": "Last retirement row (D-332; the split's D-048-K-kit, registered at last). Lands only when every D-048-K row is done and a repository search shows no import of client/src/components/kit and no goalSurfaceOn call outside the flag module. Then the kit folder, kit.css, the Kit v4 token block above the phase-2 marker in index.css and the flag module go, and the token audit's legacy rules with them. Shell parts (AccountMenu, NotificationBell, BetaNotice, CookieConsent) belong to D-048-F-shell-parts, which waits for the owner; this row cannot finish before that row does if those parts still import the kit. The flags-on CI build step keeps working with the module gone (an unused env value); removing that step is a workflow edit this row does not make.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "PICKER-ceo-any-model",
+      "title": "No picker stage waits on a Claude session: the CEO review and the right to report on any task go to every model in a registry list (Claude, GPT-6.1 Sol) (D-338)",
+      "row": "D-338",
+      "packet": "docs/plans/PICKER-ceo-any-model.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/picker-ceo-any-model",
+      "status": "todo",
+      "syncedTo": "D-338",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCeoModels.test.ts",
+        "docs/plans/assignments.json",
+        "docs/plans/PICKER-ceo-any-model.md"
+      ],
+      "note": "D-338 (7), owner Nov 16: Claude session timeouts must not hold decisions. Replace the two /^claude/i gates (isArchitect at nextTaskCore.mjs:777/1063 CEO review, :1252 mayReport) with a top-level ceoModels list in assignments.json, first value [\"Claude\", \"GPT-6.1 Sol\"], default [\"Claude\"] when missing. Red-first tests in the new nextTaskCeoModels.test.ts; existing nextTask*.test.ts unchanged. Any non-Claude tool builds it (D-225)."
     }
   ]
 }
