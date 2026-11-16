@@ -7,6 +7,16 @@ import TrustPrivacy from "./TrustPrivacy";
 afterEach(cleanup);
 
 describe("TrustPrivacy", () => {
+  it("names every processor that handles personal data (LAUNCH-legal-copy)", () => {
+    const { container } = render(<TrustPrivacy />);
+    const text = container.textContent ?? "";
+    for (const name of ["WorkOS", "ZeptoMail", "Sentry", "Cloudflare", "Chargebee", "Razorpay", "PayPal", "Microsoft Clarity"]) {
+      expect(text, `processor ${name} must be named`).toContain(name);
+    }
+    expect(text).toContain("page interactions and session replay");
+    expect(text).toContain("analytics cookie choice");
+  });
+
   it("explains private referral safeguards and links users to their account controls", () => {
     render(<TrustPrivacy />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Privacy.");
@@ -21,12 +31,13 @@ describe("TrustPrivacy", () => {
     const { container } = render(<TrustPrivacy />);
     for (const text of [
       /visible only to verified employees at the company behind the role link/,
-      /available only to you and the Referrer assigned to your request/,
+      /available only to you and the verified employee who accepts your request/,
       /message only after the Referrer accepts that specific request/,
       /Referral decisions never cost Referrers anything/,
       /referral content you submit \(job links, notes, resumes\)/,
-      /never sees, touches, or stores card numbers/,
-      /No advertising cookies and no cross-site tracking/,
+      /does not store full card numbers/,
+      /advertising storage is denied/,
+      /Essential-only mode denies analytics storage/,
       /kept while your account is active/,
       /Requests are reviewed rather than silently deleting records/,
       /not a substitute for jurisdiction-specific legal notices/,

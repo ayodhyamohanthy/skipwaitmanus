@@ -415,14 +415,18 @@ async function main() {
     const reviewer = [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb === "Review claim")?.who ?? null;
     const rerecord = args.verdict === "pass" && ["passed", "landing"].includes(stage) && reviewer === args.as;
     if (args.verdict && !rerecord && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
-    if (args.fixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
+    // D-344 (7): the fixer may re-record its own Fixed marker on a newer head (stage needs-review, its own Fixed last).
+    const refreshFixed = args.fixed && stage === "needs-review" && holder === args.as && [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb !== "Heartbeat")?.verb === "Fixed";
+    if (args.fixed && !refreshFixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
     if (args.fixed) requireSynced(doc, branches, args.as);
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
     // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
     const architect = architectLockOf(task);
     const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
     const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
-    const body = [reviewed ? `reviewed ${reviewed}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
+    // D-344 (7): a Fixed marker names the head it fixed, so the review gate can land it without a re-review.
+    const fixedAt = args.fixed ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to mark fixed`)) : null;
+    const body = [reviewed ? `reviewed ${reviewed}` : null, fixedAt ? `fixed ${fixedAt}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
     const history = [...(branches.get(reviewedBranch)?.markers ?? []), ...(lock?.markers ?? [])];
     if (args.provenance || history.some(m => markerReferences(m.body).external)) {
       if (!args.provenance || !args.execution) fail("external completion requires qualified route and execution IDs");
@@ -435,7 +439,8 @@ async function main() {
       if (args.verdict && (!model || [...result.builders, ...result.fixers].includes(model))) fail("external reviewer also built or fixed this work");
     }
     if (!pushMarker(lockName, tip(lockName), subject, body || undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
-    console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}`);
+    console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}${fixedAt ? ` (fixed ${fixedAt})` : ""}`);
+    if (fixedAt) console.log("The PR's review-gate result was computed before this marker: re-run its failed checks (or push a merge of main) so CI re-evaluates the gate on this head.");
     return;
   }
   if (args.landed) {

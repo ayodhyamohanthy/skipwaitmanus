@@ -64,14 +64,14 @@ describe("PICKER-packet-pass-red-recovery: passed, gate-only-red, quiet packet",
     expect(got.kind).not.toBe("review");
   });
 
-  it("(2) refuses builder, writer, takeover and fixer models, including other session tags of the same model", () => {
-    for (const claimant of ["Writer · 1111", "Writer · aaaa"]) {
+  it("(2) refuses the builder, writer, takeover and fixer sessions themselves (D-344 (1))", () => {
+    for (const claimant of ["Writer · 1111"]) {
       expect((pick({ branches: reviewLock([reviewClaim, pass]), claimant }) as { kind: string }).kind).not.toBe("review");
     }
     const taken = new Map<string, Branch>([[ARCH, archBranch({ markers: [claim, { verb: "Takeover", id: "P", who: "Taker · 4" }] })], [REVIEW, lockBranch([reviewClaim, pass])]]);
-    expect((pick({ branches: taken, claimant: "Taker · 9999" }) as { kind: string }).kind).not.toBe("review");
+    expect((pick({ branches: taken, claimant: "Taker · 4" }) as { kind: string }).kind).not.toBe("review");
     const fixed = new Map<string, Branch>([[ARCH, archBranch()], [REVIEW, lockBranch([reviewClaim, { verb: "Fixed", id: "P", who: "Fixer · 7" }, pass])]]);
-    expect((pick({ branches: fixed, claimant: "Fixer · 8888" }) as { kind: string }).kind).not.toBe("review");
+    expect((pick({ branches: fixed, claimant: "Fixer · 7" }) as { kind: string }).kind).not.toBe("review");
   });
 
   it("(3) treats the quiet boundary exactly as the clock does (strictly greater than two hours)", () => {
