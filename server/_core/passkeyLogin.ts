@@ -20,6 +20,7 @@ import {
 } from "@simplewebauthn/server";
 import * as Sentry from "@sentry/node";
 import type { Express, Request, Response } from "express";
+import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import * as db from "../db";
 import * as store from "./passkeyStore";
@@ -90,6 +91,10 @@ function handleRouteError(err: unknown, route: string, userMessage: string, res:
 }
 
 export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity: ResolveIdentity }) {
+  app.get("/api/auth/passkey/availability", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ enabled: passkeySignInOn() });
+  });
   const disabled = (_req: Request, res: Response) => res.status(404).json({ error: "Not found" });
   if (!passkeySignInOn()) {
     app.post("/api/auth/passkey/register/options", disabled);
@@ -191,7 +196,9 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       if (!stored || (await isReferrerAccount(stored.openId))) {
         return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
       }
-      const ceremonyId = req.body?.ceremonyId;
+      const ceremony = z.number().int().positive().safe().safeParse(req.body?.ceremonyId);
+      if (!ceremony.success) return res.status(400).json({ error: "Sign-in expired. Try again." });
+      const ceremonyId = ceremony.data;
       const challenge = await store.consumePasskeyChallenge(null, "login", ceremonyId);
       if (!challenge) return res.status(400).json({ error: "Sign-in expired. Try again." });
       const verification = await verifyAuthenticationResponse({
@@ -226,6 +233,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
   });
 
   app.get("/api/auth/passkey/list", rateLimitGuard, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const me = await opts.resolveIdentity(req);
       if (!me?.account?.openId || (await isReferrerAccount(me.account.openId))) {
@@ -255,7 +263,8 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       if (typeof credentialId !== "string" || !credentialId) {
         return res.status(400).json({ error: "Invalid credential id." });
       }
-      await store.deletePasskeyCredential(me.account.openId, credentialId);
+      const revoked = await store.deletePasskeyCredential(me.account.openId, credentialId);
+      if (!revoked) return res.status(404).json({ error: "That passkey was not found. Reload your passkeys and try again." });
       res.json({ revoked: true });
     } catch (err) {
       handleRouteError(err, "revoke", "We could not revoke passkey", res);

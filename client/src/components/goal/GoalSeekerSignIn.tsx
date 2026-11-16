@@ -11,11 +11,12 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalField, GoalTextInput } from "@/components/goal/GoalField";
-import { PasskeyAutofill, PasskeyEnrollmentOffer, PasskeySignInButton } from "@/components/goal/GoalPasskeySignIn";
+import { PasskeyAutofill, PasskeyEnrollmentOffer, PasskeySignInButton, usePasskeyAvailability } from "@/components/goal/GoalPasskeySignIn";
 import { SEEKER_SOCIAL, seekerSocialUrl } from "@/components/SeekerSignIn";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
 
 export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
+  const passkeys = usePasskeyAvailability();
   const [stage, setStage] = useState<"choose" | "email" | "code" | "enroll">("choose");
   const [email, setEmail] = useState(() => rememberedSignInEmail("seeker"));
   const [remembered, setRemembered] = useState(() => rememberedSignInEmail("seeker") !== "");
@@ -53,7 +54,7 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
           localStorage.getItem("skipwait_passkey_dismissed_" + cleanEmail)
         );
       } catch { /* storage restricted */ }
-      if (window.PublicKeyCredential && !alreadyOffered) {
+      if (passkeys.enabled && window.PublicKeyCredential && !alreadyOffered) {
         setStage("enroll");
         return;
       }
@@ -61,12 +62,12 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   }
 
-  if (stage === "enroll") return <PasskeyEnrollmentOffer email={email.trim().toLowerCase()} returnTo={returnTo} />;
+  if (stage === "enroll") return <PasskeyEnrollmentOffer enabled={passkeys.enabled} email={email.trim().toLowerCase()} returnTo={returnTo} />;
 
   if (stage === "choose") {
     return (
       <div data-testid="seeker-sign-in" className="grid gap-3">
-        <PasskeySignInButton returnTo={returnTo} />
+        <PasskeySignInButton enabled={passkeys.enabled} returnTo={returnTo} />
         {SEEKER_SOCIAL.map(item => (
           <GoalButton key={item.id} type="button" variant="outline" className="w-full rounded-full!" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}>
             <span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}
@@ -81,9 +82,9 @@ export function GoalSeekerSignIn({ returnTo = "/explore" }: { returnTo?: string 
   if (stage === "email") {
     return (
       <form data-testid="seeker-sign-in" className="grid gap-3" onSubmit={send}>
-        <PasskeyAutofill returnTo={returnTo} />
+        <PasskeyAutofill enabled={passkeys.enabled} returnTo={returnTo} />
         <GoalField label="Email address" htmlFor="seeker-email" help="We'll email you a six-digit code. New here? That creates your account." error={error || undefined}>
-          <GoalTextInput id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="username webauthn" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} className="rounded-full!" />
+          <GoalTextInput id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete={passkeys.enabled ? "username webauthn" : "email"} required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} className="rounded-full!" />
         </GoalField>
         {remembered && <button type="button" className="self-start text-g-meta font-semibold text-g-ink-2 underline underline-offset-2 hover:text-g-ink" onClick={() => { forgetSignInEmail("seeker"); setRemembered(false); setEmail(""); document.getElementById("seeker-email")?.focus(); }}>Not you? Forget this email</button>}
         <GoalButton type="submit" variant="primary" className="w-full rounded-full!" busy={busy} busyLabel="Sending code…" disabledReason={!email.trim() ? "Enter your email" : undefined}>Send sign-in code</GoalButton>

@@ -5,7 +5,7 @@
 | Row | `DEVICE-SIGNIN-passkeys` (Tier 1, lane `auth-device`) |
 | Branch | `agent/queue/device-signin-passkeys` (fresh; nothing of it rides `agent/queue/fix-device-signin`) |
 | Decisions | D-172 (the device prompt appears on its own when sign-in is needed), D-209 (this row, its scope and its two owner questions), D-030/D-049/D-057 (login rule), D-095 (one tap wherever possible), D-151 (Tier 1 review), D-204 (free tools first) |
-| Status | registered; **the build waits for the owner's two answers** (D-209 (4)). No code yet. |
+| Status | PR #697: Nov 16 F1–F4 repairs validated locally; production switch off. D-333 answered both owner questions. D-344 (7) replaces re-review with a finding-by-finding Fixed marker and green required CI; the current gate implementation and real device/DB QA remain outstanding. |
 
 ## Why this row exists
 
@@ -38,17 +38,10 @@ fix. Nothing in this row may be built inside another row's branch.
 3. **No paid provider.** WorkOS's hosted-UI passkeys and its custom domain
    ($99/month) are excluded (D-031/D-204). Sign-in stays on skipwait.me (D-030).
 
-## Open, and blocking the build (D-209 (4))
+## Owner answers (D-333 (5), November 13)
 
-- **(a) Referrer passkeys.** May a verified referrer add a passkey to the same
-  account, or does the work-email code stay the only way in because that code is
-  the work-email proof (D-057)? **Default until the owner answers: no referrer
-  passkey.**
-- **(b) Sign in with Apple.** D-030 lists Google, Microsoft, GitHub, LinkedIn and
-  Slack. Adding a provider is the owner's call. **Default until the owner
-  answers: no Apple provider, no Apple client secret.**
-
-Nothing in this packet may implement (a) or (b) on a default.
+- **(a) No referrer passkeys.** Work-email codes remain the referrer's sign-in, including accounts with a personal login and verified work-email access.
+- **(b) No Sign in with Apple.** Do not add an Apple provider or client secret.
 
 ## Scope, in the order it should land
 
@@ -73,8 +66,7 @@ Only where the platform and the production OAuth client allow it, behind the sam
 "sign-in is needed" trigger; dismissal is remembered for the session. No prompt
 for a person already signed in.
 
-**Phase D — blocked.** Referrer passkeys and Sign in with Apple wait for the
-owner (above). Do not pre-build them behind a flag.
+**Phase D — excluded by D-333.** No referrer passkeys or Sign in with Apple.
 
 ## Guardrails (binding)
 
@@ -113,7 +105,7 @@ owner (above). Do not pre-build them behind a flag.
    - Server-side generation using `@simplewebauthn/server` (`generateRegistrationOptions`, `generateAuthenticationOptions`).
    - Every challenge is persisted to `passkeyChallenges` with a 5-minute TTL (`expiresAt`).
    - For login options, an exact `ceremonyId` is returned to the client and required on verify, preventing challenge collisions or concurrent unauthenticated request invalidations.
-   - Challenge consumption (`consumePasskeyChallenge`) atomically queries and deletes the row, guaranteeing single-use protection against replay attacks.
+    - Challenge consumption reads the candidate and conditionally deletes the exact row scoped to its account and kind. Only a delete affecting exactly one row returns the challenge; concurrent readers that lose the delete receive null. Anonymous login never falls back to another ceremony when an ID is missing or invalid.
    - Expired challenges are swept on write and rejected immediately on verification attempt.
 
 2. **Origin & Relying Party Binding:**
@@ -123,11 +115,13 @@ owner (above). Do not pre-build them behind a flag.
 
 3. **Rate Limiting & Denial of Service Protection:**
    - In-memory client IP rate limiter (`checkPasskeyRateLimit` using `resolveTrustedClientIp`) caps unauthenticated requests at 10 requests per minute per IP, responding with 429 when exceeded.
-   - Table size is bounded by challenge expiry and atomic deletion upon consumption.
+    - Expired rows are purged on challenge creation. This is not a global durable rate limit or a proven table-size bound: the per-process IP limiter resets on restart and is not shared across instances.
 
 4. **Revocation Path & Credential Management:**
-   - Authenticated seekers can inspect their registered devices via `GET /api/auth/passkey/list`.
-   - Any registered passkey can be immediately revoked via `POST /api/auth/passkey/revoke` by credential ID, deleting the public key from `passkeyCredentials`.
+    - Authenticated seekers can inspect their registered devices via `GET /api/auth/passkey/list`.
+    - The goal seeker sign-in page links to `/sign-in?passkeys=manage` when the fresh server availability response enables passkeys. The management view handles loading, empty, authentication, errors and retry; removal requires confirmation. An uncertain removal response offers a list reload and never claims success.
+    - Any registered passkey can be immediately revoked via `POST /api/auth/passkey/revoke` by credential ID, deleting the public key from `passkeyCredentials`.
+    - Deletion applies both account and credential predicates and returns success only for one removed row. A missing or differently owned credential returns a generic 404.
    - Revoked credentials fail authentication immediately upon subsequent sign-in attempts.
 
 5. **Deleted Device / Platform Credential Lifecycle:**
@@ -136,21 +130,26 @@ owner (above). Do not pre-build them behind a flag.
 
 ## Status
 
-- **Nov 16, 2026 (Gemini · 42c3): review findings F1–F9 resolved on PR #697 (`agent/queue/device-signin-passkeys`).**
+- **Nov 16, 2026 (GPT-6.1 Sol · 2321): F1–F4 repair evidence on PR #697.** Merge `a97f93bb` incorporates `0de8feb6`; the newer `becc0abe` delta is docs/queue only and is being integrated after this checkpoint. Checked D-344–D-346: D-344 (7) removes the second review after fixes; until its process implementation lands, existing CI still enforces its existing gate. No pass or release is claimed.
+  - **F1:** Actual store queries first reproduced concurrency/account/ceremony/revocation defects (19 failing cases). Account-and-kind-scoped conditional deletion returns a challenge only to the single successful consumer. Anonymous login requires a positive safe-integer ceremony ID and never falls back to another challenge. These use the existing predicate-aware in-memory Drizzle helper, not live MySQL concurrency.
+  - **F2:** Fresh server availability gates the button, autofill, enrollment and management entry. Disabled availability leaves email/social sign-in usable; the production constant stays `false`.
+  - **F3:** Rejected options/verify requests restore controls with visible retry guidance; device cancellation is distinct from network failure. Enrollment and autofill failures are covered.
+  - **F4:** The goal sign-in management link opens an account-scoped list with loading/empty/authentication/error states, confirmation before removal, and list reconciliation after an uncertain response. Missing or differently owned credentials never report successful revocation.
+  - **Validation:** Six focused suites passed **93/93**, including navigation, in `2321-passkey-final-focused5.log`; TypeScript, production build, design-token audit, scope check (15 owned paths), migration lint, deploy-trigger check and `git diff --check` passed. The full `quality:gate` run reported a timeout in the unrelated `scripts/classifyCiChange.test.ts` 400-commit fixture; its overall run remains unresolved and is **not green**.
+  - **Pixels:** Real components with mocked APIs captured at 1280 and 390 across baseline/network/list/empty/authentication/disabled/revoke-error states (14 images). Management-link navigation and Back to sign-in passed both widths, with no overflow or page errors (`navigation-results.json`). Evidence directory: `/private/var/folders/59/_4xyfhys6v57h36gwg4r7xf40000gn/T/opencode/2321-passkey-preview/`; logs share its parent directory. These local artifacts do not prove device WebAuthn or live-DB QA. The device/DB evidence below remains outstanding.
+- **Nov 16, 2026 prior implementation report (Gemini · 42c3), subsequently challenged by independent review F1–F4:**
   - **F1 (Scope check):** Registry amendment D-337 landed in PR #1200; `scope-check.mjs` passes with 15/15 owned paths.
   - **F2 (Referrer exclusion):** Tested red-first; `isReferrerAccount` refuses accounts with verified work email access or `workemail_*` prefix (403 on register, 400 on login verify); `createSessionToken` not called.
   - **F3 (Rate limiting):** In-memory IP rate limiting implemented using `resolveTrustedClientIp`, capping rapid requests at 10/min with 429 responses; pinned by tests.
-  - **F4 (Ceremony isolation):** `login/options` issues a unique `ceremonyId` consumed on verify; concurrent ceremonies verified independent and non-colliding.
+  - **F4 (Ceremony isolation):** `login/options` issues a unique `ceremonyId`; the prior mock-only test did not prove store consumption or rejection of missing IDs. See the current repair above.
   - **F5 (Observability):** Route catch blocks log errors and capture in Sentry via `captureException` when active; returns scrubbed 500 error messages.
   - **F6 (Typing):** Removed `any` in `GoalPasskeySignIn.tsx` in favor of `PasskeyApiResponse`.
-  - **F7 (List/Revoke & Security Review):** Added `GET /api/auth/passkey/list` and `POST /api/auth/passkey/revoke` for authenticated seekers; written security review documented above.
+  - **F7 (List/Revoke & Security Review):** Added authenticated list/revoke endpoints; the prior implementation had no usable management view. See the current repair above.
   - **F8 (Referrer surface pin):** Added pin in `passkeyGoalGate.test.tsx` asserting `GoalSignIn` with referrer intent renders no passkey affordance; status documented.
   - **F9 (Enrollment offer lifecycle):** Moved unsupported platform redirect from render body to `useEffect`; remembers enrollment and dismissal in localStorage to avoid repeated offers on subsequent email code sign-ins.
   - **Flag state:** In-code constant `PASSKEY_SIGNIN_ENABLED = false` remains off in production (D-097 pattern), ready for QA verification.
 - **Nov 13, D-333 (5): the owner answered (a) and (b).** (a) No referrer passkey: the work-email code stays a referrer's only sign-in. (b) No Sign in with Apple. The row is `todo`; build under this packet, then one independent Tier 1 review (D-151).
-- Registered by DeepSeek V4.1 Flash Free · 8c0f under D-209 (docs only). Build
-  waits for the owner's answers to (a) and (b); the picker hands out no work on
-  this row before then.
+- Registered by DeepSeek V4.1 Flash Free · 8c0f under D-209 (docs only); D-333 subsequently supplied the two answers.
 - Oct 26 (verification gaps, logged for the owner/Claude while review proceeds): the
   real server/DB accept criterion is blocked on two UNPROVEN facts, not on code.
   (1) ISOLATION: the skipwait-qa preview's DATABASE_URL is `secret_text` on both the

@@ -17,6 +17,31 @@ import { startAuthentication, startRegistration, browserSupportsWebAuthn, browse
 import { KeyRound } from "lucide-react";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { useEffect, useState } from "react";
+import { QueryClient, useQuery } from "@tanstack/react-query";
+import { z } from "zod";
+
+const availabilityClient = new QueryClient();
+const availabilitySchema = z.object({ enabled: z.boolean() }).strict();
+
+export function usePasskeyAvailability() {
+  const query = useQuery({
+    queryKey: ["passkey-availability"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/passkey/availability", { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error("Passkey availability could not be checked");
+      return availabilitySchema.parse(await response.json());
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    gcTime: 0,
+  }, availabilityClient);
+  return { enabled: query.isFetchedAfterMount && !query.isFetching && query.data?.enabled === true && !query.isError, pending: query.isPending || query.isFetching };
+}
+
+function dismissed(error: unknown) {
+  return (error instanceof Error || error instanceof DOMException) && (error.name === "NotAllowedError" || error.name === "AbortError");
+}
 
 type PasskeyApiResponse = {
   challenge?: string;
@@ -44,49 +69,58 @@ async function postJSON(url: string, body: unknown): Promise<{ ok: boolean; stat
 }
 
 async function authenticateWithPasskey(returnTo: string): Promise<{ signedIn: boolean; error?: string }> {
-  const optionsRes = await postJSON("/api/auth/passkey/login/options", {});
-  if (!optionsRes.ok || !optionsRes.data) return { signedIn: false, error: optionsRes.data?.error ?? "Passkey sign-in is not available right now." };
-  const ceremonyId = optionsRes.data.ceremonyId;
-  let assertion;
   try {
-    assertion = await startAuthentication({ optionsJSON: optionsRes.data as unknown as Parameters<typeof startAuthentication>[0]["optionsJSON"] });
+    const optionsRes = await postJSON("/api/auth/passkey/login/options", {});
+    if (!optionsRes.ok || !optionsRes.data) return { signedIn: false, error: optionsRes.data?.error ?? "Passkey sign-in is not available right now." };
+    const ceremonyId = optionsRes.data.ceremonyId;
+    let assertion;
+    try {
+      assertion = await startAuthentication({ optionsJSON: optionsRes.data as unknown as Parameters<typeof startAuthentication>[0]["optionsJSON"] });
+    } catch (error) {
+      return { signedIn: false, error: dismissed(error) ? undefined : "Your device could not start passkey sign-in. Try again or use another sign-in option." };
+    }
+    const verifyRes = await postJSON("/api/auth/passkey/login/verify", { ...assertion, ceremonyId });
+    if (!verifyRes.ok || !verifyRes.data?.signedIn) return { signedIn: false, error: verifyRes.data?.error ?? "That sign-in could not be verified. Try again." };
+    window.location.assign(returnTo);
+    return { signedIn: true };
   } catch {
-    return { signedIn: false }; // person dismissed the browser prompt - not an error
+    return { signedIn: false, error: "We could not connect. Check your connection and try again." };
   }
-  const verifyRes = await postJSON("/api/auth/passkey/login/verify", { ...assertion, ceremonyId });
-  if (!verifyRes.ok || !verifyRes.data?.signedIn) return { signedIn: false, error: verifyRes.data?.error ?? "That sign-in could not be verified. Try again." };
-  window.location.assign(returnTo);
-  return { signedIn: true };
 }
 
 /** Headless conditional-UI listener: mount on the stage whose email input
  *  carries autocomplete="username webauthn". Saved passkeys appear in that
  *  field's autofill; choosing one signs in. Renders nothing. */
-export function PasskeyAutofill({ returnTo }: { returnTo: string }) {
+export function PasskeyAutofill({ returnTo, enabled = false }: { returnTo: string; enabled?: boolean }) {
+  const [error, setError] = useState("");
   useEffect(() => {
-    if (!browserSupportsWebAuthn()) return;
+    if (!enabled || !browserSupportsWebAuthn()) return;
     let cancelled = false;
     (async () => {
       try {
         if (!(await browserSupportsWebAuthnAutofill())) return;
         const optionsRes = await postJSON("/api/auth/passkey/login/options", {});
-        if (!optionsRes.ok || !optionsRes.data || cancelled) return;
+        if (cancelled) return;
+        if (!optionsRes.ok || !optionsRes.data) throw new Error("Passkey options unavailable");
         const ceremonyId = optionsRes.data.ceremonyId;
         const assertion = await startAuthentication({ optionsJSON: optionsRes.data as unknown as Parameters<typeof startAuthentication>[0]["optionsJSON"], useBrowserAutofill: true });
         if (cancelled) return;
         const verifyRes = await postJSON("/api/auth/passkey/login/verify", { ...assertion, ceremonyId });
         if (!cancelled && verifyRes.ok && verifyRes.data?.signedIn) window.location.assign(returnTo);
-      } catch { /* conditional prompt dismissed or unavailable */ }
+        else if (!cancelled) setError(verifyRes.data?.error ?? "Passkey sign-in failed. Try another sign-in option.");
+      } catch (error) {
+        if (!cancelled && !dismissed(error)) setError("Passkey sign-in could not connect to your device or the server. Try again or use another sign-in option.");
+      }
     })();
     return () => { cancelled = true; };
-  }, [returnTo]);
-  return null;
+  }, [returnTo, enabled]);
+  return enabled && error ? <p role="alert" className="text-g-meta text-g-ink-2">{error}</p> : null;
 }
 
-export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
+export function PasskeySignInButton({ returnTo, enabled = false }: { returnTo: string; enabled?: boolean }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  if (!browserSupportsWebAuthn()) return null;
+  if (!enabled || !browserSupportsWebAuthn()) return null;
   return (
     <div>
       <GoalButton
@@ -98,9 +132,10 @@ export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
         busyLabel="Waiting for your device…"
         onClick={async () => {
           setBusy(true); setError("");
-          const result = await authenticateWithPasskey(returnTo);
-          if (!result.signedIn && result.error) setError(result.error);
-          setBusy(false);
+          try {
+            const result = await authenticateWithPasskey(returnTo);
+            if (!result.signedIn && result.error) setError(result.error);
+          } finally { setBusy(false); }
         }}
       >Use a saved passkey</GoalButton>
       {error && <p role="alert" className="mt-2 text-[13px] leading-[1.5] text-g-ink-3">{error}</p>}
@@ -108,15 +143,15 @@ export function PasskeySignInButton({ returnTo }: { returnTo: string }) {
   );
 }
 
-export function PasskeyEnrollmentOffer({ email, returnTo }: { email: string; returnTo: string }) {
+export function PasskeyEnrollmentOffer({ email, returnTo, enabled = false }: { email: string; returnTo: string; enabled?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [supported, setSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!browserSupportsWebAuthn()) { setSupported(false); return; }
+    if (!enabled || !browserSupportsWebAuthn()) { setSupported(false); return; }
     window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(setSupported).catch(() => setSupported(false));
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     if (supported === false) {
@@ -124,7 +159,7 @@ export function PasskeyEnrollmentOffer({ email, returnTo }: { email: string; ret
     }
   }, [supported, returnTo]);
 
-  if (supported !== true) {
+  if (!enabled || supported !== true) {
     return null;
   }
 
@@ -148,16 +183,15 @@ export function PasskeyEnrollmentOffer({ email, returnTo }: { email: string; ret
           busyLabel="Waiting for your device…"
           onClick={async () => {
             setBusy(true); setError("");
-            const optionsRes = await postJSON("/api/auth/passkey/register/options", {});
-            if (!optionsRes.ok || !optionsRes.data) {
-              setError(optionsRes.data?.error ?? "Passkey setup is not available right now.");
-              setBusy(false);
-              return;
-            }
             try {
+              const optionsRes = await postJSON("/api/auth/passkey/register/options", {});
+              if (!optionsRes.ok || !optionsRes.data) {
+                setError(optionsRes.data?.error ?? "Passkey setup is not available right now.");
+                return;
+              }
               const attestation = await startRegistration({ optionsJSON: optionsRes.data as unknown as Parameters<typeof startRegistration>[0]["optionsJSON"] });
               const verifyRes = await postJSON("/api/auth/passkey/register/verify", attestation);
-              if (!verifyRes.ok) {
+              if (!verifyRes.ok || !verifyRes.data?.registered) {
                 setError(verifyRes.data?.error ?? "That passkey could not be saved. You can try again later.");
               } else {
                 try {
@@ -165,13 +199,9 @@ export function PasskeyEnrollmentOffer({ email, returnTo }: { email: string; ret
                 } catch { /* storage restricted */ }
                 window.location.assign(returnTo);
               }
-            } catch {
-              setError("Passkey setup was dismissed. You can add it later.");
-              try {
-                localStorage.setItem("skipwait_passkey_dismissed_" + email.toLowerCase(), "true");
-              } catch { /* storage restricted */ }
-            }
-            setBusy(false);
+            } catch (error) {
+              setError(dismissed(error) ? "Passkey setup was dismissed. You can try again or continue without saving." : "We could not save the passkey. Check your connection and try again.");
+            } finally { setBusy(false); }
           }}
         >Save passkey</GoalButton>
         <GoalButton type="button" variant="ghost" onClick={finish}>Not now</GoalButton>

@@ -9,6 +9,8 @@ import express from "express";
 import request from "supertest";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createInMemoryDrizzle } from "../inMemoryDrizzle.testkit";
+import { passkeyChallenges, passkeyCredentials } from "../../drizzle/schema";
 
 const mocks = vi.hoisted(() => ({
   generateRegistrationOptions: vi.fn(),
@@ -26,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   getVerifiedWorkEmailAccess: vi.fn(),
   createSessionToken: vi.fn(),
   captureException: vi.fn(),
+  getDb: vi.fn(),
 }));
 
 vi.mock("@simplewebauthn/server", () => ({
@@ -44,6 +47,7 @@ vi.mock("./passkeyStore", () => ({
   bumpPasskeyCounter: mocks.bumpPasskeyCounter,
 }));
 vi.mock("../db", () => ({
+  getDb: mocks.getDb,
   getUserByOpenId: mocks.getUserByOpenId,
   getVerifiedWorkEmailAccess: mocks.getVerifiedWorkEmailAccess,
 }));
@@ -73,6 +77,13 @@ describe("passkey routes with the flag off", () => {
     Object.values(mocks).forEach(m => m.mockReset());
     resetPasskeyRateLimits();
   });
+  it("reports disabled availability without touching identity or storage", async () => {
+    const res = await request(app()).get("/api/auth/passkey/availability");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ enabled: false });
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(mocks.getUserByOpenId).not.toHaveBeenCalled();
+  });
   it.each([
     "/api/auth/passkey/register/options",
     "/api/auth/passkey/register/verify",
@@ -99,8 +110,22 @@ describe("passkey routes with the flag on (test env)", () => {
     mocks.createSessionToken.mockResolvedValue("signed-session");
     mocks.getUserByOpenId.mockResolvedValue({ id: 11, openId: "user_seeker1", name: "Seeker", role: "user", suspended: false });
     mocks.getVerifiedWorkEmailAccess.mockResolvedValue(undefined);
+    mocks.deletePasskeyCredential.mockResolvedValue(true);
   });
   afterEach(() => { delete process.env.PASSKEY_SIGNIN_ENABLED; });
+
+  it("reports enabled availability", async () => {
+    expect((await request(app(null)).get("/api/auth/passkey/availability")).body).toEqual({ enabled: true });
+  });
+
+  it.each([undefined, null, "", "bad", 0, -1, 1.5, {}, []])("refuses invalid login ceremony %j before consuming a challenge", async ceremonyId => {
+    mocks.getPasskeyCredentialByCredentialId.mockResolvedValue({ openId: "user_seeker1" });
+    mocks.consumePasskeyChallenge.mockResolvedValue("must-not-consume");
+    const res = await request(app(null)).post("/api/auth/passkey/login/verify").send({ id: "c", ceremonyId });
+    expect(res.status).toBe(400);
+    expect(mocks.consumePasskeyChallenge).not.toHaveBeenCalled();
+    expect(mocks.verifyAuthenticationResponse).not.toHaveBeenCalled();
+  });
 
   it("register/options refuses an unauthenticated caller", async () => {
     const res = await request(app(null)).post("/api/auth/passkey/register/options").send({});
@@ -197,7 +222,7 @@ describe("passkey routes with the flag on (test env)", () => {
     mocks.consumePasskeyChallenge.mockResolvedValue("login-challenge");
     mocks.verifyAuthenticationResponse.mockResolvedValue({ verified: true, authenticationInfo: { newCounter: 1 } });
     mocks.getUserByOpenId.mockResolvedValue({ id: 11, openId: "workemail_emp@acme.com", name: "Emp", role: "referrer", suspended: false });
-    const res = await request(app(null)).post("/api/auth/passkey/login/verify").send({ id: "c" });
+    const res = await request(app(null)).post("/api/auth/passkey/login/verify").send({ id: "c", ceremonyId: 101 });
     expect(res.status).toBe(400);
     expect(mocks.createSessionToken).not.toHaveBeenCalled();
   });
@@ -245,7 +270,7 @@ describe("passkey routes with the flag on (test env)", () => {
     mocks.consumePasskeyChallenge.mockResolvedValue("login-challenge");
     mocks.verifyAuthenticationResponse.mockResolvedValue({ verified: true, authenticationInfo: { newCounter: 1 } });
     mocks.getUserByOpenId.mockResolvedValue({ id: 11, openId: "user_seeker1", name: "Seeker", role: "user", suspended: true });
-    const res = await request(app(null)).post("/api/auth/passkey/login/verify").send({ id: "c" });
+    const res = await request(app(null)).post("/api/auth/passkey/login/verify").send({ id: "c", ceremonyId: 101 });
     expect(res.status).toBe(403);
     expect(res.headers["set-cookie"]?.join(";") ?? "").not.toContain("app_session_id=");
   });
@@ -300,6 +325,7 @@ describe("passkey routes with the flag on (test env)", () => {
     ]);
     const listRes = await request(app()).get("/api/auth/passkey/list");
     expect(listRes.status).toBe(200);
+    expect(listRes.headers["cache-control"]).toBe("private, no-store");
     expect(listRes.body.credentials).toEqual([
       expect.objectContaining({ id: "cred-1", deviceName: "MacBook Pro" }),
     ]);
@@ -308,6 +334,69 @@ describe("passkey routes with the flag on (test env)", () => {
     expect(revokeRes.status).toBe(200);
     expect(revokeRes.body).toEqual({ revoked: true });
     expect(mocks.deletePasskeyCredential).toHaveBeenCalledWith("user_seeker1", "cred-1");
+  });
+
+  it("does not report another account's missing credential as revoked", async () => {
+    mocks.deletePasskeyCredential.mockResolvedValue(false);
+    const res = await request(app()).post("/api/auth/passkey/revoke").send({ credentialId: "other-account" });
+    expect(res.status).toBe(404);
+    expect(res.body.revoked).toBeUndefined();
+  });
+  it.each([null, REFERRER])("refuses list and revoke for an unauthenticated or referrer caller %j", async identity => {
+    expect((await request(app(identity)).get("/api/auth/passkey/list")).status).toBe(403);
+    expect((await request(app(identity)).post("/api/auth/passkey/revoke").send({ credentialId: "owned" })).status).toBe(403);
+    expect(mocks.listPasskeyCredentials).not.toHaveBeenCalled();
+    expect(mocks.deletePasskeyCredential).not.toHaveBeenCalled();
+  });
+  it("refuses list and revoke for a personal login with verified work-email access", async () => {
+    mocks.getVerifiedWorkEmailAccess.mockResolvedValue({ workEmailDomain: "acme.com" });
+    expect((await request(app()).get("/api/auth/passkey/list")).status).toBe(403);
+    expect((await request(app()).post("/api/auth/passkey/revoke").send({ credentialId: "owned" })).status).toBe(403);
+    expect(mocks.listPasskeyCredentials).not.toHaveBeenCalled();
+    expect(mocks.deletePasskeyCredential).not.toHaveBeenCalled();
+  });
+});
+
+describe("real passkey store query contracts", () => {
+  const memory = createInMemoryDrizzle();
+  let store: typeof import("./passkeyStore");
+  beforeEach(async () => {
+    store = await vi.importActual<typeof import("./passkeyStore")>("./passkeyStore");
+    mocks.getDb.mockResolvedValue(memory.db);
+    memory.reset([[passkeyChallenges, [
+      { id: 101, openId: null, kind: "login", challenge: "login-A", expiresAt: new Date(Date.now() + 60000) },
+      { id: 102, openId: "owner", kind: "registration", challenge: "register-A", expiresAt: new Date(Date.now() + 60000) },
+      { id: 103, openId: null, kind: "login", challenge: "expired", expiresAt: new Date(Date.now() - 60000) },
+    ]], [passkeyCredentials, [{ id: 1, openId: "owner", credentialId: "owned" }]]]);
+  });
+  it.each(["login", "registration"] as const)("returns a %s challenge to exactly one concurrent consumer", async kind => {
+    const openId = kind === "login" ? null : "owner";
+    const id = kind === "login" ? 101 : 102;
+    const challenge = kind === "login" ? "login-A" : "register-A";
+    const results = await Promise.all(Array.from({ length: 8 }, () => store.consumePasskeyChallenge(openId, kind, id)));
+    expect(results.filter(value => value === challenge)).toHaveLength(1);
+    expect(results.filter(value => value === null)).toHaveLength(7);
+    expect(await store.consumePasskeyChallenge(openId, kind, id)).toBeNull();
+  });
+  it("binds explicit IDs to account and ceremony kind without consuming mismatches", async () => {
+    expect(await store.consumePasskeyChallenge("intruder", "registration", 102)).toBeNull();
+    expect(await store.consumePasskeyChallenge(null, "registration", 102)).toBeNull();
+    expect(await store.consumePasskeyChallenge("owner", "login", 102)).toBeNull();
+    expect(await store.consumePasskeyChallenge("owner", "registration", 102)).toBe("register-A");
+  });
+  it.each([undefined, null, "", "bad", 0, -1, 1.5])("never falls back to a global login challenge for %j", async id => {
+    expect(await store.consumePasskeyChallenge(null, "login", id)).toBeNull();
+    expect(await store.consumePasskeyChallenge(null, "login", 101)).toBe("login-A");
+  });
+  it("rejects expired challenges and permits the authenticated registration lookup", async () => {
+    expect(await store.consumePasskeyChallenge(null, "login", 103)).toBeNull();
+    expect(await store.consumePasskeyChallenge("owner", "registration")).toBe("register-A");
+  });
+  it("revokes only credentials owned by the current account and reports actual removal", async () => {
+    expect(await store.deletePasskeyCredential("intruder", "owned")).toBe(false);
+    expect(memory.rows(passkeyCredentials)).toHaveLength(1);
+    expect(await store.deletePasskeyCredential("owner", "owned")).toBe(true);
+    expect(await store.deletePasskeyCredential("owner", "owned")).toBe(false);
   });
 });
 
