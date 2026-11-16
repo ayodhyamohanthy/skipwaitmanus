@@ -335,7 +335,7 @@
       "tier": 2,
       "lane": "picker-path-tier",
       "branch": "agent/queue/picker-path-tier-review",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-353",
       "dependsOn": [
         "PROCESS-session-review-independence"
