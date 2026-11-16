@@ -82,3 +82,13 @@ Row 1 no longer makes review session-level: it removes the review requirement an
 3. Set exactly `REVIEWER_SEEKER_PASSWORD_HASH` and `REVIEWER_REFERRER_PASSWORD_HASH` as Worker secrets through the Cloudflare API, the way `db-cutover-secret.yml` sets `DATABASE_URL`. Never print a value. Never touch the admin or employer hashes, `REVIEWER_ALLOW_ADMIN` or `REVIEWER_LOGIN_ENABLED`.
 4. Secrets reach the container on its next start (AGENTS.md, Deploy), so say in the run summary that the next deploy applies them.
 5. Proof: one dry run that refuses a malformed hash, shown in the PR. Passwords are generated outside the workflow, and only their hashes are inputs.
+
+## Row 7: `GATE-unit-shards` (Tier 2, lane `gate-unit-shards`; D-351)
+
+On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other required check took about a minute. It was the slowest step before every merge.
+
+1. In `.github/workflows/ci.yml`, split the Vitest step into a matrix of 3 shard jobs, each running `pnpm vitest run --shard=<n>/3`. Keep each job's install and classify steps, so a marker-only change still skips them.
+2. **Keep the required check name.** Add a final job named exactly `unit + component + route tests` that `needs:` the three shards. It fails unless every shard succeeded (or was skipped as marker-only), and runs with `if: always()`. Name the shard jobs differently, for example `unit tests (shard 1/3)`, so the required check still reports exactly once.
+3. The shards together run the full suite with no exclusions; keep the comment above the Vitest step that forbids `--exclude`. Prove it with a run whose three shard test counts sum to the old single-job count, quoted in the PR.
+4. Shares `ci.yml` with `GATE-merge-queue` and `GATE-release-captures` under D-314: the second to land merges `main` and keeps both changes.
+5. Proof: the PR's own CI showing the three shards and the aggregate check, and the wall-clock time against the 7 min 20 s baseline.
