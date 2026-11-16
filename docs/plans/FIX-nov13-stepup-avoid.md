@@ -50,5 +50,5 @@ There is no branch for `accessQuery.isError`. When the read fails (a 5xx, a drop
 **Gates.** Tier 2: focused tests red first, `vitest run scripts/`, required CI green (D-200 (4)). Shares `scripts/next-task.mjs` and `scripts/nextTaskText.mjs` with open picker rows (`PICKER-fullstack-lights`, `PICKER-qa-stage`, `PICKER-parallel-eligibility`); under D-314 that is no dependency, and the later lander merges `main` and keeps both changes.
 
 ## Status
-- `D-057-stepup-access-error`: todo
+- `D-057-stepup-access-error`: review — agent/queue/d057-stepup-access-error — built by Claude Code · a971, 2026-11-16. `StepUpPanel` shows "We couldn’t check your work email. Nothing was recorded, and your review link still works." with one "Try again" (refetch) when the access read fails or returns a payload the client rejects, and reports it to Sentry; "Checking your work email…" shows only while a read is in flight. Red first: two new cases in `goalEmailReview.stepUp.test.tsx` failed on main (stuck on "Checking…"), then pass; email-review, step-up and login-rule suites 32/32; `pnpm check` 0; token audit OK; scope 2 paths. Captures of the error state at 1280 and 390 (fictional data) sent with the review request. Tier 1: needs one independent review by another session.
 - `PICKER-avoid-repeat`: todo
