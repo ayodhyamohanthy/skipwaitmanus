@@ -1,9 +1,10 @@
-import { and, eq, getTableColumns, lt } from "drizzle-orm";
+import { and, eq, getTableColumns, lt, type SQL } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jobs, profiles, referralRequestPasses, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, userBlocks, users } from "../drizzle/schema";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
-import { createReviewDeliveryRetry, REVIEW_DELIVERY_RETRY_BATCH, ReviewDeliveryOriginMissingError } from "./reviewDeliveryRetry";
+import { claimReferralReviewDelivery, completeReferralReviewDelivery } from "./db";
+import { createReviewDeliveryRetry, REVIEW_DELIVERY_ALERT_LEASE_MS, REVIEW_DELIVERY_RETRY_BATCH, ReviewDeliveryOriginMissingError } from "./reviewDeliveryRetry";
 import type { TransactionalEmailResult } from "./emailDelivery";
 
 /*
@@ -30,6 +31,32 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
 const store = createInMemoryDrizzle();
+/*
+ * The database server/db.ts sees: the in-memory store, plus one optional
+ * hook that runs just before the next matching UPDATE of a delivery row
+ * executes. It puts another runner's work between a function's read and its
+ * write, the interleaving a real second container can produce, while every
+ * read and write still goes through the real production functions.
+ */
+type DeliveryUpdate = { readonly [key: string]: unknown };
+let updateHook: { when: (values: DeliveryUpdate) => boolean; run: () => Promise<void> } | undefined;
+const hookedDb = new Proxy(store.db, {
+  get(target, prop, receiver) {
+    if (prop !== "update") return Reflect.get(target, prop, receiver);
+    return (table: MySqlTable) => {
+      const inner = target.update(table);
+      return {
+        set: (values: Parameters<typeof inner.set>[0]) => ({
+          where: async (where?: SQL) => {
+            const hook = updateHook;
+            if (table === referralReviewDeliveries && hook?.when(values)) { updateHook = undefined; await hook.run(); }
+            return inner.set(values).where(where);
+          },
+        }),
+      };
+    };
+  },
+});
 const full = (table: MySqlTable, values: Row): Row => ({ ...Object.fromEntries(Object.keys(getTableColumns(table)).map(key => [key, null])), ...values });
 const employee = (id: number, userId: number): Row => full(profiles, { id, userId, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date("Tue 2026-09-01 5:30 AM IST (UTC+05:30)"), paused: false, notifyNewAsk: true });
 const person = (id: number, email: string): Row => full(users, { id, name: `Person ${id}`, email, suspended: false });
@@ -55,13 +82,16 @@ type SendInput = { to: string; companyDomain: string; reviewUrl: string };
 let sent: SendInput[];
 let alerts: Array<{ subject: string; text: string }>;
 let sendResult: () => Promise<TransactionalEmailResult>;
+let alertResult: () => Promise<{ sent: boolean }>;
 const job = (overrides: Parameters<typeof createReviewDeliveryRetry>[0] = {}) => createReviewDeliveryRetry({
   ...overrides,
   send: async input => { sent.push(input); return sendResult(); },
-  alertOwner: async input => { alerts.push(input); return { sent: true }; },
+  alertOwner: async input => { alerts.push(input); return alertResult(); },
   origin: () => ORIGIN,
 });
 const run = (overrides: Parameters<typeof createReviewDeliveryRetry>[0] = {}) => job(overrides)({ nowMs: Date.now(), windowKey: "2026-10-30T16:00Z" });
+/** A later window: the job's own clock is `laterMs` ahead (the claim and completion keep the real clock). */
+const runLater = (laterMs: number) => job()({ nowMs: Date.now() + laterMs, windowKey: "2026-10-30T17:00Z" });
 /*
  * The in-memory kit cannot evaluate the raw `sql` lease comparison inside
  * claimReferralReviewDelivery's compare-and-set (it throws "unsupported
@@ -83,11 +113,13 @@ const reviewUrl = (requestId: number, referrerId: number) => `${ORIGIN}/email-re
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   mocks.createPool.mockResolvedValue({});
-  mocks.drizzle.mockReturnValue(store.db);
+  mocks.drizzle.mockReturnValue(hookedDb);
   mocks.capture.mockClear();
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   sent = []; alerts = [];
+  updateHook = undefined;
   sendResult = async () => ({ sent: true, reason: "sent" });
+  alertResult = async () => ({ sent: true });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
@@ -259,5 +291,181 @@ describe("review-delivery-retry: it never fails silently", () => {
     await expect(createReviewDeliveryRetry({ origin: () => undefined, send: async input => { sent.push(input); return { sent: true, reason: "sent" }; } })({ nowMs: Date.now(), windowKey: "2026-10-30T16:00Z" })).rejects.toBeInstanceOf(ReviewDeliveryOriginMissingError);
     expect(sent).toEqual([]);
     expect(rowOf(61)).toMatchObject({ status: "failed", attemptCount: 1 });
+  });
+});
+
+/*
+ * Review finding 1 on PR #874 (P1): claimReferralReviewDelivery read a row,
+ * then wrote its lease matching only the id and an eligible status. Another
+ * runner could finish the fifth attempt in between, and the stale write still
+ * leased the row and sent a sixth email. The claim's write now repeats what
+ * its read decided: the same attempt count, under the cap, past any backoff,
+ * and an eligible status or an expired lease.
+ */
+describe("review-delivery-retry: a claim never acts on a stale read", () => {
+  const competingFifthAttempt = async () => {
+    const competitor = await claimReferralReviewDelivery(REQUEST_ID, REFERRER, "email", "runner-b");
+    expect(competitor).toMatchObject({ attemptCount: 4 });
+    await completeReferralReviewDelivery(Number(competitor?.id), "runner-b", { status: "failed", error: "delivery_failed:503" });
+  };
+
+  it("another runner's fifth attempt between the claim's read and write: no claim and no sixth email", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    updateHook = { when: values => values.status === "leased", run: competingFifthAttempt };
+    const output = await run();
+    expect(updateHook).toBeUndefined();
+    expect(sent).toEqual([]);
+    expect(output.processed).toBe(0);
+    expect(rowOf(61)).toMatchObject({ status: "failed", attemptCount: 5, lastError: "delivery_failed:503" });
+    expect((rowOf(61)?.nextAttemptAt as Date).getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it.each([
+    ["the attempt count moved on", { status: "failed", attemptCount: 3, nextAttemptAt: new Date(Date.now() + 10 * MINUTE_MS) }],
+    ["the backoff moved into the future", { nextAttemptAt: new Date(Date.now() + 10 * MINUTE_MS) }],
+    ["the row reached the cap", { attemptCount: 5 }],
+    ["another runner holds a live lease", { status: "leased", leaseOwner: "runner-b", leaseExpiresAt: new Date(Date.now() + MINUTE_MS) }],
+    ["the row was sent", { status: "sent", nextAttemptAt: null, sentAt: new Date() }],
+  ] as const)("a row whose state changed after the claim's read is not claimed: %s", async (_label, change) => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 2 })] });
+    updateHook = { when: values => values.status === "leased", run: async () => { await store.db.update(referralReviewDeliveries).set(change).where(eq(referralReviewDeliveries.id, 61)); } };
+    const claim = await claimReferralReviewDelivery(REQUEST_ID, REFERRER, "email", "runner-a");
+    expect(updateHook).toBeUndefined();
+    expect(claim).toBeUndefined();
+    expect(rowOf(61)).toMatchObject(change);
+    expect(rowOf(61)?.leaseOwner).not.toBe("runner-a");
+  });
+
+  it("an expired lease another runner already reclaimed and failed is not claimed again from the stale read", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { status: "leased", attemptCount: 2, leaseOwner: "dead-runner", leaseExpiresAt: new Date(Date.now() - MINUTE_MS), nextAttemptAt: null })] });
+    updateHook = { when: values => values.status === "leased", run: async () => { await store.db.update(referralReviewDeliveries).set({ status: "failed", attemptCount: 3, leaseOwner: null, leaseExpiresAt: null, nextAttemptAt: new Date(Date.now() + 2 * MINUTE_MS) }).where(eq(referralReviewDeliveries.id, 61)); } };
+    expect(await claimReferralReviewDelivery(REQUEST_ID, REFERRER, "email", "runner-a")).toBeUndefined();
+    expect(rowOf(61)).toMatchObject({ status: "failed", attemptCount: 3, leaseOwner: null });
+  });
+
+  it("control: with no other runner the same claim takes the row once, and a second claim gets nothing", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 2 })] });
+    expect(await claimReferralReviewDelivery(REQUEST_ID, REFERRER, "email", "runner-a")).toMatchObject({ attemptCount: 2, leaseOwner: "runner-a" });
+    expect(await claimReferralReviewDelivery(REQUEST_ID, REFERRER, "email", "runner-b")).toBeUndefined();
+    expect(rowOf(61)).toMatchObject({ status: "leased", attemptCount: 3, leaseOwner: "runner-a" });
+  });
+});
+
+/*
+ * Review finding 2 on PR #874 (P2): the fifth failure's owner alert was
+ * fire-and-forget; a refused or thrown alert was never tried again, because
+ * a row at 5 attempts is never read again. The alert is now owed on the row
+ * itself, written by the same completion that records the fifth failure, and
+ * stays owed until an alert is actually delivered.
+ */
+describe("review-delivery-retry: the give-up alert is durable", () => {
+  it("a refused alert is sent again in the next window, and once delivered never again", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    sendResult = async () => ({ sent: false, reason: "delivery_failed", providerStatus: 503 });
+    alertResult = async () => ({ sent: false });
+    const first = await run();
+    expect(alerts).toHaveLength(1);
+    expect(first.failed).toBe(2);
+    alertResult = async () => ({ sent: true });
+    const second = await run();
+    expect(alerts).toHaveLength(2);
+    expect(second).toMatchObject({ processed: 0, failed: 0 });
+    await run();
+    await runLater(2 * HOUR_MS);
+    expect(alerts).toHaveLength(2);
+    expect(sent).toHaveLength(1);
+    expect(rowOf(61)).toMatchObject({ status: "failed", attemptCount: 5 });
+  });
+
+  it("a thrown alert is recorded as a failure and sent again later", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    sendResult = async () => ({ sent: false, reason: "delivery_failed" });
+    alertResult = async () => { throw new Error("alert transport down"); };
+    const first = await run();
+    expect(first.failed).toBe(2);
+    expect(String(first.firstError)).toContain("review email retry failed");
+    alertResult = async () => ({ sent: true });
+    await run();
+    await run();
+    expect(alerts).toHaveLength(2);
+  });
+
+  it("response loss: an alert that went out but was not recorded is sent again after its lease, never lost", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    sendResult = async () => ({ sent: false, reason: "delivery_failed" });
+    updateHook = { when: values => values.leaseOwner === "owner-alerted", run: async () => { throw new Error("connection lost"); } };
+    const first = await run();
+    expect(alerts).toHaveLength(1);
+    expect(first.failed).toBe(2);
+    // The lease is still live: the same window does not alert twice.
+    await run();
+    expect(alerts).toHaveLength(1);
+    await runLater(REVIEW_DELIVERY_ALERT_LEASE_MS + MINUTE_MS);
+    expect(alerts).toHaveLength(2);
+    await runLater(2 * HOUR_MS);
+    expect(alerts).toHaveLength(2);
+  });
+
+  it("a runner that died holding the alert lease: the alert goes out once its lease expires", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    sendResult = async () => ({ sent: false, reason: "delivery_failed" });
+    let release: () => void = () => undefined;
+    alertResult = () => new Promise(resolve => { release = () => resolve({ sent: true }); });
+    const dying = run();
+    await vi.waitFor(() => expect(alerts).toHaveLength(1));
+    // While that runner holds the lease, no other run alerts.
+    await run();
+    expect(alerts).toHaveLength(1);
+    alertResult = async () => ({ sent: true });
+    await runLater(REVIEW_DELIVERY_ALERT_LEASE_MS + MINUTE_MS);
+    expect(alerts).toHaveLength(2);
+    // The first runner wakes up after losing its lease: its late answer records nothing and alerts nothing more.
+    release();
+    await dying;
+    await runLater(2 * HOUR_MS);
+    expect(alerts).toHaveLength(2);
+  });
+
+  it("two runners that both read the owed alert: only the one whose claim lands sends it", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    sendResult = async () => ({ sent: false, reason: "delivery_failed" });
+    await run();
+    expect(alerts).toHaveLength(1);
+    // Owe it again (as a refused alert leaves it), then let a second runner finish between the first one's read and claim.
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    alerts = [];
+    updateHook = { when: values => typeof values.leaseOwner === "string" && values.leaseOwner.startsWith("owner-alert:"), run: async () => { await run(); } };
+    await run();
+    expect(updateHook).toBeUndefined();
+    expect(alerts).toHaveLength(1);
+  });
+
+  it("a fifth attempt that died mid-send (lease expired at the cap) alerts the owner once, as unknown", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { status: "leased", attemptCount: 5, leaseOwner: "dead-runner", leaseExpiresAt: new Date(Date.now() - MINUTE_MS), nextAttemptAt: null })] });
+    await run();
+    expect(sent).toEqual([]);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].text).toContain(`referral request ${REQUEST_ID}`);
+    expect(alerts[0].text).toContain("outcome is unknown");
+    expect(rowOf(61)).toMatchObject({ status: "unknown", attemptCount: 5 });
+    await runLater(2 * HOUR_MS);
+    expect(alerts).toHaveLength(1);
+  });
+
+  it("several give-ups in one window go out as one alert naming each request, without a token or an address", async () => {
+    seed({ asks: [ask(REQUEST_ID), ask(OTHER_REQUEST_ID)], grants: [grant(51, REQUEST_ID, REFERRER), grant(53, OTHER_REQUEST_ID, REFERRER)], deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 }), delivery(63, OTHER_REQUEST_ID, REFERRER, { attemptCount: 4 })] });
+    sendResult = async () => ({ sent: false, reason: "delivery_failed" });
+    await run();
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].text).toContain(`referral request ${REQUEST_ID}`);
+    expect(alerts[0].text).toContain(`referral request ${OTHER_REQUEST_ID}`);
+    expect(alerts[0].text).not.toContain("riya@acme.com");
+    expect(alerts[0].text).not.toContain(tokenOf(OTHER_REQUEST_ID, REFERRER));
+  });
+
+  it("a row the job never gave up on (Slack, or capped before this job existed) is never alerted", async () => {
+    seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { channel: "slack", attemptCount: 4 }), delivery(62, REQUEST_ID, COLLEAGUE, { attemptCount: 5 })] });
+    await run();
+    expect(alerts).toEqual([]);
   });
 });
