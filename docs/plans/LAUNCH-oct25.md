@@ -22,7 +22,7 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 ## Owner confirmations recorded here (2026-10-25)
 - ZeptoMail delivers work-email codes to corporate inboxes (owner, in a Claude Code session). The referrer sign-in path needs no email work before outreach.
 
-## Row LAUNCH-legal-copy (Tier 2; the owner approves the text before it lands)
+## Row LAUNCH-legal-copy (Tier 2; market-standard wording pre-approved by D-345)
 **Goal.** Make three public statements true. **D-345 (owner, Nov 16):** the owner approved market-standard wording in advance, within D-345 (1)'s limits, so no approval comment is needed. The row lands on green required CI with 1280/390 captures. Anything outside those limits (a price, a new refund right, a new data use) still goes to the owner.
 
 **Current text (verified):**
@@ -47,7 +47,7 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 - `trustPrivacy.test.tsx` asserts each processor name appears.
 - Each is red on today's code.
 
-**Done:** the owner's approval comment on the PR, the gate (`pnpm check`, the two test files, `pnpm build`), 1280 and 390 captures of the three pages, and the row set to `done`.
+**Done:** wording within D-345 (1), green required CI, the gate (`pnpm check`, the two test files, `pnpm build`), 1280 and 390 captures of the three pages, and the row set to `done`. No per-PR owner approval comment is required.
 
 **Stop and ask if** the owner changes the money meaning of a sentence (for example, refunds on a decline). That is D-147's territory: report it `blocked` with the question.
 
@@ -106,5 +106,5 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 
 ## Status
 
-- **2026-10-25, LAUNCH-legal-copy waits on the owner (unblock ruling by Qoder · bbc5, D-200 (2)).** The checks half of Cue GPT · 5588's block is stale: typecheck, tests, build and Workers Builds are all green on `c8ecc53a`. The owner-approval half stands and only the owner can clear it (D-200 (6), the lasting D-001 rule). One correction is needed first: in `CancellationPolicy.tsx` bullet 3, "the referral comes back if you withdraw it then" is false - a claimed-then-passed request withdraws with no refund (`withdrawCompanyReferralRequest` sets `creditRefunded` false) and D-147 keeps a declined referral spent, so this row's own proposed wording is the true one: "After a verified employee claims or declines the request, the referral stays used." The owner approves or amends the exact wording in a comment on PR #659; then a session applies it, runs the gate, adds the 1280/390 captures and lands.
+- **2026-11-16, LAUNCH-legal-copy in progress — GPT-6.1 Sol · 8b28, PR #659.** Official picker assigned LAND; task takeover `2099102b` and landing-slot claim `a6a56d91` are on origin. Main `becc0abe` merged cleanly as `a5c8bea3`. D-345 supersedes the October owner-comment hold and permits the bounded redraft. Inspection reproduces two false statements in the old draft: claimed-then-declined withdrawal promises a return, and Terms grants resume access on claim instead of acceptance. Target set: the three owned policy pages, their two tests, this packet and the task's eventual completion status in assignments. Correct these statements, paused-sales wording, conditional allowance eligibility, processor disclosures and standard D-345 clauses; preserve existing refund rights. No runtime service, payment, schema, dependency or flag change. Card verification is not enforced by `openCycleTx` yet, so describe it only when required by the account; disclose existing Microsoft Clarity without authorizing a new use. Verification and 1280/390 captures remain pending; nothing is reported shipped.
 - LAUNCH-marker-ci-skip: done — 0697edfc (code head; landed under D-082 with this status commit on top). Job-level `if:` on `check`, `test` and `build` skips `pull_request` events whose head ref starts with `agent/reports/`, `agent/review/`, `agent/heartbeat/` or `agent/architect/`, or equals `agent/queue/landing`; `push` to main and task branches (`agent/queue/<task>`, `agent/<model>/<task>`) are unaffected because the condition is `pull_request`-only. Built by an Instinct coordinator session (PR #658). Landed by DeepSeek V4.1 Flash · c302, who verified rather than took it on trust: `scripts/ciMarkerSkip.test.ts` is red on main's workflow (3 failed / 3 passed) and 6/6 green on this one; `scope-check --branch` reports 2 owned paths with every change inside them; the conflict probe prints 0 against `main` and against `agent/queue/launch-legal-copy`; `tsc --noEmit` clean on the merged head. Required CI green on `06e20175` and re-run on the merged head.
