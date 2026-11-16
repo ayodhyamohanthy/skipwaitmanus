@@ -112,4 +112,5 @@ On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other requi
 
 ## Status
 
+- GATE-unit-shards: in progress — Claude Code · 9d90 — 2026-11-16 — branch agent/queue/gate-unit-shards.
 - PROCESS-session-review-independence: done — Claude Code · ff5a — 2026-11-16 — branch agent/queue/process-session-review. The CI review gate needs a review only for Tier 1 paths (D-352), counts independence per session (D-344 (1)), and lands findings plus a Fixed marker without a re-review (D-344 (7)). `--fixed` records `fixed <sha>`, and the picker's did() compares sessions. Follow-up, not built here: after a Fixed marker the picker still hands out a re-review rather than the landing, which wastes time but blocks nothing, because auto-merge lands the PR when CI is green. The landing slot is still in picker code; sessions land through auto-merge regardless.

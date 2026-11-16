@@ -322,9 +322,10 @@
       "syncedTo": "D-351",
       "dependsOn": [],
       "owns": [
-        ".github/workflows/ci.yml"
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 7 exactly. Keep the required check name 'unit + component + route tests' as an aggregate job, or every PR blocks. Shares ci.yml with GATE-merge-queue and GATE-release-captures under D-314."
+      "note": "Build docs/plans/D-344-unblock.md row 7 exactly. Keep the required check name 'unit + component + route tests' as an aggregate job, or every PR blocks. Shares ci.yml with GATE-merge-queue and GATE-release-captures under D-314. Nov 16 owns amendment (D-344 (8), Claude Code · 9d90): owns gains scripts/ciMarkerSkip.test.ts, which pinned the single test job and 'no needs:'; its assertions are ported to the shard matrix and the always-run aggregate, none dropped. Owned before only by done rows."
     },
     {
       "id": "PICKER-path-tier-review",
