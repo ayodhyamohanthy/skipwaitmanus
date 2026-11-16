@@ -85,6 +85,16 @@ describe("status help catalogue (D-094 item 3)", () => {
     expect(STATUS_HELP.interviewing.body).toMatch(/whoever hears first|you or the referrer|either of you/i);
   });
 
+  it("distinguishes acceptance from a submitted referral without promising submission", () => {
+    const accepted = statusHelpFor(source({ status: "approved", referrerId: 7 }));
+    const referred = statusHelpFor(source({ status: "intro_made", referrerId: 7 }));
+    expect(accepted?.body).toMatch(/accepted your referral request/i);
+    expect(accepted?.body).toMatch(/does not mean.*submitted/i);
+    expect(accepted?.body).not.toMatch(/(?:they|your referrer) (?:will )?submit(?:s)? (?:your|the) referral/i);
+    expect(referred?.body).toMatch(/has submitted the referral/i);
+    expect(accepted).not.toEqual(referred);
+  });
+
   it("keys the catalogue by the waiting sub-state, not by the raw status alone", () => {
     expect(statusHelpKeyFor(source({ status: "pending", referrerId: null, queueStatus: "waiting_for_coverage" }))).toBe("waiting:waiting_for_coverage");
     expect(statusHelpKeyFor(source({ status: "pending", referrerId: null, queueStatus: null }))).toBe("waiting:default");

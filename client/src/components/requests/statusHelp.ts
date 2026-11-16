@@ -63,7 +63,7 @@ export const STATUS_HELP: Readonly<Record<StatusHelpKey, StatusHelp>> = {
   },
   accepted: {
     title: "Your referrer said yes",
-    body: "They submit your referral through the company's own process, then mark it Referred here. Message them in the conversation if you need to share something.",
+    body: "A verified employee accepted your referral request. Acceptance does not mean the referral has been submitted. If they submit it through the company's own process, they mark it Referred here. Message them in the conversation if you need to share something.",
   },
   referred: {
     title: "Referred",
