@@ -2253,8 +2253,8 @@
       "tier": 1,
       "lane": "d048-release-admin-approvals",
       "branch": "agent/queue/d048-r-admin-approvals",
-      "status": "todo",
-      "syncedTo": "D-344",
+      "status": "done",
+      "syncedTo": "D-350",
       "dependsOn": [
         "D-048-p3-admin-approvals"
       ],
