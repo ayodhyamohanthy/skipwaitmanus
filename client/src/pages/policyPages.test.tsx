@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
+import CancellationPolicy from "./CancellationPolicy";
 import Guidelines from "./Guidelines";
 import RefundPolicy from "./RefundPolicy";
 import ShippingPolicy from "./ShippingPolicy";
@@ -12,7 +13,12 @@ import Pricing from "./Pricing";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
-import { firstPackClaim } from "@shared/planCatalog";
+import { FREE_PLAN, firstPackClaim } from "@shared/planCatalog";
+
+
+// Independent literal, not MONEY_SENTENCE imported as its own oracle.
+const EXPECTED_ALLOWANCE_COST = "3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.";
+const noBlanketReferralPromise = (text: string) => text.replace(EXPECTED_ALLOWANCE_COST, "");
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
 vi.mock("@/_core/auth", () => ({
@@ -45,6 +51,15 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const policyLinks = (container: HTMLElement) => Array.from(container.querySelectorAll('nav[aria-label="Policies"] a')).map(a => a.getAttribute("href"));
 
+it("rejects extra free or guaranteed referral promises outside the exact allowance", () => {
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST)).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Referrals are free.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited free referrals.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited referrals.")).toMatch(/unlimited referrals/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited requests.")).toMatch(/unlimited requests/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " A guaranteed referral.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+});
+
 describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Terms restate credit and privacy behaviour and never promise a hiring outcome", () => {
     const { container } = render(<Terms />);
@@ -53,15 +68,37 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     // The live preamble, including the acceptance clause, stays on the page.
     expect(screen.getByText(/Plain terms for a private referral handoff\. .*By creating an account or using skipwait\.me, you agree to these terms\./)).toBeTruthy();
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
-    expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
+    expect(screen.getByText(/3 referral requests per calendar month/)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
-    expect(screen.getByText(/Referrals are always free/)).toBeTruthy();
+    // LAUNCH-legal-copy: the old "Referrals are always free" bullet was untrue
+    // while asks cost referrals and packs sell for money. It must never return.
+    expect(screen.queryByText(/Referrals are always free/)).toBeNull();
+    expect(screen.getByText(/A request uses your referral balance only when a verified employee can see it/)).toBeTruthy();
+    // Section 4 must not contradict itself: the note is visible to verified
+    // employees while open; the resume only after that employee accepts.
+    expect(screen.getByText(/Your resume is visible only to you and the verified employee who accepts your request/)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/resume.*employee who claims your request/);
+    expect(screen.queryByText(/resume and note are visible only to you and verified employees of the target company/)).toBeNull();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
     // The kit's design-only banner never ships.
     expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "skipwait.me home" }).getAttribute("href")).toBe("/");
     expect(screen.getByRole("navigation", { name: "Legal" }).querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/terms");
+  });
+
+  it("Terms describe paused sales, conditional card verification and the Indian business without new promises", () => {
+    const { container } = render(<Terms />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Legacy referral packs are paused");
+    expect(text).toContain("card verification when required");
+    expect(text).toContain("Unused monthly allowance does not carry forward");
+    expect(text).toContain("not GST-registered");
+    expect(text).toContain("We do not charge GST");
+    expect(text).toContain("governed by the laws of India");
+    expect(text).toContain("You must be at least 18");
+    expect(text).toContain("We may pause or close accounts");
+    expect(text).not.toMatch(/referral packs add more|Additional credits can be bought|notice in the product before the change applies/);
   });
 
   it("Terms keep every live clause, each reachable from the On this page rail", () => {
@@ -84,8 +121,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     expect(screen.getByText("Never pay a referrer, and never ask a seeker for money.")).toBeTruthy();
-    expect(screen.getByText("3 free credits every month; extra asks use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/Referrals are free|free referrals/i);
+    expect(screen.getByText("3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(FREE_PLAN.creditsPerMonth).toBe(3);
+    expect((document.body.textContent ?? "").split(EXPECTED_ALLOWANCE_COST)).toHaveLength(2);
+    expect(noBlanketReferralPromise(document.body.textContent ?? "")).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
     expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
     expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");
@@ -97,8 +136,8 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/The moment one can see your ask, 1 credit is used/)).toBeTruthy();
-    expect(screen.getByText(/withdraw before someone picks the ask up/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your referral request, 1 is deducted from your balance/)).toBeTruthy();
+    expect(screen.getByText(/withdraw before someone picks it up/)).toBeTruthy();
     expect(screen.getByText(/not on sale right now/)).toBeTruthy();
     expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
@@ -161,9 +200,32 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
   it("Terms say a decline does not return the credit", () => {
     const { container } = render(<Terms />);
     const text = container.textContent ?? "";
-    expect(text).toContain("the credit stays spent, even if they pass");
+    expect(text).toContain("it stays charged, even if they pass");
     expect(text).not.toMatch(/reserved when a request is sent/);
     expect(text).not.toMatch(/Momentum|Keep warm/);
+  });
+  it("Cancellation policy names the ended-month exception and the used-after-pickup rule", () => {
+    const { container } = render(<CancellationPolicy />);
+    const text = container.textContent ?? "";
+    // Actual ledger behaviour (shared/moneyCopy CREDIT_RULE + server/db.ts):
+    // a withdraw before pickup returns the referral at once, except a free
+    // monthly referral from a month that has already ended; after a verified
+    // employee claims or declines, the referral stays used.
+    expect(text).toMatch(/month that has already ended/);
+    expect(text).toMatch(/request reopens to other employees at the company/);
+    expect(text).toMatch(/If a claimed request reopens after an employee declines, you can withdraw it, but the referral stays used/);
+    expect(text).toMatch(/original balance or allowance is still valid and has room for the return/);
+    expect(text).not.toMatch(/comes back if you withdraw it then/);
+    expect(text).not.toMatch(/claimed or accepted the request, it can no longer be cancelled/);
+    expect(text).not.toMatch(/No money is charged for a request, so there is nothing to refund/);
+  });
+  it("Cancellation preserves existing purchase refund rights while stating that new sales are paused", () => {
+    const { container } = render(<CancellationPolicy />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Legacy referral packs are paused");
+    expect(text).toContain("unused purchased credits within 14 days");
+    expect(text).toContain("original payment method");
+    expect(text).toContain("Statutory consumer rights");
   });
   it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
     const { container } = render(<RefundPolicy />);

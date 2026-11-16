@@ -33,9 +33,11 @@ import { CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, Pla
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
+import { REFERRER_SESSION_LOCAL } from "./referrerSessionGate";
 import { resolveAskNote } from "../shared/askNote";
 import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
+import type { AskInviteMine } from "../shared/askInvites";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -96,6 +98,8 @@ export type PrivateReferralRouteDeps = {
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  /** Safe BYOR status projection only; omitted while the server feature flag is off. */
+  listAskInvitesForRequests?: (userId: number, requestIds: number[]) => Promise<Map<number, AskInviteMine>>;
   hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
   hasEverReviewedReferral?: (userId: number) => Promise<boolean>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
@@ -928,8 +932,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
       const body = await loadAccess(identity.account.id);
+      // D-057 §0b.5: the session gate (installed before this router) leaves its answer for this request.
+      const sessionPasses: unknown = res.locals[REFERRER_SESSION_LOCAL];
       res.set("Cache-Control", "private, no-store");
-      res.json(body);
+      res.json(typeof sessionPasses === "boolean" ? { ...body, codeRequired: body.verifiedCompanyAccess && !sessionPasses } : body);
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/referrer-impact/me", async (req, res) => {
@@ -1125,7 +1131,28 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         return expiresAt === null ? null : new Date(expiresAt).toISOString();
       };
       const blockedMine = await blockedRequestIds(identity.account.id, listed);
-      const requests = await attachCompanyIdentities((listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map((row): Record<string, unknown> => ({ ...withParsedJobFunction(row), expiresAt: toExpiresAt(row) })), row => row.companyDomain, lookupCompanies);
+      let requests: Array<Record<string, unknown>> = await attachCompanyIdentities((listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map((row): Record<string, unknown> => ({ ...withParsedJobFunction(row), expiresAt: toExpiresAt(row) })), row => row.companyDomain, lookupCompanies);
+      if (process.env.BYOR_LINK_ENABLED === "true") {
+        const waitingForInvite = (row: Record<string, unknown>) => row.status === "pending" && (row.waitingForCoverage === true || row.waitingForCoverage === 1) && row.referrerId == null;
+        // Item 12/27: the insider already took the ask, so the row is no longer waiting but still shows its delivered line.
+        const takenByReferrer = (row: Record<string, unknown>) => row.status === "pending" && row.referrerId != null;
+        const inviteIds = requests.filter(row => waitingForInvite(row) || takenByReferrer(row)).map(row => Number(row.id)).filter(id => Number.isInteger(id) && id > 0);
+        if (inviteIds.length) {
+          try {
+            const listInvites = deps.listAskInvitesForRequests ?? (await import("./askInvites")).listAskInvitesForRequests;
+            const invites = await listInvites(identity.account.id, inviteIds);
+            requests = requests.map(row => {
+              const requestId = Number(row.id);
+              if (!Number.isInteger(requestId)) return row;
+              const invite = invites.get(requestId);
+              if (!invite) return row;
+              // A non-waiting row only ever projects the delivered state; an active or claimed link cannot describe it.
+              if (!waitingForInvite(row) && !(takenByReferrer(row) && invite.state === "delivered")) return row;
+              return { ...row, askInvite: { state: invite.state, createdAt: invite.createdAt, expiresAt: invite.expiresAt } };
+            });
+          } catch (error) { captureServerError(error, { area: "ask_invite_mine_projection" }); }
+        }
+      }
       record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length, expiredCount: expiredRequestIds.length } });
       // Counted after the expiry reconcile above, so expired asks have already freed their slots.
       let slots: OpenAskSlots | undefined;

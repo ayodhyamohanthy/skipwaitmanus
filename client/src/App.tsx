@@ -1,10 +1,9 @@
 import React, { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/_core/auth";
 import { useEffect } from "react";
 import { Redirect, Route, Switch } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary, { ErrorFallbackSwitch } from "./components/ErrorBoundary";
 import { captureClientError } from "./lib/sentry";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SmokeProvider } from "./contexts/SmokeContext";
@@ -12,7 +11,8 @@ import { markSecureSessionVerified } from "./lib/pwaContinuity";
 import { askRedirectTarget } from "./lib/fastTrackHandoff";
 import { PLAN_FAMILY_V2_CLIENT } from "@/lib/planFamilyFlag";
 import Home from "./pages/Home";
-import { OfflineNotice, PwaUpdatePrompt, SlowConnectionNotice } from "./components/PwaStatus";
+import { AppToaster, OfflineNotice, PwaUpdatePrompt, SlowConnectionNotice } from "./components/PwaStatus";
+import { useLanguageSync } from "@/lib/useLanguageSync";
 import { ErrorScreen, LoadingScreen, needsReload } from "./components/app-states/SystemStates";
 import { AppShell } from "./components/AppShell";
 const CompanyClaim = lazy(() => import("./pages/CompanyClaim"));
@@ -75,6 +75,7 @@ const FastTrackLink = lazy(() => import("./pages/FastTrackLink"));
 const VanityFastTrackLink = lazy(() => import("./pages/VanityFastTrackLink"));
 const ShareCard = lazy(() => import("./pages/ShareCard"));
 const EmailReviewAction = lazy(() => import("./pages/EmailReviewAction"));
+const AskInviteLink = lazy(() => import("./pages/AskInviteLink"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const MyCompanyInbox = lazy(() => import("./pages/MyCompanyInbox"));
 const ReferralConversation = lazy(() => import("./pages/ReferralConversation"));
@@ -113,7 +114,7 @@ class RouteErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   retry = () => { if (needsReload(this.state.error)) window.location.reload(); else this.setState({ error: null }); };
   render() {
     // Same kit error screen as the app-wide ErrorBoundary; the raw message stays in Sentry.
-    if (this.state.error) return <ErrorScreen screen="route-error" onRetry={this.retry} />;
+    if (this.state.error) return <ErrorFallbackSwitch screen="route-error" onRetry={this.retry} legacy={<ErrorScreen screen="route-error" onRetry={this.retry} />} />;
     return this.props.children;
   }
 }
@@ -128,6 +129,7 @@ function Router() {
           <Route path="/refer/:companySlug/:vanityAlias" component={VanityFastTrackLink} />
           <Route path="/share-card/:token" component={ShareCard} />
           <Route path="/email-review/:linkToken" component={EmailReviewAction} />
+          <Route path="/r/:token" component={AskInviteLink} />
           <Route path="/start" component={Onboarding} />
           <Route path="/request">
             <Redirect to={askRedirectTarget(typeof window === "undefined" ? "" : window.location.search)} />
@@ -275,4 +277,4 @@ function Router() {
 }
 function PwaSessionContinuity(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(isLoaded&&isSignedIn)markSecureSessionVerified()},[isLoaded,isSignedIn]);return null}const personalInviteStorageKey="skipwait:personal-invite-code";
 function PersonalInviteAttribution(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(typeof window==="undefined")return;const inviteCode=new URLSearchParams(window.location.search).get("invite")?.trim()??"";if(/^r\d+-[a-f0-9]{8}$/i.test(inviteCode))sessionStorage.setItem(personalInviteStorageKey,inviteCode)},[]);useEffect(()=>{if(!isLoaded||!isSignedIn)return;const inviteCode=sessionStorage.getItem(personalInviteStorageKey);if(!inviteCode)return;void fetch("/api/personal-invites/claim",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({inviteCode})}).finally(()=>sessionStorage.removeItem(personalInviteStorageKey))},[isLoaded,isSignedIn]);return null}
-export default function App(){return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><SlowConnectionNotice/><PwaUpdatePrompt/><Toaster position="top-center" offset={{ top: "72px" }} mobileOffset={{ top: "72px" }} /><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}
+export default function App(){useLanguageSync();return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><SlowConnectionNotice/><PwaUpdatePrompt/><AppToaster/><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}

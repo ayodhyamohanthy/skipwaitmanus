@@ -5,7 +5,7 @@ import { coverageHeldNotice } from "../server/coverageDelivery";
 describe("D-132 item 7 cost phrases (flag off keeps today's copy)", () => {
   it("flat 1 credit while the level model is off", () => {
     expect(addCreditPhrase(false)).toBe("Add a credit");
-    expect(creditUsedPhrase(false)).toBe("1 credit is used");
+    expect(creditUsedPhrase(false)).toBe("1 is deducted from your balance");
     expect(creditReservedPhrase(false)).toBe("1 credit reserved");
   });
   it("no fixed '1 credit' once the level model is on", () => {

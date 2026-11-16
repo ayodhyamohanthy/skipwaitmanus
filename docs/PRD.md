@@ -29,7 +29,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | W0 goal shell (PR #361) | L6 | build | live (#361) |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
 | Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
-| BYOR one-time link (idea 2) | L2 | build | approved (D-090); packet `docs/plans/D-090-BYOR.md`; building now, ahead of the demand list (owner word, D-162) |
+| BYOR one-time link (idea 2) | L2 | build | in review on draft PR (`agent/claude/d090-byor`); C1–C6 complete; full gate passed; flags OFF/not live |
 | Employee request-inbox link (idea 1) | L4 | packet to write (`D-089-request-inbox`, D-163) | build after idea 2 |
 | Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
@@ -45,6 +45,7 @@ Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COM
 ## Go-to-market (D-102, changeable)
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
+- Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 
@@ -61,3 +62,7 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 
 ## Pricing
 One source of truth: [`docs/PRICING.md`](PRICING.md) (D-219, owner freeze Oct 25: banded seeker plans Early to Mid, Mid to Senior and Senior to Executive with per-level extra referrals; 3 free referrals a month at any level with a verified card; legacy packs paused; passes off). The D-132 credit-dropdown model and the D-152 plan names are superseded. Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
+
+## Group Plan bulk purchase - approved build direction (Oct 31)
+
+Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.

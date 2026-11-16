@@ -24,8 +24,8 @@ export default function Support() {
     screen="support"
     icon={LifeBuoy}
     eyebrow="Support"
-    title="A person answers. Usually within one business day."
-    intro="Most questions are answered by a screen you already have access to. Anything about money, verification, or your data reaches an administrator directly."
+    title="Contact support."
+    intro="Most questions are answered by a screen you already have access to."
     updated="September 5, 2026"
     status="published"
     footnote="We never ask for passwords, one-time codes, or card numbers by email. Anything asking for those is not from us."
@@ -37,7 +37,6 @@ export default function Support() {
           <h2 className="text-base font-semibold text-black">Email support</h2>
           <p className="mt-1 text-sm leading-6 text-[#505050]">Write from the email on your account and include a reference (Ref-0007, a payment id, or the link you opened). We reply from <span className="font-semibold text-black">{SUPPORT_EMAIL}</span>.</p>
           <a href={mailto} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3 text-sm font-bold text-white hover:bg-[#0000cc] sm:w-auto">Email {SUPPORT_EMAIL} <ArrowRight className="h-4 w-4" /></a>
-          <p className="mt-3 text-xs leading-5 text-[#505050]">Response target: one business day (Mon–Fri, IST). Payment and account-safety issues are handled first.</p>
           <p className="mt-3 text-xs leading-5 text-[#505050]">Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me), D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India · <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</p>
         </div>
       </div>
@@ -61,11 +60,11 @@ export default function Support() {
     </PolicySection>
 
     <PolicySection number="02" title="Reporting misuse or a security concern">
-      <p>If a request, message, or link looks fraudulent, or you believe someone accessed your account, email us with “Security” in the subject line. These are triaged ahead of everything else, and the affected request or link can be paused while we look.</p>
+      <p>If a request, message, or link looks fraudulent, or you believe someone accessed your account, email us with “Security” in the subject line.</p>
     </PolicySection>
 
     <PolicySection number="03" title="Status of an existing request">
-      <p>Privacy requests (data export, deletion) and payment reviews appear with their current status inside <Link href="/settings" className="font-semibold text-black">Settings</Link> and <Link href="/premium" className="font-semibold text-black">Buy credits</Link>. You will also receive an in-product notification when an administrator decides.</p>
+      <p>Privacy requests (data export, deletion) and payment reviews appear with their current status inside <Link href="/settings" className="font-semibold text-black">Settings</Link> and <Link href="/premium" className="font-semibold text-black">Buy credits</Link>.</p>
     </PolicySection>
   </PolicyPageShell>;
 }
