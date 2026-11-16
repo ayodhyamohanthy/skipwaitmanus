@@ -789,7 +789,8 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       const members = { builders: resolved.builders ?? [], fixers: resolved.fixers ?? [], reviewers: [...(resolved.reviewers?.values() ?? [])] };
       return !resolved.ok || !resolved.candidate || roles.some(role => members[role]?.includes(resolved.candidate));
     }
-    return Boolean(claimant) && roles.some(r => v[r].some(who => modelOf(who) === modelOf(claimant)));
+    // D-344 (1), amending D-151: independence is per session; another session of the same model qualifies.
+    return Boolean(claimant) && roles.some(r => v[r].some(who => who === claimant));
   };
   // D-314: a red only at the pre-D-292 scope-check step is first a stale workflow, not a code failure to hunt for.
   const legacyWhy = v => `Pull request ${v.pr}'s red run predates the current CI workflow: it failed only at the old "${LEGACY_SCOPE_STEP}" step, which then also ran the review gate. First merge the latest origin/main into ${v.work} (a two-parent merge, never a rebase; resolve conflicts keeping both sides) and push, so CI re-runs with the current workflow. Finding no code to fix is not "nothing to fix": if the new run is red only at the review gate, the picker hands its REVIEW; any other red is yours to fix`;
