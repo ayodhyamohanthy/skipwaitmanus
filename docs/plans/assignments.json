@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-11",
+  "updated": "2026-11-16",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -178,6 +178,49 @@
         "client/src/_core/auth.tsx",
         "client/src/_core/authCompat.test.ts"
       ]
+    },
+    {
+      "id": "PROCESS-session-review-independence",
+      "title": "A review or Tier 1 landing goes to any session except the one that built or fixed the work; another session of the same model may review (D-344)",
+      "row": "D-134",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/process-session-review",
+      "status": "todo",
+      "syncedTo": "D-344",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/review-gate.mjs",
+        "scripts/nextTask.test.ts",
+        "scripts/reviewGate.test.ts",
+        "scripts/nextTaskReviewWording.test.ts",
+        "AGENTS.md"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 1 exactly. Owner decision D-344 (1), Nov 16: independence is per session, not per model. The D-311/D-312 external-route provenance checks are unchanged. Tests go red first; the existing D-151 tests are updated, never deleted. Until this lands, CI's review gate still refuses a pass by the builder's or fixer's model. Placed first among open work by the owner's Nov 16 direction to remove what slows landings."
+    },
+    {
+      "id": "D-344-shell-referral-words",
+      "title": "The goal shell's count says 'N referrals left' (a unit on phones), never 'credits' (D-222 wording slice, D-344)",
+      "row": "D-048",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "design-shell-words",
+      "branch": "agent/queue/d344-shell-referral-words",
+      "status": "todo",
+      "syncedTo": "D-344",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/goal/GoalShell.tsx",
+        "client/src/components/goal/goalComposites.test.tsx",
+        "client/src/components/appShell.test.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "design/goal-ui/captures/shell/**"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes.",
+      "epic": "D-048-p3"
     },
     {
       "id": "PRICING-banded-oct25",
@@ -1363,13 +1406,13 @@
       "tier": 1,
       "lane": "money-core",
       "branch": "agent/instinct/v2-checkout-port",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-132-item3",
         "D-132-audit"
       ],
-      "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first. D-221 (Oct 26): re-scope before any build. Its D-132 rung SKUs and fee-plan checkout are superseded by D-219; PR #523 is not landed as written. The packet is rewritten for the banded checkout (bands, per-level extra referrals, founding caps) after PRICING-banded-oct25 (#666) lands, or the row is retired."
+      "note": "D-165: fix stage first - merge main, renumber its two migrations (main already has 0108), implement D-165 (3) red-first (no refusal for a Free wallet with unused credits; they move to a carry-over grant expiring at their own month end). Tier 1 review by a model other than Instinct, including the line-by-line deletion review of the three-way port. #416 is superseded and closes when this lands. D-185: also carries D-132 item 4's grant half - paid rung credits are granted where they never expire (PAID_CREDITS_NEVER_EXPIRE), keyed once per term. D-165 and D-197 (5): lands only after D-132-audit; the edge is in dependsOn since Oct 25, so the picker never offers the landing first. D-221 (Oct 26): re-scope before any build. Its D-132 rung SKUs and fee-plan checkout are superseded by D-219; PR #523 is not landed as written. The packet is rewritten for the banded checkout (bands, per-level extra referrals, founding caps) after PRICING-banded-oct25 (#666) lands, or the row is retired. D-344 (5) (Nov 16): parked (was architect). PR #523 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #523."
     },
     {
       "id": "PICKER-landing-slot",
@@ -1915,16 +1958,22 @@
       "lane": "d048-release-inbox",
       "branch": "agent/queue/d048-r-inbox",
       "status": "todo",
-      "syncedTo": "D-338",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-inbox",
-        "D-222-referral-count-shell"
+        "D-344-shell-referral-words"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/UnifiedInbox.tsx",
+        "client/src/pages/ThreadAlias.tsx",
+        "client/src/pages/goal/inbox/**",
+        "client/src/pages/inboxGoal.test.tsx",
+        "design/goal-ui/captures/inbox/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"inbox\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=inbox); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-inbox's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Pre-acceptance privacy preserved (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-338 (Nov 16): the review finding on PR #1196 (the /inbox shell count says credits) can only be fixed in GoalShell.tsx, which D-222-referral-count-shell owns; this row now depends on it, so no fix is handed out that its owns cannot carry. Once D-222 lands, merge main into PR #1196 and re-review.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"inbox\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=inbox); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-inbox's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Pre-acceptance privacy preserved (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-338 (Nov 16): the review finding on PR #1196 (the /inbox shell count says credits) can only be fixed in GoalShell.tsx, which D-222-referral-count-shell owns; this row now depends on it, so no fix is handed out that its owns cannot carry. Once D-222 lands, merge main into PR #1196 and re-review. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-inbox, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): the shell finding on PR #1196 is fixed by D-344-shell-referral-words, which has no pricing dependency. This row now waits on that row instead of D-222-referral-count-shell.",
       "epic": "D-048-p3"
     },
     {
@@ -2010,15 +2059,21 @@
       "lane": "d048-release-assistants",
       "branch": "agent/queue/d048-r-assistants",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-assistants"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Assistants.tsx",
+        "client/src/pages/Approve.tsx",
+        "client/src/pages/ConnectAssistant.tsx",
+        "client/src/pages/goal/assistants/**",
+        "design/goal-ui/captures/assistants/**",
+        "client/src/components/goal/goalBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"assistants\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=assistants); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-assistants's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy agent switches stay off (D-201); the page renders correctly with them off. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"assistants\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=assistants); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-assistants's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy agent switches stay off (D-201); the page renders correctly with them off. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-assistants, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2081,15 +2136,17 @@
       "lane": "d048-release-skippy",
       "branch": "agent/queue/d048-r-skippy",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-skippy"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Skippy.tsx",
+        "client/src/pages/Skippy.test.tsx"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"skippy\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=skippy); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-skippy's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy switches stay off until SKIPPY-fix lands (D-201). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"skippy\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=skippy); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-skippy's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy switches stay off until SKIPPY-fix lands (D-201). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-skippy, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2428,15 +2485,19 @@
       "lane": "d048-release-premium",
       "branch": "agent/queue/d048-r-premium",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-premium"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Premium.tsx (switch only)",
+        "client/src/pages/goal/premium/**",
+        "client/src/pages/premiumGoal.test.tsx",
+        "design/goal-ui/captures/premium/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"premium\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=premium); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-premium's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: selected total, retirement and recovery preserved; lines from shared/moneyCopy.ts (D-044, D-219). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"premium\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=premium); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-premium's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: selected total, retirement and recovery preserved; lines from shared/moneyCopy.ts (D-044, D-219). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-premium, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2474,15 +2535,19 @@
       "lane": "d048-release-pricing",
       "branch": "agent/queue/d048-r-pricing",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-pricing"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Pricing.tsx (switch only)",
+        "client/src/pages/goal/pricing/**",
+        "client/src/pages/pricingGoal.test.tsx",
+        "design/goal-ui/captures/pricing/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"pricing\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=pricing); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-pricing's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: current price claims unchanged (D-219); fetch-free prerender checked live. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"pricing\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=pricing); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-pricing's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: current price claims unchanged (D-219); fetch-free prerender checked live. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-pricing, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2584,15 +2649,22 @@
       "lane": "d048-release-sign-in",
       "branch": "agent/queue/d048-r-sign-in",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-signin"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/SignIn.tsx (switch only)",
+        "client/src/pages/ForgotPassword.tsx (switch only)",
+        "client/src/pages/ResetPassword.tsx (switch only)",
+        "client/src/pages/ReviewerSignIn.tsx (switch only)",
+        "client/src/pages/goal/sign-in/**",
+        "client/src/pages/signInGoal.test.tsx",
+        "design/goal-ui/captures/sign-in/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-signin, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2673,15 +2745,24 @@
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
-        "D-048-p3-profile"
+        "D-048-p3-profile",
+        "D-344-shell-referral-words"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Profile.tsx",
+        "client/src/pages/Work.tsx",
+        "client/src/pages/goal/profile/**",
+        "client/src/pages/profileGoal.test.tsx",
+        "design/goal-ui/captures/profile/**",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/components/profile/profileVisibility.ts",
+        "client/src/components/profile/VisibilityOptions.tsx (switch only)"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review.",
       "epic": "D-048-p3"
     },
     {
@@ -2768,16 +2849,21 @@
       "lane": "d048-release-support",
       "branch": "agent/queue/d048-r-support",
       "status": "todo",
-      "syncedTo": "D-335",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-support"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)",
-        "e2e/report-from-conversation.e2e.ts"
+        "e2e/report-from-conversation.e2e.ts",
+        "client/src/pages/Help.tsx",
+        "client/src/pages/Report.tsx",
+        "client/src/pages/Safety.tsx",
+        "client/src/pages/goal/support/**",
+        "design/goal-ui/captures/support/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"support\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. D-335 (2026-11-15): owns also gains e2e/report-from-conversation.e2e.ts, because the release moves /report from the kit line to the goal page's 'Thanks. Your report is filed.'; only that one confirmation line is re-pinned. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=support); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-support's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Promises only what works today (D-153, SUPPORT-A). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"support\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. D-335 (2026-11-15): owns also gains e2e/report-from-conversation.e2e.ts, because the release moves /report from the kit line to the goal page's 'Thanks. Your report is filed.'; only that one confirmation line is re-pinned. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=support); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-support's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Promises only what works today (D-153, SUPPORT-A). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-support, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2859,15 +2945,21 @@
       "lane": "d048-release-admin-money",
       "branch": "agent/queue/d048-r-admin-money",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-admin-money"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/AdminPaymentsReview.tsx",
+        "client/src/pages/AdminCatalogSync.tsx",
+        "client/src/pages/AdminTokenRecovery.tsx",
+        "client/src/pages/goal/admin-money/**",
+        "design/goal-ui/captures/admin-money/**",
+        "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-money\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-money); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-money's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; payment review and catalog-sync actions behave exactly as on the kit page (no real-money QA, D-065). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-money\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-money); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-money's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; payment review and catalog-sync actions behave exactly as on the kit page (no real-money QA, D-065). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-admin-money, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2902,15 +2994,19 @@
       "lane": "d048-release-admin-people",
       "branch": "agent/queue/d048-r-admin-people",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-admin-people"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/AdminUsers.tsx",
+        "client/src/pages/AdminPrivacyRequests.tsx",
+        "client/src/pages/goal/admin-people/**",
+        "design/goal-ui/captures/admin-people/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-people\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-people); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-people's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; privacy-request and user actions unchanged. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-people\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-people); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-people's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; privacy-request and user actions unchanged. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-admin-people, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -2945,15 +3041,19 @@
       "lane": "d048-release-admin-approvals",
       "branch": "agent/queue/d048-r-admin-approvals",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-admin-approvals"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/AdminApprovalQueue.tsx",
+        "client/src/pages/AdminApprovalRecord.tsx",
+        "client/src/pages/goal/admin-approvals/**",
+        "design/goal-ui/captures/admin-approvals/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-approvals\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-approvals); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-approvals's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; approve/decline outcomes and failure copy unchanged. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-approvals\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-approvals); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-approvals's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; approve/decline outcomes and failure copy unchanged. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-admin-approvals, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -3101,7 +3201,7 @@
       "lane": "d048-release-employer-talent",
       "branch": "agent/queue/d048-r-employer-talent",
       "status": "todo",
-      "syncedTo": "D-342",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-employer-talent"
       ],
@@ -3109,9 +3209,12 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)",
         "client/src/pages/goal/employer-talent/GoalEmployerTalent.tsx",
-        "client/src/pages/goal/employer-talent/talent.goal.test.tsx"
+        "client/src/pages/goal/employer-talent/talent.goal.test.tsx",
+        "client/src/pages/TalentDiscovery.tsx",
+        "client/src/pages/goal/employer-talent/**",
+        "design/goal-ui/captures/employer-talent/**"
       ],
-      "note": "Per-surface release row (D-317), directly after its build under D-332/FIFO. Add employer-talent to RELEASED and its exact-list pin. D-342 bounds the two added client paths to PR #1210 review 6912897217 F1-F3: invalidate opened and late profiles on list refresh/current access loss; allow only the latest list request to commit data/error/loading across initial load and searches; reconcile a confirmed unlock with a concurrently displayed row without restoring a filtered-out row. Write deterministic red-first tests, including stale failures, pending searches and initial-load ordering. Amendment must land before runtime repair. Preserve the original build/release contributions, findings and official fix/review markers; no manual claim or Fixed verdict here. Existing unmerged instinct/qualify-employer-talent-nov9 candidate remains uncertified, with actual provenance retained if reused. Endpoint shapes, prices, billing/debits, consent/access, auth, providers, schema and sales switches unchanged. Gates before landing: current-main composition; kit-drift check; flag-on behavior/failure/race tests; captures at 1280 and 390; fresh independent Tier 1 review by a model that built/fixed neither page nor release; exact required CI and protected merge. Report captures to owner; no real-money QA. Later release landers merge main and keep every released id. D-342 changes only bounded repair owns, syncedTo and this note; branch, status, tier, dependencies and queue position stay unchanged.",
+      "note": "Per-surface release row (D-317), directly after its build under D-332/FIFO. Add employer-talent to RELEASED and its exact-list pin. D-342 bounds the two added client paths to PR #1210 review 6912897217 F1-F3: invalidate opened and late profiles on list refresh/current access loss; allow only the latest list request to commit data/error/loading across initial load and searches; reconcile a confirmed unlock with a concurrently displayed row without restoring a filtered-out row. Write deterministic red-first tests, including stale failures, pending searches and initial-load ordering. Amendment must land before runtime repair. Preserve the original build/release contributions, findings and official fix/review markers; no manual claim or Fixed verdict here. Existing unmerged instinct/qualify-employer-talent-nov9 candidate remains uncertified, with actual provenance retained if reused. Endpoint shapes, prices, billing/debits, consent/access, auth, providers, schema and sales switches unchanged. Gates before landing: current-main composition; kit-drift check; flag-on behavior/failure/race tests; captures at 1280 and 390; fresh independent Tier 1 review by a model that built/fixed neither page nor release; exact required CI and protected merge. Report captures to owner; no real-money QA. Later release landers merge main and keep every released id. D-342 changes only bounded repair owns, syncedTo and this note; branch, status, tier, dependencies and queue position stay unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-employer-talent, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -3145,15 +3248,18 @@
       "lane": "d048-release-employer-billing",
       "branch": "agent/queue/d048-r-employer-billing",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-employer-billing"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/EmployerBilling.tsx",
+        "client/src/pages/goal/employer-billing/**",
+        "design/goal-ui/captures/employer-billing/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"employer-billing\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=employer-billing); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-employer-billing's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: employer purchases only labelled ads and tooling (D-040); no new charge or price. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"employer-billing\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=employer-billing); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-employer-billing's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Money: employer purchases only labelled ads and tooling (D-040); no new charge or price. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-employer-billing, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -3369,15 +3475,19 @@
       "lane": "d048-release-home-signed-in",
       "branch": "agent/queue/d048-r-home-signed-in",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-home-signed-in"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Home.tsx",
+        "client/src/pages/goal/home/**",
+        "client/src/pages/homeSignedIn.goal.test.tsx",
+        "design/goal-ui/captures/home/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-home-signed-in, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -3443,15 +3553,18 @@
       "lane": "d048-release-public-profile",
       "branch": "agent/queue/d048-r-public-profile",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-public-profile"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/PublicProfile.tsx",
+        "client/src/pages/goal/public-profile/**",
+        "design/goal-ui/captures/public-profile/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"public-profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=public-profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-public-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Shows only what the person's visibility allows (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"public-profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=public-profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-public-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Shows only what the person's visibility allows (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-public-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
     },
     {
@@ -5516,10 +5629,10 @@
       "tier": 2,
       "lane": "d179-docs",
       "branch": "agent/coordinator/ats-referral-validation",
-      "status": "in-review",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-344",
       "dependsOn": [],
-      "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact."
+      "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-344 (5) (Nov 16): parked (was in-review). PR #608 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #608."
     },
     {
       "id": "D-048-postopp-copy-v2",
@@ -5613,8 +5726,8 @@
       "tier": 1,
       "lane": "terminology",
       "branch": "agent/copy/free-asks-chip-terminology",
-      "status": "in-review",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-344",
       "dependsOn": [
         "PRICING-banded-oct25",
         "D-174-held-ask-reconfirm",
@@ -5632,7 +5745,7 @@
         "client/src/components/plans/planCatalog.test.ts",
         "server/moneyCopy.test.ts"
       ],
-      "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases."
+      "note": "Headline-only slice of D-180: free monthly allowance says referrals (owner headline decision Oct 23). Paid-unit credits and the ASK_COST tail stay with D-180-referral-words; no behavior or eligibility change. Depends on the active owners of the touched files so their in-flight edits land first; rebase the test expectations forward on any conflict. Oct 27 (Claude Code, landing review): also waits for PRICING-banded-oct25 (PR #666), which owns PlansV2.tsx, PlansV2.test.tsx and policyPages.test.tsx too; #666 rewrites PlansV2 with referral wording, so this slice drops its PlansV2 hunks when it rebases. D-344 (5) (Nov 16): parked (was in-review). PR #716 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #716."
     },
     {
       "id": "D-173-referral-words-goal-ui",
@@ -5642,10 +5755,10 @@
       "tier": 2,
       "lane": "d048-foundation",
       "branch": "agent/queue/ayo-referral-words",
-      "status": "in-review",
+      "status": "owner",
       "dependsOn": [],
-      "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route.",
-      "syncedTo": "D-281",
+      "note": "Preserved catch-up registration for existing PR 598 fb4b6374, not takeover consent or adoption. Owns reflect its eleven actual non-registry files. Wait for D-222 count output; adapt old pill/test assertions forward without replacing current count states, visible noun, no-icon or plain-text referrer boundary. Current packet preserves original wording/card-truth findings. Branch/commits/captures remain untouched; implementation only through normal holder/picker route. D-344 (5) (Nov 16): parked (was in-review). PR #598 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #598.",
+      "syncedTo": "D-344",
       "owns": [
         "client/src/components/appShell.test.tsx",
         "client/src/components/goal/GoalInfoNote.tsx",
@@ -5865,11 +5978,11 @@
       "lane": "design-shell",
       "branch": "agent/queue/d222-referral-count",
       "status": "todo",
-      "syncedTo": "D-333",
+      "syncedTo": "D-344",
       "dependsOn": [
         "PRICING-banded-oct25"
       ],
-      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges. Nov 9 temporary D-057 handoff (packet §0b.8c): only client/src/components/AppShell.tsx are temporarily serialized to D-057 for its code_required navigation repair. This row retains its original branch, code, other paths, status, findings and all owner/product holds. These paths return through a separately reviewed registry restoration after D-057 is landed, before this row resumes runtime work; first normally merge D-057/current main and preserve both changes. No dependency or blanket takeover. See §0b.8c for conditional entry, stale coordinator hold qualification and unpublished-work limits. AppShell.tsx Returned by the D-057 §0b.8c registry restoration (D-333 (7)): merge current main, including the D-057 result, and keep both changes before any runtime work on the returned file.",
+      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges. Nov 9 temporary D-057 handoff (packet §0b.8c): only client/src/components/AppShell.tsx are temporarily serialized to D-057 for its code_required navigation repair. This row retains its original branch, code, other paths, status, findings and all owner/product holds. These paths return through a separately reviewed registry restoration after D-057 is landed, before this row resumes runtime work; first normally merge D-057/current main and preserve both changes. No dependency or blanket takeover. See §0b.8c for conditional entry, stale coordinator hold qualification and unpublished-work limits. AppShell.tsx Returned by the D-057 §0b.8c registry restoration (D-333 (7)): merge current main, including the D-057 result, and keep both changes before any runtime work on the returned file. D-344 (4) (Nov 16): the shell pill's wording ('N referrals left', a unit on phones, no 'credits') moved to D-344-shell-referral-words so two releases stop waiting on pricing. This row keeps the referrer-route count, AppShell.tsx and the zero and ledger semantics; it merges main over that wording and keeps it.",
       "owns": [
         "client/src/components/goal/GoalShell.tsx",
         "client/src/components/appShell.test.tsx",
