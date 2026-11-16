@@ -59,7 +59,38 @@ export async function consumePasskeyChallenge(openId: string | null, kind: "regi
   const row = rows[0]; if (!row) return null;
   // The SELECT supplies the challenge, but only the conditional DELETE winner
   // may use it. Concurrent readers of this same row receive affectedRows=0.
-  const [result] = await db.delete(passkeyChallenges).where(and(scope, eq(passkeyChallenges.id, row.id), eq(passkeyChallenges.challenge, row.challenge)));
-  if (result.affectedRows !== 1 || row.expiresAt <= new Date()) return null;
+  if (!(await commitPasskeyChallenge(openId, kind, row.id, row.challenge)) || row.expiresAt <= new Date()) return null;
   return row.challenge;
+}
+
+/**
+ * Login ceremony lookup WITHOUT consuming it (G1, PR #697 review). Ceremony ids
+ * are sequential, so a sign-in attempt must not delete a challenge before its
+ * assertion verifies: that let any passkey holder cancel other people's
+ * sign-ins. The route verifies first, then calls commitPasskeyChallenge.
+ */
+export async function readPasskeyLoginChallenge(ceremonyId: number): Promise<{ id: number; challenge: string } | null> {
+  if (!Number.isSafeInteger(ceremonyId) || ceremonyId <= 0) return null;
+  const db = await getDb(); if (!db) return null;
+  const rows = await db.select().from(passkeyChallenges)
+    .where(and(isNull(passkeyChallenges.openId), eq(passkeyChallenges.kind, "login"), eq(passkeyChallenges.id, ceremonyId)))
+    .limit(1);
+  const row = rows[0];
+  if (!row || row.expiresAt <= new Date()) return null;
+  return { id: row.id, challenge: row.challenge };
+}
+
+/**
+ * The single-use commit: one conditional DELETE of exactly this row. Only the
+ * caller whose DELETE removes it gets true, so a replay or a concurrent second
+ * use of the same challenge gets false.
+ */
+export async function commitPasskeyChallenge(openId: string | null, kind: "registration" | "login", id: number, challenge: string): Promise<boolean> {
+  const db = await getDb(); if (!db) return false;
+  const scope = and(
+    openId === null ? isNull(passkeyChallenges.openId) : eq(passkeyChallenges.openId, openId),
+    eq(passkeyChallenges.kind, kind),
+  );
+  const [result] = await db.delete(passkeyChallenges).where(and(scope, eq(passkeyChallenges.id, id), eq(passkeyChallenges.challenge, challenge)));
+  return result.affectedRows === 1;
 }

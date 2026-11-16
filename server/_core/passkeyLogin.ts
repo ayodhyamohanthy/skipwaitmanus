@@ -65,7 +65,17 @@ const ipCallCounts = new Map<string, { count: number; windowStart: number }>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
+const RATE_LIMIT_PRUNE_AT = 10_000;
+
+/** Drop windows that have ended, so the map stays bounded however many addresses call. */
+function pruneRateLimits(nowMs: number) {
+  for (const [ip, entry] of Array.from(ipCallCounts)) {
+    if (nowMs - entry.windowStart > RATE_LIMIT_WINDOW_MS) ipCallCounts.delete(ip);
+  }
+}
+
 export function checkPasskeyRateLimit(ip: string, nowMs = Date.now()): boolean {
+  if (ipCallCounts.size >= RATE_LIMIT_PRUNE_AT) pruneRateLimits(nowMs);
   const current = ipCallCounts.get(ip);
   if (!current || nowMs - current.windowStart > RATE_LIMIT_WINDOW_MS) {
     ipCallCounts.set(ip, { count: 1, windowStart: nowMs });
@@ -80,6 +90,10 @@ export function checkPasskeyRateLimit(ip: string, nowMs = Date.now()): boolean {
 
 export function resetPasskeyRateLimits() {
   ipCallCounts.clear();
+}
+
+export function passkeyRateLimitEntriesForTests(): number {
+  return ipCallCounts.size;
 }
 
 function handleRouteError(err: unknown, route: string, userMessage: string, res: Response) {
@@ -199,11 +213,14 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       const ceremony = z.number().int().positive().safe().safeParse(req.body?.ceremonyId);
       if (!ceremony.success) return res.status(400).json({ error: "Sign-in expired. Try again." });
       const ceremonyId = ceremony.data;
-      const challenge = await store.consumePasskeyChallenge(null, "login", ceremonyId);
-      if (!challenge) return res.status(400).json({ error: "Sign-in expired. Try again." });
+      // G1: read the ceremony without consuming it. Ids are sequential, so
+      // consuming before the assertion verifies would let anyone with a passkey
+      // cancel other people's sign-ins.
+      const pending = await store.readPasskeyLoginChallenge(ceremonyId);
+      if (!pending) return res.status(400).json({ error: "Sign-in expired. Try again." });
       const verification = await verifyAuthenticationResponse({
         response: req.body,
-        expectedChallenge: challenge,
+        expectedChallenge: pending.challenge,
         expectedOrigin: expectedOrigin(),
         expectedRPID: rpID(),
         credential: {
@@ -215,6 +232,12 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       });
       if (!verification.verified) {
         return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
+      }
+      // Only a verified assertion consumes the ceremony, and only the one caller
+      // whose single-row delete wins goes on: a replay or a concurrent second use
+      // of the same challenge gets nothing.
+      if (!(await store.commitPasskeyChallenge(null, "login", pending.id, pending.challenge))) {
+        return res.status(400).json({ error: "Sign-in expired. Try again." });
       }
       await store.bumpPasskeyCounter(stored.id, verification.authenticationInfo.newCounter);
       // The credential is bound to an existing account at registration, so
