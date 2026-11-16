@@ -20,6 +20,33 @@ by `DEVICE-SIGNIN-passkeys` in the current assignments register, not unowned;
 this correction does not edit or transfer that file. The split's existing
 behavior, independent review, auth holds and separate release checks still apply.
 
+## Profile release shared-shell dependency (D-341, November 16)
+
+`D-048-R-profile` requires both its completed build `D-048-p3-profile` and
+`D-222-referral-count-shell`. Independent review of PR #1201 recorded the
+shared-shell wording/mobile-unit finding at `GoalShell.tsx:53-63`
+([finding 6911141191](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1201#issuecomment-6911141191),
+findings marker `37e29cc6`). D-222 already owns that correction; the profile
+release keeps only its two switch files. Its existing status, contributions,
+release record, findings and runtime fix claim `567a4b57` remain intact.
+
+The output chain is `PRICING-banded-oct25` -> `D-222-referral-count-shell` ->
+`D-048-R-profile`. No upstream row changes here. While D-222 is unfinished,
+the dependency holds profile review, findings repair and landing under D-134;
+other eligible lanes continue under D-324. This amendment neither repairs the
+shell nor clears the finding.
+
+After D-222 is done, merge current main into PR #1201 and verify the composed
+`/profile` and `/work` flow with `VITE_GOAL_SURFACES=profile` at 1280 and 390.
+The shell must meet `D-222-referral-count.md`: "N referrals left", explicit
+mobile meaning (the permitted compact form still visibly says "referrals"),
+the signed-in person's server-owned remaining count, and its role-specific
+interaction (plain non-purchase text on referrer surfaces; the quiet
+referral-details link remains permitted on seeker surfaces). Re-run the applicable profile behavior/privacy and
+shell checks, capture both widths, and obtain fresh independent Tier 1 review
+on the integrated head before landing. Every existing release, visibility and
+privacy gate remains; this is no release activation or new UI specification.
+
 ## Why the rollout was serial
 All D-048 rows shared the lane `design`, and the picker allows one open pull request per lane, so phase 3 could only move one page at a time. Lanes are free strings: splitting the lane is a data change. What makes parallel work unsafe is a short list of shared files, which one foundation chain now owns: the route table (`client/src/App.tsx`, all 87 routes on one line), the app shell, `client/src/components/goal/**`, the goal boundary test's allowlist, tokens and kit files.
 
