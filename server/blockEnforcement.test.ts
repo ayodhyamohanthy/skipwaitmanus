@@ -50,12 +50,15 @@ describe("block enforcement on referral surfaces", () => {
     expect(inbox.body.requests.map((row: { id: number }) => row.id)).toEqual([602]);
   });
 
-  it("fails open when the block check itself errors", async () => {
+  it("answers mine with a truthful unavailable response when the block check itself errors", async () => {
     const app = appFor(new Set(), {
       getBlockedReferralRequestIds: async () => { throw new Error("userBlocks missing"); },
     });
     const mine = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
-    expect(mine.body.requests.map((row: { id: number }) => row.id)).toEqual([601, 602]);
+    expect(mine.status).toBe(503);
+    expect(mine.body).toEqual({ error: "This private request is unavailable right now" });
+    expect(mine.headers["cache-control"]).toBe("private, no-store");
+    expect(mine.body.requests).toBeUndefined();
   });
 
   it("denies blocked thread detail, preview, and conversation neutrally", async () => {
@@ -218,16 +221,18 @@ describe("block enforcement on private email review links", () => {
     expect(calls.consumed).toEqual([]);
   });
 
-  it("keeps today's behaviour when the block lookup itself fails", async () => {
+  it("answers unavailable when the email review block lookup fails, without decision or link use", async () => {
     const failing = { getBlockedReferralRequestIds: async () => { throw new Error("userBlocks missing"); } };
     const ready = await request(reviewLinkApp(new Set([601]), failing).app).get(`/api/referrer-review-links/${token}`).set("x-test-user", "referrer");
-    expect(ready.status).toBe(200);
-    expect(ready.text).toBe(readyBody);
+    expect(ready.status).toBe(503);
+    expect(ready.text).toBe(JSON.stringify({ error: "This private request is unavailable right now" }));
     const { app, calls } = reviewLinkApp(new Set([601]), failing);
     const accept = await decide(app, token, { decision: "approved", ethicsConfirmed: true }, "referrer");
-    expect(accept.status).toBe(200);
-    expect(accept.text).toBe(JSON.stringify({ status: "approved" }));
-    expect(calls.decisions).toHaveLength(1);
-    expect(calls.consumed).toEqual([token]);
+    expect(accept.status).toBe(503);
+    expect(accept.text).toBe(JSON.stringify({ error: "This private request is unavailable right now" }));
+    expect(calls.decisions).toEqual([]);
+    expect(calls.consumed).toEqual([]);
+    expect(calls.notified).toEqual([]);
+    expect(calls.emailed).toEqual([]);
   });
 });
