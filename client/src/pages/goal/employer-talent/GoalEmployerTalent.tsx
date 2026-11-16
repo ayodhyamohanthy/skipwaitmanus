@@ -56,7 +56,13 @@ export default function GoalEmployerTalent() {
   const listGeneration = useRef(0);
   const unlockVersion = useRef(0);
   const confirmedUnlocks = useRef(new Map<string, number>());
-  const balanceChangedByUnlock = useRef(false);
+  // Balance authority (release review finding F4). The initial account read is a snapshot
+  // taken before any unlock on this page. Only a server answer to an unlock (a
+  // confirmed success, or a 402 carrying a numeric balance) outranks it; a
+  // failed unlock never does. `rollbackBalance` is the pre-unlock balance a
+  // failed unlock returns to, and a late account read updates it.
+  const balanceSetByServerUnlock = useRef(false);
+  const rollbackBalance = useRef<number | null>(null);
   const [introSentTo, setIntroSentTo] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,7 +100,15 @@ export default function GoalEmployerTalent() {
         const accountPayload = await readApiJson<{ account?: { credits: number } | null }>(accountResponse, "Employer account unavailable");
         if (active) {
           if (generation === listGeneration.current) setTalent((talentPayload.talent || []).map(row => (confirmedUnlocks.current.get(row.displayRef) ?? 0) > requestedUnlockVersion ? { ...row, isUnlocked: true } : row));
-          if (!balanceChangedByUnlock.current) setBalance(accountPayload.account?.credits ?? null);
+          if (!balanceSetByServerUnlock.current) {
+            const credits = accountPayload.account?.credits ?? null;
+            if (unlockInFlight.current !== null) {
+              // An unlock is pending: keep its optimistic debit on top of the
+              // account balance, and let a failure roll back to that balance.
+              rollbackBalance.current = credits;
+              setBalance(credits === null ? null : Math.max(0, credits - TALENT_UNLOCK_COST));
+            } else setBalance(credits);
+          }
         }
       } catch (loadError) { if (active && generation === listGeneration.current) setError(loadError instanceof Error ? loadError.message : "We could not load the talent list"); }
       finally { if (active && generation === listGeneration.current) setLoading(false); }
@@ -105,14 +119,17 @@ export default function GoalEmployerTalent() {
   const unlockTalent = async (row: TalentRow) => {
     if (unlockInFlight.current !== null) return;
     unlockInFlight.current = row.displayRef;
-    balanceChangedByUnlock.current = true;
     setUnlockingId(row.displayRef);
-    const previousBalance = balance;
+    rollbackBalance.current = balance;
     const previousUnlocked = row.isUnlocked;
     // Row-only rollback. On a 402 the body's numeric `credits` is the server's
-    // balance; the captured one is used only when it carries no number.
+    // balance; otherwise the pre-unlock balance, including an account read
+    // that landed while this unlock was pending.
     const restore = (serverBalance?: unknown) => {
-      setBalance(typeof serverBalance === "number" && Number.isFinite(serverBalance) ? serverBalance : previousBalance);
+      if (typeof serverBalance === "number" && Number.isFinite(serverBalance)) {
+        balanceSetByServerUnlock.current = true;
+        setBalance(serverBalance);
+      } else setBalance(rollbackBalance.current);
       setTalent(current => current.map(item => item.displayRef === row.displayRef ? { ...item, isUnlocked: previousUnlocked } : item));
     };
     setBalance(current => (current === null ? current : Math.max(0, current - TALENT_UNLOCK_COST)));
@@ -128,6 +145,9 @@ export default function GoalEmployerTalent() {
       }
       if (!response.ok) throw new Error(payload.error || "We could not unlock this profile");
       confirmedUnlocks.current.set(row.displayRef, ++unlockVersion.current);
+      // A confirmed debit outranks the older account snapshot, with or without
+      // a numeric `remaining` (the optimistic debit then stands).
+      balanceSetByServerUnlock.current = true;
       setTalent(current => current.map(item => item.displayRef === row.displayRef ? { ...item, isUnlocked: true } : item));
       if (typeof payload.remaining === "number") setBalance(payload.remaining);
       toast(`${row.displayRef} unlocked. They decide whether to respond.`);

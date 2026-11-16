@@ -527,3 +527,69 @@ describe("talent response ordering (D-342 release findings)", () => {
     expect(await within(await screen.findByRole("listitem", { name: REF_A })).findByRole("button", { name: "View profile" })).toBeTruthy();
   });
 });
+
+describe("talent balance recovery with a delayed account read (PR #1210 F4)", () => {
+  function deferred() {
+    let release: (value: Reply) => void = () => { throw new Error("Deferred response is not initialized"); };
+    let fail: (reason: Error) => void = () => { throw new Error("Deferred response is not initialized"); };
+    const promise = new Promise<Reply>((resolve, reject) => { release = resolve; fail = reject; });
+    return { promise, release, fail };
+  }
+  const search = (query: string) => {
+    fireEvent.change(screen.getByLabelText("Search talent"), { target: { value: query } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  };
+  // The initial account read is held; a newer search shows a locked row while
+  // the balance is still unknown, so an unlock starts before the account lands.
+  async function startWithHeldAccount() {
+    const account = deferred(); const unlock = deferred();
+    const fetchMock = stub({ talent: () => reply({ talent: [LOCKED] }), account: () => account.promise, unlock: () => unlock.promise });
+    render(<GoalEmployerTalent />);
+    search("newer");
+    await screen.findByRole("listitem", { name: REF_A });
+    expect(balanceText()).toBe("—");
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    return { account, unlock, fetchMock };
+  }
+
+  it.each(["an HTTP 500", "a network failure"])("a failed unlock (%s) before the account completes still shows the account balance, also after another search", async kind => {
+    const { account, unlock, fetchMock } = await startWithHeldAccount();
+    await act(async () => { if (kind === "an HTTP 500") unlock.release(reply({ error: "Synthetic unlock failed" }, 500)); else unlock.fail(new TypeError("Failed to fetch")); });
+    await within(card(REF_A)).findByRole("button", { name: /Unlock profile/ });
+    await act(async () => account.release(reply({ account: { credits: 20 } })));
+    expect(balanceText()).toBe("20");
+    search("again");
+    await within(await screen.findByRole("listitem", { name: REF_A })).findByText("Locked");
+    expect(balanceText()).toBe("20");
+    expect(calls(fetchMock).filter(call => call.endsWith("/unlock"))).toHaveLength(1);
+  });
+
+  it("a failed unlock after the account completes restores the account balance, not the unknown one captured before", async () => {
+    const { account, unlock } = await startWithHeldAccount();
+    await act(async () => account.release(reply({ account: { credits: 20 } })));
+    expect(balanceText()).toBe(String(20 - TALENT_UNLOCK_COST));
+    await act(async () => unlock.release(reply({ error: "Synthetic unlock failed" }, 500)));
+    await within(card(REF_A)).findByRole("button", { name: /Unlock profile/ });
+    expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
+    expect(balanceText()).toBe("20");
+  });
+
+  it.each(["before", "after"])("a confirmed unlock's remaining balance wins over an older account snapshot completing %s it", async order => {
+    const { account, unlock } = await startWithHeldAccount();
+    if (order === "before") await act(async () => account.release(reply({ account: { credits: 20 } })));
+    await act(async () => unlock.release(reply({ unlocked: true, remaining: 15 }, 201)));
+    if (order === "after") await act(async () => account.release(reply({ account: { credits: 20 } })));
+    await within(card(REF_A)).findByRole("button", { name: "View profile" });
+    expect(balanceText()).toBe("15");
+  });
+
+  it.each(["before", "after"])("a 402's numeric balance wins over an older account snapshot completing %s it", async order => {
+    const { account, unlock } = await startWithHeldAccount();
+    if (order === "before") await act(async () => account.release(reply({ account: { credits: 20 } })));
+    await act(async () => unlock.release(reply({ error: "Insufficient employer credits", credits: 3 }, 402)));
+    if (order === "after") await act(async () => account.release(reply({ account: { credits: 20 } })));
+    expect(go).toHaveBeenCalledWith("/employer/billing");
+    expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
+    expect(balanceText()).toBe("3");
+  });
+});
