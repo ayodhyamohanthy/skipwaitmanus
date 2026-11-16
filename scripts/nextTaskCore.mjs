@@ -848,7 +848,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       if (v.ci === "green") {
         if (did(v, ["builders", "fixers"], "land")) return skip(v, "its findings are fixed, and you built or fixed it; another session lands it");
         if (slotBusyFor(claimant)) return waitLanding();
-        return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, from: v.fixer };
+        return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, tier1: true, fixed: true, from: v.fixer };
       }
       if (v.ci === "no-tip-ci") return skip(v, `waiting for CI on the tip ${(v.tipSha ?? "").slice(0, 8)} of ${v.pr}`);
     }

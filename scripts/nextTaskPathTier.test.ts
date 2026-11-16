@@ -8,6 +8,7 @@
 // rule: the loader supplies each pull request's changed paths and whether the gate already clears its head.
 import { describe, expect, it } from "vitest";
 import { needsReview, pickNextTask, reviewNeeded, statusBoard } from "./nextTaskCore.mjs";
+import { renderPick } from "./nextTaskText.mjs";
 import { reviewGateViolation } from "./review-gate.mjs";
 import { classifyTier } from "./tierClassifyCore.mjs";
 
@@ -106,6 +107,11 @@ describe("PICKER-path-tier-review: no re-review after a bound Fixed marker (D-34
     const pick = pickNextTask(input(t, { branches, facts: { tipSha: HEAD, paths: SERVER, gateClear: true } }));
     expect(pick.kind).toBe("land");
     expect(pick.tier1).toBe(true);
+    expect(pick.fixed).toBe(true);
+    const text = renderPick(pick, { who: ME, claimed: false });
+    expect(text).toContain("lands without a re-review");
+    expect(text).toContain("fixed <sha>");
+    expect(text).not.toContain("reviewed and passed");
   });
 
   it("never hands that landing to the session that fixed it", () => {
