@@ -109,9 +109,9 @@ export const PROVIDER_RECON_MAX_PAGES = 5;
 /**
  * D-100.provider-recon: Chargebee's payment transactions in [since, until], newest
  * first, read only. Paged by the opaque `next_offset` Chargebee returns (a number is
- * not an offset); pages stop when no offset comes back or at the page cap, and the
- * caller reports the cap as a finding rather than pretending a truncated read was
- * complete. Card data and customer ids are never part of the parsed shape.
+ * not an offset). If more pages remain at the cap, throws so the daily check
+ * reports an incomplete read instead of comparing partial invoice totals.
+ * Card data and customer ids are never part of the parsed shape or cap error.
  */
 export async function listRecentPayments(credentials: ChargebeeCredentials, input: { since: Date; until: Date; maxPages?: number }): Promise<ProviderPayment[]> {
   const after = Math.floor(input.since.getTime() / 1000);
@@ -135,6 +135,7 @@ export async function listRecentPayments(credentials: ChargebeeCredentials, inpu
       });
     }
     if (!body.next_offset) break;
+    if (page + 1 >= pages) throw new Error(`provider_recon_truncated: Chargebee's payment read stopped at ${pages} page(s) with more pages remaining; the comparison is incomplete`);
     offset = body.next_offset;
   }
   return payments;

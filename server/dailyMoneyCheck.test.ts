@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { paymentFulfillments, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { listRecentPayments } from "./chargebeeAccountApi";
+import { listRecentPayments, PROVIDER_RECON_MAX_PAGES } from "./chargebeeAccountApi";
 import { runMoneyCheckNow, createDailyMoneyCheck, compareProviderPayments, PROVIDER_RECON_ENABLED, RECEIPT_RECON_BATCH, FINDINGS_EMAIL_LINE_LIMIT, FINDINGS_PREVIEW_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
@@ -894,6 +894,73 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
       expect(calls[1]).toContain("offset=opaque-next-token");
       expect(JSON.stringify(payments)).not.toContain("4242");
       expect(JSON.stringify(payments)).not.toContain("c_1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  function pagedPaymentFetch(totalPages: number) {
+    let page = 0;
+    return vi.fn(async () => {
+      page += 1;
+      return new Response(JSON.stringify({
+        list: [{ transaction: {
+          id: `txn_${page}`, amount: 1000, currency_code: "INR", status: "success",
+          date: Math.floor((NOW.getTime() - 10 * HOUR) / 1000),
+          linked_invoices: [{ invoice_id: "inv_1", applied_amount: 1000 }],
+        } }],
+        ...(page < totalPages ? { next_offset: `private-opaque-token-${page}` } : {}),
+      }), { status: 200 });
+    });
+  }
+
+  it.each([undefined, 1, 99])("R15: an unfinished provider read rejects at the bounded page cap (maxPages=%s)", async maxPages => {
+    const fetchMock = pagedPaymentFetch(PROVIDER_RECON_MAX_PAGES + 1);
+    vi.stubGlobal("fetch", fetchMock);
+    const expectedPages = Math.min(maxPages ?? PROVIDER_RECON_MAX_PAGES, PROVIDER_RECON_MAX_PAGES);
+    try {
+      await expect(listRecentPayments({ site: "fixture-test", apiKey: "k" }, {
+        since: new Date(NOW.getTime() - 48 * HOUR), until: new Date(NOW.getTime() - HOUR), maxPages,
+      })).rejects.toThrow(`provider_recon_truncated: Chargebee's payment read stopped at ${expectedPages} page(s) with more pages remaining; the comparison is incomplete`);
+      expect(fetchMock).toHaveBeenCalledTimes(expectedPages);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("R16: a complete provider read ending exactly at the cap returns all payments", async () => {
+    const fetchMock = pagedPaymentFetch(PROVIDER_RECON_MAX_PAGES);
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const payments = await listRecentPayments({ site: "fixture-test", apiKey: "k" }, {
+        since: new Date(NOW.getTime() - 48 * HOUR), until: new Date(NOW.getTime() - HOUR),
+      });
+      expect(payments.map(payment => payment.id)).toEqual(["txn_1", "txn_2", "txn_3", "txn_4", "txn_5"]);
+      expect(fetchMock).toHaveBeenCalledTimes(PROVIDER_RECON_MAX_PAGES);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("R17: a sixth provider page makes the daily check visibly incomplete without comparing partial invoice totals", async () => {
+    const fetchMock = pagedPaymentFetch(PROVIDER_RECON_MAX_PAGES + 1);
+    const listReceiptsPaidSince = vi.fn(async () => [receipt({ amount: 6000 }), receipt({ providerInvoiceId: "inv_sixth_page" })]);
+    const { deps, sent } = makeDeps({
+      listProviderPaymentsSince: (since, until) => listRecentPayments({ site: "fixture-test", apiKey: "k" }, { since, until }),
+      listReceiptsPaidSince,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const output = await createDailyMoneyCheck(deps, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "w" });
+      expect(output.failed).toBe(0);
+      expect(fetchMock).toHaveBeenCalledTimes(PROVIDER_RECON_MAX_PAGES);
+      expect(listReceiptsPaidSince).not.toHaveBeenCalled();
+      expect(sent).toHaveLength(1);
+      expect(sent[0]?.subject).toContain("1 finding");
+      expect(sent[0]?.text).toContain("provider_recon_unavailable");
+      expect(sent[0]?.text).toContain("provider_recon_truncated");
+      expect(sent[0]?.text).toContain("the comparison is incomplete");
+      expect(sent[0]?.text).not.toMatch(/provider_amount_mismatch|receipt_without_provider_payment|private-opaque-token/);
     } finally {
       vi.unstubAllGlobals();
     }
