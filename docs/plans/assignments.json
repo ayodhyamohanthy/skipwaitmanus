@@ -181,14 +181,14 @@
     },
     {
       "id": "PROCESS-session-review-independence",
-      "title": "No review gate and no landing slot: a built task lands on green required CI through auto-merge (D-347; was session-level review independence, D-344)",
+      "title": "Review only Tier 1 paths, per session; a fix lands without re-review; auto-merge, no landing slot (D-344, D-347, D-352)",
       "row": "D-134",
       "packet": "docs/plans/D-344-unblock.md",
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/process-session-review",
-      "status": "todo",
-      "syncedTo": "D-347",
+      "status": "done",
+      "syncedTo": "D-352",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
@@ -204,9 +204,15 @@
         "scripts/reviewGateEmptyMarkers.test.ts",
         "scripts/reviewGateFetchParity.test.ts",
         "scripts/scope-check.mjs",
-        "scripts/scopeCheck.test.ts"
+        "scripts/scopeCheck.test.ts",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/nextTaskGateRedReview.test.ts",
+        "scripts/nextTaskOrdinaryGateRedLoop.test.ts",
+        "scripts/nextTaskPacketPassRed.test.ts",
+        "scripts/scorecard.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 1 as amended by D-347 (owner, Nov 16): no review is required for any tier. The CI review gate no longer blocks, the picker hands out no review stage, the landing slot is retired, and a session turns on auto-merge (merge commit) for its own ready PR. Every required CI check and test-integrity guard stays. Tests that pinned the old review and slot rules are updated to the new rule, never deleted without porting (GATE-test-integrity). This row is first: until it lands, Tier 1 PRs stay blocked by the old gate."
+      "note": "Build docs/plans/D-344-unblock.md row 1 as amended by D-347 and D-352 (owner, Nov 16). The CI review gate asks for one review by another session only where the changed paths compute Tier 1. Independence is per session. Findings plus a Fixed marker land without a re-review. Every PR lands through auto-merge (merge commit) with no landing slot. Every required CI check and test-integrity guard stays. Tests that pinned the old review and slot rules are updated to the new rule, never deleted without porting (GATE-test-integrity). This row is first: until it lands, Tier 1 PRs stay blocked by the old gate. D-352 (Nov 16): the owner chose to review risky paths only, so this row makes the CI gate ask for a review only where the changed paths compute Tier 1. Owns gain the picker CLI (--fixed records its head) and the five tests that pinned the model-level rule, which are ported to the session rule."
     },
     {
       "id": "OPS-reviewer-qa-passwords",
@@ -303,6 +309,22 @@
       "note": "Build docs/plans/D-344-unblock.md row 4. Shares ci.yml with GATE-merge-queue under D-314."
     },
     {
+      "id": "GATE-unit-shards",
+      "title": "Unit tests run as 3 parallel shards under the same required check name, cutting the slowest CI step from about 7 minutes to about 2.5 (D-351)",
+      "row": "D-212",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "gate-unit-shards",
+      "branch": "agent/queue/gate-unit-shards",
+      "status": "todo",
+      "syncedTo": "D-351",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/ci.yml"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 7 exactly. Keep the required check name 'unit + component + route tests' as an aggregate job, or every PR blocks. Shares ci.yml with GATE-merge-queue and GATE-release-captures under D-314."
+    },
+    {
       "id": "PRICING-banded-oct25",
       "title": "Frozen banded plan family (owner freeze Oct 25) replaces fee+credits model",
       "row": "PRICING",
@@ -357,7 +379,7 @@
       "tier": 2,
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-345",
       "dependsOn": [],
       "owns": [
@@ -461,22 +483,6 @@
         "server/skippieSeekerDeps.ts",
         "server/skippieSeekerDeps.test.ts"
       ]
-    },
-    {
-      "id": "SKIPPY-fix",
-      "title": "Skippy post-landing review (#442, #451, #453, #454): fix S-1 SSRF, S-2 credit copy, S-3 price drift, S-4 agent allow-list, S-5 company at link time, S-6 ask log; live proof on skipwait_qa",
-      "row": "D-201",
-      "packet": "docs/plans/SKIPPY-fix.md",
-      "tier": 1,
-      "lane": "skippy-seeker",
-      "branch": "agent/queue/skippy-fix",
-      "status": "todo",
-      "syncedTo": "D-227",
-      "dependsOn": [
-        "D-132-item3",
-        "SKIPPY-fix.s1-ssrf"
-      ],
-      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model. Oct 28 (D-132-item3 packet revision 2, decided under D-200; changeable): S-1 (the SSRF fix, server/skippieSeekerDeps.ts only, no DB guard) moves to SKIPPY-fix.s1-ssrf so it is not held behind the guard and its D-090-BYOR wait; this row keeps S-2 to S-6 and the live proof, and waits for both. No flag changes (D-201)."
     },
     {
       "id": "BRANCH-HYGIENE-1",
@@ -634,32 +640,6 @@
       ],
       "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"assistants\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=assistants); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-assistants's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy agent switches stay off (D-201); the page renders correctly with them off. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-assistants, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
       "epic": "D-048-p3"
-    },
-    {
-      "id": "D-048-p3-skippy",
-      "title": "Redesign /skippy (the seeker's assistant chat) to the goal doctrine (D-150)",
-      "row": "D-048",
-      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
-      "tier": 1,
-      "lane": "d048-skippy",
-      "branch": "agent/queue/d048-skippy",
-      "status": "todo",
-      "syncedTo": "D-349",
-      "dependsOn": [
-        "D-048-F-harness",
-        "D-048-F-primitives",
-        "D-048-F-goal-check",
-        "REGISTER-520",
-        "SKIPPY-fix"
-      ],
-      "epic": "D-048-p3",
-      "owns": [
-        "client/src/pages/Skippy.tsx",
-        "client/src/pages/Skippy.test.tsx",
-        "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
-      ],
-      "note": "D-167 §6.4: had no row. Behind SKIPPIE_SEEKER_ENABLED (off); the CEO adds SKIPPY-fix to dependsOn once REGISTER-520 puts it on main. D-221 (Oct 26): waits for SKIPPY-fix as D-201 requires (no Skippy work before it lands). Goal line uses referral wording (D-180). D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-skippy done in the same commit, so no separate release PR is needed."
     },
     {
       "id": "PICKER-board-newer-report",
@@ -890,28 +870,6 @@
         "scripts/scorecard.test.ts",
         "docs/DELEGATION.md"
       ]
-    },
-    {
-      "id": "D-048-R-skippy",
-      "title": "Release the goal skippy page to production: add \"skippy\" to RELEASED (built and landed in D-048-p3-skippy) (D-317)",
-      "row": "D-048",
-      "packet": "docs/plans/D-048-phase-3-split.md",
-      "tier": 1,
-      "lane": "d048-release-skippy",
-      "branch": "agent/queue/d048-r-skippy",
-      "status": "todo",
-      "syncedTo": "D-349",
-      "dependsOn": [
-        "D-048-p3-skippy"
-      ],
-      "owns": [
-        "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)",
-        "client/src/pages/Skippy.tsx",
-        "client/src/pages/Skippy.test.tsx"
-      ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"skippy\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=skippy); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-skippy's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy switches stay off until SKIPPY-fix lands (D-201). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-skippy, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-349 (launch mode): done by D-048-p3-skippy's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off.",
-      "epic": "D-048-p3"
     },
     {
       "id": "D-048-p3-premium",
@@ -4547,26 +4505,6 @@
       "note": "D-093 packet §5.3. No new dependency. Formatting stays on the device locale (device.ts unchanged). Signed-out choice wins until the account has one; never from country, company, email domain or billing region."
     },
     {
-      "id": "D-048-K-skippy",
-      "title": "Delete the old skippy design: remove the kit page bodies and their switch so only the goal page exists (D-332)",
-      "row": "D-048",
-      "packet": "docs/plans/D-048-retire.md",
-      "tier": 1,
-      "lane": "d048-retire-skippy",
-      "branch": "agent/queue/d048-k-skippy",
-      "status": "todo",
-      "syncedTo": "D-349",
-      "dependsOn": [
-        "D-048-R-skippy"
-      ],
-      "owns": [
-        "client/src/pages/Skippy.tsx",
-        "client/src/pages/Skippy.test.tsx"
-      ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: skippy. Built by D-048-p3-skippy; released by D-048-R-skippy (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
-      "epic": "D-048-p3"
-    },
-    {
       "id": "D-048-K-admin",
       "title": "Delete the old admin design: remove the kit page bodies and their switch so only the goal page exists (D-332)",
       "row": "D-048",
@@ -5133,6 +5071,90 @@
         "client/src/pages/referrerHome.test.tsx"
       ],
       "note": "D-221 (Oct 26 decision audit): seven live strings still state rules that newer decisions replaced. Copy and its pinning tests only; Help.tsx line 17's 7-day expiry stays until D-174-expiry-clock-removal (runtime truth). Tier 2: lands on green required CI (D-200). Nov 1 D-265: client/src/pages/alerts.test.tsx added to owns so lines 190 and 223 can pin the Free alert cap note. Nov 1 D-270: client/src/pages/referrerHome.test.tsx added to owns so line 140 can pin the D-176 truth."
+    },
+    {
+      "id": "SKIPPY-fix",
+      "title": "Skippy post-landing review (#442, #451, #453, #454): fix S-1 SSRF, S-2 credit copy, S-3 price drift, S-4 agent allow-list, S-5 company at link time, S-6 ask log; live proof on skipwait_qa",
+      "row": "D-201",
+      "packet": "docs/plans/SKIPPY-fix.md",
+      "tier": 1,
+      "lane": "skippy-seeker",
+      "branch": "agent/queue/skippy-fix",
+      "status": "todo",
+      "syncedTo": "D-352",
+      "dependsOn": [
+        "D-132-item3",
+        "SKIPPY-fix.s1-ssrf"
+      ],
+      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model. Oct 28 (D-132-item3 packet revision 2, decided under D-200; changeable): S-1 (the SSRF fix, server/skippieSeekerDeps.ts only, no DB guard) moves to SKIPPY-fix.s1-ssrf so it is not held behind the guard and its D-090-BYOR wait; this row keeps S-2 to S-6 and the live proof, and waits for both. No flag changes (D-201). D-352 (Nov 16): out of the launch set (owner: \"skippy also we can push later\"). Skippy stays switched off in production at launch (D-201), so this row follows the launch set."
+    },
+    {
+      "id": "D-048-p3-skippy",
+      "title": "Redesign /skippy (the seeker's assistant chat) to the goal doctrine (D-150)",
+      "row": "D-048",
+      "packet": "docs/plans/GOAL_UI_COVERAGE.md",
+      "tier": 1,
+      "lane": "d048-skippy",
+      "branch": "agent/queue/d048-skippy",
+      "status": "todo",
+      "syncedTo": "D-352",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-F-goal-check",
+        "REGISTER-520",
+        "SKIPPY-fix"
+      ],
+      "epic": "D-048-p3",
+      "owns": [
+        "client/src/pages/Skippy.tsx",
+        "client/src/pages/Skippy.test.tsx",
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)"
+      ],
+      "note": "D-167 §6.4: had no row. Behind SKIPPIE_SEEKER_ENABLED (off); the CEO adds SKIPPY-fix to dependsOn once REGISTER-520 puts it on main. D-221 (Oct 26): waits for SKIPPY-fix as D-201 requires (no Skippy work before it lands). Goal line uses referral wording (D-180). D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-skippy done in the same commit, so no separate release PR is needed. D-352 (Nov 16): out of the launch set (owner: \"skippy also we can push later\"). Skippy stays switched off in production at launch (D-201), so this row follows the launch set."
+    },
+    {
+      "id": "D-048-R-skippy",
+      "title": "Release the goal skippy page to production: add \"skippy\" to RELEASED (built and landed in D-048-p3-skippy) (D-317)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-phase-3-split.md",
+      "tier": 1,
+      "lane": "d048-release-skippy",
+      "branch": "agent/queue/d048-r-skippy",
+      "status": "todo",
+      "syncedTo": "D-352",
+      "dependsOn": [
+        "D-048-p3-skippy"
+      ],
+      "owns": [
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/Skippy.tsx",
+        "client/src/pages/Skippy.test.tsx"
+      ],
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"skippy\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=skippy); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-skippy's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy switches stay off until SKIPPY-fix lands (D-201). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-skippy, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-349 (launch mode): done by D-048-p3-skippy's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off. D-352 (Nov 16): out of the launch set (owner: \"skippy also we can push later\"). Skippy stays switched off in production at launch (D-201), so this row follows the launch set.",
+      "epic": "D-048-p3"
+    },
+    {
+      "id": "D-048-K-skippy",
+      "title": "Delete the old skippy design: remove the kit page bodies and their switch so only the goal page exists (D-332)",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-retire.md",
+      "tier": 1,
+      "lane": "d048-retire-skippy",
+      "branch": "agent/queue/d048-k-skippy",
+      "status": "todo",
+      "syncedTo": "D-352",
+      "dependsOn": [
+        "D-048-R-skippy"
+      ],
+      "owns": [
+        "client/src/pages/Skippy.tsx",
+        "client/src/pages/Skippy.test.tsx"
+      ],
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: skippy. Built by D-048-p3-skippy; released by D-048-R-skippy (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up. D-352 (Nov 16): out of the launch set (owner: \"skippy also we can push later\"). Skippy stays switched off in production at launch (D-201), so this row follows the launch set.",
+      "epic": "D-048-p3"
     },
     {
       "id": "D-048-R-employer-talent",
