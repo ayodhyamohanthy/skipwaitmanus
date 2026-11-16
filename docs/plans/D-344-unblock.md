@@ -65,12 +65,12 @@ On Nov 16, `PRICING-banded-oct25` was reported blocked five times for the same r
 
 Until then, the owner enables "Allow auto-merge" in the repository settings, and each session turns on auto-merge with the merge-commit method for its own pull request once it is ready.
 
-## D-347 amendment to row 1 (owner, Nov 16)
+## D-347 and D-352 amendments to row 1 (owner, Nov 16)
 
-Row 1 no longer makes review session-level: it removes the review requirement and the landing slot.
+D-347 removed the review requirement; D-352 then restored it for Tier 1 paths only. Row 1 therefore:
 
-1. `scripts/review-gate.mjs` and its CI step (`.github/workflows/ci.yml:112`) no longer fail a pull request for a missing or failed verdict. Remove the step, or make it report-only.
-2. `scripts/nextTaskCore.mjs`: no review stage is handed out. A built task with green CI is handed to its own session to land, never held for a verdict. The `agent/queue/landing` slot is no longer required to land (`LAND_SLOT`, `waitLanding`).
+1. `scripts/review-gate.mjs` asks for one independent pass only when `scripts/tierClassifyCore.mjs` computes Tier 1 from the changed paths (money, sign-in, privacy, migrations, secrets). A row's declared tier alone no longer forces a review. Independence is per session (D-344 (1)): the building or fixing session itself never passes the work, another session of the same model may. A findings verdict followed by a `Fixed` marker from a session other than the reviewer passes with no re-review (D-344 (7)); `--fixed` records `fixed <sha>`, and a later own commit needs a new `Fixed` marker.
+2. `scripts/nextTaskCore.mjs`: the picker's builder/fixer exclusion compares sessions, not models. Every pull request lands through auto-merge on green required CI, with no landing slot needed (D-347 (2)). Follow-up, not required for this row: hand out a review only for Tier 1 paths, and the landing rather than a re-review after a `Fixed` marker.
 3. `scripts/nextTaskText.mjs`: the land step says to turn on auto-merge with the merge-commit method for your own pull request and to press "update branch" when `main` moves.
 4. Update the tests that pinned the old rules. Port any assertion you remove (GATE-test-integrity), and list it in the PR's "Ported assertions" table.
 5. Unchanged: every required CI check, test-integrity, and the pinned login and money tests.
