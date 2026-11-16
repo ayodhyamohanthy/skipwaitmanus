@@ -79,12 +79,16 @@ function harness() {
   const git = (...args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] }).trim();
   execFileSync("git", ["init", "--bare", origin], { stdio: "pipe" });
   git("init", "-b", "main"); git("config", "user.name", "Fixture"); git("config", "user.email", "fixture@example.test"); git("remote", "add", "origin", origin);
+  // PICKER-path-tier-review (D-352, D-353 (1)): the packet's work touches server code, so the declared Tier 1 row's
+  // pull request still needs its review by the gate's path rule; a docs-only packet lands on green CI with no review.
+  mkdirSync(path.join(work, "server"), { recursive: true });
+  writeFileSync(path.join(work, "server/fixture.ts"), "export const v = 0;\n");
   writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
   writeFileSync(path.join(work, "docs/DECISIONS.md"), "# Decisions\n| ID | Date | Decision | Evidence | Notes | Status |\n|---|---|---|---|---|---|\n| D-001 | 2026-10-19 | One | e | none | adopted |\n");
   writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({ version: 1, repo: "o/r", tasks: [task] }));
   git("add", "."); git("commit", "-m", "root"); git("push", "-u", "origin", "main");
   git("switch", "-c", ARCH); git("commit", "--allow-empty", "-m", "Claim P: Writer · 1111");
-  writeFileSync(path.join(work, "docs/plans/test.md"), "# packet work\n"); git("commit", "-am", "packet work"); git("push", "-u", "origin", ARCH); const head = git("rev-parse", "HEAD");
+  writeFileSync(path.join(work, "docs/plans/test.md"), "# packet work\n"); writeFileSync(path.join(work, "server/fixture.ts"), "export const v = 1;\n"); git("commit", "-am", "packet work"); git("push", "-u", "origin", ARCH); const head = git("rev-parse", "HEAD");
   git("switch", "-c", REVIEW, "main"); git("commit", "--allow-empty", "-m", "Review claim P: Reviewer · 2222"); git("push", "-u", "origin", REVIEW); git("switch", "main");
   const jobs = { jobs: [{ name: "typecheck", status: "completed", conclusion: "failure", steps: [{ name: GATE_STEP, conclusion: "failure" }, { name: "Scope check (declared file ownership)", conclusion: "skipped" }] }, ...["unit + component + route tests", "production build", "e2e journeys"].map(name => ({ name, status: "completed", conclusion: "success", steps: [{ name: "work", conclusion: "success" }] }))] };
   writeFileSync(mock, `const response = body => ({ok:true,status:200,json:async()=>body});
