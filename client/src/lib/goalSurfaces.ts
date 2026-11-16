@@ -74,6 +74,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "admin-ops",
   "alerts",
   "assistants",
+  "conversation",
   "developers",
   "discovery",
   "email-review",
