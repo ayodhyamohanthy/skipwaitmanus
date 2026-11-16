@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Rows | `D-057-stepup-access-error` (section 1), `PICKER-avoid-repeat` (section 2) |
-| Synced to | D-331 |
+| Synced to | D-354 |
 | Order | appended last (FIFO, owner Oct 31) |
 | Depends on | nothing; each lands alone on its own branch |
 

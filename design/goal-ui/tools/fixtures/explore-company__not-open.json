@@ -9,35 +9,6 @@
   "routes": [
     {
       "method": "GET",
-      "path": "/api/credits/summary",
-      "match": "prefix",
-      "status": 200,
-      "body": {
-        "summary": {
-          "totalAvailable": 4
-        }
-      }
-    },
-    {
-      "method": "GET",
-      "path": "/api/ask-drafts",
-      "match": "exact",
-      "status": 200,
-      "body": {
-        "draft": null
-      }
-    },
-    {
-      "method": "GET",
-      "path": "/api/company-referrals/access",
-      "match": "exact",
-      "status": 200,
-      "body": {
-        "verifiedCompanyAccess": false
-      }
-    },
-    {
-      "method": "GET",
       "path": "/api/companies/wipro",
       "match": "exact",
       "status": 200,
@@ -47,13 +18,13 @@
           "name": "Wipro",
           "initials": "W",
           "industry": "Technology services",
-          "location": "Bengaluru \u00b7 Hybrid",
+          "location": "Global",
           "functions": [
             "Engineering",
-            "Product",
-            "Design"
+            "Data",
+            "Operations"
           ],
-          "blurb": "Global technology services and consulting. Engineering, cloud and design roles across India and remote.",
+          "blurb": "Explore roles across technology, consulting, and business operations.",
           "domains": [
             "wipro.com"
           ],
@@ -72,13 +43,42 @@
     },
     {
       "method": "GET",
-      "path": "/api/companies/wipro/response-signal",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/setup",
       "match": "exact",
       "status": 200,
       "body": {
-        "signal": {
-          "state": "insufficient"
+        "goal": "Actively looking",
+        "roles": [],
+        "level": "",
+        "links": [],
+        "city": "",
+        "countries": "",
+        "remote": true,
+        "visa": "No sponsorship needed",
+        "resume": {
+          "id": 77,
+          "fileName": "asha-resume.pdf"
         }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/response-signal",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "state": "insufficient"
       }
     }
   ]

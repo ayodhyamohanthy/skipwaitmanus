@@ -1,9 +1,10 @@
 import { ArrowRight, BadgeCheck, Copy, Link2, LockKeyhole, MapPin, Share2 } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Button } from "@/components/kit/button";
 import { PublicWorkGrid } from "@/components/profile/PublicWorkGrid";
 import { asProfileVisibility, VisibilityOptions, type ProfileVisibility } from "@/components/profile/VisibilityOptions";
@@ -23,7 +24,12 @@ type PublicProfile = {
   workItems?: WorkItem[];
 };
 
+// Goal-UI migration (D-048-p3-public-profile): the goal page replaces this one
+// when the "public-profile" surface flag is on; off, the kit page below is unchanged.
+const GoalPublicProfile = lazy(() => import("./goal/public-profile/GoalPublicProfile"));
+
 export default function PublicProfile() {
+  if (goalSurfaceOn("public-profile")) return <Suspense fallback={null}><GoalPublicProfile /></Suspense>;
   const [, params] = useRoute("/p/:handle");
   const handle = params?.handle ?? "";
   const { getToken } = useAuth();
