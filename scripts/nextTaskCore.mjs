@@ -649,6 +649,10 @@ const standingReport = (reports, holder) => {
       if (!blockers.includes(r.who)) blockers.push(r.who);
       continue;
     }
+    if (block?.evidence && r.status !== "green" && r.status !== "landed") {
+      newer.push(r);
+      continue;
+    }
     if (block && r.status !== "green" && r.status !== "landed" && (blockers.includes(r.who) || r.who === holder)) {
       newer.push(r);
       continue;
@@ -661,8 +665,89 @@ const standingReport = (reports, holder) => {
   return block ? { ...block, blockers, newer } : latest && { ...latest, newer: [] };
 };
 
+/** D-346: public, non-secret evidence bound to one blocked report. */
+export const BLOCK_RETRY_MS = 24 * 60 * 60 * 1000;
+const BLOCK_EVIDENCE_PREFIX = "block-evidence ";
+const evidenceId = value => typeof value === "string" && /^[A-Za-z0-9.-]+$/.test(value);
+function parseBlockEvidence(value) {
+  const invalid = () => { throw new Error("Invalid block evidence in report"); };
+  if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
+  if (Object.keys(value).sort().join(",") !== "decisions,doneDependencies,version,work" || value.version !== 1) return invalid();
+  if (!Array.isArray(value.work) || !Array.isArray(value.decisions) || !Array.isArray(value.doneDependencies)) return invalid();
+  if (!value.decisions.every(id => typeof id === "string" && /^D-\d{3}$/.test(id)) || !value.doneDependencies.every(evidenceId)) return invalid();
+  const refs = new Set();
+  for (const row of value.work) {
+    if (!row || typeof row !== "object" || Array.isArray(row) || Object.keys(row).sort().join(",") !== "branch,sha") return invalid();
+    if (typeof row.branch !== "string" || !/^agent\/[A-Za-z0-9._/-]+$/.test(row.branch) || typeof row.sha !== "string" || !/^[a-f0-9]{40}$/.test(row.sha) || refs.has(row.branch)) return invalid();
+    refs.add(row.branch);
+  }
+  if (new Set(value.decisions).size !== value.decisions.length || new Set(value.doneDependencies).size !== value.doneDependencies.length) return invalid();
+  return value;
+}
+
+export function parseReportBody(body) {
+  const lines = String(body ?? "").trim().split(/\r?\n/);
+  const metadata = lines.filter(line => line.startsWith(BLOCK_EVIDENCE_PREFIX));
+  if (!metadata.length) return { note: sanitizeNote(body), evidence: null };
+  if (metadata.length !== 1 || lines.length > 2 || lines.at(-1) !== metadata[0]) throw new Error("Invalid block evidence in report");
+  let value;
+  try { value = JSON.parse(metadata[0].slice(BLOCK_EVIDENCE_PREFIX.length)); }
+  catch { throw new Error("Invalid block evidence JSON in report"); }
+  return { note: lines.length === 1 ? "" : sanitizeNote(lines[0]), evidence: parseBlockEvidence(value) };
+}
+
+export function blockedReportBody(note, evidence) {
+  const text = sanitizeNote(note);
+  return `${text ? `${text}\n` : ""}${BLOCK_EVIDENCE_PREFIX}${JSON.stringify(parseBlockEvidence(evidence))}`;
+}
+
+export function blockEvidenceFor({ task, tasks, branches, openPrs = new Map(), register = [], mergedHeads = new Map(), landedEvidence = new Map() }) {
+  const carriers = new Set([task.branch]);
+  const work = workBranchOf(task, branches);
+  if (work) carriers.add(work);
+  const arch = architectLockOf(task);
+  // An unblock/heartbeat marker is not new task evidence. A packet PR is.
+  if (openPrs.has(arch)) carriers.add(arch);
+  const done = id => {
+    const dependency = tasks.find(row => row.id === id);
+    if (!dependency) return false;
+    const info = branches.get(workBranchOf(dependency, branches) ?? dependency.branch);
+    return dependency.status === "done" || Boolean(info?.merged)
+      || Boolean(info?.tipSha && mergedHeads.get(dependency.branch)?.has(info.tipSha))
+      || landedEvidence.get(dependency.branch)?.state === "merged";
+  };
+  return parseBlockEvidence({
+    version: 1,
+    work: [...carriers].sort().flatMap(branch => {
+      const sha = branches.get(branch)?.tipSha;
+      return sha ? [{ branch, sha }] : [];
+    }),
+    decisions: (register ?? []).filter(row => row.affects?.includes(task.id)).map(row => row.id).sort(),
+    doneDependencies: task.dependsOn.filter(done).sort(),
+  });
+}
+
+function blockHasNewEvidence(report, evidence, now) {
+  if (now - report.at >= BLOCK_RETRY_MS) return true;
+  // Old reports predate snapshots. Their first reassessment remains possible;
+  // the next blocked report binds the evidence and cannot repeat unchanged.
+  if (!report.evidence) return true;
+  const previous = parseBlockEvidence(report.evidence);
+  return evidence.work.some(row => !previous.work.some(old => old.branch === row.branch && old.sha === row.sha))
+    || evidence.decisions.some(id => !previous.decisions.includes(id))
+    || evidence.doneDependencies.some(id => !previous.doneDependencies.includes(id));
+}
+
+export function blockedReportError(input) {
+  const { task, reports = [], branches, now } = input;
+  const owner = holderOf(branches.get(workBranchOf(task, branches) ?? task.branch), task.id);
+  const report = standingReport(reports.filter(row => row.id === task.id), owner);
+  if (report?.status !== "blocked" || blockHasNewEvidence(report, blockEvidenceFor(input), now)) return null;
+  return `already reported; nothing changed since ${new Date(report.at).toISOString()}`;
+}
+
 /** One row per task with everything every decision reads. */
-function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence = new Map(), prFacts = new Map() }) {
+function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence = new Map(), prFacts = new Map(), register = [], now = 0 }) {
   const byTask = reportsByTask(reports);
   return tasks.map((task, at) => {
     const id = task.id;
@@ -692,12 +777,14 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
     if (said?.status === "red" && pr && ci.state === "green" && ci.at && ci.at > said.at) said = null;
     const lockMarkers = stageMarkers(lock, id);
     const archMarkers = stageMarkers(arch, id);
+    const blockWaitingForEvidence = said?.status === "blocked" && Boolean(said.evidence)
+      && !blockHasNewEvidence(said, blockEvidenceFor({ task, tasks, branches, openPrs, register, mergedHeads, landedEvidence }), now);
     // PICKER-path-tier-review: the loader's facts count only for the tip they were read on.
     const facts = pr ? prFacts?.get?.(work) ?? null : null;
     const factsOnTip = Boolean(facts && info?.tipSha && facts.tipSha === info.tipSha);
     return {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
-      slug: slugOf(task.branch), owner, pr, ci: ci.state, said,
+      slug: slugOf(task.branch), owner, pr, ci: ci.state, said, blockWaitingForEvidence,
       ciSha: ci.sha ?? null, ciRunId: ci.runId ?? null, tipSha: info?.tipSha ?? null,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
       reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
@@ -785,7 +872,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
 
-  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence, prFacts });
+  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence, prFacts, register, now });
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-134: dependsOn holds every kind of work on a task, not only a new build.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
@@ -904,6 +991,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     // D-134: while a dependency is not done, nobody is handed any work on the task: no build, takeover, make-green,
     // review, fix, packet or landing. It is reworked or continued once the dependency is live.
     if (unmetOf(v).length) return skip(v, `waits for ${unmetOf(v).join(", ")}`);
+    if (v.blockWaitingForEvidence) return gate(`${v.task.id} was reported blocked; waiting for new evidence or 24h`, { blocked: true });
     if (v.open) {
       const said = v.said;
       if (said?.status === "blocked") {
@@ -1024,7 +1112,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // a branch somebody is pushing to, or one with a pull request already, is theirs and is passed over.
   const aheadPick = () => {
     const parkedDep = v => unmetOf(v).some(d => byId.get(d)?.task.status === "owner");
-    const held = view.filter(v => !v.done && unmetOf(v).length > 0 && !avoid.has(v.task.id) && (v.task.status === "todo" || v.task.status === "architect"));
+    const held = view.filter(v => !v.done && !v.blockWaitingForEvidence && unmetOf(v).length > 0 && !avoid.has(v.task.id) && (v.task.status === "todo" || v.task.status === "architect"));
     for (const v of [...held.filter(v => !parkedDep(v)), ...held.filter(parkedDep)]) {
       const ahead = unmetOf(v);
       const writer = v.arch ? holderOf(v.arch, v.task.id) : null;
@@ -1112,6 +1200,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
 
 /** D-085: one task's stage that this agent holds, if any: a continue, a blocked wait, or null. */
 function ownStage(v, claimant) {
+  if (v.blockWaitingForEvidence) return null;
   if (v.open && v.pr && needsReview(v) && v.lock) {
     const last = stageMarkers(v.lock, v.task.id).at(-1);
     if (last?.who === claimant) {
@@ -1187,7 +1276,7 @@ export function heldBy({ tasks, branches, openPrs, prCi = new Map(), prFacts = n
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock };
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, now });
   const own = ownWork(view, claimant);
   if (!own || own.kind !== "continue") return null;
   const { at, ...pick } = own;
@@ -1205,7 +1294,7 @@ export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), prFacts 
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) out.push({ kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock });
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, now });
   for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
   const slot = landingSlot(branches, now);
   if (slot.holder === claimant && !slot.quiet) {
@@ -1315,7 +1404,7 @@ export function mayReport({ task, branches, claimant }) {
  */
 export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, register = null }) {
   const HOUR = 60 * 60 * 1000;
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, register, now });
   const byTask = reportsByTask(reports);
   const { workAt, archAt } = clock(branches, now);
   const doneIds = new Set(view.filter(v => v.done).map(v => v.task.id));
@@ -1353,6 +1442,7 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFact
     const behind = prBehind.get(v.work);
     return {
       id: task.id, title: task.title, tier: task.tier, lane: task.lane, role: roleOf(task), state, health,
+      ...(v.said?.status === "blocked" ? { blockAgeHours: Math.max(0, Math.floor((now - v.said.at) / HOUR)), blockWaitingForEvidence: v.blockWaitingForEvidence } : {}),
       ...(task.epic ? { epic: task.epic } : {}),
       ...(pr && state !== "done" ? { behindMain: Number.isSafeInteger(behind) && behind >= 0 ? behind : null } : {}),
       holder: archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null,
@@ -1392,6 +1482,13 @@ export function pickNextTask(input) {
   // D-315: a review or landing held by external provenance is passed over for this session (as --avoid would), so the
   // next eligible task is handed out instead of a WAIT; the held stage itself is never handed out or waived.
   const avoid = new Set(input.avoid ?? []);
+  const blocked = buildView({
+    ...input, prCi: input.prCi ?? new Map(), mergedHeads: input.mergedHeads ?? new Map(),
+    reports: input.reports ?? [], openPrs: input.openPrs ?? new Map(),
+  });
+  for (const row of blocked) {
+    if (row.said?.status === "blocked" && row.said.evidence && (row.said.blockers ?? [row.said.who]).includes(input.claimant)) avoid.add(row.task.id);
+  }
   let firstHeld = null;
   const mainRed = input.mainCi?.state === "red" || input.mainCi?.state === "running-after-red";
   // D-324: every pick handed out while main is red says so, and that nothing lands until main is green.

@@ -261,8 +261,8 @@
       "tier": 2,
       "lane": "picker-blocks",
       "branch": "agent/queue/picker-block-dedupe",
-      "status": "todo",
-      "syncedTo": "D-346",
+      "status": "done",
+      "syncedTo": "D-355",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskCore.mjs",
