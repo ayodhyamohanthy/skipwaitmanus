@@ -188,9 +188,17 @@ describe("GATE-tier-floor: the computed tier raises a declared Tier 2 row", () =
     expect(gate({ task: task2WithWork, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: plain })).toBeNull();
   });
 
-  it("D-352: a declared Tier 1 row whose paths compute Tier 2 lands on green CI with no review; Tier 1 paths still need one", () => {
-    expect(gate({ task: task1, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: plain })).toBeNull();
+  it("D-352: a declared Tier 1 row whose diff is client UI only lands on green CI with no review; Tier 1 paths still need one", () => {
+    const ui = ["client/src/pages/goal/profile/GoalProfile.tsx", "client/src/lib/goalSurfaces.ts"];
+    expect(gate({ task: task1, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: ui })).toBeNull();
     expect(String(gate({ task: task1, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: money }))).toContain(REVIEW_GATE_FAIL);
+  });
+
+  it("backstop: a declared Tier 1 row touching server, shared, migration or worker code keeps its review even when the classifier computes Tier 2", () => {
+    for (const path of ["server/creditCycles.ts", "shared/planReach.ts", "drizzle/0200_x.sql", "src/worker.ts", "functions/_middleware.ts"]) {
+      expect(String(gate({ task: task1, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: [path] }))).toContain(REVIEW_GATE_FAIL);
+    }
+    expect(String(gate({ task: task1, workMarkers: [], lockMarkers: [], tierOf: tierOfPaths, changedPaths: plain }))).toContain(REVIEW_GATE_FAIL);
   });
 });
 
@@ -203,8 +211,29 @@ describe("D-344 (7): findings, then a fix by another session, land without a re-
     { verb: "Fixed", id: "T1", who: fixer, ...(body ? { body } : {}) },
   ];
 
-  it("passes a Fixed marker written before markers named their head", () => {
-    expect(gate({ lockMarkers: findingsThenFixed() })).toBeNull();
+  it("fails a Fixed marker that names no fixed head: it approves nothing until re-recorded", () => {
+    expect(gate({ lockMarkers: findingsThenFixed() })).toContain("names no fixed head");
+  });
+
+  it("fails when the findings were written by the session that built the work", () => {
+    const own: (Marker & { body?: string })[] = [
+      { verb: "Review claim", id: "T1", who: "Instinct · b1" },
+      { verb: "Verdict", id: "T1", who: "Instinct · b1", verdict: "findings", reviewed: REVIEWED },
+      { verb: "Fix claim", id: "T1", who: "GPT · f1" },
+      { verb: "Fixed", id: "T1", who: "GPT · f1", body: `fixed ${HEAD}` },
+    ];
+    expect(gate({ lockMarkers: own })).toContain(REVIEW_GATE_FAIL);
+  });
+
+  it("fails when the findings verdict names no reviewed head, or one outside this branch", () => {
+    const noHead: (Marker & { body?: string })[] = [
+      { verb: "Review claim", id: "T1", who: "Kimi · r1" },
+      { verb: "Verdict", id: "T1", who: "Kimi · r1", verdict: "findings", reviewed: null },
+      { verb: "Fix claim", id: "T1", who: "GPT · f1" },
+      { verb: "Fixed", id: "T1", who: "GPT · f1", body: `fixed ${HEAD}` },
+    ];
+    expect(gate({ lockMarkers: noHead })).toContain(REVIEW_GATE_FAIL);
+    expect(gate({ lockMarkers: findingsThenFixed("GPT · f1", `fixed ${HEAD}`), nonMergeCommitsSince: () => null })).toContain(REVIEW_GATE_FAIL);
   });
 
   it("passes a Fixed marker naming this head, or a head that only merged main since", () => {
