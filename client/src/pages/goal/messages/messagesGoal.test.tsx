@@ -11,13 +11,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { assertGoalPage } from "@/test/goalPageContract";
 import { GOAL_PAGE } from "./GoalMessages";
 
-const { getToken, authState, flagState } = vi.hoisted(() => ({
+const { getToken, openSignIn, authState, flagState } = vi.hoisted(() => ({
   getToken: vi.fn().mockResolvedValue("test-token"),
+  openSignIn: vi.fn(),
   authState: { isSignedIn: true },
   flagState: { on: true },
 }));
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken }),
+  useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken, openSignIn }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
 }));
 vi.mock("wouter", () => ({
@@ -56,7 +57,7 @@ async function resolveReply(reply: Reply) {
   return respond(typeof reply === "function" ? await reply() : reply);
 }
 beforeEach(() => {
-  flagState.on = true; authState.isSignedIn = true;
+  flagState.on = true; authState.isSignedIn = true; openSignIn.mockClear();
   server.threads = [summary(22, "Referrer · acme.com", true), summary(33, "Member · Asha", false, 2)];
   server.listReply = null; server.threadReply = {}; server.sendBlock = {}; server.postReply = null; server.posts = []; server.gets = [];
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
@@ -174,7 +175,11 @@ describe("goal /messages: inbox", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
     expect(screen.getByText("Messages with a referrer open after they accept your request.")).toBeTruthy();
-    expect(within(screen.getByTestId("sign-in-button")).getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(container.querySelectorAll("button button")).toHaveLength(0);
+    const signIn = screen.getByRole("button", { name: "Sign in" });
+    fireEvent.click(signIn);
+    expect(openSignIn).toHaveBeenCalledTimes(1);
+    expect(openSignIn.mock.calls).toEqual([[]]);
     expect(server.gets).toHaveLength(0);
   });
 });

@@ -16,10 +16,13 @@ vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
 vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 
 const hire = { id: "r1", status: "closed", referrerId: "ref-1", referrerName: "Asha Rao", title: "Frontend Engineer", companyName: "Quillmint", companyDomain: "quillmint.ai", updatedAt: "2026-10-20T00:00:00Z" };
-const requestsState = { requests: [hire] };
+const requestsState = { requests: [hire], fail: false };
 vi.mock("@/components/requests/requestsApi", () => ({
   LOAD_ERROR: "We could not load your referral requests.",
-  fetchMyRequests: vi.fn(async () => ({ requests: requestsState.requests })),
+  fetchMyRequests: vi.fn(async () => {
+    if (requestsState.fail) throw new Error("We could not load your referral requests.");
+    return { requests: requestsState.requests };
+  }),
 }));
 const sendState = { delivered: true, fail: false };
 vi.mock("@/components/landed/landedModel", async (importOriginal) => {
@@ -35,7 +38,7 @@ function renderPage() {
 }
 
 describe("goal landed", () => {
-  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true; requestsState.requests = [hire]; sendState.delivered = true; sendState.fail = false; });
+  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true; requestsState.requests = [hire]; requestsState.fail = false; sendState.delivered = true; sendState.fail = false; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("opens on the goal with one commit for the hire", async () => {
@@ -57,6 +60,19 @@ describe("goal landed", () => {
     fireEvent.click(screen.getByRole("button", { name: /Yes, I will pay it forward/ }));
     expect(await screen.findByRole("heading", { name: /other side of the door/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Verify work email/ }).getAttribute("href")).toBe("/verify");
+    // The closing ghost action is referral-only too.
+    expect(screen.getByRole("link", { name: "Close my other referral requests" }).getAttribute("href")).toBe("/requests");
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
+  });
+
+  it("keeps the reassurance referral-only when the requests cannot be loaded", async () => {
+    requestsState.fail = true;
+    renderPage();
+    // The title and the thrown detail both read the referral-only LOAD_ERROR.
+    expect((await screen.findAllByText(/We could not load your referral requests/)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Nothing was lost - your referral requests and this thank-you wait for you/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
   });
 
   it("says when the thank-you could not be delivered", async () => {
@@ -80,6 +96,9 @@ describe("goal landed", () => {
     authState.isSignedIn = false;
     renderPage();
     expect(await screen.findByRole("button", { name: "Secure sign in" })).toBeTruthy();
+    // The signed-out teaser is referral-only (D-180).
+    expect(screen.getByText(/find the referral request and send your thank-you/)).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
   });
 
   it("flags off keeps the kit journey", async () => {

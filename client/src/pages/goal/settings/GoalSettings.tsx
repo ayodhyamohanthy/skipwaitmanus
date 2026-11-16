@@ -4,7 +4,7 @@
 // signed out; the other three ask for the shared sign-in first.
 import { useAuth } from "@/_core/auth";
 import { GoalButton, GoalNextStep, useOnlineStatus } from "@/components/goal";
-import { SETTINGS_SECTIONS, parseSettingsSection, type SettingsSection } from "@/components/settings/SettingsNav";
+import { SETTINGS_SECTIONS, parseSettingsSection, type SettingsSection } from "@/components/settings/settingsSections";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { Link, useLocation, useSearch } from "wouter";
 import AccountSection from "./AccountSection";

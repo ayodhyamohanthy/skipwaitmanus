@@ -22,6 +22,7 @@ import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
+import { canShowNudge, markNudgeShown } from "@/lib/upgradeNudges";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
@@ -254,7 +255,7 @@ export type AskComposer = {
   clearAfterClose(): void;
 };
 
-export function useAskComposer(company: PublicCompany | null): AskComposer {
+export function useAskComposer(company: PublicCompany | null, options?: { companyDoor?: boolean }): AskComposer {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
@@ -342,8 +343,13 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // a linkless post clears the previous post's link so no stale link, pass
   // check or opportunity id can leak into the next ask.
   const selectPost = (selection: OpportunityAskSearch | null) => {
+    if (selection === null && postSelection === null) return;
     setPostSelection(selection);
-    setUrl(selection?.jobUrl ?? "");
+    if (selection) {
+      setUrl(selection.jobUrl ?? "");
+    } else {
+      setUrl(remoteDraft && company && remoteDraft.companySlug === company.slug ? remoteDraft.targetRoleUrl : "");
+    }
     setDraftState("idle");
   };
 
@@ -360,6 +366,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     if (!prefill || (window.location.pathname !== "/ask" && (!company || prefill.companySlug !== company.slug))) return;
     setUrl(current => current || prefill.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
+    if (prefill.opportunityId) {
+      setPostSelection(current => (current ? { ...current, opportunityId: prefill.opportunityId! } : { opportunityId: prefill.opportunityId!, jobUrl: prefill.targetRoleUrl || null }));
+    }
   }, [prefill, company]);
 
   // Lowest fill precedence: the /start hand-off fills only the still-empty
@@ -474,8 +483,13 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     }
     if (!isSignedIn) {
       // Save the seeker's work even when the directory cannot resolve the company.
-      saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
-      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
+      saveAskPrefill({
+        companySlug: company?.slug ?? null,
+        targetRoleUrl: url,
+        note: composeWhyMe(reasons),
+        opportunityId: postSelection?.opportunityId,
+      });
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search, postSelection, { companyDoor: options?.companyDoor === true }));
       return;
     }
     try {
@@ -509,7 +523,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       const capped = parseSlotCapReached(response.status, payload);
       if (capped) {
         const copy = slotCapNudgeCopy(capped.slots);
-        setSendError(<><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>);
+        // Packet item 5: the upgrade nudge shows once per session (per
+        // account, UPGRADE_NUDGES.md); the send's failure reason is always
+        // shown, so later sends state the cap plainly without the CTA.
+        const account = userId ?? "signed-out";
+        const nudge = canShowNudge("slot_cap", account);
+        if (nudge) markNudgeShown("slot_cap", account);
+        setSendError(nudge
+          ? <><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>
+          : <>{copy.title}. {copy.body}</>);
         return;
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
@@ -600,7 +622,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       setSendError("We could not save your selected resume or work. Your ask is still here. Try again.");
       return;
     }
-    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) }, store)) {
+    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons), opportunityId: postSelection?.opportunityId }, store)) {
       clearAskTopUpSelection(store);
       setSendError("We could not save your ask before opening credits. Your ask is still here. Try again.");
       return;
