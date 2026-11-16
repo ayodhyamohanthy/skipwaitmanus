@@ -61,7 +61,16 @@ export const git = boundedGitReader({ env: GIT_ENV });
 export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
 const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
 
-function argsOf(argv) {
+/**
+ * PICKER-avoid-repeat: the task ids every `--avoid` value names. A value is one id or a comma list,
+ * and the flag may repeat, because every hand-out says to re-run "with --avoid <id> added".
+ */
+export function avoidSetOf(values) {
+  const list = Array.isArray(values) ? values : values === undefined ? [] : [values];
+  return new Set(list.flatMap(value => String(value).split(",")).map(id => id.trim()).filter(Boolean));
+}
+
+export function argsOf(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -72,7 +81,9 @@ function argsOf(argv) {
     else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid", "--provenance", "--execution"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
-      out[a.slice(2)] = v;
+      // --avoid accumulates (a second flag must not silently drop the first); every other flag is last-wins.
+      if (a === "--avoid") (out.avoid ??= []).push(v);
+      else out[a.slice(2)] = v;
     } else fail(`unknown argument ${a}`);
   }
   for (const k of ["claim", "as"]) if (out[k] !== undefined && !sanitizeName(out[k])) fail(`--${k} needs a name`);
@@ -583,7 +594,7 @@ async function main() {
   for (let attempt = 1; attempt <= 6; attempt++) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
     const now = Date.now();
-    const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
+    const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
     const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register });
     if (args.provenance) pick.provenanceRoute = args.provenance;
