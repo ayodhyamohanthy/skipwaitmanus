@@ -123,6 +123,63 @@ describe("goal /admin/privacy-requests (D-048-p3-admin-people)", () => {
     expect(alert.textContent).toContain("This endpoint can only start review.");
   });
 
+  // PR 1205 review finding 2 (P2): a lost response cannot prove the review did
+  // not start. The page re-reads the queue and keeps the typed note.
+  const lists = (fetchMock: { mock: { calls: unknown[][] } }) => fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/admin/privacy-requests?")).length;
+  const loseResponse = () => Promise.reject(new TypeError("Failed to fetch"));
+
+  it("re-reads the request after a lost response and shows the review the server started", async () => {
+    let serverRow: Record<string, unknown> = { ...REQUESTS[0] };
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/review")) {
+        const body = JSON.parse(String(init?.body)) as { resolution?: string };
+        serverRow = { ...serverRow, status: "in_review", resolution: body.resolution ?? null, reviewedAt: "2026-11-16T09:00:00.000Z", updatedAt: "2026-11-16T09:00:00.000Z" };
+        return loseResponse();
+      }
+      return reply({ requests: [serverRow, ...REQUESTS.slice(1)] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage(<GoalAdminPrivacyRequests />);
+    fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
+    fireEvent.change(screen.getByLabelText("Internal resolution note"), { target: { value: "Identity check first" } });
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Start review" }));
+    expect(await within(row(/avery@example.com/)).findByText("In review")).toBeTruthy();
+    expect(lists(fetchMock)).toBe(2);
+    expect(screen.queryByText(/unchanged/)).toBeNull();
+    expect(screen.getByText("The review was started. Its confirmation was lost, so this page re-read the request.")).toBeTruthy();
+    expect((screen.getByLabelText("Internal resolution note") as HTMLTextAreaElement).value).toBe("Identity check first");
+  });
+
+  it("says the request is unchanged after a lost response only once the re-read confirms it", async () => {
+    const fetchMock = stub({ review: () => { throw new TypeError("Failed to fetch"); } });
+    renderPage(<GoalAdminPrivacyRequests />);
+    fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
+    fireEvent.change(screen.getByLabelText("Internal resolution note"), { target: { value: "Identity check first" } });
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Start review" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("This request is unchanged — We could not reach skipwait.me.");
+    expect(lists(fetchMock)).toBe(2);
+    expect((screen.getByLabelText("Internal resolution note") as HTMLTextAreaElement).value).toBe("Identity check first");
+  });
+
+  it("never claims the request is unchanged when the re-read fails too", async () => {
+    let listCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/review")) return loseResponse();
+      listCalls += 1;
+      return listCalls === 1 ? reply({ requests: REQUESTS }) : loseResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage(<GoalAdminPrivacyRequests />);
+    fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
+    fireEvent.change(screen.getByLabelText("Internal resolution note"), { target: { value: "Identity check first" } });
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Start review" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("We could not confirm whether this review started.");
+    expect(alert.textContent).not.toContain("unchanged");
+    expect((screen.getByLabelText("Internal resolution note") as HTMLTextAreaElement).value).toBe("Identity check first");
+  });
+
   it("shows a loading state without claiming an empty queue", async () => {
     stub({ list: () => new Promise<Reply>(() => {}) });
     const { container } = renderPage(<GoalAdminPrivacyRequests />);

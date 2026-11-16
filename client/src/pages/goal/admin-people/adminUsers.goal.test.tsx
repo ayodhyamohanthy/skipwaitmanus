@@ -143,6 +143,61 @@ describe("goal /admin/users (D-048-p3-admin-people)", () => {
     expect(JSON.parse(String((posts(fetchMock)[1] as [string, RequestInit])[1].body))).toEqual({ suspended: true });
   });
 
+  // PR 1205 review finding 1 (P1): a lost response cannot prove a rollback. The
+  // page re-reads the directory and reports what the server holds.
+  const lists = (fetchMock: { mock: { calls: unknown[][] } }) => fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/admin/users?")).length;
+  const loseResponse = () => Promise.reject(new TypeError("Failed to fetch"));
+
+  it("re-reads the account after a lost response and shows the suspension the server committed", async () => {
+    let serverSuspended = false;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/suspend")) { serverSuspended = true; return loseResponse(); }
+      return reply({ users: USERS.map(user => user.id === 9 ? { ...user, suspended: serverSuspended } : user) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage(<GoalAdminUsers />);
+    fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Suspend account" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend user" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await within(row(/avery@example.com/)).findByText("Suspended")).toBeTruthy();
+    expect(lists(fetchMock)).toBe(2);
+    expect(screen.queryByText(/The account is unchanged/)).toBeNull();
+    expect(screen.getByText("The update was saved. Its confirmation was lost, so this page re-read the account.")).toBeTruthy();
+    expect(within(nextStep()).getByRole("button", { name: "Unsuspend account" })).toBeTruthy();
+  });
+
+  it("says the account is unchanged after a lost response only once the re-read confirms it", async () => {
+    const fetchMock = stub({ suspend: () => { throw new TypeError("Failed to fetch"); } });
+    renderPage(<GoalAdminUsers />);
+    fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Suspend account" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend user" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Update failed — We could not reach skipwait.me. Check your connection and try again. The account is unchanged.");
+    expect(lists(fetchMock)).toBe(2);
+    expect(within(row(/avery@example.com/)).queryByText("Suspended")).toBeNull();
+  });
+
+  it("never claims the account is unchanged when the re-read fails too", async () => {
+    let listCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/suspend")) return loseResponse();
+      listCalls += 1;
+      return listCalls === 1 ? reply({ users: USERS }) : loseResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage(<GoalAdminUsers />);
+    fireEvent.click(await screen.findByRole("button", { name: /avery@example.com/ }));
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Suspend account" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend user" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("We could not confirm whether this update was saved.");
+    expect(alert.textContent).not.toContain("unchanged");
+    expect(within(alert).getByRole("button", { name: "Check the account again" })).toBeTruthy();
+    expect(within(alert).queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("shows a loading state without claiming an empty directory", async () => {
     stub({ list: () => new Promise<Reply>(() => {}) });
     const { container } = renderPage(<GoalAdminUsers />);
