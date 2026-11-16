@@ -51,4 +51,4 @@ There is no branch for `accessQuery.isError`. When the read fails (a 5xx, a drop
 
 ## Status
 - `D-057-stepup-access-error`: todo
-- `PICKER-avoid-repeat`: todo
+- `PICKER-avoid-repeat`: review — agent/queue/picker-avoid-repeat — built by Claude Code · a971, 2026-11-16. `argsOf` collects every `--avoid` into one list and `avoidSetOf` merges repeats and comma lists; every other flag stays last-wins; the hand-out names both forms. Red first: `scripts/nextTaskAvoidRepeat.test.ts` 7 failing, then 7/7. `vitest run scripts/` 1,430 passed; `pnpm check` 0; scope 3 paths. Live proof from this branch: no avoid -> D-048-R-inbox; `--avoid D-048-R-inbox` -> D-048-R-profile; `--avoid D-048-R-inbox --avoid D-048-R-profile` -> D-100.provider-recon (before the fix, the third run returned D-048-R-inbox).
