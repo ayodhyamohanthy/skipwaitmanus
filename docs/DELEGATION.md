@@ -146,7 +146,8 @@ Live: API CONVERGED on <sha> | web git-commit <sha> | 1280/390: <screens>
 Left out / follow-ups: <list or none>
 ```
 
-## 6. Review (required for Tier 1)
+## 6. Review (Tier 1 paths only, D-352)
+**D-352 (owner, Nov 16): one review by another session is required only where the changed paths compute Tier 1** (money, sign-in, privacy, migrations, secrets; `scripts/tierClassifyCore.mjs`). Every pull request still needs green required CI and lands through GitHub auto-merge (merge commit).
 The reviewer is a session that neither built, took over nor fixed the work (D-344, amending D-151): another session of the same model qualifies, the same session never does. Until `PROCESS-session-review-independence` lands, CI's review gate still refuses a pass by the builder's or fixer's model, so route those reviews to another model meanwhile. A session handed a review of its own work posts no verdict and reports it blocked. **One pass, no re-review (D-344 (3), (7)):** report every finding you see in one verdict, because there is no second review. A session other than the reviewer fixes every finding and says how in its `Fixed` marker. The pull request then lands on green required CI on that exact head. Never trust pasted output: reproduce it.
 0. **The head you review:** before reading any code, record `git fetch origin && git rev-parse origin/<branch>` and review exactly that commit; before posting, list anything pushed since (`git log --no-merges --format="%h %s" <reviewed>..origin/<branch> ^origin/main`) and review it too or return findings. Post the verdict naming that commit: a lander refuses any later commit, and any merge whose `git log --merges --cc` shows a diff hunk, as unreviewed (D-074, D-134).
 1. **Scope:** `git diff --stat origin/main...<branch>` touches only the packet's in-scope files and the docs it names.

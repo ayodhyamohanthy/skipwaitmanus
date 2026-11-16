@@ -7,7 +7,7 @@ describe("ordinary Tier1 gate-only-red does not reclaim zero-delta FIX",()=>{
  it("active passed review waits for exact-head CI reevaluation instead of a source FIX",()=>{expect(pick("pass",1000).kind).not.toBe("fix")});
  it("active review waits for its reviewer instead of an empty FIX",()=>{expect(pick("Review claim",1000).kind).not.toBe("fix")});
  it("quiet passed review returns qualified REVIEW, never source FIX or LAND",()=>{expect(pick("pass",3*3600000).kind).toBe("review")});
- it("builder and fixer model exclusions remain on quiet review recovery",()=>{expect(pick("pass",3*3600000,true,"Builder · other").kind).not.toBe("review")});
+ it("builder and fixer session exclusions remain on quiet review recovery (D-344 (1))",()=>{expect(pick("pass",3*3600000,true,"Builder · b1").kind).not.toBe("review")});
  it("wrong-head gate evidence does not trigger the recovery",()=>{expect(pick("pass",3*3600000,true,"Fresh · f1",{sha:"b".repeat(40)}).kind).not.toBe("review")});
  it("unknown CI never becomes review recovery or landing",()=>{const kind=pick("pass",3*3600000,true,"Fresh · f1",{state:"unknown"}).kind;expect(kind).not.toBe("review");expect(kind).not.toBe("land")});
  it("standing block is not cleared by gate-only recovery",()=>{expect(pick("pass",3*3600000,true,"Fresh · f1",{},[{id:"T",status:"blocked",who:"Other · z",at:NOW-1000,note:"actual provider acceptance missing"}]).kind).not.toBe("review")});

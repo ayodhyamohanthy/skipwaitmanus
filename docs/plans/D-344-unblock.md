@@ -64,3 +64,35 @@ On Nov 16, `PRICING-banded-oct25` was reported blocked five times for the same r
 3. Record the switch-on step in `docs/plans/PICKER-PARALLEL.md`. After this lands, the owner turns on the merge queue in the `main` ruleset, using the merge-commit method (never squash or rebase, D-134 (6)). From then on a green pull request is queued, re-tested against current main and merged without a session holding the landing slot.
 
 Until then, the owner enables "Allow auto-merge" in the repository settings, and each session turns on auto-merge with the merge-commit method for its own pull request once it is ready.
+
+## D-347 and D-352 amendments to row 1 (owner, Nov 16)
+
+D-347 removed the review requirement; D-352 then restored it for Tier 1 paths only. Row 1 therefore:
+
+1. `scripts/review-gate.mjs` asks for one independent pass only when `scripts/tierClassifyCore.mjs` computes Tier 1 from the changed paths (money, sign-in, privacy, migrations, secrets). A row's declared tier alone no longer forces a review. Independence is per session (D-344 (1)): the building or fixing session itself never passes the work, another session of the same model may. A findings verdict followed by a `Fixed` marker from a session other than the reviewer passes with no re-review (D-344 (7)); `--fixed` records `fixed <sha>`, and a later own commit needs a new `Fixed` marker.
+2. `scripts/nextTaskCore.mjs`: the picker's builder/fixer exclusion compares sessions, not models. Every pull request lands through auto-merge on green required CI, with no landing slot needed (D-347 (2)). Follow-up, not required for this row: hand out a review only for Tier 1 paths, and the landing rather than a re-review after a `Fixed` marker.
+3. `scripts/nextTaskText.mjs`: the land step says to turn on auto-merge with the merge-commit method for your own pull request and to press "update branch" when `main` moves.
+4. Update the tests that pinned the old rules. Port any assertion you remove (GATE-test-integrity), and list it in the PR's "Ported assertions" table.
+5. Unchanged: every required CI check, test-integrity, and the pinned login and money tests.
+
+## Row 6: `OPS-reviewer-qa-passwords` (Tier 2, lane `ops-reviewer`; D-347 (3))
+
+1. New manual workflow `.github/workflows/reviewer-qa-passwords.yml`. It takes `workflow_dispatch` inputs `seeker_hash`, `referrer_hash` and `confirm` (must equal `reset`).
+2. Validate each hash as `scrypt$<hex salt>$<64 hex>`, the format of `hashReviewerPassword` in `server/_core/reviewerLogin.ts`. Refuse anything else.
+3. Set exactly `REVIEWER_SEEKER_PASSWORD_HASH` and `REVIEWER_REFERRER_PASSWORD_HASH` as Worker secrets through the Cloudflare API, the way `db-cutover-secret.yml` sets `DATABASE_URL`. Never print a value. Never touch the admin or employer hashes, `REVIEWER_ALLOW_ADMIN` or `REVIEWER_LOGIN_ENABLED`.
+4. Secrets reach the container on its next start (AGENTS.md, Deploy), so say in the run summary that the next deploy applies them.
+5. Proof: one dry run that refuses a malformed hash, shown in the PR. Passwords are generated outside the workflow, and only their hashes are inputs.
+
+## Row 7: `GATE-unit-shards` (Tier 2, lane `gate-unit-shards`; D-351)
+
+On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other required check took about a minute. It was the slowest step before every merge.
+
+1. In `.github/workflows/ci.yml`, split the Vitest step into a matrix of 3 shard jobs, each running `pnpm vitest run --shard=<n>/3`. Keep each job's install and classify steps, so a marker-only change still skips them.
+2. **Keep the required check name.** Add a final job named exactly `unit + component + route tests` that `needs:` the three shards. It fails unless every shard succeeded (or was skipped as marker-only), and runs with `if: always()`. Name the shard jobs differently, for example `unit tests (shard 1/3)`, so the required check still reports exactly once.
+3. The shards together run the full suite with no exclusions; keep the comment above the Vitest step that forbids `--exclude`. Prove it with a run whose three shard test counts sum to the old single-job count, quoted in the PR.
+4. Shares `ci.yml` with `GATE-merge-queue` and `GATE-release-captures` under D-314: the second to land merges `main` and keeps both changes.
+5. Proof: the PR's own CI showing the three shards and the aggregate check, and the wall-clock time against the 7 min 20 s baseline.
+
+## Status
+
+- PROCESS-session-review-independence: done — Claude Code · ff5a — 2026-11-16 — branch agent/queue/process-session-review. The CI review gate needs a review only for Tier 1 paths (D-352), counts independence per session (D-344 (1)), and lands findings plus a Fixed marker without a re-review (D-344 (7)). `--fixed` records `fixed <sha>`, and the picker's did() compares sessions. Follow-up, not built here: after a Fixed marker the picker still hands out a re-review rather than the landing, which wastes time but blocks nothing, because auto-merge lands the PR when CI is green. The landing slot is still in picker code; sessions land through auto-merge regardless.
