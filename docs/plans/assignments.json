@@ -318,7 +318,7 @@
       "tier": 2,
       "lane": "gate-unit-shards",
       "branch": "agent/queue/gate-unit-shards",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-351",
       "dependsOn": [],
       "owns": [
@@ -345,9 +345,12 @@
         "scripts/next-task.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskPathTier.test.ts",
-        "scripts/nextTask.test.ts"
+        "scripts/nextTask.test.ts",
+        "scripts/nextTaskGateRedReview.test.ts",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/modelProvenance.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree."
+      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree. Nov 16 owns amendment (D-344 (8), Claude Code · 9d90): owns gains scripts/nextTaskGateRedReview.test.ts, scripts/nextTaskArchitectReview.test.ts and scripts/modelProvenance.test.ts, owned only by a done row or none. Their spawn fixtures declared Tier 1 but changed only docs or code.txt, which the gate's path rule (D-352) lands without review; their work now also touches server code so they keep testing the review route, with every assertion kept."
     },
     {
       "id": "PICKER-claim-task",
@@ -1201,13 +1204,12 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
         "D-048-F-goal-check",
-        "D-048-P-auth",
-        "seeker-passwords"
+        "D-048-P-auth"
       ],
       "owns": [
         "client/src/pages/SignIn.tsx (switch only)",
@@ -1220,7 +1222,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands.",
       "epic": "D-048-p3"
     },
     {
