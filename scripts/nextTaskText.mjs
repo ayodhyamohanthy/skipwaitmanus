@@ -216,6 +216,7 @@ export function renderBoard(rows) {
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
     if (r.report) {
       bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+      if (r.report.status === "blocked" && Number.isFinite(r.blockAgeHours)) bits.push(`blocked ${r.blockAgeHours}h${r.blockWaitingForEvidence ? " · waiting for new evidence or 24h" : ""}`);
       const newer = r.report.newer ?? [];
       for (const entry of newer.slice(0, 3)) {
         bits.push(`then: ${entry.status} — ${entry.who}${entry.note ? `: ${entry.note}` : ""}`);
