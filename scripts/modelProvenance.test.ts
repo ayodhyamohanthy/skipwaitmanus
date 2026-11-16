@@ -14,6 +14,8 @@ const b = "Operator · b", r = "Operator · r";
 function fixture() {
  const dir = mkdtempSync(path.join(os.tmpdir(), "provenance-")), work = path.join(dir, "work"), remote = path.join(dir, "origin.git");
  mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+ // PICKER-path-tier-review (D-352, D-353 (1)): the implementation is server code, so the declared Tier 1 task keeps its review.
+ mkdirSync(path.join(work, "server"), { recursive: true });
  const git = (...args: string[]) => { try { return execFileSync("git", args, { cwd: work, encoding: "utf8", stdio: "pipe" }).trim(); } catch { return null; } };
  const must = (...args: string[]) => { const x = git(...args); if (x === null) throw Error(args.join(" ")); return x; };
  execFileSync("git", ["init", "--bare", remote], { stdio: "pipe" });
@@ -21,10 +23,10 @@ function fixture() {
  writeFileSync(path.join(work, "docs/plans/t.md"), "# task\n\n## Status\nin progress\n");
  writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({ version: 1, repo: "o/r", tasks: [task] }));
  writeFileSync(path.join(work, "docs/DECISIONS.md"), "# Decisions\n| ID | Date | Decision | Evidence | Notes | Status |\n|---|---|---|---|---|---|\n| D-001 | 2026-10-19 | fixture | e | none | adopted |\n");
- writeFileSync(path.join(work, "code.txt"), "before\n"); must("add", "."); must("commit", "-m", "root"); const input = must("rev-parse", "HEAD");
+ writeFileSync(path.join(work, "server/fixture.ts"), "before\n"); must("add", "."); must("commit", "-m", "root"); const input = must("rev-parse", "HEAD");
  must("push", "-u", "origin", "main");
  must("switch", "-c", task.branch); must("commit", "--allow-empty", "-m", `Claim T: ${b}`, "-m", "provenance builder"); const claim = must("rev-parse", "HEAD");
- writeFileSync(path.join(work, "code.txt"), "after\n"); must("commit", "-am", "generated implementation"); const head = must("rev-parse", "HEAD"), patch = must("diff", "--binary", "--no-ext-diff", input, head, "--"); must("push", "-u", "origin", task.branch);
+ writeFileSync(path.join(work, "server/fixture.ts"), "after\n"); must("commit", "-am", "generated implementation"); const head = must("rev-parse", "HEAD"), patch = must("diff", "--binary", "--no-ext-diff", input, head, "--"); must("push", "-u", "origin", task.branch);
  must("switch", "-c", "agent/review/t", "main"); must("commit", "--allow-empty", "-m", `Review claim T: ${r}`, "-m", "provenance reviewer"); const reviewClaim = must("rev-parse", "HEAD");
  const route = (id: string, operator: string, modelId: string, roles: string[]) => ({ id, operator, modelId, roles, taskId: "T", revoked: false, providerUrl: "https://provider.example.test/models/public", selectedModel: modelId, observation: "Fixture selected-model observation, not a real external run", observationSha256: digest("Fixture selected-model observation, not a real external run"), qualificationReview: "https://review.example.test/qualified" });
  const execution = (id: string, routeId: string, operator: string, role: string, claimSha: string, output: string) => ({ id, routeId, taskId: "T", operator, role, claimSha, inputSha: input, outputSha: head, input: "Fixture public code input", inputSha256: digest("Fixture public code input"), output, outputSha256: digest(output), observation: "Fixture actual-output observation", observationSha256: digest("Fixture actual-output observation"), semanticEdits: false, patchSha256: digest(patch), reviewUrl: "https://review.example.test/execution" });
@@ -83,7 +85,7 @@ describe("D311 shared resolver with real git histories", () => {
   f.registry.executions.push({ ...f.build, id: "duplicate-execution" }); expect(f.gate()).toContain("ambiguous");
  }));
  it("rejects applied patch changes and unattributed later code", () => withFixture(f => {
-  f.must("switch", task.branch); writeFileSync(path.join(f.work, "code.txt"), "operator fix\n"); f.must("commit", "-am", "unattributed fix"); const head = f.must("rev-parse", "HEAD");
+  f.must("switch", task.branch); writeFileSync(path.join(f.work, "server/fixture.ts"), "operator fix\n"); f.must("commit", "-am", "unattributed fix"); const head = f.must("rev-parse", "HEAD");
   expect(f.resolved({ head, lockMarkers: [] })).toMatchObject({ ok: false, reason: "unattributed file-changing contribution in branch history" });
   f.build.output = "not the patch"; f.build.outputSha256 = digest(f.build.output); expect(f.gate()).toContain("differs from applied patch");
  }));
@@ -147,12 +149,12 @@ describe("D311 complete contribution and continuation controls", () => {
   expect(f.resolved({ head: status })).toMatchObject({ ok: true });
   expect(f.gate({ head: status, nonMergeCommitsSince: () => [status], isStatusCommit: () => true })).toBeNull();
   f.must("reset", "--hard", merged);
-  writeFileSync(path.join(f.work, "code.txt"), "unreviewed\n"); f.must("commit", "-am", "later fix");
+  writeFileSync(path.join(f.work, "server/fixture.ts"), "unreviewed\n"); f.must("commit", "-am", "later fix");
   expect(f.gate({ head: f.must("rev-parse", "HEAD"), nonMergeCommitsSince: () => [f.must("rev-parse", "HEAD")] })).toContain("came after");
  }));
  it("validates a separately qualified fix and retains its contributor exclusion", () => withFixture(f => {
   f.must("switch", "agent/review/t"); f.must("commit", "--allow-empty", "-m", `Fix claim T: ${b}`, "-m", "provenance builder"); const claim = f.must("rev-parse", "HEAD");
-  f.must("switch", task.branch); writeFileSync(path.join(f.work, "code.txt"), "fixed externally\n"); f.must("commit", "-am", "external fix"); const head = f.must("rev-parse", "HEAD");
+  f.must("switch", task.branch); writeFileSync(path.join(f.work, "server/fixture.ts"), "fixed externally\n"); f.must("commit", "-am", "external fix"); const head = f.must("rev-parse", "HEAD");
   const patch = f.must("diff", "--binary", "--no-ext-diff", f.head, head, "--");
   f.registry.executions.push({ ...f.build, id: "fix", role: "fix", claimSha: claim, inputSha: f.head, outputSha: head, output: patch, outputSha256: digest(patch), patchSha256: digest(patch) });
   const lockMarkers = [...f.lockMarkers.slice(0, 1), { verb: "Fix claim", id: "T", who: b, sha: claim, body: "provenance builder" }, { verb: "Fixed", id: "T", who: b, body: "provenance builder\nexecution fix" }];
@@ -216,7 +218,7 @@ it("does not hide semantic contribution inside a merge commit", () => withFixtur
  f.must("switch", task.branch);
  f.must("merge", "--no-edit", "main");
  const parent = f.must("rev-parse", "HEAD");
- writeFileSync(path.join(f.work, "code.txt"), "hidden merge edit\n"); f.must("add", "."); const tree = f.must("write-tree");
+ writeFileSync(path.join(f.work, "server/fixture.ts"), "hidden merge edit\n"); f.must("add", "."); const tree = f.must("write-tree");
  const merge = f.must("commit-tree", tree, "-p", parent, "-p", f.must("rev-parse", "main"), "-m", "semantic merge edit");
  expect(f.resolved({ head: merge })).toMatchObject({ ok: false, reason: "unattributed merge contribution; only clean main merges are transport" });
 }));
