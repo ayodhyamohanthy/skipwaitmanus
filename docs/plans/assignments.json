@@ -318,7 +318,7 @@
       "tier": 2,
       "lane": "gate-unit-shards",
       "branch": "agent/queue/gate-unit-shards",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-351",
       "dependsOn": [],
       "owns": [
