@@ -345,9 +345,12 @@
         "scripts/next-task.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskPathTier.test.ts",
-        "scripts/nextTask.test.ts"
+        "scripts/nextTask.test.ts",
+        "scripts/nextTaskGateRedReview.test.ts",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/modelProvenance.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree."
+      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree. Nov 16 owns amendment (D-344 (8), Claude Code · 9d90): owns gains scripts/nextTaskGateRedReview.test.ts, scripts/nextTaskArchitectReview.test.ts and scripts/modelProvenance.test.ts, owned only by a done row or none. Their spawn fixtures declared Tier 1 but changed only docs or code.txt, which the gate's path rule (D-352) lands without review; their work now also touches server code so they keep testing the review route, with every assertion kept."
     },
     {
       "id": "PICKER-claim-task",
