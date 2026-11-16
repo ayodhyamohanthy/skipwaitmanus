@@ -45,6 +45,7 @@ Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COM
 ## Go-to-market (D-102, changeable)
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
+- Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 

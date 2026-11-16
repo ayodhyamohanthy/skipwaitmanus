@@ -84,11 +84,15 @@ function makeFixture() {
     g(src, "commit", "-q", "-m", message);
   };
 
-  /** A task branch off main: the builder's Claim marker, then one work commit on a non-Tier-1 path. */
+  /**
+   * A task branch off main: the builder's Claim marker, then one work commit. D-352: the gate asks for a review
+   * only where the changed paths compute Tier 1, so the Tier 1 row's work touches a money path.
+   */
+  const workPathOf = (id: string) => (id === "T1" ? "server/payments.ts" : `notes/${id.toLowerCase()}.txt`);
   const taskBranch = (id: string, branch: string, builder = "Builder · b1") => {
     g(src, "checkout", "-q", "-B", branch, "main");
     marker(markerSubject("Claim", id, builder));
-    work(`notes/${id.toLowerCase()}.txt`, `${id} work\n`, `${id}: work`);
+    work(workPathOf(id), `${id} work\n`, `${id}: work`);
     g(src, "push", "-q", "origin", branch);
     return sha();
   };
@@ -170,7 +174,7 @@ describe("REVIEW-GATE-fetch-parity: the named step evaluates on a depth-one chec
     expect(kept.code).toBe(0);
 
     // One non-merge commit of the branch's own after the reviewed head: the pass is void.
-    f.work("notes/t1.txt", "T1 work\nmore\n", "T1: unreviewed change");
+    f.work("server/payments.ts", "T1 work\nmore\n", "T1: unreviewed change");
     f.g(f.src, "push", "-q", "origin", "agent/queue/t1");
     const changed = f.sha();
     const voided = f.runGate(f.ciCheckout(changed), "agent/queue/t1", changed);

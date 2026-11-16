@@ -75,15 +75,15 @@ describe("PICKER-gate-red-review-route: the picker's stage decision", () => {
     expect(pick([task("T")], { ci: redCi({ gateOnly: true }), branches: [noTip] })).toMatchObject({ kind: "green" });
   });
 
-  it("(d) a session of the model that built the head is never handed the review", () => {
-    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), claimant: "DeepSeek · b2" });
+  it("(d) the session that built the head is never handed the review (D-344 (1): sessions, not models)", () => {
+    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), claimant: BUILDER });
     expect(result.kind).not.toBe("review");
     expect(result.kind).not.toBe("green");
   });
 
-  it("(d2) a model that fixed the head is never handed the review either", () => {
+  it("(d2) the session that fixed the head is never handed the review either", () => {
     const lock: [string, Branch] = ["agent/review/t", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Fix claim", id: "T", who: "Qoder · f1" }, { verb: "Fixed", id: "T", who: "Qoder · f1" }] }];
-    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), branches: [built("T"), lock], claimant: "Qoder · f2" });
+    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), branches: [built("T"), lock], claimant: "Qoder · f1" });
     expect(result.kind).not.toBe("review");
   });
 

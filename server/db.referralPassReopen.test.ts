@@ -212,7 +212,7 @@ function seed() {
     profiles: [profileRow(9), profileRow(10)],
     jobs: [{ id: 3, company: "acme.com", title: "Product Designer", targetRoleUrl: "https://careers.acme.com/designer", jobFunction: "Design" }],
     referralRequests: [requestRow()],
-    referralDocumentAccessGrants: [{ id: 1, referralRequestId: 501, referrerId: 9, requestRevision: 4, grantVersion: 1, grantedAt: NOW, expiresAt: new Date("2026-11-14T12:00:00.000Z"), revokedAt: null, revokeReason: null }],
+    referralDocumentAccessGrants: [{ id: 1, referralRequestId: 501, referrerId: 9, requestRevision: 4, grantVersion: 1, grantedAt: NOW, expiresAt: new Date("2099-01-01T12:00:00.000Z"), revokedAt: null, revokeReason: null }],
     referralAvailabilitySlots: [{ id: 1, referralRequestId: 501, referrerId: 9, status: "allocated", releasedAt: null }],
     referralRequestSaves: [{ id: 1, referralRequestId: 501, referrerId: 9 }],
     referrerReviewEmailLinks: [{ id: 1, referralRequestId: 501, referrerId: 9, linkToken: "opaque-token", grantVersion: 1, expiresAt: new Date("2026-10-16T12:00:00.000Z"), consumedAt: null, status: "pending" }],
