@@ -356,3 +356,174 @@ describe("goal employer-talent sources", () => {
     expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });
+
+describe("talent response ordering (D-342 release findings)", () => {
+  function deferred() {
+    let release: (value: Reply) => void = () => { throw new Error("Deferred response is not initialized"); };
+    const promise = new Promise<Reply>(resolve => { release = resolve; });
+    return { promise, release };
+  }
+  const search = (query: string) => {
+    fireEvent.change(screen.getByLabelText("Search talent"), { target: { value: query } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  };
+
+  it("F1 removes a previously opened snapshot when a refreshed row is locked", async () => {
+    let refreshed = false;
+    stub({ talent: () => reply({ talent: [refreshed ? { ...UNLOCKED, isUnlocked: false } : UNLOCKED] }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: "View profile" }));
+    await screen.findByRole("group", { name: "Shared profile" });
+    refreshed = true;
+    search("refresh");
+    await within(await screen.findByRole("listitem", { name: REF_B })).findByText("Locked");
+    expect(screen.queryByRole("group", { name: "Shared profile" })).toBeNull();
+    expect(screen.queryByText(/6-10 years/)).toBeNull();
+  });
+
+  it.each([200, 402, 500])("F1 discards a stale profile completion with status %s after a locked refresh", async status => {
+    const profile = deferred();
+    let refreshed = false;
+    stub({ talent: () => reply({ talent: [refreshed ? { ...UNLOCKED, isUnlocked: false } : UNLOCKED] }), profile: () => profile.promise });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: "View profile" }));
+    refreshed = true;
+    search("refresh");
+    await within(await screen.findByRole("listitem", { name: REF_B })).findByText("Locked");
+    await act(async () => profile.release(reply(status === 200 ? { profile: PROFILE } : { error: "Old profile failure" }, status)));
+    expect(screen.queryByRole("group", { name: "Shared profile" })).toBeNull();
+    expect(screen.queryByText(/6-10 years/)).toBeNull();
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("F2 keeps newer results when an older successful search completes last", async () => {
+    const older = deferred(); const newer = deferred();
+    let reads = 0;
+    stub({ talent: () => ++reads === 1 ? reply({ talent: [LOCKED] }) : reads === 2 ? older.promise : newer.promise });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    search("older"); search("newer");
+    await act(async () => newer.release(reply({ talent: [UNLOCKED] })));
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => older.release(reply({ talent: [LOCKED] })));
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(screen.getByRole("listitem", { name: REF_B })).toBeTruthy();
+    expect(screen.getByLabelText("Search talent").getAttribute("value")).toBe("newer");
+  });
+
+  it("F2 ignores older error/finally while the latest search is pending", async () => {
+    const older = deferred(); const newer = deferred();
+    let reads = 0;
+    stub({ talent: () => ++reads === 1 ? reply({ talent: [LOCKED] }) : reads === 2 ? older.promise : newer.promise });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    search("older"); search("newer");
+    await act(async () => older.release(reply({ error: "Old search failed" }, 500)));
+    expect(screen.queryByText("Old search failed")).toBeNull();
+    expect(screen.getByRole("status", { name: /Loading talent/ })).toBeTruthy();
+    await act(async () => newer.release(reply({ talent: [UNLOCKED] })));
+    expect(await screen.findByRole("listitem", { name: REF_B })).toBeTruthy();
+  });
+
+  it("F2 ignores an older initial list while still loading its account balance", async () => {
+    const initial = deferred();
+    let reads = 0;
+    stub({ talent: () => ++reads === 1 ? initial.promise : reply({ talent: [UNLOCKED] }) });
+    render(<GoalEmployerTalent />);
+    search("newer");
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => initial.release(reply({ talent: [LOCKED] })));
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(screen.getByRole("listitem", { name: REF_B })).toBeTruthy();
+    expect(balanceText()).toBe("20");
+  });
+
+  it("F2 ignores an initial failure after a successful newer search", async () => {
+    const initial = deferred();
+    let reads = 0;
+    stub({ talent: () => ++reads === 1 ? initial.promise : reply({ talent: [UNLOCKED] }) });
+    render(<GoalEmployerTalent />);
+    search("newer");
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => initial.release(reply({ error: "Initial request failed" }, 500)));
+    expect(screen.queryByText("Initial request failed")).toBeNull();
+    expect(screen.getByRole("listitem", { name: REF_B })).toBeTruthy();
+    expect(screen.queryByRole("status", { name: /Loading talent/ })).toBeNull();
+  });
+
+  it.each(["before", "after"])("F3 keeps the confirmed unlock when an overlapping search completes %s confirmation", async order => {
+    const unlock = deferred(); const list = deferred();
+    let reads = 0;
+    const fetchMock = stub({ talent: () => ++reads === 1 ? reply({ talent: [LOCKED] }) : list.promise, unlock: () => unlock.promise });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    search("same person");
+    if (order === "before") await act(async () => list.release(reply({ talent: [LOCKED] })));
+    await act(async () => unlock.release(reply({ unlocked: true, remaining: 15 }, 201)));
+    if (order === "after") await act(async () => list.release(reply({ talent: [LOCKED] })));
+    expect(await within(await screen.findByRole("listitem", { name: REF_A })).findByRole("button", { name: "View profile" })).toBeTruthy();
+    expect(within(card(REF_A)).getByText("Unlocked")).toBeTruthy();
+    expect(balanceText()).toBe("15");
+    expect(calls(fetchMock).filter(call => call.endsWith("/unlock"))).toHaveLength(1);
+  });
+
+  it("F3 never restores an unlocked person removed by the current search", async () => {
+    const unlock = deferred();
+    let reads = 0;
+    stub({ talent: () => reply({ talent: ++reads === 1 ? [LOCKED] : [UNLOCKED] }), unlock: () => unlock.promise });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    search("different person");
+    await screen.findByRole("listitem", { name: REF_B });
+    await act(async () => unlock.release(reply({ unlocked: true, remaining: 15 }, 201)));
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(screen.getByRole("listitem", { name: REF_B })).toBeTruthy();
+    expect(balanceText()).toBe("15");
+  });
+
+  it("F3 keeps a pending search's new matches after unlock confirmation", async () => {
+    const unlock = deferred(); const list = deferred();
+    let reads = 0;
+    stub({ talent: () => ++reads === 1 ? reply({ talent: [LOCKED] }) : list.promise, unlock: () => unlock.promise });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    search("different person");
+    await act(async () => unlock.release(reply({ unlocked: true, remaining: 15 }, 201)));
+    expect(screen.getByRole("status", { name: /Loading talent/ })).toBeTruthy();
+    await act(async () => list.release(reply({ talent: [UNLOCKED] })));
+    expect(await screen.findByRole("listitem", { name: REF_B })).toBeTruthy();
+    expect(screen.queryByRole("listitem", { name: REF_A })).toBeNull();
+    expect(balanceText()).toBe("15");
+  });
+
+  it("F3 trusts a fresh post-confirmation locked list instead of retaining an old grant", async () => {
+    stub({ talent: () => reply({ talent: [LOCKED] }) });
+    render(<GoalEmployerTalent />);
+    fireEvent.click(await screen.findByRole("button", { name: /Unlock profile/ }));
+    await within(card(REF_A)).findByRole("button", { name: "View profile" });
+    search("recheck current access");
+    await within(await screen.findByRole("listitem", { name: REF_A })).findByText("Locked");
+    expect(within(card(REF_A)).queryByRole("button", { name: "View profile" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Shared profile" })).toBeNull();
+    expect(balanceText()).toBe("15");
+  });
+
+  it("F3 preserves a failed search and reconciles its retry after a successful unlock", async () => {
+    const unlock = deferred();
+    let reads = 0;
+    stub({ talent: () => ++reads === 1 ? reply({ talent: [LOCKED] }) : reads === 2 ? reply({ error: "Current search failed" }, 500) : reply({ talent: [{ ...LOCKED, isUnlocked: true }] }), unlock: () => unlock.promise });
+    render(<GoalEmployerTalent />);
+    await screen.findByRole("listitem", { name: REF_A });
+    fireEvent.click(within(card(REF_A)).getByRole("button", { name: /Unlock profile/ }));
+    search("same person");
+    await screen.findByText("Current search failed");
+    await act(async () => unlock.release(reply({ unlocked: true, remaining: 15 }, 201)));
+    expect(screen.getByText("Current search failed")).toBeTruthy();
+    expect(balanceText()).toBe("15");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await within(await screen.findByRole("listitem", { name: REF_A })).findByRole("button", { name: "View profile" })).toBeTruthy();
+  });
+});
