@@ -270,7 +270,7 @@ describe("D-239 F1: each required job runs its own blocking commands", () => {
 describe("D-351: three unit-test shards under the one required check", () => {
   it("the shard job is a 3-way matrix that keeps running when one shard fails", () => {
     const block = jobBlock(SHARD_JOB);
-    expect(block).toMatch(/^  test-shard:\n/);
+    expect(block).toMatch(/^test-shard:\n/);
     expect(block).toContain("\n    strategy:\n      fail-fast: false\n      matrix:\n        shard: [1, 2, 3]\n");
     expect(SHARD_JOB).toContain(`/${SHARD_COUNT})`);
   });
@@ -285,7 +285,9 @@ describe("D-351: three unit-test shards under the one required check", () => {
       .filter((line) => !line.trim().startsWith("#"))
       .join("\n");
     expect(runnable).not.toContain("--exclude");
-    expect(runnable).not.toMatch(/pnpm vitest run --shard=\S+ \S/);
+    // The one vitest command in the file is the shard command, with nothing after it.
+    const vitestLines = runnable.split("\n").filter((line) => line.includes("vitest"));
+    expect(vitestLines).toEqual([`        run: pnpm vitest run --shard=\${{ matrix.shard }}/${SHARD_COUNT}`]);
   });
 
   it("the aggregate always starts, after the shards, and classifies nothing itself", () => {
