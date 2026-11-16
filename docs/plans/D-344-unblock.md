@@ -92,3 +92,7 @@ On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other requi
 3. The shards together run the full suite with no exclusions; keep the comment above the Vitest step that forbids `--exclude`. Prove it with a run whose three shard test counts sum to the old single-job count, quoted in the PR.
 4. Shares `ci.yml` with `GATE-merge-queue` and `GATE-release-captures` under D-314: the second to land merges `main` and keeps both changes.
 5. Proof: the PR's own CI showing the three shards and the aggregate check, and the wall-clock time against the 7 min 20 s baseline.
+
+## Status
+
+- PROCESS-session-review-independence: done — Claude Code · ff5a — 2026-11-16 — branch agent/queue/process-session-review. The CI review gate needs a review only for Tier 1 paths (D-352), counts independence per session (D-344 (1)), and lands findings plus a Fixed marker without a re-review (D-344 (7)). `--fixed` records `fixed <sha>`, and the picker's did() compares sessions. Follow-up, not built here: after a Fixed marker the picker still hands out a re-review rather than the landing, which wastes time but blocks nothing, because auto-merge lands the PR when CI is green. The landing slot is still in picker code; sessions land through auto-merge regardless.

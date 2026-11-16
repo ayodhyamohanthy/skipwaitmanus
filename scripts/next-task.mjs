@@ -422,7 +422,9 @@ async function main() {
     const architect = architectLockOf(task);
     const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
     const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
-    const body = [reviewed ? `reviewed ${reviewed}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
+    // D-344 (7): a Fixed marker names the head it fixed, so the review gate can land it without a re-review.
+    const fixedAt = args.fixed && onOrigin(task.branch) ? tip(task.branch) : null;
+    const body = [reviewed ? `reviewed ${reviewed}` : null, fixedAt ? `fixed ${fixedAt}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
     const history = [...(branches.get(reviewedBranch)?.markers ?? []), ...(lock?.markers ?? [])];
     if (args.provenance || history.some(m => markerReferences(m.body).external)) {
       if (!args.provenance || !args.execution) fail("external completion requires qualified route and execution IDs");

@@ -79,8 +79,10 @@ export function reviewGateViolation({
   if (!task) return null;
   // The row's declared tier, and the tier its changed paths compute (GATE-tier-floor, D-212).
   const declared = Number(task.tier);
-  const computed = typeof tierOf === "function" ? Number(tierOf(changedPaths)) : 0;
-  if (declared !== 1 && computed !== 1) return null;
+  // D-352 (owner, Nov 16): a review is needed only where the changed paths compute Tier 1 (money, sign-in,
+  // privacy, migrations, secrets). With no path classifier (unit callers) the declared tier stands in.
+  const computed = typeof tierOf === "function" ? Number(tierOf(changedPaths)) : declared;
+  if (computed !== 1) return null;
   // The higher of the two, by path (D-212): the message says which paths raised it and the cure.
   const raised = declared !== 1
     ? `${TIER_FLOOR_FAIL} ${tierReasonPaths(changedPaths).map(path => `\`${path}\``).join(", ")}, which are Tier 1 (D-212). It needs an independent pass on its head; correct the row's tier in docs/plans/assignments.json (any session, D-200 (2)).`
@@ -88,6 +90,9 @@ export function reviewGateViolation({
   const stage = lockMarkers.filter(m => m && m.id === task.id && m.verb !== "Heartbeat");
   const last = stage.at(-1);
   if (!last) return `${raised} Nobody has reviewed ${task.id} yet.`;
+  // D-344 (7): findings, then a Fixed marker by a session other than the reviewer, land without a re-review.
+  const fixedViolation = fixedPassViolation({ stage, head, raised, nonMergeCommitsSince, isStatusCommit, isEmptyCommit });
+  if (fixedViolation !== undefined) return fixedViolation;
   if (last.verb !== "Verdict" && last.verb !== "Land claim") return `${raised} The review of ${task.id} stands at "${last.verb}", not a pass.`;
   const verdict = [...stage].reverse().find(m => m.verb === "Verdict");
   if (!verdict || verdict.verdict !== "pass") return `${raised} The newest verdict on ${task.id} is ${verdict ? verdict.verdict : "missing"}, not a pass.`;
@@ -120,11 +125,38 @@ export function reviewGateViolation({
 
   // D-151: the same sets the picker's did() reads — builders on the task branch, fixers on the lock.
   const ofTask = markers => markers.filter(m => m && m.id === task.id);
-  const builders = ofTask(workMarkers).filter(m => m.verb === "Claim" || m.verb === "Takeover").map(m => modelOf(m.who));
-  const fixers = stage.filter(m => m.verb === "Fix claim" || m.verb === "Fixed").map(m => modelOf(m.who));
-  const model = modelOf(verdict.who);
-  if (builders.includes(model) || fixers.includes(model)) return `${raised} The pass is by ${model}, the model that ${builders.includes(model) ? "built" : "fixed"} this work; a review must come from another model (D-151).`;
+  // D-344 (1), amending D-151: independence is per session. Another session of the same model may pass the work.
+  const builders = ofTask(workMarkers).filter(m => m.verb === "Claim" || m.verb === "Takeover").map(m => m.who);
+  const fixers = stage.filter(m => m.verb === "Fix claim" || m.verb === "Fixed").map(m => m.who);
+  if (builders.includes(verdict.who) || fixers.includes(verdict.who)) return `${raised} The pass is by ${verdict.who}, the session that ${builders.includes(verdict.who) ? "built" : "fixed"} this work; a review must come from another session (D-344 (1)).`;
   return null;
+}
+
+/** The head a Fixed marker names in its body (`fixed <sha>`); null for one written before markers named their head. */
+export function fixedOf(body) {
+  const m = /^fixed ([0-9a-f]{40})\s*$/m.exec(String(body ?? ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * D-344 (7): when the newest stage is a Fixed marker (or a Land claim right after one) that follows a findings
+ * verdict, the work lands without a re-review, provided the fixer is not the reviewer's own session and the
+ * branch gained no commit of its own after the head the marker names. Returns undefined when this rule does not
+ * apply (the ordinary pass rules then decide), null to pass, or the failure message.
+ */
+function fixedPassViolation({ stage, head, raised, nonMergeCommitsSince, isStatusCommit, isEmptyCommit }) {
+  const work = stage.filter(m => m.verb !== "Land claim");
+  const fixed = work.at(-1);
+  if (!fixed || fixed.verb !== "Fixed") return undefined;
+  const verdict = [...work].reverse().find(m => m.verb === "Verdict");
+  if (!verdict || verdict.verdict !== "findings") return undefined;
+  if (fixed.who === verdict.who) return `${raised} ${fixed.who} reviewed this work and marked its own findings fixed; another session fixes them (D-344 (7)).`;
+  const at = fixedOf(fixed.body);
+  if (!at || at === head) return null;
+  const own = typeof nonMergeCommitsSince === "function" ? nonMergeCommitsSince(at) : null;
+  if (own === null) return `${raised} The fixed commit ${at.slice(0, 8)} is not in this head's history.`;
+  const later = own.filter(sha => !(typeof isStatusCommit === "function" && isStatusCommit(sha)) && !(typeof isEmptyCommit === "function" && isEmptyCommit(sha)));
+  return later.length ? `${raised} ${later.length} commit(s) came after the fix at ${at.slice(0, 8)}: mark it fixed again on the current head (node scripts/next-task.mjs --fixed).` : null;
 }
 
 /** What one non-merge commit changed, for `isStatusOnlyChange`: each file's text on both sides and the changed line numbers. */
