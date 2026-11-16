@@ -34,6 +34,8 @@ import {
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
 import { pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
+import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
+import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
 
 // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
 // ignores unless NODE_USE_ENV_PROXY=1 (Node >= 22.21); without it the CI read
@@ -196,6 +198,46 @@ function loadReports() {
 }
 
 const originRef = name => `refs/remotes/origin/${name}`;
+
+/**
+ * PICKER-path-tier-review (D-353 (1)): for each open pull request of a task, the paths its tip changed against main and
+ * whether the CI review gate already clears that tip, read with the gate's own functions (changedPathsOf,
+ * reviewGateViolation) so the picker and CI never disagree. Any failure leaves the paths unknown (the declared tier then
+ * decides) and gateClear false (the review stage is handed out as before). A landing's status commit is not recognised
+ * here (isStatusCommit is false), so such a head reads as not clear: stricter than the gate, never looser.
+ */
+function pullRequestFacts(tasks, heads, branches) {
+  const facts = new Map();
+  let trusted = null;
+  for (const head of heads) {
+    const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+    if (!tipSha) continue;
+    let paths = null;
+    try { paths = changedPathsOf(tipSha); } catch { paths = null; }
+    let gateClear = false;
+    const task = findGateRow(tasks, head);
+    if (task && Array.isArray(paths) && paths.length) {
+      try {
+        trusted ??= loadTrustedProvenance(tryGit);
+        const nonMergeCommitsSince = sha => {
+          if (tryGit("merge-base", "--is-ancestor", sha, tipSha) === null) return null;
+          return (tryGit("rev-list", "--no-merges", `${sha}..${tipSha}`, "--not", "origin/main") ?? "").split("\n").filter(Boolean);
+        };
+        const isEmptyCommit = sha => {
+          const tree = tryGit("rev-parse", `${sha}^{tree}`);
+          return tree !== null && tree === tryGit("rev-parse", `${sha}^1^{tree}`);
+        };
+        gateClear = reviewGateViolation({
+          task, head: tipSha, workMarkers: branches.get(head)?.markers ?? [], lockMarkers: branches.get(reviewLockOf(task))?.markers ?? [],
+          nonMergeCommitsSince, isStatusCommit: () => false, isEmptyCommit,
+          tierOf: changed => classifyTier(changed).tier, tierReasonPaths, changedPaths: paths, provenance: { ...trusted, git: tryGit },
+        }) === null;
+      } catch { gateClear = false; }
+    }
+    facts.set(head, { tipSha, paths, gateClear });
+  }
+  return facts;
+}
 const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) !== null;
 const tip = name => git("rev-parse", originRef(name));
 const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
@@ -352,8 +394,9 @@ async function state() {
     prBehind.set(head, Number.isSafeInteger(count) ? count : null);
   }
   const branches = loadBranches(doc.tasks);
+  const prFacts = pullRequestFacts(doc.tasks, heads, branches);
   const landedEvidence = await landedEvidenceFor(doc, branches, mergedHeads, closedFirst);
-  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports: loadReports() };
+  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports: loadReports() };
 }
 
 function claim(pick, who, branches, provenanceBody) {
@@ -455,11 +498,11 @@ async function main() {
     return;
   }
   if (args.status) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
     const newest = register.at(-1);
     console.log(`Register: ${newest.id}, ${newest.date} — ${newest.title}`);
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prBehind, reports, now: Date.now(), register })));
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register })));
     return;
   }
   if (args.report) {
@@ -478,13 +521,13 @@ async function main() {
     return;
   }
   if (args.heartbeat) {
-    const { doc, mainCi, openPrs, mergedHeads, landedEvidence, prCi, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, branches, reports } = await state();
     // Without the pull requests, a Tier 1 branch under review would look like a build to keep alive, and a claim marker would land on it.
     if (openPrs === null || mergedHeads === null) fail("cannot read the pull requests from GitHub; a heartbeat now could push a claim onto a branch under review (D-085); run this again when GitHub answers", 2);
     const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
     // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
     // D-134: every claim you hold stays alive, not only the first one in queue order.
-    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, reports, claimant: args.as, mainSha, now: Date.now() });
+    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, claimant: args.as, mainSha, now: Date.now() });
     if (!helds.length) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
     // Commits only on this machine are the real heartbeat: push them first, or a marker on origin would leave your branch diverged.
     const { local, mainBehind } = localState();
@@ -501,14 +544,14 @@ async function main() {
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
   for (let attempt = 1; attempt <= 6; attempt++) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
     const now = Date.now();
     const avoid = new Set((args.avoid ?? "").split(",").map(id => id.trim()).filter(Boolean));
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
-    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, reports, now, claimant: who, avoid, register });
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register });
     if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prBehind, reports, now, register });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
     if (pick.kind === "ceo") pick.board = board;
     else console.log(renderBoard(board));
     const { local, mainBehind } = localState();
