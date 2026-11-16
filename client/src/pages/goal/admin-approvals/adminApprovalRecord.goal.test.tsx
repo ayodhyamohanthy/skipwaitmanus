@@ -84,11 +84,13 @@ describe("goal /admin/approvals/:kind/:id (D-048-p3-admin-approvals)", () => {
     expect(screen.getByText("Blake")).toBeTruthy();
     expect(screen.getByText("Product Designer")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open job link" }).getAttribute("href")).toBe("https://careers.acme.example/jobs/design");
-    expect(screen.getByRole("heading", { level: 3, name: creditReservedPhrase(ASK_LEVEL_COST_CLIENT) })).toBeTruthy();
-    expect(screen.getByText("Reserved when the request was created. Returned on withdraw, consumed on accept, never consumed on decline.")).toBeTruthy();
+    // Review findings F3/F4 (pull request 1206): a picked-up request's credit stays spent, and no reservation is invented.
+    expect(screen.getByRole("heading", { level: 3, name: "Picked up: its credit stays spent" })).toBeTruthy();
+    expect(screen.getByText("A verified employee picked this request up, so the seeker's credit stays spent even if they decline or pass.")).toBeTruthy();
     const lines = within(history()).getAllByRole("listitem").map(item => item.querySelector("p")?.textContent);
-    // The kit order: the reservation line and the logged creation share a timestamp and keep push order (stable sort).
-    expect(lines).toEqual([`${creditReservedPhrase(ASK_LEVEL_COST_CLIENT)} (monthly)`, "Request created", "Claimed by verified referrer"]);
+    // Recorded events only, in time order; the history carries no credit reservation line.
+    expect(lines).toEqual(["Request created", "Claimed by verified referrer"]);
+    expect(lines).not.toContain(`${creditReservedPhrase(ASK_LEVEL_COST_CLIENT)} (monthly)`);
     expect(within(history()).getAllByText(/System/).length).toBeGreaterThan(0);
   });
 
