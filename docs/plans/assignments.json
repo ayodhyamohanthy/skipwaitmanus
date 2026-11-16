@@ -181,7 +181,7 @@
     },
     {
       "id": "PROCESS-session-review-independence",
-      "title": "No review gate and no landing slot: a built task lands on green required CI through auto-merge (D-347; was session-level review independence, D-344)",
+      "title": "Review only Tier 1 paths, per session; a fix lands without re-review; auto-merge, no landing slot (D-344, D-347, D-352)",
       "row": "D-134",
       "packet": "docs/plans/D-344-unblock.md",
       "tier": 2,
@@ -212,7 +212,7 @@
         "scripts/nextTaskPacketPassRed.test.ts",
         "scripts/scorecard.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 1 as amended by D-347 (owner, Nov 16): no review is required for any tier. The CI review gate no longer blocks, the picker hands out no review stage, the landing slot is retired, and a session turns on auto-merge (merge commit) for its own ready PR. Every required CI check and test-integrity guard stays. Tests that pinned the old review and slot rules are updated to the new rule, never deleted without porting (GATE-test-integrity). This row is first: until it lands, Tier 1 PRs stay blocked by the old gate. D-352 (Nov 16): the owner chose to review risky paths only, so this row makes the CI gate ask for a review only where the changed paths compute Tier 1. Owns gain the picker CLI (--fixed records its head) and the five tests that pinned the model-level rule, which are ported to the session rule."
+      "note": "Build docs/plans/D-344-unblock.md row 1 as amended by D-347 and D-352 (owner, Nov 16). The CI review gate asks for one review by another session only where the changed paths compute Tier 1. Independence is per session. Findings plus a Fixed marker land without a re-review. Every PR lands through auto-merge (merge commit) with no landing slot. Every required CI check and test-integrity guard stays. Tests that pinned the old review and slot rules are updated to the new rule, never deleted without porting (GATE-test-integrity). This row is first: until it lands, Tier 1 PRs stay blocked by the old gate. D-352 (Nov 16): the owner chose to review risky paths only, so this row makes the CI gate ask for a review only where the changed paths compute Tier 1. Owns gain the picker CLI (--fixed records its head) and the five tests that pinned the model-level rule, which are ported to the session rule."
     },
     {
       "id": "OPS-reviewer-qa-passwords",
