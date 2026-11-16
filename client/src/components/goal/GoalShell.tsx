@@ -50,17 +50,20 @@ function CreditsPill({ credits, compact }: { credits: GoalShellCredits; compact?
       </span>
     );
   }
-  // Comp: the numeral is mono, "credits" is sans (button.credits.hit = 44px target via g-hit).
+  // Comp: the numeral is mono, the unit is sans (button.credits.hit = 44px target via g-hit).
+  // The count is referrals left, never "credits" (D-173, D-180, D-222, D-344); the
+  // phone pill drops "left" but keeps the unit, so it is never a bare number.
+  const unit = credits.count === 1 ? "referral" : "referrals";
   return (
     <a
       href="/plans"
       data-testid="goal-credits-pill"
-      aria-label={`${credits.count} credits available. Open credit details`}
+      aria-label={`${credits.count} ${unit} left. Open plan details`}
       className={cn("g-hit inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover", compact ? "h-9" : "h-8")}
     >
       <Coins aria-hidden="true" className="size-4 text-g-ink-2" strokeWidth={1.75} />
       <GoalNum>{credits.count}</GoalNum>
-      {compact ? null : <span>{" "}credits</span>}
+      <span>{" "}{compact ? unit : `${unit} left`}</span>
     </a>
   );
 }

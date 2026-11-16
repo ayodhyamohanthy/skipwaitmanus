@@ -81,6 +81,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "discovery",
   "email-review",
   "employer",
+  "employer-billing",
   "for-companies",
   "landed",
   "links",

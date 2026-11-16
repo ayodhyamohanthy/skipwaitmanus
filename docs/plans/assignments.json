@@ -345,9 +345,12 @@
         "scripts/next-task.mjs",
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskPathTier.test.ts",
-        "scripts/nextTask.test.ts"
+        "scripts/nextTask.test.ts",
+        "scripts/nextTaskGateRedReview.test.ts",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/modelProvenance.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree."
+      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree. Nov 16 owns amendment (D-344 (8), Claude Code · 9d90): owns gains scripts/nextTaskGateRedReview.test.ts, scripts/nextTaskArchitectReview.test.ts and scripts/modelProvenance.test.ts, owned only by a done row or none. Their spawn fixtures declared Tier 1 but changed only docs or code.txt, which the gate's path rule (D-352) lands without review; their work now also touches server code so they keep testing the review route, with every assertion kept."
     },
     {
       "id": "PICKER-claim-task",
@@ -1201,13 +1204,12 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
         "D-048-F-goal-check",
-        "D-048-P-auth",
-        "seeker-passwords"
+        "D-048-P-auth"
       ],
       "owns": [
         "client/src/pages/SignIn.tsx (switch only)",
@@ -1220,7 +1222,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands.",
       "epic": "D-048-p3"
     },
     {
@@ -7691,6 +7693,41 @@
       ],
       "note": "D-332 (owner, Nov 11: the old design is completely removed and the change to the goal design is forced). A vitest file in the required unit job, so no workflow edit: (1) every surface id in the baseline's released list is still in RELEASED (client/src/lib/goalSurfaces.ts); (2) only files on the baseline's allow-list may import client/src/components/kit or call goalSurfaceOn outside client/src/pages/goal and client/src/components/goal, so no new old-design code and no new switch can land; (3) each rule has a failing fixture. The baseline is measured on main when the row is built; entries are only ever removed. Read docs/plans/D-048-retire.md section 5 first and reuse client/src/test/goalPagesBoundary.test.ts and scripts/designTokenAuditCore.mjs rather than repeating what they already check. Changes no page and no runtime code.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "D-057-stepup-access-error",
+      "title": "The email-review step-up panel shows a plain error with Try again when the access read fails, instead of 'Checking your work email…' forever",
+      "row": "D-057-stepup",
+      "packet": "docs/plans/FIX-nov13-stepup-avoid.md",
+      "tier": 1,
+      "lane": "email-review-stepup",
+      "branch": "agent/queue/d057-stepup-access-error",
+      "status": "todo",
+      "syncedTo": "D-354",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/email-review/GoalEmailReviewAction.tsx",
+        "client/src/pages/goal/email-review/goalEmailReview.stepUp.test.tsx"
+      ],
+      "note": "Packet section 1. Reproduced live-equivalent on PR #1179 head 6892f33f (review comment 6839438450): StepUpPanel has no isError branch, so a failed or rejected access read leaves 'Checking your work email…' on screen forever; the kit page renders the same island, so it is live today. Error state + Try again (refetch) only; no change to the step-up proof, its endpoints, the account binding, the review link or the decision (D-057, D-245). Tier 1: independent review (D-151), red-first tests, captures of the error state at 1280 and 390."
+    },
+    {
+      "id": "PICKER-avoid-repeat",
+      "title": "Repeated --avoid flags accumulate instead of the last one silently replacing the others, and the hand-out names the accepted forms",
+      "row": "D-321",
+      "packet": "docs/plans/FIX-nov13-stepup-avoid.md",
+      "tier": 2,
+      "lane": "picker-avoid-repeat",
+      "branch": "agent/queue/picker-avoid-repeat",
+      "status": "todo",
+      "syncedTo": "D-354",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskAvoidRepeat.test.ts"
+      ],
+      "note": "Packet section 2 (D-321 rule 11 dead end). argsOf stores out[a.slice(2)] = v, so --avoid A --avoid B keeps only B, while every hand-out says to re-run 'with --avoid <id> added'; picks then alternate forever. The Qoder 9c29 D-089 report attributed this to nextTaskCore.mjs:955, which is not the cause. Change argsOf's avoid parse and the one hand-out sentence only; every other flag keeps last-wins. Shares next-task.mjs and nextTaskText.mjs with open picker rows: no dependency (D-314), the later lander merges main."
     }
   ]
 }
