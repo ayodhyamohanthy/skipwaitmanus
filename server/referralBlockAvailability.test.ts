@@ -201,6 +201,7 @@ describe("blocks routes answer truthful unavailable", () => {
     const blocked = await request(app).post("/api/blocks").set("x-test-user", "seeker").send({ blockedUserId: 42 });
     expect(blocked.status).toBe(503);
     expect(blocked.body).toEqual({ error: "Blocking is temporarily unavailable" });
+    expect(blocked.headers["cache-control"]).toBe("private, no-store");
   });
 
   it("answers DELETE /api/blocks/:id with 503 when the block cannot be removed", async () => {
@@ -208,6 +209,7 @@ describe("blocks routes answer truthful unavailable", () => {
     const removed = await request(app).delete("/api/blocks/7").set("x-test-user", "seeker");
     expect(removed.status).toBe(503);
     expect(removed.body).toEqual({ error: "Blocking is temporarily unavailable" });
+    expect(removed.headers["cache-control"]).toBe("private, no-store");
   });
 });
 

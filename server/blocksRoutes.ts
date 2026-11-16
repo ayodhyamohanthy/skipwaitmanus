@@ -154,6 +154,10 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
   const doUnblock = deps.unblockUser ?? defaultUnblockUser;
   const listMine = deps.listBlocks ?? defaultListBlocks;
   const findCounterpart = deps.findCounterpart ?? defaultFindCounterpart;
+  const blockingUnavailable = (res: express.Response) => {
+    res.set("Cache-Control", "private, no-store");
+    return res.status(503).json({ error: "Blocking is temporarily unavailable" });
+  };
 
   app.post("/api/blocks", express.json(), async (req, res) => {
     try {
@@ -180,7 +184,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
       record({ actorUserId: identity.account.id, action: "block.created", outcome: "success", resourceType: "user_block", resourceId: result.id });
       res.status(result.created ? 201 : 200).json({ blocked: true, created: result.created, id: result.id, blockedUserId: result.blockedUserId });
     } catch (error) {
-      if (error instanceof BlockCheckUnavailableError) return res.status(503).json({ error: "Blocking is temporarily unavailable" });
+      if (error instanceof BlockCheckUnavailableError) return blockingUnavailable(res);
       const message = error instanceof Error ? error.message : "We could not save this block";
       if (/cannot block yourself/i.test(message)) return res.status(400).json({ error: message });
       if (/another participant/i.test(message)) return res.status(400).json({ error: message });
@@ -196,10 +200,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json({ blocks: await listMine(identity.account.id) });
     } catch (error) {
-      if (error instanceof BlockCheckUnavailableError) {
-        res.set("Cache-Control", "private, no-store");
-        return res.status(503).json({ error: "Blocking is temporarily unavailable" });
-      }
+      if (error instanceof BlockCheckUnavailableError) return blockingUnavailable(res);
       res.status(500).json({ error: "We could not load your blocks" });
     }
   });
@@ -214,7 +215,7 @@ export function registerBlocksRoutes(app: Express, deps: BlocksRouteDeps) {
       record({ actorUserId: identity.account.id, action: "block.removed", outcome: "success", resourceType: "user_block", resourceId: id });
       res.json({ unblocked: true });
     } catch (error) {
-      if (error instanceof BlockCheckUnavailableError) return res.status(503).json({ error: "Blocking is temporarily unavailable" });
+      if (error instanceof BlockCheckUnavailableError) return blockingUnavailable(res);
       const message = error instanceof Error ? error.message : "We could not remove this block";
       if (/could not be found/i.test(message)) return res.status(404).json({ error: message });
       res.status(500).json({ error: "We could not remove this block" });
