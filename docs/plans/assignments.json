@@ -397,7 +397,7 @@
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-credits"
       ],
