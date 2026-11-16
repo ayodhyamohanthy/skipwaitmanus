@@ -7723,7 +7723,7 @@
       "tier": 1,
       "lane": "email-review-stepup",
       "branch": "agent/queue/d057-stepup-access-error",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-354",
       "dependsOn": [],
       "owns": [
@@ -7740,7 +7740,7 @@
       "tier": 2,
       "lane": "picker-avoid-repeat",
       "branch": "agent/queue/picker-avoid-repeat",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-354",
       "dependsOn": [],
       "owns": [
