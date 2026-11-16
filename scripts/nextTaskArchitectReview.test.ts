@@ -18,10 +18,10 @@ const input = (extra: Record<string, unknown> = {}) => ({ tasks: [task], mainCi:
 const pick = (extra: Record<string, unknown> = {}) => pickNextTask(input(extra));
 describe("PICKER-architect-review-route", () => {
   it("(a) routes the exact gate-only packet head to independent REVIEW", () => expect(pick()).toMatchObject({ kind: "review", work: ARCH, lock: REVIEW, packet: true }));
-  it("(b,c) excludes writer, takeover and fixer models", () => {
-    expect(pick({ claimant: "Writer · 3333" }).kind).not.toBe("review");
-    expect(pick({ claimant: "Takeover · 2", branches: new Map([[ARCH, { ...arch, markers: [...arch.markers, { verb: "Takeover", id: "P", who: "Takeover · 1" }] }]]) }).kind).not.toBe("review");
-    expect(pick({ claimant: "Fixer · 2", branches: new Map([[ARCH, arch], [REVIEW, lock([{ verb: "Fixed", id: "P", who: "Fixer · 1" }])]]) }).kind).not.toBe("review");
+  it("(b,c) excludes the writer, takeover and fixer sessions (D-344 (1))", () => {
+    expect(pick({ claimant: "Writer · 1111" }).kind).not.toBe("review");
+    expect(pick({ claimant: "Takeover · 1", branches: new Map([[ARCH, { ...arch, markers: [...arch.markers, { verb: "Takeover", id: "P", who: "Takeover · 1" }] }]]) }).kind).not.toBe("review");
+    expect(pick({ claimant: "Fixer · 1", branches: new Map([[ARCH, arch], [REVIEW, lock([{ verb: "Fixed", id: "P", who: "Fixer · 1" }])]]) }).kind).not.toBe("review");
   });
   it("(d,e) fails closed and leaves Tier2 packets alone", () => {
     for (const c of [{ ...ci, gateOnly: false }, { state: "red", sha: HEAD }, { ...ci, sha: "b".repeat(40) }, ...["running", "running-after-red", "error", "unknown"].map(state => ({ ...ci, state }))]) expect(pick({ prCi: new Map([[ARCH, c]]) }).kind).not.toBe("review");
