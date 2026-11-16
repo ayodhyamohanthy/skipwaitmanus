@@ -26,7 +26,7 @@ Under vitest the switch ignores `RELEASED`, so every unedited kit test still ren
 
 1. **Build** the goal page (`D-048-p3-<id>`).
 2. **Release** it (`D-048-R-<id>`: one line in `RELEASED`, with its QA, captures, kit-drift check and, for Tier 1, an independent review).
-3. **Soak**: 7 days live with no new Sentry issue on that surface (split rule 5, unchanged).
+3. **Soak**: 7 days live with no new Sentry issue on that surface (split rule 5). **Suspended by D-349 (owner, Nov 16) in launch mode:** while SkipWait has no real users, a retirement row lands as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.
 4. **Delete** the old page (`D-048-K-<surface>`).
 5. **Delete the kit layer** when nothing imports it (`D-048-K-kit`).
 
