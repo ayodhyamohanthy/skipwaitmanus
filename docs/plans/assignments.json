@@ -1204,13 +1204,12 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
         "D-048-F-goal-check",
-        "D-048-P-auth",
-        "seeker-passwords"
+        "D-048-P-auth"
       ],
       "owns": [
         "client/src/pages/SignIn.tsx (switch only)",
@@ -1223,7 +1222,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands.",
       "epic": "D-048-p3"
     },
     {
