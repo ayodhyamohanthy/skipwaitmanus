@@ -34,7 +34,7 @@ This is the wording slice of `D-222-referral-count-shell`. The shell count is th
    - Compact (phone) pill: keeps a unit, `{n} referrals` (`1 referral`). It is never a bare number.
    - `aria-label`: `{n} referrals left. Open plan details`.
    - The loading, error ("Balance didn't load" + Retry) and never-show-0-on-failure behaviour, the link target, the hook and the count source stay unchanged. The `data-testid` stays the same so nothing else moves.
-2. Update the tests that pin the old words: `client/src/components/goal/goalComposites.test.tsx`, `client/src/components/appShell.test.tsx`, `client/src/pages/myRequests.goal.test.tsx`. Add one assertion that no shell text says "credit".
+2. Update the tests that pin the old words: `client/src/components/goal/goalComposites.test.tsx`, `client/src/components/appShell.test.tsx`, `client/src/pages/myRequests.goal.test.tsx`. Add one assertion that no shell text says "credit". Two more files pin the old aria-label and are added to this row's owns under D-344 (8), both owned by no open row: `client/src/test/goalShellHarness.test.tsx` and `e2e/fixtures.ts` (`readBalance` finds the pill by its label; the e2e journeys would otherwise fail).
 3. Captures at 1280 and 390 of the shell on a seeker route, in `design/goal-ui/captures/shell/`.
 
 Out of scope, staying with `D-222-referral-count-shell`: showing the count on referrer routes, `AppShell.tsx`, and the zero-state and ledger semantics.
@@ -92,6 +92,23 @@ On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other requi
 3. The shards together run the full suite with no exclusions; keep the comment above the Vitest step that forbids `--exclude`. Prove it with a run whose three shard test counts sum to the old single-job count, quoted in the PR.
 4. Shares `ci.yml` with `GATE-merge-queue` and `GATE-release-captures` under D-314: the second to land merges `main` and keeps both changes.
 5. Proof: the PR's own CI showing the three shards and the aggregate check, and the wall-clock time against the 7 min 20 s baseline.
+
+## Row 8: `PICKER-path-tier-review` (Tier 2; D-353 (1))
+
+1. `scripts/next-task.mjs` computes, for each open PR of a non-done task, its changed paths against `origin/main` (reuse `changedPathsOf` from `scripts/review-gate.mjs`) and passes the result into the core.
+2. `scripts/nextTaskCore.mjs` adds one `needsReview(v)` helper, applying the same rule as the CI gate: the paths compute Tier 1, or the row is declared Tier 1 and the diff touches `server/`, `shared/`, `drizzle/`, `functions/` or `src/worker.ts`. Use it everywhere the stage logic now reads `v.task.tier === 1`. A PR that needs no review follows the Tier 2 path: land on green CI.
+3. After a findings verdict and a `Fixed` marker bound to the current head by a session other than the reviewer, hand out no re-review. The PR lands through auto-merge on green CI.
+4. Red-first tests in `scripts/nextTaskPathTier.test.ts`: a declared Tier 1, client-only PR gets no review stage; a server-side one does; a bound Fixed marker gets no re-review.
+
+## Row 9: `PICKER-claim-task` (Tier 2; D-353 (2))
+
+`node scripts/next-task.mjs --claim "<name>" --task <id>` runs the normal pick restricted to that one task, with the same red-main, ownership, dependency, lane and independence rules. When the task is not eligible for this session, it prints the reason the picker recorded (waits for X, held by Y, you built it) and claims nothing. Tests in `scripts/nextTaskClaimTask.test.ts`.
+
+## Row 10: `GATE-tier-classifier-gaps` (Tier 2; D-353 (3))
+
+1. `tierReasonPaths` evaluates every `server/db.ts` hunk before deduplicating the path.
+2. Add `server/creditCycles.ts` and `server/planCreditCycleJob.ts` to `TIER1_MONEY`.
+3. Red-first regressions in `scripts/tierClassify.test.ts`.
 
 ## Status
 

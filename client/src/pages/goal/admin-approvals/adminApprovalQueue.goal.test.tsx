@@ -86,7 +86,9 @@ describe("goal /admin/approvals (D-048-p3-admin-approvals)", () => {
     expect(within(request).getByTestId("goal-status").textContent).toBe("Under review");
     expect(within(enrollment).getByText(/OTP verified/)).toBeTruthy();
     expect(within(payment).getByTestId("goal-status").textContent).toBe("Requires review");
-    expect(within(request).getByText(creditReservedPhrase(ASK_LEVEL_COST_CLIENT))).toBeTruthy();
+    // Review finding F4 (pull request 1206): a picked-up request states its credit stays spent; no reservation is claimed.
+    expect(within(request).getByText("Credit stays spent")).toBeTruthy();
+    expect(within(request).queryByText(creditReservedPhrase(ASK_LEVEL_COST_CLIENT))).toBeNull();
     expect(within(request).getByRole("link", { name: "Role link" }).getAttribute("href")).toBe("https://careers.acme.example/jobs/design");
     expect(within(payment).getByText(/INR 396/)).toBeTruthy();
     expect(within(payment).getAllByText(/provider_page_mismatch/).length).toBeGreaterThan(0);
