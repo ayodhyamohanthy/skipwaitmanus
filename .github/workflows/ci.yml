@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
   push:
     branches: [main]
   workflow_dispatch:
@@ -37,6 +39,9 @@ jobs:
   check:
     name: typecheck
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -110,10 +115,14 @@ jobs:
       # review is still to be done" from every other red, and hand that head its REVIEW. The step name is read by
       # scripts/nextTaskCore.mjs (GATE_STEP); keep the two identical. The job and its required-check name are unchanged.
       - name: Review gate (independent Tier 1 pass)
-        if: ${{ github.event_name == 'pull_request' && steps.classify.outputs.marker_only != 'true' }}
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.classify.outputs.marker_only != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/review-gate.mjs
       - name: Scope check (declared file ownership)
         if: ${{ steps.classify.outputs.marker_only != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/scope-check.mjs --branch
 
   test:
