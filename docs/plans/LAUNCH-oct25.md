@@ -23,7 +23,7 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 - ZeptoMail delivers work-email codes to corporate inboxes (owner, in a Claude Code session). The referrer sign-in path needs no email work before outreach.
 
 ## Row LAUNCH-legal-copy (Tier 2; the owner approves the text before it lands)
-**Goal.** Make three public statements true. Agents draft; the owner approves the exact wording in a comment on the pull request, and nobody lands it before that comment exists.
+**Goal.** Make three public statements true. **D-345 (owner, Nov 16):** the owner approved market-standard wording in advance, within D-345 (1)'s limits, so no approval comment is needed. The row lands on green required CI with 1280/390 captures. Anything outside those limits (a price, a new refund right, a new data use) still goes to the owner.
 
 **Current text (verified):**
 1. `client/src/pages/Terms.tsx:23` (summary bullet): "Referrals are always free. Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes." Asks cost referrals (D-173), and packs are sold for money. Section 03 of the same page is already correct.
