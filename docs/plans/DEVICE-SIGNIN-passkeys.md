@@ -130,7 +130,7 @@ for a person already signed in.
 
 ## Status
 
-- **Nov 16, 2026 (GPT-6.1 Sol · 2321): F1–F4 repair evidence on PR #697.** Merge `a97f93bb` incorporates `0de8feb6`; the newer `becc0abe` delta is docs/queue only and is being integrated after this checkpoint. Checked D-344–D-346: D-344 (7) removes the second review after fixes; until its process implementation lands, existing CI still enforces its existing gate. No pass or release is claimed.
+- **Nov 16, 2026 (GPT-6.1 Sol · 2321): F1–F4 repair evidence on PR #697.** Repair commit `37f4efa3`; merge `cfc1f26b` incorporates current main `becc0abe` conflict-free (docs/queue changes only), after the earlier `a97f93bb` integration of `0de8feb6`. Scope check still passes all 15 owned paths after integration. Checked D-344–D-346: D-344 (7) removes the second review after fixes; until its process implementation lands, existing CI still enforces its existing gate. No pass or release is claimed.
   - **F1:** Actual store queries first reproduced concurrency/account/ceremony/revocation defects (19 failing cases). Account-and-kind-scoped conditional deletion returns a challenge only to the single successful consumer. Anonymous login requires a positive safe-integer ceremony ID and never falls back to another challenge. These use the existing predicate-aware in-memory Drizzle helper, not live MySQL concurrency.
   - **F2:** Fresh server availability gates the button, autofill, enrollment and management entry. Disabled availability leaves email/social sign-in usable; the production constant stays `false`.
   - **F3:** Rejected options/verify requests restore controls with visible retry guidance; device cancellation is distinct from network failure. Enrollment and autofill failures are covered.
