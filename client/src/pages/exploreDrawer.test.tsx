@@ -117,11 +117,11 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ask drawer", () => {
-  it("opens from a company row with the privacy line and the cost from the first moment", async () => {
+  it("opens from a company row with the privacy line and the cost from the first moment (D-176)", async () => {
     stub();
     const drawer = await openWipro();
     expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
-    expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
+    expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Only verified Wipro employees can see it");
     expect(within(drawer).getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
     await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 4"));
     // The cost is stated in one shared sentence pair (D-063): no retyped price.
@@ -328,7 +328,7 @@ describe("ask drawer", () => {
     expect(within(drawer).queryByText(/No verified employee/i)).toBeNull();
     expect(within(drawer).queryByText(/An alert is not a referral/i)).toBeNull();
     expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/seeker-alerts")).toBe(false);
-    expect(within(drawer).getByText("Goes to verified Wipro employees")).toBeTruthy();
+    expect(within(drawer).getByText("Only verified Wipro employees can see it")).toBeTruthy();
   });
 
   it("the link field is read-only while a post is selected, and 'Change role' clears it", async () => {

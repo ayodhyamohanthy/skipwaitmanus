@@ -137,7 +137,7 @@ describe("Find a referral directory", () => {
     const drawer = await screen.findByTestId("goal-drawer");
     // D-176: availability only routes the sent request, so the drawer names no
     // state and offers no alert; the cost line below it is §6.2's to neutralise.
-    expect(within(drawer).getByText("Goes to verified Merkle employees")).toBeTruthy();
+    expect(within(drawer).getByText("Only verified Merkle employees can see it")).toBeTruthy();
     expect(within(drawer).queryByText(/No verified employee/i)).toBeNull();
     expect(within(drawer).queryByText(/Get told when a referrer joins/i)).toBeNull();
     expect(within(drawer).getByTestId("goal-ask-cost")).toBeTruthy();

@@ -109,28 +109,21 @@ describe("the same pre-send state for every company (D-176)", () => {
     for (const phrase of FORBIDDEN) expect(open, String(phrase)).not.toMatch(phrase);
   });
 
-  it("renders the ask drawer's own framing identically for either company state", async () => {
-    const open = await drawerBody(true);
-    cleanup();
-    const shut = await drawerBody(false);
-    // This row owns the drawer's mark and the removed availability block. The
-    // cost line below them is useAskComposer's, which stays availability-aware
-    // until D-174-seeker-journey-build.composer-neutral (packet §6.2) makes it
-    // neutral; that row carries the full-text equality.
-    expect(open).toContain("Goes to verified Wipro employees");
-    expect(shut).toContain("Goes to verified Wipro employees");
-    for (const phrase of FORBIDDEN) expect(`${open} ${shut}`, String(phrase)).not.toMatch(phrase);
-    expect(open).toContain("Your name and resume are shared only if one accepts.");
-    expect(shut).toContain("Your name and resume are shared only if one accepts.");
+  it.each([true, false])("states who can see the drawer request without promising delivery when availability is %s (D-176)", async openToReferrals => {
+    const body = await drawerBody(openToReferrals);
+    // This row owns the privacy mark and the removed availability block. The
+    // cost line below them remains useAskComposer's until packet §6.2.
+    expect(body).toContain("Only verified Wipro employees can see it");
+    expect(body).not.toContain("Goes to verified Wipro employees");
+    for (const phrase of FORBIDDEN) expect(body, String(phrase)).not.toMatch(phrase);
+    expect(body).toContain("Your name and resume are shared only if one accepts.");
   });
 
-  it("renders /ask's verified mark for either company state", async () => {
-    const open = await askBody(true);
-    cleanup();
-    const shut = await askBody(false);
+  it.each([true, false])("states who can see the /ask request without promising delivery when availability is %s (D-176)", async openToReferrals => {
+    const body = await askBody(openToReferrals);
     // Same bound as the drawer: the cost line under the mark is §6.2's.
-    expect(open).toContain("Goes to verified Wipro employees");
-    expect(shut).toContain("Goes to verified Wipro employees");
-    for (const phrase of FORBIDDEN) expect(`${open} ${shut}`, String(phrase)).not.toMatch(phrase);
+    expect(body).toContain("Only verified Wipro employees can see it");
+    expect(body).not.toContain("Goes to verified Wipro employees");
+    for (const phrase of FORBIDDEN) expect(body, String(phrase)).not.toMatch(phrase);
   });
 });
