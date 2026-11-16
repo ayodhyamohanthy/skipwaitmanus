@@ -34,7 +34,7 @@ This is the wording slice of `D-222-referral-count-shell`. The shell count is th
    - Compact (phone) pill: keeps a unit, `{n} referrals` (`1 referral`). It is never a bare number.
    - `aria-label`: `{n} referrals left. Open plan details`.
    - The loading, error ("Balance didn't load" + Retry) and never-show-0-on-failure behaviour, the link target, the hook and the count source stay unchanged. The `data-testid` stays the same so nothing else moves.
-2. Update the tests that pin the old words: `client/src/components/goal/goalComposites.test.tsx`, `client/src/components/appShell.test.tsx`, `client/src/pages/myRequests.goal.test.tsx`. Add one assertion that no shell text says "credit".
+2. Update the tests that pin the old words: `client/src/components/goal/goalComposites.test.tsx`, `client/src/components/appShell.test.tsx`, `client/src/pages/myRequests.goal.test.tsx`. Add one assertion that no shell text says "credit". Two more files pin the old aria-label and are added to this row's owns under D-344 (8), both owned by no open row: `client/src/test/goalShellHarness.test.tsx` and `e2e/fixtures.ts` (`readBalance` finds the pill by its label; the e2e journeys would otherwise fail).
 3. Captures at 1280 and 390 of the shell on a seeker route, in `design/goal-ui/captures/shell/`.
 
 Out of scope, staying with `D-222-referral-count-shell`: showing the count on referrer routes, `AppShell.tsx`, and the zero-state and ledger semantics.

@@ -246,9 +246,11 @@
         "client/src/components/goal/goalComposites.test.tsx",
         "client/src/components/appShell.test.tsx",
         "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/test/goalShellHarness.test.tsx",
+        "e2e/fixtures.ts",
         "design/goal-ui/captures/shell/**"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes.",
+      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes. D-344 (8): it also owns client/src/test/goalShellHarness.test.tsx (the harness pins the pill's aria-label) and e2e/fixtures.ts (readBalance reads the pill by that label), both owned by no open row; only the pinned label words change there.",
       "epic": "D-048-p3"
     },
     {
@@ -6013,22 +6015,25 @@
     },
     {
       "id": "D-100.csp-release",
-      "title": "Switch CSP_ENFORCED on after 7 days of reports, with captures and the CEO's sign-off",
+      "title": "Collect page CSP reports for 48 hours, then enforce with desktop/mobile verification",
       "row": "D-100",
       "packet": "docs/plans/D-100-security-audit.md",
       "tier": 2,
       "lane": "security-csp-release",
       "branch": "agent/queue/d100-csp-release",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-353",
       "dependsOn": [
         "D-100.csp-enforce",
         "D-090-BYOR"
       ],
-      "note": "D-223 release row of the CSP pieces: one line, flips CSP_ENFORCED = true in server/securityHeaders.ts only after the page CSP carries a reporting directive in functions/_middleware.ts, 7 days of clean violation reports at /api/csp-report elapse with zero legitimate blocked sources, captures at 1280 and 390 verify no broken pages, and the CEO signs off (D-259, D-269; unblock ruling Qoder · c810, 2026-11-10). Parked at owner: both dependencies are done while the page report-uri is measurably absent, so a BUILD/LAND hand-out would be a false completion. D-350: unparked. Add the page report-uri (/api/csp-report) under D-344 (8), then collect 48 hours of reports instead of 7 days (no real users yet), then switch CSP_ENFORCED on with 1280/390 captures. No separate sign-off needed (D-347).",
+      "note": "D-350 authorizes page report-uri /api/csp-report, then 48 hours of collected reports with zero legitimate blocked sources, then CSP enforcement with 1280/390 captures. No separate CEO sign-off (D-347); computed Tier 1 paths still need independent review under D-352/D-353. This row remains todo through the reporting deployment and collection; do not mark it done from a preparatory PR. D-350 explicitly routes functions/_middleware.ts here despite D-099-bonus-pages owning an unrelated route-list switch in that file; preserve both on integration (D-314). The scope amendment and packet synchronization land first because scope-check reads owns from origin/main. PR #924 originally held claim markers only; green CI on that empty candidate was not release evidence.",
       "epic": "D-100",
       "owns": [
-        "server/securityHeaders.ts"
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts",
+        "functions/_middleware.ts (switch only)",
+        "server/pagesCspReporting.test.ts"
       ]
     },
     {
