@@ -79,6 +79,8 @@ Two admin routes have no split row: `/admin/money-check` (read-only money ops re
 
 ## Status
 
+`D-048-R-admin-money`: D-340 scope correction prepared — Codex · 4f96, assigned non-raising unblocker, 2026-11-16 — base main `fe7408a2`. PR #1204's three findings remain open: false queue-clear on unavailable reads, missing catalog plan detail before apply, and false-empty recovery history/no-op retry (review 6910092715; verdict `9bca6cb2`). Fix holder Codex · 8e95's scope block is recorded at `33036c8e`. The release packet's D-340 subsection bounds repairs to the three goal page files and `adminMoney.goal.test.tsx`; its registry owns and syncedTo are updated together. The completed build and all contributions remain historical, unchanged. No runtime work is performed or authorized before the reviewed amendment lands; the existing fixer then integrates main, proves red-first repairs and obtains fresh independent Tier 1 review and required CI. Endpoints, request bodies, payment/refund/grant rules, catalog policy, providers, price/sales flags and the separate `/admin/money-check` gap are unchanged. No source fix, verdict, merge, live test or release acceptance is claimed by this note.
+
 `D-048-P-admin`: prepared by design lane (AYO-11) — pending coordinator landing — 2026-10-23 — branch `agent/architect/d048-p-admin`
 
 `D-048-P-admin`: landed by the coordinator — 2026-10-23 — landing branch `agent/instinct/d048-p-admin-packet`. Canonical candidate; the empty claim marker branch `agent/architect/d048-p-admin` (Claude Code · e11c) is preserved and the overlap is announced in the PR.

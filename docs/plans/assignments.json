@@ -2859,15 +2859,19 @@
       "lane": "d048-release-admin-money",
       "branch": "agent/queue/d048-r-admin-money",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-340",
       "dependsOn": [
         "D-048-p3-admin-money"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/goal/admin-money/GoalAdminPayments.tsx",
+        "client/src/pages/goal/admin-money/GoalAdminCatalogSync.tsx",
+        "client/src/pages/goal/admin-money/GoalAdminTokenRecovery.tsx",
+        "client/src/pages/goal/admin-money/adminMoney.goal.test.tsx"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-money\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-money); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-money's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; payment review and catalog-sync actions behave exactly as on the kit page (no real-money QA, D-065). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Release change: add \"admin-money\" to the RELEASED block and its exact-list assertion. D-340 additionally permits only PR #1204 findings F1-F3 in the three named goal pages and adminMoney.goal.test.tsx: truthful pending/failed payment-queue status; complete catalog planned-object IDs/parameters, mismatch expected/actual values and sellability, and blocked reasons before apply; recovery-history loading/error with a real retry, never false empty history. Red-first regressions and release-packet bounds govern; endpoints, request bodies and money/provider semantics stay unchanged. The amendment must land before the existing fixer repairs the existing branch; no manual claim or Fixed marker is supplied here. Gates before landing, none waived: QA on current-main preview with VITE_GOAL_SURFACES=admin-money; captures at 1280 and 390; kit-drift check; behavior and failure/recovery tests; fresh independent Tier 1 review by a model that built/fixed neither the pages nor release; exact required CI and protected merge. No real-money QA (D-065). Preserve existing task order, dependencies, status, branch, fixer and findings. Later release landers merge main and keep every id. D-332 moved this release directly after its build row; D-340 is only its bounded repair-scope exception, not new pricing, provider/settings or production permission.",
       "epic": "D-048-p3"
     },
     {
