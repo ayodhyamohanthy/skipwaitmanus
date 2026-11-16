@@ -40,3 +40,27 @@ This is the wording slice of `D-222-referral-count-shell`. The shell count is th
 Out of scope, staying with `D-222-referral-count-shell`: showing the count on referrer routes, `AppShell.tsx`, and the zero-state and ledger semantics.
 
 Once this lands, PR #1196 (`D-048-R-inbox`) and PR #1201 (`D-048-R-profile`) merge main and are re-reviewed on their new heads.
+
+## Row 3: `PICKER-block-dedupe` (Tier 2, lane `picker-blocks`; D-346 (5))
+
+On Nov 16, `PRICING-banded-oct25` was reported blocked five times for the same reason. Stop that loop:
+
+1. Once a session reports `blocked` on a task stage, the picker hands that stage to no session until new evidence exists: a new commit on the task branch or its pull request head, a new register entry naming the task, a dependency becoming done, or 24 hours passing.
+2. The reporting session gets that task auto-avoided, as if it passed `--avoid`, and is handed its next eligible work.
+3. A `--report blocked` on a task whose standing block has no new evidence is refused with "already reported; nothing changed since <time>".
+4. Red-first tests in `scripts/nextTaskBlockDedupe.test.ts`. `--status` shows the standing block and its age.
+
+## Row 4: `GATE-release-captures` (Tier 2, lane `gate-captures`; D-346 (6))
+
+1. For a pull request on a `D-048-R-<id>` branch, CI builds with `VITE_GOAL_SURFACES=<id>` and captures every route that id owns, at 1280x900 and at 390x844 at scale 2. It signs in through the existing e2e harness fixtures and uses synthetic data only.
+2. The route list comes from the existing surface map (`client/src/lib/goalSurfaces.ts` and `docs/plans/GOAL_UI_COVERAGE.md`), never a hand-kept copy.
+3. Upload the images as the workflow artifact `release-captures-<id>`. A release row cites that artifact as its capture proof (AGENTS.md rule 8).
+4. Tests: `scripts/releaseCaptures.test.ts` checks the route resolution for every open release id.
+
+## Row 5: `GATE-merge-queue` (Tier 2, lane `gate-merge-queue`; D-346 (3))
+
+1. Add a `merge_group` trigger to `.github/workflows/ci.yml` so every required check reports on merge-queue runs.
+2. Make `scripts/review-gate.mjs` evaluate the pull request inside a merge-group run, read from the `gh-readonly-queue/main/pr-<n>-<sha>` ref. Its verdict must equal the one on the pull request's own head, with tests.
+3. Record the switch-on step in `docs/plans/PICKER-PARALLEL.md`. After this lands, the owner turns on the merge queue in the `main` ruleset, using the merge-commit method (never squash or rebase, D-134 (6)). From then on a green pull request is queued, re-tested against current main and merged without a session holding the landing slot.
+
+Until then, the owner enables "Allow auto-merge" in the repository settings, and each session turns on auto-merge with the merge-commit method for its own pull request once it is ready.
