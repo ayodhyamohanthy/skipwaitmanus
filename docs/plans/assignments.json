@@ -188,7 +188,7 @@
       "lane": "pricing",
       "branch": "agent/pricing/banded-plans-oct25",
       "status": "todo",
-      "syncedTo": "D-333",
+      "syncedTo": "D-339",
       "dependsOn": [
         "D-048-F-credits"
       ],
@@ -197,6 +197,7 @@
         "client/src/lib/planFamilyFlag.ts",
         "client/src/pages/PlansV2.test.tsx",
         "client/src/pages/PlansV2.tsx",
+        "client/src/pages/PlansV2Connected.tsx",
         "client/src/pages/Premium.tsx",
         "client/src/pages/Pricing.tsx",
         "client/src/pages/creditPacksOnSale.test.tsx",
