@@ -161,10 +161,11 @@ export async function seekerSendsAcmeAsk(context: BrowserContext): Promise<void>
   await page.close();
 }
 
-/** The shell's balance chip, read as the screen labels it ("2 credits" / "2 referrals", D-180). */
+/** The shell's balance chip, read as the screen labels it ("2 referrals left", D-180, D-344). */
 export async function readBalance(page: Page): Promise<number> {
-  // GoalShell's pill: aria-label "<n> credits available. Open credit details".
-  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) available/i }).first();
+  // GoalShell's pill: aria-label "<n> referrals left. Open plan details" (D-344; it said
+  // "<n> credits available" before). The old wording still matches so a stale build reads too.
+  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) (available|left)\b/i }).first();
   await expect(chip).toBeVisible();
   const value = Number((await chip.innerText()).match(/\d+/)?.[0]);
   expect(Number.isFinite(value)).toBeTruthy();
