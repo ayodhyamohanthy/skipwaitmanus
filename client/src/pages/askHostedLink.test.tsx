@@ -6,7 +6,7 @@
 // is byte-for-byte today's code (T0 covers the no-request half there).
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
@@ -89,6 +89,10 @@ const fillLink = (value: string) => {
   fireEvent.change(input, { target: { value } });
   fireEvent.blur(input);
 };
+const settlePreview = async () => {
+  await act(async () => { await vi.advanceTimersByTimeAsync(450); });
+  vi.useRealTimers();
+};
 const fillReasons = () => {
   fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
   fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
@@ -117,6 +121,7 @@ beforeEach(() => {
 afterEach(() => {
   setJobLinkPrefillForTests(null);
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -124,8 +129,10 @@ describe("/ask hosted link (packet T4b)", () => {
   it("never binds a hosted link to the first directory company", async () => {
     const fetchMock = stub({ previewReply: () => ({ status: 400, body: {} }) });
     renderPage();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     fillLink("https://boards.greenhouse.io/infosys/jobs/42");
     fillReasons();
+    await settlePreview();
     expect(await screen.findByText("You can still send it; we check the company when you send.")).toBeTruthy();
     const body = await send(fetchMock);
     expect(body).not.toHaveProperty("companySlug");
@@ -134,8 +141,10 @@ describe("/ask hosted link (packet T4b)", () => {
   it("takes a hosted link's company only from a safe preview a directory company owns", async () => {
     const fetchMock = stub();
     renderPage();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     fillLink("https://boards.greenhouse.io/infosys/jobs/42");
     fillReasons();
+    await settlePreview();
     expect(await screen.findByText("From the posting: a role at Infosys")).toBeTruthy();
     const body = await send(fetchMock);
     expect(body).toMatchObject({ companySlug: "infosys", targetRoleUrl: "https://boards.greenhouse.io/infosys/jobs/42" });
@@ -144,8 +153,10 @@ describe("/ask hosted link (packet T4b)", () => {
   it("keeps a direct careers link's own company (control)", async () => {
     const fetchMock = stub({ previewReply: () => ({ status: 400, body: {} }) });
     renderPage();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     fillLink("https://careers.wipro.com/jobs/1234567-product-designer");
     fillReasons();
+    await settlePreview();
     expect(await screen.findByText("You can still send it; we check the company when you send.")).toBeTruthy();
     const body = await send(fetchMock);
     expect(body).toMatchObject({ companySlug: "wipro" });

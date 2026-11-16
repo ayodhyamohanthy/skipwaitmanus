@@ -65,6 +65,10 @@ function tagText(body: string, name: string): string | undefined {
   return undefined;
 }
 const ROLE_TITLE_LIMIT = 120;
+// Bound work before regex cleanup, not just the eventual display string.
+const RAW_TITLE_LIMIT = 4_096;
+const JSON_LD_MAX_DEPTH = 64;
+const JSON_LD_MAX_NODES = 1_000;
 const HTML_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 function decodeHtmlEntities(value: string) {
   return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, entity: string) => {
@@ -75,7 +79,7 @@ function decodeHtmlEntities(value: string) {
   });
 }
 function cleanTitle(value: string) {
-  return decodeHtmlEntities(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return decodeHtmlEntities(value.slice(0, RAW_TITLE_LIMIT)).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 function metaContent(tag: string, key: string): string | undefined {
   const attributes: Record<string, string> = {};
@@ -84,10 +88,33 @@ function metaContent(tag: string, key: string): string | undefined {
   return name === key ? attributes.content : undefined;
 }
 function jsonLdRecords(value: unknown): Record<string, unknown>[] {
-  if (Array.isArray(value)) return value.flatMap(item => jsonLdRecords(item));
-  if (!value || typeof value !== "object") return [];
-  const record = value as Record<string, unknown>;
-  return [record, ...["@graph", "itemListElement", "mainEntity"].flatMap(key => (key in record ? jsonLdRecords(record[key]) : []))];
+  // Both queued values (including arrays/primitives) and depth are bounded;
+  // an iterative walk never consumes the JS call stack for page-supplied JSON.
+  const records: Record<string, unknown>[] = [];
+  const pending: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  let scheduled = 1;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || current.depth > JSON_LD_MAX_DEPTH) continue;
+    if (Array.isArray(current.value)) {
+      for (let index = Math.min(current.value.length, JSON_LD_MAX_NODES - scheduled) - 1; index >= 0; index -= 1) {
+        pending.push({ value: current.value[index], depth: current.depth + 1 });
+        scheduled += 1;
+      }
+      continue;
+    }
+    if (!current.value || typeof current.value !== "object") continue;
+    const record = current.value as Record<string, unknown>;
+    records.push(record);
+    for (let index = 2; index >= 0; index -= 1) {
+      const key = ["@graph", "itemListElement", "mainEntity"][index];
+      if (key in record && scheduled < JSON_LD_MAX_NODES) {
+        pending.push({ value: record[key], depth: current.depth + 1 });
+        scheduled += 1;
+      }
+    }
+  }
+  return records;
 }
 function jobPostingTitle(body: string): string | undefined {
   let from = 0;

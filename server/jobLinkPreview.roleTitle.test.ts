@@ -53,6 +53,36 @@ describe("extractRoleTitle (D-094 packet T1)", () => {
   it("keeps a role that merely contains the company name", () => {
     expect(extractRoleTitle(page(title("Senior Designer at Wipro")), "Wipro")).toBe("Senior Designer at Wipro");
   });
+
+  it("returns promptly for deeply nested JSON-LD without throwing", () => {
+    // Build the JSON text directly: JSON.stringify can itself overflow at this depth.
+    const nested = '{"@graph":['.repeat(5_000) + '{"@type":"JobPosting","title":"Too deep"}' + ']}'.repeat(5_000);
+    const start = performance.now();
+    expect(extractRoleTitle(page(`<script type="application/ld+json">${nested}</script>`))).toBeUndefined();
+    expect(performance.now() - start).toBeLessThan(1_000);
+  });
+
+  it.each(["title", "og:title", "JSON-LD"])("cleans only a bounded raw %s title", source => {
+    const oversized = "<".repeat(512_000);
+    const html = source === "title" ? title(oversized) : source === "og:title" ? og(oversized) : ld({ "@type": "JobPosting", title: oversized });
+    const start = performance.now();
+    expect(extractRoleTitle(page(html))).toBe("<".repeat(120));
+    expect(performance.now() - start).toBeLessThan(1_000);
+  });
+
+  it("falls back after the JSON-LD node budget without inspecting a late posting", () => {
+    const entries = [...Array.from({ length: 2_000 }, () => ({ "@type": "Organization" })), { "@type": "JobPosting", title: "Beyond budget" }];
+    expect(extractRoleTitle(page(ld(entries) + og("Fallback role")))).toBe("Fallback role");
+  });
+
+  it("keeps depth-first JSON-LD precedence through supported containers", () => {
+    const posting = (name: string) => ({ "@type": "JobPosting", title: name });
+    expect(extractRoleTitle(page(ld({
+      "@graph": [{ mainEntity: posting("First posting") }, posting("Second posting")],
+      itemListElement: posting("Third posting"),
+    })))).toBe("First posting");
+    expect(extractRoleTitle(page(ld({ itemListElement: { mainEntity: posting("Nested posting") } })))).toBe("Nested posting");
+  });
 });
 
 describe("previewJobLink roleTitle and fetched (D-094 packet T1/T2/T6b)", () => {
