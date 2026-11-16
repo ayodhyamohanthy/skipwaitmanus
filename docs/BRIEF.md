@@ -26,13 +26,13 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Public repo (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
 ## Working with the owner
-- **Roles (D-225):** Claude handles intelligence/reasoning; other tools develop. No step waits for one model. Ownership, independent review and CI still apply.
+- **Roles (D-225):** Claude sessions build too (D-348). No step waits for one model. Ownership and required CI still apply; no review (D-347).
 - Be brutally honest (D-023): risks first, the strongest counter-argument, ideas rated 1–10, "I don't know" over a guess. Each session: fetch `main`, read new decisions, report the log and rated ideas (D-026). D-123/D-126: research, decide on merit, ship flagged, report deviations.
 - Never override a decision; recommend a better one with evidence. Value-adding features are pre-approved (D-091); the owner's word is still needed for real cash, posts in his name, prices or credit rules going live, new charges and anything that could upset users (D-123). Record decisions once in the register at highest ID + 1 across main/open branches; sync affected docs in the same push (D-068).
 
 ## How to pick work
 - **`build`, `resume`, `continue`, `next` (D-225):** follow [the preflight](BUILD_CONTINUITY.md): fetch main, read current instructions/decisions and prior repo-only outcome, check goal/ownership; run `node scripts/next-task.mjs --claim "<your model name>"`, do only its task. Use its session-tagged name, never another's. Newer decisions beat packets: `--report blocked` with the ID; named work waits for packet `re-sync (D-nnn)` (D-202). `docs/plans/assignments.json` order: red main; own unfinished work (unowned pending above it first); unowned pending; new work. Red/blocked work holds lane/dependents; unmet dependencies hold landing only (D-315); red main holds landings (D-324). No push or `--heartbeat` for 2 hours frees a claim. `--report` to CEO on stop, landing, PR or blocker; `--status` shows the board. See `docs/DELEGATION.md` §4a.
-- D-074: use your `docs/plans/` packet and only its named paths. Tier 1 (money, sign-in, identity, privacy, migrations) gets a review on a draft PR before `main` by a session that neither built nor fixed it (D-344). D-235: one packet at a time; after handoff, preflight/pick without new `build`. Push every commit and before stopping. D-311 model/operator support: approved, not live; unknowns held.
+- D-074: use your `docs/plans/` packet and only its named paths. Tier 1 (money, sign-in, identity, privacy, migrations) lands on green required CI, no review (D-347). D-235: one packet at a time; after handoff, preflight/pick without new `build`. Push every commit and before stopping. D-311 model/operator support: approved, not live; unknowns held.
 
 ## How to ship
 - Stack: Express, React, TypeScript, Azure MySQL (Drizzle), Tailwind, React Query; Cloudflare Containers and Pages; pnpm 10, Node 22+.
