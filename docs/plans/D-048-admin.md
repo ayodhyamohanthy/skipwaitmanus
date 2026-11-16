@@ -83,6 +83,8 @@ This section applies only to `D-048-R-admin-approvals` / PR #1206. It supersedes
 
 **Read receipt and unfinished outcome.** `GPT-6.1 Sol · 2321` read current main `fe7408a2715e5698bb6bef4f1900fb32f6bd34c7`, BRIEF, PRD, AGENTS, BUILD_CONTINUITY, COLLABORATION, DELEGATION, the register through D-338, this packet, the release packet, PR #1206's findings `cbb20c2b` on `a10b65b8` and fixer's scope checkpoint `c3d51859`. Open D-339–D-342 carriers reserve those IDs; D-343 changes technical repair ownership only. The five findings are inherited defects, not authored by the release switch. The current switch-only fixer cannot carry them; no runtime repair is certified here.
 
+Integration readback: main advanced to `0de8feb6` with D-342 / PR #1211, limiting talent release repair to its own two client paths. That entry was read and is unaffected by this amendment. The decision-register insertion conflict keeps both complete entries; the merged packet/registry preserves the talent amendment. D-339–D-341 remain separate open carriers. No runtime source changed in this integration.
+
 ### Owned paths and hunk limits
 
 | Paths (in addition to the existing release switch and its test) | Permitted repair |

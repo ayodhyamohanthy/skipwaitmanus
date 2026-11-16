@@ -3117,15 +3117,17 @@
       "lane": "d048-release-employer-talent",
       "branch": "agent/queue/d048-r-employer-talent",
       "status": "todo",
-      "syncedTo": "D-332",
+      "syncedTo": "D-342",
       "dependsOn": [
         "D-048-p3-employer-talent"
       ],
       "owns": [
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/pages/goal/employer-talent/GoalEmployerTalent.tsx",
+        "client/src/pages/goal/employer-talent/talent.goal.test.tsx"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"employer-talent\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=employer-talent); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-employer-talent's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Seeker data shown only under consent (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged.",
+      "note": "Per-surface release row (D-317), directly after its build under D-332/FIFO. Add employer-talent to RELEASED and its exact-list pin. D-342 bounds the two added client paths to PR #1210 review 6912897217 F1-F3: invalidate opened and late profiles on list refresh/current access loss; allow only the latest list request to commit data/error/loading across initial load and searches; reconcile a confirmed unlock with a concurrently displayed row without restoring a filtered-out row. Write deterministic red-first tests, including stale failures, pending searches and initial-load ordering. Amendment must land before runtime repair. Preserve the original build/release contributions, findings and official fix/review markers; no manual claim or Fixed verdict here. Existing unmerged instinct/qualify-employer-talent-nov9 candidate remains uncertified, with actual provenance retained if reused. Endpoint shapes, prices, billing/debits, consent/access, auth, providers, schema and sales switches unchanged. Gates before landing: current-main composition; kit-drift check; flag-on behavior/failure/race tests; captures at 1280 and 390; fresh independent Tier 1 review by a model that built/fixed neither page nor release; exact required CI and protected merge. Report captures to owner; no real-money QA. Later release landers merge main and keep every released id. D-342 changes only bounded repair owns, syncedTo and this note; branch, status, tier, dependencies and queue position stay unchanged.",
       "epic": "D-048-p3"
     },
     {
