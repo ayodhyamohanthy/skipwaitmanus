@@ -23,8 +23,8 @@ import {
   GoalNum,
   GoalSkeletonRows,
 } from "@/components/goal";
-import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/companyDirectory";
-import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
+import { CompanyDemandLine } from "@/components/demand/CompanyDemandLine";
+import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/companyDirectory";import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
 import { useCompanyResponseSignal } from "@/lib/companyResponseSignal";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
@@ -205,6 +205,11 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         </div>
         {!open ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/alerts" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Alert me</Link> when this company opens up.</p> : null}
         {import.meta.env.VITE_COMPANY_CLAIM === "true" ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/company/claim" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Claim this company</Link> if you work here.</p> : null}
+
+        {/* D-086.mount: below the hero and outside the next-step block; renders nothing while the switch is off. */}
+        <div className="mt-8">
+          <CompanyDemandLine slug={company.slug} companyName={company.name} />
+        </div>
 
         <Responsiveness slug={company.slug} />
         <CompanyOpenings
