@@ -163,7 +163,7 @@ export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook; seeker
         <ul className="mt-3 max-w-[640px] space-y-1.5">
           <li className="text-g-small text-g-ink-2">Limited memberships per plan, counted as issued - a cancelled membership does not reopen its spot.</li>
           <li className="text-g-small text-g-ink-2">Your founding price stays while your membership stays continuously active{FOUNDING_TERMS.basePriceLock === "continuously_active" ? "" : " for the stated hold"}.</li>
-          <li className="text-g-small text-g-ink-2">If payment lapses, the lock ends; new members after the cap pay the regular price.</li>
+          <li className="text-g-small text-g-ink-2">If payment lapses, the lock ends.</li>
         </ul>
       </section>
     </div>

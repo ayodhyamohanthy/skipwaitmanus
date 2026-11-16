@@ -49,6 +49,7 @@ describe("PlansV2 frozen banded render", () => {
     expect(terms.textContent).toContain("does not reopen its spot");
     expect(terms.textContent).toContain("continuously active");
     expect(terms.textContent).toContain("the lock ends");
+    expect(terms.textContent).not.toMatch(/after the cap.*regular price/i);
   });
 
   it("read-only: every card shows a disabled non-transactional checkout state inline, no purchase CTA", () => {
