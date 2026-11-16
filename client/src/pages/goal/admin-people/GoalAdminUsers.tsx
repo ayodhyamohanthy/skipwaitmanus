@@ -4,7 +4,9 @@
 // keeps the kit page's exact server call and body - POST
 // /api/admin/users/:id/suspend with { suspended } and nothing else - and its
 // two-step confirm, consequence copy and "the account is unchanged" revert;
-// only the presentation changes. Suspension covers every alias of the canonical
+// only the presentation changes. A failed update re-reads the directory before
+// it says anything: "unchanged" only when the server's row shows it (PR 1205).
+// Suspension covers every alias of the canonical
 // person, which the server decides: this page never computes access.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -19,7 +21,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { cn } from "@/lib/utils";
 import { AdminGoalFrame, AdminGoalHeading } from "../admin/AdminGoalFrame";
 import { GoalSuspendConfirm } from "./GoalSuspendConfirm";
-import { accountLabelOf, adminPeopleKeys, adminPeoplePost, adminUsersResponseSchema, joinedOn, onDate, suspendResultSchema, userStatus, type AdminUserRow } from "./adminPeopleData";
+import { accountLabelOf, adminPeopleKeys, adminPeoplePaths, adminPeoplePost, adminUsersResponseSchema, asSentence, joinedOn, onDate, rereadOrNull, suspendResultSchema, suspensionOutcome, userStatus, type AdminUserRow } from "./adminPeopleData";
 
 export const GOAL_PAGE = { goalLine: "Act on people requests." } as const;
 const BODY = "Newest accounts first, with role, company, and suspension state. Suspending an account removes its access immediately; unsuspending restores it.";
@@ -27,6 +29,8 @@ const LOAD_FALLBACK = "We could not load the users directory";
 const UPDATE_FALLBACK = "We could not update this user account";
 
 type SuspendCall = { user: AdminUserRow; suspended: boolean };
+type Failure = SuspendCall & { message: string; outcome: "unchanged" | "unknown" };
+const RECOVERED = "The update was saved. Its confirmation was lost, so this page re-read the account.";
 
 function AccountRoster({ list, term, total, selectedId, loading, error, onTerm, onRetry, onPick }: { list: AdminUserRow[]; term: string; total: number; selectedId: number | null; loading: boolean; error: string; onTerm: (value: string) => void; onRetry: () => void; onPick: (id: number) => void }) {
   const filtered = term.trim() !== "" && list.length === 0 && total > 0;
@@ -66,19 +70,35 @@ export default function GoalAdminUsers() {
   const [term, setTerm] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [confirm, setConfirm] = useState<SuspendCall | null>(null);
-  const [failed, setFailed] = useState<{ user: AdminUserRow; suspended: boolean; message: string } | null>(null);
+  const [failed, setFailed] = useState<Failure | null>(null);
+  const [recovered, setRecovered] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  const users = useQuery({ queryKey: adminPeopleKeys.users, enabled: Boolean(isSignedIn), retry: adminRetry, queryFn: async () => (await adminRequest("/api/admin/users?limit=200", adminUsersResponseSchema, fetchToken, LOAD_FALLBACK)).users });
+  const readUsers = async () => (await adminRequest(adminPeoplePaths.users, adminUsersResponseSchema, fetchToken, LOAD_FALLBACK)).users;
+  const users = useQuery({ queryKey: adminPeopleKeys.users, enabled: Boolean(isSignedIn), retry: adminRetry, queryFn: readUsers });
+  // Only the server's row says whether a failed call changed the account.
+  const reconcile = async ({ user, suspended }: SuspendCall, message: string) => {
+    const reread = await rereadOrNull(readUsers);
+    if (reread) queryClient.setQueryData<AdminUserRow[]>(adminPeopleKeys.users, reread);
+    const outcome = suspensionOutcome(user.id, suspended, reread);
+    setRecovered(outcome === "saved" ? user.id : null);
+    setFailed(outcome === "saved" ? null : { user, suspended, message, outcome });
+  };
   const suspend = useMutation({
     mutationFn: async ({ user, suspended }: SuspendCall) => adminPeoplePost(`/api/admin/users/${user.id}/suspend`, suspendResultSchema, fetchToken, UPDATE_FALLBACK, { suspended }),
     onSuccess: (result, { user, suspended }) => {
       // The server's answer, never an optimistic guess: the row changes when the call does.
       queryClient.setQueryData<AdminUserRow[]>(adminPeopleKeys.users, rows => (rows ?? []).map(row => row.id === user.id ? { ...row, suspended: result.user.suspended ?? suspended } : row));
       setFailed(null);
+      setRecovered(null);
     },
-    // The kit page reverted its optimistic row and named the account unchanged; with no
-    // optimistic write here, the row already reads the truth, so the notice only reports it.
-    onError: (error, { user, suspended }) => setFailed({ user, suspended, message: error instanceof Error ? error.message : UPDATE_FALLBACK }),
+    // The access gate refuses before any write; every other failure (a lost response,
+    // a gateway error) cannot prove a rollback, so the directory is re-read first.
+    onError: async (error, call) => {
+      const message = error instanceof Error ? error.message : UPDATE_FALLBACK;
+      if (error instanceof AdminAccessError) { setRecovered(null); setFailed({ ...call, message, outcome: "unchanged" }); return; }
+      await reconcile(call, message);
+    },
     onSettled: () => setConfirm(null),
   });
 
@@ -163,10 +183,21 @@ export default function GoalAdminUsers() {
               </GoalButton>
               {failure ? (
                 <div role="alert" className="mt-3 border border-g-hairline bg-g-surface p-3">
-                  <p className="text-g-meta text-g-ink">{`Update failed — ${failure.message}. The account is unchanged.`}</p>
-                  <GoalButton size="sm" variant="outline" className="mt-2" onClick={() => suspend.mutate({ user: failure.user, suspended: failure.suspended })}>Try again</GoalButton>
+                  {failure.outcome === "unchanged" ? (
+                    <>
+                      <p className="text-g-meta text-g-ink">{`Update failed — ${asSentence(failure.message)} The account is unchanged.`}</p>
+                      <GoalButton size="sm" variant="outline" className="mt-2" onClick={() => suspend.mutate({ user: failure.user, suspended: failure.suspended })}>Try again</GoalButton>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-g-meta text-g-ink">{`We could not confirm whether this update was saved. ${asSentence(failure.message)} Check the account before you retry.`}</p>
+                      <GoalButton size="sm" variant="outline" className="mt-2" busy={checking} busyLabel="Checking…"
+                        onClick={() => { setChecking(true); void reconcile(failure, failure.message).finally(() => setChecking(false)); }}>Check the account again</GoalButton>
+                    </>
+                  )}
                 </div>
               ) : null}
+              {selected && recovered === selected.id ? <p role="status" className="mt-3 text-g-meta text-g-ink-2">{RECOVERED}</p> : null}
             </GoalNextStep>
           </div>
         </section>
