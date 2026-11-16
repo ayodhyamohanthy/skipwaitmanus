@@ -325,6 +325,67 @@
       "note": "Build docs/plans/D-344-unblock.md row 7 exactly. Keep the required check name 'unit + component + route tests' as an aggregate job, or every PR blocks. Shares ci.yml with GATE-merge-queue and GATE-release-captures under D-314."
     },
     {
+      "id": "PICKER-path-tier-review",
+      "title": "The picker hands out a review only where a PR's changed paths need one, and lands a fixed PR instead of re-reviewing it (D-353 (1))",
+      "row": "D-134",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "picker-path-tier",
+      "branch": "agent/queue/picker-path-tier-review",
+      "status": "todo",
+      "syncedTo": "D-353",
+      "dependsOn": [
+        "PROCESS-session-review-independence"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskPathTier.test.ts",
+        "scripts/nextTask.test.ts"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree."
+    },
+    {
+      "id": "PICKER-claim-task",
+      "title": "`--claim \"<name>\" --task <id>` claims that one task, or prints why it is not eligible for you now (D-353 (2))",
+      "row": "D-134",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "picker-claim-task",
+      "branch": "agent/queue/picker-claim-task",
+      "status": "todo",
+      "syncedTo": "D-353",
+      "dependsOn": [
+        "PROCESS-session-review-independence"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskClaimTask.test.ts"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
+    },
+    {
+      "id": "GATE-tier-classifier-gaps",
+      "title": "The tier classifier reads every server/db.ts hunk and lists the credit-cycle modules as Tier 1 money (Copilot findings on #1219, D-353 (3))",
+      "row": "D-212",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "gate-tier-classifier",
+      "branch": "agent/queue/gate-tier-classifier-gaps",
+      "status": "todo",
+      "syncedTo": "D-353",
+      "dependsOn": [
+        "PROCESS-session-review-independence"
+      ],
+      "owns": [
+        "scripts/tierClassifyCore.mjs",
+        "scripts/tierClassify.test.ts"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 10. Red-first: a neutral first db.ts hunk followed by a credit hunk computes Tier 1; server/creditCycles.ts and server/planCreditCycleJob.ts compute Tier 1."
+    },
+    {
       "id": "PRICING-banded-oct25",
       "title": "Frozen banded plan family (owner freeze Oct 25) replaces fee+credits model",
       "row": "PRICING",
@@ -400,13 +461,13 @@
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
       "status": "owner",
-      "syncedTo": "D-347",
+      "syncedTo": "D-353",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
         "docs/qa/"
       ],
-      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue. D-346 (4) (Nov 16): agents run this QA, not the owner. They sign in with the reviewer sign-in (server/_core/reviewerLogin.ts), using its demo seeker and referrer accounts, which hold no real data. No money moves. The row stays at owner only until the owner confirms that REVIEWER_LOGIN_ENABLED is on in production and the demo passwords are in the agent environment's secrets. Never put them in the repository (D-059). Then it becomes todo. D-347 (3): reviewer sign-in is already on in production (401, not 404, on Nov 16). The row becomes todo as soon as OPS-reviewer-qa-passwords has run and the owner has stored the new demo passwords in the agent secrets."
+      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue. D-346 (4) (Nov 16): agents run this QA, not the owner. They sign in with the reviewer sign-in (server/_core/reviewerLogin.ts), using its demo seeker and referrer accounts, which hold no real data. No money moves. The row stays at owner only until the owner confirms that REVIEWER_LOGIN_ENABLED is on in production and the demo passwords are in the agent environment's secrets. Never put them in the repository (D-059). Then it becomes todo. D-347 (3): reviewer sign-in is already on in production (401, not 404, on Nov 16). The row becomes todo as soon as OPS-reviewer-qa-passwords has run and the owner has stored the new demo passwords in the agent secrets. D-353 (4): the launch checklist includes one full e2e journeys run on the release candidate. The per-PR e2e job keeps running but is not a required check: it adds no waiting time (under 1 minute, in parallel with the unit tests)."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -2192,8 +2253,8 @@
       "tier": 1,
       "lane": "d048-release-admin-approvals",
       "branch": "agent/queue/d048-r-admin-approvals",
-      "status": "todo",
-      "syncedTo": "D-344",
+      "status": "done",
+      "syncedTo": "D-350",
       "dependsOn": [
         "D-048-p3-admin-approvals"
       ],
