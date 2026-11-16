@@ -187,7 +187,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/process-session-review",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-352",
       "dependsOn": [],
       "owns": [
@@ -246,9 +246,11 @@
         "client/src/components/goal/goalComposites.test.tsx",
         "client/src/components/appShell.test.tsx",
         "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/test/goalShellHarness.test.tsx",
+        "e2e/fixtures.ts",
         "design/goal-ui/captures/shell/**"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes.",
+      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes. D-344 (8): it also owns client/src/test/goalShellHarness.test.tsx (the harness pins the pill's aria-label) and e2e/fixtures.ts (readBalance reads the pill by that label), both owned by no open row; only the pinned label words change there.",
       "epic": "D-048-p3"
     },
     {
@@ -316,13 +318,78 @@
       "tier": 2,
       "lane": "gate-unit-shards",
       "branch": "agent/queue/gate-unit-shards",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-351",
       "dependsOn": [],
       "owns": [
-        ".github/workflows/ci.yml"
+        ".github/workflows/ci.yml",
+        "scripts/ciMarkerSkip.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 7 exactly. Keep the required check name 'unit + component + route tests' as an aggregate job, or every PR blocks. Shares ci.yml with GATE-merge-queue and GATE-release-captures under D-314."
+      "note": "Build docs/plans/D-344-unblock.md row 7 exactly. Keep the required check name 'unit + component + route tests' as an aggregate job, or every PR blocks. Shares ci.yml with GATE-merge-queue and GATE-release-captures under D-314. Nov 16 owns amendment (D-344 (8), Claude Code · 9d90): owns gains scripts/ciMarkerSkip.test.ts, which pinned the single test job and 'no needs:'; its assertions are ported to the shard matrix and the always-run aggregate, none dropped. Owned before only by done rows."
+    },
+    {
+      "id": "PICKER-path-tier-review",
+      "title": "The picker hands out a review only where a PR's changed paths need one, and lands a fixed PR instead of re-reviewing it (D-353 (1))",
+      "row": "D-134",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "picker-path-tier",
+      "branch": "agent/queue/picker-path-tier-review",
+      "status": "todo",
+      "syncedTo": "D-353",
+      "dependsOn": [
+        "PROCESS-session-review-independence"
+      ],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskPathTier.test.ts",
+        "scripts/nextTask.test.ts",
+        "scripts/nextTaskGateRedReview.test.ts",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/modelProvenance.test.ts"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 8. Reuse the gate's own rule (changedPathsOf, classifyTier and the server-side backstop in scripts/review-gate.mjs) so the picker and CI never disagree. Nov 16 owns amendment (D-344 (8), Claude Code · 9d90): owns gains scripts/nextTaskGateRedReview.test.ts, scripts/nextTaskArchitectReview.test.ts and scripts/modelProvenance.test.ts, owned only by a done row or none. Their spawn fixtures declared Tier 1 but changed only docs or code.txt, which the gate's path rule (D-352) lands without review; their work now also touches server code so they keep testing the review route, with every assertion kept."
+    },
+    {
+      "id": "PICKER-claim-task",
+      "title": "`--claim \"<name>\" --task <id>` claims that one task, or prints why it is not eligible for you now (D-353 (2))",
+      "row": "D-134",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "picker-claim-task",
+      "branch": "agent/queue/picker-claim-task",
+      "status": "todo",
+      "syncedTo": "D-353",
+      "dependsOn": [
+        "PROCESS-session-review-independence"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskClaimTask.test.ts"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
+    },
+    {
+      "id": "GATE-tier-classifier-gaps",
+      "title": "The tier classifier reads every server/db.ts hunk and lists the credit-cycle modules as Tier 1 money (Copilot findings on #1219, D-353 (3))",
+      "row": "D-212",
+      "packet": "docs/plans/D-344-unblock.md",
+      "tier": 2,
+      "lane": "gate-tier-classifier",
+      "branch": "agent/queue/gate-tier-classifier-gaps",
+      "status": "todo",
+      "syncedTo": "D-353",
+      "dependsOn": [
+        "PROCESS-session-review-independence"
+      ],
+      "owns": [
+        "scripts/tierClassifyCore.mjs",
+        "scripts/tierClassify.test.ts"
+      ],
+      "note": "Build docs/plans/D-344-unblock.md row 10. Red-first: a neutral first db.ts hunk followed by a credit hunk computes Tier 1; server/creditCycles.ts and server/planCreditCycleJob.ts compute Tier 1."
     },
     {
       "id": "PRICING-banded-oct25",
@@ -400,13 +467,13 @@
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
       "status": "owner",
-      "syncedTo": "D-347",
+      "syncedTo": "D-353",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
         "docs/qa/"
       ],
-      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue. D-346 (4) (Nov 16): agents run this QA, not the owner. They sign in with the reviewer sign-in (server/_core/reviewerLogin.ts), using its demo seeker and referrer accounts, which hold no real data. No money moves. The row stays at owner only until the owner confirms that REVIEWER_LOGIN_ENABLED is on in production and the demo passwords are in the agent environment's secrets. Never put them in the repository (D-059). Then it becomes todo. D-347 (3): reviewer sign-in is already on in production (401, not 404, on Nov 16). The row becomes todo as soon as OPS-reviewer-qa-passwords has run and the owner has stored the new demo passwords in the agent secrets."
+      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue. D-346 (4) (Nov 16): agents run this QA, not the owner. They sign in with the reviewer sign-in (server/_core/reviewerLogin.ts), using its demo seeker and referrer accounts, which hold no real data. No money moves. The row stays at owner only until the owner confirms that REVIEWER_LOGIN_ENABLED is on in production and the demo passwords are in the agent environment's secrets. Never put them in the repository (D-059). Then it becomes todo. D-347 (3): reviewer sign-in is already on in production (401, not 404, on Nov 16). The row becomes todo as soon as OPS-reviewer-qa-passwords has run and the owner has stored the new demo passwords in the agent secrets. D-353 (4): the launch checklist includes one full e2e journeys run on the release candidate. The per-PR e2e job keeps running but is not a required check: it adds no waiting time (under 1 minute, in parallel with the unit tests)."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -1137,13 +1204,12 @@
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-F-primitives",
         "D-048-F-goal-check",
-        "D-048-P-auth",
-        "seeker-passwords"
+        "D-048-P-auth"
       ],
       "owns": [
         "client/src/pages/SignIn.tsx (switch only)",
@@ -1156,7 +1222,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands.",
       "epic": "D-048-p3"
     },
     {
@@ -2192,8 +2258,8 @@
       "tier": 1,
       "lane": "d048-release-admin-approvals",
       "branch": "agent/queue/d048-r-admin-approvals",
-      "status": "todo",
-      "syncedTo": "D-344",
+      "status": "done",
+      "syncedTo": "D-350",
       "dependsOn": [
         "D-048-p3-admin-approvals"
       ],
@@ -5952,22 +6018,25 @@
     },
     {
       "id": "D-100.csp-release",
-      "title": "Switch CSP_ENFORCED on after 7 days of reports, with captures and the CEO's sign-off",
+      "title": "Collect page CSP reports for 48 hours, then enforce with desktop/mobile verification",
       "row": "D-100",
       "packet": "docs/plans/D-100-security-audit.md",
       "tier": 2,
       "lane": "security-csp-release",
       "branch": "agent/queue/d100-csp-release",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-353",
       "dependsOn": [
         "D-100.csp-enforce",
         "D-090-BYOR"
       ],
-      "note": "D-223 release row of the CSP pieces: one line, flips CSP_ENFORCED = true in server/securityHeaders.ts only after the page CSP carries a reporting directive in functions/_middleware.ts, 7 days of clean violation reports at /api/csp-report elapse with zero legitimate blocked sources, captures at 1280 and 390 verify no broken pages, and the CEO signs off (D-259, D-269; unblock ruling Qoder · c810, 2026-11-10). Parked at owner: both dependencies are done while the page report-uri is measurably absent, so a BUILD/LAND hand-out would be a false completion. D-350: unparked. Add the page report-uri (/api/csp-report) under D-344 (8), then collect 48 hours of reports instead of 7 days (no real users yet), then switch CSP_ENFORCED on with 1280/390 captures. No separate sign-off needed (D-347).",
+      "note": "D-350 authorizes page report-uri /api/csp-report, then 48 hours of collected reports with zero legitimate blocked sources, then CSP enforcement with 1280/390 captures. No separate CEO sign-off (D-347); computed Tier 1 paths still need independent review under D-352/D-353. This row remains todo through the reporting deployment and collection; do not mark it done from a preparatory PR. D-350 explicitly routes functions/_middleware.ts here despite D-099-bonus-pages owning an unrelated route-list switch in that file; preserve both on integration (D-314). The scope amendment and packet synchronization land first because scope-check reads owns from origin/main. PR #924 originally held claim markers only; green CI on that empty candidate was not release evidence.",
       "epic": "D-100",
       "owns": [
-        "server/securityHeaders.ts"
+        "server/securityHeaders.ts",
+        "server/securityHeaders.test.ts",
+        "functions/_middleware.ts (switch only)",
+        "server/pagesCspReporting.test.ts"
       ]
     },
     {
@@ -7624,6 +7693,41 @@
       ],
       "note": "D-332 (owner, Nov 11: the old design is completely removed and the change to the goal design is forced). A vitest file in the required unit job, so no workflow edit: (1) every surface id in the baseline's released list is still in RELEASED (client/src/lib/goalSurfaces.ts); (2) only files on the baseline's allow-list may import client/src/components/kit or call goalSurfaceOn outside client/src/pages/goal and client/src/components/goal, so no new old-design code and no new switch can land; (3) each rule has a failing fixture. The baseline is measured on main when the row is built; entries are only ever removed. Read docs/plans/D-048-retire.md section 5 first and reuse client/src/test/goalPagesBoundary.test.ts and scripts/designTokenAuditCore.mjs rather than repeating what they already check. Changes no page and no runtime code.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "D-057-stepup-access-error",
+      "title": "The email-review step-up panel shows a plain error with Try again when the access read fails, instead of 'Checking your work email…' forever",
+      "row": "D-057-stepup",
+      "packet": "docs/plans/FIX-nov13-stepup-avoid.md",
+      "tier": 1,
+      "lane": "email-review-stepup",
+      "branch": "agent/queue/d057-stepup-access-error",
+      "status": "todo",
+      "syncedTo": "D-354",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/email-review/GoalEmailReviewAction.tsx",
+        "client/src/pages/goal/email-review/goalEmailReview.stepUp.test.tsx"
+      ],
+      "note": "Packet section 1. Reproduced live-equivalent on PR #1179 head 6892f33f (review comment 6839438450): StepUpPanel has no isError branch, so a failed or rejected access read leaves 'Checking your work email…' on screen forever; the kit page renders the same island, so it is live today. Error state + Try again (refetch) only; no change to the step-up proof, its endpoints, the account binding, the review link or the decision (D-057, D-245). Tier 1: independent review (D-151), red-first tests, captures of the error state at 1280 and 390."
+    },
+    {
+      "id": "PICKER-avoid-repeat",
+      "title": "Repeated --avoid flags accumulate instead of the last one silently replacing the others, and the hand-out names the accepted forms",
+      "row": "D-321",
+      "packet": "docs/plans/FIX-nov13-stepup-avoid.md",
+      "tier": 2,
+      "lane": "picker-avoid-repeat",
+      "branch": "agent/queue/picker-avoid-repeat",
+      "status": "todo",
+      "syncedTo": "D-354",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskAvoidRepeat.test.ts"
+      ],
+      "note": "Packet section 2 (D-321 rule 11 dead end). argsOf stores out[a.slice(2)] = v, so --avoid A --avoid B keeps only B, while every hand-out says to re-run 'with --avoid <id> added'; picks then alternate forever. The Qoder 9c29 D-089 report attributed this to nextTaskCore.mjs:955, which is not the cause. Change argsOf's avoid parse and the one hand-out sentence only; every other flag keeps last-wins. Shares next-task.mjs and nextTaskText.mjs with open picker rows: no dependency (D-314), the later lander merges main."
     }
   ]
 }
