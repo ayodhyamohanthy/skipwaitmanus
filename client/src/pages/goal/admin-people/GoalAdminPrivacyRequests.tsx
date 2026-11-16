@@ -5,7 +5,9 @@
 // typed note only when the admin typed one - and completion stays unavailable
 // here, because no control on this page may record an erasure as done
 // (server/privateReferralRoutes.ts:1683 refuses it). Names and emails come from
-// the server's rows only; nothing is fabricated.
+// the server's rows only; nothing is fabricated. A failed start re-reads the
+// queue before it says anything: "unchanged" only when the server's row shows
+// it, and the typed note stays in the field either way (PR 1205).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
@@ -17,13 +19,16 @@ import { ADMIN_ACCESS_MESSAGE, AdminAccessError, adminRequest, adminRetry } from
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { cn } from "@/lib/utils";
 import { AdminGoalFrame, AdminGoalHeading } from "../admin/AdminGoalFrame";
-import { adminPeopleKeys, adminPeoplePost, privacyRequestsResponseSchema, privacyReviewResultSchema, privacyStatus, requestedOn, requesterLabelOf, stamp, type PrivacyRequestRow } from "./adminPeopleData";
+import { adminPeopleKeys, adminPeoplePaths, adminPeoplePost, asSentence, privacyRequestsResponseSchema, privacyReviewOutcome, privacyReviewResultSchema, privacyStatus, requestedOn, requesterLabelOf, rereadOrNull, stamp, type PrivacyRequestRow } from "./adminPeopleData";
 
 export const GOAL_PAGE = { goalLine: "Act on people requests." } as const;
 const BODY = "Start deletion reviews deliberately. Completion is disabled until a real erasure workflow verifies every resource step and any approved retained-data exception.";
 const BLOCKED = "Completion is blocked until a verified erasure workflow records every resource step and any approved retained-data exception.";
 const LOAD_FALLBACK = "We could not load privacy requests";
 const UPDATE_FALLBACK = "We could not update this request";
+const RECOVERED = "The review was started. Its confirmation was lost, so this page re-read the request.";
+
+type Failure = { request: PrivacyRequestRow; message: string; outcome: "unchanged" | "unknown" };
 
 function RequestQueue({ list, selectedId, loading, error, onRetry, onPick }: { list: PrivacyRequestRow[]; selectedId: number | null; loading: boolean; error: string; onRetry: () => void; onPick: (id: number) => void }) {
   return (
@@ -54,9 +59,20 @@ export default function GoalAdminPrivacyRequests() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
-  const [failed, setFailed] = useState<{ id: number; message: string } | null>(null);
+  const [failed, setFailed] = useState<Failure | null>(null);
+  const [recovered, setRecovered] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  const requests = useQuery({ queryKey: adminPeopleKeys.privacyRequests, enabled: Boolean(isSignedIn), retry: adminRetry, queryFn: async () => (await adminRequest("/api/admin/privacy-requests?limit=100", privacyRequestsResponseSchema, fetchToken, LOAD_FALLBACK)).requests });
+  const readRequests = async () => (await adminRequest(adminPeoplePaths.privacyRequests, privacyRequestsResponseSchema, fetchToken, LOAD_FALLBACK)).requests;
+  const requests = useQuery({ queryKey: adminPeopleKeys.privacyRequests, enabled: Boolean(isSignedIn), retry: adminRetry, queryFn: readRequests });
+  // Only the server's row says whether a failed call started the review.
+  const reconcile = async (request: PrivacyRequestRow, message: string) => {
+    const reread = await rereadOrNull(readRequests);
+    if (reread) queryClient.setQueryData<PrivacyRequestRow[]>(adminPeopleKeys.privacyRequests, reread);
+    const outcome = privacyReviewOutcome(request, reread);
+    setRecovered(outcome === "saved" ? request.id : null);
+    setFailed(outcome === "saved" ? null : { request, message, outcome });
+  };
   const review = useMutation({
     // Same call, same body shape as the kit page: the note goes only when the
     // admin typed one, so a recorded note never re-posts itself unnoticed.
@@ -65,8 +81,14 @@ export default function GoalAdminPrivacyRequests() {
     onSuccess: (result, { request }) => {
       queryClient.setQueryData<PrivacyRequestRow[]>(adminPeopleKeys.privacyRequests, rows => (rows ?? []).map(row => row.id === request.id ? { ...row, ...result.request } : row));
       setFailed(null);
+      setRecovered(null);
     },
-    onError: (error, { request }) => setFailed({ id: request.id, message: error instanceof Error ? error.message : UPDATE_FALLBACK }),
+    // The access gate refuses before any write; any other failure is re-read first.
+    onError: async (error, { request }) => {
+      const message = error instanceof Error ? error.message : UPDATE_FALLBACK;
+      if (error instanceof AdminAccessError) { setRecovered(null); setFailed({ request, message, outcome: "unchanged" }); return; }
+      await reconcile(request, message);
+    },
   });
 
   if (!isSignedIn) {
@@ -97,7 +119,7 @@ export default function GoalAdminPrivacyRequests() {
   const list = requests.data ?? [];
   const selected = list.find(request => request.id === selectedId) ?? null;
   const loadError = requests.error ? requests.error.message : "";
-  const failure = failed && selected && failed.id === selected.id ? failed : null;
+  const failure = failed && selected && failed.request.id === selected.id ? failed : null;
   const note = selected ? notes[selected.id] ?? selected.resolution ?? "" : "";
   const typed = selected ? notes[selected.id] : undefined;
 
@@ -105,7 +127,7 @@ export default function GoalAdminPrivacyRequests() {
     <AdminGoalFrame screen="admin-privacy-requests">
       <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body={BODY} />
       <div className="grid gap-6 gdesk:grid-cols-[340px_minmax(0,1fr)]">
-        <RequestQueue list={list} selectedId={selectedId} loading={requests.isLoading} error={loadError} onRetry={() => void requests.refetch()} onPick={id => { setSelectedId(id); setFailed(null); }} />
+        <RequestQueue list={list} selectedId={selectedId} loading={requests.isLoading} error={loadError} onRetry={() => void requests.refetch()} onPick={id => { setSelectedId(id); setFailed(null); setRecovered(null); }} />
         <section aria-live="polite" className="min-w-0 border border-g-hairline bg-g-surface p-5 gdesk:p-6">
           {selected ? (
             <>
@@ -130,7 +152,15 @@ export default function GoalAdminPrivacyRequests() {
                       className="mt-2 block min-h-24 w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink placeholder:text-g-ink-3" />
                   </label>
                   <p className="mt-3 text-g-meta text-g-ink-2">{BLOCKED}</p>
-                  {failure ? <p role="alert" className="mt-3 text-g-meta text-g-ink">{`This request is unchanged — ${failure.message}`}</p> : null}
+                  {failure?.outcome === "unchanged" ? <p role="alert" className="mt-3 text-g-meta text-g-ink">{`This request is unchanged — ${failure.message}`}</p> : null}
+                  {failure?.outcome === "unknown" ? (
+                    <div role="alert" className="mt-3">
+                      <p className="text-g-meta text-g-ink">{`We could not confirm whether this review started. ${asSentence(failure.message)} Check the request before you start it again.`}</p>
+                      <GoalButton size="sm" variant="outline" className="mt-2" busy={checking} busyLabel="Checking…"
+                        onClick={() => { setChecking(true); void reconcile(failure.request, failure.message).finally(() => setChecking(false)); }}>Check the request again</GoalButton>
+                    </div>
+                  ) : null}
+                  {recovered === selected.id ? <p role="status" className="mt-3 text-g-meta text-g-ink-2">{RECOVERED}</p> : null}
                 </>
               ) : null}
               <GoalButton
