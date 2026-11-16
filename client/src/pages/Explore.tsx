@@ -28,6 +28,7 @@ import {
 } from "@/components/goal";
 import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import { exploreDescription, useCompanyDirectory } from "@/lib/companyDirectory";
+import { CompanyDemandList } from "@/components/demand/CompanyDemandList";
 import { trackClarityEvent } from "@/lib/clarity";
 import { applySeo } from "@/lib/seo";
 import { publicRoute } from "@shared/publicRoutes";
@@ -275,6 +276,8 @@ export default function Explore() {
           ))}
         </div>
         {directoryBody}
+        {/* D-086.mount: the browse state only (empty search); renders nothing while the switch is off. */}
+        {!query.trim() && !fn ? <div className="mt-10"><CompanyDemandList /></div> : null}
         <section className="mt-10" aria-label="How it goes">
           <h2 className="text-g-heading text-g-ink">How it goes</h2>
           <ol className="mt-3 divide-y divide-g-hairline border-t border-g-hairline">

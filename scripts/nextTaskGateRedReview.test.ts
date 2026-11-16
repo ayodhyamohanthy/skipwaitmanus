@@ -75,15 +75,15 @@ describe("PICKER-gate-red-review-route: the picker's stage decision", () => {
     expect(pick([task("T")], { ci: redCi({ gateOnly: true }), branches: [noTip] })).toMatchObject({ kind: "green" });
   });
 
-  it("(d) a session of the model that built the head is never handed the review", () => {
-    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), claimant: "DeepSeek · b2" });
+  it("(d) the session that built the head is never handed the review (D-344 (1): sessions, not models)", () => {
+    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), claimant: BUILDER });
     expect(result.kind).not.toBe("review");
     expect(result.kind).not.toBe("green");
   });
 
-  it("(d2) a model that fixed the head is never handed the review either", () => {
+  it("(d2) the session that fixed the head is never handed the review either", () => {
     const lock: [string, Branch] = ["agent/review/t", { tipMs: NOW - 3 * HOUR, merged: false, markers: [{ verb: "Fix claim", id: "T", who: "Qoder · f1" }, { verb: "Fixed", id: "T", who: "Qoder · f1" }] }];
-    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), branches: [built("T"), lock], claimant: "Qoder · f2" });
+    const result = pick([task("T")], { ci: redCi({ gateOnly: true }), branches: [built("T"), lock], claimant: "Qoder · f1" });
     expect(result.kind).not.toBe("review");
   });
 
@@ -198,6 +198,10 @@ describe("PICKER-gate-red-review-route: next-task.mjs reads the red tip run's jo
     run(["config", "user.email", "fixture@example.test"]);
     run(["remote", "add", "origin", origin]);
     mkdirSync(path.join(work, "docs/plans"), { recursive: true });
+    // PICKER-path-tier-review (D-352, D-353 (1)): the work touches server code, so this declared Tier 1 row still
+    // needs its review by the gate's path rule; a docs-only change would land on green CI with no review.
+    mkdirSync(path.join(work, "server"), { recursive: true });
+    writeFileSync(path.join(work, "server/fixture.ts"), "export const v = 0;\n");
     writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture\n");
     writeFileSync(path.join(work, "docs/DECISIONS.md"), [
       "# Decisions", "", "| ID | Date | Decision | Evidence | Notes | Status |", "|---|---|---|---|---|---|",
@@ -213,6 +217,7 @@ describe("PICKER-gate-red-review-route: next-task.mjs reads the red tip run's jo
     run(["switch", "-c", "agent/queue/a"]);
     run(["commit", "--allow-empty", "-m", "Claim A: Builder · b1"]);
     writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built\n");
+    writeFileSync(path.join(work, "server/fixture.ts"), "export const v = 1;\n");
     run(["commit", "-am", "A: the work"]);
     const older = run(["rev-parse", "HEAD"]);
     writeFileSync(path.join(work, "docs/plans/test.md"), "# fixture, built twice\n");
