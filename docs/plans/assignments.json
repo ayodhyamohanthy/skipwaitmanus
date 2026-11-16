@@ -5765,9 +5765,10 @@
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
         "server/emailDelivery.ts",
-        "server/emailDelivery*.test.ts"
+        "server/emailDelivery*.test.ts",
+        "server/db.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys)."
+      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys). Nov 16: server/db.ts joins owns for the claimReferralReviewDelivery compare-and-set only (review finding 1 on PR #874, comment 6916942265), by D-350 (1) and D-344 (8); the open rows that also list server/db.ts (D-132-item3, D-174-held-ask-reconfirm, D-174-ask-from-job, D-174-pool-nudges, D-178.gate) do not touch that function, and D-314 lets a shared file stay shared, the second lander merging main. Finding 2's owner-alert state uses the row's existing columns, so no migration is needed."
     },
     {
       "id": "REL-heartbeats",
