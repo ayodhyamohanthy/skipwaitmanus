@@ -64,3 +64,21 @@ On Nov 16, `PRICING-banded-oct25` was reported blocked five times for the same r
 3. Record the switch-on step in `docs/plans/PICKER-PARALLEL.md`. After this lands, the owner turns on the merge queue in the `main` ruleset, using the merge-commit method (never squash or rebase, D-134 (6)). From then on a green pull request is queued, re-tested against current main and merged without a session holding the landing slot.
 
 Until then, the owner enables "Allow auto-merge" in the repository settings, and each session turns on auto-merge with the merge-commit method for its own pull request once it is ready.
+
+## D-347 amendment to row 1 (owner, Nov 16)
+
+Row 1 no longer makes review session-level: it removes the review requirement and the landing slot.
+
+1. `scripts/review-gate.mjs` and its CI step (`.github/workflows/ci.yml:112`) no longer fail a pull request for a missing or failed verdict. Remove the step, or make it report-only.
+2. `scripts/nextTaskCore.mjs`: no review stage is handed out. A built task with green CI is handed to its own session to land, never held for a verdict. The `agent/queue/landing` slot is no longer required to land (`LAND_SLOT`, `waitLanding`).
+3. `scripts/nextTaskText.mjs`: the land step says to turn on auto-merge with the merge-commit method for your own pull request and to press "update branch" when `main` moves.
+4. Update the tests that pinned the old rules. Port any assertion you remove (GATE-test-integrity), and list it in the PR's "Ported assertions" table.
+5. Unchanged: every required CI check, test-integrity, and the pinned login and money tests.
+
+## Row 6: `OPS-reviewer-qa-passwords` (Tier 2, lane `ops-reviewer`; D-347 (3))
+
+1. New manual workflow `.github/workflows/reviewer-qa-passwords.yml`. It takes `workflow_dispatch` inputs `seeker_hash`, `referrer_hash` and `confirm` (must equal `reset`).
+2. Validate each hash as `scrypt$<hex salt>$<64 hex>`, the format of `hashReviewerPassword` in `server/_core/reviewerLogin.ts`. Refuse anything else.
+3. Set exactly `REVIEWER_SEEKER_PASSWORD_HASH` and `REVIEWER_REFERRER_PASSWORD_HASH` as Worker secrets through the Cloudflare API, the way `db-cutover-secret.yml` sets `DATABASE_URL`. Never print a value. Never touch the admin or employer hashes, `REVIEWER_ALLOW_ADMIN` or `REVIEWER_LOGIN_ENABLED`.
+4. Secrets reach the container on its next start (AGENTS.md, Deploy), so say in the run summary that the next deploy applies them.
+5. Proof: one dry run that refuses a malformed hash, shown in the PR. Passwords are generated outside the workflow, and only their hashes are inputs.
