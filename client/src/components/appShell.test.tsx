@@ -67,13 +67,14 @@ describe("AppShell on GoalShell (W0)", () => {
     expect(within(rail).getByRole("link", { name: "Find" }).getAttribute("aria-current")).toBeNull();
   });
 
-  it("shows the live credits count on seeker pages and never 0 on a failed load", () => {
+  it("shows the live referrals-left count on seeker pages and never 0 on a failed load", () => {
     render(<AppShell><p>page</p></AppShell>);
-    expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toContain("9 credits");
+    expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toContain("9 referrals left");
     cleanup();
     state.credits = { state: "error", onRetry: vi.fn() };
     render(<AppShell><p>page</p></AppShell>);
     expect(screen.getAllByText("Balance didn't load").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\b0 referrals?\b/)).toBeNull();
     expect(screen.queryByText(/0 credits/)).toBeNull();
   });
 
@@ -141,16 +142,18 @@ describe("AppShell on GoalShell (W0)", () => {
     expect(screen.queryByRole("link", { name: "Alerts" })).toBeNull();
   });
 
-  it("sets only the credits numeral in mono, the word credits in sans", () => {
+  it("sets only the count numeral in mono, the referral unit in sans", () => {
     state.path = "/requests"; state.signedIn = true;
     state.credits = { state: "ready", count: 9 };
     render(<AppShell><p>page</p></AppShell>);
     const pills = screen.getAllByTestId("goal-credits-pill");
     for (const pill of pills) {
       expect(pill.className).toContain("g-hit");
-      // Only the numeral is mono; "credits" stays sans (comp: button.credits).
+      // Only the numeral is mono; the unit stays sans (comp: button.credits).
       expect(pill.querySelector(".g-num")?.textContent).toBe("9");
     }
-    expect(pills.map(pill => pill.textContent)).toEqual(expect.arrayContaining(["9 credits", "9"]));
+    expect(pills.map(pill => pill.textContent)).toEqual(expect.arrayContaining(["9 referrals left", "9 referrals"]));
+    // The phone pill keeps its unit: never a bare number (D-344).
+    expect(pills.map(pill => pill.textContent)).not.toContain("9");
   });
 });
