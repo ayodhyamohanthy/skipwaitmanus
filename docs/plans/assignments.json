@@ -373,7 +373,7 @@
       "tier": 2,
       "lane": "launch-legal",
       "branch": "agent/queue/launch-legal-copy",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-345",
       "dependsOn": [],
       "owns": [
