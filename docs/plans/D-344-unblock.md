@@ -93,6 +93,23 @@ On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other requi
 4. Shares `ci.yml` with `GATE-merge-queue` and `GATE-release-captures` under D-314: the second to land merges `main` and keeps both changes.
 5. Proof: the PR's own CI showing the three shards and the aggregate check, and the wall-clock time against the 7 min 20 s baseline.
 
+## Row 8: `PICKER-path-tier-review` (Tier 2; D-353 (1))
+
+1. `scripts/next-task.mjs` computes, for each open PR of a non-done task, its changed paths against `origin/main` (reuse `changedPathsOf` from `scripts/review-gate.mjs`) and passes the result into the core.
+2. `scripts/nextTaskCore.mjs` adds one `needsReview(v)` helper, applying the same rule as the CI gate: the paths compute Tier 1, or the row is declared Tier 1 and the diff touches `server/`, `shared/`, `drizzle/`, `functions/` or `src/worker.ts`. Use it everywhere the stage logic now reads `v.task.tier === 1`. A PR that needs no review follows the Tier 2 path: land on green CI.
+3. After a findings verdict and a `Fixed` marker bound to the current head by a session other than the reviewer, hand out no re-review. The PR lands through auto-merge on green CI.
+4. Red-first tests in `scripts/nextTaskPathTier.test.ts`: a declared Tier 1, client-only PR gets no review stage; a server-side one does; a bound Fixed marker gets no re-review.
+
+## Row 9: `PICKER-claim-task` (Tier 2; D-353 (2))
+
+`node scripts/next-task.mjs --claim "<name>" --task <id>` runs the normal pick restricted to that one task, with the same red-main, ownership, dependency, lane and independence rules. When the task is not eligible for this session, it prints the reason the picker recorded (waits for X, held by Y, you built it) and claims nothing. Tests in `scripts/nextTaskClaimTask.test.ts`.
+
+## Row 10: `GATE-tier-classifier-gaps` (Tier 2; D-353 (3))
+
+1. `tierReasonPaths` evaluates every `server/db.ts` hunk before deduplicating the path.
+2. Add `server/creditCycles.ts` and `server/planCreditCycleJob.ts` to `TIER1_MONEY`.
+3. Red-first regressions in `scripts/tierClassify.test.ts`.
+
 ## Status
 
 - PROCESS-session-review-independence: done — Claude Code · ff5a — 2026-11-16 — branch agent/queue/process-session-review. The CI review gate needs a review only for Tier 1 paths (D-352), counts independence per session (D-344 (1)), and lands findings plus a Fixed marker without a re-review (D-344 (7)). `--fixed` records `fixed <sha>`, and the picker's did() compares sessions. Follow-up, not built here: after a Fixed marker the picker still hands out a re-review rather than the landing, which wastes time but blocks nothing, because auto-merge lands the PR when CI is green. The landing slot is still in picker code; sessions land through auto-merge regardless.
