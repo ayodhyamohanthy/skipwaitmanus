@@ -68,15 +68,16 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     // The live preamble, including the acceptance clause, stays on the page.
     expect(screen.getByText(/Plain terms for a private referral handoff\. .*By creating an account or using skipwait\.me, you agree to these terms\./)).toBeTruthy();
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
-    expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
+    expect(screen.getByText(/3 referral requests per calendar month/)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     // LAUNCH-legal-copy: the old "Referrals are always free" bullet was untrue
     // while asks cost referrals and packs sell for money. It must never return.
     expect(screen.queryByText(/Referrals are always free/)).toBeNull();
-    expect(screen.getByText(/A request spends referral balance only when a verified employee can see it/)).toBeTruthy();
+    expect(screen.getByText(/A request uses your referral balance only when a verified employee can see it/)).toBeTruthy();
     // Section 4 must not contradict itself: the note is visible to verified
-    // employees while open; the resume only to the claiming employee.
-    expect(screen.getByText(/Your resume is visible only to you and the single verified employee who claims your request/)).toBeTruthy();
+    // employees while open; the resume only after that employee accepts.
+    expect(screen.getByText(/Your resume is visible only to you and the verified employee who accepts your request/)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/resume.*employee who claims your request/);
     expect(screen.queryByText(/resume and note are visible only to you and verified employees of the target company/)).toBeNull();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
     // The kit's design-only banner never ships.
@@ -84,6 +85,20 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "skipwait.me home" }).getAttribute("href")).toBe("/");
     expect(screen.getByRole("navigation", { name: "Legal" }).querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/terms");
+  });
+
+  it("Terms describe paused sales, conditional card verification and the Indian business without new promises", () => {
+    const { container } = render(<Terms />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Legacy referral packs are paused");
+    expect(text).toContain("card verification when required");
+    expect(text).toContain("Unused monthly allowance does not carry forward");
+    expect(text).toContain("not GST-registered");
+    expect(text).toContain("We do not charge GST");
+    expect(text).toContain("governed by the laws of India");
+    expect(text).toContain("You must be at least 18");
+    expect(text).toContain("We may pause or close accounts");
+    expect(text).not.toMatch(/referral packs add more|Additional credits can be bought|notice in the product before the change applies/);
   });
 
   it("Terms keep every live clause, each reachable from the On this page rail", () => {
@@ -198,9 +213,19 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
     // employee claims or declines, the referral stays used.
     expect(text).toMatch(/month that has already ended/);
     expect(text).toMatch(/request reopens to other employees at the company/);
-    expect(text).toMatch(/comes back if you withdraw it then/);
+    expect(text).toMatch(/If a claimed request reopens after an employee declines, you can withdraw it, but the referral stays used/);
+    expect(text).toMatch(/original balance or allowance is still valid and has room for the return/);
+    expect(text).not.toMatch(/comes back if you withdraw it then/);
     expect(text).not.toMatch(/claimed or accepted the request, it can no longer be cancelled/);
     expect(text).not.toMatch(/No money is charged for a request, so there is nothing to refund/);
+  });
+  it("Cancellation preserves existing purchase refund rights while stating that new sales are paused", () => {
+    const { container } = render(<CancellationPolicy />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Legacy referral packs are paused");
+    expect(text).toContain("unused purchased credits within 14 days");
+    expect(text).toContain("original payment method");
+    expect(text).toContain("Statutory consumer rights");
   });
   it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
     const { container } = render(<RefundPolicy />);
