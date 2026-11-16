@@ -129,7 +129,7 @@ describe("goal /admin/privacy-requests (D-048-p3-admin-people)", () => {
   const loseResponse = () => Promise.reject(new TypeError("Failed to fetch"));
 
   it("re-reads the request after a lost response and shows the review the server started", async () => {
-    let serverRow = REQUESTS[0];
+    let serverRow: Record<string, unknown> = { ...REQUESTS[0] };
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes("/review")) {
         const body = JSON.parse(String(init?.body)) as { resolution?: string };
