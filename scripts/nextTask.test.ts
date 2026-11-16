@@ -1455,22 +1455,26 @@ describe("PICKER-landing-slot: one landing at a time, without discipline", () =>
   });
 });
 
-describe("D-151 model-independent reviews and landings", () => {
+describe("D-344 (1) session-independent reviews and landings (amending D-151)", () => {
   const money = task("M", { tier: 1 });
   const next = task("N");
   const built: [string, Branch] = [money.branch, claimBy("DeepSeek · s4", "M", 3)];
   const pr: [string, string] = [money.branch, "https://github/pr/1"];
   const lock = (...markers: Marker[]): [string, Branch] => ["agent/review/m", { tipMs: NOW - 3 * HOUR, merged: false, markers }];
 
-  it("skips another builder session's review and selects the next eligible build", () => {
-    expect(pick([money, next], { branches: [built], prs: [pr], claimant: "DeepSeek · other" }))
+  it("skips the builder session's own review and selects the next eligible build; another session of its model may review", () => {
+    expect(pick([money, next], { branches: [built], prs: [pr], claimant: "DeepSeek · s4" }))
       .toMatchObject({ kind: "build", task: { id: "N" } });
+    expect(pick([money, next], { branches: [built], prs: [pr], claimant: "DeepSeek · other" }))
+      .toMatchObject({ kind: "review", task: { id: "M" } });
   });
 
-  it.each(["Fixed", "Fix claim"])("excludes a same-model fixer known by %s", verb => {
+  it.each(["Fixed", "Fix claim"])("excludes the fixer session known by %s; another session of its model may review", verb => {
     const fixed = lock({ verb, id: "M", who: "Qoder · fixer" }, { verb: "Fixed", id: "M", who: "Qoder · fixer" });
-    expect(pick([money, next], { branches: [built, fixed], prs: [pr], claimant: "Qoder · other" }))
+    expect(pick([money, next], { branches: [built, fixed], prs: [pr], claimant: "Qoder · fixer" }))
       .toMatchObject({ kind: "build", task: { id: "N" } });
+    expect(pick([money, next], { branches: [built, fixed], prs: [pr], claimant: "Qoder · other" }))
+      .toMatchObject({ kind: "review", task: { id: "M" } });
   });
 
   it.each(["Kimi · independent", "Claude Code · ceo"])("offers an independent review to %s", claimant => {
@@ -1488,7 +1492,7 @@ describe("D-151 model-independent reviews and landings", () => {
       .toMatchObject({ kind: "review", task: { id: "M" } });
   });
 
-  it.each(["DeepSeek · other", "Qoder · other"])("excludes builder/fixer model %s from landing", claimant => {
+  it.each(["DeepSeek · s4", "Qoder · fixer"])("excludes builder/fixer session %s from landing", claimant => {
     const passed = lock(
       { verb: "Fixed", id: "M", who: "Qoder · fixer" },
       { verb: "Review claim", id: "M", who: "Mistral · reviewer" },
