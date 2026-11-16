@@ -1,13 +1,19 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { AlertCircle, Clock3, LoaderCircle, ShieldCheck } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { AdminNav } from "@/components/AdminNav";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 
 type PrivacyRequest = { id: number; kind: "erasure"; status: "requested" | "in_review" | "completed" | "declined"; source: string; resolution: string | null; createdAt: string; updatedAt: string; userId: number; requesterName: string | null; requesterEmail: string | null; reviewedAt: string | null };
 
+// D-048-p3-admin-people: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin-people).
+const GoalAdminPrivacyRequests = lazy(() => import("./goal/admin-people/GoalAdminPrivacyRequests"));
+
 export default function AdminPrivacyRequests() {
+  if (goalSurfaceOn("admin-people")) return <Suspense fallback={null}><GoalAdminPrivacyRequests /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const [requests, setRequests] = useState<PrivacyRequest[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [workingId, setWorkingId] = useState<number | null>(null); const [resolutions, setResolutions] = useState<Record<number, string>>({});
   const load = async () => { if (!isSignedIn) return; setLoading(true); setError(""); try { const token = await getToken(); const response = await fetch("/api/admin/privacy-requests?limit=100", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} }); const payload = await readApiJson<{ requests?: PrivacyRequest[]; error?: string }>(response, "We could not load privacy requests"); if (!response.ok) throw new Error(payload.error || "We could not load privacy requests"); setRequests(payload.requests || []); } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load privacy requests"); } finally { setLoading(false); } };

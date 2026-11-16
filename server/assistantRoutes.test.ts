@@ -6,12 +6,15 @@ import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
 import { assistantAccessSchema } from "../shared/assistant";
 import { openAskSlots, slotCapReachedSchema } from "../shared/openAskSlots";
 import { resolvePlanEntitlements } from "../shared/planEntitlements";
+import { approvalCostChangedSchema, type ApprovalCost } from "../shared/assistantApprovalCost";
 
 function setup(deps: Partial<AssistantRouteDeps>) {
   const app = express();
   app.use(express.json());
   registerAssistantRoutes(app, {
     resolveIdentity: async req => (req.header("x-test-user") ? { account: { id: 7, openId: "workos-seeker" } } : undefined),
+    // Default: no approval in these fixtures would charge on approve (#644 tests below override it).
+    readApprovalCosts: async () => new Map(),
     ...deps,
   } as unknown as AssistantRouteDeps);
   return app;
@@ -191,5 +194,83 @@ describe("assistant access routes", () => {
     expect(submit).toHaveBeenCalledWith(7, 1);
     const blocked = setup({ submitDeveloperAppForReview: async () => { throw new Error("Only test apps can be submitted for review"); } });
     expect((await authed(blocked).post("/api/developer-apps/1/submit")).status).toBe(400);
+  });
+});
+
+describe("an approved assistant ask charges exactly the cost shown, or nothing (#644)", () => {
+  const SHOWN: ApprovalCost = { level: 5, cost: 5 };
+  const pricedAt = (cost: ApprovalCost | null) => vi.fn(async (_userId: number, ids: number[]) => new Map(cost ? ids.map(id => [id, cost] as const) : []));
+  const ask = { id: 5, kind: "ask_send", status: "pending", provider: "ChatGPT", companyDomain: "acme.com", role: null, note: "Hi", creditCount: 1, slotCount: 2, createdAt: "2026-10-27T00:00:00.000Z", expiresAt: "2026-10-28T00:00:00.000Z" };
+
+  it("lists each pending ask with the cost it would charge now, priced by one owner-scoped read", async () => {
+    const spend = { ...ask, id: 6, kind: "credit_spend", creditCount: 3 };
+    const handled = { ...ask, id: 4, status: "approved" };
+    const readApprovalCosts = vi.fn(async () => new Map([[5, SHOWN]]));
+    const app = setup({ listAssistantApprovals: async () => [ask, spend, handled] as never, readApprovalCosts });
+    const listed = await authed(app).get("/api/assistants/approvals");
+    expect(listed.status).toBe(200);
+    expect(readApprovalCosts).toHaveBeenCalledWith(7, [5]);
+    expect(listed.body.approvals[0]).toEqual({ ...ask, cost: SHOWN });
+    expect(listed.body.approvals[1]).not.toHaveProperty("cost");
+    expect(listed.body.approvals[2]).not.toHaveProperty("cost");
+  });
+
+  it("sends when the shown cost is still the cost", async () => {
+    const decide = vi.fn(async () => ({ id: 5, status: "approved" as const, requestId: 41 }));
+    const readApprovalCosts = pricedAt(SHOWN);
+    const app = setup({ decideAssistantApproval: decide, readApprovalCosts });
+    const response = await authed(app).post("/api/assistants/approvals/5/decision").send({ decision: "approved", kind: "ask_send", expectedCost: SHOWN });
+    expect(response.status).toBe(200);
+    expect(readApprovalCosts).toHaveBeenCalledWith(7, [5]);
+    expect(decide).toHaveBeenCalledWith(7, 5, "approved");
+  });
+
+  it("answers 409 cost_changed with the current cost, and never runs the charge, when the shown cost is missing or different", async () => {
+    for (const expectedCost of [undefined, null, 5, { cost: 5 }, { level: 5, cost: 1 }, { level: 4, cost: 5 }, { ...SHOWN, spendSource: "free" }]) {
+      const decide = vi.fn(async () => ({ id: 5, status: "approved" as const }));
+      const recordActivity = vi.fn(async () => undefined);
+      const app = setup({ decideAssistantApproval: decide, readApprovalCosts: pricedAt(SHOWN), recordActivity });
+      const response = await authed(app).post("/api/assistants/approvals/5/decision").send({ decision: "approved", kind: "ask_send", expectedCost });
+      expect(response.status, JSON.stringify(expectedCost)).toBe(409);
+      expect(approvalCostChangedSchema.parse(response.body)).toEqual({ code: "cost_changed", cost: SHOWN, error: "This referral request now costs 5 referrals. Approve again to send it at that cost." });
+      expect(decide).not.toHaveBeenCalled();
+      expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "assistant.approval_cost_changed", outcome: "denied", resourceId: 5 }));
+    }
+  });
+
+  it("re-approval at the new cost goes through, so the owner is never stuck in a loop", async () => {
+    const decide = vi.fn(async () => ({ id: 5, status: "approved" as const }));
+    const app = setup({ decideAssistantApproval: decide, readApprovalCosts: pricedAt(SHOWN) });
+    const first = await authed(app).post("/api/assistants/approvals/5/decision").send({ decision: "approved", kind: "ask_send", expectedCost: { level: 5, cost: 1 } });
+    expect(first.status).toBe(409);
+    const again = await authed(app).post("/api/assistants/approvals/5/decision").send({ decision: "approved", kind: "ask_send", expectedCost: first.body.cost });
+    expect(again.status).toBe(200);
+    expect(decide).toHaveBeenCalledOnce();
+  });
+
+  it("a decline needs no cost and reads none", async () => {
+    const decide = vi.fn(async () => ({ id: 5, status: "declined" as const }));
+    const readApprovalCosts = pricedAt(SHOWN);
+    const app = setup({ decideAssistantApproval: decide, readApprovalCosts });
+    const response = await authed(app).post("/api/assistants/approvals/5/decision").send({ decision: "declined", kind: "ask_send" });
+    expect(response.status).toBe(200);
+    expect(readApprovalCosts).not.toHaveBeenCalled();
+    expect(decide).toHaveBeenCalledWith(7, 5, "declined");
+  });
+
+  it("an approval that charges nothing on approve (paid-tool marker, handled, expired, not yours) is decided as before", async () => {
+    const decide = vi.fn(async () => ({ id: 6, status: "approved" as const }));
+    const app = setup({ decideAssistantApproval: decide, readApprovalCosts: pricedAt(null) });
+    const response = await authed(app).post("/api/assistants/approvals/6/decision").send({ decision: "approved", kind: "credit_spend" });
+    expect(response.status).toBe(200);
+    expect(decide).toHaveBeenCalledWith(7, 6, "approved");
+  });
+
+  it("fails closed when the current cost cannot be read: nothing is charged", async () => {
+    const decide = vi.fn(async () => ({ id: 5, status: "approved" as const }));
+    const app = setup({ decideAssistantApproval: decide, readApprovalCosts: async () => { throw new Error("Database unavailable"); } });
+    const response = await authed(app).post("/api/assistants/approvals/5/decision").send({ decision: "approved", kind: "ask_send", expectedCost: SHOWN });
+    expect(response.status).toBe(500);
+    expect(decide).not.toHaveBeenCalled();
   });
 });

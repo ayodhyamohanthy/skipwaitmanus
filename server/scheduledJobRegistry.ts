@@ -1,9 +1,11 @@
 import { runBillingReviewOutbox } from "./billingReviewOutbox";
+import { createJobCatalogSync } from "./jobSources/sync";
 // The scheduled jobs the Worker cron runs (contract: shared/scheduledJobs.ts).
 // Each window runs at most once (server/scheduledJobRunner.ts); a job's window
 // is a whole number of cron periods so every period lands in exactly one.
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { createAskInviteSweep } from "./askInviteSweep";
 import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
@@ -24,6 +26,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createAskExpirySweep(),
+  },
+  {
+    name: "ask-invite-expiry",
+    description: "Expires BYOR links and reservations, releases waiting asks, and sends one-time notices",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAskInviteSweep(),
   },
   {
     name: "first-look-release",
@@ -99,4 +108,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     run: createDailyMoneyCheck(),
   },
   { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },
+  {
+    // D-174-job-catalog (packet section 5.5): daily refresh of catalog rows
+    // from verified boards. Does nothing while JOB_CATALOG_ENABLED is false.
+    name: "job-catalog-sync",
+    description: "Refreshes catalog jobs from verified company boards: upserts the full fetch, closes jobs missing from it, marks a failed source failing without touching jobs",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 15 * MINUTE,
+    run: createJobCatalogSync(),
+  },
 ];

@@ -70,15 +70,25 @@ describe("WorkOS client and server-session compatibility", () => {
     vi.unstubAllGlobals();
   });
 
-  it.each(["loading-cookie", "loading-sdk", "signed-in"]) ("does not start unnecessary authentication for %s", state => {
-    if (state !== "signed-in") mocks.me.data = null;
-    mocks.me.isLoading = state === "loading-cookie";
-    mocks.sdk.isLoading = state === "loading-sdk";
+  it("does not start unnecessary authentication for a known signed-in user", () => {
     mount();
     const location = { href: "https://skipwait.me/premium?role=job_seeker", origin: "https://skipwait.me" };
     vi.stubGlobal("window", { location });
     auth.openSignIn();
     expect(location.href).toBe("https://skipwait.me/premium?role=job_seeker");
+    vi.unstubAllGlobals();
+  });
+
+  it.each(["loading-cookie", "loading-sdk"]) ("honors an explicit sign-in click during %s", state => {
+    mocks.me.data = null;
+    mocks.me.isLoading = state === "loading-cookie";
+    mocks.sdk.isLoading = state === "loading-sdk";
+    mount();
+    const location = { href: "https://skipwait.me/ask?fast=abc#draft", origin: "https://skipwait.me" };
+    vi.stubGlobal("window", { location });
+    auth.openSignIn();
+    expect(new URL(location.href, location.origin).pathname).toBe("/api/auth/workos/sign-in");
+    expect(new URL(location.href, location.origin).searchParams.get("returnTo")).toBe("/ask?fast=abc#draft");
     vi.unstubAllGlobals();
   });
 

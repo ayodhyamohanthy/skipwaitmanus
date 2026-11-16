@@ -6,6 +6,8 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import { TRPCError } from "@trpc/server";
 import * as ai from "./ai";
 import * as db from "./db";
+import { publicCatalogJobs } from "./testCatalogJobs";
+const publicListJobs = publicCatalogJobs(db.listJobs);
 
 const profileInput = z.object({ accountType: z.enum(["job_seeker", "referrer"]), headline: z.string().max(180).optional(), location: z.string().max(120).optional(), bio: z.string().max(4000).optional(), company: z.string().max(160).optional(), currentTitle: z.string().max(160).optional(), resumeUrl: z.string().url().optional().or(z.literal("")), skills: z.string().max(4000).optional(), experience: z.string().max(8000).optional(), expertise: z.string().max(4000).optional(), referralCapacity: z.number().int().min(0).max(20).optional() });
 const retiredPrivateWorkflow = () => { throw new TRPCError({ code: "FORBIDDEN", message: "Use the private company referral flow for this action" }); };
@@ -27,7 +29,7 @@ export const appRouter = router({
     accessHistory: protectedProcedure.query(({ ctx }) => db.listTalentAccessHistory(ctx.user.id)),
     revokeEmployer: protectedProcedure.input(z.object({ employerUserId: z.number().int().positive() })).mutation(({ ctx, input }) => db.revokeTalentEmployerAccess(ctx.user.id, input.employerUserId)),
   }),
-  jobs: router({ list: publicProcedure.input(z.object({ query: z.string().optional(), company: z.string().optional(), location: z.string().optional(), seniority: z.string().optional() }).optional()).query(({ input }) => db.listJobs(input ?? {})) }),
+  jobs: router({ list: publicProcedure.input(z.object({ query: z.string().optional(), company: z.string().optional(), location: z.string().optional(), seniority: z.string().optional() }).optional()).query(({ input }) => publicListJobs(input ?? {})) }),
   // Administrators only: members never see a referrer list or ranking; referrers stay anonymous until they accept.
   community: router({ listReferrers: adminProcedure.input(z.object({ query: z.string().optional(), company: z.string().optional(), role: z.string().optional() }).optional()).query(({ input }) => db.listReferrers(input ?? {})) }),
   savedRoles: router({ list: protectedProcedure.query(({ ctx }) => db.listSavedRoles(ctx.user.id)), set: protectedProcedure.input(z.object({ jobId: z.number().int().positive(), saved: z.boolean() })).mutation(({ ctx, input }) => db.setSavedRole(ctx.user.id, input.jobId, input.saved)) }),

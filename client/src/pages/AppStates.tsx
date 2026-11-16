@@ -4,8 +4,10 @@
 // (components/app-states/DeviceStates.tsx). Copy that would be untrue of the
 // live product (device push, a lighter page version, drafts that send
 // themselves, UPI, a sample error ref) is replaced by what actually happens.
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { Link } from "wouter";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalAppStates = lazy(() => import("./goal/system/GoalAppStates"));
 import { AlertTriangle, ArrowRight, CreditCard, RefreshCw, SearchX, Signal, WifiOff } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { AppShell } from "@/components/AppShell";
@@ -18,6 +20,7 @@ type AppState = (typeof APP_STATES)[number];
 // The kit renders /app-states inside its shell; App.tsx mounts this route bare,
 // so the page brings the shell itself.
 export default function AppStates() {
+  if (goalSurfaceOn("system")) return <Suspense fallback={null}><GoalAppStates /></Suspense>;
   return <AppShell><AppStatesGallery /></AppShell>;
 }
 

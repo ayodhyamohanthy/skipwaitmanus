@@ -34,4 +34,4 @@ Three of them sit on the API's request path, so each is an availability risk for
 `package.json`, `pnpm-lock.yaml`, and this file's Status line.
 
 ## Status
-- SEC-deps-oct24: todo (D-191).
+- SEC-deps-oct24: done — 1e97d6ea (#663), Claude Code · f497. `pnpm audit --prod` after: no known vulnerabilities (8 before). The §3b table has no D-191 row, so status lives here.

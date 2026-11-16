@@ -23,7 +23,7 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 - ZeptoMail delivers work-email codes to corporate inboxes (owner, in a Claude Code session). The referrer sign-in path needs no email work before outreach.
 
 ## Row LAUNCH-legal-copy (Tier 2; the owner approves the text before it lands)
-**Goal.** Make three public statements true. Agents draft; the owner approves the exact wording in a comment on the pull request, and nobody lands it before that comment exists.
+**Goal.** Make three public statements true. **D-345 (owner, Nov 16):** the owner approved market-standard wording in advance, within D-345 (1)'s limits, so no approval comment is needed. The row lands on green required CI with 1280/390 captures. Anything outside those limits (a price, a new refund right, a new data use) still goes to the owner.
 
 **Current text (verified):**
 1. `client/src/pages/Terms.tsx:23` (summary bullet): "Referrals are always free. Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes." Asks cost referrals (D-173), and packs are sold for money. Section 03 of the same page is already correct.
@@ -71,6 +71,8 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 - In scope: `docs/BUGFREE_GATE.md` and `docs/qa/` (new evidence files only).
 - Out of scope: any code. File each defect found as its own row through a docs-only pull request (D-200 (2)).
 
+**Recoverability-only exception, October 31, 2026.** The additive `docs/qa/launch-live-qa-harness/` folder may persist the reviewed non-secret rebuilt anonymous `/plans` scripts, dependency lock, README and hash manifest, with a separate recovery guide. This exception permits local reconstruction, dependency installation with scripts disabled, hash and syntax checks only. It grants no new production probe, sign-in, OTP, account, checkout, payment, settings or data action. Do not run the scripts merely because they are now persisted: they make live website requests and need an applicable current test scope. No application code, existing evidence or row ownership/status changes. `LAUNCH-live-qa` stays `owner`, #710 stays draft, and D-216 / #709 and every missing signed-in, crawl, API and E2E leg remain open. This is a rebuilt subset, not an identical restoration or QA pass.
+
 **Never:**
 - pay, or pass the hosted payment form (D-065);
 - request a code for an inbox you cannot read.
@@ -103,3 +105,6 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
   - switching off the reviewer password login after the Razorpay review.
 
 ## Status
+
+- **2026-10-25, LAUNCH-legal-copy waits on the owner (unblock ruling by Qoder · bbc5, D-200 (2)).** The checks half of Cue GPT · 5588's block is stale: typecheck, tests, build and Workers Builds are all green on `c8ecc53a`. The owner-approval half stands and only the owner can clear it (D-200 (6), the lasting D-001 rule). One correction is needed first: in `CancellationPolicy.tsx` bullet 3, "the referral comes back if you withdraw it then" is false - a claimed-then-passed request withdraws with no refund (`withdrawCompanyReferralRequest` sets `creditRefunded` false) and D-147 keeps a declined referral spent, so this row's own proposed wording is the true one: "After a verified employee claims or declines the request, the referral stays used." The owner approves or amends the exact wording in a comment on PR #659; then a session applies it, runs the gate, adds the 1280/390 captures and lands.
+- LAUNCH-marker-ci-skip: done — 0697edfc (code head; landed under D-082 with this status commit on top). Job-level `if:` on `check`, `test` and `build` skips `pull_request` events whose head ref starts with `agent/reports/`, `agent/review/`, `agent/heartbeat/` or `agent/architect/`, or equals `agent/queue/landing`; `push` to main and task branches (`agent/queue/<task>`, `agent/<model>/<task>`) are unaffected because the condition is `pull_request`-only. Built by an Instinct coordinator session (PR #658). Landed by DeepSeek V4.1 Flash · c302, who verified rather than took it on trust: `scripts/ciMarkerSkip.test.ts` is red on main's workflow (3 failed / 3 passed) and 6/6 green on this one; `scope-check --branch` reports 2 owned paths with every change inside them; the conflict probe prints 0 against `main` and against `agent/queue/launch-legal-copy`; `tsc --noEmit` clean on the merged head. Required CI green on `06e20175` and re-run on the merged head.

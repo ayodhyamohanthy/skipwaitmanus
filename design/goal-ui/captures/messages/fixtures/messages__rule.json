@@ -1,0 +1,107 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/dms/threads",
+      "status": 200,
+      "body": {
+        "threads": [
+          {
+            "counterpartUserId": 22,
+            "counterpartLabel": "Referrer \u00b7 acme.com",
+            "lastMessageBody": "Thanks, I have shared the job link.",
+            "lastMessageIsMine": true,
+            "lastMessageAt": "2026-10-08T02:40:00.000Z",
+            "unreadCount": 0
+          },
+          {
+            "counterpartUserId": 33,
+            "counterpartLabel": "Asha R. \u00b7 Wipro",
+            "lastMessageBody": "Happy to refer you. Can you send your latest resume?",
+            "lastMessageIsMine": false,
+            "lastMessageAt": "2026-10-08T04:10:00.000Z",
+            "unreadCount": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/dms/threads/22",
+      "status": 200,
+      "body": {
+        "thread": {
+          "counterpartUserId": 22,
+          "counterpartLabel": "Referrer \u00b7 acme.com",
+          "messages": [
+            {
+              "id": 5,
+              "body": "Thanks, I have shared the job link.",
+              "createdAt": "2026-10-08T02:40:00.000Z",
+              "isMine": true
+            }
+          ]
+        },
+        "sendBlock": {
+          "reason": "referrer_acceptance_required",
+          "error": "Messages with a referrer open after they accept your request.",
+          "senderRole": "member"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 2500
+    },
+    {
+      "click": "text=Referrer \u00b7 acme.com"
+    },
+    {
+      "wait": 800
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { lazy, Suspense } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth, useUser } from "@/_core/auth";
@@ -18,7 +20,7 @@ type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; reques
 
 const alertClass = "rounded-[8px] border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive";
 
-export default function Referrer() {
+function KitReferrer() {
   const [, go] = useLocation();
   const params = new URLSearchParams(useSearch());
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -172,4 +174,17 @@ export default function Referrer() {
       {signInOpen && !isSignedIn && isLoaded !== false ? <ReferrerSignInDialog inviteCompany={inviteCompany || undefined} inviteCode={inviteCode || undefined} onClose={() => { setSignInOpen(false); setSignInDismissed(true); }} /> : null}
     </ReferrerWorkspace>
   );
+}
+
+const GoalReferrer = lazy(() => import("./goal/referrer/GoalReferrer"));
+
+export default function Referrer() {
+  if (goalSurfaceOn("referrer")) {
+    return (
+      <Suspense fallback={null}>
+        <GoalReferrer />
+      </Suspense>
+    );
+  }
+  return <KitReferrer />;
 }
