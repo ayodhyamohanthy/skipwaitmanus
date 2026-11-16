@@ -144,6 +144,28 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
   });
 });
 
+describe("the legacy single credit stays retired while legacy pack sales are paused (PR #666 review F1)", () => {
+  it("refuses a direct per-credit checkout even when no pack is on sale in that currency, and starts nothing", async () => {
+    // Oct 25 2026 freeze: with every pack archived at the provider, the old rule
+    // ("retired once any pack is on sale") would re-open the single credit. The
+    // pause must keep it closed: no checkout and no payment intent.
+    const { app, spies } = harness();
+    spies.isAvailable.mockReturnValue(false);
+    for (const body of [
+      { itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" },
+      { itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" },
+    ]) {
+      const response = await request(app).post("/api/chargebee/checkout").send(body);
+      expect(response.status, body.itemPriceId).toBe(410);
+      expect(response.body.code).toBe("single_credit_retired");
+      expect(response.body.error).toContain("Nothing has been charged");
+    }
+    expect(spies.createCheckout).not.toHaveBeenCalled();
+    expect(spies.createPaymentIntent).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
+  });
+});
+
 describe("a referrer payment started before the switch-off keeps working (control)", () => {
   it("recovers and credits a pending referrer checkout on return", async () => {
     const app = express(); app.use(express.json());

@@ -89,4 +89,10 @@ describe("frozen banded plan family (owner freeze Oct 25)", () => {
     expect(COMPANY_PLANS.built).toBe(false);
     expect(COMPANY_PLANS.chargeable).toBe(false);
   });
+
+  it("founding caps exist only where the owner set them: the seeker bands (D-219), never referrer or company plans (PR #666 review F2)", () => {
+    for (const entry of [...REFERRER_PLANS.entries, ...COMPANY_PLANS.entries]) {
+      expect(Object.prototype.hasOwnProperty.call(entry, "foundingCap"), entry.id).toBe(false);
+    }
+  });
 });

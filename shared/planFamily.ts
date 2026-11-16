@@ -123,9 +123,9 @@ export const REFERRER_PLANS = {
   chargeable: false,
   gate: "no charge until verified matching flow exists",
   entries: [
-    { id: "early_to_mid", label: "Early to Mid", monthlyUsdCents: 199, monthlyInrPaise: 9_900, foundingCap: 100 },
-    { id: "mid_to_senior", label: "Mid to Senior", monthlyUsdCents: 399, monthlyInrPaise: 19_900, foundingCap: 100 },
-    { id: "senior_to_executive", label: "Senior to Executive", monthlyUsdCents: 699, monthlyInrPaise: 34_900, foundingCap: 100 },
+    { id: "early_to_mid", label: "Early to Mid", monthlyUsdCents: 199, monthlyInrPaise: 9_900 },
+    { id: "mid_to_senior", label: "Mid to Senior", monthlyUsdCents: 399, monthlyInrPaise: 19_900 },
+    { id: "senior_to_executive", label: "Senior to Executive", monthlyUsdCents: 699, monthlyInrPaise: 34_900 },
   ],
 } as const;
 
@@ -141,8 +141,8 @@ export const COMPANY_PLANS = {
   chargeable: false,
   gate: "no charge until built and tested",
   entries: [
-    { id: "team", label: "Team", monthlyUsdCents: 9_900, monthlyInrPaise: 499_900, seats: 3, activeOpenings: 10, foundingCap: 25 },
-    { id: "growth", label: "Growth", monthlyUsdCents: 19_900, monthlyInrPaise: 999_900, seats: 10, activeOpenings: 50, foundingCap: 10 },
+    { id: "team", label: "Team", monthlyUsdCents: 9_900, monthlyInrPaise: 499_900, seats: 3, activeOpenings: 10 },
+    { id: "growth", label: "Growth", monthlyUsdCents: 19_900, monthlyInrPaise: 999_900, seats: 10, activeOpenings: 50 },
     { id: "scale", label: "Scale", quoteOnly: true },
   ],
 } as const;

@@ -133,8 +133,12 @@ export const SINGLE_CREDIT_RETIRED_ERROR = "Single credits are replaced by credi
  * The ₹99/$1 single credit retires in a currency once any credit pack is on sale
  * in it (D-036). A computed switch (D-042): the server answers from the live
  * availability probe, so a pack that goes off sale re-opens the single credit.
+ * While the Oct 25 2026 legacy-pricing pause holds it stays retired whatever the
+ * probe says: archiving every pack at the provider (D-214 (3)) must never re-open
+ * a legacy purchase (PR #666 review F1). `packSalesPaused` is the tests' override.
  */
-export function singleCreditRetired(args: { currency: CatalogCurrency; anyPackAvailable: boolean }): boolean {
+export function singleCreditRetired(args: { currency: CatalogCurrency; anyPackAvailable: boolean; packSalesPaused?: boolean }): boolean {
+  if (args.packSalesPaused ?? LEGACY_PACK_SALES_PAUSED) return true;
   return args.anyPackAvailable;
 }
 
