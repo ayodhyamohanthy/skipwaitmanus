@@ -29,6 +29,9 @@ export default function GoalAdminPayments() {
   const [recent, setRecent] = useState<ReviewPayment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // True only after both review reads answered: "Queue clear" is a verified
+  // state, never the default of an empty local list (review finding F1 on pull request 1204).
+  const [queueLoaded, setQueueLoaded] = useState(false);
   const [refundTarget, setRefundTarget] = useState<ReviewPayment | null>(null);
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState("");
@@ -49,6 +52,7 @@ export default function GoalAdminPayments() {
       if (!recentResponse.ok) throw new Error(recentPayload.error || "We could not load recent payments");
       setPayments(queuePayload.payments || []);
       setRecent(recentPayload.payments || []);
+      setQueueLoaded(true);
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load the payment review queue"); }
     finally { setLoading(false); }
   };
@@ -98,6 +102,13 @@ export default function GoalAdminPayments() {
   // row that a reload removed must not keep the page's next step ghost.
   const rowDialogOpen = payments.some(payment => openRowDialogs.has(payment.id));
   const oldest = payments[0] ?? null;
+  const queueStatus = error
+    ? { status: "withdrawn" as const, label: "Queue not loaded" }
+    : loading || !queueLoaded
+      ? { status: "queue_review" as const, label: "Checking the queue" }
+      : payments.length
+        ? { status: "waiting" as const, label: `${payments.length} under review` }
+        : { status: "accepted" as const, label: "Queue clear" };
   const nextStep = error
     ? { label: "Reload the queue", reason: "The review queue is not answering. Reload it before deciding anything.", onClick: () => { void load(); }, busy: false }
     : oldest
@@ -127,10 +138,10 @@ export default function GoalAdminPayments() {
       <section aria-label="Payments under review" className="mt-6 border border-g-hairline bg-g-surface">
         <div className="flex items-center justify-between gap-3 border-b border-g-hairline p-4">
           <h2 className="text-g-label text-g-ink">Flagged discrepancies</h2>
-          <GoalStatus status={payments.length ? "waiting" : "accepted"} label={payments.length ? `${payments.length} under review` : "Queue clear"} />
+          <GoalStatus status={queueStatus.status} label={queueStatus.label} />
         </div>
         {loading ? <GoalSkeletonRows density="queue" count={3} className="p-4" /> : null}
-        {!loading && !error && !payments.length ? <GoalEmptyState title="Nothing needs review right now." body="Reconciled rows move out of this queue." /> : null}
+        {queueLoaded && !loading && !error && !payments.length ? <GoalEmptyState title="Nothing needs review right now." body="Reconciled rows move out of this queue." /> : null}
         <ul>{payments.map(payment => <GoalPaymentReviewRow key={payment.id} payment={payment} submit={submitReview} onReload={() => { void load(); }} onConfirmingChange={open => setOpenRowDialogs(current => { const next = new Set(current); if (open) next.add(payment.id); else next.delete(payment.id); return next; })} />)}</ul>
       </section>
       <section aria-label="Recent credited payments" className="mt-6 border border-g-hairline bg-g-surface">
@@ -149,7 +160,7 @@ export default function GoalAdminPayments() {
             </li>
           ))}</ul>
         ) : null}
-        {!loading && !error && !recent.length ? <GoalEmptyState title="No completed payments yet." body="Credited credit-pack payments appear here for refunds." /> : null}
+        {queueLoaded && !loading && !error && !recent.length ? <GoalEmptyState title="No completed payments yet." body="Credited credit-pack payments appear here for refunds." /> : null}
       </section>
       {refundTarget ? (
         <div role="dialog" aria-modal="true" aria-label="Confirm credit revocation" className="fixed inset-0 z-50 grid place-items-center bg-g-canvas/80 p-4">
