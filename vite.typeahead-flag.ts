@@ -1,11 +1,11 @@
 // D-174-seeker-journey-build.typeahead-flip: pure resolver for the company-typeahead
 // build flag. Dependency-free so vite.config.ts and its test import it with no side effects.
-export interface CompanyTypeaheadFlagEnv {
+export type CompanyTypeaheadFlagEnv = {
   WORKERS_CI?: string | undefined;
   WORKERS_CI_BRANCH?: string | undefined;
   GITHUB_REF_NAME?: string | undefined;
   VITE_COMPANY_TYPEAHEAD?: string | undefined;
-}
+} & Record<string, string | undefined>;
 
 export function resolveCompanyTypeaheadFlag(env: CompanyTypeaheadFlagEnv): "true" | "false" {
   const rawBranch = env.WORKERS_CI_BRANCH ?? env.GITHUB_REF_NAME;
