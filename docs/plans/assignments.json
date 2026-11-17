@@ -7750,6 +7750,23 @@
         "scripts/nextTaskAvoidRepeat.test.ts"
       ],
       "note": "Packet section 2 (D-321 rule 11 dead end). argsOf stores out[a.slice(2)] = v, so --avoid A --avoid B keeps only B, while every hand-out says to re-run 'with --avoid <id> added'; picks then alternate forever. The Qoder 9c29 D-089 report attributed this to nextTaskCore.mjs:955, which is not the cause. Change argsOf's avoid parse and the one hand-out sentence only; every other flag keeps last-wins. Shares next-task.mjs and nextTaskText.mjs with open picker rows: no dependency (D-314), the later lander merges main."
+    },
+    {
+      "id": "PROCESS-sol-full-edit",
+      "title": "GPT-6.1 Sol sessions may edit any file: scope-check skips owns violations on a branch a GPT-6.1 Sol session claimed (D-356)",
+      "row": "D-134",
+      "packet": "docs/plans/PROCESS-sol-full-edit.md",
+      "tier": 2,
+      "lane": "scope-check",
+      "branch": "agent/queue/process-sol-full-edit",
+      "status": "todo",
+      "syncedTo": "D-356",
+      "dependsOn": [],
+      "owns": [
+        "scripts/scope-check.mjs",
+        "scripts/scopeCheck.test.ts"
+      ],
+      "note": "Build docs/plans/PROCESS-sol-full-edit.md. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3))."
     }
   ]
 }
