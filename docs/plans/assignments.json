@@ -336,7 +336,7 @@
       "tier": 2,
       "lane": "picker-path-tier",
       "branch": "agent/queue/picker-path-tier-review",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-353",
       "dependsOn": [
         "PROCESS-session-review-independence"
@@ -381,8 +381,8 @@
       "tier": 2,
       "lane": "gate-tier-classifier",
       "branch": "agent/queue/gate-tier-classifier-gaps",
-      "status": "todo",
-      "syncedTo": "D-353",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PROCESS-session-review-independence"
       ],
@@ -390,7 +390,7 @@
         "scripts/tierClassifyCore.mjs",
         "scripts/tierClassify.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 10. Red-first: a neutral first db.ts hunk followed by a credit hunk computes Tier 1; server/creditCycles.ts and server/planCreditCycleJob.ts compute Tier 1."
+      "note": "Done effective on PR #1247 merge (GPT-6.1 Sol · fa4c), implementation 298e0edf. Every db.ts hunk is classified before Tier 1 reasons are deduplicated; both credit-cycle modules are explicit Tier 1 money. Red-first 3 failed / 17 passed; focused 87/87. Fresh full gate on 0bbb9afb: 7538 passed / 18 skipped, typecheck/build/postbuild passed; initial CI 44028654683 also passed with 8/8 E2E. Main c17d3f7a integrated in 94f50e59; integration typecheck and 186/186 focused tests passed. Historical timeout and isolated fixture pass are retained separately in the packet. Final-candidate required CI and protected merge remain required. Decisions checked through D-356; no product runtime change."
     },
     {
       "id": "PRICING-banded-oct25",
@@ -1206,7 +1206,7 @@
       "tier": 1,
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
-      "status": "todo",
+      "status": "in-review",
       "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -1435,7 +1435,7 @@
       "tier": 1,
       "lane": "d048-release-sign-in",
       "branch": "agent/queue/d048-r-sign-in",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-349",
       "dependsOn": [
         "D-048-p3-signin"
@@ -1451,7 +1451,7 @@
         "client/src/pages/signInGoal.test.tsx",
         "design/goal-ui/captures/sign-in/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-signin, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-349 (launch mode): done by D-048-p3-signin's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-signin, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-349 (launch mode): done by D-048-p3-signin's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off. Done Nov 17 under D-349 (1): D-048-p3-signin's build pull request adds \"sign-in\" to RELEASED and to the exact-list pin in the same commit that sets this row done, so no separate release PR is needed.",
       "epic": "D-048-p3"
     },
     {
@@ -5764,6 +5764,17 @@
       "owns": [
         "server/reviewDeliveryRetry.ts",
         "server/reviewDeliveryRetry.test.ts",
+        "server/reviewDeliveryAlerts.ts",
+        "server/db.ts",
+        "drizzle/schema.ts",
+        "drizzle/deploy/0122_review_delivery_owner_alerts.sql",
+        "server/schemaReconcile.ts",
+        "e2e/review-email-retry.e2e.ts",
+        "AGENTS.md",
+        "docs/BRIEF.md",
+        "docs/DECISIONS.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
         "server/scheduledJobRegistry.ts (switch only)",
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
@@ -7157,7 +7168,7 @@
       "tier": 1,
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-fix-post-binding"
