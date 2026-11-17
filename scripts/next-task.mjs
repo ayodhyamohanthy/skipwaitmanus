@@ -7,6 +7,7 @@
 //   node scripts/next-task.mjs                                  # show the next task
 //   node scripts/next-task.mjs --claim "<your model name>"      # take it (or get your own back); prints your session name
 //   node scripts/next-task.mjs --claim "<session name>" --avoid <id>[,<id>]   # never hand me these tasks (my own instruction or a missing tool)
+//   node scripts/next-task.mjs --claim "<session name>" --task <id>   # only that task under the normal rules, or why not (D-353 (2))
 //   node scripts/next-task.mjs --heartbeat --as "<session name>"       # keep your claim alive
 //   node scripts/next-task.mjs --report green|red|blocked|review|landed --task <id> --as "<session name>" --note "<one line>"
 //   node scripts/next-task.mjs --status                                # the board: every priority, green or not
@@ -16,7 +17,7 @@
 //
 // Exit codes: 0 work to do (claimed, your own work, CEO review), 1 error,
 // 2 STOP (GitHub unreadable), 3 SYNC FIRST (your work is not on origin),
-// 4 WAIT, 5 NOTHING TO PICK.
+// 4 WAIT, 5 NOTHING TO PICK, 6 requested task NOT ELIGIBLE (nothing claimed).
 //
 // It reads the task list from origin/main, never a local copy, and never
 // switches branches or touches the working tree. It does read the local clone
@@ -49,7 +50,7 @@ const LIST = "docs/plans/assignments.json";
 const REGISTER = "docs/DECISIONS.md";
 const LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main";
 const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "resync", "unblock", "continue"];
-const EXIT = { stop: 2, wait: 4, none: 5 };
+const EXIT = { stop: 2, wait: 4, none: 5, ineligible: 6 };
 const REPORTS = "agent/reports/log";
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 // PROCESS-provenance-loader-bounds: both wrappers read Git through the one shared
@@ -95,6 +96,20 @@ export function argsOf(argv) {
   if (out.report && !REPORT_STATUSES.includes(out.report)) fail(`--report is one of ${REPORT_STATUSES.join(", ")}`);
   if (out.report && (!out.task || !out.as)) fail("--report needs --task <id> and --as \"<session name>\"");
   return out;
+}
+
+/**
+ * PICKER-claim-task (D-353 (2)): the answer to `--claim "<name>" --task <id>` when that task cannot be handed to this
+ * session now: the reason the picker recorded for it. Nothing is claimed.
+ */
+export function renderIneligible(pick, who) {
+  const id = pick.task?.id ?? pick.id ?? "that task";
+  return [
+    `NEXT: NOT ELIGIBLE — ${id}${pick.task?.title ? ` — ${pick.task.title}` : ""}`,
+    `${pick.reason}.`,
+    `Nothing was claimed. Run \`node scripts/next-task.mjs --claim "${who}"\` without --task to be handed the next eligible task, or ask again with --task once this changes.`,
+    "",
+  ].join("\n");
 }
 
 /** The GitHub CLI's token, when an agent is signed in with it; never printed. */
@@ -596,7 +611,8 @@ async function main() {
     const now = Date.now();
     const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
-    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register });
+    // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
     if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not.
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
@@ -611,8 +627,12 @@ async function main() {
       console.log("NEXT: SYNC FIRST\nYour own work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
       process.exit(3);
     }
+    if (pick.kind === "ineligible") {
+      console.log(renderIneligible(pick, who ?? "<your session name>"));
+      process.exit(EXIT.ineligible);
+    }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
-      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register }));
+      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register, requestedTask: args.task }));
       process.exit(EXIT[pick.kind] ?? 0);
     }
     if (args.provenance) {

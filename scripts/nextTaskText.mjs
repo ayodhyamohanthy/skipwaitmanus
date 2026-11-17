@@ -229,16 +229,17 @@ export function renderBoard(rows) {
   return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
-/** The steps for one pick. ctx: { who, date, claimed, register } (claimed = this run took the lock or holds it). */
-function renderPickLegacy(pick, { who, date, claimed, register = null }) {
-  const body = pickText(pick, { who, date, claimed, register });
+/** The steps for one pick. ctx: { who, date, claimed, register, requestedTask } (claimed = this run took the lock or holds it). */
+function renderPickLegacy(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const body = pickText(pick, { who, date, claimed, register, requestedTask });
   // D-202: every pick opens with the newest decisions, so no agent works from an old packet unseen.
   const block = decisionsBlock(pick, register);
   return block ? `${block}\n\n${body}` : body;
 }
 
-function pickText(pick, { who, date, claimed, register = null }) {
-  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"\n`;
+function pickText(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const restriction = requestedTask ? ` --task ${requestedTask}` : "";
+  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"${restriction}\n`;
   switch (pick.kind) {
     case "stop": return head("STOP", [pick.reason, "Tell the owner what failed; do not choose work yourself."]);
     case "wait": return head("WAIT", waitLines(pick, who));
