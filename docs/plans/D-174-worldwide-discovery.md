@@ -15,7 +15,7 @@
 1. **Discovery adapter** (`server/companyDiscovery.ts`): Wikidata primary — `wbsearchentities` for candidates, `wbgetentities` for official website (P856) and logo (P154); Wikipedia OpenSearch assists spelling/ranking. Free and keyless only; a descriptive User-Agent per Wikidata policy; in-memory TTL cache (no migration, no new table).
 2. **Contract** (`shared/companies.ts`): `GET /api/companies/search` gains a `discovered` array next to `companies`. Directory hits stay first and unchanged; discovered entries are `{ name, domain, logoUrl?, source }`, deduped against directory domains. Old clients strip the unknown key, so the change is backward compatible.
 3. **Identity**: keyed by the official domain from the source. Entities without an official website are not shown as companies. On ambiguity or low confidence the client shows the candidate (name + domain) for confirmation; the domain is never silently guessed.
-4. **Client** (`Explore.tsx` typeahead, `useCompanySearch.ts`): everything lands dark — `COMPANY_TYPEAHEAD_ENABLED` stays `false` and the switch line stays with `D-174-seeker-journey-build`. The recorded release gate (D-223 (3), ruling 10: preview QA, independent review, the CEO's sign-off) is preserved: no original explicitly supersedes it for the typeahead (Oct 21 predates the Nov 1 ruling; Nov 8 is generic ship-it, not an explicit waiver). The recorded release gate (D-223 (3): preview QA, a review and the CEO's sign-off) is preserved unchanged and this row interprets or waives nothing in it. The approval path for the flip is unresolved - the mandate originals that would let a CEO-capacity session sign off are not on the user's channel - so who signs off stays open pending source evidence, resolved through main, with the user asked in plain outcome terms if needed. Until then the switch stays off. Under the flag, directory suggestions behave as today (open the door). Discovered suggestions show name + domain (+ logo when the source has one, degrading to an initial under the current CSP) and open a confirmation card: the honest state — no door at this company yet, the pick can't start an ask by itself — with company-named paste-a-job-link and open-the-door CTAs. No fake doors.
+4. **Client** (`Explore.tsx` typeahead, `useCompanySearch.ts`): everything landed dark — `COMPANY_TYPEAHEAD_ENABLED` stayed `false` and the switch line stayed with `D-174-seeker-journey-build`. This paragraph's gate discussion is the PRE-FLIP record: the recorded release gate (D-223 (3), ruling 10: preview QA, independent review, the CEO's sign-off) was preserved and no original explicitly superseded it then (Oct 21 predates the Nov 1 ruling; Nov 8 was generic ship-it, not an explicit waiver). The approval path was unresolved - the mandate originals that would let a CEO-capacity session sign off were not on the user's channel. Resolution: the owner's own 2026-11-17 defect directive made the signer question moot (he instructed the outcome himself), and the 2026-11-18 release flip in section 8 enabled production on that authority after the dark build's independent review. Under the flag, directory suggestions behave as today (open the door). Discovered suggestions show name + domain (+ logo when the source has one, degrading to an initial under the current CSP) and open a confirmation card: the honest state — no door at this company yet, the pick can't start an ask by itself — with company-named paste-a-job-link and open-the-door CTAs. No fake doors.
 5. **Honest failure**: a provider error or timeout never erases directory results and never presents as "no such company"; the search answers with directory hits and the discovery stage simply adds nothing. A query every source misses keeps today's no-match path (paste a job link / Request a company); a typed name alone is never presented as discovery.
 6. **Copy honesty**: the UI says "search any company", never "every company"; Wikidata skews to large/notable companies.
 
@@ -149,3 +149,47 @@ that limit is reported, not hidden.
    390: directory, tata, google, no-match, degraded, card handoff (pick shown
    as context on /ask), unknown-company job link, and a real-provider round,
    on a flag-on preview build.
+8. RELEASE FLIP (2026-11-18, second PR of the flip row): production enable.
+   The resolver now builds ON for CI builds of main by default; the explicit
+   variable overrides in either direction (VITE_COMPANY_TYPEAHEAD=false in
+   the build env plus a redeploy, or a revert, rolls back - no runtime or
+   dashboard toggle exists). Authority: the owner's own defect report on
+   2026-11-17 22:17 IST (WhatsApp: the typed company is still not found; the
+   search was meant to reach companies worldwide). The D-223 (3) signer
+   question (which session signs off) is moot once the owner instructs the
+   outcome directly; no session asserts signing capacity. Gate evidence
+   before this enable: independent review at exact heads (PRs #1264 and
+   #1265); the preview QA captures listed in section 7 and the post-merge
+   production checks (flag still off, parser clean-miss fix live) are
+   coordinator-reported evidence, not reviewer-verified. Coverage stays
+   qualified: discovery is English-Wikipedia/Wikidata-based, so it is NOT
+   any-company-anywhere - misses keep the paste-a-job-link path with
+   employer confirmation at send, and the actual referral outcome for an
+   uncovered company (a waiting ask, nothing spent) is unverified live.
+   Section 7 above is the pre-flip history and its "activation stays held"
+   lines describe that period, not the current state.
+9. Credit/coverage facts at enable time, with their verification levels:
+   reviewer-verified on the create path (server/db.ts): the employer domain
+   resolves before the wallet is touched, available coverage is computed
+   under lock, a waiting (uncovered) ask spends nothing, notifies nobody
+   and holds no open slot, and a covered ask spends inside the transaction
+   with full rollback on failure. Comment-level, NOT reviewer-verified: the
+   delivery-time spend at first visibility and the withdraw/expiry refund
+   mechanics. Known limit, not a blocker: with ASK_LEVEL_COST off (current
+   default) the pre-send quote on an uncovered company shows the flat
+   1-credit line while the actual charge at send is zero, and a coverage
+   flip between quote and commit keeps today's flat-charge behavior -
+   pre-existing, over-discloses cost, follow-up queued to the
+   composer-neutral row rather than flipped unreviewed here. Wikimedia:
+   server/companyDiscovery.ts sends a descriptive User-Agent with a contact
+   URL ("SkipWait/1.0 (https://skipwait.me; company discovery)"), matching
+   what Wikimedia's User-Agent policy asks for; that is not blanket policy
+   compliance and carries no throttle guarantee - an earlier live 429
+   remains a known risk. Typed-query privacy: typed company names reach only
+   our own /api/companies/search; the Wikimedia calls are server-side and
+   carry the query text with no user identity, cookies or account data, and
+   the client never calls Wikimedia directly. The /privacy processor list
+   (D-345) names Wikipedia and Wikidata with exactly this flow in the same
+   flip, so the disclosure lands before enable rather than as a deferred
+   gap (scope widened in the registry for TrustPrivacy.tsx and its test,
+   overlaps with LAUNCH-legal-copy and D-093-language reported).
