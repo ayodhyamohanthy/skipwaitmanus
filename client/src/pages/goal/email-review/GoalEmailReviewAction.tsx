@@ -88,6 +88,19 @@ function StepUpPanel({ onVerified }: { onVerified: () => void }) {
   useEffect(() => {
     if (access?.verified && !access.codeRequired) onVerified();
   }, [access?.verified, access?.codeRequired, onVerified]);
+  // D-057-stepup-access-error: a failed or unreadable access read is a retryable error, never an
+  // endless "Checking…" (a failed verdict check is never the gate; silent failure is a defect).
+  useEffect(() => {
+    if (accessQuery.error) captureClientError(accessQuery.error, { source: "email-review-step-up-access" });
+  }, [accessQuery.error]);
+  if (accessQuery.isError && !accessQuery.isFetching) {
+    return (
+      <div role="alert" className="mt-4">
+        <p className="text-g-small text-g-ink-2">We couldn’t check your work email. Nothing was recorded, and your review link still works.</p>
+        <GoalButton variant="primary" size="sm" className="mt-3" onClick={() => { void accessQuery.refetch(); }}>Try again</GoalButton>
+      </div>
+    );
+  }
   if (!access || accessQuery.isFetching) return <p className="mt-4 text-g-small text-g-ink-2">Checking your work email…</p>;
   if (!access.verified) return <p role="alert" className="mt-4 text-g-small text-g-ink-2">This review link needs a verified work email. Use the link from the notification sent to your work address.</p>;
   return <GoalWorkEmailStepUp access={access} />;
