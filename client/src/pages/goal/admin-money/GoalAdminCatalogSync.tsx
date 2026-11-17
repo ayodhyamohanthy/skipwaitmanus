@@ -12,6 +12,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { catalogSyncApplyResponseSchema, catalogSyncDryRunSchema, type CatalogSyncApplyResponse, type CatalogSyncDryRun } from "@shared/catalogSync";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
 import { MONEY_GOAL_LINE, catalogCountLabel } from "./adminMoneyCopy";
+import { GoalCatalogPlanDetails } from "./GoalCatalogPlanDetails";
 
 export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
 
@@ -134,6 +135,8 @@ export default function GoalAdminCatalogSync() {
           <p className="border-t border-g-hairline p-4 text-g-meta text-g-ink-3">Plan {dryRun.planHash.slice(0, 12)}…</p>
         </section>
       ) : null}
+      {/* Every object the apply would create, every mismatch and every blocked price, before the typed-site confirm (review F2). */}
+      {dryRun ? <GoalCatalogPlanDetails dryRun={dryRun} /> : null}
       {report ? (
         <section role="status" className="mt-6 border border-g-hairline bg-g-surface p-4">
           <GoalStatus status={report.outcome === "applied" ? "accepted" : report.outcome === "failed" ? "expired" : "waiting"} label={`Sync ${report.outcome.replaceAll("_", " ")}`} />
@@ -141,7 +144,7 @@ export default function GoalAdminCatalogSync() {
         </section>
       ) : null}
       {dryRun ? (
-        <GoalNextStep reason="Apply the same plan you just read. Type the site exactly to confirm; nothing changes before that.">
+        <GoalNextStep reason={`Apply the same plan you just read: it creates the ${dryRun.toCreate.length} object${dryRun.toCreate.length === 1 ? "" : "s"} listed above on the ${dryRun.environment} site and cannot change an existing price. Type the site exactly to confirm; nothing changes before that.`}>
           <label className="mt-3 block text-g-label text-g-ink">Type the site to confirm
             <input aria-label="Type the site to confirm" value={typedSite} onChange={event => setTypedSite(event.target.value)} placeholder={dryRun.site} className="mt-2 block w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink" />
           </label>
