@@ -14,6 +14,14 @@ import type { TokenRole } from "@/lib/tokens";
 
 type Recovery = { state: "checking" | "pending" | "missing" | "error" | "requires_review" | "credited"; count?: number };
 
+/**
+ * One confirmation attempt — token lookup, the recovery request and its body — must settle inside this
+ * window (D-048-p3-premium review F1). A seeker whose network stalls at any leg sees the help state
+ * instead of "We’re confirming your payment." forever, keeps the stored checkout reference, and the
+ * three-attempt cap bounds automatic retries to about a minute in total.
+ */
+const CONFIRM_DEADLINE_MS = 15000;
+
 export function usePremiumPayment(role: TokenRole, pending: boolean, route: PaymentRoute, quantity: number, canBuy: boolean) {
   const auth = useAuth();
   const fetchToken = usePersistFn(auth.getToken);
@@ -48,22 +56,37 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
     let inFlight = false;
     let settled = false;
     let retryTimer: number | undefined;
+    let cancelAttempt: (() => void) | undefined;
     const publish = (result: Recovery) => { if (active && currentAccount.current === account) setRecovery({ account, result }); };
     const reconcile = async () => {
       if (!active || inFlight || settled || attempts >= 3) return;
       window.clearTimeout(retryTimer);
       inFlight = true;
       attempts += 1;
-      try {
+      // The deadline covers every leg of this attempt. On expiry the request is aborted and its late
+      // result is ignored, so a stalled confirmation can never publish over the help state.
+      const controller = new AbortController();
+      let stopAttempt: ((reason: "timeout" | "cancelled") => void) | undefined;
+      const stopped = new Promise<"timeout" | "cancelled">(resolve => {
+        stopAttempt = reason => { controller.abort(); resolve(reason); };
+      });
+      const deadline = window.setTimeout(() => stopAttempt?.("timeout"), CONFIRM_DEADLINE_MS);
+      cancelAttempt = () => stopAttempt?.("cancelled");
+      const confirm = async () => {
         const token = await fetchToken();
-        if (!active || currentAccount.current !== account) return;
+        if (!active || currentAccount.current !== account || controller.signal.aborted) return null;
         const response = await apiFetch("/api/chargebee/credit-recovery", {
-          method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          method: "POST", credentials: "include", signal: controller.signal,
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ hostedPageId, role }),
         });
         if (!response.ok) throw new Error("Recovery unavailable");
-        const result = premiumRecoverySchema.parse(await response.json());
-        if (!active || currentAccount.current !== account) return;
+        return premiumRecoverySchema.parse(await response.json());
+      };
+      try {
+        const result = await Promise.race([confirm(), stopped]);
+        if (result === "timeout") throw new Error("Payment confirmation timed out");
+        if (!result || result === "cancelled" || !active || currentAccount.current !== account || controller.signal.aborted) return;
         if (result.status === "credited") {
           settled = true;
           publish({ state: "credited", count: result.tokenCount });
@@ -80,6 +103,8 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
           publish({ state: "error" });
         }
       } finally {
+        window.clearTimeout(deadline);
+        cancelAttempt = undefined;
         inFlight = false;
         // A slow request must not consume the next retry's timer slot.
         if (active && currentAccount.current === account && !settled && attempts < 3) {
@@ -91,7 +116,7 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
     void reconcile();
     const focus = () => { void reconcile(); };
     window.addEventListener("focus", focus);
-    return () => { active = false; window.clearTimeout(retryTimer); window.removeEventListener("focus", focus); };
+    return () => { active = false; window.clearTimeout(retryTimer); cancelAttempt?.(); window.removeEventListener("focus", focus); };
   }, [account, auth.isLoaded, auth.isSignedIn, client, fetchToken, pending, role]);
 
   const purchaseOwner = useRef<string | null>(null);
