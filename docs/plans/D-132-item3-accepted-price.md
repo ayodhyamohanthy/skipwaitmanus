@@ -246,4 +246,4 @@ Until then the composer keeps today's behaviour, and nothing in this packet clai
 
 ## Status
 These rows share the §3b row D-132, so their status lines go here (D-134).
-- D-132-item3: in progress — Claude Code · cbbc — 2026-11-17 — branch agent/queue/d132-item3
+- D-132-item3: review — agent/queue/d132-item3 — 68f5565d — DeepSeek V4.1 Flash Free · c744 — 2026-11-18 — TAKE OVER of GPT-6.1 Sol · d80f (quiet since 2026-11-17T17:42Z); steps 0-3 preserved, step 4 and the gate are this session's. Evidence — D-132-item3 — DeepSeek V4.1 Flash Free · c744 — 2026-11-18. Branch agent/queue/d132-item3 @ 68f5565d, merged with origin/main 9fca1276 (the status commit above it is docs-only). Red first in step 4: 6 failing (4 quote cases, the wiring pin, the 409 map and the expectedCost parse) before the routes. Gate on 68f5565d: check 0 · token audit OK · migration lint 0 · deploy triggers 0 · focused 15 files / 217 tests passed · full vitest 745 files / 7801 passed / 18 skipped / 1 load-flake (classifyCiChange H1, untouched) green alone · build 0. No caller sends expectedCost yet, so no live verification is due (packet §8). Tier 1: one independent review by another session.
