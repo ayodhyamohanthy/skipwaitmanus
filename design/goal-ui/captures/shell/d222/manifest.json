@@ -1,0 +1,170 @@
+[
+  {
+    "phase": "after",
+    "scenario": "seeker-ready",
+    "path": "/explore",
+    "width": 1280,
+    "file": "after-seeker-ready-1280.png",
+    "pill": {
+      "tag": "A",
+      "text": "9 referrals left",
+      "href": "/plans",
+      "label": "9 referrals left. Open plan details",
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerBefore": 0,
+    "headerAfter": 0
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-ready",
+    "path": "/verify",
+    "width": 1280,
+    "file": "after-referrer-ready-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "9 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": []
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-zero",
+    "path": "/verify",
+    "width": 1280,
+    "file": "after-referrer-zero-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "0 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": []
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-error",
+    "path": "/verify",
+    "width": 1280,
+    "file": "after-referrer-error-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "retryRecovered": true
+  },
+  {
+    "phase": "after",
+    "scenario": "seeker-error",
+    "path": "/explore",
+    "width": 1280,
+    "file": "after-seeker-error-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "retryRecovered": true
+  },
+  {
+    "phase": "after",
+    "scenario": "seeker-ready",
+    "path": "/explore",
+    "width": 390,
+    "file": "after-seeker-ready-390.png",
+    "pill": {
+      "tag": "A",
+      "text": "9 referrals",
+      "href": "/plans",
+      "label": "9 referrals left. Open plan details",
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerBefore": 0,
+    "headerAfter": 0
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-ready",
+    "path": "/verify",
+    "width": 390,
+    "file": "after-referrer-ready-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "9 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": []
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-zero",
+    "path": "/verify",
+    "width": 390,
+    "file": "after-referrer-zero-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "0 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": []
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-error",
+    "path": "/verify",
+    "width": 390,
+    "file": "after-referrer-error-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "retryRecovered": true
+  },
+  {
+    "phase": "after",
+    "scenario": "seeker-error",
+    "path": "/explore",
+    "width": 390,
+    "file": "after-seeker-error-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "retryRecovered": true
+  }
+]

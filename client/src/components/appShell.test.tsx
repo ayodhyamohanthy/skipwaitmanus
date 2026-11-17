@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // W0 (D-048 phase 3): the app frame renders inside GoalShell - one navigation
 // (Find, My asks, Inbox, + Referral queue for a verified referrer), the credits
-// pill on seeker pages only (D-055), the account menu carried over unchanged.
+// count on every signed-in route (D-222), the account menu carried over unchanged.
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
@@ -269,6 +269,14 @@ describe("D-222: the person's own referrals-left count on every signed-in shell 
       expect(screen.queryByTestId("goal-credits-pill"), path).toBeNull();
       unmount();
     }
+  });
+
+  it("keeps the count's header pinned at the top while the page scrolls", () => {
+    render(<AppShell><p>page</p></AppShell>);
+    const header = screen.getByRole("banner");
+    expect(header.className).toContain("sticky");
+    expect(header.className).toContain("top-0");
+    expect(header.className).toContain("self-start");
   });
 
   it("never says credit and carries no icon or money glyph, in any state, on either route kind", () => {

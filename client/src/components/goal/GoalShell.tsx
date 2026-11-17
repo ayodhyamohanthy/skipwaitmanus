@@ -1,7 +1,7 @@
 // GoalShell (spec §4.1): rail + top bar on desktop, top bar + bottom bar on
 // phones. The wordmark is a wordmark, not a black block (BRIEF.md §116).
 // Nothing here fetches: credits, verification and menu arrive as props.
-import { Bell, Coins } from "lucide-react";
+import { Bell } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
@@ -22,6 +22,8 @@ export type GoalShellProps = {
   verifiedReferrer: boolean;
   pageTitle: string;
   credits: GoalShellCredits;
+  /** D-222: referrer routes show a person's count without a plan/purchase link. */
+  referralCountLinked?: boolean;
   account: { initials: string; menu?: ReactNode };
   alertsHref: string;
   /** Designer review (W0): signed-out visitors get no bell — /alerts is a dead end without sign-in. */
@@ -32,19 +34,19 @@ export type GoalShellProps = {
   children: ReactNode;
 };
 
-function CreditsPill({ credits, compact }: { credits: GoalShellCredits; compact?: boolean }) {
+function CreditsPill({ credits, compact, linked }: { credits: GoalShellCredits; compact?: boolean; linked: boolean }) {
   if (credits === null) return null;
   if (credits.state === "loading") {
     return (
       <span data-testid="goal-credits-pill" aria-busy="true" className={cn("inline-flex items-center rounded-g-control border border-g-control-edge px-3", compact ? "h-9" : "h-8")}>
-        <Coins aria-hidden="true" className="size-4 text-g-ink-2" strokeWidth={1.75} />
+        <span className="h-3 w-16 rounded-g-control bg-g-surface-selected" />
       </span>
     );
   }
   if (credits.state === "error") {
     // Never show 0 when the balance failed to load.
     return (
-      <span data-testid="goal-credits-pill" className="inline-flex items-center gap-2 text-g-meta text-g-ink-2">
+      <span data-testid="goal-credits-pill" className={cn("inline-flex whitespace-nowrap text-g-meta text-g-ink-2", compact ? "flex-col items-start gap-0" : "items-center gap-2")}>
         Balance didn't load
         <GoalButton size="xs" variant="ghost" onClick={credits.onRetry}>Retry</GoalButton>
       </span>
@@ -54,16 +56,23 @@ function CreditsPill({ credits, compact }: { credits: GoalShellCredits; compact?
   // The count is referrals left, never "credits" (D-173, D-180, D-222, D-344); the
   // phone pill drops "left" but keeps the unit, so it is never a bare number.
   const unit = credits.count === 1 ? "referral" : "referrals";
+  const count = <><GoalNum>{credits.count}</GoalNum><span>{" "}{compact ? unit : `${unit} left`}</span></>;
+  const className = cn("inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge px-3 text-g-meta text-g-ink whitespace-nowrap", compact ? "h-9" : "h-8");
+  if (!linked) {
+    return (
+      <span data-testid="goal-credits-pill" className={className}>
+        {count}{compact ? <span className="sr-only"> left</span> : null}
+      </span>
+    );
+  }
   return (
     <a
       href="/plans"
       data-testid="goal-credits-pill"
       aria-label={`${credits.count} ${unit} left. Open plan details`}
-      className={cn("g-hit inline-flex items-center gap-1.5 rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover", compact ? "h-9" : "h-8")}
+      className={cn(className, "g-hit transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover")}
     >
-      <Coins aria-hidden="true" className="size-4 text-g-ink-2" strokeWidth={1.75} />
-      <GoalNum>{credits.count}</GoalNum>
-      <span>{" "}{compact ? unit : `${unit} left`}</span>
+      {count}
     </a>
   );
 }
@@ -103,7 +112,7 @@ function AccountSlot({ account }: { account: GoalShellProps["account"] }) {
   return account.menu ? <>{account.menu}</> : <Avatar initials={account.initials} />;
 }
 
-export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, alertsHref, showAlerts = true, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
+export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referralCountLinked = true, account, alertsHref, showAlerts = true, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
   const items = goalNavFor(verifiedReferrer);
   return (
     <div
@@ -144,17 +153,18 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       </nav>
 
       {/* Top bar */}
-      <header className={cn("gdesk:col-start-2 gdesk:col-end-[-1] gdesk:row-start-1 flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5")}>
+      <header className={cn("sticky top-0 z-20 self-start gdesk:col-start-2 gdesk:col-end-[-1] gdesk:row-start-1 flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5")}>
         {/* phone: avatar left, no wordmark (BRIEF.md §149) */}
         <span className="gdesk:hidden mx-0.5 flex items-center gap-2">
-          <AccountSlot account={account} />
+          {/* The top bar already has its own alerts control; keep one bell on phones. */}
+          <span className="[&_[data-skipwait-notification-bell]]:hidden"><AccountSlot account={account} /></span>
           {!verifiedReferrer ? <GiveReferralLink href={giveReferralHref} variant="bar" /> : null}
         </span>
         <h1 className="max-gdesk:hidden text-g-meta text-g-ink-3">{pageTitle}</h1>
         <span className="ml-auto flex items-center gap-2">
           <BetaBadge tone="goal" />
-          <span className="max-gdesk:hidden"><CreditsPill credits={credits} /></span>
-          <span className="gdesk:hidden"><CreditsPill credits={credits} compact /></span>
+          <span className="max-gdesk:hidden"><CreditsPill credits={credits} linked={referralCountLinked} /></span>
+          <span className="gdesk:hidden"><CreditsPill credits={credits} compact linked={referralCountLinked} /></span>
           {showAlerts ? (
             <a href={alertsHref} aria-label="Alerts" className="g-hit inline-flex size-9 items-center justify-center rounded-g-control text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover hover:text-g-ink max-gdesk:size-11">
               <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
