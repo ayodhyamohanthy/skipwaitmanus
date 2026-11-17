@@ -36,6 +36,7 @@ import { AskDrawer } from "./explore/AskDrawer";
 import { directorySummary, filterCompanies, FILTER_FUNCTIONS } from "./explore/findModel";
 import { useAskComposer } from "./explore/useAskComposer";
 import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState, type DiscoveredSuggestion } from "./explore/useCompanySearch";
+import { saveDiscoveryHandoff } from "./explore/discoveryHandoff";
 
 // The goal line is the seeker's goal in their words; the directory IS the
 // next step, so the search lives inside the block. The page does not export
@@ -408,7 +409,7 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
         <div data-testid="company-discovery-confirm" className="mt-3 grid gap-1">
           <p className="text-g-body text-g-ink">{confirm.name} · {confirm.domain}</p>
           <p className="text-g-meta text-g-ink-3">No referral door at {confirm.name} yet, so this pick can't start an ask by itself. On the ask page you paste a {confirm.name} job link yourself, or we can open the door.</p>
-          <Link href="/ask" className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Paste a job link on the ask page</Link>
+          <Link href="/ask" onClick={() => saveDiscoveryHandoff({ name: confirm.name, domain: confirm.domain })} className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Paste a job link on the ask page</Link>
           <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Ask us to open the door</Link></p>
           <button type="button" onClick={() => setConfirm(null)} className="justify-self-start text-g-meta text-g-ink-3 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Back to results</button>
         </div>

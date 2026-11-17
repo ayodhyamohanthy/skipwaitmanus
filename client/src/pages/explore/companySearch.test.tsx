@@ -250,6 +250,22 @@ describe("switch on: typeahead on /explore", () => {
     expectNoQueryInEvents("google");
   });
 
+  it("the confirm card's ask-page link carries the pick as display-only context (D-174-worldwide-discovery.company-context)", async () => {
+    localStorage.clear();
+    const acme = { name: "Acme Corp", domain: "acme.example", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [acme] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "acme" } });
+    fireEvent.mouseDown(await screen.findByTestId("company-discovery-option"));
+    const card = await screen.findByTestId("company-discovery-confirm");
+    fireEvent.click(within(card).getByRole("link", { name: "Paste a job link on the ask page" }));
+    const saved = JSON.parse(localStorage.getItem("skipwait:discovery-handoff") ?? "null");
+    expect(saved).toMatchObject({ name: "Acme Corp", domain: "acme.example" });
+    expect(typeof saved.at).toBe("number");
+    localStorage.clear();
+  });
+
   it("a degraded discovery answer says search is briefly limited and never reads as no-match", async () => {
     stub(() => ({ status: 200, body: { companies: [], discovered: [], discoveryState: "degraded", discoveryDegradedReason: "busy" } }));
     renderExplore();

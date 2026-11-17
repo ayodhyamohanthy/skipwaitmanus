@@ -94,3 +94,16 @@ that limit is reported, not hidden.
    initial). Rendering Commons logos live needs an img-src exception in
    server/securityHeaders.ts - outside this row's owns, reported for a
    follow-up instead of widened here.
+6. Company context (D-174-worldwide-discovery.company-context, landed dark):
+   the confirmation card's "Paste a job link on the ask page" now carries the
+   pick to /ask as DISPLAYED CONTEXT ONLY - {name, domain, at} under one
+   localStorage key (skipwait:discovery-handoff, TTL mirroring
+   ASK_PREFILL_TTL_MS, consumed on use, cleared on sign-out via
+   referralLocalStorageKeys). The composer surfaces a fresh pick through the
+   existing hint field ("You picked {name} ({domain}) - paste its job link
+   below") when the link box is empty; every other case keeps today's hint
+   exactly. Displayed context does not make an unknown-company ask work: the
+   company is not in the directory, the seeker still pastes a real job link,
+   and Send, price, validation, eligibility and the company binding are
+   unchanged. Preview QA must check the true outcome: pick shown as context,
+   ask still impossible without a real link, send behavior identical.

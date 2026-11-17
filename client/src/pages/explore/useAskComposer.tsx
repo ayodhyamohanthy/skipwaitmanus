@@ -18,6 +18,7 @@ import { useAskQuote } from "@/hooks/useAskQuote";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { ASK_PREFILL_TTL_MS, clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { clearDiscoveryHandoff, readDiscoveryHandoff } from "./discoveryHandoff";
 import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
@@ -382,7 +383,12 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
 
   const resumeView: AskResume = resumeFile ? { name: resumeFile.name } : uploaded ? { name: uploaded.fileName } : setup?.resume ? { name: setup.resume.fileName } : null;
   const resumeDoc = uploaded ?? (resumeFile ? null : setup?.resume ?? null);
-  const hint = linkHint(url, company, linkTouched || attempted);
+  // D-174-worldwide-discovery.company-context: a fresh discovered-company pick surfaces as
+  // displayed context through this existing hint field only - never a company binding, never
+  // a prefill; the seeker still pastes a real job link. Consumed on use, cleared on sign-out.
+  const [discoveryPick] = useState(() => readDiscoveryHandoff());
+  useEffect(() => { if (discoveryPick) clearDiscoveryHandoff(); }, [discoveryPick]);
+  const hint = discoveryPick && !url.trim() ? { tone: "muted" as const, text: `You picked ${discoveryPick.name} (${discoveryPick.domain}) - paste its job link below` } : linkHint(url, company, linkTouched || attempted);
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
