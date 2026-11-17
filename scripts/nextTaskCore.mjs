@@ -849,7 +849,11 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null }) {
+function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
+  // PICKER-claim-task (D-353 (2)): `--task <id>` restricts the pick to that one task; anything it cannot be handed is refused.
+  const target = only ? tasks.find(t => t.id === only) ?? null : null;
+  if (only && !target) return { kind: "ineligible", task: null, id: only, reason: `no task ${only} in docs/plans/assignments.json` };
+  const refuse = reason => ({ kind: "ineligible", task: target, reason });
   if (mainCi.state === "unknown") return { kind: "stop", reason: "cannot read main's CI runs from GitHub; nothing may be picked or pushed until it is known (D-082)" };
   // D-324 (owner, Nov 11: "0 waits 0 blocks"): red main holds every LANDING, not every session. Its one fix is still
   // handed out first; while that fix is in hand (or main's CI is re-running after it) everyone else is handed
@@ -861,11 +865,12 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     const current = fixMainLockOf(mainCi.sha);
     const locks = fixMainLocks(branches, now);
     const mine = claimant ? locks.find(l => l.holder === claimant && (!l.quiet || l.lock === current)) : null;
-    if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, url: mainCi.url, lock: mine.lock };
+    if (mine) return only ? refuse(`you are fixing red main on ${mine.lock}; finish that first (D-324)`) : { kind: "continue", of: "fix-main", sha: mine.sha8, url: mainCi.url, lock: mine.lock };
     const busy = locks.find(l => !l.quiet);
     if (busy) mainHold = { kind: "wait", mainRed: true, reason: `main is red; ${busy.holder ?? "another agent"} is fixing it on ${busy.lock}` };
     else {
       const held = locks.find(l => l.lock === current);
+      if (only) return refuse(`main is red (${String(mainCi.sha).slice(0, 8)}) and nobody is fixing it: its fix comes first (D-324). Run --claim without --task to take it`);
       return { kind: "fix-main", sha: mainCi.sha, url: mainCi.url, lock: current, parent: held ? current : null, from: held ? held.holder : null };
     }
   }
@@ -1086,7 +1091,12 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ...(overlaps.length ? { overlaps } : {}) };
   };
 
-  const owned = claimant ? ownWorkList(view, claimant) : null;
+  const onlyAt = only ? view.findIndex(v => v.task.id === only) : -1;
+  const ownedAll = claimant ? ownWorkList(view, claimant) : null;
+  // A restricted pick holds only the target's own stage: your other claims are not candidates for it.
+  const owned = ownedAll && only
+    ? { found: ownedAll.found.filter(p => p.task?.id === only), blockedOwn: ownedAll.blockedOwn?.task?.id === only ? ownedAll.blockedOwn : null }
+    : ownedAll;
   let mine = owned?.found.find(pick => !(pick.kind === "continue" && pick.task && avoid.has(pick.task.id)))
     ?? (owned?.found.length ? null : owned?.blockedOwn ?? null);
   // --avoid also applies when the claimant already holds a continuation: let the
@@ -1112,7 +1122,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // a branch somebody is pushing to, or one with a pull request already, is theirs and is passed over.
   const aheadPick = () => {
     const parkedDep = v => unmetOf(v).some(d => byId.get(d)?.task.status === "owner");
-    const held = view.filter(v => !v.done && !v.blockWaitingForEvidence && unmetOf(v).length > 0 && !avoid.has(v.task.id) && (v.task.status === "todo" || v.task.status === "architect"));
+    const held = view.filter(v => (!only || v.task.id === only) && !v.done && !v.blockWaitingForEvidence && unmetOf(v).length > 0 && !avoid.has(v.task.id) && (v.task.status === "todo" || v.task.status === "architect"));
     for (const v of [...held.filter(v => !parkedDep(v)), ...held.filter(parkedDep)]) {
       const ahead = unmetOf(v);
       const writer = v.arch ? holderOf(v.arch, v.task.id) : null;
@@ -1124,6 +1134,26 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ahead };
     }
     return null;
+  };
+
+  // PICKER-claim-task (D-353 (2)): what the full pick would hand for the target were it the only candidate, else the
+  // reason the picker recorded for it. Never another task's work, and never another task's landing-slot wait.
+  const restrictedPick = () => {
+    if (mine) {
+      if (mine.of === "land" && slotBusyFor(claimant)) return refuse(waitLanding().reason);
+      const { at, ...pick } = mine;
+      return withHold(pick);
+    }
+    const action = actions[onlyAt];
+    if (action && action.kind !== "gate" && action.kind !== "wait") return withHold(action);
+    if (landingWait) return refuse(landingWait.reason);
+    if (!ceo) {
+      const ahead = aheadPick();
+      if (ahead) return withHold(ahead);
+    }
+    if (ownBlocked) return refuse(ownBlocked.reason);
+    const recorded = [...skipped].reverse().find(s => s.id === only);
+    return refuse(recorded?.reason ?? (mainHold ? mainHold.reason : "nothing in it is yours to do now"));
   };
 
   // Pass 1: pending work top down, stopping at your own work; pass 2: new work. A red or
@@ -1138,7 +1168,9 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   // A red or blocked holder never holds a task it depends on itself: that task is what it waits for (D-134).
   // Packets do not change code: architect tasks bypass lane holds, not explicit dependencies in actionFor.
   const heldBy = v => { if (v.task.status === "architect") return undefined; const lh = heldLanes.get(v.task.lane); return (lh && !dependsOnTask(byId.get(lh), v.task.id) ? lh : undefined) ?? v.task.dependsOn.map(d => heldIds.get(d)).find(Boolean); };
-  for (let i = 0; i < view.length; i++) {
+  // A restricted pick walks the rows above its target only for the holds they put on it (D-109); it hands none of them.
+  const lastRow = only ? onlyAt : view.length - 1;
+  for (let i = 0; i <= lastRow; i++) {
     if (mine && i >= mine.at) break;
     const holder = heldBy(view[i]);
     if (holder && !view[i].done) { heldIds.set(view[i].task.id, holder); skip(view[i], `waits for red or blocked ${holder} (same lane or depends on it)`); continue; }
@@ -1161,6 +1193,12 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       skip(view[i], action.reason);
       continue;
     }
+    if (only && i !== onlyAt) {
+      // Suppressing another task's action preserves the same lane/dependency hold as --avoid.
+      if (AVOID_HOLDS.has(action.kind) && redOrBlocked(view[i])) { heldLanes.set(view[i].task.lane, view[i].task.id); heldIds.set(view[i].task.id, view[i].task.id); }
+      actions[i] = null;
+      continue;
+    }
     if (action.kind === "wait") {
       if (action.landing) { landingWait ??= action; actions[i] = null; continue; }
       return action;
@@ -1169,6 +1207,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     // D-085: pending work ranked above your own comes first; your own claim waits, pushed.
     return withHold(mine ? { ...action, holds: { id: mine.task.id, branch: mine.work ?? mine.lock } } : action);
   }
+  if (only) return restrictedPick();
   // Your own work: a red priority above it whose owner is on it does not stop you (your hands cannot help it),
   // and neither does another session's landing that waits for the slot (D-315). Your own landing needs the slot.
   if (mine) {
@@ -1487,6 +1526,8 @@ export function pickNextTask(input) {
     reports: input.reports ?? [], openPrs: input.openPrs ?? new Map(),
   });
   for (const row of blocked) {
+    // A restricted pick keeps its target: the block's own gate is then the reason it is refused (PICKER-claim-task).
+    if (row.task.id === input.only) continue;
     if (row.said?.status === "blocked" && row.said.evidence && (row.said.blockers ?? [row.said.who]).includes(input.claimant)) avoid.add(row.task.id);
   }
   let firstHeld = null;
@@ -1500,7 +1541,9 @@ export function pickNextTask(input) {
     // route: `scripts/next-task.mjs` refuses any other claim. Handing it to a session without one made that session
     // fail at the claim and be handed the same task on every retry, so it is passed over as --avoid would.
     if (pick.task && pick.kind !== "continue" && !input.provenance?.routeId && hasExternalHistory(input.branches, pick)) {
-      firstHeld ??= { kind: "wait", reason: `external provenance held: ${pick.task.id} can only be claimed with its qualified operator route` };
+      const reason = `external provenance held: ${pick.task.id} can only be claimed with its qualified operator route`;
+      if (input.only) return { kind: "ineligible", task: pick.task, reason };
+      firstHeld ??= { kind: "wait", reason };
       avoid.add(pick.task.id);
       continue;
     }
@@ -1511,7 +1554,9 @@ export function pickNextTask(input) {
       workMarkers: work?.markers ?? [], lockMarkers: lock?.markers ?? [],
       ...(input.provenance ?? {}), claimant: input.claimant, candidateRole: stage });
     if (!(resolved.active && (!resolved.ok || !resolved.candidate || [...resolved.builders, ...resolved.fixers].includes(resolved.candidate)))) return done(pick);
-    firstHeld ??= { kind: "wait", reason: `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}` };
+    const heldReason = `external provenance held: ${resolved.reason || "builder/fixer cannot review or land"}`;
+    if (input.only) return { kind: "ineligible", task: pick.task, reason: heldReason };
+    firstHeld ??= { kind: "wait", reason: heldReason };
     avoid.add(pick.task.id);
   }
   return firstHeld;
