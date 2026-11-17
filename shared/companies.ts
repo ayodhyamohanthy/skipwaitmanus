@@ -136,9 +136,22 @@ export const companySearchQuerySchema = z.strictObject({ q: z.string().trim().ma
 
 /** A worldwide discovery candidate (D-174-worldwide-discovery): resolved from a free source, keyed by its
  *  official domain. Never a directory row: no slug, no availability, no referrer claims. */
+/**
+ * A discovered company's official domain. The directory's corporate-email rule is
+ * NOT applied: it exists for work-email verification, and it blocks dual-use hosts
+ * like zoho.com, which is Zoho Corporation's official domain. Discovery only ever
+ * displays the candidate; pure mailbox-provider families are still refused.
+ * Mirrors shared/const.ts CONSUMER_PROVIDER_FAMILY (kept apart: the exact list there
+ * carries the verification-only dual-use entries like zoho.com).
+ */
+const CONSUMER_MAIL_FAMILY = /^(?:gmail|googlemail|yahoo|ymail|rocketmail|hotmail|outlook|live|msn|icloud|aol|protonmail|gmx|zohomail|yandex|rediffmail|rediff|tutanota|fastmail|qq|163|126|naver|daum|seznam|mailinator|guerrillamail|yopmail)(?:\.[a-z]{2,3}){1,2}$/;
+const discoveredDomainSchema = z.string().trim().toLowerCase()
+  .regex(DOMAIN_PATTERN, "Enter a company domain like acme.com")
+  .refine(host => !host.split(".").some((_, start, parts) => CONSUMER_MAIL_FAMILY.test(parts.slice(start).join("."))), "A mailbox provider can't be a discovered company");
+
 export const discoveredCompanySchema = z.strictObject({
   name: label(160),
-  domain: companyDomainSchema,
+  domain: discoveredDomainSchema,
   logoUrl: z.string().url().max(500).optional(),
   source: z.enum(["wikidata"]),
 });

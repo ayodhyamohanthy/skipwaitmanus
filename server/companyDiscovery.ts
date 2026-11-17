@@ -7,7 +7,7 @@
 // Honest failure: any provider error answers with whatever a fresh or stale
 // cache holds, never an invented result and never a "no such company" claim.
 import { z } from "zod";
-import type { DiscoveredCompany } from "../shared/companies";
+import { discoveredCompanySchema, type DiscoveredCompany } from "../shared/companies";
 
 export const COMPANY_DISCOVERY_ENABLED = true;
 export const COMPANY_DISCOVERY_LIMIT = 5;
@@ -54,6 +54,21 @@ const COMPANY_TYPE_QIDS = new Set([
   "Q161726", // multinational corporation
   "Q163740", // nonprofit organization
 ]);
+const NON_COMPANY_TYPE_QIDS = new Set([
+  "Q532", // village
+  "Q15284", // municipality
+  "Q6784672", // municipality of Slovakia
+  "Q3305213", // knowledge graph
+  "Q7397", // software
+  "Q506240", // office suite
+  "Q620615", // mobile application
+  "Q35127", // website
+  "Q2424752", // product
+  "Q215380", // musical group
+  "Q11424", // film
+  "Q7889", // video game
+  "Q5398426", // television series
+]);
 const COMPANY_DESCRIPTION = /\b(compan(?:y|ies)|corporat\w*|business|enterprise|firm|startup|conglomerate|manufactur\w*|retailer|airline|bank)\b/i;
 
 type EntityTypeEvidence = {
@@ -71,6 +86,7 @@ type EntityTypeEvidence = {
 export function isCompanyCandidate(entity: EntityTypeEvidence): boolean {
   const types = (entity.claims?.P31 ?? []).map(claim => claim.mainsnak.datavalue?.value?.id).filter((id): id is string => Boolean(id));
   if (types.some(id => COMPANY_TYPE_QIDS.has(id))) return true;
+  if (types.some(id => NON_COMPANY_TYPE_QIDS.has(id))) return false;
   const description = entity.descriptions?.en?.value ?? "";
   if (COMPANY_DESCRIPTION.test(description)) return true;
   return types.length === 0 && !description;
@@ -89,7 +105,8 @@ export function domainFromOfficialUrl(value: string): string | undefined {
 async function wikidataSearchIds(fetchImpl: DiscoveryFetch, term: string): Promise<{ id: string; label?: string }[]> {
   const url = `${WIKIDATA_API}?action=wbsearchentities&search=${encodeURIComponent(term)}&language=en&format=json&limit=8&type=item`;
   const response = await fetchImpl(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(COMPANY_DISCOVERY_TIMEOUT_MS) });
-  if (!response.ok) return [];
+  // 429/5xx is a provider failure, not an empty answer: throw so nothing caches it.
+  if (!response.ok) throw new Error("wikidata search HTTP failure");
   return searchSchema.parse(await response.json()).search;
 }
 
@@ -102,15 +119,29 @@ async function wikipediaSuggestion(fetchImpl: DiscoveryFetch, term: string): Pro
   return suggestion && suggestion.toLowerCase() !== term.trim().toLowerCase() ? suggestion : undefined;
 }
 
+const inflight = new Map<string, Promise<DiscoveredCompany[]>>();
+
+/** Minimum query length: single characters never reach the sources. */
+export const COMPANY_DISCOVERY_MIN_QUERY = 2;
+
 /** Resolve the typed name to worldwide candidates: name + official domain + optional logo, in source rank order. */
-export async function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Promise<DiscoveredCompany[]> {
+export function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Promise<DiscoveredCompany[]> {
   const q = query.trim();
-  if (!q) return [];
+  if (q.length < COMPANY_DISCOVERY_MIN_QUERY) return Promise.resolve([]);
   const now = deps.nowMs ?? Date.now();
-  const fetchImpl = deps.fetchImpl ?? (fetch as unknown as DiscoveryFetch);
   const key = q.toLowerCase();
   const fresh = cache.get(key);
-  if (fresh && now - fresh.at < COMPANY_DISCOVERY_CACHE_TTL_MS) return fresh.results;
+  if (fresh && now - fresh.at < COMPANY_DISCOVERY_CACHE_TTL_MS) return Promise.resolve(fresh.results);
+  // One upstream round per typed name: concurrent asks share the in-flight promise.
+  const pending = inflight.get(key);
+  if (pending) return pending;
+  const run = discoverUncached(q, key, now, deps.fetchImpl ?? (fetch as unknown as DiscoveryFetch)).finally(() => inflight.delete(key));
+  inflight.set(key, run);
+  return run;
+}
+
+async function discoverUncached(q: string, key: string, now: number, fetchImpl: DiscoveryFetch): Promise<DiscoveredCompany[]> {
+  const fresh = cache.get(key);
   try {
     let hits = await wikidataSearchIds(fetchImpl, q);
     if (hits.length === 0) {
@@ -121,23 +152,29 @@ export async function discoverCompanies(query: string, deps: DiscoveryDeps = {})
     if (hits.length > 0) {
       const url = `${WIKIDATA_API}?action=wbgetentities&ids=${hits.map(hit => hit.id).join("|")}&props=claims|labels|descriptions&languages=en&format=json`;
       const response = await fetchImpl(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(COMPANY_DISCOVERY_TIMEOUT_MS) });
-      if (response.ok) {
-        const { entities } = entitiesSchema.parse(await response.json());
-        const seen = new Set<string>();
-        results = hits.flatMap((hit, index) => {
-          const entity = entities[hit.id];
-          if (!entity || !isCompanyCandidate(entity)) return [];
-          const name = entity.labels?.en?.value ?? hit.label ?? "";
-          const domain = entity.claims?.P856?.map(claim => claim.mainsnak.datavalue?.value).find(value => value && domainFromOfficialUrl(value));
-          const host = domain ? domainFromOfficialUrl(domain) : undefined;
-          if (!name || !host || seen.has(host)) return [];
-          seen.add(host);
-          const logo = entity.claims?.P154?.[0]?.mainsnak.datavalue?.value;
-          return [{ name, domain: host, ...(logo ? { logoUrl: `${COMMONS_FILE_PATH}${encodeURIComponent(logo)}?width=64` } : {}), source: "wikidata" as const, _rank: index }];
-        }).map(({ _rank, ...company }) => company).slice(0, COMPANY_DISCOVERY_LIMIT);
-      }
+      if (!response.ok) throw new Error("wikidata entities HTTP failure");
+      const { entities } = entitiesSchema.parse(await response.json());
+      const seen: string[] = [];
+      results = hits.flatMap((hit, index) => {
+        const entity = entities[hit.id];
+        if (!entity || !isCompanyCandidate(entity)) return [];
+        const name = entity.labels?.en?.value ?? hit.label ?? "";
+        const domain = entity.claims?.P856?.map(claim => claim.mainsnak.datavalue?.value).find(value => value && domainFromOfficialUrl(value));
+        const host = domain ? domainFromOfficialUrl(domain) : undefined;
+        // Domain identity, subdomain-aware: play.example.com after example.com is the same door.
+        if (!name || !host || seen.some(held => held === host || host.endsWith(`.${held}`) || held.endsWith(`.${host}`))) return [];
+        const logo = entity.claims?.P154?.[0]?.mainsnak.datavalue?.value;
+        const candidate = { name, domain: host, ...(logo ? { logoUrl: `${COMMONS_FILE_PATH}${encodeURIComponent(logo)}?width=64` } : {}), source: "wikidata" as const };
+        // Nothing malformed crosses the boundary: an entry the response schema rejects is dropped,
+        // never allowed to fail the whole search response.
+        const parsed = discoveredCompanySchema.safeParse(candidate);
+        if (!parsed.success) return [];
+        seen.push(host);
+        return [{ ...parsed.data, _rank: index }];
+      }).map(({ _rank, ...company }) => company).slice(0, COMPANY_DISCOVERY_LIMIT);
     }
-    remember(key, now, results);
+    // Only real answers are cached; failures and empty reads are never remembered (no 6h poison).
+    if (results.length > 0) remember(key, now, results);
     return results;
   } catch {
     // Provider failure answers the stale cache when we have one, else nothing; the directory results stand on their own.

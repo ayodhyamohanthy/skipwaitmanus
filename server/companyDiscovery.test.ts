@@ -220,3 +220,108 @@ describe("company qualification (D-174-worldwide-discovery review: never suggest
     expect(results.map(candidate => candidate.name)).toEqual(["Sparse Co"]);
   });
 });
+
+describe("review findings: failure honesty, boundary validation, traffic bounds, typed precedence", () => {
+  it("a 429/5xx from the source is a failure: answers stale-or-[] and caches nothing", async () => {
+    const key = `ratelimited-${Date.now()}`;
+    const limited = fakeFetch({ search: () => ({ error: true }), entities: { entities: {} } });
+    const failing: DiscoveryFetch = async () => ({ ok: false, json: async () => ({}) });
+    expect(await discoverCompanies(key, { fetchImpl: failing })).toEqual([]);
+    // The failed read was not cached: a recovered source answers for real.
+    const recovered = await discoverCompanies(key, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE }) });
+    expect(recovered.map(candidate => candidate.domain)).toEqual(["google.com"]);
+    expect(limited).not.toHaveBeenCalled();
+  });
+
+  it("a non-OK entity fetch is a failure too, not an empty answer to cache", async () => {
+    const key = `entities-down-${Date.now()}`;
+    const failing: DiscoveryFetch = async (url: string) =>
+      new URL(url).searchParams.get("action") === "wbgetentities" ? { ok: false, json: async () => ({}) } : json(SEARCH_GOOGLE);
+    expect(await discoverCompanies(key, { fetchImpl: failing })).toEqual([]);
+    const recovered = await discoverCompanies(key, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE }) });
+    expect(recovered.map(candidate => candidate.domain)).toEqual(["google.com"]);
+  });
+
+  it("drops candidates the response schema rejects (IP host, personal-mail domain, overlong fields) and keeps the valid one", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q1" }, { id: "Q2" }, { id: "Q3" }, { id: "Q4" }, { id: "Q5" }] }),
+      entities: {
+        entities: {
+          Q1: { labels: { en: { value: "IP Host Co" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "http://192.168.10.4/" } } }] } },
+          Q2: { labels: { en: { value: "Mail Domain Co" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://gmail.com/" } } }] } },
+          Q3: { labels: { en: { value: `Long ${"x".repeat(200)}` } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://long-name.example.com/" } } }] } },
+          Q4: { labels: { en: { value: "Logo Bomb Co" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://logobomb.example.com/" } } }], P154: [{ mainsnak: { datavalue: { value: `file-${"y".repeat(600)}.svg` } } }] } },
+          Q5: { labels: { en: { value: "Valid Co" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://valid.example.com/" } } }] } },
+        },
+      },
+    });
+    const results = await discoverCompanies(`schema-guard-${Date.now()}`, { fetchImpl });
+    expect(results).toEqual([{ name: "Valid Co", domain: "valid.example.com", source: "wikidata" }]);
+  });
+
+  it("never spends a source call on a single character", async () => {
+    const fetchImpl = fakeFetch({});
+    expect(await discoverCompanies("a", { fetchImpl })).toEqual([]);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("shares one in-flight upstream round across concurrent asks for the same name", async () => {
+    let release!: (value: unknown) => void;
+    const gate = new Promise(resolve => { release = resolve; });
+    const fetchImpl: DiscoveryFetch & ReturnType<typeof vi.fn> = vi.fn(async (url: string) => {
+      await gate;
+      const action = new URL(url).searchParams.get("action");
+      if (action === "wbsearchentities") return json(SEARCH_GOOGLE);
+      if (action === "wbgetentities") return json(ENTITIES_GOOGLE);
+      return json(["", []]);
+    }) as DiscoveryFetch & ReturnType<typeof vi.fn>;
+    const key = `inflight-${Date.now()}`;
+    const first = discoverCompanies(key, { fetchImpl });
+    const second = discoverCompanies(key, { fetchImpl });
+    release(null);
+    const [a, b] = await Promise.all([first, second]);
+    expect(a).toEqual(b);
+    expect(fetchImpl.mock.calls.filter(call => String(call[0]).includes("wbsearchentities"))).toHaveLength(1);
+  });
+
+  it("typed non-company precedence: product/suite/site wording in the description cannot rescue a typed non-company", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q11" }, { id: "Q12" }, { id: "Q13" }] }),
+      entities: {
+        entities: {
+          Q11: {
+            labels: { en: { value: "Zoho Office Suite" } },
+            descriptions: { en: { value: "suite of business applications" } },
+            claims: { P31: [{ mainsnak: { datavalue: { value: { id: "Q506240" } } } }], P856: [{ mainsnak: { datavalue: { value: "https://www.zoho-suite.example.com/" } } }] },
+          },
+          Q12: {
+            labels: { en: { value: "Tata Production Site" } },
+            descriptions: { en: { value: "production site of the company" } },
+            claims: { P31: [{ mainsnak: { datavalue: { value: { id: "Q35127" } } } }], P856: [{ mainsnak: { datavalue: { value: "https://tata-site.example.com/" } } }] },
+          },
+          Q13: {
+            labels: { en: { value: "Real Company" } },
+            descriptions: { en: { value: "Indian manufacturing company" } },
+            claims: { P31: [{ mainsnak: { datavalue: { value: { id: "Q783794" } } } }], P856: [{ mainsnak: { datavalue: { value: "https://realcompany.example.com/" } } }] },
+          },
+        },
+      },
+    });
+    const results = await discoverCompanies(`typed-precedence-${Date.now()}`, { fetchImpl });
+    expect(results.map(candidate => candidate.name)).toEqual(["Real Company"]);
+  });
+
+  it("dedupes subdomain variants of the same door", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q21" }, { id: "Q22" }] }),
+      entities: {
+        entities: {
+          Q21: { labels: { en: { value: "Example Corp" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://example-corp.com/" } } }] } },
+          Q22: { labels: { en: { value: "Example Corp Play" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://play.example-corp.com/" } } }] } },
+        },
+      },
+    });
+    const results = await discoverCompanies(`subdomain-dedupe-${Date.now()}`, { fetchImpl });
+    expect(results.map(candidate => candidate.name)).toEqual(["Example Corp"]);
+  });
+});

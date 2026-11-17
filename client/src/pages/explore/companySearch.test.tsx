@@ -236,8 +236,10 @@ describe("switch on: typeahead on /explore", () => {
     fireEvent.mouseDown(option);
     const card = await screen.findByTestId("company-discovery-confirm");
     expect(card.textContent).toContain("Google · google.com");
-    expect(card.textContent).toContain("No door at this company yet");
+    expect(card.textContent).toContain("No referral door at Google yet");
+    expect(card.textContent).toContain("this pick can't start an ask by itself");
     expect(within(card).getByRole("link", { name: "Paste a Google job link to request a referral" }).getAttribute("href")).toBe("/ask");
+    expect(within(card).getByRole("link", { name: "Ask us to open Google's door" }).getAttribute("href")).toBe("/invite");
     expect(go).not.toHaveBeenCalledWith("/explore/google");
     expect(screen.queryByRole("listbox")).toBeNull();
     fireEvent.click(within(card).getByRole("button", { name: "Back to results" }));
@@ -246,6 +248,31 @@ describe("switch on: typeahead on /explore", () => {
     expect(events).toEqual(["journey_company_suggested"]);
     expectNoAvailabilityText();
     expectNoQueryInEvents("google");
+  });
+
+  it("a blocked or broken discovered logo degrades to the company's initial, never a broken image", async () => {
+    const google = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [google] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "google" } });
+    const option = await screen.findByTestId("company-discovery-option");
+    const img = option.querySelector("img");
+    expect(img).toBeTruthy();
+    fireEvent.error(img!);
+    expect(await screen.findByTestId("company-discovery-initial")).toBeTruthy();
+    expect(option.querySelector("img")).toBeNull();
+    expect(option.textContent).toContain("Google");
+  });
+
+  it("an alias-resolved server answer renders: typing tata shows TCS (the alias lives server-side)", async () => {
+    const fetchMock = stub(q => ({ status: 200, body: q === "tata" ? { companies: [searchRow("tcs")], discovered: [] } : { companies: [], discovered: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tata" } });
+    const option = await screen.findByRole("option", { name: "TCS" });
+    expect(option).toBeTruthy();
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=tata"]);
   });
 
   it("directory suggestions come first, discovered candidates after; arrows cross both kinds", async () => {
@@ -257,7 +284,8 @@ describe("switch on: typeahead on /explore", () => {
     fireEvent.change(box, { target: { value: "wipro" } });
     const listbox = await screen.findByRole("listbox", { name: "Company suggestions" });
     const options = within(listbox).getAllByRole("option");
-    expect(options.map(option => option.textContent)).toEqual(["Wipro", "Wipro Foundationwiprofoundation.org"]);
+    // The discovered option leads with the logo-degradation initial (aria-hidden), then name + domain.
+    expect(options.map(option => option.textContent)).toEqual(["Wipro", "WWipro Foundationwiprofoundation.org"]);
     fireEvent.keyDown(box, { key: "ArrowDown" });
     fireEvent.keyDown(box, { key: "ArrowDown" });
     fireEvent.keyDown(box, { key: "Enter" });

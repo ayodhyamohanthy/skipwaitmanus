@@ -314,6 +314,15 @@ const INVALID_REFUSED = "We couldn’t use that search. Try a different company 
  * the error state's retry line (the client filter below keeps working). Events
  * carry no query text, and no state reads availability (D-176).
  */
+/** Discovered-candidate logo: the CSP allows same-origin images only, so a Commons logo can be blocked; a blocked or broken logo degrades to the company's initial, never a broken image. */
+function DiscoveredLogo({ name, logoUrl }: { name: string; logoUrl?: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!logoUrl || broken) {
+    return <span aria-hidden="true" data-testid="company-discovery-initial" className="grid size-5 shrink-0 place-items-center rounded-sm bg-g-surface-hover text-[10px] font-semibold text-g-ink-3">{(name.trim().charAt(0) || "?").toUpperCase()}</span>;
+  }
+  return <img src={logoUrl} alt="" onError={() => setBroken(true)} className="size-5 shrink-0 rounded-sm object-contain" />;
+}
+
 function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; unlisted: boolean; onOpen(slug: string): void }) {
   const listId = useId();
   const [active, setActive] = useState(-1);
@@ -386,7 +395,7 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
                 option.item.name
               ) : (
                 <span className="flex items-center gap-2" data-testid="company-discovery-option">
-                  {option.item.logoUrl ? <img src={option.item.logoUrl} alt="" className="size-5 rounded-sm object-contain" /> : null}
+                  <DiscoveredLogo name={option.item.name} logoUrl={option.item.logoUrl} />
                   <span>{option.item.name}</span>
                   <span className="text-g-meta text-g-ink-3">{option.item.domain}</span>
                 </span>
@@ -398,9 +407,9 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
       {confirm ? (
         <div data-testid="company-discovery-confirm" className="mt-3 grid gap-1">
           <p className="text-g-body text-g-ink">{confirm.name} · {confirm.domain}</p>
-          <p className="text-g-meta text-g-ink-3">No door at this company yet. Paste a job link to request a referral and we’ll open the door.</p>
+          <p className="text-g-meta text-g-ink-3">No referral door at {confirm.name} yet, so this pick can't start an ask by itself. Paste a job link on the ask page, or ask us to open the door.</p>
           <Link href="/ask" className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">{`Paste a ${confirm.name} job link to request a referral`}</Link>
-          <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Request a company</Link></p>
+          <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">{`Ask us to open ${confirm.name}'s door`}</Link></p>
           <button type="button" onClick={() => setConfirm(null)} className="justify-self-start text-g-meta text-g-ink-3 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Back to results</button>
         </div>
       ) : null}
