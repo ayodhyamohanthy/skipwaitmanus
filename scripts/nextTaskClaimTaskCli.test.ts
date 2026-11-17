@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 const ME = "GPT-6.1 Sol · requested-task-test";
 const CLI = fileURLToPath(new URL("./next-task.mjs", import.meta.url));
 interface TaskOverrides { status?: string; }
+interface ClaimRace { realGit: string; rivalSha: string; markerPath: string; }
 
 function fixture(extra: TaskOverrides = {}, redMain = false) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "requested-task-cli-"));
@@ -38,6 +39,21 @@ function fixture(extra: TaskOverrides = {}, redMain = false) {
   git("push", "-u", "origin", "main");
   const head = git("rev-parse", "HEAD");
   writeFileSync(mock, `
+import childProcess from 'node:child_process';
+import { existsSync, writeFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const realSpawn = childProcess.spawnSync;
+const race = process.env.CLAIM_RACE ? JSON.parse(process.env.CLAIM_RACE) : null;
+if (race) {
+  childProcess.spawnSync = (command, args, options) => {
+    if (command === 'git' && args[0] === 'push' && args.some(arg => arg.endsWith(':refs/heads/agent/queue/b')) && !existsSync(race.markerPath)) {
+      writeFileSync(race.markerPath, 'raced');
+      childProcess.execFileSync(race.realGit, ['push', '-q', 'origin', race.rivalSha + ':refs/heads/agent/queue/b']);
+    }
+    return realSpawn(command, args, options);
+  };
+  syncBuiltinESMExports();
+}
 const response = body => ({ ok: true, status: 200, json: async () => body });
 globalThis.fetch = async input => {
   const url = String(input);
@@ -50,10 +66,11 @@ globalThis.fetch = async input => {
 };
 `);
   const refs = () => git("ls-remote", "--heads", "origin");
-  const run = (id = "B", args: string[] = [], searchPath = process.env.PATH, preview = false) => spawnSync(process.execPath,
+  const run = (id = "B", args: string[] = [], preview = false, race?: ClaimRace) => spawnSync(process.execPath,
     ["--import", mock, CLI, preview ? "--as" : "--claim", ME, "--task", id, ...args], {
       cwd: work, encoding: "utf8", env: {
-        ...process.env, PATH: searchPath, NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
+        ...process.env, NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
+        ...(race ? { CLAIM_RACE: JSON.stringify(race) } : {}),
       },
     });
   return { dir, work, git, refs, run };
@@ -66,7 +83,7 @@ function withFixture(test: (f: ReturnType<typeof fixture>) => void, extra: TaskO
 
 describe("actual --claim --task with local Git origins", () => {
   it("a read-only preview preserves --task B in its follow-up claim command", () => withFixture(f => {
-    const before = f.refs(), result = f.run("B", [], process.env.PATH, true);
+    const before = f.refs(), result = f.run("B", [], true);
     expect(result.status, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toContain("NEXT: BUILD B");
     expect(result.stdout).toContain('Not claimed yet. To take it: node scripts/next-task.mjs --claim "<your model name>" --task B');
@@ -102,21 +119,9 @@ describe("actual --claim --task with local Git origins", () => {
 
   it("rechecks B after losing its claim race and never claims A", () => withFixture(f => {
     const realGit = execFileSync("which", ["git"], { encoding: "utf8" }).trim();
-    const bin = path.join(f.dir, "bin");
-    mkdirSync(bin);
-    writeFileSync(path.join(bin, "git"), `#!${process.execPath}
-const { execFileSync, spawnSync } = require('node:child_process');
-const { existsSync, writeFileSync } = require('node:fs');
-const args = process.argv.slice(2), real = ${JSON.stringify(realGit)}, flag = ${JSON.stringify(path.join(f.dir, "raced"))};
-if (args[0] === 'push' && args.some(a => a.endsWith(':refs/heads/agent/queue/b')) && !existsSync(flag)) {
-  writeFileSync(flag, 'raced');
-  const rival = execFileSync(real, ['commit-tree', 'origin/main^{tree}', '-p', 'origin/main', '-m', 'Claim B: Codex · rival'], { encoding: 'utf8' }).trim();
-  execFileSync(real, ['push', '-q', 'origin', rival + ':refs/heads/agent/queue/b']);
-}
-const result = spawnSync(real, args, { stdio: 'inherit' });
-process.exit(result.status ?? 1);
-`, { mode: 0o755 });
-    const result = f.run("B", [], `${bin}${path.delimiter}${process.env.PATH}`);
+    const rivalSha = f.git("commit-tree", "origin/main^{tree}", "-p", "origin/main", "-m", "Claim B: Codex · rival");
+    const markerPath = path.join(f.dir, "raced");
+    const result = f.run("B", [], false, { realGit, rivalSha, markerPath });
     expect(result.status, result.stdout + result.stderr).toBe(6);
     expect(result.stderr).toContain("another agent pushed first");
     expect(result.stdout).toContain("in progress by Codex · rival");
