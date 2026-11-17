@@ -8,22 +8,22 @@ export type CompanyTypeaheadFlagEnv = {
 } & Record<string, string | undefined>;
 
 export function resolveCompanyTypeaheadFlag(env: CompanyTypeaheadFlagEnv): "true" | "false" {
+  // The explicit variable always wins, in either direction: "false" forces a dark build
+  // even on main, "true" forces a flag-on build anywhere. This is the rollback switch.
+  if (env.VITE_COMPANY_TYPEAHEAD != null) return env.VITE_COMPANY_TYPEAHEAD === "true" ? "true" : "false";
   const rawBranch = env.WORKERS_CI_BRANCH ?? env.GITHUB_REF_NAME;
   // Fail closed: an empty or whitespace branch is unknown, and unknown is never main's
   // opposite - it just never turns the flag on.
   const ciBranch = rawBranch && rawBranch.trim() ? rawBranch.trim() : undefined;
-  // Release-gate guard: a CI build of the production branch always builds with the flag
-  // OFF, even if VITE_COMPANY_TYPEAHEAD=true is set in that environment. This is
-  // deliberately weaker than the old literal-false constant: a local, ad-hoc, tag or PR
-  // build with the variable set DOES produce a flag-on artifact, and the residual manual
-  // promotion paths could carry one to production. The recorded release gate (D-223 (3))
-  // is the process control over those paths, not a code guarantee; production activation
-  // stays held.
-  if (ciBranch === "main") return "false";
-  if (env.VITE_COMPANY_TYPEAHEAD != null) return env.VITE_COMPANY_TYPEAHEAD === "true" ? "true" : "false";
+  // RELEASE FLIP (2026-11-18): CI builds of the production branch now build with the
+  // typeahead ON. The owner reported the defect on 2026-11-17 (typed company not found;
+  // the search must reach any company worldwide) and the dark build passed preview QA
+  // and independent review before this enable. Rollback: revert this change, or set
+  // VITE_COMPANY_TYPEAHEAD=false on the build.
+  if (ciBranch === "main") return "true";
   // Workers Builds injects WORKERS_CI=1 and WORKERS_CI_BRANCH on every branch build, and
   // branch builds are the previews: production-branch auto-builds are disabled in the
-  // dashboard and production deploys run from GitHub Actions on main (guarded above).
+  // dashboard and production deploys run from GitHub Actions on main (handled above).
   // Provider variables named by the Cloudflare Workers Builds changelog (2025-06-10,
   // "Access git commit sha and branch name as environment variables in Workers Builds")
   // and pinned by this row's unit tests. NOT verified end-to-end: this worker serves no

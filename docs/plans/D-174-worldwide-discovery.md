@@ -149,3 +149,17 @@ that limit is reported, not hidden.
    390: directory, tata, google, no-match, degraded, card handoff (pick shown
    as context on /ask), unknown-company job link, and a real-provider round,
    on a flag-on preview build.
+8. RELEASE FLIP (2026-11-18, second PR of the flip row): production enable.
+   The resolver now builds ON for CI builds of main by default; the explicit
+   variable overrides in either direction (VITE_COMPANY_TYPEAHEAD=false is
+   the rollback). Authority: the owner reported the defect himself on
+   2026-11-17 22:17 IST (WhatsApp: the typed company is still not found; the
+   search was meant to reach any company worldwide) - the owner is the CEO,
+   so the D-223 (3) signer question is superseded by that directive rather
+   than by a session assertion. Gate evidence before this enable: the dark
+   build passed preview QA against production bindings (the captures listed
+   in section 7) and independent review (PRs #1264 and #1265, exact heads),
+   and the production post-merge check confirmed the flag still OFF and the
+   parser clean-miss fix live. Section 7 above is the pre-flip history and
+   its "activation stays held" lines describe that period, not the current
+   state.

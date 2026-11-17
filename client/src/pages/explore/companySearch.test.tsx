@@ -95,8 +95,8 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-describe("the switch (stays dark under D-174-worldwide-discovery; only the release row flips it)", () => {
-  it("is literal false in this environment: no VITE_COMPANY_TYPEAHEAD is set here and vitest does not apply the vite.config define that feeds preview builds, so the default stays off; any flag-on build remains the gated release's call (D-223 (3))", async () => {
+describe("the switch (dark in this test environment; production and preview builds resolve it through vite.typeahead-flag.ts)", () => {
+  it("is false here: no VITE_COMPANY_TYPEAHEAD is set and vitest does not apply the vite.config define; main-branch builds ship it on after the 2026-11-18 release flip", async () => {
     const actual = await vi.importActual<typeof import("./useCompanySearch")>("./useCompanySearch");
     expect(actual.COMPANY_TYPEAHEAD_ENABLED).toBe(false);
     expect(companySearchModule.COMPANY_SEARCH_DEBOUNCE_MS).toBe(150);
