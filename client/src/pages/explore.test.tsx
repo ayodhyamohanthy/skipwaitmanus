@@ -71,12 +71,6 @@ function stubDirectory(directory: CompanyDirectoryResponse = ALL_OPEN, opportuni
     const path = String(input);
     const method = init?.method ?? "GET";
     if (path === "/api/companies") return json(200, directory);
-    // The typeahead (released by D-174-worldwide-discovery) reads the search route; answer it from the same directory.
-    if (path.startsWith("/api/companies/search")) {
-      const q = (new URL(path, "http://x").searchParams.get("q") ?? "").trim().toLowerCase();
-      const hits = q ? directory.companies.filter(item => item.name.toLowerCase().includes(q)).map(({ openToReferrals: _drop, ...rest }) => rest) : [];
-      return json(200, { companies: hits, discovered: [] });
-    }
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: options.credits ?? 4 } });
     if (path === "/api/profile/setup") return json(200, setup(options.resume ?? null));
     if (path === "/api/ask-drafts") return json(200, { draft: { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Shipped a design system used by 40 teams.", updatedAt: "x" } });
@@ -153,7 +147,7 @@ describe("Find a referral directory", () => {
     stubDirectory();
     renderWithQuery(<Explore />);
     await screen.findByTestId("goal-directory-summary");
-    const search = screen.getByRole("combobox", { name: "Search companies" });
+    const search = screen.getByRole("searchbox", { name: "Search companies" });
     fireEvent.change(search, { target: { value: "tcs" } });
     expect(screen.getByTestId("goal-directory-summary").textContent).toMatch(/^1 company$/);
     expect(screen.queryByRole("link", { name: "Wipro" })).toBeNull();
@@ -189,9 +183,7 @@ describe("Find a referral directory", () => {
     stubDirectory();
     renderWithQuery(<Explore />);
     await screen.findByTestId("goal-directory-summary");
-    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "zzz-no-such-company" } });
-    // The typeahead answers first: the paste-a-link path for a company no source holds.
-    await screen.findByRole("link", { name: "Paste a zzz-no-such-company job link to request a referral" });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search companies" }), { target: { value: "zzz-no-such-company" } });
     expect(screen.getByText("No matching companies yet")).toBeTruthy();
     expect(screen.getByText("Try a wider search. If your company is missing, request it and we’ll open the door.")).toBeTruthy();
     expect(screen.queryAllByRole("link", { name: /open to requests|not open yet/ })).toHaveLength(0);
@@ -495,7 +487,6 @@ describe("Goal redesign of the find surfaces", () => {
     const { container } = renderWithQuery(<Explore />);
     await waitFor(() => expect(screen.getByTestId("goal-directory-summary")).toBeTruthy());
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
-    await screen.findByRole("option", { name: "Wipro" }); // the typeahead's answered read
     fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
     expect(go).toHaveBeenCalledWith("/explore?company=wipro", { replace: true });
     expect(container).toBeTruthy();
@@ -506,7 +497,6 @@ describe("Goal redesign of the find surfaces", () => {
     const { container } = renderWithQuery(<Explore />);
     await waitFor(() => expect(screen.getByTestId("goal-directory-summary")).toBeTruthy());
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Unlisted Widgets" } });
-    await screen.findByTestId("company-search-no-match"); // the typeahead's answered no-match
     fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
     expect(go).toHaveBeenCalledWith("/ask");
     expect(container).toBeTruthy();
@@ -579,7 +569,6 @@ describe("Goal redesign of the find surfaces", () => {
     await screen.findByTestId("goal-directory-summary");
     fireEvent.click(screen.getByRole("button", { name: "Design" })); // Wipro has no Design function
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "Wipro" } });
-    await screen.findByRole("option", { name: "Wipro" }); // the typeahead's answered read
     fireEvent.click(within(screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL })).getByRole("button", { name: "Find your company" }));
     expect(go).toHaveBeenCalledWith("/explore?company=wipro", { replace: true });
     expect(container).toBeTruthy();
@@ -592,9 +581,8 @@ describe("Goal redesign of the find surfaces", () => {
     fireEvent.click(screen.getByRole("button", { name: "Design" })); // Wipro and TCS have no Design function
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "technology services" } });
     const step = screen.getByRole("region", { name: GOAL_NEXT_STEP_LABEL });
-    // Once the typeahead's read settles, the reason is the hidden matches, not the in-flight search.
-    await waitFor(() => expect(within(step).getByText("Clear the filters to see matching companies.")).toBeTruthy());
     expect(within(step).getByRole("button", { name: "Find your company" }).getAttribute("aria-disabled")).toBe("true");
+    expect(within(step).getByText("Clear the filters to see matching companies.")).toBeTruthy();
   });
 
   it("the door meets the goal contract: goal line, one next step, one black commit", async () => {

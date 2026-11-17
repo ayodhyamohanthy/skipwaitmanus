@@ -49,7 +49,46 @@ describe("GET /api/companies/search", () => {
     expect(r.status).toBe(200);
     expect(r.body.companies).toEqual([]);
     expect(r.body.discovered).toEqual([{ name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" }]);
-    expect(discoverCompanies).toHaveBeenCalledWith("google");
+    expect(discoverCompanies).toHaveBeenCalledWith("google", expect.any(String));
+  });
+
+  it("drops discovery candidates whose domain is a subdomain (or parent) of a directory domain", async () => {
+    const discoverCompanies = vi.fn(async () => [
+      { name: "TCS Careers", domain: "careers.tcs.com", source: "wikidata" as const },
+      { name: "Wipro Parent", domain: "wipro.com", source: "wikidata" as const },
+      { name: "Other Co", domain: "other.example.com", source: "wikidata" as const },
+    ]);
+    const heldSub = async () => ({ companies: [{ ...wipro, slug: "wipro", domains: ["careers.wipro.com"] }, { ...wipro, slug: "tcs", name: "TCS", domains: ["tcs.com"] }], openCount: 2 });
+    const { app } = appWith({ listCompanyDirectory: heldSub, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=co");
+    expect(r.status).toBe(200);
+    expect(r.body.discovered).toEqual([{ name: "Other Co", domain: "other.example.com", source: "wikidata" }]);
+  });
+
+  it("a discovered candidate never carries door, credit or verification authority (D-176 boundary)", async () => {
+    const discoverCompanies = vi.fn(async () => [{ name: "Zoho Corporation", domain: "zoho.com", source: "wikidata" as const }]);
+    const getCompanyDirectoryEntry = vi.fn(async () => undefined);
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies, getCompanyDirectoryEntry });
+    const r = await request(app).get("/api/companies/search?q=zoho");
+    expect(r.status).toBe(200);
+    // The strict schema admits only name/domain/logoUrl/source: no slug, no availability, no credits.
+    expect(JSON.stringify(r.body.discovered)).not.toMatch(/slug|openToReferrals|available|credits|verified/i);
+    // And the discovered company has no door: the directory never resolves it.
+    const door = await request(app).get("/api/companies/zoho-corporation");
+    expect(door.status).toBe(404);
+    expect(door.body.error).toBe(COMPANY_NOT_FOUND_ERROR);
+    // The schema itself refuses an attempt to attach authority fields.
+    const { discoveredCompanySchema } = await import("../shared/companies");
+    expect(discoveredCompanySchema.safeParse({ name: "X Co", domain: "xco.example.com", source: "wikidata", slug: "x-co", openToReferrals: true }).success).toBe(false);
+  });
+
+  it("keeps directory search truthful while discovery is throttled or failing", async () => {
+    const discoverCompanies = vi.fn(async () => { throw new Error("wikimedia 429"); });
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=tata");
+    expect(r.status).toBe(200);
+    expect(r.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+    expect(r.body.discovered).toEqual([]);
   });
 
   it("caps discovery at five candidates and survives a discovery failure with the directory answer intact", async () => {

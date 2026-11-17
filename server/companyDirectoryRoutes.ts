@@ -98,8 +98,9 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       let discovered: DiscoveredCompany[] | undefined;
       if (COMPANY_DISCOVERY_ENABLED) {
         try {
-          const held = new Set(companies.flatMap(company => company.domains));
-          discovered = (await discover(parsed.data.q, req.ip)).filter(candidate => !held.has(candidate.domain)).slice(0, COMPANY_DISCOVERY_LIMIT);
+          const held = companies.flatMap(company => company.domains);
+          // Domain identity, subdomain-aware in both directions: careers.acme.com held means acme.com is not a discovery.
+          discovered = (await discover(parsed.data.q, req.ip)).filter(candidate => !held.some(heldDomain => heldDomain === candidate.domain || candidate.domain.endsWith(`.${heldDomain}`) || heldDomain.endsWith(`.${candidate.domain}`))).slice(0, COMPANY_DISCOVERY_LIMIT);
         } catch { discovered = []; }
       }
       res.set("Cache-Control", PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results, ...(discovered === undefined ? {} : { discovered }) }));
