@@ -2,6 +2,8 @@ import { Check, Circle, Eye, EyeOff } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalResetPassword from "@/pages/goal/sign-in/GoalResetPassword";
 
 function tokenFromUrl(): string {
   if (typeof window === "undefined") return "";
@@ -9,6 +11,7 @@ function tokenFromUrl(): string {
 }
 
 export default function ResetPassword() {
+  if (goalSurfaceOn("sign-in")) return <GoalResetPassword />;
   const [token, setToken] = useState("");
   const [checking, setChecking] = useState(true);
   const [linkValid, setLinkValid] = useState(true);

@@ -1,8 +1,11 @@
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalForgotPassword from "@/pages/goal/sign-in/GoalForgotPassword";
 
 export default function ForgotPassword() {
+  if (goalSurfaceOn("sign-in")) return <GoalForgotPassword />;
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
