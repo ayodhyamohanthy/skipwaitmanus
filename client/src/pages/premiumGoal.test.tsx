@@ -30,6 +30,8 @@ function mount() {
 }
 beforeEach(() => {
   auth.isLoaded = true; auth.isSignedIn = true; auth.userId = "seeker-a"; auth.openSignIn.mockClear();
+  // A stalled-token test installs its own implementation; every other test starts from a working one.
+  auth.getToken.mockReset().mockResolvedValue("session-token");
   flags.sales = false; flags.oneTap = false;
   catalog.data = { packs: [{ available: false }] }; catalog.isPending = false; catalog.isError = false;
   window.history.replaceState({}, "", "/premium?role=job_seeker&currency=USD&quantity=10");
@@ -236,5 +238,87 @@ describe("goal premium payment return", () => {
     expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(2);
     expect(screen.getByText("5 referral requests are ready.")).toBeTruthy();
     expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull();
+  });
+
+  // D-048-p3-premium review F1: the confirmation deadline covers token lookup, the request and its body,
+  // so a stalled leg shows the help state instead of "We’re confirming your payment." forever.
+  it.each(["token", "network", "body"])("shows bounded help when %s confirmation work never settles", async stalled => {
+    vi.useFakeTimers(); pending();
+    const token = Promise.withResolvers<string>();
+    const reply = Promise.withResolvers<Response>();
+    const body = Promise.withResolvers<unknown>();
+    if (stalled === "token") auth.getToken.mockImplementation(() => token.promise);
+    if (stalled === "network") request.mockImplementation(() => reply.promise);
+    if (stalled === "body") {
+      const response = json({ status: "credited", tokenCount: 17, summary });
+      vi.spyOn(response, "json").mockImplementation(() => body.promise);
+      request.mockResolvedValue(response);
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const view = render(<QueryClientProvider client={client}><GoalPremium /></QueryClientProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+    expect(screen.queryByText("We’re confirming your payment.")).toBeNull();
+    expect(screen.getByText("We could not confirm this payment.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Get help with this payment" }).getAttribute("href")).toBe("/support");
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).not.toBeNull();
+    const confirmation = request.mock.calls.find(([url]) => url.includes("credit-recovery"));
+    if (stalled !== "token") expect(confirmation?.[1]?.signal?.aborted).toBe(true);
+    // The capped retries still run sequentially inside their own deadlines.
+    await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+    expect(auth.getToken).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(20000); });
+    expect(auth.getToken).toHaveBeenCalledTimes(3);
+    // Let the third (last) attempt reach its own deadline before the stalled legs answer.
+    await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+    await act(async () => {
+      token.resolve("late-token");
+      reply.resolve(json({ status: "credited", tokenCount: 17, summary }));
+      body.resolve({ status: "credited", tokenCount: 17, summary });
+    });
+    expect(screen.queryByText("17 referral requests are ready.")).toBeNull();
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).not.toBeNull();
+    view.unmount();
+    await act(async () => { await vi.advanceTimersByTimeAsync(120000); });
+    expect(auth.getToken).toHaveBeenCalledTimes(3);
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(stalled === "token" ? 0 : 3);
+    expect(request.mock.calls.some(([url]) => url === "/api/chargebee/checkout")).toBe(false);
+  });
+
+  it("preserves automatic retries after a slow response-body parse", async () => {
+    vi.useFakeTimers(); pending();
+    const body = Promise.withResolvers<unknown>();
+    const slow = json({ status: "pending" });
+    vi.spyOn(slow, "json").mockImplementation(() => body.promise);
+    request.mockResolvedValueOnce(slow)
+      .mockResolvedValueOnce(json({ status: "pending" }))
+      .mockResolvedValue(json({ status: "credited", tokenCount: 5, summary }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><GoalPremium /></QueryClientProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+    expect(screen.getByText("We could not confirm this payment.")).toBeTruthy();
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).not.toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(2);
+    await act(async () => { body.resolve({ status: "pending" }); });
+    expect(screen.queryByText("5 referral requests are ready.")).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(3);
+    expect(screen.getByText("5 referral requests are ready.")).toBeTruthy();
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull();
+  });
+
+  it.each(["credited", "requires_review"])("cancels automatic retries after a %s result", async status => {
+    vi.useFakeTimers(); pending();
+    request.mockResolvedValue(json(status === "credited" ? { status, tokenCount: 5, summary } : { status }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><GoalPremium /></QueryClientProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(120000); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(1);
+    expect(screen.getByText(status === "credited" ? "5 referral requests are ready." : "This payment needs a review.")).toBeTruthy();
+    expect(request.mock.calls.some(([url]) => url === "/api/chargebee/checkout")).toBe(false);
   });
 });
