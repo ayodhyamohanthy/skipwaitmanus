@@ -94,6 +94,7 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { registerPasskeyLoginRoutes } from "./passkeyLogin";
 import { registerReferrerStepUpRoutes } from "../referrerStepUpRoutes";
 import { registerReviewerLoginRoutes } from "./reviewerLogin";
 import { sessionRenewal } from "./sessionRenewal";
@@ -221,6 +222,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Referrer OTP-first login is a public surface, always registered.
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
+  registerPasskeyLoginRoutes(app, { resolveIdentity });
   // D-057-session-gate: the in-session work-email step-up and the referrer session gate, before the routes it guards.
   registerReferrerStepUpRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerReviewerLoginRoutes(app);

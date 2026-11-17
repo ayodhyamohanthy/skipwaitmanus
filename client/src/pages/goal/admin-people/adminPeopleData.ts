@@ -7,7 +7,7 @@
 // answer, with the same call semantics: bearer token when present, the access
 // gate typed, the payload Zod-parsed, plain words on any other failure.
 import { z } from "zod";
-import { ADMIN_ACCESS_MESSAGE, AdminAccessError, type TokenSource } from "@/components/admin/adminApi";
+import { ADMIN_ACCESS_MESSAGE, ADMIN_NETWORK_ERROR, AdminAccessError, type TokenSource } from "@/components/admin/adminApi";
 import { readApiJson } from "@/lib/apiResponse";
 import type { GoalStatusValue } from "@/components/goal/GoalStatus";
 
@@ -47,16 +47,22 @@ export const privacyRequestsResponseSchema = z.object({ requests: z.array(privac
 export const privacyReviewResultSchema = z.object({ request: privacyRequestRowSchema.partial().default({}) });
 
 export const adminPeopleKeys = { users: ["admin", "users"], privacyRequests: ["admin", "privacy-requests"] } as const;
+export const adminPeoplePaths = { users: "/api/admin/users?limit=200", privacyRequests: "/api/admin/privacy-requests?limit=100" } as const;
 
 /** One admin POST with a typed body: never a second access-gate rule. */
 export async function adminPeoplePost<T>(path: string, schema: z.ZodType<T>, getToken: TokenSource, fallback: string, body: Record<string, unknown>): Promise<T> {
   const token = await getToken();
-  const response = await fetch(path, {
-    method: "POST",
-    credentials: "include",
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      credentials: "include",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(ADMIN_NETWORK_ERROR);
+  }
   if (response.status === 401 || response.status === 403) throw new AdminAccessError(ADMIN_ACCESS_MESSAGE);
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
   if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
@@ -64,6 +70,41 @@ export async function adminPeoplePost<T>(path: string, schema: z.ZodType<T>, get
   if (!parsed.success) throw new Error(fallback);
   return parsed.data;
 }
+
+/**
+ * What a failed write did, read from the server rather than assumed (PR 1205
+ * review): a lost response or a gateway error cannot prove a rollback, so after
+ * any failure but the access gate the page re-reads the list. "saved" means the
+ * server holds the asked-for state, "unchanged" means the re-read shows it did
+ * not change, and "unknown" means the re-read failed too, so nothing is claimed.
+ */
+export type WriteOutcome = "saved" | "unchanged" | "unknown";
+
+/** The re-read list, or null when it failed: never a guess. */
+export async function rereadOrNull<T>(read: () => Promise<T>): Promise<T | null> {
+  try {
+    return await read();
+  } catch {
+    return null;
+  }
+}
+
+export function suspensionOutcome(userId: number, suspended: boolean, reread: readonly AdminUserRow[] | null): WriteOutcome {
+  const row = reread?.find(user => user.id === userId);
+  if (!row) return "unknown";
+  return row.suspended === suspended ? "saved" : "unchanged";
+}
+
+/** The server stamps reviewedAt on every start, so a new stamp (or a new in_review status) proves the review started. */
+export function privacyReviewOutcome(before: PrivacyRequestRow, reread: readonly PrivacyRequestRow[] | null): WriteOutcome {
+  const row = reread?.find(request => request.id === before.id);
+  if (!row) return "unknown";
+  const started = row.status === "in_review" && (before.status !== "in_review" || row.reviewedAt !== before.reviewedAt);
+  return started ? "saved" : "unchanged";
+}
+
+/** A server message as one sentence, so "...try again." never reads "try again..". */
+export const asSentence = (message: string) => (/[.!?]$/.test(message.trim()) ? message.trim() : `${message.trim()}.`);
 
 /** A suspended account reads as ended, then its role, then the absence of one - the kit roster's order. */
 const ACCOUNT_TYPE: Record<string, { status: GoalStatusValue; label: string }> = {

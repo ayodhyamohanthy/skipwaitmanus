@@ -22,7 +22,7 @@ const worktree = branch => `Work in your own worktree, never by switching branch
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
 const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
 /** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
-const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with \`--avoid ${task.id}\` added instead, and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).`;
+const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with \`--avoid ${task.id}\` added (repeat the flag, or use one comma list, \`--avoid a,b\`), and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
@@ -63,6 +63,9 @@ function resumeSteps(task, who, branch) {
 
 /** D-074: a Tier 1 change lands only as reviewed; a commit pushed after the pass verdict was never reviewed. */
 const unreviewed = pick => `Before you land, take the head commit the pass verdict names on the pull request, or in the reviewer's report note on the board (the newest pass, if there were several), as <reviewed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\` and \`git log --merges --cc --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`. Every commit the first lists, except one that only changes docs/plans/assignments.json (the status commit a landing makes) and one that lists no file at all (an empty picker marker, D-315), and every merge the second shows with a diff hunk (a conflict resolution or an extra change, your own merge included) was never reviewed (D-074): do not land, and report it blocked to the CEO with --report blocked.`;
+
+// D-344 (7), D-353 (1): a fixed landing checks the head its Fixed marker names, as the review gate does.
+const fixedUnchanged = pick => `Before you land, take the head the newest Fixed marker names (the \`fixed <sha>\` line in its body on ${pick.lock}) as <fixed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <fixed>..origin/${pick.work} ^origin/main\`. Every commit it lists, except the status commit a landing makes (only docs/plans/assignments.json) and an empty picker marker, came after the fix: do not land, and report it blocked to the CEO with --report blocked. The CI review gate applies the same check.`;
 
 const reviewSteps = (pick, who) => steps([
   `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit, whatever arrives later, in its own worktree: \`git worktree add --detach ../skipwaitmanus-wt/review-${slugOf(pick.work)} <reviewed>\`, then \`${INSTALL}\` there before any test: ${INSTALL_WHY}`,
@@ -109,7 +112,7 @@ const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : step
   `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
-  ...(pick.tier1 ? [unreviewed(pick)] : []),
+  ...(pick.tier1 ? [pick.fixed ? fixedUnchanged(pick) : unreviewed(pick)] : []),
   pick.tier1
     ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
     : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
@@ -213,6 +216,7 @@ export function renderBoard(rows) {
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
     if (r.report) {
       bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+      if (r.report.status === "blocked" && Number.isFinite(r.blockAgeHours)) bits.push(`blocked ${r.blockAgeHours}h${r.blockWaitingForEvidence ? " · waiting for new evidence or 24h" : ""}`);
       const newer = r.report.newer ?? [];
       for (const entry of newer.slice(0, 3)) {
         bits.push(`then: ${entry.status} — ${entry.who}${entry.note ? `: ${entry.note}` : ""}`);
@@ -280,6 +284,8 @@ function pickText(pick, { who, date, claimed, register = null }) {
     case "land": return head(`LAND ${pick.task.id} — ${pick.task.title}`, [
       pick.packet
         ? `Packet pull request ${pick.pr} on its architect lock ${pick.work} has green CI and waits for a lander (written by ${pick.from ?? "unknown"}; D-190). You must not have written this packet: its writer never lands it.`
+        : pick.fixed
+        ? `Pull request ${pick.pr}'s review findings were fixed by ${pick.from ?? "another session"} (a Fixed marker bound to its head), so it lands without a re-review (D-344 (7), D-353 (1)). You must not have built or fixed it.`
         : `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
       ...holding(pick),
       landSteps(pick, who),

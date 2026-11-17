@@ -2,32 +2,39 @@
 // with the oldest open record as the one next step. Guardrail 1
 // (D-048-admin.md §4): the read and the inline Approve/Reject keep the kit
 // page's exact calls (approvalsData.ts) and its failure copy and retry; only
-// the presentation changes. Guardrail 3: the credit line on a seeker request
-// comes from shared/moneyCopy (creditLine), never a string of this page.
+// the presentation changes. A seeker request shows a credit fact only where
+// the page can know it (approvalsData.ts, findings F3-F4); an employer access
+// application is its own kind, never a payment (finding F1).
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalEmptyState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalStatus } from "@/components/goal/GoalStatus";
-import { itemKey, itemTitle, openApprovalStatuses, type AdminApprovalQueueItem, type AdminApprovalQueueKind, type AdminApprovalQueueStatus } from "@/lib/adminApproval";
+import { openApprovalStatuses, type AdminApprovalQueueStatus } from "@/lib/adminApproval";
 import { AdminGoalFrame, AdminGoalHeading } from "../admin/AdminGoalFrame";
-import { ACCESS_MESSAGE, adminSignInHref, approvalStatus, creditLine, decisionFailureCopy, decisionFailureOf, isResolved, KIND_LABEL, loadApprovalQueue, oldestOpen, postApprovalDecision, QUEUE_LOAD_FALLBACK, recordHref, rowContext, statusAfter, tokenCountLine, type ApprovalDecision, type DecisionFailure } from "./approvalsData";
+import { ACCESS_MESSAGE, adminSignInHref, approvalKey, approvalStatus, approvalTitle, decisionFailureCopy, decisionFailureDetail, decisionFailureOf, holdsDecision, isResolved, KIND_LABEL, loadApprovalQueue, oldestOpen, postApprovalDecision, QUEUE_LOAD_FALLBACK, recordHref, referralCreditFact, rowContext, statusAfter, tokenCountLine, type ApprovalDecision, type ApprovalItem, type ApprovalKind, type DecisionFailure } from "./approvalsData";
 
 export const GOAL_PAGE = { goalLine: "Decide this approval." } as const;
-const BODY = "Seeker requests under review, referrer enrollments awaiting a first action, and credit-pack payments needing reconciliation — one queue, one status vocabulary, one audit trail.";
+const BODY = "Seeker requests under review, referrer enrollments awaiting a first action, employer access applications and credit-pack payments needing reconciliation — one queue, one status vocabulary, one audit trail.";
 
+type RowError = { failure: DecisionFailure; detail?: string };
 type StatusFilter = "all" | AdminApprovalQueueStatus;
-type KindFilter = "all" | AdminApprovalQueueKind;
+type KindFilter = "all" | ApprovalKind;
 type RangeFilter = "all" | "24h" | "7d" | "30d";
 const rangeCutoffs: Record<RangeFilter, number> = { all: 0, "24h": 86_400_000, "7d": 7 * 86_400_000, "30d": 30 * 86_400_000 };
 const SELECT = "h-9 rounded-g-control border border-g-control-edge bg-g-surface px-2.5 text-g-meta text-g-ink";
 
-function RecordFacts({ item }: { item: AdminApprovalQueueItem }) {
+function RecordFacts({ item }: { item: ApprovalItem }) {
   const facts: { key: string; node: ReactNode }[] = [];
-  if (item.kind === "referral_request") {
+  if (item.kind === "employer_application") {
+    if (item.meta.billingEmail) facts.push({ key: "email", node: <span>{item.meta.billingEmail}</span> });
+    if (item.meta.duplicateDomainCount) facts.push({ key: "domain", node: <span className="text-g-amber">{item.meta.duplicateDomainCount} more from this domain</span> });
+    if (item.meta.duplicatePersonCount) facts.push({ key: "person", node: <span className="text-g-amber">{item.meta.duplicatePersonCount} more from this person</span> });
+  } else if (item.kind === "referral_request") {
     if (item.meta.targetRoleUrl) facts.push({ key: "role", node: <a href={item.meta.targetRoleUrl} target="_blank" rel="noreferrer" className="text-g-ink underline decoration-g-hairline underline-offset-4 hover:decoration-g-ink">Role link</a> });
-    facts.push({ key: "credit", node: <span>{creditLine()}</span> });
+    const credit = referralCreditFact(item);
+    if (credit) facts.push({ key: "credit", node: <span>{credit}</span> });
     if (item.meta.waitingForCoverage) facts.push({ key: "coverage", node: <span className="text-g-amber">Waiting for coverage</span> });
   } else if (item.kind === "referrer_enrollment") {
     facts.push({ key: "verified", node: <span>Work email verified</span> });
@@ -43,17 +50,18 @@ function RecordFacts({ item }: { item: AdminApprovalQueueItem }) {
   );
 }
 
-function QueueRow({ item, working, reloading, error, onDecide, onReload }: { item: AdminApprovalQueueItem; working: boolean; reloading: boolean; error?: DecisionFailure; onDecide: (decision: ApprovalDecision) => void; onReload: () => void }) {
+function QueueRow({ item, working, reloading, error, onDecide, onReload }: { item: ApprovalItem; working: boolean; reloading: boolean; error?: RowError; onDecide: (decision: ApprovalDecision) => void; onReload: () => void }) {
   const resolved = isResolved(item.status);
   // A failed decision leaves the server state unknown: hold both actions until
-  // the queue reload reconciles the row (coordinator finding, Nov 6).
-  const held = resolved ? "Already resolved" : error ? "Reload the queue before you decide again" : undefined;
+  // the queue reload reconciles the row (coordinator finding, Nov 6). A refusal
+  // recorded nothing, so its permitted recovery stays open (finding F2).
+  const held = resolved ? "Already resolved" : holdsDecision(error?.failure) ? "Reload the queue before you decide again" : undefined;
   return (
     <li className="border-b border-g-hairline px-4 py-4 last:border-b-0 gdesk:px-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-g-meta text-g-ink-3">{KIND_LABEL[item.kind]}</p>
-          <h3 className="truncate text-g-label text-g-ink">{itemTitle(item)}</h3>
+          <h3 className="truncate text-g-label text-g-ink">{approvalTitle(item)}</h3>
         </div>
         <GoalStatus {...approvalStatus(item.status)} />
       </div>
@@ -62,7 +70,7 @@ function QueueRow({ item, working, reloading, error, onDecide, onReload }: { ite
       <RecordFacts item={item} />
       {error ? (
         <div role="alert" className="mt-3 border-l-2 border-g-crimson pl-3">
-          <p className="text-g-meta text-g-crimson">{decisionFailureCopy(error, "the queue")}</p>
+          <p className="text-g-meta text-g-crimson">{decisionFailureCopy(error.failure, "the queue", error.detail)}</p>
           <GoalButton size="sm" variant="outline" className="mt-2" busy={reloading} busyLabel="Loading…" onClick={onReload}>Reload the queue</GoalButton>
         </div>
       ) : null}
@@ -77,7 +85,7 @@ function QueueRow({ item, working, reloading, error, onDecide, onReload }: { ite
 
 export default function GoalAdminApprovalQueue() {
   const { isSignedIn, getToken, openSignIn } = useAuth();
-  const [items, setItems] = useState<AdminApprovalQueueItem[]>([]);
+  const [items, setItems] = useState<ApprovalItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [rangeFilter, setRangeFilter] = useState<RangeFilter>("all");
@@ -86,7 +94,7 @@ export default function GoalAdminApprovalQueue() {
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
-  const [rowErrors, setRowErrors] = useState<Record<string, DecisionFailure>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, RowError>>({});
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -101,13 +109,13 @@ export default function GoalAdminApprovalQueue() {
     finally { setLoading(false); }
   };
 
-  const decide = async (item: AdminApprovalQueueItem, decision: ApprovalDecision) => {
-    const key = itemKey(item);
+  const decide = async (item: ApprovalItem, decision: ApprovalDecision) => {
+    const key = approvalKey(item);
     setWorkingKey(key); setRowErrors(current => { const next = { ...current }; delete next[key]; return next; });
     try {
       const payload = await postApprovalDecision(getToken, item.kind, item.id, { decision });
       setItems(current => current.map(row => row.kind === item.kind && row.id === item.id ? { ...row, status: statusAfter(decision, payload.status) } : row));
-    } catch (resolveError) { setRowErrors(current => ({ ...current, [key]: decisionFailureOf(resolveError) })); }
+    } catch (resolveError) { setRowErrors(current => ({ ...current, [key]: { failure: decisionFailureOf(resolveError), detail: decisionFailureDetail(resolveError) } })); }
     finally { setWorkingKey(null); }
   };
 
@@ -158,7 +166,7 @@ export default function GoalAdminApprovalQueue() {
       <GoalButton variant="primary" className="mt-3" busy busyLabel="Loading…">Open the oldest record</GoalButton>
     </GoalNextStep>
   ) : oldest ? (
-    <GoalNextStep reason={`Oldest open record: ${KIND_LABEL[oldest.kind]} · ${itemTitle(oldest)} · ${rowContext(oldest)}`}>
+    <GoalNextStep reason={`Oldest open record: ${KIND_LABEL[oldest.kind]} · ${approvalTitle(oldest)} · ${rowContext(oldest)}`}>
       <GoalButton variant="primary" className="mt-3" asChild><a href={recordHref(oldest)}>Open the oldest record</a></GoalButton>
     </GoalNextStep>
   ) : (
@@ -178,7 +186,7 @@ export default function GoalAdminApprovalQueue() {
               <option value="all">Status: All</option><option value="pending">Pending</option><option value="under_review">Under review</option><option value="requires_review">Requires review</option><option value="approved">Approved</option><option value="declined">Declined</option>
             </select>
             <select aria-label="Filter by record type" value={kindFilter} onChange={event => setKindFilter(event.target.value as KindFilter)} className={SELECT}>
-              <option value="all">Role: All</option><option value="referral_request">Seeker request</option><option value="referrer_enrollment">Referrer enrollment</option><option value="payment">Credit pack</option>
+              <option value="all">Role: All</option><option value="referral_request">Seeker request</option><option value="referrer_enrollment">Referrer enrollment</option><option value="employer_application">Employer access</option><option value="payment">Credit pack</option>
             </select>
             <select aria-label="Filter by date range" value={rangeFilter} onChange={event => setRangeFilter(event.target.value as RangeFilter)} className={SELECT}>
               <option value="all">Recent: Any time</option><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option>
@@ -201,7 +209,7 @@ export default function GoalAdminApprovalQueue() {
           ) : (
             <ul>
               {filteredItems.map(item => {
-                const key = itemKey(item);
+                const key = approvalKey(item);
                 return <QueueRow key={key} item={item} working={workingKey === key} reloading={loading} error={rowErrors[key]} onDecide={decision => void decide(item, decision)} onReload={() => void load()} />;
               })}
             </ul>
