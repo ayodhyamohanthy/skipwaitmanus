@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Premium from "./Premium";
 // Load the lazy page graph before DOM waits; the tests still render the real switch.
-import "./goal/premium/GoalPremium";
+import GoalPremium from "./goal/premium/GoalPremium";
 import { assertGoalPage } from "@/test/goalPageContract";
 import type { Mock } from "vitest";
 import type * as PlanCatalog from "@shared/planCatalog";
@@ -126,6 +126,28 @@ describe("goal premium purchase parity", () => {
     expect(Boolean(screen.queryByText(/First verified payment earns/))).toBe(enabled);
     if (enabled) expect(screen.getByText(/First verified payment earns/).textContent).toBe("First verified payment earns 5 bonus referral requests. They expire after 30 days and are used before your monthly allowance.");
   });
+
+  it("keeps checkout locked after a successful navigation request", async () => {
+    flags.sales = true;
+    request.mockImplementation(async (url: string) => url === "/api/chargebee/checkout"
+      ? json({ checkoutUrl: "https://checkout.example.test/hosted", hostedPageId: "hp-first" })
+      : json({ summary }));
+    mount();
+    const button = await screen.findByRole("button", { name: "Continue to pay $10 USD" });
+    fireEvent.click(button);
+    await waitFor(() => expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBe(JSON.stringify({ hostedPageId: "hp-first", role: "job_seeker" })));
+    // The navigation helper is mocked: settlement leaves the old document interactive.
+    const settled = Promise.withResolvers<void>();
+    window.setTimeout(settled.resolve, 0);
+    await act(async () => { await settled.promise; });
+    fireEvent.click(button); fireEvent.click(button);
+    const repeated = Promise.withResolvers<void>();
+    window.setTimeout(repeated.resolve, 0);
+    await act(async () => { await repeated.promise; });
+    expect(request.mock.calls.filter(([url]) => url === "/api/chargebee/checkout")).toHaveLength(1);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBe(JSON.stringify({ hostedPageId: "hp-first", role: "job_seeker" }));
+  });
 });
 
 describe("goal premium payment return", () => {
@@ -196,5 +218,23 @@ describe("goal premium payment return", () => {
     expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(3);
     expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).not.toBeNull();
     expect(request.mock.calls.some(([url]) => url === "/api/chargebee/checkout")).toBe(false);
+  });
+
+  it("preserves automatic retries after a slow initial confirmation", async () => {
+    vi.useFakeTimers();
+    pending(); const firstReply = Promise.withResolvers<Response>();
+    request.mockImplementationOnce(() => firstReply.promise)
+      .mockResolvedValue(json({ status: "credited", tokenCount: 5, summary }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={client}><GoalPremium /></QueryClientProvider>);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(1);
+    // The first response finishes after both old startup-relative timer slots.
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    await act(async () => { firstReply.resolve(json({ status: "pending" })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
+    expect(request.mock.calls.filter(([url]) => url.includes("credit-recovery"))).toHaveLength(2);
+    expect(screen.getByText("5 referral requests are ready.")).toBeTruthy();
+    expect(window.sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull();
   });
 });

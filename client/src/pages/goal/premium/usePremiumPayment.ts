@@ -47,9 +47,11 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
     let attempts = 0;
     let inFlight = false;
     let settled = false;
+    let retryTimer: number | undefined;
     const publish = (result: Recovery) => { if (active && currentAccount.current === account) setRecovery({ account, result }); };
     const reconcile = async () => {
       if (!active || inFlight || settled || attempts >= 3) return;
+      window.clearTimeout(retryTimer);
       inFlight = true;
       attempts += 1;
       try {
@@ -77,22 +79,26 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
           captureClientError(new Error("Premium payment confirmation failed"), { source: "premium-recovery" });
           publish({ state: "error" });
         }
-      } finally { inFlight = false; }
+      } finally {
+        inFlight = false;
+        // A slow request must not consume the next retry's timer slot.
+        if (active && currentAccount.current === account && !settled && attempts < 3) {
+          retryTimer = window.setTimeout(() => { void reconcile(); }, attempts === 1 ? 2500 : 5000);
+        }
+      }
     };
     publish({ state: "checking" });
     void reconcile();
-    const second = window.setTimeout(() => { void reconcile(); }, 2500);
-    const third = window.setTimeout(() => { void reconcile(); }, 7500);
     const focus = () => { void reconcile(); };
     window.addEventListener("focus", focus);
-    return () => { active = false; window.clearTimeout(second); window.clearTimeout(third); window.removeEventListener("focus", focus); };
+    return () => { active = false; window.clearTimeout(retryTimer); window.removeEventListener("focus", focus); };
   }, [account, auth.isLoaded, auth.isSignedIn, client, fetchToken, pending, role]);
 
-  const purchaseInFlight = useRef(false);
+  const purchaseOwner = useRef<string | null>(null);
+  const [redirectingAccount, setRedirectingAccount] = useState<string | null>(null);
   const checkout = useMutation({
     mutationKey: ["premium-checkout", account],
-    mutationFn: async () => {
-      const owner = account;
+    mutationFn: async (owner: string) => {
       const token = await fetchToken();
       if (currentAccount.current !== owner) return;
       const selected = LEGACY_PREMIUM_PACKS.find(pack => pack.currency === route);
@@ -105,13 +111,17 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
       const result = premiumCheckoutSchema.parse(await response.json());
       if (currentAccount.current !== owner) return;
       window.sessionStorage.setItem(PENDING_PREMIUM_CHECKOUT_KEY, JSON.stringify({ hostedPageId: result.hostedPageId, role }));
+      setRedirectingAccount(owner);
       openChargebeeCheckout(result.checkoutUrl);
     },
-    onError: () => { captureClientError(new Error("Premium checkout failed"), { source: "premium-checkout" }); },
-    onSettled: () => { purchaseInFlight.current = false; },
+    onError: (_error, owner) => {
+      if (purchaseOwner.current === owner) purchaseOwner.current = null;
+      if (currentAccount.current === owner) setRedirectingAccount(null);
+      captureClientError(new Error("Premium checkout failed"), { source: "premium-checkout" });
+    },
   });
   const begin = () => {
-    if (!auth.isLoaded || !canBuy || purchaseInFlight.current) return;
+    if (!auth.isLoaded || !canBuy || purchaseOwner.current === account) return;
     if (!auth.isSignedIn) {
       const destination = new URL(window.location.href);
       destination.searchParams.set("role", role);
@@ -122,8 +132,8 @@ export function usePremiumPayment(role: TokenRole, pending: boolean, route: Paym
       else auth.openSignIn({ returnTo });
       return;
     }
-    purchaseInFlight.current = true;
-    checkout.mutate();
+    purchaseOwner.current = account;
+    checkout.mutate(account);
   };
-  return { auth, balance, checkout, begin, recovery: storedRecovery?.account === account ? storedRecovery.result : { state: "checking" } as Recovery };
+  return { auth, balance, checkout, checkoutBusy: checkout.isPending || redirectingAccount === account, begin, recovery: storedRecovery?.account === account ? storedRecovery.result : { state: "checking" } as Recovery };
 }

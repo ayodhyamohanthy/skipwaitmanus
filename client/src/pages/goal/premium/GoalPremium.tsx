@@ -40,7 +40,7 @@ function PremiumFlow({ search }: { search: string }) {
   const catalogFailed = catalog.isError;
   const catalogLoading = catalog.isPending && catalog.data === undefined;
   const canBuy = CREDIT_PACKS_ON_SALE && !referrerOff && !pending && !retired && !catalogFailed && !catalogLoading && online;
-  const { auth, balance, checkout, begin, recovery } = usePremiumPayment(role, pending, route, quantity, canBuy);
+  const { auth, balance, checkout, checkoutBusy, begin, recovery } = usePremiumPayment(role, pending, route, quantity, canBuy);
   const selected = LEGACY_PREMIUM_PACKS.find(pack => pack.currency === route) ?? LEGACY_PREMIUM_PACKS[1];
   const totalLabel = `${premiumMoney(selected.price * quantity, route)} ${route}`;
   const routeDetails = paymentRouteDetails(route);
@@ -50,7 +50,7 @@ function PremiumFlow({ search }: { search: string }) {
 
   let label = "Choose your referral requests";
   let reason = "Choose how many referral requests to add. Your selected total is shown before checkout.";
-  let action = <GoalButton variant="primary" className="mt-4 w-full gdesk:w-auto" busy={checkout.isPending} busyLabel="Opening secure checkout…" disabledReason={!auth.isLoaded ? "Checking sign-in…" : !online ? "Reconnect before opening checkout." : undefined} onClick={begin}>{!auth.isLoaded ? "Checking sign-in…" : auth.isSignedIn ? `Continue to pay ${totalLabel}` : `Sign in to pay ${totalLabel}`}</GoalButton>;
+  let action = <GoalButton variant="primary" className="mt-4 w-full gdesk:w-auto" busy={checkoutBusy} busyLabel="Opening secure checkout…" disabledReason={!auth.isLoaded ? "Checking sign-in…" : !online ? "Reconnect before opening checkout." : undefined} onClick={begin}>{!auth.isLoaded ? "Checking sign-in…" : auth.isSignedIn ? `Continue to pay ${totalLabel}` : `Sign in to pay ${totalLabel}`}</GoalButton>;
   if (pending) {
     label = !auth.isLoaded ? "Checking sign-in…" : !auth.isSignedIn ? "Sign in to confirm your payment." : recovery.state === "credited" ? `${recovery.count} referral request${recovery.count === 1 ? " is" : "s are"} ready.` : recovery.state === "requires_review" ? "This payment needs a review." : recovery.state === "error" ? "We could not confirm this payment." : recovery.state === "missing" ? "This browser has no matching checkout to confirm." : "We’re confirming your payment.";
     reason = !auth.isSignedIn ? "Use the account that started checkout. Signing in does not start another purchase." : recovery.state === "credited" ? "Your verified payment is complete. Your available referral requests are updated." : recovery.state === "requires_review" ? "Support can check the provider record. Do not pay again for this purchase." : recovery.state === "error" || recovery.state === "missing" ? "Your payment is not confirmed here. Keep your receipt and contact Support; do not pay again." : "We will update your balance only after the server confirms the provider’s payment record. Do not pay again.";
