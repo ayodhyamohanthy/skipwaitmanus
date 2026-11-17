@@ -2314,8 +2314,8 @@
       "tier": 1,
       "lane": "d048-fix-admin-approvals-copy",
       "branch": "agent/queue/993-kit-admin-approvals-failure-copy",
-      "status": "todo",
-      "syncedTo": "D-301",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [],
       "owns": [
         "client/src/pages/AdminApprovalQueue.tsx",
