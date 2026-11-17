@@ -25,3 +25,4 @@
 **Gates.** Tier 2: focused tests red first, `vitest run scripts/`, required CI green (D-200 (4), D-352).
 
 ## Status
+- `PROCESS-sol-full-edit`: review — agent/queue/process-sol-full-edit — Claude Code · a971 — 2026-11-17. `scope-check` exports `solHoldsTask`; on a branch whose own subjects carry this task's `Claim`/`Takeover`/`Fix claim` marker by a GPT-6.1 Sol session, out-of-owns paths print as D-356 notices and exit 0. Red first: 2 new cases failed on main (exit 1 / missing export), the other-session control passed; then `scopeCheck.test.ts` 7/7, `vitest run scripts/` 60 files / 1,464 passed, `tsc --noEmit` 0. Queue gate, review gate, id check, test integrity and switch-only limits unchanged.
