@@ -246,4 +246,4 @@ Until then the composer keeps today's behaviour, and nothing in this packet clai
 
 ## Status
 These rows share the §3b row D-132, so their status lines go here (D-134).
-- D-132-item3: todo — re-scoped Oct 28 by Claude Opus 5.5 · 4ef3 (architect), revision 2 after the coordinator's review; not built.
+- D-132-item3: in progress — Claude Code · cbbc — 2026-11-17 — branch agent/queue/d132-item3
