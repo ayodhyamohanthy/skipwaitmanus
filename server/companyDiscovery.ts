@@ -19,9 +19,9 @@ const WIKIPEDIA_OPENSEARCH = "https://en.wikipedia.org/w/api.php";
 const COMMONS_FILE_PATH = "https://commons.wikimedia.org/wiki/Special:FilePath/";
 const USER_AGENT = "SkipWait/1.0 (https://skipwait.me; company discovery)";
 
-type FetchResponse = { ok: boolean; json(): Promise<unknown> };
+type FetchResponse = { ok: boolean; status?: number; json(): Promise<unknown> };
 export type DiscoveryFetch = (url: string, init?: { headers?: Record<string, string>; signal?: AbortSignal }) => Promise<FetchResponse>;
-export type DiscoveryDeps = { fetchImpl?: DiscoveryFetch; nowMs?: number };
+export type DiscoveryDeps = { fetchImpl?: DiscoveryFetch; nowMs?: number; clientKey?: string };
 
 const searchSchema = z.object({
   search: z.array(z.object({ id: z.string().regex(/^Q\d+$/), label: z.string().optional() })).catch([]),
@@ -106,7 +106,7 @@ async function wikidataSearchIds(fetchImpl: DiscoveryFetch, term: string): Promi
   const url = `${WIKIDATA_API}?action=wbsearchentities&search=${encodeURIComponent(term)}&language=en&format=json&limit=8&type=item`;
   const response = await fetchImpl(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(COMPANY_DISCOVERY_TIMEOUT_MS) });
   // 429/5xx is a provider failure, not an empty answer: throw so nothing caches it.
-  if (!response.ok) throw new Error("wikidata search HTTP failure");
+  if (!response.ok) throw httpFailure("wikidata search", response.status);
   return searchSchema.parse(await response.json()).search;
 }
 
@@ -123,6 +123,38 @@ const inflight = new Map<string, Promise<DiscoveredCompany[]>>();
 
 /** Minimum query length: single characters never reach the sources. */
 export const COMPANY_DISCOVERY_MIN_QUERY = 2;
+/** At most this many upstream rounds run at once; the rest degrade to cache-or-nothing. */
+export const DISCOVERY_MAX_CONCURRENT_UPSTREAM = 4;
+/** After a source 429, all discovery upstream calls pause for this long. Directory answers are unaffected. */
+export const DISCOVERY_RATE_LIMIT_COOLDOWN_MS = 60_000;
+/** Per-client upstream budget: distinct uncached names per window. Cached answers never spend it. */
+export const DISCOVERY_CLIENT_BUDGET = 20;
+export const DISCOVERY_CLIENT_WINDOW_MS = 10 * 60 * 1000;
+const DISCOVERY_CLIENT_BUDGET_MAX_KEYS = 1_000;
+
+let rateLimitedUntil = 0;
+let activeUpstream = 0;
+const clientBudget = new Map<string, { start: number; used: number }>();
+
+const httpFailure = (what: string, status?: number) => Object.assign(new Error(`${what} HTTP failure`), { status: status ?? 0 });
+
+/** One client's budget for new upstream rounds; true when this round may proceed. */
+function spendClientBudget(clientKey: string, now: number): boolean {
+  const entry = clientBudget.get(clientKey);
+  if (!entry || now - entry.start >= DISCOVERY_CLIENT_WINDOW_MS) {
+    clientBudget.delete(clientKey);
+    clientBudget.set(clientKey, { start: now, used: 1 });
+    while (clientBudget.size > DISCOVERY_CLIENT_BUDGET_MAX_KEYS) {
+      const oldest = clientBudget.keys().next().value;
+      if (oldest === undefined) break;
+      clientBudget.delete(oldest);
+    }
+    return true;
+  }
+  if (entry.used >= DISCOVERY_CLIENT_BUDGET) return false;
+  entry.used += 1;
+  return true;
+}
 
 /** Resolve the typed name to worldwide candidates: name + official domain + optional logo, in source rank order. */
 export function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Promise<DiscoveredCompany[]> {
@@ -132,10 +164,18 @@ export function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Prom
   const key = q.toLowerCase();
   const fresh = cache.get(key);
   if (fresh && now - fresh.at < COMPANY_DISCOVERY_CACHE_TTL_MS) return Promise.resolve(fresh.results);
+  // Aggregate bounds: a source rate-limit pauses all upstream calls for a cooldown; a client
+  // over its budget and a saturated upstream pool both degrade to cache-or-nothing. The
+  // directory answer never depends on any of this.
+  if (now < rateLimitedUntil) return Promise.resolve(fresh?.results ?? []);
+  if (deps.clientKey && !spendClientBudget(deps.clientKey, now)) return Promise.resolve(fresh?.results ?? []);
   // One upstream round per typed name: concurrent asks share the in-flight promise.
   const pending = inflight.get(key);
   if (pending) return pending;
-  const run = discoverUncached(q, key, now, deps.fetchImpl ?? (fetch as unknown as DiscoveryFetch)).finally(() => inflight.delete(key));
+  if (activeUpstream >= DISCOVERY_MAX_CONCURRENT_UPSTREAM) return Promise.resolve(fresh?.results ?? []);
+  activeUpstream += 1;
+  const run = discoverUncached(q, key, now, deps.fetchImpl ?? (fetch as unknown as DiscoveryFetch))
+    .finally(() => { activeUpstream -= 1; inflight.delete(key); });
   inflight.set(key, run);
   return run;
 }
@@ -152,7 +192,7 @@ async function discoverUncached(q: string, key: string, now: number, fetchImpl: 
     if (hits.length > 0) {
       const url = `${WIKIDATA_API}?action=wbgetentities&ids=${hits.map(hit => hit.id).join("|")}&props=claims|labels|descriptions&languages=en&format=json`;
       const response = await fetchImpl(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(COMPANY_DISCOVERY_TIMEOUT_MS) });
-      if (!response.ok) throw new Error("wikidata entities HTTP failure");
+      if (!response.ok) throw httpFailure("wikidata entities", response.status);
       const { entities } = entitiesSchema.parse(await response.json());
       const seen: string[] = [];
       results = hits.flatMap((hit, index) => {
@@ -176,7 +216,9 @@ async function discoverUncached(q: string, key: string, now: number, fetchImpl: 
     // Only real answers are cached; failures and empty reads are never remembered (no 6h poison).
     if (results.length > 0) remember(key, now, results);
     return results;
-  } catch {
+  } catch (error) {
+    // A source 429 pauses every discovery upstream call for the cooldown; directory answers stand.
+    if ((error as { status?: number })?.status === 429) rateLimitedUntil = now + DISCOVERY_RATE_LIMIT_COOLDOWN_MS;
     // Provider failure answers the stale cache when we have one, else nothing; the directory results stand on their own.
     return fresh?.results ?? [];
   }

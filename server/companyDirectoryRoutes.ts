@@ -31,8 +31,8 @@ export type CompanyDirectoryRouteDeps = {
   recordActivity?: (input: ActivityInput) => void | Promise<void>;
   listCompanyDirectory?: () => Promise<CompanyDirectoryResponse>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<PublicCompany | undefined>;
-  /** Worldwide discovery (D-174-worldwide-discovery); defaults to the Wikidata adapter. */
-  discoverCompanies?: (query: string) => Promise<DiscoveredCompany[]>;
+  /** Worldwide discovery (D-174-worldwide-discovery); defaults to the Wikidata adapter. The client key feeds its per-client upstream budget. */
+  discoverCompanies?: (query: string, clientKey?: string) => Promise<DiscoveredCompany[]>;
   /** A company's live posts for the given domains (defaults to server/db.ts). */
   listCompanyOpportunities?: (domains: readonly string[], nowMs?: number) => Promise<unknown[]>;
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
@@ -99,7 +99,7 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       if (COMPANY_DISCOVERY_ENABLED) {
         try {
           const held = new Set(companies.flatMap(company => company.domains));
-          discovered = (await discover(parsed.data.q)).filter(candidate => !held.has(candidate.domain)).slice(0, COMPANY_DISCOVERY_LIMIT);
+          discovered = (await discover(parsed.data.q, req.ip)).filter(candidate => !held.has(candidate.domain)).slice(0, COMPANY_DISCOVERY_LIMIT);
         } catch { discovered = []; }
       }
       res.set("Cache-Control", PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results, ...(discovered === undefined ? {} : { discovered }) }));

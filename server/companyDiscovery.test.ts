@@ -325,3 +325,51 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
     expect(results.map(candidate => candidate.name)).toEqual(["Example Corp"]);
   });
 });
+
+describe("aggregate traffic bounds (review: many distinct queries must not fan out upstream)", () => {
+  it("a source 429 pauses ALL discovery upstream calls for the cooldown; cached answers still serve", async () => {
+    const t0 = 9_000_000;
+    const limited: DiscoveryFetch = async () => ({ ok: false, status: 429, json: async () => ({}) });
+    const key = `rl-${Date.now()}`;
+    expect(await discoverCompanies(key, { fetchImpl: limited, nowMs: t0 })).toEqual([]);
+    const counting = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
+    // During the cooldown even a recovered source is never called - for any distinct name.
+    expect(await discoverCompanies(`${key}-other`, { fetchImpl: counting, nowMs: t0 + 1_000 })).toEqual([]);
+    expect(counting).not.toHaveBeenCalled();
+    // After the cooldown the source is asked again.
+    const after = await discoverCompanies(`${key}-other`, { fetchImpl: counting, nowMs: t0 + 61_000 });
+    expect(after.map(candidate => candidate.domain)).toEqual(["google.com"]);
+  });
+
+  it("a saturated upstream pool degrades a new name to cache-or-nothing without another call", async () => {
+    let release!: () => void;
+    const gate = new Promise(resolve => { release = () => resolve(null); });
+    const blocking = fakeFetch({ search: () => gate.then(() => ({ search: [] })) as never, entities: ENTITIES_GOOGLE });
+    const base = `pool-${Date.now()}`;
+    const pending = [0, 1, 2, 3].map(i => discoverCompanies(`${base}-${i}`, { fetchImpl: blocking }));
+    const counting = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
+    expect(await discoverCompanies(`${base}-fifth`, { fetchImpl: counting })).toEqual([]);
+    expect(counting).not.toHaveBeenCalled();
+    // The four in-flight asks are still shared, not duplicated.
+    const again = discoverCompanies(`${base}-0`, { fetchImpl: blocking });
+    expect(blocking.mock.calls.filter(call => String(call[0]).includes("wbsearchentities"))).toHaveLength(4);
+    release();
+    await Promise.all([...pending, again]); // free the pool slots for later tests
+  });
+
+  it("a client over its distinct-query budget degrades to cache-or-nothing; other clients are unaffected", async () => {
+    const t0 = 11_000_000;
+    const counting = fakeFetch({ search: () => ({ search: [] }), opensearch: ["x", []] });
+    const client = `ip-budget-${Date.now()}`;
+    for (let i = 0; i < 20; i += 1) {
+      await discoverCompanies(`budget-${Date.now()}-${i}`, { fetchImpl: counting, nowMs: t0, clientKey: client });
+    }
+    const callsAtBudget = counting.mock.calls.length;
+    expect(callsAtBudget).toBeGreaterThan(0);
+    await discoverCompanies(`budget-${Date.now()}-over`, { fetchImpl: counting, nowMs: t0 + 1_000, clientKey: client });
+    expect(counting.mock.calls.length).toBe(callsAtBudget);
+    // A different client still gets through, and the window resets after 10 minutes.
+    await discoverCompanies(`budget-${Date.now()}-other`, { fetchImpl: counting, nowMs: t0 + 2_000, clientKey: `${client}-2` });
+    expect(counting.mock.calls.length).toBeGreaterThan(callsAtBudget);
+  });
+});
