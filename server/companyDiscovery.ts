@@ -37,7 +37,11 @@ const entitiesSchema = z.object({
     }).optional(),
   })),
 });
-const openSearchSchema = z.tuple([z.string(), z.array(z.string()).catch([])]);
+// The real OpenSearch answer is a 4-element array [term, titles, descriptions, urls];
+// an exact-length tuple would throw on it, and the throw surfaced every true no-match
+// query as degraded/unavailable instead of a clean empty answer. Extra items are
+// allowed and only the titles element is read.
+const openSearchSchema = z.tuple([z.string(), z.array(z.string()).catch([])]).rest(z.unknown());
 
 const cache = new Map<string, { at: number; results: DiscoveredCompany[] }>();
 

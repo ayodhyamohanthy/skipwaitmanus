@@ -318,10 +318,18 @@ const INVALID_REFUSED = "We couldn’t use that search. Try a different company 
 /** Discovered-candidate logo: the CSP allows same-origin images only, so a Commons logo can be blocked; a blocked or broken logo degrades to the company's initial, never a broken image. */
 function DiscoveredLogo({ name, logoUrl }: { name: string; logoUrl?: string }) {
   const [broken, setBroken] = useState(false);
-  if (!logoUrl || broken) {
-    return <span aria-hidden="true" data-testid="company-discovery-initial" className="grid size-5 shrink-0 place-items-center rounded-sm bg-g-surface-hover text-[10px] font-semibold text-g-ink-3">{(name.trim().charAt(0) || "?").toUpperCase()}</span>;
-  }
-  return <img src={logoUrl} alt="" onError={() => setBroken(true)} className="size-5 shrink-0 rounded-sm object-contain" />;
+  const [loaded, setLoaded] = useState(false);
+  const initial = <span aria-hidden="true" data-testid="company-discovery-initial" className="grid size-5 shrink-0 place-items-center rounded-sm bg-g-surface-hover text-[10px] font-semibold text-g-ink-3">{(name.trim().charAt(0) || "?").toUpperCase()}</span>;
+  if (!logoUrl || broken) return initial;
+  // The initial stays until the logo has actually painted: a slow or hung Commons
+  // request leaves the initial behind, never a blank box; a blocked or broken logo
+  // errors into the same initial.
+  return (
+    <span className="relative grid size-5 shrink-0 place-items-center">
+      {!loaded && initial}
+      <img src={logoUrl} alt="" onLoad={() => setLoaded(true)} onError={() => setBroken(true)} className={loaded ? "size-5 shrink-0 rounded-sm object-contain" : "absolute inset-0 size-5 rounded-sm object-contain opacity-0"} />
+    </span>
+  );
 }
 
 function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; unlisted: boolean; onOpen(slug: string): void }) {
@@ -415,7 +423,7 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
         </div>
       ) : null}
       {search.discoveryState === "degraded" && status === "ready" ? (
-        <p data-testid="company-discovery-degraded" role="status" className="mt-3 text-g-meta text-g-ink-3">Worldwide company search is briefly limited, so an unlisted company may not appear right now. Directory companies still show, and pasting a job link always works.</p>
+        <p data-testid="company-discovery-degraded" role="status" className="mt-3 text-g-meta text-g-ink-3">Worldwide company search is briefly limited, so an unlisted company may not appear right now. Directory companies still show, and the ask page accepts a pasted job link.</p>
       ) : null}
       {status === "loading" ? (
         <p data-testid="company-search-loading" role="status" aria-busy="true" className="mt-3 text-g-meta text-g-ink-3">Searching companies…</p>
