@@ -10,9 +10,11 @@ describe("TrustPrivacy", () => {
   it("names every processor that handles personal data (LAUNCH-legal-copy)", () => {
     const { container } = render(<TrustPrivacy />);
     const text = container.textContent ?? "";
-    for (const name of ["WorkOS", "ZeptoMail", "Sentry", "Cloudflare", "Chargebee", "Razorpay", "PayPal", "Microsoft Clarity"]) {
+    for (const name of ["WorkOS", "ZeptoMail", "Sentry", "Cloudflare", "Wikipedia", "Wikidata", "Chargebee", "Razorpay", "PayPal", "Microsoft Clarity"]) {
       expect(text, `processor ${name} must be named`).toContain(name);
     }
+    expect(text).toContain("we do not add your name, email or account details");
+    expect(text).toContain("Wikimedia Foundation");
     expect(text).toContain("page interactions and session replay");
     expect(text).toContain("analytics cookie choice");
   });

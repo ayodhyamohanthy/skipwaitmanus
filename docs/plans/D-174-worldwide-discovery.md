@@ -188,7 +188,8 @@ that limit is reported, not hidden.
    remains a known risk. Typed-query privacy: typed company names reach only
    our own /api/companies/search; the Wikimedia calls are server-side and
    carry the query text with no user identity, cookies or account data, and
-   the client never calls Wikimedia directly. Known limit: the /privacy
-   processor list (D-345) does not name Wikimedia yet; that page is outside
-   this row's scope, so the processor-list addition is a follow-up, not a
-   silent edit here.
+   the client never calls Wikimedia directly. The /privacy processor list
+   (D-345) names Wikipedia and Wikidata with exactly this flow in the same
+   flip, so the disclosure lands before enable rather than as a deferred
+   gap (scope widened in the registry for TrustPrivacy.tsx and its test,
+   overlaps with LAUNCH-legal-copy and D-093-language reported).
