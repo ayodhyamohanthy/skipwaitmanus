@@ -11,7 +11,7 @@ const { state } = vi.hoisted(() => ({
   state: {
     path: "/requests",
     signedIn: true,
-    referrer: "unverified" as "unverified" | "verified" | "checking",
+    referrer: "unverified" as "unverified" | "verified" | "code_required" | "checking",
     credits: { state: "ready", count: 9 } as { state: "ready"; count: number } | { state: "error"; onRetry: () => void } | { state: "loading" } | null,
   },
 }));
@@ -21,7 +21,7 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: state.signedIn ? { fullName: "Ada Lovelace", firstName: "Ada", primaryEmailAddress: { emailAddress: "ada@example.com" } } : null }),
 }));
 vi.mock("@/hooks/useReferrerAccess", () => ({
-  useReferrerAccess: () => ({ status: state.referrer, access: { verified: state.referrer === "verified" } }),
+  useReferrerAccess: () => ({ status: state.referrer, access: { verified: state.referrer === "verified" || state.referrer === "code_required" } }),
 }));
 // AppShell no longer queries inline (F-credits): the one balance query is the
 // hook; the mock honours its enabled contract (disabled -> null, no fetch).
@@ -58,6 +58,16 @@ describe("AppShell on GoalShell (W0)", () => {
     const rail = screen.getAllByRole("navigation", { name: "Primary" })[0];
     expect(within(rail).getByRole("link", { name: "Queue" }).getAttribute("href")).toBe("/queue");
     expect(screen.queryByTestId("goal-give-referral")).toBeNull();
+  });
+
+  it("preserves referrer navigation and the non-linked count while step-up is required", () => {
+    state.path = "/verify";
+    state.referrer = "code_required";
+    render(<AppShell><p>page</p></AppShell>);
+    expect(screen.getAllByRole("link", { name: "Queue" }).length).toBeGreaterThan(0);
+    const pills = screen.getAllByTestId("goal-credits-pill");
+    expect(pills[0].textContent).toBe("9 referrals left");
+    expect(pills.every(pill => pill.tagName === "SPAN")).toBe(true);
   });
 
   it("marks the current route active with aria-current", () => {
