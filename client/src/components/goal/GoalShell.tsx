@@ -114,6 +114,7 @@ function AccountSlot({ account }: { account: GoalShellProps["account"] }) {
 
 export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referralCountLinked = true, account, alertsHref, showAlerts = true, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
   const items = goalNavFor(verifiedReferrer);
+  const balanceError = credits?.state === "error";
   return (
     <div
       data-testid="goal-shell"
@@ -121,9 +122,13 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referr
         "g-scope grid min-h-screen",
         drawer ? "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)_var(--g-drawer-w)]" : "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)]",
         "gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)]",
-        hideBottomBar
-          ? "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px),auto)]"
-          : "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]",
+        balanceError
+          ? hideBottomBar
+            ? "max-gdesk:grid-rows-[72px_minmax(calc(100vh-72px),auto)]"
+            : "max-gdesk:grid-rows-[72px_minmax(calc(100vh-72px-56px),auto)_56px]"
+          : hideBottomBar
+            ? "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px),auto)]"
+            : "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]",
       )}
     >
       {/* Desktop rail */}
@@ -153,7 +158,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referr
       </nav>
 
       {/* Top bar */}
-      <header className={cn("sticky top-0 z-20 self-start gdesk:col-start-2 gdesk:col-end-[-1] gdesk:row-start-1 flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5")}>
+      <header className={cn("sticky top-0 z-20 self-start gdesk:col-start-2 gdesk:col-end-[-1] gdesk:row-start-1 flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5", balanceError && "max-gdesk:h-[72px]")}>
         {/* phone: avatar left, no wordmark (BRIEF.md §149) */}
         <span className="gdesk:hidden mx-0.5 flex items-center gap-2">
           {/* The top bar already has its own alerts control; keep one bell on phones. */}

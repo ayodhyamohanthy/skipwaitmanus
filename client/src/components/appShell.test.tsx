@@ -272,11 +272,13 @@ describe("D-222: the person's own referrals-left count on every signed-in shell 
   });
 
   it("keeps the count's header pinned at the top while the page scrolls", () => {
+    state.credits = { state: "error", onRetry: vi.fn() };
     render(<AppShell><p>page</p></AppShell>);
     const header = screen.getByRole("banner");
     expect(header.className).toContain("sticky");
     expect(header.className).toContain("top-0");
     expect(header.className).toContain("self-start");
+    expect(header.className).toContain("max-gdesk:h-[72px]");
   });
 
   it("never says credit and carries no icon or money glyph, in any state, on either route kind", () => {
