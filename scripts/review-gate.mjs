@@ -28,6 +28,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { modelOf, parseMarker, reviewLockOf, slugOf } from "./nextTaskCore.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
+import { z } from "zod";
 
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
@@ -37,6 +38,11 @@ export const REVIEW_GATE_FAIL = "Tier 1: this head has no independent passing re
 export const TIER_FLOOR_FAIL = "Tier 1: this change touches";
 
 const SHA = /^[0-9a-f]{40}$/;
+const queuedPullSchema = z.object({
+  number: z.number().int().positive().safe(), state: z.literal("open"),
+  head: z.object({ ref: z.string().min(1), sha: z.string().regex(SHA) }),
+  base: z.object({ ref: z.literal("main") }),
+});
 // PROCESS-provenance-loader-bounds: the gate reads through the same bounded reader as
 // the picker, so the two loaders cannot diverge on the supported aggregate size.
 // Exported so the regression exercises this exact binding.
@@ -267,11 +273,32 @@ function markersIn(range) {
   });
 }
 
-function pullRequestHead() {
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (!eventPath) return null;
-  const sha = JSON.parse(readFileSync(eventPath, "utf8"))?.pull_request?.head?.sha;
-  return typeof sha === "string" && SHA.test(sha) ? sha : null;
+/** Bind the queue ref to its PR's own head; the synthetic queue SHA is never a reviewed head. */
+export function resolveReviewTarget({ eventName, event, ref, headRef, localHead, readPullRequest, isAncestor }) {
+  if (eventName !== "merge_group") {
+    const sha = event?.pull_request?.head?.sha;
+    return { branch: headRef, head: typeof sha === "string" && SHA.test(sha) ? sha : localHead };
+  }
+  const group = event?.merge_group;
+  const match = /^refs\/heads\/gh-readonly-queue\/main\/pr-([1-9][0-9]*)-[0-9a-f]{7,40}$/.exec(ref ?? "");
+  const number = Number(match?.[1]);
+  if (!match || !Number.isSafeInteger(number) || group?.base_ref !== "refs/heads/main"
+      || group?.head_ref !== ref || !SHA.test(group?.head_sha ?? "") || group.head_sha !== localHead) {
+    throw new Error("merge group does not bind to the checked-out main queue ref");
+  }
+  const pull = queuedPullSchema.parse(readPullRequest(number));
+  if (pull.number !== number || !isAncestor(pull.head.sha, localHead)) {
+    throw new Error(`queued PR #${number} has no current head in this merge group`);
+  }
+  return { branch: pull.head.ref, head: pull.head.sha };
+}
+
+function readQueuedPullRequest(number) {
+  const repository = process.env.GITHUB_REPOSITORY;
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "")) throw new Error("merge group repository is unavailable");
+  return JSON.parse(execFileSync("gh", ["api", `repos/${repository}/pulls/${number}`], {
+    encoding: "utf8", maxBuffer: 4 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],
+  }));
 }
 
 /**
@@ -302,14 +329,15 @@ function fetchBranch(name) {
 }
 
 /**
- * Run the gate. From scope-check it runs on pull requests only (`local: false`); run on its own it
- * checks the current head, so a lander can see the answer before pushing to main.
+ * Run the gate for PR and merge-group events from scope-check (`local: false`);
+ * on its own it also checks the current local head.
  */
 export function runReviewGate({ local = false } = {}) {
   let externalContext = false;
+  const mergeGroup = process.env.GITHUB_EVENT_NAME === "merge_group";
   try {
     const eventName = process.env.GITHUB_EVENT_NAME;
-    if (!local && eventName !== "pull_request") return 0;
+    if (!local && eventName !== "pull_request" && !mergeGroup) return 0;
 
     // Before the first origin/main read and before the review-lock fetch (D-292). A fetch error throws
     // into the catch below: the only fail-open, loudly.
@@ -327,14 +355,22 @@ export function runReviewGate({ local = false } = {}) {
     const tasks = JSON.parse(git(["show", `origin/main:${ASSIGNMENTS}`]))?.tasks;
     if (!Array.isArray(tasks)) {
       console.warn("review-gate: origin/main task list has an unknown structure.");
-      return externalContext ? 1 : 0;
+      return externalContext || mergeGroup ? 1 : 0;
     }
-    const branch = process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]);
+    const localHead = git(["rev-parse", "HEAD"]);
+    const event = process.env.GITHUB_EVENT_PATH ? JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")) : {};
+    const { branch, head } = resolveReviewTarget({
+      eventName, event, ref: process.env.GITHUB_REF,
+      headRef: process.env.GITHUB_HEAD_REF || git(["rev-parse", "--abbrev-ref", "HEAD"]), localHead,
+      readPullRequest: readQueuedPullRequest,
+      isAncestor: (sha, group) => {
+        try { git(["merge-base", "--is-ancestor", sha, group]); return true; } catch { return false; }
+      },
+    });
     const task = findGateRow(tasks, branch);
     if (!task) return 0;
 
-    // In CI the checkout is GitHub's merge of the PR into main; the PR's own head is in the event.
-    const head = pullRequestHead() ?? git(["rev-parse", "HEAD"]);
+    // Both pull_request and merge_group evaluate the PR head, while CI tests the merged checkout.
     // GATE-tier-floor (D-212): the computed tier from the PR's own changed paths, plus the hunks of
     // server/db.ts (a money line, or a function whose name names money).
     const changedPaths = changedPathsOf(head);
@@ -366,6 +402,7 @@ export function runReviewGate({ local = false } = {}) {
     console.log(`review-gate: ${task.id} at ${head.slice(0, 8)} has an independent passing review.`);
     return 0;
   } catch (error) {
+    if (mergeGroup) { console.error(`review-gate: merge group could not be evaluated (${error instanceof Error ? error.message : String(error)}) — failing closed`); return 1; }
     if (externalContext) { console.error("review-gate: external provenance source unavailable; failing closed"); return 1; }
     console.error(`review-gate: could not run (${error instanceof Error ? error.message : String(error)}) — not failing the branch.`);
     return 0;
