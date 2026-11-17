@@ -56,6 +56,7 @@ On Nov 16, `PRICING-banded-oct25` was reported blocked five times for the same r
 2. The route list comes from the existing surface map (`client/src/lib/goalSurfaces.ts` and `docs/plans/GOAL_UI_COVERAGE.md`), never a hand-kept copy.
 3. Upload the images as the workflow artifact `release-captures-<id>`. A release row cites that artifact as its capture proof (AGENTS.md rule 8).
 4. Tests: `scripts/releaseCaptures.test.ts` checks the route resolution for every open release id.
+5. `scripts/ciMarkerSkip.test.ts` owns the exact CI job/dependency inventory. Its existing assertions must be ported to include the non-required capture planner and matrix, preserving every required-job start, classifier and shard-aggregate check. This test path is added to the row under D-344 (8), with no other open owner; the registry amendment lands first because scope-check reads owns from `origin/main`. This changes no capture acceptance or required check.
 
 ## Row 5: `GATE-merge-queue` (Tier 2, lane `gate-merge-queue`; D-346 (3))
 

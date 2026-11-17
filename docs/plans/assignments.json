@@ -306,7 +306,8 @@
         ".github/workflows/ci.yml",
         "e2e/release-captures.e2e.ts",
         "scripts/release-captures.mjs",
-        "scripts/releaseCaptures.test.ts"
+        "scripts/releaseCaptures.test.ts",
+        "scripts/ciMarkerSkip.test.ts"
       ],
       "note": "Build docs/plans/D-344-unblock.md row 4. Shares ci.yml with GATE-merge-queue under D-314."
     },
