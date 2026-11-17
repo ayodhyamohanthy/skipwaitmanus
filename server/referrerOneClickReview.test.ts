@@ -28,6 +28,7 @@ describe("Referrer one-click review actions", () => {
       oneClickReviewReferralRequest: async (userId, input) => { if (userId !== 2) throw new Error("This referral request is no longer available"); reviews.push({ userId, ...input }); return { status: input.decision === "declined" ? "passed" : input.decision, companyDomain: "acme.com", declineReason: input.declineReason }; },
       resolveReferrerReviewEmailLink: async (userId, linkToken) => { if (userId !== 2 || linkToken !== token || consumed.includes(linkToken)) throw new Error("This private review link is unavailable"); return { requestId: 81 }; },
       consumeReferrerReviewEmailLink: async (_userId, linkToken) => { consumed.push(linkToken); },
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       ...overrides,
     } as Parameters<typeof registerPrivateReferralRoutes>[1]);
     return { app, reviews, consumed, sent };

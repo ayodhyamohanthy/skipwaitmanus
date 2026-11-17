@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
 import { CREDIT_PACKS, type CatalogCurrency } from "../shared/planCatalog";
-import { PASS_SALES_ENABLED, catalogPlanById } from "../shared/planCatalog";
+import { LEGACY_PACK_SALES_PAUSED, LEGACY_PACK_SALES_PAUSED_CODE, LEGACY_PACK_SALES_PAUSED_ERROR, PASS_SALES_ENABLED, catalogPlanById } from "../shared/planCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
 import { createPackCheckout, createPlanCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
@@ -34,6 +34,8 @@ export type KitCheckoutDeps = {
   /** Tests: bound provider calls; the defaults resolve the site from the request host. */
   createPlanCheckout?: typeof createPlanCheckout;
   createPackCheckout?: typeof createPackCheckout;
+  /** Tests: exercise the pack checkout with the legacy-pricing pause lifted; production reads LEGACY_PACK_SALES_PAUSED. */
+  packSalesPaused?: boolean;
   /** Tests: a deterministic checkout intent id. */
   newCheckoutIntentId?: () => string;
 };
@@ -101,6 +103,9 @@ export async function startKitPackCheckout(input: { req: Request; request: PackC
   const deps = input.deps ?? {};
   const price = packPrice(input.request.packId, input.request.billingCountry === "IN" ? "INR" : "USD");
   if (!price) return { ok: false, status: 400, error: "That credit pack is not available for this billing route" };
+  // Oct 25 2026 old-pricing pause (shared/planCatalog.ts): refuse new pack
+  // purchases before any provider call; existing credits and recovery run on.
+  if (input.deps?.packSalesPaused ?? LEGACY_PACK_SALES_PAUSED) return { ok: false, status: 409, code: LEGACY_PACK_SALES_PAUSED_CODE, error: LEGACY_PACK_SALES_PAUSED_ERROR };
   const credentials = credentialsFor(input.req, deps);
   if (!credentials && !deps.createPackCheckout) return notConfigured;
   const verdict = await availabilityOf(input.req, price, deps);
