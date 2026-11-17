@@ -972,7 +972,10 @@
         "client/src/lib/premiumPurchase.ts",
         "client/src/test/goalPagesBoundary.test.ts",
         "docs/plans/GOAL_UI_MIGRATION.md",
-        "docs/plans/GOAL_UI_COVERAGE.md"
+        "docs/plans/GOAL_UI_COVERAGE.md",
+        "scripts/prerender-public-pages.tsx",
+        "scripts/premiumPrerender.test.ts",
+        "shared/publicRoutes.ts"
       ]
     },
     {
