@@ -107,3 +107,45 @@ that limit is reported, not hidden.
    and Send, price, validation, eligibility and the company binding are
    unchanged. Preview QA must check the true outcome: pick shown as context,
    ask still impossible without a real link, send behavior identical.
+7. The switch is an env gate (D-174-seeker-journey-build.typeahead-flip):
+   COMPANY_TYPEAHEAD_ENABLED reads VITE_COMPANY_TYPEAHEAD (default false). The
+   preview route is in-repo, chosen after the dashboard inspection showed the
+   dashboard exposes no preview-scoped build-variable edit surface for this
+   worker and the Worker Previews migration is irreversible: vite.config.ts
+   defines the variable from the pure resolver in vite.typeahead-flag.ts,
+   which turns it ON only for Workers Builds non-main branch builds
+   (WORKERS_CI=1 + WORKERS_CI_BRANCH, the dashboard's branch previews) and
+   forces it OFF on any CI build of main - even if the variable is set in
+   that environment - and fails closed (OFF) on an unknown or empty CI
+   branch. The provider variables (WORKERS_CI, WORKERS_CI_BRANCH) are named
+   by the Workers Builds 2025-06-10 changelog; the resolver's branch handling
+   is pinned by its unit tests, and a Workers Builds build of this branch
+   completed with them. End-to-end proof that a Workers Builds branch build
+   serves the flag ON is NOT established: this worker serves no reachable
+   versions (workers.dev and previews are disabled on it), and this row's
+   interactive preview QA ran on a local explicit-var build
+   (VITE_COMPANY_TYPEAHEAD=true) - a different branch of the same resolver,
+   reported separately from the Workers Builds path, which stays unverified
+   end-to-end. Hard-limit reconciliation: before this row the switch was a
+   literal-false constant, so no build could enable the typeahead; after this
+   row the protection is deliberately weaker than a literal-false constant
+   and is stated precisely: the resolver defaults OFF and forces OFF on
+   GitHub CI and Workers Builds builds of main even when the variable is set
+   there, but a local, ad-hoc, tag or PR build with
+   VITE_COMPANY_TYPEAHEAD=true produces a flag-ON artifact, and the residual
+   manual promotion paths (dashboard version promotion, ad-hoc local deploy)
+   could carry such an artifact to production. The recorded release gate
+   (D-223 (3): preview QA, a review and the CEO's sign-off; who signs off
+   stays unresolved through main) is the process control over those paths,
+   not a code guarantee, and nothing here waives it. This weaker protection
+   is accepted only to enable preview preparation; production activation
+   stays held. The production deploy workflows do not set the
+   variable (verified from .github/workflows/deploy-pages.yml and
+   deploy-api.yml; zero COMPANY_TYPEAHEAD references across workflows,
+   scripts and the Dockerfile). The false-pin in companySearch.test.tsx
+   asserts the default is false only in a bare environment - weaker than the
+   old literal false, since a test cannot see an explicitly set variable -
+   and companyTypeahead.define.test.ts pins the resolver. Preview QA before any production enable, at 1280 and
+   390: directory, tata, google, no-match, degraded, card handoff (pick shown
+   as context on /ask), unknown-company job link, and a real-provider round,
+   on a flag-on preview build.
