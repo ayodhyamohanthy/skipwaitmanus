@@ -7880,6 +7880,28 @@
         "scripts/scopeCheck.test.ts"
       ],
       "note": "Build docs/plans/PROCESS-sol-full-edit.md. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3))."
+    },
+    {
+      "id": "D-174-worldwide-discovery.company-context",
+      "title": "A discovered-company pick carries its name and domain into /ask, so the composer shows the company the seeker picked while they paste its job link (D-174-worldwide-discovery context gap)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-worldwide-discovery.md",
+      "tier": 1,
+      "lane": "d174-discovery",
+      "branch": "agent/queue/d174-company-context",
+      "status": "todo",
+      "dependsOn": [],
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/discoveryHandoff.ts",
+        "client/src/pages/explore/discoveryHandoff.test.ts",
+        "client/src/pages/Explore.tsx (company typeahead only)",
+        "client/src/pages/explore/companySearch.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx (discovery handoff read only)",
+        "docs/plans/D-174-worldwide-discovery.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Closes the context gap D-174-worldwide-discovery states explicitly: the confirmation card's pick reaches /ask. Mechanism (mirrors the /start bridge's discipline, reuses none of its keys): the card writes a small discovery handoff ({name, domain, at}, new localStorage key) and navigates to /ask; the composer reads it through one wiring line into a new discoveryHandoff module - fresh (ASK_PREFILL_TTL_MS), consumed on use, cleared on sign-out like every handoff, and never a referral-draft or company-binding key, so it cannot resurrect a stale draft or impersonate a confirmed company. Shown as context only ('you picked {name} ({domain}) - paste its job link'): no send-body, price, validation or eligibility change, no D-094 job-link preview behaviour. The composer read is one wiring line; the module and its tests carry the logic. Tier 1: useAskComposer.tsx is a hot shared file (D-223 (6)) - independent review required. Overlaps D-094-ai-in-ui.job-link (stale-red claim) and D-174-seeker-journey-build.composer-neutral (todo) on useAskComposer.tsx by one wiring line only, in the registry's narrowed-owns style; no takeover, no waiting dependency, no scope of either row taken."
     }
   ]
 }
