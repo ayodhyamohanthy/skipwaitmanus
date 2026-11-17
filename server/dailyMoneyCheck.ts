@@ -18,13 +18,14 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // operational-activity row when an alert email goes out. The email carries
 // ids, amounts, currencies and reasons — never names, emails, or request content.
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { z } from "zod";
 import { PENDING_MAX_AGE_MS } from "./chargebeePendingReconcile";
-import { askCosts, billingInvoices, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { askCosts, employerPaymentFulfillments, giftSubscriptionFulfillments, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, subscriptionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
 import { currentChargebeeSite } from "./chargebeeApi";
 import { listRecentPayments, type ProviderPayment } from "./chargebeeAccountApi";
-import { resolveBillingEnvironment } from "./chargebeeEnvironment";
+import { PAID_EVIDENCE_ACTION } from "./paymentRefundEvents";
 import { ABANDONED_CHECKOUT_REASON } from "./abandonedCheckouts";
 import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
@@ -73,6 +74,16 @@ export const RECEIPT_RECON_LOOKBACK_MS = 72 * 60 * 60 * 1000;
 export const RECEIPT_REVERSE_LOOKBACK_MS = 47 * 60 * 60 * 1000;
 export const RECEIPT_REVERSE_EDGE_MS = 2 * 60 * 60 * 1000;
 
+type ProviderReceiptRead = {
+  receipts: ProviderReceiptRow[];
+  packInvoiceIds: string[];
+  unusableInvoiceIds: string[];
+  unverifiablePacks: number;
+  employerRows: number;
+  giftRows: number;
+  subscriptionPaidEvents: number;
+};
+
 export type WalletAuditResult = { checkedWallets: number; mismatches: Array<Record<string, unknown>>; integrity: Array<Record<string, unknown>> };
 export type CreditedPaymentRow = { id: number; userId: number; role: string; tokenCount: number };
 export type PaymentCreditCount = { paymentId: number; creditRows: number; creditedTokens: number };
@@ -113,8 +124,10 @@ export type DailyMoneyCheckDeps = {
   countWebhookUnauthorizedSince?: (since: Date) => Promise<number>;
   /** D-100.provider-recon: Chargebee's payment transactions in [since, until], read only (optional so older callers stay valid). */
   listProviderPaymentsSince?: (since: Date, until: Date) => Promise<ProviderPayment[]>;
-  /** D-100.provider-recon: our receipts paid since `since`, from `billingInvoices` (optional so older callers stay valid). */
+  /** Legacy injectable receipt source; older callers retain their comparison contract. */
   listReceiptsPaidSince?: (since: Date) => Promise<ProviderReceiptRow[]>;
+  /** Persisted pack receipts plus explicit coverage gaps; the default source (H1). */
+  readProviderReceiptsSince?: (since: Date, providerPayments: readonly ProviderPaymentForRecon[]) => Promise<ProviderReceiptRead>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -437,13 +450,108 @@ export async function countWebhookUnauthorizedSince(since: Date): Promise<number
   return Number(row?.total ?? 0);
 }
 
-/** Our paid receipts for the current billing site, in the window. Read only. */
-async function listReceiptsPaidSince(since: Date): Promise<ProviderReceiptRow[]> {
+const PACK_PAID_ACTIONS = [PAID_EVIDENCE_ACTION, "billing.payment_amount_mismatch"];
+const packPaidEvidenceSchema = z.object({
+  paidAmount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  paidCurrency: z.string().regex(/^[a-zA-Z]{3}$/).transform(value => value.toUpperCase()),
+  invoiceId: z.string().min(1).max(255).nullish(),
+});
+
+function parsePackPaidEvidence(metadata: string | null) {
+  try { return packPaidEvidenceSchema.safeParse(JSON.parse(metadata ?? "")); }
+  catch { return packPaidEvidenceSchema.safeParse(null); }
+}
+
+/**
+ * H1: billingInvoices has no writer. Read the pack rows and evidence the actual
+ * fulfillment/recovery paths persist. creditedAt proves an ordinary pack's amount
+ * was checked; a held/mismatched pack needs its own paid-evidence amount instead.
+ * None of these records has a billing-site stamp; coverage states that limit.
+ * Each read has an overflow sentinel: never compare a partial receipt set.
+ */
+async function listReceiptsPaidSince(since: Date, providerPayments: readonly ProviderPaymentForRecon[]): Promise<ProviderReceiptRead> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
-  return db.select({ providerInvoiceId: billingInvoices.providerInvoiceId, amount: billingInvoices.amount, currency: billingInvoices.currency, status: billingInvoices.status, paidAt: billingInvoices.paidAt })
-    .from(billingInvoices)
-    .where(and(eq(billingInvoices.site, resolveBillingEnvironment()), gte(billingInvoices.paidAt, since), inArray(billingInvoices.status, ["paid", "refunded", "partially_refunded"])))
-    .orderBy(asc(billingInvoices.paidAt)).limit(RECEIPT_RECON_BATCH);
+  const invoiceIds = Array.from(new Set(providerPayments.filter(row => row.status === "success").flatMap(row => row.applications.map(link => link.invoiceId))));
+  const assertComplete = (size: number) => {
+    if (size > RECEIPT_RECON_BATCH) throw new Error(`provider_recon_truncated: pack receipt/evidence read exceeds ${RECEIPT_RECON_BATCH} rows; the comparison is incomplete`);
+  };
+  assertComplete(invoiceIds.length);
+  const recentEvidence = await db.select({ resourceId: operationalActivityLogs.resourceId }).from(operationalActivityLogs)
+    .where(and(inArray(operationalActivityLogs.action, PACK_PAID_ACTIONS), eq(operationalActivityLogs.resourceType, "payment_fulfillment"), gte(operationalActivityLogs.createdAt, since)))
+    .orderBy(asc(operationalActivityLogs.id)).limit(RECEIPT_RECON_BATCH + 1);
+  assertComplete(recentEvidence.length);
+  const recentPaymentIds = recentEvidence.flatMap(row => row.resourceId && /^[1-9]\d*$/.test(row.resourceId) && Number.isSafeInteger(Number(row.resourceId)) ? [Number(row.resourceId)] : []);
+  const payments = await db.select({ id: paymentFulfillments.id, providerInvoiceId: paymentFulfillments.providerInvoiceId, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, status: paymentFulfillments.status, creditedAt: paymentFulfillments.creditedAt, reconciliationReason: paymentFulfillments.reconciliationReason })
+    .from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), or(
+      gte(paymentFulfillments.creditedAt, since),
+      ...(invoiceIds.length ? [inArray(paymentFulfillments.providerInvoiceId, invoiceIds)] : []),
+      ...(recentPaymentIds.length ? [inArray(paymentFulfillments.id, recentPaymentIds)] : []),
+    ))).orderBy(asc(paymentFulfillments.id)).limit(RECEIPT_RECON_BATCH + 1);
+  assertComplete(payments.length);
+  // Include older evidence for a pack credited by an administrator only recently.
+  const evidence = payments.length ? await db.select({ id: operationalActivityLogs.id, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt })
+    .from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, PACK_PAID_ACTIONS), eq(operationalActivityLogs.resourceType, "payment_fulfillment"), inArray(operationalActivityLogs.resourceId, payments.map(row => String(row.id)))))
+    .orderBy(asc(operationalActivityLogs.id)).limit(RECEIPT_RECON_BATCH + 1) : [];
+  assertComplete(evidence.length);
+  const evidenceByPayment = new Map<string, typeof evidence[number]>();
+  for (const row of evidence) {
+    if (row.resourceId === null) continue;
+    const previous = evidenceByPayment.get(row.resourceId);
+    if (!previous || row.id > previous.id) evidenceByPayment.set(row.resourceId, row);
+  }
+  const receipts = new Map<string, ProviderReceiptRow>();
+  const packInvoiceIds = new Set<string>();
+  const unusableInvoiceIds = new Set<string>();
+  let unverifiablePacks = 0;
+  for (const payment of payments) {
+    if (payment.providerInvoiceId) packInvoiceIds.add(payment.providerInvoiceId);
+    const record = evidenceByPayment.get(String(payment.id));
+    const paid = record ? parsePackPaidEvidence(record.metadata) : packPaidEvidenceSchema.safeParse({ paidAmount: payment.amount, paidCurrency: payment.currency });
+    const invoiceId = (paid.success ? paid.data.invoiceId : null) ?? payment.providerInvoiceId;
+    const paidAt = record?.createdAt ?? payment.creditedAt;
+    // Pending/rejected rows alone are checkout intents, not paid receipts. A known
+    // provider invoice without paid evidence still reaches the missing-receipt check.
+    if (!record && payment.creditedAt === null) { unverifiablePacks += 1; continue; }
+    const heldWithoutEvidence = !record && ["checkout_amount_mismatch", "provider_page_mismatch", "provider_page_incomplete", "reconciliation_rejected", "refund_not_full_before_credit", "refund_of_uncredited_payment"].includes(payment.reconciliationReason ?? "");
+    if (!paid.success || !invoiceId || paidAt === null || heldWithoutEvidence || (payment.providerInvoiceId && paid.data.invoiceId && payment.providerInvoiceId !== paid.data.invoiceId)) {
+      unverifiablePacks += 1;
+      if (invoiceId) unusableInvoiceIds.add(invoiceId);
+      if (payment.providerInvoiceId) unusableInvoiceIds.add(payment.providerInvoiceId);
+      continue;
+    }
+    packInvoiceIds.add(invoiceId);
+    if (paidAt < since) continue;
+    const receipt: ProviderReceiptRow = { providerInvoiceId: invoiceId, amount: paid.data.paidAmount, currency: paid.data.paidCurrency, status: payment.status === "refunded" ? "refunded" : "paid", paidAt };
+    const previous = receipts.get(invoiceId);
+    if (previous && (previous.amount !== receipt.amount || previous.currency !== receipt.currency)) throw new Error("provider_recon_ambiguous: pack records disagree about a paid invoice; the comparison is incomplete");
+    if (!previous || (previous.paidAt && paidAt < previous.paidAt)) receipts.set(invoiceId, receipt);
+  }
+  const [employers, gifts, subscriptions] = await Promise.all([
+    db.select({ total: count() }).from(employerPaymentFulfillments).where(gte(employerPaymentFulfillments.creditedAt, since)),
+    db.select({ total: count() }).from(giftSubscriptionFulfillments).where(or(gte(giftSubscriptionFulfillments.updatedAt, since), gte(giftSubscriptionFulfillments.creditedAt, since))),
+    db.select({ total: count() }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.eventType, "paid_evidence"), gte(subscriptionEvents.createdAt, since))),
+  ]);
+  return { receipts: Array.from(receipts.values()).filter(row => !unusableInvoiceIds.has(row.providerInvoiceId)), packInvoiceIds: Array.from(packInvoiceIds), unusableInvoiceIds: Array.from(unusableInvoiceIds), unverifiablePacks, employerRows: Number(employers[0]?.total ?? 0), giftRows: Number(gifts[0]?.total ?? 0), subscriptionPaidEvents: Number(subscriptions[0]?.total ?? 0) };
+}
+
+/** Unknown product kinds cannot be inferred from transaction invoice ids. Count
+ * and skip them; never turn unsupported coverage into a missing-payment alarm. */
+function scopedProviderPayments(payments: ProviderPaymentForRecon[], read: ProviderReceiptRead, nowMs: number) {
+  const known = new Set(read.packInvoiceIds);
+  const unusable = new Set(read.unusableInvoiceIds);
+  const skippedInvoices = new Set<string>();
+  let skippedPayments = 0;
+  const included = payments.flatMap(payment => {
+    if (payment.status !== "success" || payment.date.getTime() < nowMs - PROVIDER_RECON_LOOKBACK_MS || payment.date.getTime() > nowMs - PROVIDER_RECON_EDGE_MS) return [];
+    const applications = payment.applications.filter(link => {
+      if (known.has(link.invoiceId) && !unusable.has(link.invoiceId)) return true;
+      skippedInvoices.add(link.invoiceId);
+      return false;
+    });
+    if (applications.length !== payment.applications.length) skippedPayments += 1;
+    return payment.applications.length === 0 || applications.length > 0 ? [{ ...payment, applications }] : [];
+  });
+  return { payments: included, skippedPayments, skippedInvoices: skippedInvoices.size };
 }
 
 /**
@@ -536,7 +644,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listReferredPastDeadline,
   countWebhookUnauthorizedSince,
   listProviderPaymentsSince: (since: Date, until: Date) => listRecentPayments(currentChargebeeSite(), { since, until }),
-  listReceiptsPaidSince,
+  readProviderReceiptsSince: listReceiptsPaidSince,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 };
@@ -642,7 +750,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // D-100.provider-recon: read Chargebee's recent payments and compare them with our
     // receipts. Nothing is written; an unreachable provider is a visible finding, never a
     // silent pass, because a missed comparison is exactly what this check exists to catch.
-    if (providerReconEnabled && deps.listProviderPaymentsSince && deps.listReceiptsPaidSince) {
+    if (providerReconEnabled && deps.listProviderPaymentsSince && (deps.readProviderReceiptsSince || deps.listReceiptsPaidSince)) {
       // F3: exclude the last hour (a payment's webhook may still be in flight) and
       // read receipts over a wider window than the payments, so a receipt stamped
       // a moment before its payment is still found.
@@ -651,8 +759,15 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
       const receiptSince = new Date(nowMs - RECEIPT_RECON_LOOKBACK_MS);
       try {
         const providerPayments = await deps.listProviderPaymentsSince(providerSince, providerUntil);
-        const receipts = await deps.listReceiptsPaidSince(receiptSince);
-        findings.push(...compareProviderPayments({ providerPayments, receipts, limit: FINDINGS_PREVIEW_LIMIT, nowMs }));
+        if (deps.readProviderReceiptsSince) {
+          const read = await deps.readProviderReceiptsSince(receiptSince, providerPayments);
+          const scoped = scopedProviderPayments(providerPayments, read, nowMs);
+          findings.push(`provider_recon_coverage: comparing Chargebee packs only; skipped ${scoped.skippedPayments} provider payment(s) covering ${scoped.skippedInvoices} invoice(s) with unknown kind or unusable pack evidence; ${read.unverifiablePacks} pack row(s) lack usable paid evidence. Outside invoice-level coverage in the receipt window: ${read.employerRows} employer credited row(s), ${read.giftRows} gift row(s) updated, ${read.subscriptionPaidEvents} subscription paid event(s). Pack records have no billing-site stamp; site isolation is unverified`);
+          findings.push(...compareProviderPayments({ providerPayments: scoped.payments, receipts: read.receipts, limit: FINDINGS_PREVIEW_LIMIT, nowMs }));
+        } else if (deps.listReceiptsPaidSince) {
+          const receipts = await deps.listReceiptsPaidSince(receiptSince);
+          findings.push(...compareProviderPayments({ providerPayments, receipts, limit: FINDINGS_PREVIEW_LIMIT, nowMs }));
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message.replace(/[\r\n\t]+/g, " ").slice(0, 200) : "provider or database read failed";
         findings.push(`provider_recon_unavailable: Chargebee's recent payments could not be compared (${message}); nothing was written`);

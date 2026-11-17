@@ -1,14 +1,20 @@
 // D-065 daily money check: the job reconciles, reports, and never writes.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { paymentFulfillments, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
+import { employerPaymentFulfillments, giftSubscriptionFulfillments, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, subscriptionEvents, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, REFERRAL_TIMERS_SINCE } from "../shared/referral";
-import { listRecentPayments, PROVIDER_RECON_MAX_PAGES } from "./chargebeeAccountApi";
+import { listRecentPayments, PROVIDER_RECON_MAX_PAGES, type ProviderPayment } from "./chargebeeAccountApi";
 import { runMoneyCheckNow, createDailyMoneyCheck, compareProviderPayments, PROVIDER_RECON_ENABLED, RECEIPT_RECON_BATCH, FINDINGS_EMAIL_LINE_LIMIT, FINDINGS_PREVIEW_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, listAskDeliverySpendsWhileWaiting, listDoublyReversedSpends, listRefundsAfterPickup, listReferredPastDeadline, listStaleCheckouts, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
 import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, spendRow, store } from "./heldAsk.testkit";
 
-const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
+const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), sendEmail: vi.fn(), recordActivity: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
+vi.mock("./emailDelivery", () => ({ sendTransactionalEmail: mocks.sendEmail }));
+vi.mock("./db", async importOriginal => ({
+  ...await importOriginal<typeof import("./db")>(),
+  getFullCreditLedgerAudit: vi.fn(async () => ({ checkedWallets: 0, mismatches: [], integrity: [] })),
+  recordOperationalActivity: mocks.recordActivity,
+}));
 
 const NOW = new Date("2026-10-19T02:00:00Z");
 const DAY = 24 * 60 * 60_000;
@@ -986,5 +992,243 @@ describe("provider payment reconciliation (D-100.provider-recon)", () => {
     const findings = compareProviderPayments({ providerPayments: payments, receipts: [], limit: FINDINGS_PREVIEW_LIMIT, nowMs: NOW.getTime() });
     expect(findings).toHaveLength(FINDINGS_PREVIEW_LIMIT);
     expect(findings[0]).toContain("provider_payment_unrecorded");
+  });
+});
+
+describe("provider reconciliation through the default receipt source (H1)", () => {
+  const HOUR = 3_600_000;
+  const paidAt = new Date(NOW.getTime() - 10 * 3_600_000);
+  const payment = (overrides: Partial<typeof paymentFulfillments.$inferSelect> = {}): typeof paymentFulfillments.$inferSelect => ({
+    id: 71, provider: "chargebee", providerEventId: "evt_paid", providerInvoiceId: "inv_paid",
+    providerHostedPageId: "hp_paid", checkoutIntentId: "intent_paid", userId: 7, role: "job_seeker",
+    tokenCount: 1, amount: 9900, currency: "INR", status: "requires_review",
+    reconciliationReason: "provider_page_mismatch", lastCheckedAt: paidAt, creditedAt: null,
+    createdAt: new Date(NOW.getTime() - 4 * DAY), ...overrides,
+  });
+  const paidEvidence = (overrides: Partial<typeof operationalActivityLogs.$inferSelect> = {}): typeof operationalActivityLogs.$inferSelect => ({
+    id: 81, actorUserId: 7, action: "billing.payment_paid_evidence", outcome: "success",
+    resourceType: "payment_fulfillment", resourceId: "71", companyDomain: null,
+    metadata: JSON.stringify({ paidAmount: 10900, paidCurrency: "INR", invoiceId: "inv_paid", source: "credit_recovery" }),
+    createdAt: paidAt, ...overrides,
+  });
+
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    vi.stubEnv("BILLING_ENV", "test");
+    vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
+    vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
+    mocks.createPool.mockResolvedValue({});
+    // Only unrelated stale-checkout aggregates are stubbed: all receipt/evidence
+    // reads execute their real joins and WHERE predicates against persisted rows.
+    vi.spyOn(store.db, "select").mockImplementation(function (fields) {
+      if (fields && "users" in fields) {
+        const summary = { total: 0, users: 0, oldest: null, newest: null };
+        return { ...originalSelect(fields), from: () => ({ where: async () => [summary] }) };
+      }
+      return originalSelect(fields);
+    });
+    mocks.drizzle.mockReturnValue(store.db);
+    mocks.sendEmail.mockReset().mockResolvedValue({ sent: true });
+    mocks.recordActivity.mockReset().mockResolvedValue(undefined);
+    store.reset([]);
+  });
+  const originalSelect = store.db.select;
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+
+  const providerPayment = (overrides: Partial<ProviderPayment> = {}): ProviderPayment => ({
+    id: "txn_paid", amount: 10900, currency: "INR", status: "success", date: paidAt,
+    applications: [{ invoiceId: "inv_paid", amount: 10900 }], ...overrides,
+  });
+  async function runDefault(payments: ProviderPayment[] = [providerPayment()]) {
+    const fetchMock = vi.fn(async () => Response.json({ list: payments.map(row => ({ transaction: {
+      id: row.id, amount: row.amount, currency_code: row.currency, status: row.status, date: row.date.getTime() / 1000,
+      linked_invoices: row.applications.map(link => ({ invoice_id: link.invoiceId, applied_amount: link.amount })),
+    } })) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const tables = [paymentFulfillments, operationalActivityLogs, employerPaymentFulfillments, giftSubscriptionFulfillments, subscriptionEvents, tokenTransactions];
+    const before = tables.map(table => store.rows(table));
+    const output = await createDailyMoneyCheck(undefined, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "h1-default" });
+    expect(output.failed).toBe(0);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(tables.map(table => store.rows(table))).toEqual(before);
+    // Existing daily-check alert delivery/activity are the only permitted effects.
+    expect(mocks.recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.daily_money_check_alert" }));
+    return String(mocks.sendEmail.mock.calls[0]?.[0].text);
+  }
+  const comparisonFinding = /provider_payment_unrecorded|provider_amount_mismatch|receipt_without_provider_payment|provider_recon_unavailable/;
+
+  it("R18: a persisted held pack's actual paid evidence matches through defaultMoneyCheckDeps, without billingInvoices", async () => {
+    store.reset([[paymentFulfillments, [payment()]], [operationalActivityLogs, [paidEvidence()]]]);
+    const before = { payments: store.rows(paymentFulfillments), logs: store.rows(operationalActivityLogs) };
+    const fetchMock = vi.fn(async () => Response.json({ list: [{ transaction: {
+      id: "txn_paid", amount: 10900, currency_code: "INR", status: "success", date: paidAt.getTime() / 1000,
+      linked_invoices: [{ invoice_id: "inv_paid", applied_amount: 10900 }],
+    } }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const output = await createDailyMoneyCheck(undefined, { providerReconEnabled: true })({ nowMs: NOW.getTime(), windowKey: "h1-default" });
+
+    expect(output.failed).toBe(0);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(mocks.sendEmail).toHaveBeenCalled(); // The held payment still needs its existing admin review.
+    const text = mocks.sendEmail.mock.calls[0]?.[0].text;
+    expect(text).toContain("parked payment: #71");
+    expect(text).not.toMatch(/provider_payment_unrecorded|provider_amount_mismatch|receipt_without_provider_payment|provider_recon_unavailable/);
+    expect(store.rows(paymentFulfillments)).toEqual(before.payments);
+    expect(store.rows(operationalActivityLogs)).toEqual(before.logs);
+  });
+
+  it.each([
+    { status: "credited", reconciliationReason: null },
+    { status: "refunded", reconciliationReason: "refunded_by_provider" },
+    { status: "requires_review", reconciliationReason: "refund_partial" },
+    { status: "rejected", reconciliationReason: "credits_revoked_no_provider_refund" },
+  ] satisfies Partial<typeof paymentFulfillments.$inferSelect>[])("R19: a previously credited pack remains paid evidence after $status/$reconciliationReason", async state => {
+    store.reset([[paymentFulfillments, [payment({ ...state, creditedAt: paidAt })]]]);
+    const text = await runDefault([providerPayment({ amount: 9900, applications: [{ invoiceId: "inv_paid", amount: 9900 }] })]);
+    expect(text).toContain("provider_recon_coverage");
+    expect(text).toContain("skipped 0 provider payment(s)");
+    expect(text).not.toMatch(comparisonFinding);
+  });
+
+  it.each(["requires_review", "credited", "rejected", "refunded"] as const)("R20: actual mismatch evidence overrides the checkout amount in state %s", async status => {
+    store.reset([
+      [paymentFulfillments, [payment({ status, reconciliationReason: "checkout_amount_mismatch", creditedAt: status === "credited" ? paidAt : null })]],
+      [operationalActivityLogs, [paidEvidence({ action: "billing.payment_amount_mismatch", outcome: "failure" })]],
+    ]);
+    expect(await runDefault()).not.toMatch(comparisonFinding);
+  });
+
+  it.each(["pending", "requires_review", "rejected"] as const)("R21: known %s pack invoices without paid evidence are counted and still classified as missing receipts", async status => {
+    store.reset([[paymentFulfillments, [payment({ status })]]]);
+    const text = await runDefault();
+    expect(text).toContain("1 pack row(s) lack usable paid evidence");
+    expect(text).toContain("skipped 0 provider payment(s)");
+    expect(text).toContain("provider_payment_unrecorded: Chargebee payment txn_paid");
+    expect(text).not.toContain("provider_recon_unavailable");
+  });
+
+  it.each([
+    { label: "malformed JSON", metadata: "{broken" },
+    { label: "missing paid amount", metadata: JSON.stringify({ invoiceId: "inv_paid", paidCurrency: "INR" }) },
+    { label: "unsafe paid amount", metadata: JSON.stringify({ invoiceId: "inv_paid", paidAmount: Number.MAX_SAFE_INTEGER + 1, paidCurrency: "INR" }) },
+    { label: "nonpositive paid amount", metadata: JSON.stringify({ invoiceId: "inv_paid", paidAmount: 0, paidCurrency: "INR" }) },
+    { label: "invalid currency", metadata: JSON.stringify({ invoiceId: "inv_paid", paidAmount: 10900, paidCurrency: "invalid" }) },
+    { label: "conflicting invoice", metadata: JSON.stringify({ invoiceId: "inv_other", paidAmount: 10900, paidCurrency: "INR" }) },
+  ])("R22: $label is visibly skipped instead of using the intent amount", async ({ metadata }) => {
+    store.reset([[paymentFulfillments, [payment()]], [operationalActivityLogs, [paidEvidence({ metadata })]]]);
+    const text = await runDefault();
+    expect(text).toContain("skipped 1 provider payment(s) covering 1 invoice(s)");
+    expect(text).toContain("1 pack row(s) lack usable paid evidence");
+    expect(text).not.toMatch(comparisonFinding);
+  });
+
+  it("R23: the highest evidence id wins regardless of query row order; equal invoice evidence is deduplicated", async () => {
+    store.reset([
+      [paymentFulfillments, [payment(), payment({ id: 72, providerEventId: "evt_same_invoice" })]],
+      [operationalActivityLogs, [
+        paidEvidence({ id: 90 }),
+        paidEvidence({ id: 80, metadata: JSON.stringify({ paidAmount: 9900, paidCurrency: "INR", invoiceId: "inv_paid" }) }),
+        paidEvidence({ id: 91, resourceId: "72" }),
+      ]],
+    ]);
+    expect(await runDefault()).not.toMatch(comparisonFinding);
+  });
+
+  it("R24: conflicting paid amounts for the same invoice abort comparison rather than selecting one", async () => {
+    store.reset([
+      [paymentFulfillments, [payment(), payment({ id: 72, providerEventId: "evt_conflict" })]],
+      [operationalActivityLogs, [paidEvidence(), paidEvidence({ id: 82, resourceId: "72", metadata: JSON.stringify({ paidAmount: 9900, paidCurrency: "INR", invoiceId: "inv_paid" }) })]],
+    ]);
+    const text = await runDefault();
+    expect(text).toContain("provider_recon_unavailable");
+    expect(text).toContain("provider_recon_ambiguous");
+    expect(text).not.toMatch(/provider_amount_mismatch|provider_payment_unrecorded|receipt_without_provider_payment/);
+  });
+
+  it("R25: unsupported counts use persisted records; unknown product invoices are skipped while a mixed pack link still compares", async () => {
+    const old = new Date(NOW.getTime() - 4 * DAY);
+    store.reset([
+      [paymentFulfillments, [payment()]], [operationalActivityLogs, [paidEvidence()]],
+      [employerPaymentFulfillments, [{ id: 1, provider: "razorpay", creditedAt: paidAt }, { id: 2, provider: "razorpay", creditedAt: old }]],
+      [giftSubscriptionFulfillments, [{ id: 1, provider: "chargebee", updatedAt: paidAt, creditedAt: null }, { id: 2, provider: "chargebee", updatedAt: old, creditedAt: old }]],
+      [subscriptionEvents, [
+        { id: 1, provider: "chargebee_paid", eventType: "paid_evidence", createdAt: paidAt },
+        { id: 2, provider: "chargebee_paid", eventType: "paid_evidence", createdAt: old },
+        { id: 3, provider: "chargebee", eventType: "subscription_created", createdAt: paidAt },
+      ]],
+    ]);
+    const text = await runDefault([
+      providerPayment({ amount: 11100, applications: [{ invoiceId: "inv_paid", amount: 10900 }, { invoiceId: "inv_subscription", amount: 200 }] }),
+      providerPayment({ id: "txn_gift", applications: [{ invoiceId: "inv_gift", amount: 10900 }] }),
+    ]);
+    expect(text).toContain("skipped 2 provider payment(s) covering 2 invoice(s)");
+    expect(text).toContain("1 employer credited row(s), 1 gift row(s) updated, 1 subscription paid event(s)");
+    expect(text).toContain("Pack records have no billing-site stamp; site isolation is unverified");
+    expect(text).not.toMatch(comparisonFinding);
+  });
+
+  it("R26: non-Chargebee packs never become receipts for the configured Chargebee site", async () => {
+    store.reset([[paymentFulfillments, [payment({ provider: "paypal", creditedAt: paidAt })]], [operationalActivityLogs, [paidEvidence()]]]);
+    const text = await runDefault();
+    expect(text).toContain("skipped 1 provider payment(s) covering 1 invoice(s)");
+    expect(text).not.toMatch(comparisonFinding);
+  });
+
+  it("R27: reverse comparison uses the paid-evidence stamp instead of recent administrative credit or refund checks", async () => {
+    store.reset([
+      [paymentFulfillments, [payment({ status: "credited", creditedAt: paidAt, lastCheckedAt: paidAt })]],
+      [operationalActivityLogs, [paidEvidence({ createdAt: new Date(NOW.getTime() - 4 * DAY) })]],
+    ]);
+    expect(await runDefault([])).not.toMatch(comparisonFinding);
+  });
+
+  it("R28: a recent evidence-backed receipt without a provider payment still triggers the reverse classifier", async () => {
+    store.reset([[paymentFulfillments, [payment({ providerInvoiceId: null })]], [operationalActivityLogs, [paidEvidence()]]]);
+    const text = await runDefault([]);
+    expect(text).toContain("receipt_without_provider_payment: invoice inv_paid (10900 INR)");
+    expect(text).not.toContain("provider_recon_unavailable");
+  });
+
+  it.each([48 * HOUR + 30_000, 30 * 60_000])("R29: default-source receipt stamps retain the classifier's edge margin (%s ms)", async ago => {
+    store.reset([[paymentFulfillments, [payment()]], [operationalActivityLogs, [paidEvidence({ createdAt: new Date(NOW.getTime() - ago) })]]]);
+    expect(await runDefault([])).not.toMatch(comparisonFinding);
+  });
+
+  it.each(["receipt rows", "recent evidence", "older evidence", "provider invoice links"] as const)("R30: overflowing %s visibly aborts without partial comparisons", async source => {
+    const overflow = RECEIPT_RECON_BATCH + 1;
+    const old = new Date(NOW.getTime() - 4 * DAY);
+    const payments = source === "receipt rows"
+      ? Array.from({ length: overflow }, (_, id) => payment({ id: id + 1, status: "refunded", reconciliationReason: null, creditedAt: paidAt, providerInvoiceId: `inv_${id}` }))
+      : [payment({ status: "refunded", reconciliationReason: null, creditedAt: paidAt })];
+    const evidence = source === "recent evidence" || source === "older evidence"
+      ? Array.from({ length: overflow }, (_, id) => paidEvidence({ id: id + 1, createdAt: source === "older evidence" ? old : paidAt })) : [];
+    store.reset([[paymentFulfillments, payments], [operationalActivityLogs, evidence]]);
+    const provider = source === "provider invoice links"
+      ? [providerPayment({ applications: Array.from({ length: overflow }, (_, id) => ({ invoiceId: `inv_${id}`, amount: 9900 })) })]
+      : [providerPayment()];
+    const text = await runDefault(provider);
+    expect(text).toContain("provider_recon_unavailable");
+    expect(text).toContain("provider_recon_truncated");
+    expect(text).not.toMatch(/provider_amount_mismatch|provider_payment_unrecorded|receipt_without_provider_payment/);
+  });
+
+  it("R31: a missing evidence table is a visible read failure", async () => {
+    store.failReads(subscriptionEvents);
+    const text = await runDefault();
+    expect(text).toContain("provider_recon_unavailable");
+    expect(text).not.toMatch(/provider_amount_mismatch|provider_payment_unrecorded|receipt_without_provider_payment/);
+  });
+
+  it("R32: the default production switch prevents provider and receipt reads", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    store.failReads(subscriptionEvents);
+    const output = await createDailyMoneyCheck()({ nowMs: NOW.getTime(), windowKey: "h1-off" });
+    expect(PROVIDER_RECON_ENABLED).toBe(false);
+    expect(output.failed).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.recordActivity).not.toHaveBeenCalled();
   });
 });
