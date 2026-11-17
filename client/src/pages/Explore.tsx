@@ -35,7 +35,7 @@ import { publicRoute } from "@shared/publicRoutes";
 import { AskDrawer } from "./explore/AskDrawer";
 import { directorySummary, filterCompanies, FILTER_FUNCTIONS } from "./explore/findModel";
 import { useAskComposer } from "./explore/useAskComposer";
-import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState } from "./explore/useCompanySearch";
+import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState, type DiscoveredSuggestion } from "./explore/useCompanySearch";
 
 // The goal line is the seeker's goal in their words; the directory IS the
 // next step, so the search lives inside the block. The page does not export
@@ -77,7 +77,7 @@ export default function Explore() {
   // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
   // When the query does match rows the chip hides, the filter empty state is the truthful line and stays.
   // Invalid input speaks for itself (the typeahead's invalid line), so the directory never claims the company is missing.
-  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0))));
+  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && (companySearch.suggestions.length > 0 || companySearch.discovered.length > 0)))));
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
 
@@ -318,26 +318,37 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
   const listId = useId();
   const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
+  // A discovered (worldwide, not-in-directory) candidate the seeker picked; it confirms before acting.
+  const [confirm, setConfirm] = useState<DiscoveredSuggestion | null>(null);
   const tracked = useRef<string | null>(null);
-  const { status, suggestions, query } = search;
+  const { status, suggestions, discovered, query } = search;
   // Only Explore knows whether the directory also has no row for the query.
   const noMatch = unlisted;
-  const open = !dismissed && suggestions.length > 0;
+  const options: ({ kind: "directory"; item: (typeof suggestions)[number] } | { kind: "discovered"; item: DiscoveredSuggestion })[] = [
+    ...suggestions.map(item => ({ kind: "directory" as const, item })),
+    ...discovered.map(item => ({ kind: "discovered" as const, item })),
+  ];
+  const open = !dismissed && !confirm && options.length > 0;
 
-  useEffect(() => { setActive(-1); }, [query, suggestions]);
+  useEffect(() => { setActive(-1); }, [query, suggestions, discovered]);
+  useEffect(() => { setConfirm(null); }, [query]);
   useEffect(() => {
     if (!query || tracked.current === query) return;
-    if (suggestions.length > 0) { tracked.current = query; trackClarityEvent("journey_company_suggested"); }
+    if (options.length > 0) { tracked.current = query; trackClarityEvent("journey_company_suggested"); }
     else if (noMatch) { tracked.current = query; trackClarityEvent("journey_company_no_match"); }
-  }, [query, suggestions, noMatch]);
+  }, [query, options.length, noMatch]);
 
+  const choose = (option: (typeof options)[number]) => {
+    if (option.kind === "directory") onOpen(option.item.slug);
+    else setConfirm(option.item);
+  };
   const optionId = (index: number) => `${listId}-option-${index}`;
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") { setDismissed(true); setActive(-1); return; }
+    if (event.key === "Escape") { setDismissed(true); setConfirm(null); setActive(-1); return; }
     if (!open) return;
-    if (event.key === "ArrowDown") { event.preventDefault(); setActive(index => Math.min(index + 1, suggestions.length - 1)); }
+    if (event.key === "ArrowDown") { event.preventDefault(); setActive(index => Math.min(index + 1, options.length - 1)); }
     else if (event.key === "ArrowUp") { event.preventDefault(); setActive(index => Math.max(index - 1, 0)); }
-    else if (event.key === "Enter" && active >= 0) { event.preventDefault(); onOpen(suggestions[active].slug); }
+    else if (event.key === "Enter" && active >= 0) { event.preventDefault(); choose(options[active]); }
   };
 
   return (
@@ -362,19 +373,36 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
       </div>
       {open ? (
         <ul id={listId} role="listbox" aria-label="Company suggestions" className="mt-1 grid rounded-g-control border border-g-control-edge bg-g-surface py-1 shadow-g-popover">
-          {suggestions.map((item, index) => (
+          {options.map((option, index) => (
             <li
-              key={item.slug}
+              key={option.kind === "directory" ? option.item.slug : option.item.domain}
               id={optionId(index)}
               role="option"
               aria-selected={index === active}
-              onMouseDown={event => { event.preventDefault(); onOpen(item.slug); }}
+              onMouseDown={event => { event.preventDefault(); choose(option); }}
               className={`cursor-pointer px-3 py-2.5 text-g-body text-g-ink max-gdesk:py-3 ${index === active ? "bg-g-surface-hover" : "hover:bg-g-surface-hover"}`}
             >
-              {item.name}
+              {option.kind === "directory" ? (
+                option.item.name
+              ) : (
+                <span className="flex items-center gap-2" data-testid="company-discovery-option">
+                  {option.item.logoUrl ? <img src={option.item.logoUrl} alt="" className="size-5 rounded-sm object-contain" /> : null}
+                  <span>{option.item.name}</span>
+                  <span className="text-g-meta text-g-ink-3">{option.item.domain}</span>
+                </span>
+              )}
             </li>
           ))}
         </ul>
+      ) : null}
+      {confirm ? (
+        <div data-testid="company-discovery-confirm" className="mt-3 grid gap-1">
+          <p className="text-g-body text-g-ink">{confirm.name} · {confirm.domain}</p>
+          <p className="text-g-meta text-g-ink-3">No door at this company yet. Paste a job link to request a referral and we’ll open the door.</p>
+          <Link href="/ask" className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">{`Paste a ${confirm.name} job link to request a referral`}</Link>
+          <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Request a company</Link></p>
+          <button type="button" onClick={() => setConfirm(null)} className="justify-self-start text-g-meta text-g-ink-3 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Back to results</button>
+        </div>
       ) : null}
       {status === "loading" ? (
         <p data-testid="company-search-loading" role="status" aria-busy="true" className="mt-3 text-g-meta text-g-ink-3">Searching companies…</p>

@@ -95,10 +95,10 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-describe("the switch (ruling 8, release row turns it on)", () => {
-  it("ships off", async () => {
+describe("the switch (D-174-worldwide-discovery turned it on)", () => {
+  it("ships on", async () => {
     const actual = await vi.importActual<typeof import("./useCompanySearch")>("./useCompanySearch");
-    expect(actual.COMPANY_TYPEAHEAD_ENABLED).toBe(false);
+    expect(actual.COMPANY_TYPEAHEAD_ENABLED).toBe(true);
     expect(companySearchModule.COMPANY_SEARCH_DEBOUNCE_MS).toBe(150);
   });
 
@@ -121,9 +121,19 @@ describe("the switch (ruling 8, release row turns it on)", () => {
 describe("fetchCompanySearch", () => {
   it("asks the route with one q and parses the strict response", async () => {
     const fetchMock = stub(() => ({ status: 200, body: { companies: [searchRow("wipro")] } }));
-    const companies = await fetchCompanySearch("  wip ");
+    const { companies, discovered } = await fetchCompanySearch("  wip ");
     expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=wip"]);
     expect(companies.map(item => item.slug)).toEqual(["wipro"]);
+    expect(discovered).toEqual([]);
+  });
+
+  it("parses worldwide discovery candidates and rejects a malformed one", async () => {
+    const candidate = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [candidate] } }));
+    const answer = await fetchCompanySearch("google");
+    expect(answer.discovered).toEqual([candidate]);
+    stub(() => ({ status: 200, body: { companies: [], discovered: [{ ...candidate, domain: "not a domain" }] } }));
+    await expect(fetchCompanySearch("google")).rejects.toThrow();
   });
 
   it("refuses a response that carries availability (D-176) or more than 10 companies", async () => {
@@ -211,6 +221,48 @@ describe("switch on: typeahead on /explore", () => {
     fireEvent.mouseDown(await screen.findByRole("option", { name: "Merkle" }));
     expect(go).toHaveBeenCalledWith("/explore/merkle");
     expect(option).toBeTruthy();
+  });
+
+  it("a discovered candidate shows name and domain, and picking it confirms instead of opening a door", async () => {
+    const google = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [google] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "google" } });
+    const option = await screen.findByTestId("company-discovery-option");
+    expect(option.textContent).toContain("Google");
+    expect(option.textContent).toContain("google.com");
+    fireEvent.mouseDown(option);
+    const card = await screen.findByTestId("company-discovery-confirm");
+    expect(card.textContent).toContain("Google · google.com");
+    expect(card.textContent).toContain("No door at this company yet");
+    expect(within(card).getByRole("link", { name: "Paste a Google job link to request a referral" }).getAttribute("href")).toBe("/ask");
+    expect(go).not.toHaveBeenCalledWith("/explore/google");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Back to results" }));
+    await screen.findByTestId("company-discovery-option");
+    expect(screen.queryByTestId("company-discovery-confirm")).toBeNull();
+    expect(events).toEqual(["journey_company_suggested"]);
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("google");
+  });
+
+  it("directory suggestions come first, discovered candidates after; arrows cross both kinds", async () => {
+    const zeta = { name: "Wipro Foundation", domain: "wiprofoundation.org", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [searchRow("wipro")], discovered: [zeta] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "wipro" } });
+    const listbox = await screen.findByRole("listbox", { name: "Company suggestions" });
+    const options = within(listbox).getAllByRole("option");
+    expect(options.map(option => option.textContent)).toEqual(["Wipro", "Wipro Foundationwiprofoundation.org"]);
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.keyDown(box, { key: "Enter" });
+    await screen.findByTestId("company-discovery-confirm");
+    expect(go).not.toHaveBeenCalled();
   });
 
   it("no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text", async () => {

@@ -12,6 +12,8 @@
 import express, { type Express, type Request, type Response } from "express";
 import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, companySearchQuerySchema, companySearchResponseSchema, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
 import { searchCompanies } from "./companySearch";
+import { COMPANY_DISCOVERY_ENABLED, COMPANY_DISCOVERY_LIMIT, discoverCompanies } from "./companyDiscovery";
+import type { DiscoveredCompany } from "../shared/companies";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
 import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
@@ -29,6 +31,8 @@ export type CompanyDirectoryRouteDeps = {
   recordActivity?: (input: ActivityInput) => void | Promise<void>;
   listCompanyDirectory?: () => Promise<CompanyDirectoryResponse>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<PublicCompany | undefined>;
+  /** Worldwide discovery (D-174-worldwide-discovery); defaults to the Wikidata adapter. */
+  discoverCompanies?: (query: string) => Promise<DiscoveredCompany[]>;
   /** A company's live posts for the given domains (defaults to server/db.ts). */
   listCompanyOpportunities?: (domains: readonly string[], nowMs?: number) => Promise<unknown[]>;
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
@@ -55,6 +59,7 @@ function failure(res: Response, error: unknown, fallback: string) {
 
 export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirectoryRouteDeps) {
   const list = deps.listCompanyDirectory ?? listCompanyDirectory;
+  const discover = deps.discoverCompanies ?? discoverCompanies;
   const getOne = deps.getCompanyDirectoryEntry ?? getCompanyDirectoryEntry;
   const listOpportunities = deps.listCompanyOpportunities ?? listCompanyOpportunityPosts;
   const adminList = deps.listAdminCompanies ?? listAdminCompanies;
@@ -88,7 +93,16 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
     try {
       const { companies } = await list();
       const results = searchCompanies(companies, parsed.data.q).map(({ openToReferrals: _open, ...rest }) => rest);
-      res.set("Cache-Control", PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results }));
+      // Worldwide discovery (D-174-worldwide-discovery): candidates the directory does not hold,
+      // deduped by official domain. A discovery failure costs the directory answer nothing.
+      let discovered: DiscoveredCompany[] | undefined;
+      if (COMPANY_DISCOVERY_ENABLED) {
+        try {
+          const held = new Set(companies.flatMap(company => company.domains));
+          discovered = (await discover(parsed.data.q)).filter(candidate => !held.has(candidate.domain)).slice(0, COMPANY_DISCOVERY_LIMIT);
+        } catch { discovered = []; }
+      }
+      res.set("Cache-Control", PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results, ...(discovered === undefined ? {} : { discovered }) }));
     } catch (error) { failure(res, error, "We could not search companies"); }
   });
 

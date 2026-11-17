@@ -133,4 +133,19 @@ export function isUnknownCompany(source: CompanyIdentitySource): boolean {
 
 /** D-174 search: one `q`, no other keys; results carry no availability field (D-176). */
 export const companySearchQuerySchema = z.strictObject({ q: z.string().trim().max(80) });
-export const companySearchResponseSchema = z.object({ companies: z.array(publicCompanySchema.omit({ openToReferrals: true }).strict()).max(10) });
+
+/** A worldwide discovery candidate (D-174-worldwide-discovery): resolved from a free source, keyed by its
+ *  official domain. Never a directory row: no slug, no availability, no referrer claims. */
+export const discoveredCompanySchema = z.strictObject({
+  name: label(160),
+  domain: companyDomainSchema,
+  logoUrl: z.string().url().max(500).optional(),
+  source: z.enum(["wikidata"]),
+});
+export type DiscoveredCompany = z.infer<typeof discoveredCompanySchema>;
+
+export const companySearchResponseSchema = z.object({
+  companies: z.array(publicCompanySchema.omit({ openToReferrals: true }).strict()).max(10),
+  /** Worldwide candidates the directory does not hold (deduped by domain). Absent when discovery is off. */
+  discovered: z.array(discoveredCompanySchema).max(10).optional(),
+});

@@ -38,6 +38,33 @@ describe("GET /api/companies/search", () => {
     expect(r.body.companies).toHaveLength(1);
     expect(JSON.stringify(r.body)).not.toMatch(/openToReferrals|available/i);
   });
+
+  it("merges worldwide discovery candidates and drops ones the directory already holds (D-174-worldwide-discovery)", async () => {
+    const discoverCompanies = vi.fn(async () => [
+      { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" as const },
+      { name: "Wipro", domain: "wipro.com", source: "wikidata" as const },
+    ]);
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=google");
+    expect(r.status).toBe(200);
+    expect(r.body.companies).toEqual([]);
+    expect(r.body.discovered).toEqual([{ name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" }]);
+    expect(discoverCompanies).toHaveBeenCalledWith("google");
+  });
+
+  it("caps discovery at five candidates and survives a discovery failure with the directory answer intact", async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({ name: `Co ${i}`, domain: `co${i}.example.com`, source: "wikidata" as const }));
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies: async () => many });
+    const r = await request(app).get("/api/companies/search?q=wipro");
+    expect(r.status).toBe(200);
+    expect(r.body.companies).toHaveLength(1);
+    expect(r.body.discovered).toHaveLength(5);
+    const boom = appWith({ listCompanyDirectory: list, discoverCompanies: async () => { throw new Error("provider down"); } });
+    const failed = await request(boom.app).get("/api/companies/search?q=tata");
+    expect(failed.status).toBe(200);
+    expect(failed.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+    expect(failed.body.discovered).toEqual([]);
+  });
 });
 
 describe("public company directory routes", () => {
