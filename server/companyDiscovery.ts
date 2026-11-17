@@ -130,12 +130,15 @@ export const DISCOVERY_RATE_LIMIT_COOLDOWN_MS = 60_000;
 /** After this many consecutive upstream failures (5xx, timeout, network), a short breaker pauses all discovery upstream calls. */
 export const DISCOVERY_BREAKER_FAILURES = 3;
 export const DISCOVERY_BREAKER_OPEN_MS = 30_000;
-/** Per-client upstream budget: distinct name chains per window. A chain is a typing run - extensions and
- * shortenings of an already-charged name ("g", "go", "google") count once, so ordinary typing never exhausts it. */
+/** Per-client upstream budget: distinct name chains per window. A chain is one bounded typing run: a free
+ * transition must extend or shorten the MOST RECENT name this client asked, within a typing gap, and only a
+ * few times - so ordinary typing never exhausts the budget, but many distinct names sharing a short prefix
+ * ("goaa", "goab", ...) are distinct chains and do. */
 export const DISCOVERY_CLIENT_BUDGET = 20;
 export const DISCOVERY_CLIENT_WINDOW_MS = 10 * 60 * 1000;
+export const DISCOVERY_CHAIN_GAP_MS = 30_000;
+export const DISCOVERY_CHAIN_MAX_FREE = 8;
 const DISCOVERY_CLIENT_BUDGET_MAX_KEYS = 1_000;
-const DISCOVERY_CLIENT_NAMES_MAX = 40;
 
 export type DiscoveryDegradedReason = "rate_limited" | "budget" | "saturated" | "upstream";
 /** The discovery answer plus its health: degraded means the candidates are incomplete (limits or an upstream
@@ -146,16 +149,17 @@ let rateLimitedUntil = 0;
 let breakerUntil = 0;
 let consecutiveFailures = 0;
 let activeUpstream = 0;
-const clientBudget = new Map<string, { start: number; used: number; names: string[] }>();
+const clientBudget = new Map<string, { start: number; used: number; lastName: string; lastAt: number; freeUsed: number }>();
 
 const httpFailure = (what: string, status?: number) => Object.assign(new Error(`${what} HTTP failure`), { status: status ?? 0 });
 
-/** One client's budget for new upstream rounds. Typing prefixes of an already-charged name are the same chain
- * and cost nothing; only a genuinely new name chain spends. true when this round may proceed. */
+/** One client's budget for new upstream rounds. A free transition is bounded real typing: it extends or
+ * shortens the client's most recent name, within DISCOVERY_CHAIN_GAP_MS, at most DISCOVERY_CHAIN_MAX_FREE
+ * times in a row. Anything else is a new chain and spends. true when this round may proceed. */
 function spendClientBudget(clientKey: string, name: string, now: number): boolean {
   let entry = clientBudget.get(clientKey);
   if (!entry || now - entry.start >= DISCOVERY_CLIENT_WINDOW_MS) {
-    entry = { start: now, used: 0, names: [] };
+    entry = { start: now, used: 0, lastName: "", lastAt: 0, freeUsed: 0 };
     clientBudget.delete(clientKey);
     clientBudget.set(clientKey, entry);
     while (clientBudget.size > DISCOVERY_CLIENT_BUDGET_MAX_KEYS) {
@@ -164,11 +168,21 @@ function spendClientBudget(clientKey: string, name: string, now: number): boolea
       clientBudget.delete(oldest);
     }
   }
-  if (entry.names.some(held => name.startsWith(held) || held.startsWith(name))) return true;
+  const continues = entry.lastName.length > 0
+    && (name.startsWith(entry.lastName) || entry.lastName.startsWith(name))
+    && now - entry.lastAt <= DISCOVERY_CHAIN_GAP_MS
+    && entry.freeUsed < DISCOVERY_CHAIN_MAX_FREE;
+  if (continues) {
+    entry.lastName = name;
+    entry.lastAt = now;
+    entry.freeUsed += 1;
+    return true;
+  }
   if (entry.used >= DISCOVERY_CLIENT_BUDGET) return false;
   entry.used += 1;
-  entry.names.push(name);
-  if (entry.names.length > DISCOVERY_CLIENT_NAMES_MAX) entry.names.shift();
+  entry.lastName = name;
+  entry.lastAt = now;
+  entry.freeUsed = 0;
   return true;
 }
 

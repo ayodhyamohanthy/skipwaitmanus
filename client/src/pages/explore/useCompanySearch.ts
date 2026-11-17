@@ -7,8 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import { companySearchQuerySchema, companySearchResponseSchema, type DiscoveredCompany } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
 
-// D-174-worldwide-discovery: the typeahead is released (frozen Oct 25 direction; launch mode D-349;
-// owner Nov 8 phonemsg-01M6X5N95046QXX2EJVFP44NX9). The switch stays so the release is revertable.
+// D-174-worldwide-discovery: the typeahead surface is built and lands dark; the release row
+// (D-174-seeker-journey-build) flips the switch under its recorded gate (D-223 (3): preview QA, a review
+// and the CEO's sign-off). The switch stays a separate line so the release is revertable.
 export const COMPANY_TYPEAHEAD_ENABLED = false; // The release row flips this: small PR after preview QA, independent review and the CEO sign-off (D-223 (3), packet ruling 10). The Nov 8 ship-it instruction does not explicitly supersede that gate.
 export const COMPANY_SEARCH_DEBOUNCE_MS = 150;
 export const COMPANY_SEARCH_MAX = 10;

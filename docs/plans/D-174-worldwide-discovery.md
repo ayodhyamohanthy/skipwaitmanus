@@ -65,12 +65,14 @@ that limit is reported, not hidden.
    typing prefixes of a charged name are one chain (ordinary typing of 3-4
    real searches spends 3-4 of 20, never silently exhausts it). These bounds
    are per server instance, not fleet-wide. Wikimedia requests carry the
-   identifying SkipWait User-Agent. Client IP: the Worker
-   (src/worker.ts, shared/clientIp.ts) strips client-supplied forwarding
-   headers and writes X-Forwarded-For from CF-Connecting-IP, which Express
-   (trust proxy) reads - the contract is pinned by server/clientIpEdge.test.ts;
-   whether the live deployment fronts every path with that Worker is
-   deployment enforcement this packet does not verify.
+   identifying SkipWait User-Agent. Client key: req.ip is edge-derived by
+   design - the Worker (src/worker.ts, shared/clientIp.ts) strips
+   client-supplied forwarding headers and writes X-Forwarded-For from
+   CF-Connecting-IP, which Express (trust proxy) reads; the contract is
+   pinned by server/clientIpEdge.test.ts. Direct-origin exclusion and the
+   deployed header's presence are NOT verified here, so the budget is
+   honestly per-edge-IP-as-seen, not proven per-person; the global caps,
+   cooldown and breaker bound upstream traffic regardless.
 3b. Degraded is said out loud, never cached publicly: any limit or upstream
    failure answers with discoveryState "degraded" + a reason (rate_limited /
    busy / unavailable), Cache-Control "private, no-store", and whatever a

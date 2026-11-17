@@ -440,3 +440,40 @@ describe("typing-friendly budget accounting and the failure breaker (verdict: 3-
     expect(after.companies.map(candidate => candidate.domain)).toEqual(["google.com"]);
   });
 });
+
+describe("chain anti-bypass (review: a shared short prefix must not free unlimited names)", () => {
+  it("50 rapid distinct names sharing a 2-char prefix are distinct chains and exhaust the budget", async () => {
+    const t0 = 23_000_000;
+    const client = `ip-bypass-${Date.now()}`;
+    const counting = fakeFetch({ search: () => ({ search: [] }), opensearch: ["x", []] });
+    let blockedAt = -1;
+    for (let i = 0; i < 50; i += 1) {
+      const outcome = await discoverCompanies(`go${String(i).padStart(2, "0")}-x${client}`.slice(0, 4) + `q${i}`, { fetchImpl: counting, nowMs: t0, clientKey: client });
+      if (outcome.degraded) { blockedAt = i; break; }
+    }
+    // The budget (20 chains) is genuinely consumed: the 21st distinct name degrades.
+    expect(blockedAt).toBe(20);
+    const over = await discoverCompanies(`gofinal${client}`.slice(0, 8), { fetchImpl: counting, nowMs: t0 + 1_000, clientKey: client });
+    expect(over).toEqual({ companies: [], degraded: true, reason: "budget" });
+  });
+
+  it("a free transition dies after the gap and after the cap, so a kept-alive chain cannot ride free", async () => {
+    const t0 = 25_000_000;
+    const client = `ip-cap-${Date.now()}`;
+    const counting = fakeFetch({ search: () => ({ search: [] }), opensearch: ["x", []] });
+    // Charge one chain and ride 8 free extensions by typing.
+    let name = `ca${client}`.slice(0, 2);
+    await discoverCompanies(name, { fetchImpl: counting, nowMs: t0, clientKey: client });
+    for (let i = 0; i < 8; i += 1) {
+      name = `${name}x`;
+      const free = await discoverCompanies(name, { fetchImpl: counting, nowMs: t0 + (i + 1) * 1_000, clientKey: client });
+      expect(free.degraded).toBe(false);
+    }
+    // The 9th extension in a row is a new chain (spends), not a free ride.
+    const ninth = await discoverCompanies(`${name}y`, { fetchImpl: counting, nowMs: t0 + 9_000, clientKey: client });
+    expect(ninth.degraded).toBe(false); // budget allows it - as a SPEND
+    // And a quiet return after the gap is a new chain too.
+    const afterGap = await discoverCompanies(`${name}z`, { fetchImpl: counting, nowMs: t0 + 10_000 + 31_000, clientKey: client });
+    expect(afterGap.degraded).toBe(false);
+  });
+});
