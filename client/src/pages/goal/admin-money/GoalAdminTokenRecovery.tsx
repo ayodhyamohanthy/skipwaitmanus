@@ -5,7 +5,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
-import { GoalEmptyState, GoalErrorState } from "@/components/goal/GoalStates";
+import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalStatus } from "@/components/goal/GoalStatus";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
@@ -21,6 +21,9 @@ export default function GoalAdminTokenRecovery() {
   const [query, setQuery] = useState(""); const [users, setUsers] = useState<RecoveryUser[]>([]); const [selected, setSelected] = useState<RecoveryUser | null>(null);
   const [role, setRole] = useState<"job_seeker" | "referrer">("job_seeker"); const [tokenCount, setTokenCount] = useState(1); const [caseReference, setCaseReference] = useState(""); const [reason, setReason] = useState(""); const [confirmed, setConfirmed] = useState(false);
   const [history, setHistory] = useState<Adjustment[]>([]); const [searching, setSearching] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [success, setSuccess] = useState("");
+  // The audit history has its own read state, so a failed read never shows as
+  // an empty history and its retry really reads again (review finding F3 on pull request 1204).
+  const [historyState, setHistoryState] = useState<"loading" | "error" | "ready">("loading"); const [historyError, setHistoryError] = useState("");
 
   const authFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -29,7 +32,7 @@ export default function GoalAdminTokenRecovery() {
     if (!response.ok) throw new Error(payload.error || "We could not complete this administrator action");
     return payload;
   };
-  const loadHistory = async () => { if (!isSignedIn) return; try { const payload = await authFetch("/api/admin/token-recovery/adjustments"); setHistory(payload.adjustments || []); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load recovery history"); } };
+  const loadHistory = async () => { if (!isSignedIn) return; setHistoryState("loading"); setHistoryError(""); try { const payload = await authFetch("/api/admin/token-recovery/adjustments"); setHistory(payload.adjustments || []); setHistoryState("ready"); } catch (reason) { setHistoryError(reason instanceof Error ? reason.message : "We could not load recovery history"); setHistoryState("error"); } };
   useEffect(() => { void loadHistory(); }, [isSignedIn]);
   const searchUsers = async (event: FormEvent) => { event.preventDefault(); if (query.trim().length < 2) { setError("Enter at least two characters to find a user."); return; } setSearching(true); setError(""); setSuccess(""); try { const payload = await authFetch(`/api/admin/token-recovery/users?query=${encodeURIComponent(query.trim())}`); setUsers(payload.users || []); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not find user accounts"); } finally { setSearching(false); } };
   const grant = async (event: FormEvent) => { event.preventDefault(); if (!selected) { setError("Choose the user who needs a token recovery grant."); return; } if (!confirmed) { setError("Confirm that you reviewed the payment or support issue first."); return; } setSaving(true); setError(""); setSuccess(""); try { const payload = await authFetch("/api/admin/token-recovery/grants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientUserId: selected.id, role, tokenCount, caseReference, reason, confirmed: true }) }); setSuccess(`${payload.grant.tokenCount} credit${payload.grant.tokenCount === 1 ? "" : "s"} added. New ${role === "job_seeker" ? "Job Seeker" : "Referrer"} balance: ${payload.grant.newBalance}.`); setCaseReference(""); setReason(""); setConfirmed(false); await loadHistory(); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not create this recovery grant"); } finally { setSaving(false); } };
@@ -48,7 +51,7 @@ export default function GoalAdminTokenRecovery() {
   return (
     <AdminMoneyGoalFrame screen="admin-token-recovery" current="/admin/token-recovery">
       <AdminMoneyHeading current="/admin/token-recovery" />
-      {error ? <GoalErrorState title={error} retry={{ label: "Try again", onClick: () => setError("") }} /> : null}
+      {error ? <GoalErrorState title={error} retry={{ label: "Dismiss", onClick: () => setError("") }} /> : null}
       {success ? <p role="status" className="mb-6 border border-g-hairline bg-g-surface p-4 text-g-body text-g-ink">{success}</p> : null}
       <section aria-label="Find the account" className="border border-g-hairline bg-g-surface p-4">
         <h2 className="text-g-label text-g-ink">Find the account</h2>
@@ -98,9 +101,11 @@ export default function GoalAdminTokenRecovery() {
       <section aria-label="Audit history" className="mt-6 border border-g-hairline bg-g-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-g-hairline p-4">
           <h2 className="text-g-label text-g-ink">Recent recovery grants</h2>
-          <GoalStatus status="accepted" label={`${history.length} recorded`} />
+          {historyState === "ready" ? <GoalStatus status="accepted" label={`${history.length} recorded`} /> : <GoalStatus status={historyState === "error" ? "withdrawn" : "queue_review"} label={historyState === "error" ? "History not loaded" : "Reading the history"} />}
         </div>
-        {history.length ? (
+        {historyState === "loading" ? <GoalSkeletonRows density="queue" count={2} className="p-4" /> : null}
+        {historyState === "error" ? <GoalErrorState title={historyError} retry={{ label: "Try again", onClick: () => { void loadHistory(); } }} /> : null}
+        {historyState !== "ready" ? null : history.length ? (
           <ul>{history.map(item => (
             <li key={item.id} className="grid gap-1 border-b border-g-hairline p-4 last:border-b-0">
               <span className="text-g-label text-g-ink">+{item.tokenCount} · {item.role === "job_seeker" ? "Job Seeker" : "Referrer"}</span>
