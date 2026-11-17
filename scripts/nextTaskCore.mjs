@@ -1193,7 +1193,12 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       skip(view[i], action.reason);
       continue;
     }
-    if (only && i !== onlyAt) { actions[i] = null; continue; }
+    if (only && i !== onlyAt) {
+      // Suppressing another task's action preserves the same lane/dependency hold as --avoid.
+      if (AVOID_HOLDS.has(action.kind) && redOrBlocked(view[i])) { heldLanes.set(view[i].task.lane, view[i].task.id); heldIds.set(view[i].task.id, view[i].task.id); }
+      actions[i] = null;
+      continue;
+    }
     if (action.kind === "wait") {
       if (action.landing) { landingWait ??= action; actions[i] = null; continue; }
       return action;

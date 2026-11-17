@@ -17,7 +17,7 @@
 //
 // Exit codes: 0 work to do (claimed, your own work, CEO review), 1 error,
 // 2 STOP (GitHub unreadable), 3 SYNC FIRST (your work is not on origin),
-// 4 WAIT, 5 NOTHING TO PICK.
+// 4 WAIT, 5 NOTHING TO PICK, 6 requested task NOT ELIGIBLE (nothing claimed).
 //
 // It reads the task list from origin/main, never a local copy, and never
 // switches branches or touches the working tree. It does read the local clone

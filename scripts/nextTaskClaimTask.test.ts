@@ -164,6 +164,22 @@ describe("PICKER-claim-task: an ineligible task is refused with the reason the p
     refused(result, "T", "waits for red or blocked R");
   });
 
+  it.each(["red", "blocked"])("keeps a quiet earlier %s task's lane held when excluding its pending action", status => {
+    const tasks = [task("R", { lane: "shared" }), task("T", { lane: "shared" })];
+    const opts = {
+      branches: [work("R", OTHER, 3)],
+      prs: [prOf("R")],
+      prCi: [[branchOf("R"), status === "red" ? { state: "red", sha: HEAD } : ciGreen]] as [string, Ci][],
+      reports: status === "blocked" ? [{ id: "R", who: REVIEWER, status, at: NOW - HOUR, note: "needs evidence" }] : [],
+    };
+    expect(pick(tasks, opts)).toMatchObject({ kind: status === "red" ? "green" : "unblock", task: { id: "R" } });
+    expect(pick(tasks, { ...opts, avoid: ["R"] })).toMatchObject({
+      kind: "ceo",
+      skipped: expect.arrayContaining([{ id: "T", reason: "waits for red or blocked R (same lane or depends on it)" }]),
+    });
+    refused(pick(tasks, { ...opts, only: "T" }), "T", "waits for red or blocked R");
+  });
+
   it("you asked to avoid it", () => {
     refused(pick([task("T")], { avoid: ["T"], only: "T" }), "T", "--avoid");
   });

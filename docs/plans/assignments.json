@@ -362,14 +362,15 @@
       "lane": "picker-claim-task",
       "branch": "agent/queue/picker-claim-task",
       "status": "todo",
-      "syncedTo": "D-353",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PROCESS-session-review-independence"
       ],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
-        "scripts/nextTaskClaimTask.test.ts"
+        "scripts/nextTaskClaimTask.test.ts",
+        "scripts/nextTaskClaimTaskCli.test.ts"
       ],
       "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
     },
