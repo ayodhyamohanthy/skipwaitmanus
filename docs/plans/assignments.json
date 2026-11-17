@@ -950,7 +950,7 @@
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -958,15 +958,19 @@
         "D-048-F-goal-check",
         "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for PRICING-banded-oct25 (PR #666), which also owns Premium.tsx: the goal page is built on the paused-pack state the Oct 25 freeze lands. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-premium done in the same commit, so no separate release PR is needed.",
+      "note": "Goal premium uses the existing checkout, role/currency/quantity and pending recovery contracts; original premium tests remain unchanged. D-349 launch mode: this build adds premium to RELEASED and its exact-list pin, and completes D-048-R-premium on merge. Extra sales and referrer purchases remain off; no price or financial rule changes. D-356 continuation by GPT-6.1 Sol · e568 adds the unchanged legacy-price extract and read-only catalog boundary admission within this pull request. Final required CI and applicable independent review remain required; local and capture evidence live in the packet.",
       "epic": "D-048-p3",
       "owns": [
-        "client/src/pages/Premium.tsx (switch only)",
+        "client/src/pages/Premium.tsx",
         "client/src/pages/goal/premium/**",
         "client/src/pages/premiumGoal.test.tsx",
         "design/goal-ui/captures/premium/**",
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/lib/premiumPurchase.ts",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "docs/plans/GOAL_UI_MIGRATION.md",
+        "docs/plans/GOAL_UI_COVERAGE.md"
       ]
     },
     {
@@ -1064,7 +1068,7 @@
       "tier": 1,
       "lane": "d048-release-premium",
       "branch": "agent/queue/d048-r-premium",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-349",
       "dependsOn": [
         "D-048-p3-premium"
