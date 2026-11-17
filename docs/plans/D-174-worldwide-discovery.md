@@ -61,9 +61,11 @@ that limit is reported, not hidden.
    budget once; at most 4 upstream rounds run at once; a source 429 pauses
    ALL discovery upstream calls for 60s; 3 consecutive upstream failures
    (5xx, timeout, network) open a 30s breaker, reset by a success; and each
-   client IP gets a budget of 20 distinct name CHAINS per 10 minutes, where
-   typing prefixes of a charged name are one chain (ordinary typing of 3-4
-   real searches spends 3-4 of 20, never silently exhausts it). These bounds
+   client key gets a budget of 20 name chains per 10 minutes, where a free
+   transition must extend or shorten the client's most recent name within a
+   30s typing gap, at most 8 in a row (3-4 typed searches spend 3-4 of 20,
+   never silently exhaust; 50 rapid names sharing a 2-char prefix are 50
+   chains and exhaust). These bounds
    are per server instance, not fleet-wide. Wikimedia requests carry the
    identifying SkipWait User-Agent. Client key: req.ip is edge-derived by
    design - the Worker (src/worker.ts, shared/clientIp.ts) strips
