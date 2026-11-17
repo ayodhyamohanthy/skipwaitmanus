@@ -29,6 +29,7 @@ vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.o
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/sign-in"],
+  useSearch: () => window.location.search.replace(/^\?/, ""),
 }));
 
 type Reply = { status: number; body: unknown } | "network";
@@ -282,8 +283,8 @@ describe("goal /sign-in: referrer (work-email code only, D-030/D-057)", () => {
     for (const file of ["goal/sign-in/GoalSignInPage.tsx", "goal/sign-in/GoalAuthFrame.tsx", "goal/referrer/GoalOtpSignIn.tsx", "goal/sign-in/GoalForgotPassword.tsx", "goal/sign-in/GoalResetPassword.tsx", "goal/sign-in/GoalReviewerSignIn.tsx"]) {
       expect(read(file), file).not.toMatch(/SignInButton|openSignIn|auth\/workos/);
     }
-    // The seeker files may reach WorkOS (D-049), but never through the AuthKit widget.
-    for (const file of ["goal/sign-in/GoalSeekerForm.tsx", "goal/sign-in/seekerSocial.ts"]) expect(read(file), file).not.toMatch(/SignInButton|openSignIn|authkit\.app/);
+    // The seeker files may reach WorkOS (D-049), but never through the AuthKit widget (PasskeySignInButton is the device passkey, not AuthKit).
+    for (const file of ["goal/sign-in/GoalSeekerForm.tsx", "goal/sign-in/seekerSocial.ts"]) expect(read(file), file).not.toMatch(/(?<![A-Za-z])SignInButton|openSignIn|authkit\.app/);
     expect(read("goal/sign-in/GoalSignInPage.tsx")).not.toMatch(/reviewer-sign-in/);
   });
 });
@@ -303,7 +304,7 @@ describe("goal /forgot-password", () => {
     expect(primary(container)?.closest("a")?.getAttribute("href")).toBe("/sign-in");
     expect(calls).toEqual([{ url: "/api/auth/password/forgot", method: "POST", body: { email: "asha@example.com" } }]);
     fireEvent.click(screen.getByRole("button", { name: "Use a different email" }));
-    expect((screen.getByLabelText("Account email") as HTMLInputElement).value).toBe(" asha@example.com ");
+    expect((screen.getByLabelText("Account email") as HTMLInputElement).value).toBe("asha@example.com");
   });
 
   it("shows a 429 in the server's words, a network failure in plain words, and keeps the typed email", async () => {
@@ -368,7 +369,7 @@ describe("goal /reset-password", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Reset complete" })).toBeTruthy();
     assertGoalPage(container, RESET_PAGE);
     expect(document.body.textContent).not.toMatch(/you're signed in|you are signed in/i);
-    expect(document.body.textContent).toContain("Other devices were signed out for safety.");
+    expect(document.body.textContent).toContain("Every device signed in to this account was signed out for safety.");
     expect(primary(container)?.closest("a")?.getAttribute("href")).toBe("/sign-in");
     expect(calls.map(call => call.url)).toEqual(["/api/auth/password/reset/verify?token=tok-fixture-123", "/api/auth/password/reset/confirm"]);
     expect(calls[1].body).toEqual({ token: "tok-fixture-123", password: "longer-pass-1", confirm: "longer-pass-1" });
