@@ -31,3 +31,47 @@
 - Typecheck and the full required CI green on the exact head.
 - Separate review of the final version before merge (Instinct routine-merge boundary); Tier 2 paths, so no review gate under D-352.
 - Post-deploy proof (founder rule 8): live captures at 1280 and 390 of /explore answering a directory name, an alias (`tata`), a worldwide name absent from the directory (`google`), and a no-match, attached to the report.
+
+## Coverage limits, stated plainly (Nov 17, independent review)
+
+English-language Wikidata notable-entity discovery does not deliver universal
+worldwide coverage, and this row never claims it: a real company missing from
+Wikidata, or without an official-website statement, is not found. The honest
+fallback for every source miss is the existing paste-a-job-link / request-a-
+company path; the API and UI never promise "every company". The GLEIF
+long-tail supplement stays parked with D-174-seeker-journey-build. The user's
+worldwide goal is narrowed only to what the free sources actually resolve -
+that limit is reported, not hidden.
+
+## Independent review corrections (Nov 17, reviewer via main)
+
+1. Provider 429/5xx is a failure, never a cacheable empty: non-OK source
+   responses throw, only real non-empty answers are cached (6h TTL), and a
+   failure answers the stale cache or nothing. No 6-hour poisoned empties.
+2. Every candidate is validated against `discoveredCompanySchema` before it
+   crosses the boundary; malformed entries (IP hosts, mailbox-provider
+   families, overlong name/domain/logoUrl) are dropped one by one and can
+   never fail the whole search response. The discovered domain schema keeps
+   the host pattern but not the directory's work-email rule, which would
+   wrongly drop dual-use official domains like zoho.com (Zoho Corporation);
+   pure consumer-mail families are still refused.
+3. Public-route traffic bounds: single-character queries never reach the
+   sources (COMPANY_DISCOVERY_MIN_QUERY), concurrent asks for one name share
+   a single in-flight upstream round, and Wikimedia requests carry the
+   identifying SkipWait User-Agent. OPEN, stated for review: these are
+   per-query controls only - nothing bounds aggregate upstream traffic across
+   many distinct queries. The app's rate limiter (server/_core) is not wired
+   to this public route; whether to wire it is left to review rather than
+   widened here.
+4. Qualification: typed non-companies (product, software/suite, website,
+   place, work, band) are dropped even when their description mentions a
+   company (the Zoho Office Suite / production-site noise); typed evidence
+   beats description words. Domain dedupe is subdomain-aware.
+5. The confirmation card names the no-door state exactly ("this pick can't
+   start an ask by itself") with company-named CTAs, instead of letting the
+   selection pretend a usable referral door. Client pins added for the
+   tata-to-TCS alias path and logo degradation (CSP allows same-origin images
+   only, so a Commons logo may be blocked; it falls back to the company's
+   initial). Rendering Commons logos live needs an img-src exception in
+   server/securityHeaders.ts - outside this row's owns, reported for a
+   follow-up instead of widened here.
