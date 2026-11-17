@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -31,12 +33,21 @@ concurrency:
 # pushed. Every unreadable, shallow, truncated or contradictory read runs the
 # full steps.
 #
-# Nothing here uses `needs:`, so no classifier job can fail and leave a required
-# job skipped.
+# Only one job uses `needs:`: the required `unit + component + route tests`
+# aggregate over the three unit-test shards (GATE-unit-shards, D-351). A job that
+# needs a failed or skipped job is itself skipped, and a skipped required job
+# counts as passed, so the aggregate runs with `if: ${{ always() }}` and fails
+# unless the shards' combined result is `success`. Every job that does work
+# still starts on every event and classifies its own pinned diff. The one other
+# `needs:` is the non-required release-capture job waiting on its planner
+# (GATE-release-captures, at the end of this file); no required job reads either.
 jobs:
   check:
     name: typecheck
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -110,15 +121,26 @@ jobs:
       # review is still to be done" from every other red, and hand that head its REVIEW. The step name is read by
       # scripts/nextTaskCore.mjs (GATE_STEP); keep the two identical. The job and its required-check name are unchanged.
       - name: Review gate (independent Tier 1 pass)
-        if: ${{ github.event_name == 'pull_request' && steps.classify.outputs.marker_only != 'true' }}
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && steps.classify.outputs.marker_only != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/review-gate.mjs
       - name: Scope check (declared file ownership)
         if: ${{ steps.classify.outputs.marker_only != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/scope-check.mjs --branch
 
-  test:
-    name: unit + component + route tests
+  # GATE-unit-shards (D-351): the unit suite runs as three parallel shards, each
+  # with the same fetch, classify and install steps the single job had. The
+  # required check name stays on the aggregate job below.
+  test-shard:
+    name: unit tests (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -156,12 +178,32 @@ jobs:
         if: ${{ steps.classify.outputs.marker_only != 'true' }}
         run: pnpm install --frozen-lockfile
       - name: Vitest
-        # The full suite runs here with no exclusions. The three suites that
-        # used to be excluded for the missing tRPC mock harness now pass
-        # (settings.workEmail, settings.slackTriage) or never needed excluding
-        # (policyPages). Re-adding an --exclude here hides a red main.
+        # The full suite runs across the three shards with no exclusions: each
+        # shard takes its slice of the test files, and together they cover all
+        # of them. The three suites that used to be excluded for the missing
+        # tRPC mock harness now pass (settings.workEmail, settings.slackTriage)
+        # or never needed excluding (policyPages). Re-adding an --exclude here
+        # hides a red main.
         if: ${{ steps.classify.outputs.marker_only != 'true' }}
-        run: pnpm vitest run
+        run: pnpm vitest run --shard=${{ matrix.shard }}/3
+
+  # The required check (ruleset 25433342). It always starts, waits for the
+  # shards, and passes only when all three succeeded; anything else fails it.
+  test:
+    name: unit + component + route tests
+    runs-on: ubuntu-latest
+    needs: test-shard
+    if: ${{ always() }}
+    steps:
+      - name: Every shard passed
+        env:
+          SHARDS: ${{ needs.test-shard.result }}
+        run: |
+          echo "unit test shards: $SHARDS"
+          if [ "$SHARDS" != "success" ]; then
+            echo "::error::The unit test shards ended '$SHARDS'. This check passes only when all three shards succeed."
+            exit 1
+          fi
 
   build:
     name: production build
@@ -303,3 +345,105 @@ jobs:
             e2e/.report
           retention-days: 14
           if-no-files-found: ignore
+
+  # GATE-release-captures (D-346 (6), docs/plans/D-344-unblock.md row 4): CI
+  # takes a page release's captures at 1280x900 and at 390x844 (scale 2), the
+  # proof a release row used to capture by hand (AGENTS.md rule 8). Neither job
+  # is a required check, and no required job reads them.
+  #
+  # The planner runs only on pull requests, with Node and no install, and
+  # names the surfaces to capture from client/src/lib/goalSurfaces.ts: the
+  # release row whose branch is this pull request's head (looked up in
+  # docs/plans/assignments.json), every id the pull request adds to RELEASED,
+  # and the canary surfaces when the capture tooling itself changes. Any other
+  # pull request plans nothing, and the capture job does not start.
+  capture-plan:
+    name: release captures (plan)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      capture: ${{ steps.plan.outputs.capture }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      # The merge commit and its first parent: HEAD^1 is the base it merges into.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Plan the captures
+        id: plan
+        env:
+          CAPTURE_BRANCH: ${{ github.head_ref }}
+        run: node scripts/release-captures.mjs plan
+
+  # One job per planned surface: build with only that surface switched on, sign
+  # in through the e2e harness (synthetic accounts on a throwaway MySQL), and
+  # upload every route's PNGs as the artifact `release-captures-<id>`.
+  capture:
+    name: release captures (${{ matrix.id }})
+    runs-on: ubuntu-latest
+    needs: capture-plan
+    if: ${{ needs.capture-plan.outputs.capture == 'true' }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        id: ${{ fromJSON(needs.capture-plan.outputs.matrix) }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: e2e
+          MYSQL_DATABASE: skipwait
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pe2e"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      E2E_DATABASE_URL: mysql://root:e2e@127.0.0.1:3306/skipwait
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build with this surface on
+        env:
+          VITE_GOAL_SURFACES: ${{ matrix.id }}
+        run: pnpm build
+      # The head schema and the deploy migrations, as the journeys get them; the
+      # migration check against main's schema stays in the e2e journeys job.
+      - name: Prepare the e2e database
+        run: node scripts/e2e-server.mjs prepare
+      - name: Capture every route at 1280 and 390
+        env:
+          RELEASE_CAPTURE_IDS: ${{ matrix.id }}
+        run: pnpm exec playwright test -c e2e/playwright.config.ts e2e/release-captures.e2e.ts
+      - name: Upload the captures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-captures-${{ matrix.id }}
+          path: e2e/.results/release-captures/${{ matrix.id }}
+          retention-days: 30
+          if-no-files-found: warn

@@ -8,7 +8,7 @@ import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { isRetiredPlanId, isRetiredPlanItemPrice, resolvePlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
-import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
+import { LEGACY_PACK_SALES_PAUSED, SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
 import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
@@ -131,8 +131,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
       // D-036: the per-credit checkout retires in a currency once any pack is on
       // sale in it. Pending single-credit checkouts from before the switch still
-      // recover and credit; only NEW checkouts are refused.
-      if (singleCreditRetired({ currency: pack.currency, anyPackAvailable: await anyPackAvailableForCurrency(req, pack.currency, deps.kitCheckout) })) {
+      // recover and credit; only NEW checkouts are refused. While the Oct 25 2026
+      // legacy-pricing pause holds it stays retired, answered before any provider
+      // probe, so archived packs never re-open it (PR #666 review F1).
+      const packSalesPaused = deps.kitCheckout?.packSalesPaused ?? LEGACY_PACK_SALES_PAUSED;
+      if (packSalesPaused || singleCreditRetired({ currency: pack.currency, packSalesPaused, anyPackAvailable: await anyPackAvailableForCurrency(req, pack.currency, deps.kitCheckout) })) {
         return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = publicOutboundOrigin(req);
