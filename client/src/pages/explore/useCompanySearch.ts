@@ -7,11 +7,13 @@ import { useQuery } from "@tanstack/react-query";
 import { companySearchQuerySchema, companySearchResponseSchema, type DiscoveredCompany } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
 
-// D-174-seeker-journey-build.typeahead-flip: the switch is now an env gate. Preview QA
-// builds set VITE_COMPANY_TYPEAHEAD=true to exercise the surface; no production build
-// config sets it, so the shipped artifact keeps it off. Enabling it in production is
-// the recorded release gate's call (D-223 (3): preview QA, a review and the CEO's
-// sign-off) - the gate is untouched here and this change flips nothing by itself.
+// D-174-seeker-journey-build.typeahead-flip: the switch is an env gate fed by the
+// resolver in vite.typeahead-flag.ts. Since the 2026-11-18 release flip, CI builds of
+// main resolve it ON, so production ships the typeahead; local/dev/test builds stay
+// dark unless VITE_COMPANY_TYPEAHEAD=true is set explicitly. Rollback is a revert of
+// the flip or VITE_COMPANY_TYPEAHEAD=false plus a redeploy - there is no dashboard
+// toggle. The pre-flip history (forced off on main, gated enable) is in
+// docs/plans/D-174-worldwide-discovery.md section 7.
 export const COMPANY_TYPEAHEAD_ENABLED = import.meta.env.VITE_COMPANY_TYPEAHEAD === "true";
 export const COMPANY_SEARCH_DEBOUNCE_MS = 150;
 export const COMPANY_SEARCH_MAX = 10;

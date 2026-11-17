@@ -19,13 +19,16 @@ describe("resolveCompanyTypeaheadFlag (D-174-seeker-journey-build.typeahead-flip
     expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "agent/queue/d174-typeahead-flip" })).toBe("true");
   });
 
-  it("stays off for a Workers Builds main build, even if the variable is set", () => {
-    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "main" })).toBe("false");
-    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "main", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("false");
+  it("ships on for a Workers Builds main build (release flip); the explicit variable overrides in either direction", () => {
+    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "main" })).toBe("true");
+    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "main", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("true");
+    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "main", VITE_COMPANY_TYPEAHEAD: "false" })).toBe("false");
   });
 
-  it("stays off for a GitHub Actions main deploy build, even if the variable is set (release-gate guard)", () => {
-    expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "main", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("false");
+  it("ships on for a GitHub Actions main deploy build (release flip); VITE_COMPANY_TYPEAHEAD=false rolls it back", () => {
+    expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "main" })).toBe("true");
+    expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "main", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("true");
+    expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "main", VITE_COMPANY_TYPEAHEAD: "false" })).toBe("false");
   });
 
   it("fails closed on an unknown or empty CI branch", () => {
