@@ -9,9 +9,9 @@ import { readApiJson } from "@/lib/apiResponse";
 
 // D-174-seeker-journey-build.typeahead-flip: the switch is now an env gate. Preview QA
 // builds set VITE_COMPANY_TYPEAHEAD=true to exercise the surface; no production build
-// config sets it, so production stays off. Enabling it in production is the recorded
-// release gate's call (D-223 (3): preview QA, a review and the CEO's sign-off) - the
-// gate is untouched here and this change flips nothing by itself.
+// config sets it, so the shipped artifact keeps it off. Enabling it in production is
+// the recorded release gate's call (D-223 (3): preview QA, a review and the CEO's
+// sign-off) - the gate is untouched here and this change flips nothing by itself.
 export const COMPANY_TYPEAHEAD_ENABLED = import.meta.env.VITE_COMPANY_TYPEAHEAD === "true";
 export const COMPANY_SEARCH_DEBOUNCE_MS = 150;
 export const COMPANY_SEARCH_MAX = 10;

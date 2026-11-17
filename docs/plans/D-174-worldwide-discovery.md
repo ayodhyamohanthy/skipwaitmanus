@@ -128,17 +128,24 @@ that limit is reported, not hidden.
    reported separately from the Workers Builds path, which stays unverified
    end-to-end. Hard-limit reconciliation: before this row the switch was a
    literal-false constant, so no build could enable the typeahead; after this
-   row the same protection is carried by the resolver's default-OFF and its
-   force-off on any CI build of main, so production activation remains a code
-   change through the recorded release gate (D-223 (3): preview QA, a review
-   and the CEO's sign-off; who signs off stays unresolved through main),
-   never an environment variable alone - the gate is unchanged and nothing
-   here waives it. The production deploy workflows do not set the
+   row the protection is deliberately weaker than a literal-false constant
+   and is stated precisely: the resolver defaults OFF and forces OFF on
+   GitHub CI and Workers Builds builds of main even when the variable is set
+   there, but a local, ad-hoc, tag or PR build with
+   VITE_COMPANY_TYPEAHEAD=true produces a flag-ON artifact, and the residual
+   manual promotion paths (dashboard version promotion, ad-hoc local deploy)
+   could carry such an artifact to production. The recorded release gate
+   (D-223 (3): preview QA, a review and the CEO's sign-off; who signs off
+   stays unresolved through main) is the process control over those paths,
+   not a code guarantee, and nothing here waives it. This weaker protection
+   is accepted only to enable preview preparation; production activation
+   stays held. The production deploy workflows do not set the
    variable (verified from .github/workflows/deploy-pages.yml and
    deploy-api.yml; zero COMPANY_TYPEAHEAD references across workflows,
    scripts and the Dockerfile). The false-pin in companySearch.test.tsx
-   asserts the default stays literal false in a bare environment, and
-   companyTypeahead.define.test.ts pins the resolver. Preview QA before any production enable, at 1280 and
+   asserts the default is false only in a bare environment - weaker than the
+   old literal false, since a test cannot see an explicitly set variable -
+   and companyTypeahead.define.test.ts pins the resolver. Preview QA before any production enable, at 1280 and
    390: directory, tata, google, no-match, degraded, card handoff (pick shown
    as context on /ask), unknown-company job link, and a real-provider round,
    on a flag-on preview build.
