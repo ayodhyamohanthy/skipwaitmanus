@@ -7880,6 +7880,31 @@
         "scripts/scopeCheck.test.ts"
       ],
       "note": "Build docs/plans/PROCESS-sol-full-edit.md. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3))."
+    },
+    {
+      "id": "D-174-worldwide-discovery.company-context",
+      "title": "A discovered-company pick carries its name and domain into /ask, so the composer shows the company the seeker picked while they paste its job link (D-174-worldwide-discovery context gap)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-worldwide-discovery.md",
+      "tier": 1,
+      "lane": "d174-discovery",
+      "branch": "agent/queue/d174-company-context",
+      "status": "todo",
+      "dependsOn": [],
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/discoveryHandoff.ts",
+        "client/src/pages/explore/discoveryHandoff.test.ts",
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/explore/companySearch.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/lib/logoutPrivacy.ts",
+        "client/src/lib/logoutPrivacy.test.ts",
+        "docs/plans/D-174-worldwide-discovery.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Closes the context gap D-174-worldwide-discovery states explicitly: the confirmation card's pick reaches /ask as DISPLAYED CONTEXT ONLY. Mechanism: the card writes a small handoff ({name, domain, at}, one new localStorage key, TTL mirroring ASK_PREFILL_TTL_MS, consumed on use) and navigates to /ask. Rendering needs no render-file ownership: the composer hook's one wiring line surfaces a fresh pick through the EXISTING rendered hint field (AskComposer.hint, a LinkHint the drawer and page already render) - when the URL box is empty and a fresh pick exists, the hint reads 'You picked {name} ({domain}) - paste its job link below'; every other case keeps today's hint exactly. Sign-out clearing is owned, not promised: the key joins referralLocalStorageKeys in client/src/lib/logoutPrivacy.ts (the existing privacy/storage inventory), with a pin in its test. HONEST SCOPE: displayed context does NOT make an unknown-company ask work - the company is not in the directory, the seeker still pastes a real job link, and Send, price, validation, eligibility and the company binding are all unchanged; preview QA must check the true outcome (pick shown as context, ask still impossible without a real link, send behavior identical). The one wiring line is coordination, not a takeover waiver: the D-094-ai-in-ui.job-link claim (stale-red) and D-174-seeker-journey-build.composer-neutral (todo) stay intact, and if either holder resumes and the line collides, the line moves to that holder through main coordination. Tier 1: useAskComposer.tsx is a hot shared file (D-223 (6)) - independent review required before build. No takeover, no waiting dependency, no scope of either row taken. Owns are plain literal paths because scope-check matches literals only; the overlap with D-094 and composer-neutral is the permitted, reported kind (D-309/D-314), and this row still touches the composer by the one wiring line its note limits it to.",
+      "syncedTo": "D-356"
     }
   ]
 }
