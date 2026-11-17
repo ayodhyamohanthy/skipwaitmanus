@@ -116,7 +116,10 @@ that limit is reported, not hidden.
    which turns it ON only for Workers Builds non-main branch builds
    (WORKERS_CI=1 + WORKERS_CI_BRANCH, the dashboard's branch previews) and
    forces it OFF on any CI build of main - even if the variable is set in
-   that environment. Production activation is therefore always a code change
+   that environment - and fails closed (OFF) on an unknown or empty CI
+   branch. The provider variables (WORKERS_CI, WORKERS_CI_BRANCH) are named
+   by the Workers Builds 2025-06-10 changelog and verified end-to-end by this
+   row's own preview QA. Production activation is therefore always a code change
    through the recorded release gate (D-223 (3): preview QA, a review and the
    CEO's sign-off; who signs off stays unresolved through main), never an
    environment variable alone. The production deploy workflows do not set the

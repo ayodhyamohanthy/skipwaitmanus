@@ -28,6 +28,17 @@ describe("resolveCompanyTypeaheadFlag (D-174-seeker-journey-build.typeahead-flip
     expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "main", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("false");
   });
 
+  it("fails closed on an unknown or empty CI branch", () => {
+    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1" })).toBe("false");
+    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "" })).toBe("false");
+    expect(resolveCompanyTypeaheadFlag({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "   " })).toBe("false");
+  });
+
+  it("covers non-main CI refs: a tag ref builds dark unless the variable is explicitly set (no workflow deploys tags)", () => {
+    expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "v1.2.3" })).toBe("false");
+    expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "v1.2.3", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("true");
+  });
+
   it("treats GitHub pull-request refs as non-main but never preview-on by themselves", () => {
     expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "1263/merge" })).toBe("false");
     expect(resolveCompanyTypeaheadFlag({ GITHUB_REF_NAME: "1263/merge", VITE_COMPANY_TYPEAHEAD: "true" })).toBe("true");
