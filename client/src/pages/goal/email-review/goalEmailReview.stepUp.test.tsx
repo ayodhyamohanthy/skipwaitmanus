@@ -105,6 +105,37 @@ describe("GoalEmailReviewAction with a code_required session (D-057)", () => {
     expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeNull();
   });
 
+  // D-057-stepup-access-error (packet FIX-nov13-stepup-avoid.md section 1): a failed access read
+  // used to leave "Checking your work email…" on screen forever, with no error and no retry.
+  it("says plainly when the access read fails, and Try again reads it again to the step-up form", async () => {
+    reviewLinkReplies = [CODE_REQUIRED];
+    let accessReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input) === ACCESS && accessReads++ < 2) return { ok: false, status: 500, json: async () => ({ error: "Server error" }) };
+      return fetchMock(input, init);
+    }));
+    renderPage();
+    const alert = await screen.findByText(/couldn.t check your work email/i, {}, { timeout: 5000 });
+    expect(alert.closest('[role="alert"]')).toBeTruthy();
+    expect(screen.queryByText("Checking your work email…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText(/Confirm you still work at Acme/)).toBeTruthy(), { timeout: 5000 });
+    expect(accessReads).toBeGreaterThanOrEqual(3);
+  });
+
+  it("treats an access payload the client cannot read as the same retryable error", async () => {
+    reviewLinkReplies = [CODE_REQUIRED];
+    let accessReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input) === ACCESS && accessReads++ < 2) return { ok: true, status: 200, json: async () => ({ unexpected: true }) };
+      return fetchMock(input, init);
+    }));
+    renderPage();
+    await screen.findByText(/couldn.t check your work email/i, {}, { timeout: 5000 });
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(document.querySelector('a[href*="/api/auth/otp"]')).toBeNull();
+  });
+
   it("keeps the unavailable-link error unchanged", async () => {
     reviewLinkReplies = [{ ok: false, status: 409, json: async () => ({ error: "This private review link is unavailable" }) }];
     vi.stubGlobal("fetch", fetchMock);
