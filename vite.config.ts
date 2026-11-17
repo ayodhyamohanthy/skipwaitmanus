@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { resolveCompanyTypeaheadFlag } from "./vite.typeahead-flag";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 // =============================================================================
@@ -215,6 +216,12 @@ function swBuildStampPlugin(): Plugin {
 }
 
 export default defineConfig(({ mode }) => ({
+  define: {
+    // D-174-seeker-journey-build.typeahead-flip: the only define this row adds. Feeds the
+    // env-gated switch from the pure resolver - on for Workers Builds branch previews,
+    // forced off on every CI build of main (see vite.typeahead-flag.ts).
+    "import.meta.env.VITE_COMPANY_TYPEAHEAD": JSON.stringify(resolveCompanyTypeaheadFlag(process.env)),
+  },
   plugins: mode === "development" ? developmentPlugins : productionPlugins,
   resolve: {
     alias: [

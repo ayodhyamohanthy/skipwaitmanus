@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-16",
+  "updated": "2026-11-17",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -361,17 +361,19 @@
       "tier": 2,
       "lane": "picker-claim-task",
       "branch": "agent/queue/picker-claim-task",
-      "status": "todo",
-      "syncedTo": "D-353",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PROCESS-session-review-independence"
       ],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
-        "scripts/nextTaskClaimTask.test.ts"
+        "scripts/nextTaskClaimTask.test.ts",
+        "scripts/nextTaskClaimTaskCli.test.ts",
+        "scripts/nextTaskText.mjs"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
+      "note": "Done effective on PR #1248 merge (GPT-6.1 Sol · 4ebf), final source 1f76c980. --claim/--as with --task selects only that task under normal eligibility; refusal exits 6 without a claim; race retries the same task; successful preview claim commands retain --task. Quiet red/blocked holds repaired red-first (2 failed/20 controls); preview repaired red-first (1 failed/22 controls). Final focused31/31, consumers229/229, tsc/build and scope/integrity/token/migration/trigger checks pass; CI44087260003 green7677pass18skip8E2E. Advisory review's sole finding fixed, delta review clean. Local full gate edfb0db0 failed6/7669pass18skip; three files isolated20/20; final redundant rerun stopped during slow Git fixtures, never claimed green. Status-only final CI and protected merge remain required. Decisions through D356; prior local-only work preserved; no product runtime/settings change."
     },
     {
       "id": "GATE-tier-classifier-gaps",
@@ -1206,7 +1208,7 @@
       "tier": 1,
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
-      "status": "todo",
+      "status": "in-review",
       "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -1435,7 +1437,7 @@
       "tier": 1,
       "lane": "d048-release-sign-in",
       "branch": "agent/queue/d048-r-sign-in",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-349",
       "dependsOn": [
         "D-048-p3-signin"
@@ -1451,7 +1453,7 @@
         "client/src/pages/signInGoal.test.tsx",
         "design/goal-ui/captures/sign-in/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-signin, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-349 (launch mode): done by D-048-p3-signin's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"sign-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=sign-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-signin's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Login rule pins pass with the id on (loginRule.test.tsx, signIn.test.tsx; D-030/D-049/D-057). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-signin, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-349 (launch mode): done by D-048-p3-signin's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off. Done Nov 17 under D-349 (1): D-048-p3-signin's build pull request adds \"sign-in\" to RELEASED and to the exact-list pin in the same commit that sets this row done, so no separate release PR is needed.",
       "epic": "D-048-p3"
     },
     {
@@ -2312,8 +2314,8 @@
       "tier": 1,
       "lane": "d048-fix-admin-approvals-copy",
       "branch": "agent/queue/993-kit-admin-approvals-failure-copy",
-      "status": "todo",
-      "syncedTo": "D-301",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [],
       "owns": [
         "client/src/pages/AdminApprovalQueue.tsx",
@@ -2333,7 +2335,7 @@
       "lane": "d048-release-home-signed-in",
       "branch": "agent/queue/d048-r-home-signed-in",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-048-p3-home-signed-in"
       ],
@@ -2345,7 +2347,7 @@
         "client/src/pages/homeSignedIn.goal.test.tsx",
         "design/goal-ui/captures/home/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-home-signed-in, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-home-signed-in, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. Nov 17 runtime landed: PR #1255 source 789c4ead, merge/web 0dc1b07d. PR CI 44105048473 passed 7677 tests, 8 journeys and both 1280/390 captures (artifact 14337577321); main CI, Pages and Release verify 44110594208 passed. API remains healthy on expected unchanged 9d6543b3. Packet and design/goal-ui/captures/home/release-2026-11-17.json retain proof. Not done: real authenticated production QA and 24-hour Sentry watch remain unverified. Reviewer passwords unavailable and paired browser offline in Codex GPT-6 · 2295 session; LAUNCH-live-qa remains the owner-held live-QA carrier. Do not duplicate the shipped switch or treat a merge as completed acceptance.",
       "epic": "D-048-p3"
     },
     {
@@ -2713,7 +2715,7 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-057-session-gate"
       ],
@@ -2805,11 +2807,11 @@
       "lane": "design-shell",
       "branch": "agent/queue/d222-referral-count",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PRICING-banded-oct25"
       ],
-      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges. Nov 9 temporary D-057 handoff (packet §0b.8c): only client/src/components/AppShell.tsx are temporarily serialized to D-057 for its code_required navigation repair. This row retains its original branch, code, other paths, status, findings and all owner/product holds. These paths return through a separately reviewed registry restoration after D-057 is landed, before this row resumes runtime work; first normally merge D-057/current main and preserve both changes. No dependency or blanket takeover. See §0b.8c for conditional entry, stale coordinator hold qualification and unpublished-work limits. AppShell.tsx Returned by the D-057 §0b.8c registry restoration (D-333 (7)): merge current main, including the D-057 result, and keep both changes before any runtime work on the returned file. D-344 (4) (Nov 16): the shell pill's wording ('N referrals left', a unit on phones, no 'credits') moved to D-344-shell-referral-words so two releases stop waiting on pricing. This row keeps the referrer-route count, AppShell.tsx and the zero and ledger semantics; it merges main over that wording and keeps it.",
+      "note": "Build docs/plans/D-222-referral-count.md exactly: AppShell stops nulling the balance on REFERRER_SURFACE; the count element reads 'N referrals left' with 'referrals' meaning preserved at 390px; plain non-linked text on referrer routes (D-055: no plan/purchase affordance), quiet link allowed on seeker routes; honest loading/error-retry/'0 referrals left' states; hook and ledger semantics unchanged. Proof: viewport-true 1280x900 + 390x844@2x captures of ready, zero, error/retry and the referrer no-purchase boundary. Tier 1: one independent non-builder/non-fixer review; reviewer never merges. Nov 9 temporary D-057 handoff (packet §0b.8c): only client/src/components/AppShell.tsx are temporarily serialized to D-057 for its code_required navigation repair. This row retains its original branch, code, other paths, status, findings and all owner/product holds. These paths return through a separately reviewed registry restoration after D-057 is landed, before this row resumes runtime work; first normally merge D-057/current main and preserve both changes. No dependency or blanket takeover. See §0b.8c for conditional entry, stale coordinator hold qualification and unpublished-work limits. AppShell.tsx Returned by the D-057 §0b.8c registry restoration (D-333 (7)): merge current main, including the D-057 result, and keep both changes before any runtime work on the returned file. D-344 (4) (Nov 16): the shell pill's wording ('N referrals left', a unit on phones, no 'credits') moved to D-344-shell-referral-words so two releases stop waiting on pricing. This row keeps the referrer-route count, AppShell.tsx and the zero and ledger semantics; it merges main over that wording and keeps it. Nov 17 implementation on PR #1257: source 91e945e7, mobile error-height correction 8f0694ba, code_required regression/evidence e1bec12c; current main cec3f143 integrated. D-352 supersedes the old declared-tier review instruction above: this client-only diff computes Tier 2 and needs green required CI, not a separate review. No hook/ledger/API changes. Final viewport captures and geometry manifest are committed under design/goal-ui/captures/shell/d222/. Local focus 57/57, typecheck/build/audits pass. Full local suite: 7686 passed, 18 skipped, one unchanged seekerSetupRoutes failure; isolated7/7 and complete CI green on 8f0694ba/e1bec12c. Runtime landing/exact release pending; do not mark done until verified.",
       "owns": [
         "client/src/components/goal/GoalShell.tsx",
         "client/src/components/appShell.test.tsx",
@@ -5764,6 +5766,17 @@
       "owns": [
         "server/reviewDeliveryRetry.ts",
         "server/reviewDeliveryRetry.test.ts",
+        "server/reviewDeliveryAlerts.ts",
+        "server/db.ts",
+        "drizzle/schema.ts",
+        "drizzle/deploy/0122_review_delivery_owner_alerts.sql",
+        "server/schemaReconcile.ts",
+        "e2e/review-email-retry.e2e.ts",
+        "AGENTS.md",
+        "docs/BRIEF.md",
+        "docs/DECISIONS.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
         "server/scheduledJobRegistry.ts (switch only)",
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
@@ -7157,7 +7170,7 @@
       "tier": 1,
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-fix-post-binding"
@@ -7274,6 +7287,32 @@
         "client/src/hooks/useAskQuote.ts",
         "client/src/pages/explore/jobAsk.test.tsx",
         "client/src/pages/ExploreCompany.tsx (switch only)"
+      ]
+    },
+    {
+      "id": "D-174-worldwide-discovery",
+      "title": "Worldwide company discovery: automatic typeahead resolves a typed company from free worldwide sources (Wikidata primary), landed dark behind the existing gated typeahead switch (frozen founder direction, Oct 25)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-worldwide-discovery.md",
+      "tier": 2,
+      "lane": "d174-discovery",
+      "branch": "agent/queue/d174-worldwide-discovery",
+      "status": "todo",
+      "syncedTo": "D-356",
+      "dependsOn": [],
+      "note": "Frozen founder direction (Oct 25 2026, verified originals): 'automatic discovery of companies as user types like linkedin' (phonemsg-01M5SE6VFWZJENEG0CDD2CC3XS), 'Freeze this and push to repo' (phonemsg-01M5SEPSD0B9BWSEAZZY2Q8XN3), build authority 'So agents will build it' (phonemsg-01M5SE8NHZ499S10KSKANWJN1F); spec doc docs/plans/DECISION-SYNC-discovery-oct25.md (PR #660). User defect Nov 17 (WhatsApp): typed companies still do not appear; live /explore search filtered only the 39-company seed directory, client-side, without aliases. Build: server discovery adapter (Wikidata wbsearchentities + wbgetentities P856 official website / P154 logo, Wikipedia OpenSearch for spelling and ranking; free and keyless; in-memory cache, no migration), merged into GET /api/companies/search as a backward-compatible 'discovered' key (directory hits first, dedupe by domain); identity keyed by official domain with user confirmation on ambiguity, never a silent guess; every source missing keeps the existing paste-a-job-link / Request a company path, and a typed name alone is never presented as discovery; no coverage claims beyond the sources. Client: discovered suggestions render name + domain + logo and open a confirmation card with the honest state (no door yet) and company-named CTAs; no fake doors. RELEASE GATE PRESERVED (Nov 17 correction): the recorded D-223 (3) / packet ruling 10 gate - preview QA, independent review and the CEO's sign-off before the switch flips - is a recorded decision, and no original explicitly supersedes it for the typeahead (Oct 21 'push to live whatever page is built' phonemsg-01M5EZZWZ2RAN56S9MSC94NE9Y predates the Nov 1 ruling; Nov 8 'If something is live why are you not live ing it' phonemsg-01M6X5N95046QXX2EJVFP44NX9 is generic ship-it, not an explicit waiver of the sign-off). So COMPANY_TYPEAHEAD_ENABLED stays false here, the switch line stays owned by D-174-seeker-journey-build, and this row lands dark: server discovery, the backward-compatible 'discovered' key, and the client surface behind the flag, fully tested with the flag exercised both ways. The recorded release gate (D-223 (3): preview QA, a review and the CEO's sign-off before the switch flips) is preserved unchanged, and this row interprets or waives nothing in it. The approval path for the flip is unresolved: the mandate originals that would let a CEO-capacity session sign off (D-109/D-203 verbatims) are not on the user's channel, so who signs off - a CEO-capacity session under the recorded mandate or the owner himself - stays open pending source evidence, resolved through main, with the user asked in plain outcome terms if needed. Until that is resolved, COMPANY_TYPEAHEAD_ENABLED stays false and this row lands dark. Tier 2 paths (scripts/tierClassifyCore.mjs): green required CI, tests ported not deleted (GATE-test-integrity), separate review before merge per the Instinct routine-merge boundary. Parked, not this row: GLEIF long-tail supplement, careers-site job chain and COMPANY_JOBS_ENABLED (stay with D-174-seeker-journey-build), no paid provider (owner money rule). Owns are plain literal paths only because scope-check matches literals (D-309/D-314 makes the overlap permitted and reported); the human scope stays exactly what this note says - the switch line and every other file line outside the discovery surface are untouched. Hard limit: this row must not flip the flag line (COMPANY_TYPEAHEAD_ENABLED stays false) and must not weaken or remove its false-pin test in companySearch.test.tsx; the only landed changes there are stale comment/title text, and the final review must verify the value is still false and the pin still asserts false.",
+      "epic": "D-174",
+      "owns": [
+        "server/companyDiscovery.ts",
+        "server/companyDiscovery.test.ts",
+        "server/companyDirectoryRoutes.ts",
+        "server/companyDirectoryRoutes.test.ts",
+        "shared/companies.ts",
+        "client/src/pages/explore/useCompanySearch.ts",
+        "client/src/pages/explore/companySearch.test.tsx",
+        "client/src/pages/Explore.tsx",
+        "docs/plans/D-174-worldwide-discovery.md",
+        "docs/plans/assignments.json"
       ]
     },
     {
@@ -7841,6 +7880,55 @@
         "scripts/scopeCheck.test.ts"
       ],
       "note": "Build docs/plans/PROCESS-sol-full-edit.md. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3))."
+    },
+    {
+      "id": "D-174-worldwide-discovery.company-context",
+      "title": "A discovered-company pick carries its name and domain into /ask, so the composer shows the company the seeker picked while they paste its job link (D-174-worldwide-discovery context gap)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-worldwide-discovery.md",
+      "tier": 1,
+      "lane": "d174-discovery",
+      "branch": "agent/queue/d174-company-context",
+      "status": "todo",
+      "dependsOn": [],
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/discoveryHandoff.ts",
+        "client/src/pages/explore/discoveryHandoff.test.ts",
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/explore/companySearch.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/lib/logoutPrivacy.ts",
+        "client/src/lib/logoutPrivacy.test.ts",
+        "docs/plans/D-174-worldwide-discovery.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Closes the context gap D-174-worldwide-discovery states explicitly: the confirmation card's pick reaches /ask as DISPLAYED CONTEXT ONLY. Mechanism: the card writes a small handoff ({name, domain, at}, one new localStorage key, TTL mirroring ASK_PREFILL_TTL_MS, consumed on use) and navigates to /ask. Rendering needs no render-file ownership: the composer hook's one wiring line surfaces a fresh pick through the EXISTING rendered hint field (AskComposer.hint, a LinkHint the drawer and page already render) - when the URL box is empty and a fresh pick exists, the hint reads 'You picked {name} ({domain}) - paste its job link below'; every other case keeps today's hint exactly. Sign-out clearing is owned, not promised: the key joins referralLocalStorageKeys in client/src/lib/logoutPrivacy.ts (the existing privacy/storage inventory), with a pin in its test. HONEST SCOPE: displayed context does NOT make an unknown-company ask work - the company is not in the directory, the seeker still pastes a real job link, and Send, price, validation, eligibility and the company binding are all unchanged; preview QA must check the true outcome (pick shown as context, ask still impossible without a real link, send behavior identical). The one wiring line is coordination, not a takeover waiver: the D-094-ai-in-ui.job-link claim (stale-red) and D-174-seeker-journey-build.composer-neutral (todo) stay intact, and if either holder resumes and the line collides, the line moves to that holder through main coordination. Tier 1: useAskComposer.tsx is a hot shared file (D-223 (6)) - independent review required before build. No takeover, no waiting dependency, no scope of either row taken. Owns are plain literal paths because scope-check matches literals only; the overlap with D-094 and composer-neutral is the permitted, reported kind (D-309/D-314), and this row still touches the composer by the one wiring line its note limits it to.",
+      "syncedTo": "D-356"
+    },
+    {
+      "id": "D-174-seeker-journey-build.typeahead-flip",
+      "title": "Typeahead flip: env-gated switch, preview QA, gated production enable",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-worldwide-discovery.md",
+      "tier": 1,
+      "lane": "d174-release",
+      "branch": "agent/queue/d174-typeahead-flip",
+      "status": "todo",
+      "dependsOn": [],
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/useCompanySearch.ts (switch only)",
+        "vite.config.ts",
+        "vite.typeahead-flag.ts",
+        "client/src/pages/explore/companySearch.test.tsx",
+        "client/src/pages/explore/companyTypeahead.define.test.ts",
+        ".env.example",
+        "docs/plans/D-174-worldwide-discovery.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "The D-174-seeker-journey-build release row stays todo/unclaimed; this narrow sub-row takes ONLY the COMPANY_TYPEAHEAD_ENABLED switch line (the ' (switch only)' overlap with the release row is the permitted, reported kind, D-309/D-314; the switch-only 12-line limit applies). Change: the switch becomes an env gate - `import.meta.env.VITE_COMPANY_TYPEAHEAD === \"true\"` - so any build can exercise the typeahead while production stays false (no production build config sets the var; landing this PR flips nothing). .env.example gains VITE_COMPANY_TYPEAHEAD=false (configContract.test.ts requires every referenced key). The recorded release gate is preserved unchanged and this row waives nothing: D-223 (3) - preview QA, a review and the CEO's sign-off - applies before the var is ever set for production, and who signs off (CEO-capacity session vs the owner) stays unresolved pending source evidence through main; the user is asked in plain outcome terms if needed, never about a code flag. Preview QA evidence required before any production enable: 1280+390 captures of directory, tata, google, no-match, degraded, card handoff (pick shown as context on /ask), unknown-company job link, and a real-provider round, on a flag-on preview build. COMPANY_JOBS_ENABLED's switch line stays with the release row, untouched. Widened 2026-11-18 (registry-only follow-up, after the dashboard inspection): the preview route is in-repo - no dashboard or API change. vite.config.ts gains ONE define entry for VITE_COMPANY_TYPEAHEAD fed by the pure resolver in vite.typeahead-flag.ts (whole file); the resolver forces the flag OFF on any CI build of main even if the env var is set, and ON only for Workers Builds non-main branch previews. companySearch.test.tsx gains the reconciled default-off pin (pin-only edits); companyTypeahead.define.test.ts (whole file) covers the resolver. Paths are plain literals because scope-check parses only the exact ' (switch only)' suffix (12-line limit); the narrowing for this row is human scope, stated here: ONE define entry in vite.config.ts and pin-only edits in companySearch.test.tsx. Reported permitted overlaps (D-309/D-314): companySearch.test.tsx is also owned by D-174-seeker-journey-build.search, D-174-worldwide-discovery and D-174-worldwide-discovery.company-context. The release gate stays as recorded.",
+      "syncedTo": "D-356"
     }
   ]
 }
