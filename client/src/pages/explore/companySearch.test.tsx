@@ -95,7 +95,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-describe("the switch (D-174-worldwide-discovery turned it on)", () => {
+describe("the switch (stays dark under D-174-worldwide-discovery; only the release row flips it)", () => {
   it("stays off until the release row's gated flip (D-223 (3): preview QA, independent review, CEO sign-off)", async () => {
     const actual = await vi.importActual<typeof import("./useCompanySearch")>("./useCompanySearch");
     expect(actual.COMPANY_TYPEAHEAD_ENABLED).toBe(false);
