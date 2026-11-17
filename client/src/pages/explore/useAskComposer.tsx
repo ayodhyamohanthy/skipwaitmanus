@@ -388,7 +388,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   // a prefill; the seeker still pastes a real job link. Consumed on use, cleared on sign-out.
   const [discoveryPick] = useState(() => readDiscoveryHandoff());
   useEffect(() => { if (discoveryPick) clearDiscoveryHandoff(); }, [discoveryPick]);
-  const hint = discoveryPick && !url.trim() ? { tone: "muted" as const, text: `You picked ${discoveryPick.name} (${discoveryPick.domain}) - paste its job link below` } : linkHint(url, company, linkTouched || attempted);
+  const hint = !company && discoveryPick && !url.trim() ? { tone: "muted" as const, text: `You picked ${discoveryPick.name} (${discoveryPick.domain}) - paste its job link below` } : linkHint(url, company, linkTouched || attempted);
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
