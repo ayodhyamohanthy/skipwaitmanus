@@ -52,22 +52,18 @@ describe("AppShell on GoalShell (W0)", () => {
     expect(within(screen.getByRole("banner")).getAllByTestId("beta-badge").length).toBe(1);
   });
 
-  it("adds Referral queue and drops Give a referral for a verified referrer", () => {
-    state.referrer = "verified";
-    render(<AppShell><p>page</p></AppShell>);
-    const rail = screen.getAllByRole("navigation", { name: "Primary" })[0];
-    expect(within(rail).getByRole("link", { name: "Queue" }).getAttribute("href")).toBe("/queue");
-    expect(screen.queryByTestId("goal-give-referral")).toBeNull();
-  });
-
-  it("preserves referrer navigation and the non-linked count while step-up is required", () => {
-    state.path = "/verify";
-    state.referrer = "code_required";
-    render(<AppShell><p>page</p></AppShell>);
-    expect(screen.getAllByRole("link", { name: "Queue" }).length).toBeGreaterThan(0);
-    const pills = screen.getAllByTestId("goal-credits-pill");
-    expect(pills[0].textContent).toBe("9 referrals left");
-    expect(pills.every(pill => pill.tagName === "SPAN")).toBe(true);
+  it("keeps Queue, the plain count and no Give a referral for verified and code-required sessions", () => {
+    for (const referrer of ["verified", "code_required"] as const) {
+      state.path = "/verify"; state.referrer = referrer;
+      const { unmount } = render(<AppShell><p>page</p></AppShell>);
+      const rail = screen.getAllByRole("navigation", { name: "Primary" })[0];
+      expect(within(rail).getByRole("link", { name: "Queue" }).getAttribute("href")).toBe("/queue");
+      expect(screen.queryByTestId("goal-give-referral")).toBeNull();
+      const pills = screen.getAllByTestId("goal-credits-pill");
+      expect(pills[0].textContent).toBe("9 referrals left");
+      expect(pills.every(pill => pill.tagName === "SPAN")).toBe(true);
+      unmount();
+    }
   });
 
   it("marks the current route active with aria-current", () => {
@@ -177,7 +173,6 @@ describe("AppShell on GoalShell (W0)", () => {
 describe("D-222: the person's own referrals-left count on every signed-in shell route", () => {
   const REFERRER_ROUTES = ["/queue", "/referrer", "/referrer/impact", "/referrer-home", "/referrer-setup", "/verify", "/post-opportunity"];
   afterEach(() => { cleanup(); state.path = "/requests"; state.signedIn = true; state.referrer = "unverified"; state.credits = { state: "ready", count: 9 }; });
-
   it("on every referrer route the count is plain text with no link, no /plans path and no purchase affordance", () => {
     state.referrer = "verified";
     for (const route of REFERRER_ROUTES) {
@@ -196,7 +191,6 @@ describe("D-222: the person's own referrals-left count on every signed-in shell 
       unmount();
     }
   });
-
   it("a referrer who is still being checked, or not verified, sees the same plain count on a referrer route", () => {
     for (const referrer of ["checking", "unverified"] as const) {
       state.referrer = referrer; state.path = "/verify";
@@ -207,7 +201,6 @@ describe("D-222: the person's own referrals-left count on every signed-in shell 
       unmount();
     }
   });
-
   it("the phone form keeps the unit and its accessible text still says left, on both route kinds", () => {
     state.referrer = "verified"; state.path = "/queue";
     render(<AppShell><p>page</p></AppShell>);
@@ -285,10 +278,7 @@ describe("D-222: the person's own referrals-left count on every signed-in shell 
     state.credits = { state: "error", onRetry: vi.fn() };
     render(<AppShell><p>page</p></AppShell>);
     const header = screen.getByRole("banner");
-    expect(header.className).toContain("sticky");
-    expect(header.className).toContain("top-0");
-    expect(header.className).toContain("self-start");
-    expect(header.className).toContain("max-gdesk:h-[72px]");
+    for (const token of ["sticky", "top-0", "self-start", "max-gdesk:h-[72px]"]) expect(header.className).toContain(token);
   });
 
   it("never says credit and carries no icon or money glyph, in any state, on either route kind", () => {
