@@ -280,7 +280,7 @@
       "tier": 2,
       "lane": "gate-merge-queue",
       "branch": "agent/queue/gate-merge-queue",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-346",
       "dependsOn": [],
       "owns": [
