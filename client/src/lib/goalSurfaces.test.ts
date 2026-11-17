@@ -17,13 +17,13 @@ afterEach(() => {
 
 describe("goalSurfaces flag module", () => {
   it("releases only what RELEASED lists", () => {
-    expect(releasedGoalSurfaces()).toEqual(["home",  "referrer",  "referrer-home",  "invite",  "post-opportunity",  "admin",  "admin-approvals",  "admin-ops",  "admin-people",  "alerts",  "assistants",  "conversation",  "developers",  "discovery",  "email-review",  "employer",  "employer-billing",  "for-companies",  "landed",  "links",  "messages",  "onboarding",  "plans",  "policy",  "settings",  "share",  "start",  "suggest-company",  "support",  "system",  "verify"]);
+    expect(releasedGoalSurfaces()).toEqual(["home",  "referrer",  "referrer-home",  "invite",  "post-opportunity",  "admin",  "admin-money",  "admin-approvals",  "admin-ops",  "admin-people",  "alerts",  "assistants",  "conversation",  "developers",  "discovery",  "email-review",  "employer",  "employer-billing",  "for-companies",  "inbox",  "landed",  "links",  "messages",  "onboarding",  "plans",  "policy",  "profile",  "settings",  "share",  "start",  "suggest-company",  "support",  "system",  "verify"]);
     for (const id of releasedGoalSurfaces()) {
       expect(goalSurfaceIds()).toContain(id);
     }
     // Vitest runs in MODE=test, so the env is empty by default: an unreleased
     // id is off, and even the released `home` is off (test-mode rule below).
-    expect(goalSurfaceOn("inbox")).toBe(false);
+    expect(goalSurfaceOn("skippy")).toBe(false);
   });
 
   it("unknown ids are refused and no route is declared twice", () => {
@@ -57,7 +57,8 @@ describe("goalSurfaces flag module", () => {
   it("production renders the V9 landing from RELEASED, not from a workflow flag", () => {
     // The home id is released in code; a production build needs no env flag.
     expect(goalSurfaceDecision("home", "production", "")).toBe(true);
-    expect(goalSurfaceDecision("inbox", "production", "")).toBe(false);
+    expect(goalSurfaceDecision("inbox", "production", "")).toBe(true);
+    expect(goalSurfaceDecision("skippy", "production", "")).toBe(false);
     // deploy-pages.yml must never pass the retired landing flags or
     // VITE_GOAL_SURFACES (D-097: production truth in code).
     const workflow = readFileSync(join(__dirname, "..", "..", "..", ".github", "workflows", "deploy-pages.yml"), "utf8");
