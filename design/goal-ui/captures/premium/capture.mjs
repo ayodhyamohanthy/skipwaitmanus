@@ -16,12 +16,14 @@ const scenarios = [
   { name: "credited", route: "/premium?payment=pending", signedIn: true, recovery: "credited" },
   { name: "review", route: "/premium?payment=pending", signedIn: true, recovery: "requires_review" },
   { name: "recovery-error", route: "/premium?payment=pending", signedIn: true, recovery: "error" },
+  { name: "recovery-timeout", route: "/premium?payment=pending", signedIn: true, recovery: "timeout" },
 ];
 const browser = await chromium.launch({ channel: "chrome", headless: true, timeout: 60000 });
 const results = [];
 try {
   await mkdir(here, { recursive: true });
-  for (const scenario of scenarios) {
+  // An optional scenario name captures just that state into its own manifest, so the full set is never clobbered.
+  for (const scenario of scenarios.filter(item => !process.argv[2] || item.name === process.argv[2])) {
     for (const width of [1280, 390]) {
       const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 }, deviceScaleFactor: width === 390 ? 2 : 1, reducedMotion: "reduce", serviceWorkers: "block", locale: "en-US" });
       const apiCalls = [];
@@ -33,6 +35,8 @@ try {
         if (url.origin !== new URL(base).origin) return route.abort();
         if (!url.pathname.startsWith("/api/")) return route.continue();
         apiCalls.push(`${request.method()} ${url.pathname}`);
+        // Leave this synthetic response stalled; the app's own deadline must surface the help state.
+        if (url.pathname === "/api/chargebee/credit-recovery" && scenario.recovery === "timeout") return;
         let body = {};
         let status = 200;
         if (url.pathname.startsWith("/api/trpc/")) {
@@ -56,6 +60,7 @@ try {
       if (scenario.recovery === "credited") await page.getByText("5 referral requests are ready.", { exact: true }).waitFor();
       if (scenario.recovery === "requires_review") await page.getByText("This payment needs a review.", { exact: true }).waitFor();
       if (scenario.recovery === "error") await page.getByText("We could not confirm this payment.", { exact: true }).waitFor();
+      if (scenario.recovery === "timeout") await page.getByText("We could not confirm this payment.", { exact: true }).waitFor({ timeout: 30000 });
       if (scenario.signedIn && !scenario.recovery && !scenario.route.includes("referrer")) await page.getByText(scenario.balanceError ? "Your balance did not load." : "referral requests left", { exact: false }).waitFor();
       await page.evaluate(() => document.fonts.ready);
       const file = `${scenario.name}-${width}.png`;
@@ -66,6 +71,6 @@ try {
       await context.close();
     }
   }
-  await writeFile(path.join(here, "manifest.json"), JSON.stringify({ synthetic: true, base, results }, null, 2));
+  await writeFile(path.join(here, process.argv[2] ? `manifest-${process.argv[2]}.json` : "manifest.json"), JSON.stringify({ synthetic: true, base, results }, null, 2));
   console.log(JSON.stringify(results.map(({ text, ...result }) => result), null, 2));
 } finally { await browser.close(); }
