@@ -29,6 +29,32 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 }, table => [index("users_canonical_person_idx").on(table.canonicalPersonId)]);
 
+// DEVICE-SIGNIN-passkeys: passkey credentials for seeker sign-in (owner, Oct 26).
+// A credential belongs to exactly one account (openId). Public key and counter are
+// server state; the private key never leaves the person's device.
+export const passkeyCredentials = mysqlTable("passkeyCredentials", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }).notNull(),
+  credentialId: varchar("credentialId", { length: 255 }).notNull(),
+  publicKey: text("publicKey").notNull(),
+  counter: bigint("counter", { mode: "number" }).notNull().default(0),
+  transports: varchar("transports", { length: 255 }),
+  deviceName: varchar("deviceName", { length: 120 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+}, table => [uniqueIndex("passkey_credential_id_unique").on(table.credentialId), index("passkey_openid_idx").on(table.openId)]);
+
+// Short-lived WebAuthn challenges (registration and login). Expired rows are
+// ignored and swept on write.
+export const passkeyChallenges = mysqlTable("passkeyChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }),
+  challenge: varchar("challenge", { length: 255 }).notNull(),
+  kind: mysqlEnum("kind", ["registration", "login"]).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("passkey_challenge_idx").on(table.challenge)]);
+
 export const verifiedLoginAliases = mysqlTable("verifiedLoginAliases", {
   id: int("id").autoincrement().primaryKey(),
   provider: varchar("provider", { length: 32 }).notNull(),
