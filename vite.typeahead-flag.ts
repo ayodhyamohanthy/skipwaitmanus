@@ -16,10 +16,13 @@ export function resolveCompanyTypeaheadFlag(env: CompanyTypeaheadFlagEnv): "true
   // opposite - it just never turns the flag on.
   const ciBranch = rawBranch && rawBranch.trim() ? rawBranch.trim() : undefined;
   // RELEASE FLIP (2026-11-18): CI builds of the production branch now build with the
-  // typeahead ON. The owner reported the defect on 2026-11-17 (typed company not found;
-  // the search must reach any company worldwide) and the dark build passed preview QA
-  // and independent review before this enable. Rollback: revert this change, or set
-  // VITE_COMPANY_TYPEAHEAD=false on the build.
+  // typeahead ON. Authority: the owner's own defect report on 2026-11-17 (the typed
+  // company is still not found; the search was built to reach companies worldwide).
+  // Before this enable the dark build was independently reviewed at exact heads (PRs
+  // #1264/#1265); the preview QA captures and post-merge production checks are
+  // coordinator-reported evidence, not reviewer-verified. Rollback: revert this
+  // change, or set VITE_COMPANY_TYPEAHEAD=false in the build env and redeploy - it is
+  // not a runtime toggle and there is no dashboard switch.
   if (ciBranch === "main") return "true";
   // Workers Builds injects WORKERS_CI=1 and WORKERS_CI_BRANCH on every branch build, and
   // branch builds are the previews: production-branch auto-builds are disabled in the
