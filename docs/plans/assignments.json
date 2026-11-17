@@ -7309,6 +7309,7 @@
         "shared/companies.ts (search response only)",
         "client/src/pages/explore/useCompanySearch.ts",
         "client/src/pages/explore/companySearch.test.tsx",
+        "client/src/pages/explore.test.tsx (ported pins only; overlaps D-174-seeker-journey-build.composer-neutral under D-309/D-314, second lander merges main and keeps both)",
         "client/src/pages/Explore.tsx (company typeahead only)",
         "docs/plans/D-174-worldwide-discovery.md",
         "docs/plans/assignments.json"
