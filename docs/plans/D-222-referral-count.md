@@ -34,3 +34,7 @@ Tier 1: one independent D-151 review (non-builder, non-fixer of this delta) cove
 
 ## Out of scope
 No ledger, hook, endpoint, plan, pricing, checkout or flag change. No "completed referrals" or impact numbers in this element. The legacy header wording lane (#711) and the shared-nav rename keep their own rows.
+
+## Status
+
+- D-222-referral-count-shell: in progress — Claude Code · 64db — 2026-11-17 — branch agent/queue/d222-referral-count
