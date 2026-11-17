@@ -1,6 +1,132 @@
 import { describe, expect, it } from "vitest";
-import { REVIEW_GATE_FAIL, TIER_FLOOR_FAIL, findGateRow, isStatusOnlyChange, reviewGateViolation, reviewedOf } from "./review-gate.mjs";
+import { REVIEW_GATE_FAIL, TIER_FLOOR_FAIL, findGateRow, isStatusOnlyChange, resolveReviewTarget, reviewGateViolation, reviewedOf } from "./review-gate.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { markerSubject } from "./nextTaskCore.mjs";
+
+describe("GATE-merge-queue target binding", () => {
+  const queued = "c".repeat(40);
+  const pull = { number: 42, state: "open", head: { ref: "agent/queue/t1", sha: "a".repeat(40) }, base: { ref: "main" } };
+  const input = () => ({
+    eventName: "merge_group", ref: `refs/heads/gh-readonly-queue/main/pr-42-${queued}`,
+    event: { merge_group: { head_sha: queued, head_ref: `refs/heads/gh-readonly-queue/main/pr-42-${queued}`, base_ref: "refs/heads/main" } },
+    localHead: queued, headRef: "", readPullRequest: (number: number) => { expect(number).toBe(42); return pull; },
+    isAncestor: (head: string, group: string) => head === pull.head.sha && group === queued,
+  });
+  const resolveTarget = (over = {}) => {
+    return resolveReviewTarget({ ...input(), ...over });
+  };
+
+  it("resolves the queued PR head rather than the synthetic merge head", () => {
+    expect(resolveTarget()).toEqual({ branch: pull.head.ref, head: pull.head.sha });
+  });
+
+  it("leaves ordinary pull request and local targets unchanged without an API read", () => {
+    const readPullRequest = () => { throw new Error("unexpected API read"); };
+    expect(resolveTarget({ eventName: "pull_request", event: { pull_request: { head: { sha: pull.head.sha } } }, headRef: pull.head.ref, readPullRequest }))
+      .toEqual({ branch: pull.head.ref, head: pull.head.sha });
+    expect(resolveTarget({ eventName: "", event: {}, headRef: "local-branch", readPullRequest }))
+      .toEqual({ branch: "local-branch", head: queued });
+  });
+
+  it.each([
+    { ref: "refs/heads/main" },
+    { ref: `refs/heads/gh-readonly-queue/main/pr-0-${queued}` },
+    { event: { merge_group: { head_sha: queued, head_ref: input().ref, base_ref: "refs/heads/other" } } },
+    { localHead: "d".repeat(40) },
+    { event: { merge_group: { head_sha: queued, head_ref: "other", base_ref: "refs/heads/main" } } },
+    { isAncestor: () => false },
+    { readPullRequest: () => ({ ...pull, state: "closed" }) },
+    { readPullRequest: () => ({ ...pull, number: 43 }) },
+    { readPullRequest: () => ({ ...pull, head: { ...pull.head, sha: "invalid" } }) },
+    { readPullRequest: () => ({ ...pull, base: { ref: "other" } }) },
+    { readPullRequest: () => { throw new Error("API unavailable"); } },
+  ])("refuses an unbound or unreadable queue target (%#)", over => {
+    expect(() => resolveTarget(over)).toThrow();
+  });
+
+  it("uses exactly the PR review result for passes, missing reviews, stale reviews and findings", () => {
+    const target = resolveTarget();
+    const verdicts = [passOn(HEAD), [], passOn(REVIEWED), [{ verb: "Verdict", id: "T1", who: "Reviewer · r1", verdict: "findings", reviewed: HEAD }]];
+    for (const lockMarkers of verdicts) {
+      expect(gate({ head: target.head, lockMarkers })).toEqual(gate({ head: HEAD, lockMarkers }));
+    }
+  });
+
+  it("runs required jobs and the named review step for merge_group checks_requested", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+    expect(workflow).toMatch(/\n  merge_group:\n    types: \[checks_requested\]/);
+    const step = workflow.split("- name: Review gate (independent Tier 1 pass)")[1]?.split("- name:")[0];
+    expect(step).toContain("github.event_name == 'merge_group'");
+    expect(step).toContain("GH_TOKEN: ${{ github.token }}");
+    expect(workflow).toMatch(/name: typecheck\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n      pull-requests: read/);
+    for (const name of ["typecheck", "unit + component + route tests", "production build"]) expect(workflow).toContain(`name: ${name}`);
+  });
+
+  it("evaluates the real CLI on a shallow queue checkout: no review fails, a PR-head pass succeeds, and API failure fails closed", () => {
+    const root = mkdtempSync(join(tmpdir(), "merge-queue-gate-"));
+    try {
+      const src = join(root, "src");
+      const bare = join(root, "origin.git");
+      const ck = join(root, "checkout");
+      const bin = join(root, "bin");
+      const env = { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "fixture", GIT_AUTHOR_EMAIL: "fixture@example.invalid", GIT_COMMITTER_NAME: "fixture", GIT_COMMITTER_EMAIL: "fixture@example.invalid" };
+      const g = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+      g(root, "init", "-q", "--bare", "-b", "main", bare);
+      g(root, "init", "-q", "-b", "main", src);
+      mkdirSync(join(src, "docs/plans"), { recursive: true });
+      writeFileSync(join(src, "docs/plans/assignments.json"), JSON.stringify({ tasks: [task1] }));
+      g(src, "add", ".");
+      g(src, "commit", "-qm", "main");
+      g(src, "remote", "add", "origin", `file://${bare}`);
+      g(src, "push", "-q", "origin", "main");
+      g(src, "checkout", "-qb", task1.branch);
+      g(src, "commit", "-q", "--allow-empty", "-m", markerSubject("Claim", task1.id, "Builder · b1"));
+      mkdirSync(join(src, "server"));
+      writeFileSync(join(src, "server/payments.ts"), "money fixture\n");
+      g(src, "add", ".");
+      g(src, "commit", "-qm", "work");
+      const head = g(src, "rev-parse", "HEAD");
+      g(src, "push", "-q", "origin", task1.branch);
+      g(src, "checkout", "-qb", "queue", "main");
+      g(src, "merge", "-q", "--no-ff", "-m", "queue merge", task1.branch);
+      const group = g(src, "rev-parse", "HEAD");
+      const ref = `refs/heads/gh-readonly-queue/main/pr-42-${group}`;
+      g(src, "push", "-q", "origin", `HEAD:${ref}`);
+      g(root, "clone", "-q", "--depth=1", "--branch", ref.slice("refs/heads/".length), `file://${bare}`, ck);
+      expect(g(ck, "rev-parse", "--is-shallow-repository")).toBe("true");
+      mkdirSync(bin);
+      const stub = join(bin, "gh");
+      writeFileSync(stub, `#!${process.execPath}\nif (process.argv.slice(2).join(' ') !== 'api repos/fixture/repo/pulls/42') process.exit(2);\nprocess.stdout.write(process.env.QUEUE_PULL_JSON || 'invalid');\n`);
+      chmodSync(stub, 0o755);
+      const eventPath = join(root, "event.json");
+      writeFileSync(eventPath, JSON.stringify({ merge_group: { head_ref: ref, head_sha: group, base_ref: "refs/heads/main" } }));
+      const run = (json = JSON.stringify({ number: 42, state: "open", head: { ref: task1.branch, sha: head }, base: { ref: "main" } })) => {
+        const result = spawnSync(process.execPath, [new URL("./review-gate.mjs", import.meta.url).pathname], {
+          cwd: ck, encoding: "utf8", env: { ...env, PATH: `${bin}:${env.PATH}`, GITHUB_HEAD_REF: "", GITHUB_EVENT_NAME: "merge_group", GITHUB_REF: ref, GITHUB_EVENT_PATH: eventPath, GITHUB_REPOSITORY: "fixture/repo", QUEUE_PULL_JSON: json },
+        });
+        return { code: result.status, out: `${result.stdout}\n${result.stderr}` };
+      };
+      const missing = run();
+      expect(missing.code).toBe(1);
+      expect(missing.out).toContain("Nobody has reviewed T1 yet");
+      g(src, "checkout", "-qb", "agent/review/t1", "main");
+      g(src, "commit", "-q", "--allow-empty", "-m", markerSubject("Verdict", task1.id, "Reviewer · r1", "pass"), "-m", `reviewed ${head}`);
+      g(src, "push", "-q", "origin", "agent/review/t1");
+      const passed = run();
+      expect(passed.code).toBe(0);
+      expect(passed.out).toContain(`T1 at ${head.slice(0, 8)} has an independent passing review`);
+      const unavailable = run("invalid");
+      expect(unavailable.code).toBe(1);
+      expect(unavailable.out).toContain("failing closed");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 90_000);
+});
 
 
 // PROCESS-review-gate (D-166, docs/plans/PROCESS-gates.md): a Tier 1 row merges only after an
