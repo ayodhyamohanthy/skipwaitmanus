@@ -274,18 +274,29 @@ describe("switch on: typeahead on /explore", () => {
     fireEvent.change(box, { target: { value: "zqxunknownco" } });
     const line = await screen.findByTestId("company-discovery-degraded");
     expect(line.textContent).toContain("briefly limited");
+    // Honest fallback copy: no absolute promise - only that the ask page accepts a pasted link.
+    expect(line.textContent).toContain("the ask page accepts a pasted job link");
+    expect(line.textContent).not.toContain("always works");
     expect(screen.queryByTestId("company-search-no-match")).toBeNull();
   });
 
-  it("a blocked or broken discovered logo degrades to the company's initial, never a broken image", async () => {
+  it("a discovered logo shows the initial while loading, swaps on paint, and a blocked or broken logo degrades to the initial, never a blank box or broken image", async () => {
     const google = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
     stub(() => ({ status: 200, body: { companies: [], discovered: [google] } }));
     renderExplore();
     await screen.findByTestId("goal-directory-summary");
     fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "google" } });
     const option = await screen.findByTestId("company-discovery-option");
+    // Loading (or hung): the initial is already there and the img is present but unpainted.
+    expect(screen.getByTestId("company-discovery-initial")).toBeTruthy();
     const img = option.querySelector("img");
     expect(img).toBeTruthy();
+    expect(img!.className).toContain("opacity-0");
+    // Painted: the img shows and the placeholder steps back.
+    fireEvent.load(img!);
+    expect(img!.className).not.toContain("opacity-0");
+    expect(screen.queryByTestId("company-discovery-initial")).toBeNull();
+    // Blocked or broken: the initial returns and the broken img is removed.
     fireEvent.error(img!);
     expect(await screen.findByTestId("company-discovery-initial")).toBeTruthy();
     expect(option.querySelector("img")).toBeNull();

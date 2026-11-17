@@ -81,6 +81,18 @@ describe("discoverCompanies", () => {
     expect(await discover("zzqx-never-a-company", { fetchImpl })).toEqual([]);
   });
 
+  it("a real 4-element OpenSearch answer on a no-match query stays a clean miss, never degraded", async () => {
+    // Wikipedia OpenSearch actually returns [term, titles, descriptions, urls]; the exact-tuple
+    // schema used to throw on that shape, and the throw surfaced as degraded/unavailable.
+    const fetchImpl = fakeFetch({ search: () => ({ search: [] }), opensearch: ["zzqx-never-real", [], [], []] });
+    const outcome = await discoverCompanies("zzqx-never-real-company", { fetchImpl });
+    expect(outcome).toEqual({ companies: [], degraded: false });
+    const repaired = fakeFetch({ search: term => (term === "Google" ? SEARCH_GOOGLE : { search: [] }), entities: ENTITIES_GOOGLE, opensearch: ["googel", ["Google"], [""], [""]] });
+    const fixed = await discoverCompanies("googel", { fetchImpl: repaired });
+    expect(fixed.degraded).toBe(false);
+    expect(fixed.companies.map(candidate => candidate.domain)).toEqual(["google.com"]);
+  });
+
   it("caches within the TTL and refetches after it", async () => {
     const fetchImpl = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
     const key = `cache-${Date.now()}`;
