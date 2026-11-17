@@ -2713,7 +2713,7 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-057-session-gate"
       ],
