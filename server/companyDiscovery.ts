@@ -29,7 +29,9 @@ const searchSchema = z.object({
 const entitiesSchema = z.object({
   entities: z.record(z.string(), z.object({
     labels: z.record(z.string(), z.object({ value: z.string() })).optional(),
+    descriptions: z.record(z.string(), z.object({ value: z.string() })).optional(),
     claims: z.object({
+      P31: z.array(z.object({ mainsnak: z.object({ datavalue: z.object({ value: z.object({ id: z.string() }).passthrough().optional() }) }) })).optional(),
       P856: z.array(z.object({ mainsnak: z.object({ datavalue: z.object({ value: z.string() }).optional() }) })).optional(),
       P154: z.array(z.object({ mainsnak: z.object({ datavalue: z.object({ value: z.string() }).optional() }) })).optional(),
     }).optional(),
@@ -38,6 +40,41 @@ const entitiesSchema = z.object({
 const openSearchSchema = z.tuple([z.string(), z.array(z.string()).catch([])]);
 
 const cache = new Map<string, { at: number; results: DiscoveredCompany[] }>();
+
+/** Wikidata instance-of (P31) classes that make an entity a company/business in its own right. */
+const COMPANY_TYPE_QIDS = new Set([
+  "Q783794", // company
+  "Q4830453", // business
+  "Q6881511", // enterprise
+  "Q43229", // organization
+  "Q891723", // public company
+  "Q1589009", // privately held company
+  "Q658255", // subsidiary
+  "Q169196", // holding company
+  "Q161726", // multinational corporation
+  "Q163740", // nonprofit organization
+]);
+const COMPANY_DESCRIPTION = /\b(compan(?:y|ies)|corporat\w*|business|enterprise|firm|startup|conglomerate|manufactur\w*|retailer|airline|bank)\b/i;
+
+type EntityTypeEvidence = {
+  descriptions?: Record<string, { value: string }>;
+  claims?: { P31?: { mainsnak: { datavalue?: { value?: { id?: string } } } }[] };
+};
+
+/**
+ * A candidate is suggested only with source-backed company evidence: a company/business
+ * instance-of class, or a description that says it is one (covers subclasses like
+ * "video game developer"), or - for sparse long-tail entries - no type evidence at
+ * all. An entity typed as something else (village, knowledge graph, product) is never
+ * suggested as a company, however official its domain is.
+ */
+export function isCompanyCandidate(entity: EntityTypeEvidence): boolean {
+  const types = (entity.claims?.P31 ?? []).map(claim => claim.mainsnak.datavalue?.value?.id).filter((id): id is string => Boolean(id));
+  if (types.some(id => COMPANY_TYPE_QIDS.has(id))) return true;
+  const description = entity.descriptions?.en?.value ?? "";
+  if (COMPANY_DESCRIPTION.test(description)) return true;
+  return types.length === 0 && !description;
+}
 
 /** Host of an official-website URL, lowercase, no leading www.; undefined when the value is not a usable URL. */
 export function domainFromOfficialUrl(value: string): string | undefined {
@@ -82,14 +119,14 @@ export async function discoverCompanies(query: string, deps: DiscoveryDeps = {})
     }
     let results: DiscoveredCompany[] = [];
     if (hits.length > 0) {
-      const url = `${WIKIDATA_API}?action=wbgetentities&ids=${hits.map(hit => hit.id).join("|")}&props=claims|labels&languages=en&format=json`;
+      const url = `${WIKIDATA_API}?action=wbgetentities&ids=${hits.map(hit => hit.id).join("|")}&props=claims|labels|descriptions&languages=en&format=json`;
       const response = await fetchImpl(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(COMPANY_DISCOVERY_TIMEOUT_MS) });
       if (response.ok) {
         const { entities } = entitiesSchema.parse(await response.json());
         const seen = new Set<string>();
         results = hits.flatMap((hit, index) => {
           const entity = entities[hit.id];
-          if (!entity) return [];
+          if (!entity || !isCompanyCandidate(entity)) return [];
           const name = entity.labels?.en?.value ?? hit.label ?? "";
           const domain = entity.claims?.P856?.map(claim => claim.mainsnak.datavalue?.value).find(value => value && domainFromOfficialUrl(value));
           const host = domain ? domainFromOfficialUrl(domain) : undefined;

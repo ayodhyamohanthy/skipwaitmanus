@@ -111,3 +111,112 @@ describe("discoverCompanies", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
+
+describe("company qualification (D-174-worldwide-discovery review: never suggest a non-company)", () => {
+  it("drops a village with an official domain and keeps the real company (the Zoho regression)", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q36881", label: "Zoho Corporation" }, { id: "Q999001", label: "Zohor" }] }),
+      entities: {
+        entities: {
+          Q36881: {
+            labels: { en: { value: "Zoho Corporation" } },
+            descriptions: { en: { value: "Indian multinational technology company" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q4830453" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://www.zoho.com/" } } }],
+            },
+          },
+          Q999001: {
+            labels: { en: { value: "Zohor" } },
+            descriptions: { en: { value: "municipality in Slovakia" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q6784672" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://www.obeczohor.sk/" } } }],
+            },
+          },
+        },
+      },
+    });
+    const results = await discoverCompanies(`zoho-qualify-${Date.now()}`, { fetchImpl });
+    expect(results.map(candidate => candidate.name)).toEqual(["Zoho Corporation"]);
+  });
+
+  it("drops product and knowledge-graph noise even when it carries an official domain", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q95", label: "Google" }, { id: "Q999002", label: "Google Knowledge Graph" }, { id: "Q999003", label: "Google Play" }] }),
+      entities: {
+        entities: {
+          Q95: {
+            labels: { en: { value: "Google" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q891723" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://about.google/" } } }],
+            },
+          },
+          Q999002: {
+            labels: { en: { value: "Google Knowledge Graph" } },
+            descriptions: { en: { value: "knowledge base used by Google" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q3305213" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://knowledgegraph.google.example/" } } }],
+            },
+          },
+          Q999003: {
+            labels: { en: { value: "Google Play" } },
+            descriptions: { en: { value: "digital distribution service operated by Google" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q16889138" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://play.google.example/" } } }],
+            },
+          },
+        },
+      },
+    });
+    const results = await discoverCompanies(`google-qualify-${Date.now()}`, { fetchImpl });
+    expect(results).toEqual([{ name: "Google", domain: "about.google", source: "wikidata" }]);
+  });
+
+  it("keeps a long-tail company qualified by its description when its instance-of is not a company class", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q999004", label: "Example Games" }] }),
+      entities: {
+        entities: {
+          Q999004: {
+            labels: { en: { value: "Example Games" } },
+            descriptions: { en: { value: "American video game company" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q210167" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://example-games.example.com/" } } }],
+            },
+          },
+        },
+      },
+    });
+    const results = await discoverCompanies(`longtail-qualify-${Date.now()}`, { fetchImpl });
+    expect(results.map(candidate => candidate.name)).toEqual(["Example Games"]);
+  });
+
+  it("keeps a sparse long-tail entry with an official domain and no type evidence, and drops one whose only evidence says otherwise", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q999005", label: "Sparse Co" }, { id: "Q999006", label: "Notaco Band" }] }),
+      entities: {
+        entities: {
+          Q999005: {
+            labels: { en: { value: "Sparse Co" } },
+            claims: { P856: [{ mainsnak: { datavalue: { value: "https://sparse-co.example.com/" } } }] },
+          },
+          Q999006: {
+            labels: { en: { value: "Notaco Band" } },
+            descriptions: { en: { value: "Norwegian black metal band" } },
+            claims: {
+              P31: [{ mainsnak: { datavalue: { value: { id: "Q215380" } } } }],
+              P856: [{ mainsnak: { datavalue: { value: "https://notaco.example.com/" } } }],
+            },
+          },
+        },
+      },
+    });
+    const results = await discoverCompanies(`sparse-qualify-${Date.now()}`, { fetchImpl });
+    expect(results.map(candidate => candidate.name)).toEqual(["Sparse Co"]);
+  });
+});
