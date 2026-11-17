@@ -361,17 +361,19 @@
       "tier": 2,
       "lane": "picker-claim-task",
       "branch": "agent/queue/picker-claim-task",
-      "status": "todo",
-      "syncedTo": "D-353",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PROCESS-session-review-independence"
       ],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
-        "scripts/nextTaskClaimTask.test.ts"
+        "scripts/nextTaskClaimTask.test.ts",
+        "scripts/nextTaskClaimTaskCli.test.ts",
+        "scripts/nextTaskText.mjs"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
+      "note": "Done effective on PR #1248 merge (GPT-6.1 Sol · 4ebf), final source 1f76c980. --claim/--as with --task selects only that task under normal eligibility; refusal exits 6 without a claim; race retries the same task; successful preview claim commands retain --task. Quiet red/blocked holds repaired red-first (2 failed/20 controls); preview repaired red-first (1 failed/22 controls). Final focused31/31, consumers229/229, tsc/build and scope/integrity/token/migration/trigger checks pass; CI44087260003 green7677pass18skip8E2E. Advisory review's sole finding fixed, delta review clean. Local full gate edfb0db0 failed6/7669pass18skip; three files isolated20/20; final redundant rerun stopped during slow Git fixtures, never claimed green. Status-only final CI and protected merge remain required. Decisions through D356; prior local-only work preserved; no product runtime/settings change."
     },
     {
       "id": "GATE-tier-classifier-gaps",
@@ -2312,8 +2314,8 @@
       "tier": 1,
       "lane": "d048-fix-admin-approvals-copy",
       "branch": "agent/queue/993-kit-admin-approvals-failure-copy",
-      "status": "todo",
-      "syncedTo": "D-301",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [],
       "owns": [
         "client/src/pages/AdminApprovalQueue.tsx",
@@ -2713,7 +2715,7 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-057-session-gate"
       ],
@@ -5764,6 +5766,17 @@
       "owns": [
         "server/reviewDeliveryRetry.ts",
         "server/reviewDeliveryRetry.test.ts",
+        "server/reviewDeliveryAlerts.ts",
+        "server/db.ts",
+        "drizzle/schema.ts",
+        "drizzle/deploy/0122_review_delivery_owner_alerts.sql",
+        "server/schemaReconcile.ts",
+        "e2e/review-email-retry.e2e.ts",
+        "AGENTS.md",
+        "docs/BRIEF.md",
+        "docs/DECISIONS.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
         "server/scheduledJobRegistry.ts (switch only)",
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
@@ -7157,7 +7170,7 @@
       "tier": 1,
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-fix-post-binding"

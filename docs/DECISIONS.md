@@ -383,6 +383,10 @@ Status, 2026-10-22: D-141 implemented behind `SKIPPIE_AGENT_ENABLED` (off in pro
 
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
+## D-350 execution receipt: seeker-password dashboard confirmation (November 17, 2026)
+
+The `seeker-passwords` dashboard-confirmation block predates D-350, which records the owner's production WorkOS setup confirmation and explicitly meets D-336. The task remains `todo`; its D-057 dependency is done. PR #324 at `f50db639` still needs current-main integration, the actual seeker-code verification cutoff, auth/identity/privacy validation, required exact-head CI and applicable review/release proof. The packet now states those remaining gates instead of asking the owner to repeat an already-recorded confirmation. This is a docs-only execution receipt for the existing decision, not a new decision, code acceptance, setting change or production release.
+
 ## D-284 correction: technical registration is not merge authority
 
 PR #980 recorded technical ownership and described D-200 (4) as removing the need for a separate reviewer. The technical registration remains; its claim to waive the coordinator's actual permission conditions is withdrawn. Do not infer permission from the GitHub account, a commit author label, this registry status or green CI alone.
