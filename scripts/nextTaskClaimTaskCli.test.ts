@@ -50,8 +50,8 @@ globalThis.fetch = async input => {
 };
 `);
   const refs = () => git("ls-remote", "--heads", "origin");
-  const run = (id = "B", args: string[] = [], searchPath = process.env.PATH) => spawnSync(process.execPath,
-    ["--import", mock, CLI, "--claim", ME, "--task", id, ...args], {
+  const run = (id = "B", args: string[] = [], searchPath = process.env.PATH, preview = false) => spawnSync(process.execPath,
+    ["--import", mock, CLI, preview ? "--as" : "--claim", ME, "--task", id, ...args], {
       cwd: work, encoding: "utf8", env: {
         ...process.env, PATH: searchPath, NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
       },
@@ -65,6 +65,14 @@ function withFixture(test: (f: ReturnType<typeof fixture>) => void, extra: TaskO
 }
 
 describe("actual --claim --task with local Git origins", () => {
+  it("a read-only preview preserves --task B in its follow-up claim command", () => withFixture(f => {
+    const before = f.refs(), result = f.run("B", [], process.env.PATH, true);
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD B");
+    expect(result.stdout).toContain('Not claimed yet. To take it: node scripts/next-task.mjs --claim "<your model name>" --task B');
+    expect(f.refs()).toBe(before);
+  }));
+
   it("claims B although A is first, leaving A unclaimed", () => withFixture(f => {
     const result = f.run();
     expect(result.status, result.stdout + result.stderr).toBe(0);

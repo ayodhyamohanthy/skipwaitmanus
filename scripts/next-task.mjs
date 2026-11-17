@@ -632,7 +632,7 @@ async function main() {
       process.exit(EXIT.ineligible);
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
-      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register }));
+      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register, requestedTask: args.task }));
       process.exit(EXIT[pick.kind] ?? 0);
     }
     if (args.provenance) {

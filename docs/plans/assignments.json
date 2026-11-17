@@ -370,7 +370,8 @@
         "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskClaimTask.test.ts",
-        "scripts/nextTaskClaimTaskCli.test.ts"
+        "scripts/nextTaskClaimTaskCli.test.ts",
+        "scripts/nextTaskText.mjs"
       ],
       "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
     },

@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { pickNextTask } from "./nextTaskCore.mjs";
 import { argsOf, renderIneligible } from "./next-task.mjs";
+import { renderPick } from "./nextTaskText.mjs";
 
 const NOW = Date.parse("2026-11-17T10:00:00+05:30");
 const HOUR = 3_600_000;
@@ -218,6 +219,15 @@ describe("PICKER-claim-task: the command line", () => {
   it("--claim with --task parses both, and every other flag keeps its meaning", () => {
     expect(argsOf(["--claim", ME, "--task", "SIGNIN"])).toMatchObject({ claim: ME, task: "SIGNIN" });
     expect(argsOf(["--claim", ME])).not.toHaveProperty("task");
+  });
+
+  it("a successful preview keeps the requested task in its claim command", () => {
+    const selected = pick([task("A"), task("B")], { only: "B" });
+    const context = { who: ME, date: "2026-11-17", claimed: false };
+    const text = renderPick(selected, { ...context, requestedTask: "B" });
+    expect(text).toContain("NEXT: BUILD B");
+    expect(text).toContain('Not claimed yet. To take it: node scripts/next-task.mjs --claim "<your model name>" --task B');
+    expect(renderPick(selected, context)).toContain('Not claimed yet. To take it: node scripts/next-task.mjs --claim "<your model name>"\n');
   });
 
   it("a refusal prints the task, the reason and that nothing was claimed", () => {
