@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalReviewerSignIn from "@/pages/goal/sign-in/GoalReviewerSignIn";
 
 /** Unlinked sign-in for review accounts (Razorpay website review, our own QA). Hidden from search; the server route is off unless enabled. */
 export default function ReviewerSignIn() {
+  if (goalSurfaceOn("sign-in")) return <GoalReviewerSignIn />;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
