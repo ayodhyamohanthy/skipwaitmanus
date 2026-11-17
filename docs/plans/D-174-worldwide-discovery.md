@@ -108,12 +108,23 @@ that limit is reported, not hidden.
    unchanged. Preview QA must check the true outcome: pick shown as context,
    ask still impossible without a real link, send behavior identical.
 7. The switch is an env gate (D-174-seeker-journey-build.typeahead-flip):
-   COMPANY_TYPEAHEAD_ENABLED reads VITE_COMPANY_TYPEAHEAD (default false), so a
-   preview QA build can exercise the surface while production stays off - this
-   change flips nothing by itself, and setting the variable in a production
-   build config is the gated release act (D-223 (3): preview QA, a review and
-   the CEO's sign-off; who signs off stays unresolved through main). The
-   false-pin in companySearch.test.tsx keeps asserting the default is off.
-   Preview QA before any production enable, at 1280 and 390: directory,
-   tata, google, no-match, degraded, card handoff (pick shown as context on
-   /ask), unknown-company job link, and a real-provider round.
+   COMPANY_TYPEAHEAD_ENABLED reads VITE_COMPANY_TYPEAHEAD (default false). The
+   preview route is in-repo, chosen after the dashboard inspection showed the
+   dashboard exposes no preview-scoped build-variable edit surface for this
+   worker and the Worker Previews migration is irreversible: vite.config.ts
+   defines the variable from the pure resolver in vite.typeahead-flag.ts,
+   which turns it ON only for Workers Builds non-main branch builds
+   (WORKERS_CI=1 + WORKERS_CI_BRANCH, the dashboard's branch previews) and
+   forces it OFF on any CI build of main - even if the variable is set in
+   that environment. Production activation is therefore always a code change
+   through the recorded release gate (D-223 (3): preview QA, a review and the
+   CEO's sign-off; who signs off stays unresolved through main), never an
+   environment variable alone. The production deploy workflows do not set the
+   variable (verified from .github/workflows/deploy-pages.yml and
+   deploy-api.yml; zero COMPANY_TYPEAHEAD references across workflows,
+   scripts and the Dockerfile). The false-pin in companySearch.test.tsx
+   asserts the default stays literal false, and companyTypeahead.define.test.ts
+   pins the resolver. Preview QA before any production enable, at 1280 and
+   390: directory, tata, google, no-match, degraded, card handoff (pick shown
+   as context on /ask), unknown-company job link, and a real-provider round,
+   on a flag-on preview build.

@@ -96,7 +96,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("the switch (stays dark under D-174-worldwide-discovery; only the release row flips it)", () => {
-  it("stays off until the release row's gated flip (D-223 (3): preview QA, independent review, CEO sign-off)", async () => {
+  it("is literal false in this environment: no VITE_COMPANY_TYPEAHEAD is set here and vitest does not apply the vite.config define that feeds preview builds, so the default stays off; any flag-on build remains the gated release's call (D-223 (3))", async () => {
     const actual = await vi.importActual<typeof import("./useCompanySearch")>("./useCompanySearch");
     expect(actual.COMPANY_TYPEAHEAD_ENABLED).toBe(false);
     expect(companySearchModule.COMPANY_SEARCH_DEBOUNCE_MS).toBe(150);
