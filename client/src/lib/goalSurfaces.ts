@@ -92,6 +92,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "onboarding",
   "plans",
   "policy",
+  "pricing",
   "profile",
   "settings",
   "share",
