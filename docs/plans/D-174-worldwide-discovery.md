@@ -58,7 +58,11 @@ that limit is reported, not hidden.
 3. Public-route traffic bounds: single-character queries never reach the
    sources (COMPANY_DISCOVERY_MIN_QUERY), concurrent asks for one name share
    a single in-flight upstream round, and Wikimedia requests carry the
-   identifying SkipWait User-Agent.
+   identifying SkipWait User-Agent. OPEN, stated for review: these are
+   per-query controls only - nothing bounds aggregate upstream traffic across
+   many distinct queries. The app's rate limiter (server/_core) is not wired
+   to this public route; whether to wire it is left to review rather than
+   widened here.
 4. Qualification: typed non-companies (product, software/suite, website,
    place, work, band) are dropped even when their description mentions a
    company (the Zoho Office Suite / production-site noise); typed evidence
