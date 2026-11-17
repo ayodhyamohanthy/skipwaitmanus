@@ -29,6 +29,14 @@
 // The shard jobs take over every rule the single test job carried (they start,
 // classify their own pinned diff and skip only their expensive steps), and
 // together they run the whole suite with no `--exclude`.
+//
+// GATE-release-captures (D-346 (6), docs/plans/D-344-unblock.md row 4): two
+// NON-required jobs join the file. `release captures (plan)` runs on pull
+// requests only and names the goal surfaces to capture; the matrix job
+// `release captures (<id>)` `needs:` it and starts only when it planned one.
+// Every required-job start, classifier and shard-aggregate assertion above and
+// below is kept; the inventory, `needs:` and runner counts are ported to name
+// the two jobs explicitly, and no required job may read either of them.
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -51,7 +59,10 @@ const CLASSIFYING_JOBS = ["typecheck", SHARD_JOB, "production build"] as const;
 // whole-file inventory assertions below must also account for the non-required
 // `e2e journeys` job and the shard job, which are named here explicitly so no job
 // can appear silently. This union is used by those two assertions only.
-const CI_JOBS = [...REQUIRED_JOBS, SHARD_JOB, "e2e journeys"] as const;
+/** GATE-release-captures: the non-required planner (job key `capture-plan`) and its capture matrix (job key `capture`). */
+const CAPTURE_PLAN_JOB = "release captures (plan)";
+const CAPTURE_JOB = "release captures (${{ matrix.id }})";
+const CI_JOBS = [...REQUIRED_JOBS, SHARD_JOB, "e2e journeys", CAPTURE_PLAN_JOB, CAPTURE_JOB] as const;
 /** The one gate every skippable step carries, byte for byte. */
 const FAST_PATH_GATE = "${{ steps.classify.outputs.marker_only != 'true' }}";
 /** The event-count claim, byte for byte: only ever an input to the classifier. */
@@ -136,9 +147,15 @@ describe("H1: every required job starts, and only its own classifier may skip st
   it("only the aggregate needs another job, and it always runs (packet F1, D-351)", () => {
     // Packet F1 forbade `needs:` because a job behind a failed or skipped need is
     // skipped, and a skipped required job counts as passed. D-351 allows exactly
-    // one: the aggregate, which carries `if: ${{ always() }}` so it always starts.
+    // one among the required checks: the aggregate, which carries
+    // `if: ${{ always() }}` so it always starts. GATE-release-captures adds the
+    // one other: the NON-required capture matrix waiting on its planner.
     const needsLines = ci.split("\n").filter((line) => /^\s+needs:/.test(line));
-    expect(needsLines).toEqual(["    needs: test-shard"]);
+    expect(needsLines).toEqual(["    needs: test-shard", "    needs: capture-plan"]);
+    expect(jobBlock(CAPTURE_JOB)).toContain("\n    needs: capture-plan\n");
+    for (const job of [...REQUIRED_JOBS, SHARD_JOB].filter((name) => name !== AGGREGATE_JOB)) {
+      expect(jobBlock(job), `${job} must not wait on another job`).not.toMatch(/^\s+needs:/m);
+    }
     expect(jobBlock(AGGREGATE_JOB)).toContain("\n    needs: test-shard\n");
     expect(jobBlock(AGGREGATE_JOB)).toContain("\n    if: ${{ always() }}\n");
     for (const job of CLASSIFYING_JOBS) {
@@ -317,5 +334,60 @@ describe("D-351: three unit-test shards under the one required check", () => {
     for (const banned of ["startsWith", "head_ref", "ref_name", "agent/reports/", "agent/review/", "agent/heartbeat/", "agent/architect/", "agent/queue/landing"]) {
       expect(runnable, `the aggregate must not read ${banned}`).not.toContain(banned);
     }
+  });
+});
+
+// GATE-release-captures (D-346 (6)): the capture planner and matrix are not
+// required checks, start only for a pull request that releases a surface, and
+// change nothing about the required jobs.
+describe("GATE-release-captures: non-required release captures", () => {
+  it("no required job, shard or aggregate reads the capture jobs", () => {
+    for (const job of [...REQUIRED_JOBS, SHARD_JOB]) {
+      const runnable = jobBlock(job)
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("#"))
+        .join("\n");
+      expect(runnable, `${job} must not read the capture jobs`).not.toMatch(/capture/i);
+    }
+    expect(REQUIRED_JOBS).not.toContain(CAPTURE_PLAN_JOB);
+    expect(REQUIRED_JOBS).not.toContain(CAPTURE_JOB);
+  });
+
+  it("the planner runs on pull requests only, with Node and no install", () => {
+    const block = jobBlock(CAPTURE_PLAN_JOB);
+    expect(block).toMatch(/^capture-plan:\n/);
+    const jobIfs = block.split("\n").filter((line) => /^\s{4}if:\s/.test(line));
+    expect(jobIfs).toEqual(["    if: ${{ github.event_name == 'pull_request' }}"]);
+    expect(block).not.toContain("pnpm install");
+    expect(block).not.toMatch(/^\s+needs:/m);
+    expect(block).toContain("      capture: ${{ steps.plan.outputs.capture }}\n      matrix: ${{ steps.plan.outputs.matrix }}\n");
+    const plan = stepNamed(CAPTURE_PLAN_JOB, "Plan the captures");
+    expect(plan).toContain("id: plan");
+    expect(plan).toContain("run: node scripts/release-captures.mjs plan");
+    // The branch name reaches the script as data in an env var, never spliced into the shell line.
+    expect(plan).toContain("CAPTURE_BRANCH: ${{ github.head_ref }}");
+    expect(plan.split("\n").filter((line) => line.includes("run:")).join("\n")).not.toContain("${{");
+  });
+
+  it("the capture matrix starts only when the planner named a surface, one job per surface", () => {
+    const block = jobBlock(CAPTURE_JOB);
+    expect(block).toMatch(/^capture:\n/);
+    const jobIfs = block.split("\n").filter((line) => /^\s{4}if:\s/.test(line));
+    expect(jobIfs).toEqual(["    if: ${{ needs.capture-plan.outputs.capture == 'true' }}"]);
+    expect(block).toContain("\n    strategy:\n      fail-fast: false\n      matrix:\n        id: ${{ fromJSON(needs.capture-plan.outputs.matrix) }}\n");
+  });
+
+  it("each capture job builds with only its surface on, captures it and uploads release-captures-<id>", () => {
+    expect(stepNamed(CAPTURE_JOB, "Build with this surface on")).toContain("VITE_GOAL_SURFACES: ${{ matrix.id }}");
+    expect(stepNamed(CAPTURE_JOB, "Build with this surface on")).toContain("run: pnpm build");
+    expect(stepNamed(CAPTURE_JOB, "Prepare the e2e database")).toContain("run: node scripts/e2e-server.mjs prepare");
+    const capture = stepNamed(CAPTURE_JOB, "Capture every route at 1280 and 390");
+    expect(capture).toContain("RELEASE_CAPTURE_IDS: ${{ matrix.id }}");
+    expect(capture).toContain("run: pnpm exec playwright test -c e2e/playwright.config.ts e2e/release-captures.e2e.ts");
+    const upload = stepNamed(CAPTURE_JOB, "Upload the captures");
+    expect(upload).toContain("if: ${{ always() }}");
+    expect(upload).toContain("uses: actions/upload-artifact@v4");
+    expect(upload).toContain("name: release-captures-${{ matrix.id }}");
+    expect(upload).toContain("path: e2e/.results/release-captures/${{ matrix.id }}");
   });
 });
