@@ -4,10 +4,13 @@
 // and nothing here sends a request.
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { companySearchQuerySchema, companySearchResponseSchema } from "@shared/companies";
+import { companySearchQuerySchema, companySearchResponseSchema, type DiscoveredCompany } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
 
-export const COMPANY_TYPEAHEAD_ENABLED = false;
+// D-174-worldwide-discovery: the typeahead surface is built and lands dark; the release row
+// (D-174-seeker-journey-build) flips the switch under its recorded gate (D-223 (3): preview QA, a review
+// and the CEO's sign-off). The switch stays a separate line so the release is revertable.
+export const COMPANY_TYPEAHEAD_ENABLED = false; // The release row flips this: small PR after preview QA, independent review and the CEO sign-off (D-223 (3), packet ruling 10). The Nov 8 ship-it instruction does not explicitly supersede that gate.
 export const COMPANY_SEARCH_DEBOUNCE_MS = 150;
 export const COMPANY_SEARCH_MAX = 10;
 const COMPANY_SEARCH_ERROR = "We could not search companies. Check your connection and try again.";
@@ -25,9 +28,11 @@ export const isCompanySearchInvalid = (error: unknown): boolean => error instanc
 const acceptedByRoute = (q: string) => companySearchQuerySchema.safeParse({ q }).success;
 
 export type CompanySuggestion = ReturnType<typeof companySearchResponseSchema.parse>["companies"][number];
+export type DiscoveredSuggestion = DiscoveredCompany;
+export type DiscoveryState = "ok" | "degraded";
 
 /** One `q`, trimmed; the response is parsed with the route's own strict schema (no availability key, at most 10). */
-export async function fetchCompanySearch(query: string): Promise<CompanySuggestion[]> {
+export async function fetchCompanySearch(query: string): Promise<{ companies: CompanySuggestion[]; discovered: DiscoveredSuggestion[]; discoveryState?: DiscoveryState }> {
   const q = query.trim();
   let response: Response;
   try {
@@ -40,7 +45,7 @@ export async function fetchCompanySearch(query: string): Promise<CompanySuggesti
   if (!response.ok) throw new Error(COMPANY_SEARCH_ERROR);
   const parsed = companySearchResponseSchema.safeParse(payload);
   if (!parsed.success) throw new Error(COMPANY_SEARCH_ERROR);
-  return parsed.data.companies;
+  return { companies: parsed.data.companies, discovered: parsed.data.discovered ?? [], discoveryState: parsed.data.discoveryState };
 }
 
 function useDebounced(value: string, ms: number): string {
@@ -64,6 +69,12 @@ export interface CompanySearchState {
   /** The trimmed query the state answers (empty while idle). */
   query: string;
   suggestions: CompanySuggestion[];
+  /** Worldwide candidates the directory does not hold (D-174-worldwide-discovery). */
+  discovered: DiscoveredSuggestion[];
+  /** The discovery portion's health on the answered query: "degraded" means worldwide search was limited
+   * (rate limit, budget, saturation or an upstream failure), so an empty `discovered` is not "no such company".
+   * Undefined when discovery did not run (switch off). Directory suggestions are unaffected either way. */
+  discoveryState?: DiscoveryState;
   /** The settled query got an answer with no company in it. */
   noMatch: boolean;
   /** Set only while status is "invalid". */
@@ -84,11 +95,12 @@ export function useCompanySearch(input: string, enabled: boolean): CompanySearch
     retry: false,
   });
   const retry = () => { void result.refetch(); };
-  const empty = { suggestions: [] as CompanySuggestion[], noMatch: false, retry };
+  const empty = { suggestions: [] as CompanySuggestion[], discovered: [] as DiscoveredSuggestion[], noMatch: false, retry };
   if (!enabled || typed.length === 0) return { status: "idle", query: "", ...empty };
   if (query === typed && !acceptedByRoute(query)) return { status: "invalid", invalidReason: "too-long", query, ...empty };
   if (query !== typed || result.isFetching || result.isPending) return { status: "loading", query: typed, ...empty };
   if (result.isError && isCompanySearchInvalid(result.error)) return { status: "invalid", invalidReason: "refused", query, ...empty };
   if (result.isError) return { status: "error", query, ...empty };
-  return { status: "ready", query, suggestions: result.data, noMatch: result.data.length === 0, retry };
+  // A degraded discovery answer is not a no-match: worldwide search was limited, so empty here says nothing.
+  return { status: "ready", query, suggestions: result.data.companies, discovered: result.data.discovered, discoveryState: result.data.discoveryState, noMatch: result.data.companies.length === 0 && result.data.discovered.length === 0 && result.data.discoveryState !== "degraded", retry };
 }

@@ -55,14 +55,33 @@ that limit is reported, not hidden.
    the host pattern but not the directory's work-email rule, which would
    wrongly drop dual-use official domains like zoho.com (Zoho Corporation);
    pure consumer-mail families are still refused.
-3. Public-route traffic bounds: single-character queries never reach the
-   sources (COMPANY_DISCOVERY_MIN_QUERY), concurrent asks for one name share
-   a single in-flight upstream round, and Wikimedia requests carry the
-   identifying SkipWait User-Agent. OPEN, stated for review: these are
-   per-query controls only - nothing bounds aggregate upstream traffic across
-   many distinct queries. The app's rate limiter (server/_core) is not wired
-   to this public route; whether to wire it is left to review rather than
-   widened here.
+3. Public-route traffic bounds (instance-local, in-memory): single-character
+   queries never reach the sources (COMPANY_DISCOVERY_MIN_QUERY); concurrent
+   asks for one name share a single in-flight upstream round and spend the
+   budget once; at most 4 upstream rounds run at once; a source 429 pauses
+   ALL discovery upstream calls for 60s; 3 consecutive upstream failures
+   (5xx, timeout, network) open a 30s breaker, reset by a success; and each
+   client key gets a budget of 20 name chains per 10 minutes, where a free
+   transition must extend or shorten the client's most recent name within a
+   30s typing gap, at most 8 in a row (3-4 typed searches spend 3-4 of 20,
+   never silently exhaust; 50 rapid names sharing a 2-char prefix are 50
+   chains and exhaust). These bounds
+   are per server instance, not fleet-wide. Wikimedia requests carry the
+   identifying SkipWait User-Agent. Client key: req.ip is edge-derived by
+   design - the Worker (src/worker.ts, shared/clientIp.ts) strips
+   client-supplied forwarding headers and writes X-Forwarded-For from
+   CF-Connecting-IP, which Express (trust proxy) reads; the contract is
+   pinned by server/clientIpEdge.test.ts. Direct-origin exclusion and the
+   deployed header's presence are NOT verified here, so the budget is
+   honestly per-edge-IP-as-seen, not proven per-person; the global caps,
+   cooldown and breaker bound upstream traffic regardless.
+3b. Degraded is said out loud, never cached publicly: any limit or upstream
+   failure answers with discoveryState "degraded" + a reason (rate_limited /
+   busy / unavailable), Cache-Control "private, no-store", and whatever a
+   fresh-or-stale cache holds - so a throttled or failed discovery can never
+   read as "no such company" to this visitor or poison a shared cache for
+   others. The client shows a "briefly limited" line and never treats a
+   degraded empty as a no-match. Directory results are unaffected either way.
 4. Qualification: typed non-companies (product, software/suite, website,
    place, work, band) are dropped even when their description mentions a
    company (the Zoho Office Suite / production-site noise); typed evidence
