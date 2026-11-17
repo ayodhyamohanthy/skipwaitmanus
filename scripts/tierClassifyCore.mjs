@@ -26,6 +26,8 @@ export const TIER1_MONEY = [
   "server/dailyMoneyCheck.ts",
   "server/coverageDelivery.ts",
   "server/heldAsk.ts",
+  "server/creditCycles.ts",
+  "server/planCreditCycleJob.ts",
 ];
 
 /** Sign-in, sessions and identity: how a person proves who they are. */
@@ -134,11 +136,15 @@ export function tierReasonPaths(changes) {
   const seen = new Set();
   for (const raw of Array.isArray(changes) ? changes : []) {
     const entry = entryOf(raw);
-    if (!entry.path || seen.has(entry.path)) continue;
-    seen.add(entry.path);
+    if (!entry.path) continue;
     if (TEST_FILE.test(entry.path)) continue;
-    if (TIER1_MATCHERS.some(([, matcher]) => matcher.test(entry.path))) { reasons.push(entry.path); continue; }
-    if (entry.path === DB_FILE && dbIsMoney(entry)) reasons.push(entry.path);
+    // A neutral earlier hunk must not hide a later Tier 1 hunk for the same path.
+    const isTier1 = TIER1_MATCHERS.some(([, matcher]) => matcher.test(entry.path))
+      || (entry.path === DB_FILE && dbIsMoney(entry));
+    if (isTier1 && !seen.has(entry.path)) {
+      seen.add(entry.path);
+      reasons.push(entry.path);
+    }
   }
   return reasons;
 }
@@ -155,4 +161,3 @@ export function classifyTier(changes) {
   if (entries.every(entry => DOCS.test(entry.path))) return { tier: 3, reason: "docs only" };
   return { tier: 2, reason: "Tier 2 paths" };
 }
-
