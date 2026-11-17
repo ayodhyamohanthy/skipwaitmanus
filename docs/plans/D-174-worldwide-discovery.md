@@ -118,16 +118,27 @@ that limit is reported, not hidden.
    forces it OFF on any CI build of main - even if the variable is set in
    that environment - and fails closed (OFF) on an unknown or empty CI
    branch. The provider variables (WORKERS_CI, WORKERS_CI_BRANCH) are named
-   by the Workers Builds 2025-06-10 changelog and verified end-to-end by this
-   row's own preview QA. Production activation is therefore always a code change
-   through the recorded release gate (D-223 (3): preview QA, a review and the
-   CEO's sign-off; who signs off stays unresolved through main), never an
-   environment variable alone. The production deploy workflows do not set the
+   by the Workers Builds 2025-06-10 changelog; the resolver's branch handling
+   is pinned by its unit tests, and a Workers Builds build of this branch
+   completed with them. End-to-end proof that a Workers Builds branch build
+   serves the flag ON is NOT established: this worker serves no reachable
+   versions (workers.dev and previews are disabled on it), and this row's
+   interactive preview QA ran on a local explicit-var build
+   (VITE_COMPANY_TYPEAHEAD=true) - a different branch of the same resolver,
+   reported separately from the Workers Builds path, which stays unverified
+   end-to-end. Hard-limit reconciliation: before this row the switch was a
+   literal-false constant, so no build could enable the typeahead; after this
+   row the same protection is carried by the resolver's default-OFF and its
+   force-off on any CI build of main, so production activation remains a code
+   change through the recorded release gate (D-223 (3): preview QA, a review
+   and the CEO's sign-off; who signs off stays unresolved through main),
+   never an environment variable alone - the gate is unchanged and nothing
+   here waives it. The production deploy workflows do not set the
    variable (verified from .github/workflows/deploy-pages.yml and
    deploy-api.yml; zero COMPANY_TYPEAHEAD references across workflows,
    scripts and the Dockerfile). The false-pin in companySearch.test.tsx
-   asserts the default stays literal false, and companyTypeahead.define.test.ts
-   pins the resolver. Preview QA before any production enable, at 1280 and
+   asserts the default stays literal false in a bare environment, and
+   companyTypeahead.define.test.ts pins the resolver. Preview QA before any production enable, at 1280 and
    390: directory, tata, google, no-match, degraded, card handoff (pick shown
    as context on /ask), unknown-company job link, and a real-provider round,
    on a flag-on preview build.
