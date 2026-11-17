@@ -90,12 +90,36 @@ describe("GoalShell", () => {
     expect(screen.queryByTestId("goal-credits-pill")).toBeNull();
   });
 
-  it("a ready credit balance is a real link to the credit details, never a dead number", () => {
+  it("a ready balance is a real link to the plan details that counts referrals left, never a dead number", () => {
     renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "ready", count: 4 }}><p>content</p></GoalShell>);
     const pills = screen.getAllByTestId("goal-credits-pill");
-    expect(pills[0].textContent).toBe("4 credits");
+    expect(pills[0].textContent).toBe("4 referrals left");
     expect(pills[0].getAttribute("href")).toBe("/plans");
-    expect(pills[0].getAttribute("aria-label")).toBe("4 credits available. Open credit details");
+    expect(pills[0].getAttribute("aria-label")).toBe("4 referrals left. Open plan details");
+  });
+
+  it("the phone pill keeps a unit and one referral reads in the singular (D-344)", () => {
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "ready", count: 1 }}><p>content</p></GoalShell>);
+    const pills = screen.getAllByTestId("goal-credits-pill");
+    // Desktop pill first, compact (phone) pill second; the phone pill is never a bare number.
+    expect(pills.map(pill => pill.textContent)).toEqual(["1 referral left", "1 referral"]);
+    for (const pill of pills) expect(pill.getAttribute("aria-label")).toBe("1 referral left. Open plan details");
+    cleanup();
+    renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer credits={{ state: "ready", count: 7 }}><p>content</p></GoalShell>);
+    expect(screen.getAllByTestId("goal-credits-pill").map(pill => pill.textContent)).toEqual(["7 referrals left", "7 referrals"]);
+  });
+
+  it("no shell text or label says credit, in any balance state (D-173, D-180, D-344)", () => {
+    const states = [{ state: "ready", count: 3 }, { state: "loading" }, { state: "error", onRetry: () => {} }] as const;
+    for (const credits of states) {
+      renderInRouter(<GoalShell {...SHELL_PROPS} verifiedReferrer={false} credits={credits}><p>content</p></GoalShell>);
+      const shell = screen.getByTestId("goal-shell");
+      expect(shell.textContent ?? "").not.toMatch(/credit/i);
+      for (const labelled of Array.from(shell.querySelectorAll("[aria-label]"))) {
+        expect(labelled.getAttribute("aria-label") ?? "").not.toMatch(/credit/i);
+      }
+      cleanup();
+    }
   });
 
   it("the account slot prefers the adapter's menu (sign-in when signed out) and otherwise shows the account-menu button", () => {
