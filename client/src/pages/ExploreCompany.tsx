@@ -3,14 +3,12 @@
 // one goal line in the seeker's words, one "Your next step" block whose
 // single black commit ("Ask for a referral") opens the W1 ask drawer in
 // place, with the cost stated before the ask from the shared money copy and
-// the full money sentence beside it. Then the honest facts - responsiveness
-// from the shared companySignalCopy (never an invented figure), open roles as
-// rows with mono dates, the three ask-quality points, the privacy preview and
-// the "Claim this company" link while VITE_COMPANY_CLAIM is on. A not-open
-// company keeps the waiting-ask
-// rule (COVERAGE_WAIT_DAYS) and says the wait honestly in the commit's own
-// line (D-176: availability is the post-save truth, never an open/not-open
-// pill). Every number from /api/companies/:slug,
+// the full money sentence beside it. Availability only routes the sent
+// request (D-176), so the door shows every company the same pre-send state.
+// Then the honest facts - responsiveness from the shared companySignalCopy
+// (never an invented figure), open roles as rows with mono dates, the three
+// ask-quality points, the privacy preview and the "Claim this company" link
+// while VITE_COMPANY_CLAIM is on. Every number from /api/companies/:slug,
 // /api/companies/:slug/opportunities and the live send.
 import { ArrowLeft, ArrowRight, CalendarDays, LockKeyhole } from "lucide-react";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
@@ -29,10 +27,11 @@ import { useCompanyResponseSignal } from "@/lib/companyResponseSignal";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
 import type { CompanyResponseSignal } from "@shared/companyResponseSignal";
-import { ASK_COST_SENTENCE, COVERAGE_WAIT_REASON, MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
 // ASK_COST_SENTENCE stays for the SEO description below; the block states the
 // cost once, through MONEY_SENTENCE.
 import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
+import { NotFoundContent } from "./NotFound";
 import { AskDrawer } from "./explore/AskDrawer";
 import { useAskComposer } from "./explore/useAskComposer";
 
@@ -139,7 +138,6 @@ function CompanyPage({ company }: { company: PublicCompany }) {
     setDrawerOpen(true);
   };
 
-  const open = company.openToReferrals;
   return (
     <GoalAppShell
       active="find"
@@ -198,12 +196,11 @@ function CompanyPage({ company }: { company: PublicCompany }) {
         </header>
 
         <div className="mt-6">
-          <GoalNextStep reason={open ? "One request to a verified employee of this company." : COVERAGE_WAIT_REASON}>
+          <GoalNextStep reason="One request to a verified employee of this company.">
             <GoalButton variant="primary" touch="large" className="gdesk:min-w-[280px]" onClick={openHeroAsk}>Ask for a referral</GoalButton>
             <p className="mt-3 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
           </GoalNextStep>
         </div>
-        {!open ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/alerts" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Alert me</Link> when this company opens up.</p> : null}
         {import.meta.env.VITE_COMPANY_CLAIM === "true" ? <p className="mt-3 text-g-meta text-g-ink-3"><Link href="/company/claim" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Claim this company</Link> if you work here.</p> : null}
 
         {/* D-086.mount: below the hero and outside the next-step block; renders nothing while the switch is off. */}
