@@ -958,7 +958,7 @@
         "D-048-F-goal-check",
         "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for PRICING-banded-oct25 (PR #666), which also owns Premium.tsx: the goal page is built on the paused-pack state the Oct 25 freeze lands. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-premium done in the same commit, so no separate release PR is needed.",
+      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for PRICING-banded-oct25 (PR #666), which also owns Premium.tsx: the goal page is built on the paused-pack state the Oct 25 freeze lands. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-premium done in the same commit, so no separate release PR is needed. Owns amendment (2026-11-17, Claude Code · 4195, registry only): adds client/src/test/goalPagesBoundary.test.ts, the pattern D-048-p3-inbox and D-048-p3-profile used. The goal body keeps the kit page's single-credit retirement check, which reads the live catalog through usePlansCatalog in client/src/components/plans/plansCatalogApi.ts; the D-241 (3) boundary walk fails any goal page that reaches a components/ module missing from its AUDITED list, so that behaviour-only module (no JSX, no className) needs one reviewed entry. Cloning the catalog fetch into the goal tree instead would duplicate a money read (D-048-money.md section 5).",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
@@ -966,7 +966,8 @@
         "client/src/pages/premiumGoal.test.tsx",
         "design/goal-ui/captures/premium/**",
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "client/src/test/goalPagesBoundary.test.ts"
       ]
     },
     {
