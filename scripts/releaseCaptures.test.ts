@@ -3,6 +3,7 @@
 // client/src/lib/goalSurfaces.ts itself (never a hand-kept copy), so these
 // tests compare the parser with the real module and resolve every open
 // release row on the queue.
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -167,5 +168,59 @@ describe("which surfaces a pull request captures", () => {
     for (const id of CANARY_IDS) expect(parsed.released).toContain(id);
     expect(new Set(CANARY_IDS.map(id => personaOf(id))).size).toBe(CANARY_IDS.length);
     expect(captureIds({ ...base, branch: "agent/queue/gate-release-captures", changedFiles: ["e2e/release-captures.e2e.ts"] })).toEqual([...CANARY_IDS].sort((a, b) => Object.keys(parsed.surfaces).indexOf(a) - Object.keys(parsed.surfaces).indexOf(b)));
+  });
+});
+
+describe("each open release id resolves to a full capture plan", () => {
+  const open = tasks.filter(task => /^D-048-R-/.test(task.id) && task.status !== "done");
+
+  for (const task of open) {
+    it(`${task.id} plans one uniquely named shot per route, as one persona`, () => {
+      const id = releaseIdOfTask(task.id, parsed.surfaces) as string;
+      const shots = capturePlan([id], parsed.surfaces);
+      expect(shots.map(shot => shot.pattern)).toEqual(routesOf(id, parsed.surfaces).map(route => route.pattern));
+      expect(new Set(shots.map(shot => shot.persona))).toEqual(new Set([personaOf(id, parsed.surfaces)]));
+      for (const shot of shots) expect(shot.file).toMatch(/^[A-Za-z0-9-]+$/);
+      if (task.branch) {
+        expect(captureIds({ surfaces: parsed.surfaces, tasks, branch: task.branch, baseReleased: parsed.released, headReleased: parsed.released, changedFiles: [] })).toEqual([id]);
+      }
+    });
+  }
+
+  it("a comment that quotes something inside the map fails loudly instead of guessing", () => {
+    const quoted = source.replace('"queue": ["/queue"],', '"queue": ["/queue"], // the "queue" surface');
+    expect(() => parseGoalSurfaces(quoted.replace(/\n\s*/g, " "))).toThrow(/GOAL_SURFACES/);
+  });
+
+  it("the canaries are captured as four different people", () => {
+    expect(CANARY_IDS.map(id => personaOf(id, parsed.surfaces)).sort()).toEqual(["admin", "referrer", "seeker", "visitor"]);
+  });
+});
+
+describe("the CI planner command", () => {
+  const run = (branch: string) => {
+    const out = execFileSync("node", ["scripts/release-captures.mjs", "plan"], {
+      cwd: root,
+      encoding: "utf8",
+      // HEAD as its own base: nothing newly released and nothing changed, so only the branch decides.
+      env: { ...process.env, CAPTURE_BRANCH: branch, CAPTURE_BASE_REF: "HEAD", GITHUB_OUTPUT: "", GITHUB_STEP_SUMMARY: "" },
+    });
+    return out.split("\n");
+  };
+
+  it("plans the release row's surface for its branch", () => {
+    const task = tasks.find(t => /^D-048-R-/.test(t.id) && t.status !== "done" && t.branch)!;
+    const id = releaseIdOfTask(task.id, parsed.surfaces) as string;
+    const lines = run(task.branch!);
+    expect(lines).toContain("capture=true");
+    expect(lines).toContain(`ids=${id}`);
+    expect(lines).toContain(`matrix=${JSON.stringify([id])}`);
+  });
+
+  it("plans nothing for a branch that is not a release row", () => {
+    const lines = run("agent/queue/some-feature");
+    expect(lines).toContain("capture=false");
+    expect(lines).toContain("ids=");
+    expect(lines).toContain("matrix=[]");
   });
 });
