@@ -107,3 +107,13 @@ that limit is reported, not hidden.
    and Send, price, validation, eligibility and the company binding are
    unchanged. Preview QA must check the true outcome: pick shown as context,
    ask still impossible without a real link, send behavior identical.
+7. The switch is an env gate (D-174-seeker-journey-build.typeahead-flip):
+   COMPANY_TYPEAHEAD_ENABLED reads VITE_COMPANY_TYPEAHEAD (default false), so a
+   preview QA build can exercise the surface while production stays off - this
+   change flips nothing by itself, and setting the variable in a production
+   build config is the gated release act (D-223 (3): preview QA, a review and
+   the CEO's sign-off; who signs off stays unresolved through main). The
+   false-pin in companySearch.test.tsx keeps asserting the default is off.
+   Preview QA before any production enable, at 1280 and 390: directory,
+   tata, google, no-match, degraded, card handoff (pick shown as context on
+   /ask), unknown-company job link, and a real-provider round.
