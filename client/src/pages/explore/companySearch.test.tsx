@@ -238,8 +238,8 @@ describe("switch on: typeahead on /explore", () => {
     expect(card.textContent).toContain("Google · google.com");
     expect(card.textContent).toContain("No referral door at Google yet");
     expect(card.textContent).toContain("this pick can't start an ask by itself");
-    expect(within(card).getByRole("link", { name: "Paste a Google job link to request a referral" }).getAttribute("href")).toBe("/ask");
-    expect(within(card).getByRole("link", { name: "Ask us to open Google's door" }).getAttribute("href")).toBe("/invite");
+    expect(within(card).getByRole("link", { name: "Paste a job link on the ask page" }).getAttribute("href")).toBe("/ask");
+    expect(within(card).getByRole("link", { name: "Ask us to open the door" }).getAttribute("href")).toBe("/invite");
     expect(go).not.toHaveBeenCalledWith("/explore/google");
     expect(screen.queryByRole("listbox")).toBeNull();
     fireEvent.click(within(card).getByRole("button", { name: "Back to results" }));
@@ -248,6 +248,17 @@ describe("switch on: typeahead on /explore", () => {
     expect(events).toEqual(["journey_company_suggested"]);
     expectNoAvailabilityText();
     expectNoQueryInEvents("google");
+  });
+
+  it("a degraded discovery answer says search is briefly limited and never reads as no-match", async () => {
+    stub(() => ({ status: 200, body: { companies: [], discovered: [], discoveryState: "degraded", discoveryDegradedReason: "busy" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "zqxunknownco" } });
+    const line = await screen.findByTestId("company-discovery-degraded");
+    expect(line.textContent).toContain("briefly limited");
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
   });
 
   it("a blocked or broken discovered logo degrades to the company's initial, never a broken image", async () => {

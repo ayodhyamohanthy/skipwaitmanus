@@ -28,6 +28,9 @@ function fakeFetch(handlers: { search?: (term: string) => unknown; entities?: un
   }) as DiscoveryFetch & ReturnType<typeof vi.fn>;
 }
 
+/** Unwraps the outcome for tests that only care about the candidates. */
+const discover = async (query: string, deps: Parameters<typeof discoverCompanies>[1]) => (await discoverCompanies(query, deps)).companies;
+
 describe("domainFromOfficialUrl", () => {
   it("takes the host, lowercase, without www", () => {
     expect(domainFromOfficialUrl("https://www.google.com/")).toBe("google.com");
@@ -42,7 +45,7 @@ describe("domainFromOfficialUrl", () => {
 describe("discoverCompanies", () => {
   it("maps Wikidata entities to name + official domain + logo, drops entities without an official website", async () => {
     const fetchImpl = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
-    const results = await discoverCompanies("google", { fetchImpl });
+    const results = await discover("google", { fetchImpl });
     expect(results).toEqual([{ name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" }]);
   });
 
@@ -57,7 +60,7 @@ describe("discoverCompanies", () => {
         },
       },
     });
-    const results = await discoverCompanies(`dedupe-${Date.now()}`, { fetchImpl });
+    const results = await discover(`dedupe-${Date.now()}`, { fetchImpl });
     expect(results.map(candidate => candidate.name)).toEqual(["First", "Third"]);
   });
 
@@ -68,24 +71,24 @@ describe("discoverCompanies", () => {
       entities: ENTITIES_GOOGLE,
       opensearch: ["googel", ["Google"]],
     });
-    const results = await discoverCompanies("googel", { fetchImpl });
+    const results = await discover("googel", { fetchImpl });
     expect(calls).toEqual(["googel", "Google"]);
     expect(results.map(candidate => candidate.domain)).toEqual(["google.com"]);
   });
 
   it("answers [] when every source misses, without inventing a company", async () => {
     const fetchImpl = fakeFetch({ search: () => ({ search: [] }), opensearch: ["zzqx-never", []] });
-    expect(await discoverCompanies("zzqx-never-a-company", { fetchImpl })).toEqual([]);
+    expect(await discover("zzqx-never-a-company", { fetchImpl })).toEqual([]);
   });
 
   it("caches within the TTL and refetches after it", async () => {
     const fetchImpl = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
     const key = `cache-${Date.now()}`;
     const t0 = 1_000_000;
-    await discoverCompanies(key, { fetchImpl, nowMs: t0 });
-    await discoverCompanies(key, { fetchImpl, nowMs: t0 + 1_000 });
+    await discover(key, { fetchImpl, nowMs: t0 });
+    await discover(key, { fetchImpl, nowMs: t0 + 1_000 });
     expect(fetchImpl.mock.calls).toHaveLength(2);
-    await discoverCompanies(key, { fetchImpl, nowMs: t0 + COMPANY_DISCOVERY_CACHE_TTL_MS + 1 });
+    await discover(key, { fetchImpl, nowMs: t0 + COMPANY_DISCOVERY_CACHE_TTL_MS + 1 });
     expect(fetchImpl.mock.calls.length).toBeGreaterThan(2);
   });
 
@@ -93,21 +96,23 @@ describe("discoverCompanies", () => {
     const key = `stale-${Date.now()}`;
     const t0 = 5_000_000;
     const good = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
-    await discoverCompanies(key, { fetchImpl: good, nowMs: t0 });
+    await discover(key, { fetchImpl: good, nowMs: t0 });
     const boom: DiscoveryFetch = async () => { throw new Error("wikidata down"); };
     const stale = await discoverCompanies(key, { fetchImpl: boom, nowMs: t0 + COMPANY_DISCOVERY_CACHE_TTL_MS + 1 });
-    expect(stale.map(candidate => candidate.domain)).toEqual(["google.com"]);
-    expect(await discoverCompanies(`fresh-${Date.now()}`, { fetchImpl: boom })).toEqual([]);
+    // Stale answers still serve, but the answer is marked degraded - never indistinguishable from a healthy one.
+    expect(stale).toMatchObject({ degraded: true, reason: "upstream" });
+    expect(stale.companies.map(candidate => candidate.domain)).toEqual(["google.com"]);
+    expect(await discover(`fresh-${Date.now()}`, { fetchImpl: boom, nowMs: t0 + COMPANY_DISCOVERY_CACHE_TTL_MS + 2 })).toEqual([]);
   });
 
   it("treats malformed provider payloads as a miss, not a crash", async () => {
     const fetchImpl: DiscoveryFetch = async () => json({ unexpected: true });
-    expect(await discoverCompanies(`weird-${Date.now()}`, { fetchImpl })).toEqual([]);
+    expect(await discover(`weird-${Date.now()}`, { fetchImpl, nowMs: 7_000_000 })).toEqual([]);
   });
 
   it("answers [] for a blank query without any call", async () => {
     const fetchImpl = fakeFetch({});
-    expect(await discoverCompanies("   ", { fetchImpl })).toEqual([]);
+    expect(await discover("   ", { fetchImpl })).toEqual([]);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
@@ -137,7 +142,7 @@ describe("company qualification (D-174-worldwide-discovery review: never suggest
         },
       },
     });
-    const results = await discoverCompanies(`zoho-qualify-${Date.now()}`, { fetchImpl });
+    const results = await discover(`zoho-qualify-${Date.now()}`, { fetchImpl });
     expect(results.map(candidate => candidate.name)).toEqual(["Zoho Corporation"]);
   });
 
@@ -172,7 +177,7 @@ describe("company qualification (D-174-worldwide-discovery review: never suggest
         },
       },
     });
-    const results = await discoverCompanies(`google-qualify-${Date.now()}`, { fetchImpl });
+    const results = await discover(`google-qualify-${Date.now()}`, { fetchImpl });
     expect(results).toEqual([{ name: "Google", domain: "about.google", source: "wikidata" }]);
   });
 
@@ -192,7 +197,7 @@ describe("company qualification (D-174-worldwide-discovery review: never suggest
         },
       },
     });
-    const results = await discoverCompanies(`longtail-qualify-${Date.now()}`, { fetchImpl });
+    const results = await discover(`longtail-qualify-${Date.now()}`, { fetchImpl });
     expect(results.map(candidate => candidate.name)).toEqual(["Example Games"]);
   });
 
@@ -216,7 +221,7 @@ describe("company qualification (D-174-worldwide-discovery review: never suggest
         },
       },
     });
-    const results = await discoverCompanies(`sparse-qualify-${Date.now()}`, { fetchImpl });
+    const results = await discover(`sparse-qualify-${Date.now()}`, { fetchImpl });
     expect(results.map(candidate => candidate.name)).toEqual(["Sparse Co"]);
   });
 });
@@ -226,9 +231,9 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
     const key = `ratelimited-${Date.now()}`;
     const limited = fakeFetch({ search: () => ({ error: true }), entities: { entities: {} } });
     const failing: DiscoveryFetch = async () => ({ ok: false, json: async () => ({}) });
-    expect(await discoverCompanies(key, { fetchImpl: failing })).toEqual([]);
+    expect(await discover(key, { fetchImpl: failing, nowMs: 13_000_000 })).toEqual([]);
     // The failed read was not cached: a recovered source answers for real.
-    const recovered = await discoverCompanies(key, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE }) });
+    const recovered = await discover(key, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE }) });
     expect(recovered.map(candidate => candidate.domain)).toEqual(["google.com"]);
     expect(limited).not.toHaveBeenCalled();
   });
@@ -237,8 +242,8 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
     const key = `entities-down-${Date.now()}`;
     const failing: DiscoveryFetch = async (url: string) =>
       new URL(url).searchParams.get("action") === "wbgetentities" ? { ok: false, json: async () => ({}) } : json(SEARCH_GOOGLE);
-    expect(await discoverCompanies(key, { fetchImpl: failing })).toEqual([]);
-    const recovered = await discoverCompanies(key, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE }) });
+    expect(await discover(key, { fetchImpl: failing, nowMs: 13_000_000 })).toEqual([]);
+    const recovered = await discover(key, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE }) });
     expect(recovered.map(candidate => candidate.domain)).toEqual(["google.com"]);
   });
 
@@ -255,13 +260,13 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
         },
       },
     });
-    const results = await discoverCompanies(`schema-guard-${Date.now()}`, { fetchImpl });
+    const results = await discover(`schema-guard-${Date.now()}`, { fetchImpl });
     expect(results).toEqual([{ name: "Valid Co", domain: "valid.example.com", source: "wikidata" }]);
   });
 
   it("never spends a source call on a single character", async () => {
     const fetchImpl = fakeFetch({});
-    expect(await discoverCompanies("a", { fetchImpl })).toEqual([]);
+    expect(await discover("a", { fetchImpl })).toEqual([]);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -276,8 +281,8 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
       return json(["", []]);
     }) as DiscoveryFetch & ReturnType<typeof vi.fn>;
     const key = `inflight-${Date.now()}`;
-    const first = discoverCompanies(key, { fetchImpl });
-    const second = discoverCompanies(key, { fetchImpl });
+    const first = discover(key, { fetchImpl });
+    const second = discover(key, { fetchImpl });
     release(null);
     const [a, b] = await Promise.all([first, second]);
     expect(a).toEqual(b);
@@ -307,7 +312,7 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
         },
       },
     });
-    const results = await discoverCompanies(`typed-precedence-${Date.now()}`, { fetchImpl });
+    const results = await discover(`typed-precedence-${Date.now()}`, { fetchImpl });
     expect(results.map(candidate => candidate.name)).toEqual(["Real Company"]);
   });
 
@@ -321,7 +326,7 @@ describe("review findings: failure honesty, boundary validation, traffic bounds,
         },
       },
     });
-    const results = await discoverCompanies(`subdomain-dedupe-${Date.now()}`, { fetchImpl });
+    const results = await discover(`subdomain-dedupe-${Date.now()}`, { fetchImpl });
     expect(results.map(candidate => candidate.name)).toEqual(["Example Corp"]);
   });
 });
@@ -331,13 +336,13 @@ describe("aggregate traffic bounds (review: many distinct queries must not fan o
     const t0 = 9_000_000;
     const limited: DiscoveryFetch = async () => ({ ok: false, status: 429, json: async () => ({}) });
     const key = `rl-${Date.now()}`;
-    expect(await discoverCompanies(key, { fetchImpl: limited, nowMs: t0 })).toEqual([]);
+    expect(await discoverCompanies(key, { fetchImpl: limited, nowMs: t0 })).toEqual({ companies: [], degraded: true, reason: "rate_limited" });
     const counting = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
     // During the cooldown even a recovered source is never called - for any distinct name.
-    expect(await discoverCompanies(`${key}-other`, { fetchImpl: counting, nowMs: t0 + 1_000 })).toEqual([]);
+    expect(await discoverCompanies(`${key}-other`, { fetchImpl: counting, nowMs: t0 + 1_000 })).toEqual({ companies: [], degraded: true, reason: "rate_limited" });
     expect(counting).not.toHaveBeenCalled();
     // After the cooldown the source is asked again.
-    const after = await discoverCompanies(`${key}-other`, { fetchImpl: counting, nowMs: t0 + 61_000 });
+    const after = await discover(`${key}-other`, { fetchImpl: counting, nowMs: t0 + 61_000 });
     expect(after.map(candidate => candidate.domain)).toEqual(["google.com"]);
   });
 
@@ -346,12 +351,12 @@ describe("aggregate traffic bounds (review: many distinct queries must not fan o
     const gate = new Promise(resolve => { release = () => resolve(null); });
     const blocking = fakeFetch({ search: () => gate.then(() => ({ search: [] })) as never, entities: ENTITIES_GOOGLE });
     const base = `pool-${Date.now()}`;
-    const pending = [0, 1, 2, 3].map(i => discoverCompanies(`${base}-${i}`, { fetchImpl: blocking }));
+    const pending = [0, 1, 2, 3].map(i => discover(`${base}-${i}`, { fetchImpl: blocking }));
     const counting = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
-    expect(await discoverCompanies(`${base}-fifth`, { fetchImpl: counting })).toEqual([]);
+    expect(await discoverCompanies(`${base}-fifth`, { fetchImpl: counting })).toEqual({ companies: [], degraded: true, reason: "saturated" });
     expect(counting).not.toHaveBeenCalled();
     // The four in-flight asks are still shared, not duplicated.
-    const again = discoverCompanies(`${base}-0`, { fetchImpl: blocking });
+    const again = discover(`${base}-0`, { fetchImpl: blocking });
     expect(blocking.mock.calls.filter(call => String(call[0]).includes("wbsearchentities"))).toHaveLength(4);
     release();
     await Promise.all([...pending, again]); // free the pool slots for later tests
@@ -361,15 +366,77 @@ describe("aggregate traffic bounds (review: many distinct queries must not fan o
     const t0 = 11_000_000;
     const counting = fakeFetch({ search: () => ({ search: [] }), opensearch: ["x", []] });
     const client = `ip-budget-${Date.now()}`;
+    const stamp = Date.now();
     for (let i = 0; i < 20; i += 1) {
-      await discoverCompanies(`budget-${Date.now()}-${i}`, { fetchImpl: counting, nowMs: t0, clientKey: client });
+      await discover(`budget-${stamp}-n${String(i).padStart(2, "0")}`, { fetchImpl: counting, nowMs: t0, clientKey: client });
     }
     const callsAtBudget = counting.mock.calls.length;
     expect(callsAtBudget).toBeGreaterThan(0);
-    await discoverCompanies(`budget-${Date.now()}-over`, { fetchImpl: counting, nowMs: t0 + 1_000, clientKey: client });
+    expect(await discoverCompanies(`budget-${stamp}-over`, { fetchImpl: counting, nowMs: t0 + 1_000, clientKey: client })).toEqual({ companies: [], degraded: true, reason: "budget" });
     expect(counting.mock.calls.length).toBe(callsAtBudget);
     // A different client still gets through, and the window resets after 10 minutes.
-    await discoverCompanies(`budget-${Date.now()}-other`, { fetchImpl: counting, nowMs: t0 + 2_000, clientKey: `${client}-2` });
+    await discover(`budget-${stamp}-other`, { fetchImpl: counting, nowMs: t0 + 2_000, clientKey: `${client}-2` });
     expect(counting.mock.calls.length).toBeGreaterThan(callsAtBudget);
+  });
+});
+
+describe("typing-friendly budget accounting and the failure breaker (verdict: 3-4 real searches must not exhaust the budget)", () => {
+  it("typing prefixes of one name are one chain: ordinary typing never spends the budget", async () => {
+    const t0 = 15_000_000;
+    const client = `ip-typing-${Date.now()}`;
+    const counting = fakeFetch({ search: () => ({ search: [] }), opensearch: ["x", []] });
+    // Four real searches, each typed out prefix by prefix - twenty requests, four chains.
+    const chains = ["google", "tata", "wipro", "flipkart"];
+    for (const name of chains) {
+      for (let end = 2; end <= name.length; end += 1) {
+        const outcome = await discoverCompanies(`${name.slice(0, end)}-x${client}`.slice(0, end), { fetchImpl: counting, nowMs: t0, clientKey: client });
+        expect(outcome.degraded).toBe(false);
+      }
+    }
+    // Every prefix still asked upstream (no cache yet), and none was refused: 4 chains spent of 20.
+    expect(counting.mock.calls.length).toBeGreaterThan(0);
+    // A fifth distinct chain still gets through - the budget was never in danger.
+    const fifth = await discoverCompanies(`zoho-x${client}`.slice(0, 4), { fetchImpl: counting, nowMs: t0 + 1_000, clientKey: client });
+    expect(fifth.degraded).toBe(false);
+  });
+
+  it("a shared in-flight ask spends the budget once, not per concurrent request", async () => {
+    const t0 = 17_000_000;
+    const client = `ip-inflight-${Date.now()}`;
+    let release!: () => void;
+    const gate = new Promise(resolve => { release = () => resolve(null); });
+    const blocking = fakeFetch({ search: () => gate.then(() => ({ search: [] })) as never });
+    const key = `shared-${Date.now()}`;
+    const first = discoverCompanies(key, { fetchImpl: blocking, nowMs: t0, clientKey: client });
+    const second = discoverCompanies(key, { fetchImpl: blocking, nowMs: t0, clientKey: client });
+    release();
+    await Promise.all([first, second]);
+    // One spend: the next 19 distinct chains still pass, the 21st chain degrades.
+    const counting = fakeFetch({ search: () => ({ search: [] }), opensearch: ["x", []] });
+    for (let i = 0; i < 19; i += 1) {
+      const ok = await discoverCompanies(`after-${key}-n${String(i).padStart(2, "0")}`, { fetchImpl: counting, nowMs: t0 + 1_000, clientKey: client });
+      expect(ok.degraded).toBe(false);
+    }
+    const over = await discoverCompanies(`after-${key}-over`, { fetchImpl: counting, nowMs: t0 + 2_000, clientKey: client });
+    expect(over).toEqual({ companies: [], degraded: true, reason: "budget" });
+  });
+
+  it("three consecutive upstream failures open a short breaker; it closes after 30s and a success resets the count", async () => {
+    const t0 = 19_000_000;
+    const failing: DiscoveryFetch = async () => ({ ok: false, status: 502, json: async () => ({}) });
+    const base = `breaker-${Date.now()}`;
+    for (let i = 0; i < 3; i += 1) {
+      const failed = await discoverCompanies(`${base}-n${i}`, { fetchImpl: failing, nowMs: t0 });
+      expect(failed).toEqual({ companies: [], degraded: true, reason: "upstream" });
+    }
+    // Breaker open: a distinct name never reaches the source.
+    const counting = fakeFetch({ search: () => SEARCH_GOOGLE, entities: ENTITIES_GOOGLE });
+    const blocked = await discoverCompanies(`${base}-blocked`, { fetchImpl: counting, nowMs: t0 + 1_000 });
+    expect(blocked).toEqual({ companies: [], degraded: true, reason: "upstream" });
+    expect(counting).not.toHaveBeenCalled();
+    // After 30s the source is asked again, and a success resets the count.
+    const after = await discoverCompanies(`${base}-blocked`, { fetchImpl: counting, nowMs: t0 + 31_000 });
+    expect(after.degraded).toBe(false);
+    expect(after.companies.map(candidate => candidate.domain)).toEqual(["google.com"]);
   });
 });

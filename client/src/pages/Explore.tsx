@@ -407,11 +407,14 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
       {confirm ? (
         <div data-testid="company-discovery-confirm" className="mt-3 grid gap-1">
           <p className="text-g-body text-g-ink">{confirm.name} · {confirm.domain}</p>
-          <p className="text-g-meta text-g-ink-3">No referral door at {confirm.name} yet, so this pick can't start an ask by itself. Paste a job link on the ask page, or ask us to open the door.</p>
-          <Link href="/ask" className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">{`Paste a ${confirm.name} job link to request a referral`}</Link>
-          <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">{`Ask us to open ${confirm.name}'s door`}</Link></p>
+          <p className="text-g-meta text-g-ink-3">No referral door at {confirm.name} yet, so this pick can't start an ask by itself. On the ask page you paste a {confirm.name} job link yourself, or we can open the door.</p>
+          <Link href="/ask" className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Paste a job link on the ask page</Link>
+          <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Ask us to open the door</Link></p>
           <button type="button" onClick={() => setConfirm(null)} className="justify-self-start text-g-meta text-g-ink-3 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Back to results</button>
         </div>
+      ) : null}
+      {search.discoveryState === "degraded" && status === "ready" ? (
+        <p data-testid="company-discovery-degraded" role="status" className="mt-3 text-g-meta text-g-ink-3">Worldwide company search is briefly limited, so an unlisted company may not appear right now. Directory companies still show, and pasting a job link always works.</p>
       ) : null}
       {status === "loading" ? (
         <p data-testid="company-search-loading" role="status" aria-busy="true" className="mt-3 text-g-meta text-g-ink-3">Searching companies…</p>

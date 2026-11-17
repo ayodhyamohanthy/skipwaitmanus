@@ -12,7 +12,7 @@
 import express, { type Express, type Request, type Response } from "express";
 import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, companySearchQuerySchema, companySearchResponseSchema, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
 import { searchCompanies } from "./companySearch";
-import { COMPANY_DISCOVERY_ENABLED, COMPANY_DISCOVERY_LIMIT, discoverCompanies } from "./companyDiscovery";
+import { COMPANY_DISCOVERY_ENABLED, COMPANY_DISCOVERY_LIMIT, discoverCompanies, type DiscoveryOutcome } from "./companyDiscovery";
 import type { DiscoveredCompany } from "../shared/companies";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
@@ -32,7 +32,7 @@ export type CompanyDirectoryRouteDeps = {
   listCompanyDirectory?: () => Promise<CompanyDirectoryResponse>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<PublicCompany | undefined>;
   /** Worldwide discovery (D-174-worldwide-discovery); defaults to the Wikidata adapter. The client key feeds its per-client upstream budget. */
-  discoverCompanies?: (query: string, clientKey?: string) => Promise<DiscoveredCompany[]>;
+  discoverCompanies?: (query: string, clientKey?: string) => Promise<DiscoveryOutcome>;
   /** A company's live posts for the given domains (defaults to server/db.ts). */
   listCompanyOpportunities?: (domains: readonly string[], nowMs?: number) => Promise<unknown[]>;
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
@@ -59,7 +59,7 @@ function failure(res: Response, error: unknown, fallback: string) {
 
 export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirectoryRouteDeps) {
   const list = deps.listCompanyDirectory ?? listCompanyDirectory;
-  const discover = deps.discoverCompanies ?? discoverCompanies;
+  const discover = deps.discoverCompanies ?? ((query: string, clientKey?: string) => discoverCompanies(query, { clientKey }));
   const getOne = deps.getCompanyDirectoryEntry ?? getCompanyDirectoryEntry;
   const listOpportunities = deps.listCompanyOpportunities ?? listCompanyOpportunityPosts;
   const adminList = deps.listAdminCompanies ?? listAdminCompanies;
@@ -94,16 +94,23 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       const { companies } = await list();
       const results = searchCompanies(companies, parsed.data.q).map(({ openToReferrals: _open, ...rest }) => rest);
       // Worldwide discovery (D-174-worldwide-discovery): candidates the directory does not hold,
-      // deduped by official domain. A discovery failure costs the directory answer nothing.
+      // deduped by official domain. A discovery failure costs the directory answer nothing - but a
+      // degraded discovery portion (rate limit, budget, saturation, upstream failure) is said out loud
+      // and never publicly cached, so it can never masquerade as "no such company" for every visitor.
       let discovered: DiscoveredCompany[] | undefined;
+      let discoveryState: "ok" | "degraded" | undefined;
+      let discoveryDegradedReason: "rate_limited" | "busy" | "unavailable" | undefined;
       if (COMPANY_DISCOVERY_ENABLED) {
         try {
           const held = companies.flatMap(company => company.domains);
+          const outcome = await discover(parsed.data.q, req.ip);
           // Domain identity, subdomain-aware in both directions: careers.acme.com held means acme.com is not a discovery.
-          discovered = (await discover(parsed.data.q, req.ip)).filter(candidate => !held.some(heldDomain => heldDomain === candidate.domain || candidate.domain.endsWith(`.${heldDomain}`) || heldDomain.endsWith(`.${candidate.domain}`))).slice(0, COMPANY_DISCOVERY_LIMIT);
-        } catch { discovered = []; }
+          discovered = outcome.companies.filter(candidate => !held.some(heldDomain => heldDomain === candidate.domain || candidate.domain.endsWith(`.${heldDomain}`) || heldDomain.endsWith(`.${candidate.domain}`))).slice(0, COMPANY_DISCOVERY_LIMIT);
+          discoveryState = outcome.degraded ? "degraded" : "ok";
+          discoveryDegradedReason = outcome.reason === "rate_limited" ? "rate_limited" : outcome.reason === "budget" || outcome.reason === "saturated" ? "busy" : outcome.reason === "upstream" ? "unavailable" : undefined;
+        } catch { discovered = []; discoveryState = "degraded"; discoveryDegradedReason = "unavailable"; }
       }
-      res.set("Cache-Control", PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results, ...(discovered === undefined ? {} : { discovered }) }));
+      res.set("Cache-Control", discoveryState === "degraded" ? "private, no-store" : PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results, ...(discovered === undefined ? {} : { discovered, discoveryState, ...(discoveryDegradedReason ? { discoveryDegradedReason } : {}) }) }));
     } catch (error) { failure(res, error, "We could not search companies"); }
   });
 

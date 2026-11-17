@@ -119,7 +119,7 @@ async function wikipediaSuggestion(fetchImpl: DiscoveryFetch, term: string): Pro
   return suggestion && suggestion.toLowerCase() !== term.trim().toLowerCase() ? suggestion : undefined;
 }
 
-const inflight = new Map<string, Promise<DiscoveredCompany[]>>();
+const inflight = new Map<string, Promise<DiscoveryOutcome>>();
 
 /** Minimum query length: single characters never reach the sources. */
 export const COMPANY_DISCOVERY_MIN_QUERY = 2;
@@ -127,52 +127,70 @@ export const COMPANY_DISCOVERY_MIN_QUERY = 2;
 export const DISCOVERY_MAX_CONCURRENT_UPSTREAM = 4;
 /** After a source 429, all discovery upstream calls pause for this long. Directory answers are unaffected. */
 export const DISCOVERY_RATE_LIMIT_COOLDOWN_MS = 60_000;
-/** Per-client upstream budget: distinct uncached names per window. Cached answers never spend it. */
+/** After this many consecutive upstream failures (5xx, timeout, network), a short breaker pauses all discovery upstream calls. */
+export const DISCOVERY_BREAKER_FAILURES = 3;
+export const DISCOVERY_BREAKER_OPEN_MS = 30_000;
+/** Per-client upstream budget: distinct name chains per window. A chain is a typing run - extensions and
+ * shortenings of an already-charged name ("g", "go", "google") count once, so ordinary typing never exhausts it. */
 export const DISCOVERY_CLIENT_BUDGET = 20;
 export const DISCOVERY_CLIENT_WINDOW_MS = 10 * 60 * 1000;
 const DISCOVERY_CLIENT_BUDGET_MAX_KEYS = 1_000;
+const DISCOVERY_CLIENT_NAMES_MAX = 40;
+
+export type DiscoveryDegradedReason = "rate_limited" | "budget" | "saturated" | "upstream";
+/** The discovery answer plus its health: degraded means the candidates are incomplete (limits or an upstream
+ * failure) and the route must say so and never let the answer be publicly cached. */
+export type DiscoveryOutcome = { companies: DiscoveredCompany[]; degraded: boolean; reason?: DiscoveryDegradedReason };
 
 let rateLimitedUntil = 0;
+let breakerUntil = 0;
+let consecutiveFailures = 0;
 let activeUpstream = 0;
-const clientBudget = new Map<string, { start: number; used: number }>();
+const clientBudget = new Map<string, { start: number; used: number; names: string[] }>();
 
 const httpFailure = (what: string, status?: number) => Object.assign(new Error(`${what} HTTP failure`), { status: status ?? 0 });
 
-/** One client's budget for new upstream rounds; true when this round may proceed. */
-function spendClientBudget(clientKey: string, now: number): boolean {
-  const entry = clientBudget.get(clientKey);
+/** One client's budget for new upstream rounds. Typing prefixes of an already-charged name are the same chain
+ * and cost nothing; only a genuinely new name chain spends. true when this round may proceed. */
+function spendClientBudget(clientKey: string, name: string, now: number): boolean {
+  let entry = clientBudget.get(clientKey);
   if (!entry || now - entry.start >= DISCOVERY_CLIENT_WINDOW_MS) {
+    entry = { start: now, used: 0, names: [] };
     clientBudget.delete(clientKey);
-    clientBudget.set(clientKey, { start: now, used: 1 });
+    clientBudget.set(clientKey, entry);
     while (clientBudget.size > DISCOVERY_CLIENT_BUDGET_MAX_KEYS) {
       const oldest = clientBudget.keys().next().value;
       if (oldest === undefined) break;
       clientBudget.delete(oldest);
     }
-    return true;
   }
+  if (entry.names.some(held => name.startsWith(held) || held.startsWith(name))) return true;
   if (entry.used >= DISCOVERY_CLIENT_BUDGET) return false;
   entry.used += 1;
+  entry.names.push(name);
+  if (entry.names.length > DISCOVERY_CLIENT_NAMES_MAX) entry.names.shift();
   return true;
 }
 
 /** Resolve the typed name to worldwide candidates: name + official domain + optional logo, in source rank order. */
-export function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Promise<DiscoveredCompany[]> {
+export function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Promise<DiscoveryOutcome> {
   const q = query.trim();
-  if (q.length < COMPANY_DISCOVERY_MIN_QUERY) return Promise.resolve([]);
+  if (q.length < COMPANY_DISCOVERY_MIN_QUERY) return Promise.resolve({ companies: [], degraded: false });
   const now = deps.nowMs ?? Date.now();
   const key = q.toLowerCase();
   const fresh = cache.get(key);
-  if (fresh && now - fresh.at < COMPANY_DISCOVERY_CACHE_TTL_MS) return Promise.resolve(fresh.results);
-  // Aggregate bounds: a source rate-limit pauses all upstream calls for a cooldown; a client
-  // over its budget and a saturated upstream pool both degrade to cache-or-nothing. The
-  // directory answer never depends on any of this.
-  if (now < rateLimitedUntil) return Promise.resolve(fresh?.results ?? []);
-  if (deps.clientKey && !spendClientBudget(deps.clientKey, now)) return Promise.resolve(fresh?.results ?? []);
-  // One upstream round per typed name: concurrent asks share the in-flight promise.
+  if (fresh && now - fresh.at < COMPANY_DISCOVERY_CACHE_TTL_MS) return Promise.resolve({ companies: fresh.results, degraded: false });
+  const stale = () => ({ companies: fresh?.results ?? [] });
+  // Aggregate bounds, checked before any budget is spent: a source rate-limit or an open failure breaker pauses
+  // all upstream calls; the directory answer never depends on any of this. Every degraded answer is marked so
+  // the route can say so and keep it out of shared caches.
+  if (now < rateLimitedUntil) return Promise.resolve({ ...stale(), degraded: true, reason: "rate_limited" });
+  if (now < breakerUntil) return Promise.resolve({ ...stale(), degraded: true, reason: "upstream" });
+  // One upstream round per typed name: concurrent asks share the in-flight promise and never double-spend.
   const pending = inflight.get(key);
   if (pending) return pending;
-  if (activeUpstream >= DISCOVERY_MAX_CONCURRENT_UPSTREAM) return Promise.resolve(fresh?.results ?? []);
+  if (activeUpstream >= DISCOVERY_MAX_CONCURRENT_UPSTREAM) return Promise.resolve({ ...stale(), degraded: true, reason: "saturated" });
+  if (deps.clientKey && !spendClientBudget(deps.clientKey, key, now)) return Promise.resolve({ ...stale(), degraded: true, reason: "budget" });
   activeUpstream += 1;
   const run = discoverUncached(q, key, now, deps.fetchImpl ?? (fetch as unknown as DiscoveryFetch))
     .finally(() => { activeUpstream -= 1; inflight.delete(key); });
@@ -180,7 +198,7 @@ export function discoverCompanies(query: string, deps: DiscoveryDeps = {}): Prom
   return run;
 }
 
-async function discoverUncached(q: string, key: string, now: number, fetchImpl: DiscoveryFetch): Promise<DiscoveredCompany[]> {
+async function discoverUncached(q: string, key: string, now: number, fetchImpl: DiscoveryFetch): Promise<DiscoveryOutcome> {
   const fresh = cache.get(key);
   try {
     let hits = await wikidataSearchIds(fetchImpl, q);
@@ -215,12 +233,24 @@ async function discoverUncached(q: string, key: string, now: number, fetchImpl: 
     }
     // Only real answers are cached; failures and empty reads are never remembered (no 6h poison).
     if (results.length > 0) remember(key, now, results);
-    return results;
+    consecutiveFailures = 0;
+    return { companies: results, degraded: false };
   } catch (error) {
-    // A source 429 pauses every discovery upstream call for the cooldown; directory answers stand.
-    if ((error as { status?: number })?.status === 429) rateLimitedUntil = now + DISCOVERY_RATE_LIMIT_COOLDOWN_MS;
-    // Provider failure answers the stale cache when we have one, else nothing; the directory results stand on their own.
-    return fresh?.results ?? [];
+    // A source 429 pauses every discovery upstream call for the cooldown; other failures (5xx, timeout,
+    // network) count toward a short breaker. Directory answers stand either way.
+    const status = (error as { status?: number })?.status;
+    if (status === 429) {
+      rateLimitedUntil = now + DISCOVERY_RATE_LIMIT_COOLDOWN_MS;
+    } else {
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= DISCOVERY_BREAKER_FAILURES) {
+        breakerUntil = now + DISCOVERY_BREAKER_OPEN_MS;
+        consecutiveFailures = 0;
+      }
+    }
+    // Provider failure answers the stale cache when we have one, else nothing - and says so: degraded,
+    // never publicly cached, never indistinguishable from "no such company".
+    return { companies: fresh?.results ?? [], degraded: true, reason: status === 429 ? "rate_limited" : "upstream" };
   }
 }
 

@@ -15,7 +15,7 @@
 1. **Discovery adapter** (`server/companyDiscovery.ts`): Wikidata primary — `wbsearchentities` for candidates, `wbgetentities` for official website (P856) and logo (P154); Wikipedia OpenSearch assists spelling/ranking. Free and keyless only; a descriptive User-Agent per Wikidata policy; in-memory TTL cache (no migration, no new table).
 2. **Contract** (`shared/companies.ts`): `GET /api/companies/search` gains a `discovered` array next to `companies`. Directory hits stay first and unchanged; discovered entries are `{ name, domain, logoUrl?, source }`, deduped against directory domains. Old clients strip the unknown key, so the change is backward compatible.
 3. **Identity**: keyed by the official domain from the source. Entities without an official website are not shown as companies. On ambiguity or low confidence the client shows the candidate (name + domain) for confirmation; the domain is never silently guessed.
-4. **Client** (`Explore.tsx` typeahead, `useCompanySearch.ts`): everything lands dark — `COMPANY_TYPEAHEAD_ENABLED` stays `false` and the switch line stays with `D-174-seeker-journey-build`. The recorded release gate (D-223 (3), ruling 10: preview QA, independent review, the CEO's sign-off) is preserved: no original explicitly supersedes it for the typeahead (Oct 21 predates the Nov 1 ruling; Nov 8 is generic ship-it, not an explicit waiver). The flip is exactly one remaining approval: the CEO's (the user's) explicit go, after preview QA captures at 1280+390 and the independent review. Under the flag, directory suggestions behave as today (open the door). Discovered suggestions show name + domain (+ logo when the source has one, degrading to an initial under the current CSP) and open a confirmation card: the honest state — no door at this company yet, the pick can't start an ask by itself — with company-named paste-a-job-link and open-the-door CTAs. No fake doors.
+4. **Client** (`Explore.tsx` typeahead, `useCompanySearch.ts`): everything lands dark — `COMPANY_TYPEAHEAD_ENABLED` stays `false` and the switch line stays with `D-174-seeker-journey-build`. The recorded release gate (D-223 (3), ruling 10: preview QA, independent review, the CEO's sign-off) is preserved: no original explicitly supersedes it for the typeahead (Oct 21 predates the Nov 1 ruling; Nov 8 is generic ship-it, not an explicit waiver). The recorded release gate (D-223 (3): preview QA, a review and the CEO's sign-off) is preserved unchanged and this row interprets or waives nothing in it. The approval path for the flip is unresolved - the mandate originals that would let a CEO-capacity session sign off are not on the user's channel - so who signs off stays open pending source evidence, resolved through main, with the user asked in plain outcome terms if needed. Until then the switch stays off. Under the flag, directory suggestions behave as today (open the door). Discovered suggestions show name + domain (+ logo when the source has one, degrading to an initial under the current CSP) and open a confirmation card: the honest state — no door at this company yet, the pick can't start an ask by itself — with company-named paste-a-job-link and open-the-door CTAs. No fake doors.
 5. **Honest failure**: a provider error or timeout never erases directory results and never presents as "no such company"; the search answers with directory hits and the discovery stage simply adds nothing. A query every source misses keeps today's no-match path (paste a job link / Request a company); a typed name alone is never presented as discovery.
 6. **Copy honesty**: the UI says "search any company", never "every company"; Wikidata skews to large/notable companies.
 
@@ -55,14 +55,29 @@ that limit is reported, not hidden.
    the host pattern but not the directory's work-email rule, which would
    wrongly drop dual-use official domains like zoho.com (Zoho Corporation);
    pure consumer-mail families are still refused.
-3. Public-route traffic bounds: single-character queries never reach the
-   sources (COMPANY_DISCOVERY_MIN_QUERY), concurrent asks for one name share
-   a single in-flight upstream round, and Wikimedia requests carry the
-   identifying SkipWait User-Agent. OPEN, stated for review: these are
-   per-query controls only - nothing bounds aggregate upstream traffic across
-   many distinct queries. The app's rate limiter (server/_core) is not wired
-   to this public route; whether to wire it is left to review rather than
-   widened here.
+3. Public-route traffic bounds (instance-local, in-memory): single-character
+   queries never reach the sources (COMPANY_DISCOVERY_MIN_QUERY); concurrent
+   asks for one name share a single in-flight upstream round and spend the
+   budget once; at most 4 upstream rounds run at once; a source 429 pauses
+   ALL discovery upstream calls for 60s; 3 consecutive upstream failures
+   (5xx, timeout, network) open a 30s breaker, reset by a success; and each
+   client IP gets a budget of 20 distinct name CHAINS per 10 minutes, where
+   typing prefixes of a charged name are one chain (ordinary typing of 3-4
+   real searches spends 3-4 of 20, never silently exhausts it). These bounds
+   are per server instance, not fleet-wide. Wikimedia requests carry the
+   identifying SkipWait User-Agent. Client IP: the Worker
+   (src/worker.ts, shared/clientIp.ts) strips client-supplied forwarding
+   headers and writes X-Forwarded-For from CF-Connecting-IP, which Express
+   (trust proxy) reads - the contract is pinned by server/clientIpEdge.test.ts;
+   whether the live deployment fronts every path with that Worker is
+   deployment enforcement this packet does not verify.
+3b. Degraded is said out loud, never cached publicly: any limit or upstream
+   failure answers with discoveryState "degraded" + a reason (rate_limited /
+   busy / unavailable), Cache-Control "private, no-store", and whatever a
+   fresh-or-stale cache holds - so a throttled or failed discovery can never
+   read as "no such company" to this visitor or poison a shared cache for
+   others. The client shows a "briefly limited" line and never treats a
+   degraded empty as a no-match. Directory results are unaffected either way.
 4. Qualification: typed non-companies (product, software/suite, website,
    place, work, band) are dropped even when their description mentions a
    company (the Zoho Office Suite / production-site noise); typed evidence

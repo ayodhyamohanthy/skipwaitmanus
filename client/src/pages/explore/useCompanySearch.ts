@@ -28,9 +28,10 @@ const acceptedByRoute = (q: string) => companySearchQuerySchema.safeParse({ q })
 
 export type CompanySuggestion = ReturnType<typeof companySearchResponseSchema.parse>["companies"][number];
 export type DiscoveredSuggestion = DiscoveredCompany;
+export type DiscoveryState = "ok" | "degraded";
 
 /** One `q`, trimmed; the response is parsed with the route's own strict schema (no availability key, at most 10). */
-export async function fetchCompanySearch(query: string): Promise<{ companies: CompanySuggestion[]; discovered: DiscoveredSuggestion[] }> {
+export async function fetchCompanySearch(query: string): Promise<{ companies: CompanySuggestion[]; discovered: DiscoveredSuggestion[]; discoveryState?: DiscoveryState }> {
   const q = query.trim();
   let response: Response;
   try {
@@ -43,7 +44,7 @@ export async function fetchCompanySearch(query: string): Promise<{ companies: Co
   if (!response.ok) throw new Error(COMPANY_SEARCH_ERROR);
   const parsed = companySearchResponseSchema.safeParse(payload);
   if (!parsed.success) throw new Error(COMPANY_SEARCH_ERROR);
-  return { companies: parsed.data.companies, discovered: parsed.data.discovered ?? [] };
+  return { companies: parsed.data.companies, discovered: parsed.data.discovered ?? [], discoveryState: parsed.data.discoveryState };
 }
 
 function useDebounced(value: string, ms: number): string {
@@ -69,6 +70,10 @@ export interface CompanySearchState {
   suggestions: CompanySuggestion[];
   /** Worldwide candidates the directory does not hold (D-174-worldwide-discovery). */
   discovered: DiscoveredSuggestion[];
+  /** The discovery portion's health on the answered query: "degraded" means worldwide search was limited
+   * (rate limit, budget, saturation or an upstream failure), so an empty `discovered` is not "no such company".
+   * Undefined when discovery did not run (switch off). Directory suggestions are unaffected either way. */
+  discoveryState?: DiscoveryState;
   /** The settled query got an answer with no company in it. */
   noMatch: boolean;
   /** Set only while status is "invalid". */
@@ -95,5 +100,6 @@ export function useCompanySearch(input: string, enabled: boolean): CompanySearch
   if (query !== typed || result.isFetching || result.isPending) return { status: "loading", query: typed, ...empty };
   if (result.isError && isCompanySearchInvalid(result.error)) return { status: "invalid", invalidReason: "refused", query, ...empty };
   if (result.isError) return { status: "error", query, ...empty };
-  return { status: "ready", query, suggestions: result.data.companies, discovered: result.data.discovered, noMatch: result.data.companies.length === 0 && result.data.discovered.length === 0, retry };
+  // A degraded discovery answer is not a no-match: worldwide search was limited, so empty here says nothing.
+  return { status: "ready", query, suggestions: result.data.companies, discovered: result.data.discovered, discoveryState: result.data.discoveryState, noMatch: result.data.companies.length === 0 && result.data.discovered.length === 0 && result.data.discoveryState !== "degraded", retry };
 }

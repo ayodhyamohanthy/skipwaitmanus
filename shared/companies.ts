@@ -161,4 +161,7 @@ export const companySearchResponseSchema = z.object({
   companies: z.array(publicCompanySchema.omit({ openToReferrals: true }).strict()).max(10),
   /** Worldwide candidates the directory does not hold (deduped by domain). Absent when discovery is off. */
   discovered: z.array(discoveredCompanySchema).max(10).optional(),
+  /** Present whenever discovery ran: "degraded" means the discovery portion is incomplete (rate limit, budget, saturation or an upstream failure) and the answer must not be publicly cached; directory results are unaffected either way. */
+  discoveryState: z.enum(["ok", "degraded"]).optional(),
+  discoveryDegradedReason: z.enum(["rate_limited", "busy", "unavailable"]).optional(),
 });
