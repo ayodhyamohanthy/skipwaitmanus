@@ -7305,12 +7305,12 @@
       "owns": [
         "server/companyDiscovery.ts",
         "server/companyDiscovery.test.ts",
-        "server/companyDirectoryRoutes.ts (discovery merge only)",
+        "server/companyDirectoryRoutes.ts",
         "server/companyDirectoryRoutes.test.ts",
-        "shared/companies.ts (search response only)",
-        "client/src/pages/explore/useCompanySearch.ts (discovery plumbing only; the COMPANY_TYPEAHEAD_ENABLED switch line stays with D-174-seeker-journey-build)",
+        "shared/companies.ts",
+        "client/src/pages/explore/useCompanySearch.ts",
         "client/src/pages/explore/companySearch.test.tsx",
-        "client/src/pages/Explore.tsx (company typeahead only)",
+        "client/src/pages/Explore.tsx",
         "docs/plans/D-174-worldwide-discovery.md",
         "docs/plans/assignments.json"
       ]
