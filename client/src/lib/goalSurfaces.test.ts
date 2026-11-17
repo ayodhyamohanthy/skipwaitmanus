@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("goalSurfaces flag module", () => {
   it("releases only what RELEASED lists", () => {
-    expect(releasedGoalSurfaces()).toEqual(["home", "referrer", "referrer-home", "invite", "post-opportunity", "admin", "admin-ops", "alerts", "assistants", "conversation", "developers", "discovery", "email-review", "employer", "employer-talent", "for-companies", "landed", "links", "messages", "onboarding", "plans", "policy", "settings", "share", "start", "suggest-company", "support", "system", "verify"]);
+    expect(releasedGoalSurfaces()).toEqual(["home",  "referrer",  "referrer-home",  "invite",  "post-opportunity",  "admin",  "admin-approvals",  "admin-ops",  "admin-people",  "alerts",  "assistants",  "conversation",  "developers",  "discovery",  "email-review",  "employer",  "employer-billing",  "employer-talent",  "for-companies",  "landed",  "links",  "messages",  "onboarding",  "plans",  "policy",  "settings",  "share",  "start",  "suggest-company",  "support",  "system",  "verify"]);
     for (const id of releasedGoalSurfaces()) {
       expect(goalSurfaceIds()).toContain(id);
     }

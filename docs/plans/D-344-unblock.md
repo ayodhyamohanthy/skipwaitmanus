@@ -34,7 +34,7 @@ This is the wording slice of `D-222-referral-count-shell`. The shell count is th
    - Compact (phone) pill: keeps a unit, `{n} referrals` (`1 referral`). It is never a bare number.
    - `aria-label`: `{n} referrals left. Open plan details`.
    - The loading, error ("Balance didn't load" + Retry) and never-show-0-on-failure behaviour, the link target, the hook and the count source stay unchanged. The `data-testid` stays the same so nothing else moves.
-2. Update the tests that pin the old words: `client/src/components/goal/goalComposites.test.tsx`, `client/src/components/appShell.test.tsx`, `client/src/pages/myRequests.goal.test.tsx`. Add one assertion that no shell text says "credit".
+2. Update the tests that pin the old words: `client/src/components/goal/goalComposites.test.tsx`, `client/src/components/appShell.test.tsx`, `client/src/pages/myRequests.goal.test.tsx`. Add one assertion that no shell text says "credit". Two more files pin the old aria-label and are added to this row's owns under D-344 (8), both owned by no open row: `client/src/test/goalShellHarness.test.tsx` and `e2e/fixtures.ts` (`readBalance` finds the pill by its label; the e2e journeys would otherwise fail).
 3. Captures at 1280 and 390 of the shell on a seeker route, in `design/goal-ui/captures/shell/`.
 
 Out of scope, staying with `D-222-referral-count-shell`: showing the count on referrer routes, `AppShell.tsx`, and the zero-state and ledger semantics.
@@ -65,12 +65,12 @@ On Nov 16, `PRICING-banded-oct25` was reported blocked five times for the same r
 
 Until then, the owner enables "Allow auto-merge" in the repository settings, and each session turns on auto-merge with the merge-commit method for its own pull request once it is ready.
 
-## D-347 amendment to row 1 (owner, Nov 16)
+## D-347 and D-352 amendments to row 1 (owner, Nov 16)
 
-Row 1 no longer makes review session-level: it removes the review requirement and the landing slot.
+D-347 removed the review requirement; D-352 then restored it for Tier 1 paths only. Row 1 therefore:
 
-1. `scripts/review-gate.mjs` and its CI step (`.github/workflows/ci.yml:112`) no longer fail a pull request for a missing or failed verdict. Remove the step, or make it report-only.
-2. `scripts/nextTaskCore.mjs`: no review stage is handed out. A built task with green CI is handed to its own session to land, never held for a verdict. The `agent/queue/landing` slot is no longer required to land (`LAND_SLOT`, `waitLanding`).
+1. `scripts/review-gate.mjs` asks for one independent pass only when `scripts/tierClassifyCore.mjs` computes Tier 1 from the changed paths (money, sign-in, privacy, migrations, secrets). A row's declared tier alone no longer forces a review. Independence is per session (D-344 (1)): the building or fixing session itself never passes the work, another session of the same model may. A findings verdict followed by a `Fixed` marker from a session other than the reviewer passes with no re-review (D-344 (7)); `--fixed` records `fixed <sha>`, and a later own commit needs a new `Fixed` marker.
+2. `scripts/nextTaskCore.mjs`: the picker's builder/fixer exclusion compares sessions, not models. Every pull request lands through auto-merge on green required CI, with no landing slot needed (D-347 (2)). Follow-up, not required for this row: hand out a review only for Tier 1 paths, and the landing rather than a re-review after a `Fixed` marker.
 3. `scripts/nextTaskText.mjs`: the land step says to turn on auto-merge with the merge-commit method for your own pull request and to press "update branch" when `main` moves.
 4. Update the tests that pinned the old rules. Port any assertion you remove (GATE-test-integrity), and list it in the PR's "Ported assertions" table.
 5. Unchanged: every required CI check, test-integrity, and the pinned login and money tests.
@@ -82,3 +82,38 @@ Row 1 no longer makes review session-level: it removes the review requirement an
 3. Set exactly `REVIEWER_SEEKER_PASSWORD_HASH` and `REVIEWER_REFERRER_PASSWORD_HASH` as Worker secrets through the Cloudflare API, the way `db-cutover-secret.yml` sets `DATABASE_URL`. Never print a value. Never touch the admin or employer hashes, `REVIEWER_ALLOW_ADMIN` or `REVIEWER_LOGIN_ENABLED`.
 4. Secrets reach the container on its next start (AGENTS.md, Deploy), so say in the run summary that the next deploy applies them.
 5. Proof: one dry run that refuses a malformed hash, shown in the PR. Passwords are generated outside the workflow, and only their hashes are inputs.
+
+## Row 7: `GATE-unit-shards` (Tier 2, lane `gate-unit-shards`; D-351)
+
+On Nov 16 the unit-test job took 7 min 20 s on PR #1215, while every other required check took about a minute. It was the slowest step before every merge.
+
+1. In `.github/workflows/ci.yml`, split the Vitest step into a matrix of 3 shard jobs, each running `pnpm vitest run --shard=<n>/3`. Keep each job's install and classify steps, so a marker-only change still skips them.
+2. **Keep the required check name.** Add a final job named exactly `unit + component + route tests` that `needs:` the three shards. It fails unless every shard succeeded (or was skipped as marker-only), and runs with `if: always()`. Name the shard jobs differently, for example `unit tests (shard 1/3)`, so the required check still reports exactly once.
+3. The shards together run the full suite with no exclusions; keep the comment above the Vitest step that forbids `--exclude`. Prove it with a run whose three shard test counts sum to the old single-job count, quoted in the PR.
+4. Shares `ci.yml` with `GATE-merge-queue` and `GATE-release-captures` under D-314: the second to land merges `main` and keeps both changes.
+5. Proof: the PR's own CI showing the three shards and the aggregate check, and the wall-clock time against the 7 min 20 s baseline.
+
+## Row 8: `PICKER-path-tier-review` (Tier 2; D-353 (1))
+
+1. `scripts/next-task.mjs` computes, for each open PR of a non-done task, its changed paths against `origin/main` (reuse `changedPathsOf` from `scripts/review-gate.mjs`) and passes the result into the core.
+2. `scripts/nextTaskCore.mjs` adds one `needsReview(v)` helper, applying the same rule as the CI gate: the paths compute Tier 1, or the row is declared Tier 1 and the diff touches `server/`, `shared/`, `drizzle/`, `functions/` or `src/worker.ts`. Use it everywhere the stage logic now reads `v.task.tier === 1`. A PR that needs no review follows the Tier 2 path: land on green CI.
+3. After a findings verdict and a `Fixed` marker bound to the current head by a session other than the reviewer, hand out no re-review. The PR lands through auto-merge on green CI.
+4. Red-first tests in `scripts/nextTaskPathTier.test.ts`: a declared Tier 1, client-only PR gets no review stage; a server-side one does; a bound Fixed marker gets no re-review.
+
+## Row 9: `PICKER-claim-task` (Tier 2; D-353 (2))
+
+`node scripts/next-task.mjs --claim "<name>" --task <id>` runs the normal pick restricted to that one task, with the same red-main, ownership, dependency, lane and independence rules. When the task is not eligible for this session, it prints the reason the picker recorded (waits for X, held by Y, you built it) and claims nothing. Tests in `scripts/nextTaskClaimTask.test.ts`.
+
+## Row 10: `GATE-tier-classifier-gaps` (Tier 2; D-353 (3))
+
+1. `tierReasonPaths` evaluates every `server/db.ts` hunk before deduplicating the path.
+2. Add `server/creditCycles.ts` and `server/planCreditCycleJob.ts` to `TIER1_MONEY`.
+3. Red-first regressions in `scripts/tierClassify.test.ts`.
+
+## Status
+
+- PICKER-block-dedupe: landing candidate — GPT-6.1 Sol · edc8 — 2026-11-16 — PR #1229, tested source `1e2696f1`, latest main `88494eba` integrated (docs/status only). D-353 path-tier facts, evidence/timestamps and repeated `--avoid` handling preserved. Decisions checked through D-355. CI [43923100680](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/43923100680): all checks green; 7,373 tests passed / 18 existing skips, typecheck, production builds, e2e, test-integrity and scope passed. Local 99/99 focused, typecheck/build/audits/scope and real status passed. Local full suite stopped after an unchanged classifier fixture timed out (also in isolation); earlier reviewer timeout passed unchanged in the full run. No test weakened. Registry status becomes done only on this PR's merge; final-head CI/merge still pending. Original red-first: 8 failed / 5 passed. No product/runtime deployment, provider or migration change.
+- PICKER-path-tier-review: in progress — Claude Code · 9d90 — 2026-11-16 — branch agent/queue/picker-path-tier-review.
+- GATE-unit-shards: done — `1495334b` (PR #1224, Claude Code · 9d90, 2026-11-16). `ci.yml` runs the unit suite as the matrix job `unit tests (shard n/3)` (`pnpm vitest run --shard=n/3`, fail-fast off, same fetch/classify/install steps), and the required check `unit + component + route tests` is an aggregate that `needs:` the shards, runs with `if: ${{ always() }}` and exits 1 unless their result is `success`. `scripts/ciMarkerSkip.test.ts` ports the single-job and no-`needs:` assertions to that shape (38 to 57 assertion lines, 28 to 34 tests), taken under D-344 (8) through registry PR #1223. **Proof, CI run 43886619326 on `d54f7f89`:** shards 2,401 + 2,417 + 2,508 = 7,326 passed, 12 + 6 + 0 = 18 skipped, files 241 + 240 + 240 = 721 (716 passed, 5 skipped). The single-job run 43885114982 on the same base (#1223) gave 7,320 passed / 18 skipped over the same 721 files; the difference is exactly the 6 tests this PR added. Whole run 3 min 26 s (shard jobs 3:18, 3:16, 2:55; aggregate 3 s) against 7 min 01 s for the single unit job on that base (Vitest step 6:15) and the 7 min 20 s baseline on #1215.
+- PROCESS-session-review-independence: done — Claude Code · ff5a — 2026-11-16 — branch agent/queue/process-session-review. The CI review gate needs a review only for Tier 1 paths (D-352), counts independence per session (D-344 (1)), and lands findings plus a Fixed marker without a re-review (D-344 (7)). `--fixed` records `fixed <sha>`, and the picker's did() compares sessions. Follow-up, not built here: after a Fixed marker the picker still hands out a re-review rather than the landing, which wastes time but blocks nothing, because auto-merge lands the PR when CI is green. The landing slot is still in picker code; sessions land through auto-merge regardless.
+- D-344-shell-referral-words: in progress — Claude Code · 5660 — 2026-11-16 — branch agent/queue/d344-shell-referral-words. The shell pill says "N referrals left" ("1 referral left"), "N referrals" on phones, aria "N referrals left. Open plan details"; loading, error, link, hook and count source unchanged. Two files outside the original owns pinned the old label (`client/src/test/goalShellHarness.test.tsx`, `e2e/fixtures.ts`, both owned only by done rows); they are added to this row's owns under D-344 (8). Captures in `design/goal-ui/captures/shell/`.

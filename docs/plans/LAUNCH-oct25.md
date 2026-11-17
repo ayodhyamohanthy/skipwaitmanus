@@ -22,10 +22,10 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 ## Owner confirmations recorded here (2026-10-25)
 - ZeptoMail delivers work-email codes to corporate inboxes (owner, in a Claude Code session). The referrer sign-in path needs no email work before outreach.
 
-## Row LAUNCH-legal-copy (Tier 2; the owner approves the text before it lands)
+## Row LAUNCH-legal-copy (Tier 2; market-standard wording pre-approved by D-345)
 **Goal.** Make three public statements true. **D-345 (owner, Nov 16):** the owner approved market-standard wording in advance, within D-345 (1)'s limits, so no approval comment is needed. The row lands on green required CI with 1280/390 captures. Anything outside those limits (a price, a new refund right, a new data use) still goes to the owner.
 
-**Current text (verified):**
+**October 25 audit baseline (historical; superseded by the November 16 redraft below):**
 1. `client/src/pages/Terms.tsx:23` (summary bullet): "Referrals are always free. Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes." Asks cost referrals (D-173), and packs are sold for money. Section 03 of the same page is already correct.
 2. `client/src/pages/CancellationPolicy.tsx:25`: "The reserved credit is returned to your balance immediately. No money is charged for a request, so there is nothing to refund."
    - A withdraw before pickup returns the referral once.
@@ -33,10 +33,12 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
    - Paid referrals are bought with money, so "no money is charged" needs care.
 3. `client/src/pages/TrustPrivacy.tsx:58` names only Chargebee, Razorpay and PayPal. WorkOS (sign-in), ZeptoMail (email codes), Sentry (error reports; its DSN is in the live bundle) and Cloudflare (hosting) also process personal data.
 
-**Proposed text (the owner may change any word):**
+**October 25 proposal (historical; superseded by D-345 and the November 16 runtime audit):**
 1. Terms bullet: "Each ask uses one referral from your balance, taken only when a verified employee can see it. Free accounts get 3 referrals a month; referral packs add more. Plans and packs never buy priority or outcomes."
 2. Cancellation bullet: "The referral comes back to your balance at once, except a free monthly referral from a month that has already ended. After a verified employee claims or declines the request, the referral stays used."
 3. Privacy: one sentence that names WorkOS (sign-in), ZeptoMail (email), Sentry (error reports), Cloudflare (hosting) and Chargebee with Razorpay and PayPal (payments), and what each receives.
+
+**Current redraft, November 16 (D-345).** State paused legacy-pack and new-plan sales; 3 referral requests per calendar month, no carry-forward and card verification when required; no return after a claimed request is declined, even if withdrawn after reopening; conditional pre-pickup returns; resume access only on acceptance. Name existing processors, including Microsoft Clarity's interaction/replay and storage-choice behavior. State the Indian sole proprietorship and no GST registration or GST charge. Retain existing purchase refund rights and add only the permitted standard clauses. This supports trust across L1-L4 without a new service behavior, funnel event or data use.
 
 **Files:**
 - In scope: `client/src/pages/Terms.tsx`, `client/src/pages/CancellationPolicy.tsx`, `client/src/pages/TrustPrivacy.tsx`, `client/src/pages/policyPages.test.tsx`, `client/src/pages/trustPrivacy.test.tsx`.
@@ -47,7 +49,7 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 - `trustPrivacy.test.tsx` asserts each processor name appears.
 - Each is red on today's code.
 
-**Done:** the owner's approval comment on the PR, the gate (`pnpm check`, the two test files, `pnpm build`), 1280 and 390 captures of the three pages, and the row set to `done`.
+**Done:** wording within D-345 (1), green required CI, the gate (`pnpm check`, the two test files, `pnpm build`), 1280 and 390 captures of the three pages, and the row set to `done`. No per-PR owner approval comment is required.
 
 **Stop and ask if** the owner changes the money meaning of a sentence (for example, refunds on a decline). That is D-147's territory: report it `blocked` with the question.
 
@@ -106,5 +108,6 @@ Two rows already on `main` complete the batch and are moved to the top of the qu
 
 ## Status
 
-- **2026-10-25, LAUNCH-legal-copy waits on the owner (unblock ruling by Qoder · bbc5, D-200 (2)).** The checks half of Cue GPT · 5588's block is stale: typecheck, tests, build and Workers Builds are all green on `c8ecc53a`. The owner-approval half stands and only the owner can clear it (D-200 (6), the lasting D-001 rule). One correction is needed first: in `CancellationPolicy.tsx` bullet 3, "the referral comes back if you withdraw it then" is false - a claimed-then-passed request withdraws with no refund (`withdrawCompanyReferralRequest` sets `creditRefunded` false) and D-147 keeps a declined referral spent, so this row's own proposed wording is the true one: "After a verified employee claims or declines the request, the referral stays used." The owner approves or amends the exact wording in a comment on PR #659; then a session applies it, runs the gate, adds the 1280/390 captures and lands.
+- **2026-11-16, LAUNCH-legal-copy acceptance complete; protected landing and live proof pending — GPT-6.1 Sol · 8b28, PR #659.** Source `9757140d`, integrated head `341db243`, current main `7fbbbc7b`; D-345 through D-350 checked with BRIEF, PRD, AGENTS, BUILD_CONTINUITY and COLLABORATION. [Required CI](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/43865029479) passed typecheck, production build, end-to-end journeys and the full suite: 715 files / 7,294 tests passed, 18 tests skipped by the existing suite. Local compiler passed. The local full suite was stopped incomplete after failures in the picker re-record-pass and referral-conversation private-decline cases; both cases then passed unchanged in isolation on baseline main and on `341db243` (2/2 each). This does not claim a green local full suite or an established pre-existing defect. Focused policies remain 18/18 and six inspected 1280/390 browser cases passed. The row is set done in this landing PR; it is not reported shipped until required checks on the final status commit, protected merge and canonical production proof complete.
+- **2026-11-16, LAUNCH-legal-copy redraft verified locally — GPT-6.1 Sol · 8b28, PR #659.** Official picker assigned LAND; task takeover `2099102b` is on origin. Main `becc0abe` merged as `a5c8bea3`; newer main `dcb6d7ae` and D-347/D-348 read before final integration (landing slot retired, required CI retained). D-345 supersedes the October owner-comment hold. Corrected claimed-then-declined withdrawal, acceptance-only resume access, paused sales, conditional allowance eligibility, existing processor disclosures including Microsoft Clarity, no-GST business statement and standard clauses; existing refund rights retained. No service, payment, schema, dependency or flag change. Card verification is not enforced by `openCycleTx` yet, so it is conditional. Red-first focused run: 6 failed / 12 passed; final: 18/18 passed. Production build, token audit, migration lint, deploy-trigger and local scope checks passed. Clean Playwright contexts: all three routes at 1280/390, six captures inspected, no overflow or page errors. Evidence files `legal-qa-8b28.json` and `legal-{terms,cancellations,privacy}-{1280,390}-8b28.png` are retained outside the public repo. Full suite, current-main CI, protected landing and production proof remain pending; not shipped.
 - LAUNCH-marker-ci-skip: done — 0697edfc (code head; landed under D-082 with this status commit on top). Job-level `if:` on `check`, `test` and `build` skips `pull_request` events whose head ref starts with `agent/reports/`, `agent/review/`, `agent/heartbeat/` or `agent/architect/`, or equals `agent/queue/landing`; `push` to main and task branches (`agent/queue/<task>`, `agent/<model>/<task>`) are unaffected because the condition is `pull_request`-only. Built by an Instinct coordinator session (PR #658). Landed by DeepSeek V4.1 Flash · c302, who verified rather than took it on trust: `scripts/ciMarkerSkip.test.ts` is red on main's workflow (3 failed / 3 passed) and 6/6 green on this one; `scope-check --branch` reports 2 owned paths with every change inside them; the conflict probe prints 0 against `main` and against `agent/queue/launch-legal-copy`; `tsc --noEmit` clean on the merged head. Required CI green on `06e20175` and re-run on the merged head.
