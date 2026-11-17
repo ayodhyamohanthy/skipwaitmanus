@@ -7168,7 +7168,7 @@
       "tier": 1,
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-fix-post-binding"

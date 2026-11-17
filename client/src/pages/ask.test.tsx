@@ -127,13 +127,13 @@ describe("Ask composer page (goal, W2)", () => {
     expect(document.querySelector("[data-skipwait-screen='ask']")).toBeTruthy();
   });
 
-  it("resolves the company from the job link: verified mark, back link and honest hint follow", async () => {
+  it("resolves the company from the job link: privacy mark, back link and honest hint follow (D-176)", async () => {
     stub();
     renderPage();
     expect((await screen.findByRole("link", { name: /All companies/ })).getAttribute("href")).toBe("/explore");
     fillLink();
     expect(await screen.findByTestId("goal-verified-mark")).toBeTruthy();
-    expect(screen.getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
+    expect(screen.getByTestId("goal-verified-mark").textContent).toContain("Only verified Wipro employees can see it");
     expect(screen.getByText("Matches Wipro’s careers site")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Wipro/ }).getAttribute("href")).toBe("/explore/wipro");
     expect(screen.getByText("Wipro · Product Designer")).toBeTruthy();
