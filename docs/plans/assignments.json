@@ -361,17 +361,19 @@
       "tier": 2,
       "lane": "picker-claim-task",
       "branch": "agent/queue/picker-claim-task",
-      "status": "todo",
-      "syncedTo": "D-353",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PROCESS-session-review-independence"
       ],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskCore.mjs",
-        "scripts/nextTaskClaimTask.test.ts"
+        "scripts/nextTaskClaimTask.test.ts",
+        "scripts/nextTaskClaimTaskCli.test.ts",
+        "scripts/nextTaskText.mjs"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 9. Same eligibility, order, ownership and dependency rules as a normal claim; it only narrows the choice to one task."
+      "note": "Done effective on PR #1248 merge (GPT-6.1 Sol · 4ebf), final source 1f76c980. --claim/--as with --task selects only that task under normal eligibility; refusal exits 6 without a claim; race retries the same task; successful preview claim commands retain --task. Quiet red/blocked holds repaired red-first (2 failed/20 controls); preview repaired red-first (1 failed/22 controls). Final focused31/31, consumers229/229, tsc/build and scope/integrity/token/migration/trigger checks pass; CI44087260003 green7677pass18skip8E2E. Advisory review's sole finding fixed, delta review clean. Local full gate edfb0db0 failed6/7669pass18skip; three files isolated20/20; final redundant rerun stopped during slow Git fixtures, never claimed green. Status-only final CI and protected merge remain required. Decisions through D356; prior local-only work preserved; no product runtime/settings change."
     },
     {
       "id": "GATE-tier-classifier-gaps",
@@ -2312,8 +2314,8 @@
       "tier": 1,
       "lane": "d048-fix-admin-approvals-copy",
       "branch": "agent/queue/993-kit-admin-approvals-failure-copy",
-      "status": "todo",
-      "syncedTo": "D-301",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [],
       "owns": [
         "client/src/pages/AdminApprovalQueue.tsx",
@@ -2333,7 +2335,7 @@
       "lane": "d048-release-home-signed-in",
       "branch": "agent/queue/d048-r-home-signed-in",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-048-p3-home-signed-in"
       ],
@@ -2345,7 +2347,7 @@
         "client/src/pages/homeSignedIn.goal.test.tsx",
         "design/goal-ui/captures/home/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-home-signed-in, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"home-signed-in\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=home-signed-in); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-home-signed-in's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Seeker to /explore, verified referrer to /referrer-home by the server verdict only. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-home-signed-in, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. Nov 17 runtime landed: PR #1255 source 789c4ead, merge/web 0dc1b07d. PR CI 44105048473 passed 7677 tests, 8 journeys and both 1280/390 captures (artifact 14337577321); main CI, Pages and Release verify 44110594208 passed. API remains healthy on expected unchanged 9d6543b3. Packet and design/goal-ui/captures/home/release-2026-11-17.json retain proof. Not done: real authenticated production QA and 24-hour Sentry watch remain unverified. Reviewer passwords unavailable and paired browser offline in Codex GPT-6 · 2295 session; LAUNCH-live-qa remains the owner-held live-QA carrier. Do not duplicate the shipped switch or treat a merge as completed acceptance.",
       "epic": "D-048-p3"
     },
     {
@@ -2713,7 +2715,7 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-057-session-gate"
       ],
@@ -5764,6 +5766,17 @@
       "owns": [
         "server/reviewDeliveryRetry.ts",
         "server/reviewDeliveryRetry.test.ts",
+        "server/reviewDeliveryAlerts.ts",
+        "server/db.ts",
+        "drizzle/schema.ts",
+        "drizzle/deploy/0122_review_delivery_owner_alerts.sql",
+        "server/schemaReconcile.ts",
+        "e2e/review-email-retry.e2e.ts",
+        "AGENTS.md",
+        "docs/BRIEF.md",
+        "docs/DECISIONS.md",
+        "docs/KIT_V4_BUILD_PLAN.md",
+        "docs/PRD.md",
         "server/scheduledJobRegistry.ts (switch only)",
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
@@ -7157,7 +7170,7 @@
       "tier": 1,
       "lane": "d174-journey-door",
       "branch": "agent/queue/d174-journey-door",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-281",
       "dependsOn": [
         "D-174-fix-post-binding"
