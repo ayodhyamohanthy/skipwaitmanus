@@ -381,8 +381,8 @@
       "tier": 2,
       "lane": "gate-tier-classifier",
       "branch": "agent/queue/gate-tier-classifier-gaps",
-      "status": "todo",
-      "syncedTo": "D-353",
+      "status": "done",
+      "syncedTo": "D-356",
       "dependsOn": [
         "PROCESS-session-review-independence"
       ],
@@ -390,7 +390,7 @@
         "scripts/tierClassifyCore.mjs",
         "scripts/tierClassify.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 10. Red-first: a neutral first db.ts hunk followed by a credit hunk computes Tier 1; server/creditCycles.ts and server/planCreditCycleJob.ts compute Tier 1."
+      "note": "Done effective on PR #1247 merge (GPT-6.1 Sol · fa4c), implementation 298e0edf. Every db.ts hunk is classified before Tier 1 reasons are deduplicated; both credit-cycle modules are explicit Tier 1 money. Red-first 3 failed / 17 passed; focused 87/87. Fresh full gate on 0bbb9afb: 7538 passed / 18 skipped, typecheck/build/postbuild passed; initial CI 44028654683 also passed with 8/8 E2E. Main c17d3f7a integrated in 94f50e59; integration typecheck and 186/186 focused tests passed. Historical timeout and isolated fixture pass are retained separately in the packet. Final-candidate required CI and protected merge remain required. Decisions checked through D-356; no product runtime change."
     },
     {
       "id": "PRICING-banded-oct25",
