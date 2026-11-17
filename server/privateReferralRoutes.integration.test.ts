@@ -2,7 +2,8 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
-import { CoverageOpenedUpError } from "./planGates";
+import { AskPriceChangedError, CoverageOpenedUpError } from "./planGates";
+import { askPriceChangedSchema, type AcceptedAskCost } from "../shared/acceptedAskCost";
 import { publicAskRef } from "./askRef";
 
 describe("authenticated work email OTP routes", () => {
@@ -139,6 +140,82 @@ describe("private referral HTTP routes", () => {
     const confirmed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." });
     expect(confirmed.status).toBe(201);
     expect(seenExpected).toBeUndefined();
+  });
+
+  // D-132-item3 ruling 7: a covered ask whose cost changed is refused with 409 and its current cost;
+  // the only side effect is one denied audit event, and nothing is delivered to referrers.
+  it("D-132-item3: a changed cost answers 409 ask_price_changed with one denied event and no delivery", async () => {
+    const app = express();
+    app.use(express.json());
+    const acceptedCost: AcceptedAskCost = { units: 1, band: null, source: [{ bucket: "purchased", units: 1 }] };
+    const recordActivity = vi.fn<NonNullable<PrivateReferralRouteDeps["recordActivity"]>>(async () => {});
+    const prepareReferrerReviewEmailNotifications = vi.fn(async () => []);
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async () => { throw new AskPriceChangedError(acceptedCost); },
+      prepareReferrerReviewEmailNotifications,
+      recordActivity,
+    });
+    const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000003").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", expectedCost: { units: 1, band: null, source: [{ bucket: "cycle", units: 1 }] } });
+    expect(response.status).toBe(409);
+    expect(askPriceChangedSchema.safeParse(response.body).success).toBe(true);
+    expect(response.body).toMatchObject({ code: "ask_price_changed", acceptedCost });
+    expect(response.body.error).toContain("Nothing was sent and nothing was charged");
+    const events = recordActivity.mock.calls.map(([event]) => event);
+    expect(events.filter(event => event.action === "company_referral.price_changed")).toEqual([
+      { actorUserId: 1, action: "company_referral.price_changed", outcome: "denied", resourceType: "referral_request" },
+    ]);
+    expect(events.some(event => event.action === "company_referral.created")).toBe(false);
+    expect(prepareReferrerReviewEmailNotifications).not.toHaveBeenCalled();
+  });
+
+  // D-132-item3 ruling 2: `expectedCost` is the quote's acceptedCost object, never the bare number `cost`.
+  it("D-132-item3: expectedCost is parsed strictly before any creation", async () => {
+    const app = express();
+    app.use(express.json());
+    const seen: unknown[] = [];
+    const createCompanyReferralRequest = vi.fn(async (_userId: number, input: { expectedCost?: unknown }) => {
+      seen.push(input.expectedCost);
+      return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 0 };
+    });
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest,
+      recordActivity: async () => {},
+    });
+    const send = (expectedCost?: unknown) => request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000004").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", ...(expectedCost === undefined ? {} : { expectedCost }) });
+    const bareNumber = await send(1);
+    expect(bareNumber.status).toBe(400);
+    expect(bareNumber.body.error).toBe("Confirm the cost again before sending.");
+    const malformed = await send({ units: 1, band: null, source: [{ bucket: "not-a-bucket", units: 1 }] });
+    expect(malformed.status).toBe(400);
+    expect(malformed.body.error).toBe("Confirm the cost again before sending.");
+    expect(createCompanyReferralRequest).not.toHaveBeenCalled();
+    const acceptedCost: AcceptedAskCost = { units: 1, band: null, source: [{ bucket: "cycle", units: 1 }] };
+    expect((await send(acceptedCost)).status).toBe(201);
+    expect(seen).toEqual([acceptedCost]);
+    expect((await send()).status).toBe(201);
+    expect(seen).toEqual([acceptedCost, undefined]);
+  });
+
+  it("D-132-item3: the create response carries what was charged", async () => {
+    const app = express();
+    app.use(express.json());
+    const chargedCost: AcceptedAskCost = { units: 1, band: null, source: [{ bucket: "cycle", units: 1 }] };
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async () => ({ requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1, chargedCost }),
+      recordActivity: async () => {},
+    });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000005").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", expectedCost: chargedCost });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ companyDomain: "acme.com", chargedCost });
   });
 
   it("loads each matching employee's unclaimed request on inbox launch, then removes it after the first claim", async () => {

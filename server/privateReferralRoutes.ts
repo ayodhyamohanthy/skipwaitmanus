@@ -29,7 +29,8 @@ import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDire
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds } from "../shared/askWorkItems";
-import { CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, PlanLimitError } from "./planGates";
+import { AskPriceChangedError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, PlanLimitError } from "./planGates";
+import { acceptedAskCostSchema, askPriceChangedSchema, type AcceptedAskCost } from "../shared/acceptedAskCost";
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
@@ -77,7 +78,13 @@ export type PrivateReferralRouteDeps = {
   revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
   getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus; inviteCode?: string | null } | undefined>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; replayed?: boolean }>;
+  createCompanyReferralRequest: (userId: number, input: { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; expectedCost?: AcceptedAskCost }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; chargedCost?: AcceptedAskCost | null; replayed?: boolean }>;
+  /**
+   * D-132-item3: the cost a covered ask would be charged now, for the quote's
+   * `acceptedCost`. Null means a shortfall; a throw is a pricing failure, never
+   * "no cost". Omitted by callers that do not price a quote (tests).
+   */
+  previewAskCost?: (userId: number, targetRoleUrl: string) => Promise<AcceptedAskCost | null>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -750,8 +757,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const summary = (await deps.getCreditSummary?.(identity.account.id, "job_seeker")) as { totalAvailable?: unknown } | undefined;
       const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : null;
       if (totalAvailable === null) return res.status(500).json({ error: "We could not load your referral credits" });
+      // D-132-item3: the accepted-cost identity beside the numeric cost. It is a snapshot of the
+      // spend that would happen now; the create-time guard is what makes the charge atomic.
+      const acceptedCost = deps.previewAskCost ? await deps.previewAskCost(identity.account.id, normalizeTargetRoleUrl(url)) : undefined;
       res.set("Cache-Control", "private, no-store");
-      res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) });
+      res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable), ...(acceptedCost === undefined ? {} : { acceptedCost }) });
     } catch { res.status(500).json({ error: "We could not price this ask" }); }
   });
   app.post("/api/company-referrals", async (req, res) => {
@@ -772,6 +782,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const note = resolveAskNote(req.body);
       if (!note.ok) return res.status(400).json({ error: note.error });
       const personalPitch = note.personalPitch;
+      // D-132-item3: the cost the seeker accepted. A present but malformed value (including the bare
+      // numeric `cost`) is refused before any work, so a wrong shape can never be read as a cost.
+      const expectedCostParse = acceptedAskCostSchema.safeParse(req.body?.expectedCost);
+      if (req.body?.expectedCost !== undefined && !expectedCostParse.success) return res.status(400).json({ error: "Confirm the cost again before sending." });
+      const expectedCost = expectedCostParse.success ? expectedCostParse.data : undefined;
       const safeCompensation = typeof compensation === "string" && compensation.trim() ? compensation.trim().slice(0, 80) : undefined;
       const safeFastTrackCode = typeof fastTrackCode === "string" && /^[a-zA-Z0-9-]{16,64}$/.test(fastTrackCode) ? fastTrackCode : undefined;
       const safeFastTrackCompanySlug = typeof fastTrackCompanySlug === "string" && /^[a-z0-9-]{1,48}$/.test(fastTrackCompanySlug) ? fastTrackCompanySlug : undefined;
@@ -801,7 +816,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const pinnedWork = askWorkItemIdsSchema.safeParse(req.body?.workItemIds ?? []);
       if (!pinnedWork.success) return res.status(400).json({ error: "Pin work from your showcase, or send the ask without it." });
       const pinnedWorkIds = dedupeAskWorkItemIds(pinnedWork.data);
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}) });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}), ...(expectedCost ? { expectedCost } : {}) });
       // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
       // the ask is already committed, each send has a durable claim/lease row, and every
       // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
@@ -830,6 +845,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (error instanceof CoverageOpenedUpError) {
         record({ actorUserId, action: "company_referral.coverage_changed", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain });
         return res.status(409).json({ error: error.message, code: error.code, companyDomain: error.companyDomain });
+      }
+      // D-132-item3: the accepted cost no longer matches what would be charged - the transaction rolled
+      // back, so nothing was sent or charged. The one denied event is the only side effect; the composer
+      // shows `acceptedCost` and needs a second confirmation.
+      if (error instanceof AskPriceChangedError) {
+        record({ actorUserId, action: "company_referral.price_changed", outcome: "denied", resourceType: "referral_request" });
+        return res.status(409).json(askPriceChangedSchema.parse({ error: error.message, code: error.code, acceptedCost: error.acceptedCost }));
       }
       // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
       // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.
