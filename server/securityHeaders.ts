@@ -7,8 +7,8 @@ import { CSP_REPORT_PATH, handleCspReport } from "./cspReport";
 const HSTS_MAX_AGE_SECONDS = 15552000;
 
 // D-100.csp-enforce: the enforcing header is built but stays off. Only
-// D-100.csp-release flips this, after seven days of reports from the
-// report-only policy and the CEO's sign-off. Off, the response is unchanged.
+// D-100.csp-release flips this after 48 hours of page reports and desktop/mobile
+// verification (D-350). Off, the response is unchanged during collection.
 export const CSP_ENFORCED = false;
 
 export const CSP_POLICY = `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; report-uri ${CSP_REPORT_PATH}`;
