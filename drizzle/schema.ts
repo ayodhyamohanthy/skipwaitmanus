@@ -648,12 +648,16 @@ export const referralReviewDeliveries = mysqlTable("referralReviewDeliveries", {
   leaseOwner: varchar("leaseOwner", { length: 64 }),
   leaseExpiresAt: timestamp("leaseExpiresAt"),
   nextAttemptAt: timestamp("nextAttemptAt"),
+  ownerAlertStatus: mysqlEnum("ownerAlertStatus", ["pending", "leased", "sent"]),
+  ownerAlertLeaseOwner: varchar("ownerAlertLeaseOwner", { length: 64 }),
+  ownerAlertLeaseExpiresAt: timestamp("ownerAlertLeaseExpiresAt"),
+  ownerAlertSentAt: timestamp("ownerAlertSentAt"),
   providerMessageId: varchar("providerMessageId", { length: 255 }),
   lastError: varchar("lastError", { length: 255 }),
   sentAt: timestamp("sentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [ foreignKey({ name: "referralReviewDeliveries_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt)]);
+}, table => [ foreignKey({ name: "referralReviewDeliveries_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt), index("referral_review_owner_alert_idx").on(table.ownerAlertStatus, table.ownerAlertLeaseExpiresAt, table.id)]);
 
 export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   id: int("id").autoincrement().primaryKey(),

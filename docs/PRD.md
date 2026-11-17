@@ -19,7 +19,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 
 ## Happiness measures (count-only, weekly three-count report)
 - Seeker: asks answered within 5 days vs expired.
-- Referrer: second action within 30 days; median time to first action.
+- Referrer: second action within 30 days; median time to first action. `REL-review-email-retry` (PR #874, loop L4) repairs missed review-email recovery with a five-attempt cap and durable owner notices; migration, required CI and live first-run acceptance remain pending.
 - Annoyance: report-as-annoying taps; per idea opened / acted / annoying counts.
 
 ## Roadmap (status board)

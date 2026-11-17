@@ -14,8 +14,9 @@
 // pending, not paused or opted out, not passed, first look, assigned referrer,
 // blocked pairs). Only the due row's own referrer is sent to, with that
 // referrer's own token, through the same claim/complete lease as the first
-// attempt, so two runs never send twice. The job writes no token and never
-// rotates a grant. When the fifth attempt fails the owner is emailed once.
+// attempt. The job writes no token and never rotates a grant. A fifth failure
+// persists an owner-alert obligation; the separate leased alert worker retries
+// refusals and abandoned acknowledgements without reopening user-email sends.
 import { and, asc, eq, gt, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { referralRequests, referralReviewDeliveries, referrerReviewEmailLinks } from "../drizzle/schema";
@@ -25,6 +26,8 @@ import type { TransactionalEmailResult } from "./emailDelivery";
 import { sendAdminAlertEmail } from "./errorAlerting";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
+import { deliverReviewOwnerAlerts } from "./reviewDeliveryAlerts";
+export { REVIEW_DELIVERY_ALERT_LEASE_MS } from "./reviewDeliveryAlerts";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
 export const REVIEW_DELIVERY_RETRY_BATCH = 50;
@@ -102,10 +105,9 @@ export function createReviewDeliveryRetry(overrides: Partial<ReviewDeliveryRetry
   return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
     const due = await deps.listDue(new Date(nowMs), REVIEW_DELIVERY_RETRY_BATCH);
     const output: JobRunOutput = { processed: 0, failed: 0 };
-    if (due.length === 0) return output;
-    // A due row and no origin to build its link from: fail the window loudly rather than skip silently.
-    const origin = deps.origin();
-    if (!origin) throw new ReviewDeliveryOriginMissingError();
+    // Owed owner alerts remain due even when no user email may be attempted.
+    const origin = due.length ? deps.origin() : undefined;
+    if (due.length && !origin) throw new ReviewDeliveryOriginMissingError();
     const fail = (error: unknown) => { output.failed += 1; if (output.firstError === undefined) output.firstError = error; };
     const byRequest = new Map<number, DueReviewDelivery[]>();
     for (const row of due) byRequest.set(row.requestId, [...(byRequest.get(row.requestId) ?? []), row]);
@@ -120,7 +122,6 @@ export function createReviewDeliveryRetry(overrides: Partial<ReviewDeliveryRetry
         let claim: { id: number; attemptCount: number } | undefined;
         try { claim = await deps.claim(requestId, row.referrerId, "email", leaseOwner); } catch (error) { fail(error); continue; }
         if (!claim) continue; // another runner holds it, or it is no longer due
-        const attempt = claim.attemptCount + 1;
         let result: CompleteResult;
         try {
           const sent = await deps.send({ to: link.email, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` });
@@ -130,17 +131,13 @@ export function createReviewDeliveryRetry(overrides: Partial<ReviewDeliveryRetry
         }
         try {
           const recorded = await deps.complete(claim.id, leaseOwner, result);
+          if (!recorded.recorded) { fail(new Error("Review email retry could not record its delivery outcome")); continue; }
           if (result.status === "sent") { output.processed += 1; continue; }
           fail(new Error(`review email retry ${result.status}: ${result.error ?? "unknown"}`));
-          if (recorded.recorded && attempt >= REVIEW_DELIVERY_MAX_ATTEMPTS) {
-            await deps.alertOwner({
-              subject: "Referrer review email gave up after 5 attempts",
-              text: [`A referrer's review email for referral request ${requestId} (channel: email) failed ${REVIEW_DELIVERY_MAX_ATTEMPTS} times and will not be retried.`, `Last error: ${result.error ?? "unknown"}`, "The referrer has not been told about this request by email."].join("\n"),
-            });
-          }
         } catch (error) { fail(error); }
       }
     }
+    try { await deliverReviewOwnerAlerts(new Date(nowMs), deps.alertOwner, fail); } catch (error) { fail(error); }
     return output;
   };
 }

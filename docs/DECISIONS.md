@@ -383,6 +383,10 @@ Status, 2026-10-22: D-141 implemented behind `SKIPPIE_AGENT_ENABLED` (off in pro
 
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
+## D-350/D-356 execution receipt: review-email retry repair (November 17, 2026)
+
+The official `REL-review-email-retry` fixer prepares the already-approved repair on PR #874: the shared claim repeats its attempt/backoff/lease predicates in the conditional update; nullable owner-alert state is written with the fifth failed/unknown completion and recovered by a bounded leased worker. Migration 0122 is additive, defaults existing rows to no alert, and must pass the normal apply-twice/drift and production migration-before-code gates. A lost provider response or acknowledgement can produce another owner-alert copy because the email provider has no idempotency key; recorded success prevents later retries. This is an implementation receipt under D-350 and D-356, not a new product/process decision or a release. Task evidence and recovery steps: `docs/plans/REL-production-watch.md`. Loop L4; no new prices, login method, data use, setting or spending authorization.
+
 ## D-284 correction: technical registration is not merge authority
 
 PR #980 recorded technical ownership and described D-200 (4) as removing the need for a separate reviewer. The technical registration remains; its claim to waive the coordinator's actual permission conditions is withdrawn. Do not infer permission from the GitHub account, a commit author label, this registry status or green CI alone.

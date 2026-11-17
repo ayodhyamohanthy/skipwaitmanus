@@ -5756,7 +5756,7 @@
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-356",
       "dependsOn": [
         "D-174-job-catalog"
       ],
@@ -5764,13 +5764,18 @@
       "owns": [
         "server/reviewDeliveryRetry.ts",
         "server/reviewDeliveryRetry.test.ts",
+        "server/reviewDeliveryAlerts.ts",
+        "server/db.ts",
+        "drizzle/schema.ts",
+        "drizzle/deploy/0122_review_delivery_owner_alerts.sql",
+        "server/schemaReconcile.ts",
         "server/scheduledJobRegistry.ts (switch only)",
         "shared/scheduledJobs.ts (switch only)",
         "server/scheduledJobsContract.test.ts (switch only)",
         "server/emailDelivery.ts",
         "server/emailDelivery*.test.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys)."
+      "note": "D-350 unparked this row; D-356 permits the official Sol fixer to repair its shared claim/completion hunk and durable alert state without another owns ruling. Migration 0122 adds nullable owner-alert state and a due index; existing rows receive no alert backfill. Reviewed SQL, apply-twice/drift CI and verified production migration before dependent code remain required. Packet records crash, lease, response-loss and provider-idempotency limits."
     },
     {
       "id": "REL-heartbeats",

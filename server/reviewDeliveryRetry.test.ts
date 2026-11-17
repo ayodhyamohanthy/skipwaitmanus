@@ -1,4 +1,4 @@
-import { and, eq, getTableColumns, lt, type SQL } from "drizzle-orm";
+import { eq, getTableColumns, type SQL } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jobs, profiles, referralRequestPasses, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, userBlocks, users } from "../drizzle/schema";
@@ -92,20 +92,8 @@ const job = (overrides: Parameters<typeof createReviewDeliveryRetry>[0] = {}) =>
 const run = (overrides: Parameters<typeof createReviewDeliveryRetry>[0] = {}) => job(overrides)({ nowMs: Date.now(), windowKey: "2026-10-30T16:00Z" });
 /** A later window: the job's own clock is `laterMs` ahead (the claim and completion keep the real clock). */
 const runLater = (laterMs: number) => job()({ nowMs: Date.now() + laterMs, windowKey: "2026-10-30T17:00Z" });
-/*
- * The in-memory kit cannot evaluate the raw `sql` lease comparison inside
- * claimReferralReviewDelivery's compare-and-set (it throws "unsupported
- * operand"), so only the expired-lease case swaps in this claim: the same
- * compare-and-set on an expired lease, written with lt(). Every other case
- * runs the real claim.
- */
-const expiredLeaseClaim = async (requestId: number, referrerId: number, channel: "email", leaseOwner: string) => {
-  const now = new Date();
-  const row = store.rows(referralReviewDeliveries).find(item => item.referralRequestId === requestId && item.referrerId === referrerId && item.channel === channel);
-  if (!row || row.status !== "leased" || !(row.leaseExpiresAt instanceof Date) || row.leaseExpiresAt >= now || Number(row.attemptCount) >= 5) return undefined;
-  const claimed = await store.db.update(referralReviewDeliveries).set({ leaseOwner, leaseExpiresAt: new Date(now.getTime() + MINUTE_MS), attemptCount: Number(row.attemptCount) + 1 }).where(and(eq(referralReviewDeliveries.id, Number(row.id)), eq(referralReviewDeliveries.status, "leased"), lt(referralReviewDeliveries.leaseExpiresAt, now)));
-  return Number(claimed[0]?.affectedRows ?? 0) === 1 ? { id: Number(row.id), attemptCount: Number(row.attemptCount) } : undefined;
-};
+// The shared claim now uses the fixture-supported lt() predicate too.
+const expiredLeaseClaim = claimReferralReviewDelivery;
 const rowOf = (id: number) => store.rows(referralReviewDeliveries).find(row => row.id === id);
 const linksSnapshot = () => JSON.stringify(store.rows(referrerReviewEmailLinks));
 const reviewUrl = (requestId: number, referrerId: number) => `${ORIGIN}/email-review/${encodeURIComponent(tokenOf(requestId, referrerId))}`;
@@ -393,7 +381,7 @@ describe("review-delivery-retry: the give-up alert is durable", () => {
   it("response loss: an alert that went out but was not recorded is sent again after its lease, never lost", async () => {
     seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
     sendResult = async () => ({ sent: false, reason: "delivery_failed" });
-    updateHook = { when: values => values.leaseOwner === "owner-alerted", run: async () => { throw new Error("connection lost"); } };
+    updateHook = { when: values => values.ownerAlertStatus === "sent", run: async () => { throw new Error("connection lost"); } };
     const first = await run();
     expect(alerts).toHaveLength(1);
     expect(first.failed).toBe(2);
@@ -434,7 +422,7 @@ describe("review-delivery-retry: the give-up alert is durable", () => {
     // Owe it again (as a refused alert leaves it), then let a second runner finish between the first one's read and claim.
     seed({ deliveries: [delivery(61, REQUEST_ID, REFERRER, { attemptCount: 4 })] });
     alerts = [];
-    updateHook = { when: values => typeof values.leaseOwner === "string" && values.leaseOwner.startsWith("owner-alert:"), run: async () => { await run(); } };
+    updateHook = { when: values => typeof values.ownerAlertLeaseOwner === "string" && values.ownerAlertLeaseOwner.startsWith("owner-alert:"), run: async () => { await run(); } };
     await run();
     expect(updateHook).toBeUndefined();
     expect(alerts).toHaveLength(1);
