@@ -3,7 +3,7 @@
 // side, and puts the chosen side's sign-in in the one "Your next step" block.
 // FOUNDER-LOCKED login rule (D-030 as amended by D-049/D-057): job seekers use
 // a personal email code, a social provider or a saved passkey (GoalSeekerForm);
-// referrers use the work-email code only (GoalOtpSignIn), never personal
+// referrers use the work-email code only (GoalReferrerCodeForm), never personal
 // email, social or passkey. Return targets are the kit page's, unchanged.
 import { Check, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
@@ -14,7 +14,7 @@ import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { cn } from "@/lib/utils";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
-import { GoalOtpSignIn } from "@/pages/goal/referrer/GoalOtpSignIn";
+import { GoalReferrerCodeForm } from "./GoalReferrerCodeForm";
 import { GoalAuthFrame } from "./GoalAuthFrame";
 import { GoalPasskeyManageLink, GoalSeekerForm, SEEKER_EMAIL_FIELD_ID } from "./GoalSeekerForm";
 
@@ -91,7 +91,7 @@ export default function GoalSignInPage() {
       <div className="mt-6">
         <GoalNextStep reason={copy.reason}>
           {intent === "referrer"
-            ? <div data-testid="referrer-work-email-otp" className="mt-4"><GoalOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
+            ? <div data-testid="referrer-work-email-otp" className="mt-4"><GoalReferrerCodeForm onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
             : <GoalSeekerForm returnTo={seekerReturnTo} />}
         </GoalNextStep>
       </div>

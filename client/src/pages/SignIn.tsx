@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { BetaNoticeLine } from "@/components/BetaNotice";
 import GoalSignIn from "@/pages/GoalSignIn";
 import GoalSignInPage from "@/pages/goal/sign-in/GoalSignInPage";
+import { useLocationSearch } from "@/pages/goal/sign-in/useLocationSearch";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
@@ -29,7 +30,9 @@ export default function SignIn() {
   // Goal-UI migration (D-120): the goal sign-in replaces this page when its
   // build flag is on; the kit page below stays the default until QA passes.
   // D-048-p3-signin: the goal page; passkey management (?passkeys=manage) stays on DEVICE-SIGNIN-passkeys' GoalSignIn.
-  if (goalSurfaceOn("sign-in")) return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("passkeys") === "manage" ? <GoalSignIn /> : <GoalSignInPage />;
+  // Subscribes to query-only navigation (Back to sign-in from ?passkeys=manage), review F1.
+  const search = useLocationSearch();
+  if (goalSurfaceOn("sign-in")) return new URLSearchParams(search).get("passkeys") === "manage" ? <GoalSignIn /> : <GoalSignInPage />;
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
