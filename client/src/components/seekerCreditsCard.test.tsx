@@ -38,10 +38,11 @@ describe("Seeker credits card: card validation (D-079)", () => {
 });
 
 describe("Seeker credits card after D-067", () => {
-  it("offers only the credit it can sell when Free runs out: no upgrade, no /plans link", () => {
+  it("offers nothing to buy when Free runs out while pack sales are paused (Oct 25 2026 freeze): no upgrade, no /plans link", () => {
     render(<SeekerCreditsCard credits={credits({ monthlyCreditsRemaining: 0, totalAvailable: 0 })} />);
-    expect(screen.getByRole("link", { name: /Add a credit for \$1/ }).getAttribute("href")).toBe("/premium?role=job_seeker");
+    expect(screen.queryByRole("link", { name: /Add a credit|Add credits/i })).toBeNull();
     expect(document.querySelector("a[href^='/plans']")).toBeNull();
+    expect(document.querySelector("a[href^='/premium']")).toBeNull();
     expect(document.body.textContent).not.toMatch(/upgrade|more monthly referrals/i);
     expect(screen.getByText(/3 of 3 free credits used this month/)).toBeTruthy();
   });
