@@ -25,6 +25,18 @@ const SERVER_OR_SHARED = /^(shared|server)\//;
 
 const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
+const SOL_SESSION = "GPT-6.1 Sol";
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * D-356 (owner, Nov 17 2026): "let the gpt 6.1 sol have full rights to edit anything". True when one of the
+ * branch's commit subjects is this task's `Claim`, `Takeover` or `Fix claim` marker by a GPT-6.1 Sol session.
+ */
+export function solHoldsTask(taskId, subjects) {
+  const marker = new RegExp(`^(?:Claim|Takeover|Fix claim) ${escapeRegExp(taskId)}: ${escapeRegExp(SOL_SESSION)}(?: · \\S+)?$`);
+  return subjects.some(subject => marker.test(subject.trim()));
+}
+
 /**
  * The rules, with no I/O, so they can be tested directly.
  * `changed` is every path the branch touched; `editedTests` the ones that are tests;
@@ -69,7 +81,10 @@ export function checkBranch(taskId) {
     const numstat = git(["diff", "--numstat", "origin/main...HEAD", "--", pattern]).split("\n").filter(Boolean);
     lineCounts.set(pattern, numstat.reduce((sum, row) => sum + row.split("\t").slice(0, 2).reduce((n, cell) => n + (Number(cell) || 0), 0), 0));
   }
-  return { owns, violations: scopeViolations({ owns, changed, packet: task.packet, lineCounts }), skipped: null };
+  const violations = scopeViolations({ owns, changed, packet: task.packet, lineCounts });
+  const subjects = git(["log", "--format=%s", "origin/main..HEAD"]).split("\n").filter(Boolean);
+  if (violations.length && solHoldsTask(task.id, subjects)) return { owns, violations: [], exempt: violations, skipped: null };
+  return { owns, violations, exempt: [], skipped: null };
 }
 
 // PROCESS-review-gate: loaded lazily, so a copy of this script without the gate beside it fails open, loudly.
@@ -106,9 +121,14 @@ async function main() {
     return 2;
   }
   try {
-    const { owns, violations, skipped } = checkBranch(taskId);
+    const { owns, violations, exempt = [], skipped } = checkBranch(taskId);
     if (skipped) {
       console.log(`scope-check: ${skipped} — nothing to compare.`);
+      return 0;
+    }
+    if (exempt.length) {
+      for (const notice of exempt) console.log(`scope-check: notice (D-356, GPT-6.1 Sol full edit rights): ${notice}`);
+      console.log(`scope-check: ${exempt.length} change(s) outside owns allowed — a GPT-6.1 Sol session holds this task (D-356).`);
       return 0;
     }
     if (!violations.length) {
