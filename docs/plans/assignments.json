@@ -6306,12 +6306,12 @@
       "tier": 1,
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "REL-webhook-auth-alarm"
       ],
-      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts.",
+      "note": "D-223 subtask of D-100. Read-only Chargebee transaction reconciliation; never adds a gateway key. Landed candidate integrated current main at f9114c90; exact-head CI run 44309744022 green. PROVIDER_RECON_ENABLED remains false; production enablement is not included.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
