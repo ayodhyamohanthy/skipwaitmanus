@@ -11,7 +11,7 @@ export default function TrustPrivacy() {
     eyebrow="PRIVACY POLICY"
     title="Privacy"
     intro="A private handoff, not a public marketplace. skipwait.me is designed to help one Job Seeker and the right verified employee move a referral forward with the least necessary exposure. We do not publish resumes, Referrer identities, or private request conversations."
-    updated="16 Nov 2026"
+    updated="18 Nov 2026"
     summary={[
       "Resumes and identities stay private until a referrer accepts your request.",
       "Requests reach only verified employees of the company behind the role.",
@@ -49,7 +49,7 @@ export default function TrustPrivacy() {
 
     <PolicySection number="05" title="What we collect">
       <p>Account details (name, email), referral content you submit (job links, notes, resumes), and transaction records (provider references, amounts, timestamps). Referrers additionally verify a company email address by one-time code.</p>
-      <p>Service providers process information to run skipwait.me: WorkOS runs sign-in (account details and sign-in sessions); ZeptoMail delivers verification and notification emails (your address and message content); Sentry records errors (technical failure details, with redaction for sensitive fields and single-use links); Cloudflare hosts and delivers the site (connection and request information); and Chargebee with Razorpay and PayPal handle payments as section 06 describes.</p>
+      <p>Service providers process information to run skipwait.me: WorkOS runs sign-in (account details and sign-in sessions); ZeptoMail delivers verification and notification emails (your address and message content); Sentry records errors (technical failure details, with redaction for sensitive fields and single-use links); Cloudflare hosts and delivers the site (connection and request information); Wikipedia and Wikidata (run by the Wikimedia Foundation) look up company names typed into company search (the search text is sent from our server; we do not add your name, email or account details); and Chargebee with Razorpay and PayPal handle payments as section 06 describes.</p>
       <p>When configured, Microsoft Clarity records page interactions and session replay to help us understand use and diagnose problems. It can receive an internal account identifier rather than your email address. Your analytics cookie choice controls analytics storage as described below.</p>
     </PolicySection>
 

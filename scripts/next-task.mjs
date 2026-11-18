@@ -32,7 +32,7 @@ import {
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
-import { renderBoard, renderPick } from "./nextTaskText.mjs";
+import { renderBoard, renderBoardSummary, renderPick } from "./nextTaskText.mjs";
 import { pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
@@ -614,10 +614,11 @@ async function main() {
     // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
     const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
     if (args.provenance) pick.provenanceRoute = args.provenance;
-    // D-085: every agent starts from the same picture — the priorities top down, green or not.
+    // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
     if (pick.kind === "ceo") pick.board = board;
-    else console.log(renderBoard(board));
+    // D-358: the short board, so the assignment below survives an agent's output cap; --status prints the full one.
+    else console.log(renderBoardSummary(board));
     const { local, mainBehind } = localState();
     const sync = localSyncIssues({ local, branches, claimant: who, mainBehind, tasks: doc.tasks });
     printSync(sync);
