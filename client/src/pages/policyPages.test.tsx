@@ -303,7 +303,8 @@ describe("/pricing free allowance copy (D-219, D-173, D-180, PR666 F3)", () => {
     render(<Pricing />);
     const freeSection = screen.getByRole("heading", { name: "Free" }).closest("section")!;
     expect(freeSection.textContent).toContain("3 free referrals a month at any level with a verified card");
-    const freeLine = freeSection.querySelector("strong")?.textContent ?? "";
+    const freeLine = freeSection.querySelector("p")?.textContent ?? "";
+    expect(freeLine).toBe("3 free referrals a month at any level with a verified card; no carry-forward.");
     expect(freeLine).not.toMatch(/\bcredits?\b/i);
     expect(freeLine).not.toMatch(/\basks?\b/i);
     cleanup();

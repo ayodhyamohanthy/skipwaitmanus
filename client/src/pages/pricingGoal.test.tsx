@@ -20,6 +20,11 @@ import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { firstPackClaim } from "@shared/planCatalog";
 
+vi.mock("wouter", () => ({
+  Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
+  useLocation: () => ["/pricing", vi.fn()],
+}));
+
 // Independent oracle for the goal line (packet §4), not GOAL_PAGE imported as its own proof.
 const GOAL_LINE = "Know what a referral request costs.";
 
