@@ -6369,10 +6369,10 @@
       "tier": 3,
       "lane": "security-audit-account",
       "branch": "agent/queue/d100-authz-account",
-      "status": "todo",
-      "syncedTo": "D-350",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [],
-      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1). D-260: audit delivered (13 published findings, CI green on 1012897c); one finding withheld under rule 1 and parked for the owner — only its discovering session can open the draft security advisory that gives it a durable private home. D-350: any session may file the one withheld finding as a private GitHub security advisory (never in a public issue, PR or commit), then mark this row done. If no session holds the finding's details, re-derive it from the audit scope and file it privately.",
+      "note": "D-223 audit of D-100. Details of security findings stay private (packet rule 1). D-260: audit delivered (13 published findings, CI green on 1012897c); one finding was withheld and the row parked for the owner. D-350: a private draft GitHub security advisory is the durable home for the withheld finding; this task's authorized handoff verified that private record and completed the audit row. The finding's details remain outside the public repository; remediation is separate work.",
       "epic": "D-100",
       "owns": [
         "docs/reviews/D-100-authz-account.md"
