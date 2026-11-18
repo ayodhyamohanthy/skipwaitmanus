@@ -39,3 +39,8 @@ Owner WhatsApp messages, Nov 18 2026 (IST), relayed by the main agent with the o
 - D-360 present in `docs/DECISIONS.md` with evidence and the not-claimed boundaries above.
 - `AGENTS.md` product compass names the direction and points to D-360.
 - `node scripts/decision-id-check.mjs` passes; the assignments validation test (`scripts/nextTask.test.ts` — "is valid and every packet it names exists") passes with this packet under `docs/plans/`.
+
+## Amendment (Nov 19 2026): website link as a company-search input
+
+Owner iMessage, Nov 19 2026 01:06 IST: "People can enter website link too if they wanting company search" (`phonemsg-01M7R2HVJJE882QW6RG3MDSZXW`). D-360 clause (1) and the AGENTS.md product compass now name a pasted company website link or domain as an accepted input that resolves to that company. Docs only; every boundary above (no shipped capability, no vendor selection, no coverage claim) is unchanged. Registered under row `REGISTER-nov18-website-input`.
+

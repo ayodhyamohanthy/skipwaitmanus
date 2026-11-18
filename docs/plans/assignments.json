@@ -7985,6 +7985,19 @@
       "syncedTo": "D-360",
       "dependsOn": [],
       "note": "Docs-only registration by Instinct · 2cc6 on Nov 18 2026: records the owner's WhatsApp direction (21:42-22:07 IST) as D-360 with message-id evidence, separating owner direction from the proposed sourcing architecture and unverified vendor candidates. No product code, no vendor selection, no coverage claim. Mark done only after the pull request lands on main."
+    },
+    {
+      "id": "REGISTER-nov18-website-input",
+      "title": "Amend D-360: a pasted company website link or domain is an accepted company-search input (owner iMessage, Nov 19 2026); docs only",
+      "row": "D-068",
+      "packet": "docs/plans/REGISTER-nov18-search-direction.md",
+      "tier": 3,
+      "lane": "register",
+      "branch": "agent/queue/register-nov18-website-input",
+      "status": "todo",
+      "syncedTo": "D-360",
+      "dependsOn": [],
+      "note": "Docs-only amendment by Instinct · 2cc6: the owner's Nov 19 01:06 IST iMessage (phonemsg-01M7R2HVJJE882QW6RG3MDSZXW) names website links as an accepted company-search input; D-360 clause (1) and the AGENTS.md compass item name it explicitly. Mark done only after the pull request lands on main."
     }
   ]
 }
