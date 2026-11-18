@@ -1111,8 +1111,8 @@
       "tier": 1,
       "lane": "d048-pricing",
       "branch": "agent/queue/d048-p3-pricing",
-      "status": "todo",
-      "syncedTo": "D-357",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-money",
@@ -1140,7 +1140,7 @@
       "lane": "d048-release-pricing",
       "branch": "agent/queue/d048-r-pricing",
       "status": "done",
-      "syncedTo": "D-357",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-p3-pricing"
       ],
