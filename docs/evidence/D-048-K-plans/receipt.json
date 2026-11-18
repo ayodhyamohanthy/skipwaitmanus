@@ -1,0 +1,46 @@
+{
+  "expectedWeb": "bc9201303180e6ae2eb6a00bd8384b586d204950",
+  "expectedApi": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4",
+  "captures": [
+    {
+      "width": 1280,
+      "status": 200,
+      "webSha": "bc9201303180e6ae2eb6a00bd8384b586d204950",
+      "goalMainCount": 1,
+      "overflow": 0,
+      "privateReads": [],
+      "blockedWrites": [],
+      "localCspReports": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "file": "billing-signed-out-1280.png"
+    },
+    {
+      "width": 390,
+      "status": 200,
+      "webSha": "bc9201303180e6ae2eb6a00bd8384b586d204950",
+      "goalMainCount": 1,
+      "overflow": 0,
+      "privateReads": [],
+      "blockedWrites": [],
+      "localCspReports": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report"
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "file": "billing-signed-out-390.png"
+    }
+  ],
+  "api": {
+    "status": 200,
+    "state": "ready",
+    "commitSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4"
+  },
+  "workersDevStatus": 404
+}
