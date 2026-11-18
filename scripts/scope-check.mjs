@@ -25,26 +25,27 @@ const SERVER_OR_SHARED = /^(shared|server)\//;
 
 const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
-// D-356 named GPT-6.1 Sol; D-357 (owner, Nov 18 2026) added GPT-6 Sol. Only these exact names qualify.
-const SOL_SESSIONS = ["GPT-6.1 Sol", "GPT-6 Sol"];
+// D-356 named GPT-6.1 Sol, D-357 added GPT-6 Sol, and D-359 (owner, Nov 18 2026) widened it to every model name that
+// contains GPT or Claude, in any case. A session name is "<model>" or "<model> · <tag>"; the model part never holds "·".
+const FULL_EDIT_MODEL = /gpt|claude/i;
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * D-356 (owner, Nov 17 2026): "let the gpt 6.1 sol have full rights to edit anything"; D-357 (owner, Nov 18 2026):
- * "make sure this model has full rights on works too not only 6.1". Returns the Sol session name when one of the
- * branch's commit subjects is this task's `Claim`, `Takeover` or `Fix claim` marker by such a session, else null.
+ * D-356 (owner, Nov 17 2026): "let the gpt 6.1 sol have full rights to edit anything"; D-357 (Nov 18): "not only 6.1";
+ * D-359 (Nov 18): "let all gpt models have full access", "claude ,gpt models can have full access". Returns the model
+ * name when one of the branch's commit subjects is this task's `Claim`, `Takeover` or `Fix claim` marker by a session
+ * whose model name contains GPT or Claude, else null.
  */
 export function solSessionOf(taskId, subjects) {
-  const names = SOL_SESSIONS.map(escapeRegExp).join("|");
-  const marker = new RegExp(`^(?:Claim|Takeover|Fix claim) ${escapeRegExp(taskId)}: (${names})(?: · \\S+)?$`);
+  const marker = new RegExp(`^(?:Claim|Takeover|Fix claim) ${escapeRegExp(taskId)}: ([^·]+?)(?: · \\S+)?$`);
   for (const subject of subjects) {
     const match = marker.exec(subject.trim());
-    if (match) return match[1];
+    if (match && FULL_EDIT_MODEL.test(match[1])) return match[1];
   }
   return null;
 }
 
-/** True when a GPT-6.1 Sol or GPT-6 Sol session holds this task (D-356, D-357). */
+/** True when a GPT or Claude model session holds this task (D-356, D-357, D-359). */
 export const solHoldsTask = (taskId, subjects) => solSessionOf(taskId, subjects) !== null;
 
 /**
@@ -138,8 +139,8 @@ async function main() {
       return 0;
     }
     if (exempt.length) {
-      for (const notice of exempt) console.log(`scope-check: notice (D-356/D-357, ${solSession} full edit rights): ${notice}`);
-      console.log(`scope-check: ${exempt.length} change(s) outside owns allowed — a ${solSession} session holds this task (D-356/D-357).`);
+      for (const notice of exempt) console.log(`scope-check: notice (D-356/D-357/D-359, ${solSession} full edit rights): ${notice}`);
+      console.log(`scope-check: ${exempt.length} change(s) outside owns allowed — a ${solSession} session holds this task (D-356/D-357/D-359: GPT and Claude models).`);
       return 0;
     }
     if (!violations.length) {
