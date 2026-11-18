@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import type { AcceptedAskCost } from "../shared/acceptedAskCost";
+import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { createAskCreateFixture, type AskFixtureTables, type Row } from "./askCreateFixtureDb";
 import { createCompanyReferralRequest, previewAskCost, type CreateCompanyReferralInput } from "./db";
 import { AskPriceChangedError, CoverageOpenedUpError } from "./planGates";
@@ -86,6 +87,39 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 describe("accepted-price guard on a covered referral request", () => {
+  it("F1: a rejected quote across rollover rolls back reconciliation; reconfirm grants and spends once", async () => {
+    seed({ wallet: wallet({ monthlyCreditsRemaining: 0, balance: 5 }) });
+    const accepted = await previewAskCost(SEEKER, URL_);
+    expect(accepted).toEqual(cost(1, ["purchased", 1]));
+    vi.setSystemTime(new Date("2026-11-01T00:00:01.000Z"));
+    const before = snapshot();
+    const error = await refusal(send({ expectedCost: accepted ?? undefined }));
+    expect(error.acceptedCost).toEqual(cost(1, ["cycle", 1]));
+    expectNothingWritten(before);
+
+    const reconfirmed = await send({ expectedCost: error.acceptedCost });
+    expect(reconfirmed).toMatchObject({ replayed: false, chargedCost: error.acceptedCost });
+    expect(fixture.tables.tokenBalances[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 2, balance: 5 });
+    expect(fixture.tables.tokenTransactions.filter(row => row.kind === "plan_grant" && row.sourceCycleKey === "2026-11")).toHaveLength(1);
+    expect(fixture.tables.tokenTransactions.filter(row => row.kind === "credit_spend")).toHaveLength(1);
+    const committed = snapshot();
+    expect(await send({ expectedCost: accepted ?? undefined })).toMatchObject({ replayed: true, chargedCost: reconfirmed.chargedCost });
+    expect(snapshot()).toEqual(committed);
+  });
+
+  it("F2: a waiting request never replays a different request's delivery debit with the same client key", async () => {
+    seed({ covered: false });
+    const collidingKey = "ask-delivery:100";
+    fixture.tables.tokenTransactions.push({ id: 100, userId: SEEKER, role: "job_seeker", tokenCount: -1, kind: "credit_spend", source: BUCKET_SOURCES.purchased, referenceType: "referral_request", referenceId: "100#1", idempotencyKey: `${collidingKey}#1` });
+    const created = await send({ idempotencyKey: collidingKey });
+    expect(created).toMatchObject({ replayed: false, coverageStatus: "waiting_for_company_coverage", chargedCost: null });
+    expect(created.requestId).not.toBe(100);
+    const before = snapshot();
+    const replayed = await send({ idempotencyKey: collidingKey });
+    expect(replayed).toMatchObject({ requestId: created.requestId, replayed: true, chargedCost: null });
+    expect(snapshot()).toEqual(before);
+  });
+
   it("5. match: charged exactly the previewed cost, ledger rows #1..#n, chargedCost equal to it", async () => {
     const accepted = await previewAskCost(SEEKER, URL_);
     expect(accepted).toEqual(cost(1, ["cycle", 1]));

@@ -1887,7 +1887,9 @@ export async function createCompanyReferralRequest(userId: number, input: Create
   const fastTrackLink=input.fastTrackCode?await getActiveReferrerFastTrackLink(input.fastTrackCode):input.fastTrackCompanySlug&&input.fastTrackAlias?await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug,input.fastTrackAlias):undefined;
   if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error(PERSONAL_LINK_UNAVAILABLE);
   if(fastTrackLink&&!fastTrackLinkMatchesCompany(fastTrackLink.companyDomain,companyDomain))throw new Error("Use a job link for the same company as this private referral link");
-  await ensureTokenWallet(userId,"job_seeker");
+  // Accepted-price refusals must roll back cycle grants as well as the spend.
+  // Legacy callers retain ensureTokenWallet's existing reconciliation path.
+  await ensureTokenWallet(userId,"job_seeker",{deferSeekerReconciliation:Boolean(input.expectedCost)});
   return db.transaction(async tx=>{
     // The wallet lock is the per-seeker serialization point for both same-key
     // replay and different-key credit races.
@@ -1897,10 +1899,14 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // first statement, so this plain read's snapshot starts after it and sees every ask a
     // previous lock holder committed. It is deliberately not a locking read: withdraw and
     // expiry lock the ask row before the wallet, and the reverse order here could deadlock.
-    const nowMs=Date.now();const entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs));
+    const nowMs=Date.now();let entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs));
     const openAsks=Number((await tx.select({open:count()}).from(referralRequests).where(openAskCondition(userId,nowMs)))[0]?.open??0);
     const duplicate=await tx.select({id:referralRequests.id,fingerprint:referralRequests.requestFingerprint,companyDomain:jobs.company,jobFunction:jobs.jobFunction,jobTitle:jobs.title,jobDescription:jobs.description,jobUrl:jobs.targetRoleUrl,waiting:referralRequests.waitingForCoverage,referrerId:referralRequests.referrerId,opportunityId:referralRequests.opportunityId,firstLookReferrerId:referralRequests.firstLookReferrerId}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(eq(referralRequests.jobSeekerId,userId),eq(referralRequests.idempotencyKey,input.idempotencyKey))).limit(1).for("update");
-    if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,chargedCost:await chargedCostOfTx(tx,userId,input.idempotencyKey,askPriceIdentity({title:duplicate[0].jobTitle,description:duplicate[0].jobDescription,url:duplicate[0].jobUrl}).band),replayed:true as const};}
+    if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,chargedCost:await chargedCostOfTx(tx,userId,duplicate[0].id,input.idempotencyKey,askPriceIdentity({title:duplicate[0].jobTitle,description:duplicate[0].jobDescription,url:duplicate[0].jobUrl}).band),replayed:true as const};}
+    // Reconcile once, inside the transaction that can reject the accepted cost.
+    // Plan limits use that same current wallet; replay above performs no reconciliation.
+    const reconciledForGuard=input.expectedCost?await reconcileWalletTx(tx,lockedWallet,new Date(nowMs)):null;
+    if(reconciledForGuard)entitlements=resolvePlanEntitlements(reconciledForGuard.wallet,new Date(nowMs));
     // D-022: the post behind this ask is locked and re-validated here, so a
     // concurrent close or lapse cannot slip between the read and the insert,
     // and the post must be the same company the link resolved to.
@@ -1967,7 +1973,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // pickup and the 7-day expiry from first visibility return it to the same bucket (refundLedgerSpendTx);
     // pickup and decline never do. An insufficient balance for a covered ask throws here, which rolls the
     // whole ask back, so no ask exists without its credit.
-    const summaryNow=new Date(nowMs);const reconciled=await reconcileWalletTx(tx,lockedWallet,summaryNow);const promoState=await promoStateForTx(tx,userId,"job_seeker",summaryNow);
+    const summaryNow=new Date(nowMs);const reconciled=reconciledForGuard??await reconcileWalletTx(tx,lockedWallet,summaryNow);const promoState=await promoStateForTx(tx,userId,"job_seeker",summaryNow);
     let remaining:CreditSummary;let chargedCost:AcceptedAskCost|null=null;
     if(isWaiting){
       remaining=await creditSummaryTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoState,now:summaryNow});
@@ -4256,10 +4262,10 @@ const BUCKET_BY_SOURCE = new Map<string, CreditBucket>(CREDIT_BUCKETS.map(bucket
  * (`${idempotencyKey}#n`, one per bucket drawn). Null when it charged nothing at creation (a waiting ask), or when
  * a row's bucket cannot be read (a pre-ledger row): callers say what was charged only from this field.
  */
-async function chargedCostOfTx(tx: Pick<LedgerTx, "select">, userId: number, idempotencyKey: string, band: string | null): Promise<AcceptedAskCost | null> {
+async function chargedCostOfTx(tx: Pick<LedgerTx, "select">, userId: number, requestId: number, idempotencyKey: string, band: string | null): Promise<AcceptedAskCost | null> {
   const allocations: Array<{ bucket: CreditBucket; credits: number }> = [];
   for (let n = 1; n <= 100; n += 1) {
-    const row = (await tx.select({ tokenCount: tokenTransactions.tokenCount, source: tokenTransactions.source }).from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, "job_seeker"), eq(tokenTransactions.idempotencyKey, `${idempotencyKey}#${n}`), inArray(tokenTransactions.kind, ["credit_spend", "promo_spend"]))).limit(1))[0];
+    const row = (await tx.select({ tokenCount: tokenTransactions.tokenCount, source: tokenTransactions.source }).from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, "job_seeker"), eq(tokenTransactions.referenceType, "referral_request"), eq(tokenTransactions.referenceId, `${requestId}#${n}`), eq(tokenTransactions.idempotencyKey, `${idempotencyKey}#${n}`), inArray(tokenTransactions.kind, ["credit_spend", "promo_spend"]))).limit(1))[0];
     if (!row) break;
     const bucket = BUCKET_BY_SOURCE.get(row.source ?? "");
     if (!bucket || row.tokenCount >= 0) return null;
@@ -4406,7 +4412,7 @@ export async function grantFreeCreditsOnValidation(userId: number, now: Date = n
   });
 }
 
-export async function ensureTokenWallet(userId: number, role: WalletRole) {
+export async function ensureTokenWallet(userId: number, role: WalletRole, options: { deferSeekerReconciliation?: boolean } = {}) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const now = new Date();
@@ -4418,6 +4424,7 @@ export async function ensureTokenWallet(userId: number, role: WalletRole) {
     if (role !== "job_seeker" || !created) return created;
     existing.push(created);
   }
+  if (role === "job_seeker" && options.deferSeekerReconciliation) return existing[0];
   if (role === "job_seeker") {
     // Kit ledger: cycle boundaries move credits (carryover, expiry, Free's monthly grant) with ledger rows, so they run under the wallet lock.
     if (!seekerCycleDue(existing[0], now)) return existing[0];
