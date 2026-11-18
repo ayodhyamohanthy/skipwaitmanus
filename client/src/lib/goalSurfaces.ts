@@ -103,6 +103,7 @@ const RELEASED: readonly GoalSurfaceId[] = [
   "verify",
   "sign-in",
   "public-profile",
+  "premium",
 ];
 
 export function releasedGoalSurfaces(): readonly GoalSurfaceId[] {
