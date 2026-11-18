@@ -127,4 +127,19 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 
 The rows share the plan row "D-048": each task writes one line here, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
-- (none started)
+- D-048-K-conversation: in progress — GPT-6.1 Sol · b53c — 2026-11-18 — branch `agent/queue/d048-k-conversation`, main `e8845c36`, claim `ca321bcf`. Read entry docs, this packet, DESIGN, current conversation/tests and decisions through D-359. Release `24a7196b` (PR #1199) is on main; launch-mode D-349 applies. No later kit-body drift. The route now renders only the released goal pages; unused ThreadMain is deleted, shared ThreadDecisionPanels/ThreadModal remain for seeker milestone data. All data/actions and the optional framed prop stay compatible. Red first: two retirement contracts fail on the old switch/imports. After removal: 8 focused files, 140 tests pass; TypeScript, build, token/migration/deploy/scope/diff checks pass. Synthetic captures at 1280/390: 22 pairs, zero page errors/overflow; 20 byte-identical, two phone loading/error frames differ by 18 pixels each in the shared navigation icon (visually inspected; no content/layout delta). Capture manifests bind the route source hash. Baseline: 63 tests, production build passed. Full local suite, exact-head PR CI and any required review/live verification pending. No rule, copy, API, migration or dependency change.
+
+### D-048-K-conversation: ported assertions
+
+No test or case is deleted. `referralConversation.test.tsx` retains its 48 cases; share-win (5), thread-model (8) and deadline-off (2) cases stay. The new retirement file adds two source contracts.
+
+| Legacy assertion | Goal assertion preserving the contract |
+|---|---|
+| Job function in `header .eyebrow` | Exact same server-derived `Data · Wipro` text in the goal page |
+| Native disabled Accept/Pass, unchecked radio inputs | Goal controls' `aria-disabled`/`aria-checked`, no decision POST before attestation/reason, and identical request body |
+| Pass reason's native label | Same `At capacity right now` accessible radio; same decline/passReason payload |
+| Referrer `Referral submitted` state | Goal `Referred` status; same intro_made state, resume/name/message visibility and progress request |
+| Server refusal inside kit dialog | Exact refusal in the goal alert; the named accept confirmation stays open |
+| Flag-off renders the kit page | Goal page renders by default, with no surface override or switch mock (D-332 retirement) |
+
+All seeker privacy, withdrawal, progress, error/retry, message draft and name-reveal assertions remain. All prior goal privacy, colleague assignment, unknown viewer, offline, phone pass sheet, attestation and unsupported-deadline assertions remain. `ThreadMain.tsx` had only the removed route import; no data/model/API module is deleted. Remaining shared kit panels are outside this deletion because their milestone export still has a live importer.
