@@ -1,5 +1,5 @@
 // Synthetic local parity proof; no production data, credentials or mutations.
-// From the repository root: node client/src/pages/goal/settings/retirement/capture.mjs before|after
+// From the repository root: node client/src/pages/goal/settings/retirement/capture.mjs before|after [output-directory]
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -11,7 +11,7 @@ import sharp from "sharp";
 const phase = process.argv[2];
 if (!["before", "after"].includes(phase)) throw new Error("Pass before or after");
 const root = process.cwd();
-const out = process.env.SETTINGS_CAPTURE_DIR || "/tmp/skipwait-settings-retirement";
+const out = path.resolve(process.argv[3] || "/tmp/skipwait-settings-retirement");
 const baseline = "d0e3bb899e5f05065bd630301964fa8999813b68";
 const entry = "client/src/pages/Settings.tsx";
 const source = phase === "before"
