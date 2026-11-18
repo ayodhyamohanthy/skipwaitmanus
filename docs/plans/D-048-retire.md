@@ -130,6 +130,23 @@ The rows share the plan row "D-048": each task writes one line here, `<id>: in p
 - D-048-K-conversation: review — GPT-6.1 Sol · b53c — 2026-11-18 — [draft PR #1279](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1279), source `f00c756e`, branch `agent/queue/d048-k-conversation`, main `e8845c36`, claim `ca321bcf`. Read entry docs, packet, DESIGN, conversation/tests and decisions through D-359. Release `24a7196b` (PR #1199) is on main; launch-mode D-349 applies. No later kit-body drift. Goal-only entry; unused ThreadMain deleted, shared panels/modal retained for seeker milestone data. All data/actions and optional framed prop stay compatible. Red first: 2 retirement contracts fail on the old switch/imports. Candidate: 8 focused files/140 tests, TypeScript/build and token/migration/deploy/scope/diff checks pass. Route cases stay 48; assertions rise 176 to 177. Computed Tier 2 and test-integrity pass under D-352. Synthetic 1280/390: 22 pairs, zero page errors/overflow; 20 byte-identical, two phone loading/error frames differ by 18 shared-navigation-icon pixels each, visually inspected. Source hashes/manifests and exact pixel comparison committed. **Full local suite: 740 files passed, 5 skipped, 1 failed; 7,798 tests passed, 18 skipped, 1 failed** in 1,176s. Sole failure: unchanged `scripts/classifyCiChange.test.ts:655`, H1's 400-commit fixture exceeds 20s (27.8s); isolated rerun 53 passed/1 timeout (34.7s). Script/test/workflow bytes unchanged; no timeout or assertion weakened. Earlier 120s-tool-limit run incomplete. Exact-head PR CI and production verification pending; no merge/live claim. No rule, copy, API, migration or dependency change.
 - D-048-K-plans: in progress — Cline · eed2 — 2026-11-18 — branch `agent/queue/d048-k-plans`.
 
+### D-048-K-plans: ported assertions
+
+The goal suite keeps the meaningful billing contracts from the retired flag-off suite. The old billing test file is deleted because `Billing.tsx` now exports the released goal page directly; shared `BillingPanels.tsx` remains because the off-sale guard imports it directly.
+
+| Legacy assertion | Goal assertion preserving the contract |
+|---|---|
+| Free plan and empty receipts | `plansGoal.test.tsx` states the Free plan, no payments and no invented payment methods |
+| Active plan date, receipts and refund | goal plan renewal, receipts provider facts and refunded status |
+| Cancellation confirmation, rejection and no duplicate POST | goal cancellation commit, refusal recovery and in-flight double-press tests |
+| Non-renewing plan has no cancel control | goal ending state test |
+| Server-omitted facts are not guessed | goal server-omission test plus the unknown-balance/loading test |
+| Network and malformed-summary recovery | goal failure/retry and malformed-summary tests |
+| Signed-out access boundary | goal signed-out single-commit test |
+| Stale Pro/Max summaries render as Free | goal stale-retired-plan test loops over both names |
+
+The deleted `CancelPlanDialog.tsx` and `KitDialog.tsx` had no remaining imports after the entry retirement. Goal cancellation uses `goal/plans/GoalCancelDialog.tsx`; no API, payment or cancellation behavior changed.
+
 ### D-048-K-conversation: ported assertions
 
 No test or case is deleted. `referralConversation.test.tsx` retains its 48 cases; share-win (5), thread-model (8) and deadline-off (2) cases stay. The new retirement file adds two source contracts.

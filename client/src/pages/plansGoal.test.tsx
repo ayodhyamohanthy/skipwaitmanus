@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-// D-048-p3-plans (D-048-money.md): flag-off parity for the kit /billing page and
-// the flag-on goal rebuild of the same route, from synthetic fixtures. Stubs
-// mirror client/src/pages/billing.test.tsx so the two paths are tested against
-// one contract. Money wording is referral-only (D-173, D-180): no rendered
-// string may say "credit", "credits" or the noun "ask"/"asks".
+// D-048-K-plans: the released goal /billing route, from synthetic fixtures.
+// Money wording is referral-only (D-173, D-180): no rendered string may say
+// "credit", "credits" or the noun "ask"/"asks".
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,7 +11,6 @@ import { GOAL_PAGE } from "./goal/plans/GoalBilling";
 
 const { authState, surfaces, planCatalogFlags } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() },
-  surfaces: { on: new Set<string>() },
   planCatalogFlags: { creditPacksOnSale: false },
 }));
 
@@ -30,7 +27,6 @@ vi.mock("@shared/planCatalog", async importOriginal => {
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
 }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/billing", vi.fn()],
@@ -86,20 +82,9 @@ const expectNoRetiredNouns = () => {
 beforeEach(() => {
   authState.isSignedIn = true;
   authState.isLoaded = true;
-  surfaces.on = new Set(["plans"]);
   planCatalogFlags.creditPacksOnSale = false;
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.getToken.mockClear(); });
-
-describe("Goal /billing flag gate", () => {
-  it("renders the kit billing page untouched when the flag is off", async () => {
-    surfaces.on = new Set();
-    stubBilling();
-    render(<Billing />);
-    expect(await screen.findByRole("heading", { name: "Manage plan." })).toBeTruthy();
-    expect(screen.queryByText(GOAL_PAGE.goalLine)).toBeNull();
-  });
-});
 
 describe("Goal /billing page contract", () => {
   it("opens with the goal line, one next step and one black commit", async () => {
@@ -119,6 +104,15 @@ describe("Goal /billing page contract", () => {
     expectNoRetiredNouns();
     // The kit's invented-method ban carries over: no fabricated card rows.
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
+  });
+
+  it("leaves out payment facts the server did not send", async () => {
+    const { ledger: _ledger, slots: _slots, ...bare } = freeSummary;
+    stubBilling({ summary: bare });
+    render(<Billing />);
+    expect(await screen.findByText("Free plan")).toBeTruthy();
+    expect(screen.getByText("Referral requests left")).toBeTruthy();
+    expect(screen.queryByText(/open at once|referral requests each month/)).toBeNull();
   });
 
   it("never shows a failed load as a zero balance", async () => {
@@ -203,12 +197,15 @@ describe("Goal /billing plan and cancel states", () => {
     expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
   });
 
-  it("reads a stale retired plan as Free, never by its retired name", async () => {
-    stubBilling({ summary: { ...startSummary, plan: "max", slots: null } });
-    render(<Billing />);
-    expect(await screen.findByText("Free plan")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
-    expect(document.body.textContent).not.toMatch(/\bPro\b|\bMax\b/);
+  it("reads stale Pro and Max plans as Free, never by their retired names", async () => {
+    for (const plan of ["pro", "max"]) {
+      stubBilling({ summary: { ...startSummary, plan, slots: null } });
+      render(<Billing />);
+      expect(await screen.findByText("Free plan")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
+      expect(document.body.textContent).not.toMatch(/\bPro\b|\bMax\b/);
+      cleanup();
+    }
   });
 });
 
