@@ -56,3 +56,30 @@ describe("next-task claim and preview path (D-358)", () => {
     expect(source).toContain("console.log(renderBoard(statusBoard(");
   });
 });
+
+// D-361 (owner, Nov 18 2026): "zcode is stopping again after few mins". After D-358 the newest-decisions block still
+// listed every entry newer than a stale syncedTo in full (75 lines, 13 KB). It now summarises the 10 newest and names
+// every other entry by ID, so nothing D-202 requires is dropped and the assignment stays within output limits.
+describe("the newest-decisions block (D-361)", () => {
+  it("names every entry newer than syncedTo, summarises only the 10 newest and stays short", async () => {
+    const { parseDecisionRegister } = await import("./nextTaskCore.mjs");
+    const { renderPick } = await import("./nextTaskText.mjs");
+    const long = "x".repeat(1800);
+    const register = parseDecisionRegister(Array.from({ length: 90 }, (_, i) => {
+      const n = String(i + 1).padStart(3, "0");
+      return `| D-${n} | 2026-10-01 | **Summary ${n} ${long}** | e | — | adopted |`;
+    }).join("\n"));
+    const task = { id: "A", title: "a", tier: 2, branch: "agent/queue/a", syncedTo: "D-010", status: "todo" };
+    const text = renderPick({ kind: "build", task } as never, { who: "Kimi · s1", date: "2026-11-18", claimed: true, register });
+    const block = text.slice(0, text.indexOf("NEXT:"));
+    expect(block.startsWith("Newest decisions (read before you work):")).toBe(true);
+    for (let i = 10; i <= 90; i++) expect(block).toContain(`D-${String(i).padStart(3, "0")}`);
+    expect(block).not.toContain("D-009");
+    expect(block.match(/^- D-\d{3} · /gm)?.length).toBe(10);
+    expect(block).toContain("- D-090 · 2026-10-01 · Summary 090 ");
+    expect(block).not.toContain("x".repeat(200));
+    expect(block).toContain("docs/DECISIONS.md");
+    expect(block).toContain('--report blocked "A: conflicts with D-nnn"');
+    expect(block.length).toBeLessThan(3000);
+  });
+});
