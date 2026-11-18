@@ -7873,20 +7873,20 @@
     },
     {
       "id": "PROCESS-sol-full-edit",
-      "title": "GPT-6.1 Sol sessions may edit any file: scope-check skips owns violations on a branch a GPT-6.1 Sol session claimed (D-356)",
+      "title": "GPT-6.1 and GPT-6 Sol sessions may edit any file: scope-check skips owns violations on a branch a GPT-6.1 Sol or GPT-6 Sol session claimed (D-356, D-357)",
       "row": "D-134",
       "packet": "docs/plans/PROCESS-sol-full-edit.md",
       "tier": 2,
       "lane": "scope-check",
       "branch": "agent/queue/process-sol-full-edit",
       "status": "todo",
-      "syncedTo": "D-356",
+      "syncedTo": "D-357",
       "dependsOn": [],
       "owns": [
         "scripts/scope-check.mjs",
         "scripts/scopeCheck.test.ts"
       ],
-      "note": "Build docs/plans/PROCESS-sol-full-edit.md. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3))."
+      "note": "Build docs/plans/PROCESS-sol-full-edit.md step 4 (D-357: also accept GPT-6 Sol). The D-356 part landed in 588a795. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3), D-357 (3))."
     },
     {
       "id": "D-174-worldwide-discovery.company-context",
