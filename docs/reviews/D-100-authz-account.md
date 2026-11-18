@@ -6,7 +6,7 @@ Read-only audit (packet `docs/plans/D-100-security-audit.md`, Tier 3, rule 1 bin
 **Files in scope:** `server/profileRoutes.ts`, `dmRoutes.ts`, `followRoutes.ts`, `employerRoutes.ts`, `companyClaimRoutes.ts`, `companyDirectoryRoutes.ts`, `jobLinkPreviewRoutes.ts` (with the fetcher in `jobLinkPreview.ts`), `jobCatalogRoutes.ts`, `impactCardRoutes.ts`, `passwordResetRoutes.ts`, `oauthRoutes.ts` (with `oauthStore.ts`), `seekerAgentRoutes.ts`, `skippieSeekerRoutes.ts`, `assistantRoutes.ts`, `mcpRoutes.ts`, `sitemapRoutes.ts` and `plansCatalogRoutes.ts`, their wiring in `server/_core/index.ts`, and the `server/db.ts` functions those routes call (read by line range only).
 
 ## Summary
-- **Withheld under rule 1:** 1 finding (H-1). It is not described here. Its details are held for the CEO outside the repository. Its severity is not given here either, so this file says nothing about it.
+- **Withheld under rule 1:** One finding is recorded in a private draft security advisory. Its technical details and severity are intentionally excluded from this public report.
 - **Published:** 13 findings: 1 P2 and 12 P3. None has a path an attacker can use on their own. The P2 is a control that does less than its screen says, with no attacker path while password sign-in is not live.
 - **Held up under reading:**
   - Every signed-in route takes the user id from the session (`resolveIdentity`), never from the request, and every read or write of an owned row filters by that id: profile, setup, work items (`profileRoutes.ts:43-206`), assistant connections, tokens, approvals and developer apps (`db.ts:560`, `:606`, `:656`, `:710`, `:806`, `:813`), seeker agent grants (`seekerAgentRoutes.ts:298-350`, `getGrantForUser`), and the impact card (`impactCardRoutes.ts:17-25`).
