@@ -25,6 +25,29 @@ const SERVER_OR_SHARED = /^(shared|server)\//;
 
 const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
+// D-356 named GPT-6.1 Sol, D-357 added GPT-6 Sol, and D-359 (owner, Nov 18 2026) widened it to every model name that
+// contains GPT or Claude, in any case. A session name is "<model>" or "<model> · <tag>"; the model part never holds "·".
+const FULL_EDIT_MODEL = /gpt|claude/i;
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * D-356 (owner, Nov 17 2026): "let the gpt 6.1 sol have full rights to edit anything"; D-357 (Nov 18): "not only 6.1";
+ * D-359 (Nov 18): "let all gpt models have full access", "claude ,gpt models can have full access". Returns the model
+ * name when one of the branch's commit subjects is this task's `Claim`, `Takeover` or `Fix claim` marker by a session
+ * whose model name contains GPT or Claude, else null.
+ */
+export function solSessionOf(taskId, subjects) {
+  const marker = new RegExp(`^(?:Claim|Takeover|Fix claim) ${escapeRegExp(taskId)}: ([^·]+?)(?: · \\S+)?$`);
+  for (const subject of subjects) {
+    const match = marker.exec(subject.trim());
+    if (match && FULL_EDIT_MODEL.test(match[1])) return match[1];
+  }
+  return null;
+}
+
+/** True when a GPT or Claude model session holds this task (D-356, D-357, D-359). */
+export const solHoldsTask = (taskId, subjects) => solSessionOf(taskId, subjects) !== null;
+
 /**
  * The rules, with no I/O, so they can be tested directly.
  * `changed` is every path the branch touched; `editedTests` the ones that are tests;
@@ -69,7 +92,11 @@ export function checkBranch(taskId) {
     const numstat = git(["diff", "--numstat", "origin/main...HEAD", "--", pattern]).split("\n").filter(Boolean);
     lineCounts.set(pattern, numstat.reduce((sum, row) => sum + row.split("\t").slice(0, 2).reduce((n, cell) => n + (Number(cell) || 0), 0), 0));
   }
-  return { owns, violations: scopeViolations({ owns, changed, packet: task.packet, lineCounts }), skipped: null };
+  const violations = scopeViolations({ owns, changed, packet: task.packet, lineCounts });
+  const subjects = git(["log", "--format=%s", "origin/main..HEAD"]).split("\n").filter(Boolean);
+  const solSession = violations.length ? solSessionOf(task.id, subjects) : null;
+  if (solSession) return { owns, violations: [], exempt: violations, solSession, skipped: null };
+  return { owns, violations, exempt: [], skipped: null };
 }
 
 // PROCESS-review-gate: loaded lazily, so a copy of this script without the gate beside it fails open, loudly.
@@ -106,9 +133,14 @@ async function main() {
     return 2;
   }
   try {
-    const { owns, violations, skipped } = checkBranch(taskId);
+    const { owns, violations, exempt = [], solSession, skipped } = checkBranch(taskId);
     if (skipped) {
       console.log(`scope-check: ${skipped} — nothing to compare.`);
+      return 0;
+    }
+    if (exempt.length) {
+      for (const notice of exempt) console.log(`scope-check: notice (D-356/D-357/D-359, ${solSession} full edit rights): ${notice}`);
+      console.log(`scope-check: ${exempt.length} change(s) outside owns allowed — a ${solSession} session holds this task (D-356/D-357/D-359: GPT and Claude models).`);
       return 0;
     }
     if (!violations.length) {

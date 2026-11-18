@@ -11,7 +11,8 @@ import { sendTransactionalEmail } from "./emailDelivery";
 // than a day past their shelf life (a stuck ask-expiry sweep,
 // P0-allocated-ask-stuck), a D-034/D-047 delivery spend still sitting on an ask
 // that waits for coverage (its flip to visible was lost), and one spend
-// reversed by two ledger rows (the reversal unique index broken). It never
+// reversed by two ledger rows (the reversal unique index broken), and any
+// Chargebee webhook refused for its secret in the last day (D-212). It never
 // writes to a wallet, payment, ledger or ask
 // row; the only writes are the job's own run record (the runner) and one
 // operational-activity row when an alert email goes out. The email carries
@@ -26,6 +27,7 @@ import { ASK_DELIVERY_KEY_PREFIX } from "./coverageDelivery";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
+import { WEBHOOK_UNAUTHORIZED_ACTION } from "./webhookAuthAlarm";
 
 /** A checkout still pending after this is stale enough to list (D-065: "checkouts older than a day"). */
 export const STALE_CHECKOUT_AGE_MS = 24 * 60 * 60_000;
@@ -81,6 +83,8 @@ export type DailyMoneyCheckDeps = {
   summarizeStaleCheckouts: (olderThan: Date, newerThan?: Date) => Promise<StaleCheckoutSummary>;
   listRefundsAfterPickup: (limit: number) => Promise<RefundAfterPickupRow[]>;
   listReferredPastDeadline: (nowMs: number, limit: number) => Promise<ReferredDeadlineStuckRow[]>;
+  /** D-212: Chargebee webhook deliveries refused for a bad or missing secret since `since` (optional so older callers stay valid). */
+  countWebhookUnauthorizedSince?: (since: Date) => Promise<number>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -392,6 +396,17 @@ export async function listReferredPastDeadline(nowMs: number, limit: number): Pr
   return found;
 }
 
+/**
+ * D-212 (REL-webhook-auth-alarm): how many Chargebee webhook deliveries were refused for their secret since
+ * `since`, from the rows `recordWebhookUnauthorized` writes. Read-only; a count, never the rows.
+ */
+export async function countWebhookUnauthorizedSince(since: Date): Promise<number> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const [row] = await db.select({ total: count() }).from(operationalActivityLogs)
+    .where(and(eq(operationalActivityLogs.action, WEBHOOK_UNAUTHORIZED_ACTION), gte(operationalActivityLogs.createdAt, since)));
+  return Number(row?.total ?? 0);
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
@@ -419,6 +434,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   summarizeStaleCheckouts,
   listRefundsAfterPickup,
   listReferredPastDeadline,
+  countWebhookUnauthorizedSince,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 };
@@ -515,6 +531,10 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // D-038-B: an accepted ask nobody marked Referred should have reopened a day ago, with the credit released.
     const referredStuck = await deps.listReferredPastDeadline(nowMs, FINDINGS_PREVIEW_LIMIT);
     for (const row of referredStuck) findings.push(`referred_deadline_stuck: ask #${row.id} is still approved more than a day past its Referred deadline (${row.dueAt.toISOString()}); the referral-timers job has not reopened it`);
+
+    // D-212: a webhook refused for its secret means refund, card-validation and renewal events may be refused too.
+    const refusedWebhooks = deps.countWebhookUnauthorizedSince ? await deps.countWebhookUnauthorizedSince(new Date(nowMs - DAY_MS)) : 0;
+    if (refusedWebhooks > 0) findings.push(`webhook_unauthorized_24h: ${refusedWebhooks} Chargebee webhook ${refusedWebhooks === 1 ? "delivery was" : "deliveries were"} refused for a bad or missing secret in the last 24 hours; if the webhook secret drifted, refund, card-validation and renewal events are being refused too (compare the Chargebee webhook settings with CHARGEBEE_WEBHOOK_SECRET)`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

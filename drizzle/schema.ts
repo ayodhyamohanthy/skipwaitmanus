@@ -29,6 +29,32 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 }, table => [index("users_canonical_person_idx").on(table.canonicalPersonId)]);
 
+// DEVICE-SIGNIN-passkeys: passkey credentials for seeker sign-in (owner, Oct 26).
+// A credential belongs to exactly one account (openId). Public key and counter are
+// server state; the private key never leaves the person's device.
+export const passkeyCredentials = mysqlTable("passkeyCredentials", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }).notNull(),
+  credentialId: varchar("credentialId", { length: 255 }).notNull(),
+  publicKey: text("publicKey").notNull(),
+  counter: bigint("counter", { mode: "number" }).notNull().default(0),
+  transports: varchar("transports", { length: 255 }),
+  deviceName: varchar("deviceName", { length: 120 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+}, table => [uniqueIndex("passkey_credential_id_unique").on(table.credentialId), index("passkey_openid_idx").on(table.openId)]);
+
+// Short-lived WebAuthn challenges (registration and login). Expired rows are
+// ignored and swept on write.
+export const passkeyChallenges = mysqlTable("passkeyChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }),
+  challenge: varchar("challenge", { length: 255 }).notNull(),
+  kind: mysqlEnum("kind", ["registration", "login"]).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("passkey_challenge_idx").on(table.challenge)]);
+
 export const verifiedLoginAliases = mysqlTable("verifiedLoginAliases", {
   id: int("id").autoincrement().primaryKey(),
   provider: varchar("provider", { length: 32 }).notNull(),
@@ -143,6 +169,10 @@ export const accountPreferences = mysqlTable("accountPreferences", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   timeZone: varchar("timeZone", { length: 64 }),
   dateFormat: varchar("dateFormat", { length: 8 }),
+  // D-093.capture (0121): the chosen visible language and the write-once
+  // signup subtag. Both stay null until capture is enabled by the release row.
+  language: varchar("language", { length: 16 }),
+  signupLanguage: varchar("signupLanguage", { length: 16 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
 
@@ -1091,6 +1121,22 @@ export const askWorkItems = mysqlTable("askWorkItems", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
 
+/** D-090 BYOR (0111): one private one-time link per waiting ask, which the seeker sends to an insider they already know. Only the token's SHA-256 is stored — never the token. `activeRequestKey` is `link:<requestId>` while the link is live and NULL otherwise, the house pattern for "at most one active row" (referralAvailabilitySlots). */
+export const askInviteLinks = mysqlTable("askInviteLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  linkTokenHash: varchar("linkTokenHash", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["active", "claimed", "delivered", "revoked", "expired"]).default("active").notNull(),
+  claimedByUserId: int("claimedByUserId").references(() => users.id, { onDelete: "set null" }),
+  claimedAt: timestamp("claimedAt"),
+  reservationExpiresAt: timestamp("reservationExpiresAt"),
+  activeRequestKey: varchar("activeRequestKey", { length: 64 }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_invites_token_hash_unique").on(table.linkTokenHash), uniqueIndex("ask_invites_active_request_unique").on(table.activeRequestKey), index("ask_invites_request_idx").on(table.referralRequestId), index("ask_invites_status_expiry_idx").on(table.status, table.expiresAt), index("ask_invites_creator_created_idx").on(table.createdByUserId, table.createdAt)]);
+
 /** D-132 audit item 2 (0106): the job level and credit cost an ask was priced at, stored once at creation. Written only while ASK_LEVEL_COST is on; no row means the flat 1-credit price. */
 export const askCosts = mysqlTable("askCosts", {
   id: int("id").autoincrement().primaryKey(),
@@ -1342,3 +1388,27 @@ export const seekerLevels = mysqlTable("seekerLevels", {
   level: int("level").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("seeker_levels_user_unique").on(table.userId)]);
+
+/**
+ * D-057-session-gate (D-245, 0116): one row per in-session work-email step-up
+ * challenge, which may become one proof bound to the account, the session key
+ * (stored as a SHA-256 digest), the exact work email (its HMAC fingerprint) and
+ * the purpose. Written only by server/referrerStepUp.ts.
+ */
+export const referrerStepUps = mysqlTable("referrerStepUps", {
+  id: int("id").autoincrement().primaryKey(),
+  challengeIdHash: varchar("challengeIdHash", { length: 64 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionKeyHash: varchar("sessionKeyHash", { length: 64 }).notNull(),
+  purpose: mysqlEnum("purpose", ["referrer_actions"]).notNull(),
+  emailFingerprint: varchar("emailFingerprint", { length: 80 }).notNull(),
+  workEmailDomain: varchar("workEmailDomain", { length: 255 }).notNull(),
+  codeHash: varchar("codeHash", { length: 64 }).notNull(),
+  codeExpiresAt: timestamp("codeExpiresAt").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  proofExpiresAt: timestamp("proofExpiresAt"),
+  revokedAt: timestamp("revokedAt"),
+  revokedReason: mysqlEnum("revokedReason", ["superseded", "logout"]),
+  createdAt: timestamp("createdAt").notNull(),
+}, table => [uniqueIndex("referrer_step_ups_challenge_unique").on(table.challengeIdHash), index("referrer_step_ups_proof_idx").on(table.userId, table.sessionKeyHash, table.purpose, table.verifiedAt)]);

@@ -1,0 +1,126 @@
+{
+  "source": "bf0d489e0a42390fe82ce23da1b8042fb6f1e9b6",
+  "route": "/for-companies",
+  "command": "node design/goal-ui/captures/for-companies/capture.mjs",
+  "synthetic": true,
+  "results": [
+    {
+      "file": "default-1280.png",
+      "scenario": "default",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "empty-1280.png",
+      "scenario": "empty",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "error-1280.png",
+      "scenario": "error",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "[API Query Error] Error: Failed to load companies\n    at u (http://127.0.0.1:50442/assets/companyDirectory-DpI198vy.js:1:504)\n    at async w (http://127.0.0.1:50442/assets/companyDirectory-DpI198vy.js:1:638)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "loading-1280.png",
+      "scenario": "loading",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "default-390.png",
+      "scenario": "default",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "empty-390.png",
+      "scenario": "empty",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "error-390.png",
+      "scenario": "error",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "[API Query Error] Error: Failed to load companies\n    at u (http://127.0.0.1:50442/assets/companyDirectory-DpI198vy.js:1:504)\n    at async w (http://127.0.0.1:50442/assets/companyDirectory-DpI198vy.js:1:638)"
+      ],
+      "warnings": []
+    },
+    {
+      "file": "loading-390.png",
+      "scenario": "loading",
+      "route": "/for-companies",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflowPx": 0,
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "warnings": []
+    }
+  ]
+}

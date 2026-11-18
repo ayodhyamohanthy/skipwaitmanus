@@ -181,10 +181,28 @@ They are used two ways, and neither adds a second approval (D-200 (4)):
 ## GATE-migration-apply (architect, Tier 2): only if the e2e job cannot apply the migrations from empty
 GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays open only if that PR finds the migrations cannot apply from an empty database. In that case, any agent writes the packet from that PR's finding (a baseline snapshot of the production schema, D-100); otherwise the row is closed as done by GATE-e2e-journeys.
 
+**That finding held (D-239).** On `main` the journal step always falls back to `drizzle-kit push`; see CI run 41260983242 and its `0017_careful_ricochet.sql` warning. This row's packet is now [`GATE-migration-apply.md`](GATE-migration-apply.md), written 2026-11-01. It uses the base revision's `schema.ts` instead of a production dump, so it needs no owner item or production access. The reasons are in that packet's §3 and §4. GATE-e2e-journeys' done line below says the job builds the schema "from empty". In fact only its fallback `push` does; it is left unedited as that row's record.
+
+## PICKER-oracle-kind-repair: derive expected outcome from oracle in nextTask.test.ts:175 (lane `picker`, Tier 2, D-302, D-304)
+**Why.** D-302 orders that `scripts/nextTask.test.ts:175` must land green on `main` before `D-048-p3-for-companies` lands. `PICKER-fullstack-lights` and `PICKER-qa-stage` are withheld under D-134 due to upstream unmet dependencies (`BRANCH-HYGIENE-2` etc.). Under D-223 and D-200, this row carries the narrow one-line test repair.
+
+**What.** At `scripts/nextTask.test.ts:175`, replace the hardcoded `{ kind: "build", id: firstId }` with `{ kind: oracle.kind, id: firstId }`, deriving the expected outcome from the independent oracle on `:176` while preserving the ten-assertion count pin and 14 mutant boards.
+
+**Owned paths.** `scripts/nextTask.test.ts`.
+
+**Done:**
+- Tests pass (`pnpm vitest run scripts/nextTask.test.ts` 177 passed).
+- Landed via PR.
+
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+
+PICKER-oracle-kind-repair: in progress — Antigravity · 87cf — 2026-11-08 — branch agent/queue/picker-oracle-kind-repair
 
 GATE-test-integrity: done — e425fac9 (PR #846)
 GATE-tier-floor: done — 0899a26a (PR #862; built by DeepSeek V4.1 Flash 1017 · s38fcc2f0 at 2cbe6f33, gate/PR/land finished by the Cline · b579 takeover). Gate proof: `pnpm check` 0, `scripts/` 28 files/925 tests, full `pnpm vitest run` 5316 passed with 6 load-flakes in `scripts/classifyCiChange.test.ts`, `server/chargebeeRoutes.cardValidation.test.ts` and `client/src/pages/startGoal.test.tsx` that each pass alone (70/70), token audit, migration lint, deploy triggers and `pnpm build` all 0, `scope-check` inside the row's owns; the new message reproduced locally on a scratch Tier 2 tree that touches `server/dailyMoneyCheck.ts` — "Tier 1: this change touches `server/dailyMoneyCheck.ts`, which are Tier 1 (D-212)…" — the first real Tier 2 row that touches a Tier 1 path will show it in CI (none exists today, so that instance is unverified)
 
 GATE-e2e-journeys: done — 629a2167 — built by Hark · 2979, landed by Qoder · 3415 — six core journeys in a real browser against a real MySQL on every pull request and every push to main (personal link survives sign-in, queue attestation before Accept, cost before Send, withdraw returns the referral, work-email-only referrer sign-in, plans read the server catalog), `scripts/e2e-server.mjs` builds the schema from empty and applies the deploy migrations twice, and the `e2e journeys` job in `.github/workflows/ci.yml` runs green on the PR (red run against the throwaway branch 41023432494 fails only the personal-link journey); the #748 pin names the e2e job and pins each required job's own blocking commands (D-239), and its docs-only diff reads `--no-renames`. — map: Validation commands gain `pnpm e2e` (the six journeys in `e2e/*.e2e.ts`, served by `scripts/e2e-server.mjs`; CI job `e2e journeys`).
+
+### November 9 D-309 parallel eligibility contract
+PICKER-fullstack-lights consumes PICKER-parallel-eligibility's honest WAIT/report text contract before editing nextTaskText.mjs; PICKER-qa-stage follows through fullstack-lights. Merge that landed output normally and retain it. No global lower-task stop is added for a claimed red task; actual main/release, claim, overlap, dependency, owner and review/CI constraints remain. This adds no live-release or money permission and does not complete either row. Both rows were checked against D-309 for this bounded output dependency only.

@@ -1,5 +1,6 @@
 // Company directory REST surface.
 //   GET  /api/companies            public, cacheable: listed companies + openCount
+//   GET  /api/companies/search?q=  public, cacheable: at most 10 companies by name or alias (D-174)
 //   GET  /api/companies/:slug      public, cacheable: one listed company, 404 otherwise
 //   GET  /api/companies/:slug/opportunities  public, cacheable: a company's live
 //                                  employee-posted roles (D-022), newest first
@@ -9,12 +10,16 @@
 //   PATCH /api/admin/companies/:id admin: edit, hide/list, add/remove alias domains
 // Contracts live in shared/companies.ts; services are injectable for tests.
 import express, { type Express, type Request, type Response } from "express";
-import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
+import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, companySearchQuerySchema, companySearchResponseSchema, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
+import { searchCompanies } from "./companySearch";
+import { COMPANY_DISCOVERY_ENABLED, COMPANY_DISCOVERY_LIMIT, discoverCompanies, type DiscoveryOutcome } from "./companyDiscovery";
+import type { DiscoveredCompany } from "../shared/companies";
 import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
 import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, listUnmatchedWorkDomains, updateCompany, type UnmatchedWorkDomain } from "./companyDirectoryAdmin";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
 import { companyResponseSignalEnabled, loadCompanyResponseSignal } from "./companyResponseSignal";
+import { registerCompanyDemandRoutes } from "./companyDemandRoutes";
 import { listCompanyOpportunityPosts } from "./db";
 import type { CompanyResponseSignal } from "../shared/companyResponseSignal";
 
@@ -26,6 +31,8 @@ export type CompanyDirectoryRouteDeps = {
   recordActivity?: (input: ActivityInput) => void | Promise<void>;
   listCompanyDirectory?: () => Promise<CompanyDirectoryResponse>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<PublicCompany | undefined>;
+  /** Worldwide discovery (D-174-worldwide-discovery); defaults to the Wikidata adapter. The client key feeds its per-client upstream budget. */
+  discoverCompanies?: (query: string, clientKey?: string) => Promise<DiscoveryOutcome>;
   /** A company's live posts for the given domains (defaults to server/db.ts). */
   listCompanyOpportunities?: (domains: readonly string[], nowMs?: number) => Promise<unknown[]>;
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
@@ -52,6 +59,7 @@ function failure(res: Response, error: unknown, fallback: string) {
 
 export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirectoryRouteDeps) {
   const list = deps.listCompanyDirectory ?? listCompanyDirectory;
+  const discover = deps.discoverCompanies ?? ((query: string, clientKey?: string) => discoverCompanies(query, { clientKey }));
   const getOne = deps.getCompanyDirectoryEntry ?? getCompanyDirectoryEntry;
   const listOpportunities = deps.listCompanyOpportunities ?? listCompanyOpportunityPosts;
   const adminList = deps.listAdminCompanies ?? listAdminCompanies;
@@ -75,6 +83,35 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
   app.get("/api/companies", async (_req, res) => {
     try { const directory = await list(); res.set("Cache-Control", PUBLIC_CACHE).json(directory); }
     catch (error) { failure(res, error, "We could not load companies"); }
+  });
+
+  // D-174 company search: name and alias only, at most 10, no availability
+  // field (D-176). Registered before /:slug or "search" would read as a slug.
+  app.get("/api/companies/search", async (req, res) => {
+    const parsed = companySearchQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).set("Cache-Control", "no-store").json({ error: "Invalid search" });
+    try {
+      const { companies } = await list();
+      const results = searchCompanies(companies, parsed.data.q).map(({ openToReferrals: _open, ...rest }) => rest);
+      // Worldwide discovery (D-174-worldwide-discovery): candidates the directory does not hold,
+      // deduped by official domain. A discovery failure costs the directory answer nothing - but a
+      // degraded discovery portion (rate limit, budget, saturation, upstream failure) is said out loud
+      // and never publicly cached, so it can never masquerade as "no such company" for every visitor.
+      let discovered: DiscoveredCompany[] | undefined;
+      let discoveryState: "ok" | "degraded" | undefined;
+      let discoveryDegradedReason: "rate_limited" | "busy" | "unavailable" | undefined;
+      if (COMPANY_DISCOVERY_ENABLED) {
+        try {
+          const held = companies.flatMap(company => company.domains);
+          const outcome = await discover(parsed.data.q, req.ip);
+          // Domain identity, subdomain-aware in both directions: careers.acme.com held means acme.com is not a discovery.
+          discovered = outcome.companies.filter(candidate => !held.some(heldDomain => heldDomain === candidate.domain || candidate.domain.endsWith(`.${heldDomain}`) || heldDomain.endsWith(`.${candidate.domain}`))).slice(0, COMPANY_DISCOVERY_LIMIT);
+          discoveryState = outcome.degraded ? "degraded" : "ok";
+          discoveryDegradedReason = outcome.reason === "rate_limited" ? "rate_limited" : outcome.reason === "budget" || outcome.reason === "saturated" ? "busy" : outcome.reason === "upstream" ? "unavailable" : undefined;
+        } catch { discovered = []; discoveryState = "degraded"; discoveryDegradedReason = "unavailable"; }
+      }
+      res.set("Cache-Control", discoveryState === "degraded" ? "private, no-store" : PUBLIC_CACHE).json(companySearchResponseSchema.parse({ companies: results, ...(discovered === undefined ? {} : { discovered, discoveryState, ...(discoveryDegradedReason ? { discoveryDegradedReason } : {}) }) }));
+    } catch (error) { failure(res, error, "We could not search companies"); }
   });
 
   app.get("/api/companies/:slug", async (req, res) => {
@@ -154,5 +191,15 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       record({ actorUserId: identity.account.id, action: "admin.company_updated", outcome: "success", resourceType: "company", resourceId: id });
       res.json({ company });
     } catch (error) { failure(res, error, "We could not update this company"); }
+  });
+
+  // D-086 demand list (switch only): its own /api/company-demand prefix, so no
+  // slug can shadow it. Both switches start false.
+  registerCompanyDemandRoutes(app, {
+    resolveIdentity: deps.resolveIdentity,
+    recordActivity: deps.recordActivity,
+    listCompanyDirectory: deps.listCompanyDirectory,
+    getCompanyDirectoryEntry: deps.getCompanyDirectoryEntry,
+    listAdminCompanies: deps.listAdminCompanies,
   });
 }

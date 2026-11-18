@@ -14,7 +14,7 @@ test("a personal link survives sign-in", async ({ referrerPage, context, page })
 
   // Signed out, the link opens on the referrer's company.
   await page.goto(linkPath);
-  await expect(page.getByRole("heading", { name: `Request a referral at ${REFERRER_COMPANY}.` })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Get referred at ${REFERRER_COMPANY}.` })).toBeVisible();
 
   // The composer for that link, still signed out: write the request and press Send.
   const asks: string[] = [];

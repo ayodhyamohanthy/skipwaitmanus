@@ -1,0 +1,30 @@
+{
+  "row": "D-057-session-gate",
+  "packet": "docs/plans/D-057-session-gate.md (§0b.8b captures deliverable)",
+  "capturedBy": "Claude Code · pi1",
+  "capturedAt": "2026-11-09",
+  "head": "f6706344 (branch agent/queue/d057-session-gate; composition parent 7784d695 of reviewed e4fe0ae5 lineage with main 0aa3a9ee)",
+  "harness": "node scripts/kit-screens/capture.mjs --route <route> --fixture <fixture> --out design/goal-ui/captures/d057-session-gate --viewport both (dev server on localhost:3000, DB-unavailable in-memory fallback; every /api call mocked at the network layer)",
+  "authentication": "SIMULATED. The signed-in session is the harness fixture (dev-auth session mock + network-layer API fixtures). This is NOT a real Google sign-in and does not satisfy §0b.9's full-browser-path acceptance on its own; the historical §8b simulated-cookie captures remain historical partial evidence, and real sign-in journey proof stays an open review item.",
+  "states": [
+    {
+      "name": "queue-step-up",
+      "route": "/queue",
+      "behavior": "A server-verified referrer whose session is code_required keeps the Referral queue navigation (§0b.8c shell fix) and the queue renders the in-place step-up (GoalWorkEmailStepUp), never the standalone code sign-in.",
+      "fixtureStates": { "access": "verifiedCompanyAccess true, codeRequired true (fictional Acme)" },
+      "files": ["live/web/queue-step-up.png (1280)", "live/mobile/queue-step-up.png (390)", "compare/web/queue-step-up--01.png", "compare/mobile/queue-step-up--01.png"]
+    },
+    {
+      "name": "email-review-step-up",
+      "route": "/email-review/t000000000000000000000000000000000000000000000000",
+      "behavior": "The kit /email-review page (goal flag off, as live) answers the review-link 403 work_email_code_required with the in-place step-up island through the ordinary access verdict, then retries the same review link for the same account (§0b.8b).",
+      "fixtureStates": { "reviewLink": "403 work_email_code_required", "access": "verifiedCompanyAccess true, codeRequired true (fictional Acme)" },
+      "files": ["live/web/email-review-step-up.png (1280)", "live/mobile/email-review-step-up.png (390)", "compare/web/email-review-step-up--01.png", "compare/mobile/email-review-step-up--01.png"]
+    }
+  ],
+  "sanitization": "Fictional company (Acme / acme.example), fictional user (Asha Rao, fixture id), no tokens, credentials, personal data or logs. The review-link token is an opaque t0… placeholder.",
+  "openItems": [
+    "Real sign-in full browser path per §0b.9 (Google sign-in → /verify → /queue step-up → code → confirm → same account → reload → logout → step-up again; signed-out work-email sign-in) with actual vs simulated labeling per step.",
+    "Independent exact-head Tier 1 review of the composed branch (the old pass does not certify this head, D-308)."
+  ]
+}

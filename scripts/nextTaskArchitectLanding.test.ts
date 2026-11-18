@@ -29,7 +29,7 @@ type Opts = { branches?: [string, Branch][]; prs?: [string, string][]; ci?: [str
 const pick = (opts: Opts = {}) => pickNextTask({
   tasks: opts.tasks ?? [packetTask, task("B")], mainCi: green,
   branches: new Map(opts.branches ?? []), openPrs: new Map(opts.prs ?? []),
-  prCi: new Map((opts.ci ?? []).map(([b, state]) => [b, { state }])),
+  prCi: new Map((opts.ci ?? []).map(([b, state]) => [b, { state, ...(state === "green" ? { sha: "p1" } : {}) }])),
   mergedHeads: new Map((opts.merged ?? []).map(([b, shas]) => [b, new Set(shas)])),
   reports: [], now: NOW, claimant: opts.claimant ?? null, register: [],
 });
@@ -59,14 +59,15 @@ describe("a packet pull request on its architect lock branch (D-190)", () => {
     const markersOnly = lock({ work: false });
     const got = pick({ branches: [[LOCK, markersOnly]], prs: [[LOCK, PR]], ci: [[LOCK, "green"]], claimant: "Qwen · s1" });
     expect(got).toMatchObject({ kind: "build", task: { id: "B" } });
-    const row = statusBoard({ tasks: [packetTask], branches: new Map([[LOCK, markersOnly]]), openPrs: new Map([[LOCK, PR]]), prCi: new Map([[LOCK, { state: "green" }]]), reports: [], now: NOW });
+    const row = statusBoard({ tasks: [packetTask], branches: new Map([[LOCK, markersOnly]]), openPrs: new Map([[LOCK, PR]]), prCi: new Map([[LOCK, { state: "green", sha: "p1" }]]), reports: [], now: NOW });
     expect(row[0]).toMatchObject({ id: "P", state: "packet", pr: null });
   });
 
-  it("goes through the landing slot: a busy slot makes the lander wait", () => {
+  it("goes through the landing slot: a busy slot never hands its landing; other work (D-315) or, with none, the wait", () => {
     const slot: Branch = { tipMs: NOW - 0.2 * HOUR, merged: false, markers: [{ verb: "Land claim", id: "X", who: "GPT · g1" }] };
-    const got = pick({ branches: [[LOCK, lock()], ["agent/queue/landing", slot]], prs: [[LOCK, PR]], ci: [[LOCK, "green"]], claimant: "Qwen · s1" });
-    expect(got).toMatchObject({ kind: "wait", landing: true, holder: "GPT · g1" });
+    const opts = { branches: [[LOCK, lock()], ["agent/queue/landing", slot]] as [string, Branch][], prs: [[LOCK, PR]] as [string, string][], ci: [[LOCK, "green"]] as [string, string][], claimant: "Qwen · s1" };
+    expect(pick(opts)).toMatchObject({ kind: "build", task: { id: "B" } });
+    expect(pick({ ...opts, tasks: [packetTask] })).toMatchObject({ kind: "wait", landing: true, holder: "GPT · g1" });
   });
 
   it("its lander continues the landing, and nobody else is handed it meanwhile", () => {
@@ -85,13 +86,13 @@ describe("a packet pull request on its architect lock branch (D-190)", () => {
   });
 
   it("shows its pull request and CI on the board while it waits for a lander", () => {
-    const rows = statusBoard({ tasks: [packetTask], branches: new Map([[LOCK, lock()]]), openPrs: new Map([[LOCK, PR]]), prCi: new Map([[LOCK, { state: "green" }]]), reports: [], now: NOW });
+    const rows = statusBoard({ tasks: [packetTask], branches: new Map([[LOCK, lock()]]), openPrs: new Map([[LOCK, PR]]), prCi: new Map([[LOCK, { state: "green", sha: "p1" }]]), reports: [], now: NOW });
     expect(rows[0]).toMatchObject({ id: "P", pr: PR, state: "pr-green", health: "green" });
   });
 
   it("leaves every other row's reserved branches alone", () => {
     // A todo row never takes its architect lock as a work branch, even with file commits on it.
-    const rows = statusBoard({ tasks: [task("Q")], branches: new Map([["agent/architect/q", lock({ markers: [{ verb: "Claim", id: "Q", who: writer }] })]]), openPrs: new Map([["agent/architect/q", PR]]), prCi: new Map([["agent/architect/q", { state: "green" }]]), reports: [], now: NOW });
+    const rows = statusBoard({ tasks: [task("Q")], branches: new Map([["agent/architect/q", lock({ markers: [{ verb: "Claim", id: "Q", who: writer }] })]]), openPrs: new Map([["agent/architect/q", PR]]), prCi: new Map([["agent/architect/q", { state: "green", sha: "p1" }]]), reports: [], now: NOW });
     expect(rows[0]).toMatchObject({ id: "Q", state: "todo", pr: null });
   });
 });

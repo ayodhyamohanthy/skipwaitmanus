@@ -1,0 +1,206 @@
+{
+  "synthetic": true,
+  "sourceCommit": "ca321bcffb23471f96d6f985a981046d5427fcca",
+  "sourceSha256": "998061a28240a2ba8ff2bc518871e22758e4dfa3f8b83b1e3a77294ee0f03714",
+  "entryPath": "client/src/pages/ReferralConversation.tsx",
+  "results": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "file": "signed-out-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "d9821e6c0d757b962cd31b9a07c6f00d270e888b4e4e3da2cada5ec25fb1c571"
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "file": "signed-out-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "39d12419652b944966f2b55bf004ec43062be269595880e2231186045af633c8"
+    },
+    {
+      "state": "loading",
+      "width": 1280,
+      "file": "loading-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "1690a5314ec3b13cd5d80875093191b88ce503d93d103452835f0975ba11c84d"
+    },
+    {
+      "state": "loading",
+      "width": 390,
+      "file": "loading-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "d0cdda5246f61cba8ad93428b068ca97b41e6466d753cdf75a632f7eae8fda8e"
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "file": "error-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "4e3fddf77c8a852359808b613e5a61a93deb92e0311f0cf61121d9b1face679d"
+    },
+    {
+      "state": "error",
+      "width": 390,
+      "file": "error-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "ef8a1d541f5e1d0d970d10b823116b9d6dadbb8e4635509d5b1f9a97b99d6ff0"
+    },
+    {
+      "state": "pending",
+      "width": 1280,
+      "file": "pending-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "6bd59341df0fb5c801db8764931f4d0374ebec75869e8e005323bf53b1a4858c"
+    },
+    {
+      "state": "pending",
+      "width": 390,
+      "file": "pending-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "c07105e75f67f9ff2c94efa1688d56f62ae7fc068d7d63ac5a256e70d597b941"
+    },
+    {
+      "state": "accept",
+      "width": 1280,
+      "file": "accept-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "a7528c1fa71bfea72be6f95e3bbc35281316aefb2cf806d82d76045e39b6bb6b"
+    },
+    {
+      "state": "accept",
+      "width": 390,
+      "file": "accept-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "2eb22c6c03a187b5d65c701e90b2926903430e14568050382d1261a5c9d1b8db"
+    },
+    {
+      "state": "pass",
+      "width": 1280,
+      "file": "pass-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "2ff57f3ff0ad9cd73b85a13a5233f27841dcd75433e7718c565f657d39899f31"
+    },
+    {
+      "state": "pass",
+      "width": 390,
+      "file": "pass-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "fe2cea59eb8953a5341d08c1d927a7aef03b6ad3bdfa114aef3b8846bfb4bb0f"
+    },
+    {
+      "state": "accepted",
+      "width": 1280,
+      "file": "accepted-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "3562e408dfafc0bb340ef3767446f63eb535bfc4475dba2dbd15607a85c313a9"
+    },
+    {
+      "state": "accepted",
+      "width": 390,
+      "file": "accepted-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "3a2641ad85f0909c6452ef912cdfec795943a56dfd549f2440a67f7c67939684"
+    },
+    {
+      "state": "referred",
+      "width": 1280,
+      "file": "referred-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "93c9491b2ef909f0b1dbf7e98b99edcc2273a2ac6a68c7b14700ee6a6205fed9"
+    },
+    {
+      "state": "referred",
+      "width": 390,
+      "file": "referred-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "4f8c6ee840f70e5d4273df85583761f38985c4fdbf8c4ed1e07ed225c38c38b0"
+    },
+    {
+      "state": "colleague",
+      "width": 1280,
+      "file": "colleague-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "3941819c7a720142da2ad1ce96bc6851ccc7de55fd05ade2e5c313d596603aa1"
+    },
+    {
+      "state": "colleague",
+      "width": 390,
+      "file": "colleague-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "029a292847b44b6cde351b4b9a54beb268a57f56fdd614aa82aca35ddc1c5e16"
+    },
+    {
+      "state": "seeker-pending",
+      "width": 1280,
+      "file": "seeker-pending-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "b0507bb593f224726ab39dee01f794578149cd51f9da0e5259ee1f3ca8a2272e"
+    },
+    {
+      "state": "seeker-pending",
+      "width": 390,
+      "file": "seeker-pending-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "59582e7356b7d11c5ad85df7e847bbda47e12aec96e8e5ad59dde20919122ffa"
+    },
+    {
+      "state": "seeker-accepted",
+      "width": 1280,
+      "file": "seeker-accepted-1280.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "746e52982f767cfa1036a4d86508341bf47fa821f3938ccb37ae1288976a124c"
+    },
+    {
+      "state": "seeker-accepted",
+      "width": 390,
+      "file": "seeker-accepted-390.png",
+      "horizontalOverflowPx": 0,
+      "finalPath": "/conversation/601",
+      "errors": [],
+      "sha256": "6a0b70d25737d6038f4d666a64dc331787ded8fd105af7c8c829b6a3fcfc3a98"
+    }
+  ]
+}
