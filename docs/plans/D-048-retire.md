@@ -127,4 +127,4 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 
 The rows share the plan row "D-048": each task writes one line here, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
-- (none started)
+- D-048-K-start: in progress — GPT-6.1 Sol · 97f1 — 2026-11-18 — branch `agent/queue/d048-k-start`; current main `e8845c36`, current decisions through D-359, `docs/BRIEF.md`, `docs/PRD.md`, `AGENTS.md`, `docs/DELEGATION.md`, `COLLABORATION.md`, this packet and the prior release/retirement outcomes checked. The start goal surface is live from PR #1074 (merge `c1f65aaa`, 2026-11-09); D-349 removes the soak requirement. Confirm exact release history, Sentry evidence and kit drift before deleting the legacy implementation. No behavior, copy, routing, API or auth changes intended.
