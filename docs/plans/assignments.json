@@ -1111,8 +1111,8 @@
       "tier": 1,
       "lane": "d048-pricing",
       "branch": "agent/queue/d048-p3-pricing",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-F-static-frame",
         "D-048-P-money",
@@ -1139,8 +1139,8 @@
       "tier": 1,
       "lane": "d048-release-pricing",
       "branch": "agent/queue/d048-r-pricing",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-p3-pricing"
       ],
@@ -3159,8 +3159,8 @@
       "tier": 1,
       "lane": "d048-retire-conversation",
       "branch": "agent/queue/d048-k-conversation",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-R-conversation"
       ],
@@ -3206,8 +3206,8 @@
       "tier": 2,
       "lane": "d048-retire-start",
       "branch": "agent/queue/d048-k-start",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -3216,9 +3216,10 @@
         "client/src/pages/goal/start/**",
         "client/src/pages/startGoal.test.tsx",
         "client/src/pages/onboarding.url.test.tsx",
+        "server/mobilePwaAudit.test.ts",
         "client/src/components/onboarding/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: start. Built by D-048-p3-start; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: start. Built by D-048-p3-start; released by D-048-release-platform. Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. D-349 launch mode waived the soak. Final evidence: PR #1282 merged as `ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4`; current main CI, API deploy and Pages deploy passed; `EXPECTED_SHA=ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4 bash scripts/verify-live-release.sh` returned CONVERGED; live `/start` at 1280/390 rendered `data-testid=goal-start`, zero overflow/errors; workers.dev returned 404. D-359 full edit scope allowed the named mobile audit and capture proof paths.",
       "epic": "D-048-p3"
     },
     {
@@ -3368,8 +3369,8 @@
       "tier": 1,
       "lane": "d048-retire-verify",
       "branch": "agent/queue/d048-k-verify",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-R-verify"
       ],
@@ -6368,10 +6369,10 @@
       "tier": 3,
       "lane": "security-audit-account",
       "branch": "agent/queue/d100-authz-account",
-      "status": "todo",
-      "syncedTo": "D-350",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [],
-      "note": "D-223 audit of D-100. Exploitable findings stay private (packet rule 1). D-260: audit delivered (13 published findings, CI green on 1012897c); one finding withheld under rule 1 and parked for the owner — only its discovering session can open the draft security advisory that gives it a durable private home. D-350: any session may file the one withheld finding as a private GitHub security advisory (never in a public issue, PR or commit), then mark this row done. If no session holds the finding's details, re-derive it from the audit scope and file it privately.",
+      "note": "D-223 audit of D-100. Details of security findings stay private (packet rule 1). D-260: audit delivered (13 published findings, CI green on 1012897c); one finding was withheld and the row parked for the owner. D-350: a private draft GitHub security advisory is the durable home for the withheld finding; this task's authorized handoff verified that private record and completed the audit row. The finding's details remain outside the public repository; remediation is separate work.",
       "epic": "D-100",
       "owns": [
         "docs/reviews/D-100-authz-account.md"
