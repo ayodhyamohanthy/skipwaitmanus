@@ -1,0 +1,79 @@
+{
+  "synthetic": true,
+  "sourceCommit": "b28e901d3ee4def539ff1126fbb81cfbed1dd65b",
+  "base": "http://127.0.0.1:4339",
+  "results": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "file": "signed-out-1280.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "b6bcf8e154718d3a3f9c2b0a7cd1b4b87a761f6763ef8a3be71b86e0ec48b274"
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "file": "signed-out-390.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "6e9b3b361f5dae0eb865e04f994f5ddfb74e18d298b0dab3545af83e9e7f23fd"
+    },
+    {
+      "state": "auth-loading",
+      "width": 1280,
+      "file": "auth-loading-1280.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "7da15fde60c410145601fd843d79bf0d822dcbb4a6d6b0f19b5e9c2f649922ea"
+    },
+    {
+      "state": "auth-loading",
+      "width": 390,
+      "file": "auth-loading-390.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "f75b8eeb24b3e25ad84458c54b6a66d8944d594cb9f2f850d5eacad6edffe5ae"
+    },
+    {
+      "state": "access-checking",
+      "width": 1280,
+      "file": "access-checking-1280.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "333df107854ec20196eef4fe51cb7a173a50bfa29f16c3fc1b1c507b6b99e12e"
+    },
+    {
+      "state": "access-checking",
+      "width": 390,
+      "file": "access-checking-390.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "a5751ccdf0c914983a13d83bb611369fe10cdd2444d96a8d4ca0ea2e06c436ac"
+    },
+    {
+      "state": "access-error",
+      "width": 1280,
+      "file": "access-error-1280.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "4b98a724f59e8077174e9910d886480bc1733cd7a5de9ba789dd82583f6ca0a4"
+    },
+    {
+      "state": "access-error",
+      "width": 390,
+      "file": "access-error-390.png",
+      "horizontalOverflowPx": 0,
+      "path": "/",
+      "errors": [],
+      "sha256": "ff4bb6e01f698d141f3d24bb8616bceb02d93812c375148b2a1b14b0228859d5"
+    }
+  ]
+}

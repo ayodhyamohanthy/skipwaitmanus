@@ -6,8 +6,8 @@ import Home from "./Home";
 import { publicRoute } from "@shared/publicRoutes";
 const auth = vi.hoisted(() => ({ isLoaded: true, isSignedIn: false }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => auth }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: () => false }));
-vi.mock("wouter", () => ({ Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "signed-out" }) }));
+vi.mock("wouter", () => ({ useLocation: () => ["/", vi.fn()], Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
 describe("landing metadata survives Home mounting", () => {
  afterEach(() => { cleanup(); document.head.innerHTML = ""; });
  for (const signedIn of [false, true]) {

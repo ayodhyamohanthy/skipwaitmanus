@@ -70,7 +70,10 @@ describe("goalSurfaces flag module", () => {
     const signIn = readFileSync(join(__dirname, "..", "pages", "SignIn.tsx"), "utf8");
     expect(home).not.toMatch(/@\/lib\/goalFlags/);
     expect(signIn).not.toMatch(/@\/lib\/goalFlags/);
-    expect(home).toMatch(/goalSurfaceOn\("home"\)/);
+    // D-048-K-home: the released home no longer has a design switch.
+    expect(home).not.toMatch(/goalSurfaceOn|components\/kit/);
+    expect(home).toContain("GoalLandingV9");
+    expect(home).toContain("HomeSignedIn");
     expect(signIn).toMatch(/goalSurfaceOn\("sign-in"\)/);
   });
 
