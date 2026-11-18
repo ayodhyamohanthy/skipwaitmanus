@@ -20,14 +20,16 @@ describe("Onboarding Target Role URL", () => {
     const continueButton = screen.getByRole("button", { name: "Continue" });
 
     fireEvent.change(input, { target: { value: "product designer at Example" } });
-    expect(screen.getByRole("alert").textContent).toMatch(/complete job link/i);
-    expect(continueButton).toHaveProperty("disabled", true);
-    expect(screen.getByText("Fix the link above to continue")).toBeTruthy();
-    expect(continueButton.getAttribute("aria-describedby")).toBe("continue-hint");
+    expect(screen.getByText(/complete job link/i)).toBeTruthy();
+    expect(continueButton.getAttribute("aria-disabled")).toBe("true");
+    expect(document.getElementById("continue-hint")?.textContent).toBe("Fix the link above to continue");
+    const disabledReasonId = continueButton.getAttribute("aria-describedby");
+    expect(disabledReasonId).not.toBeNull();
+    expect(disabledReasonId ? document.getElementById(disabledReasonId)?.textContent : "").toBe("Fix the link above to continue");
 
     fireEvent.change(input, { target: { value: "https://careers.example.com/jobs/product-designer" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(continueButton).toHaveProperty("disabled", false);
+    expect(continueButton.getAttribute("aria-disabled")).toBeNull();
     expect(screen.queryByText("Fix the link above to continue")).toBeNull();
   });
 
@@ -36,9 +38,9 @@ describe("Onboarding Target Role URL", () => {
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("We could not reach this job link."));
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBe("true");
     fireEvent.change(screen.getByLabelText("Company domain"), { target: { value: "example.com" } });
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull();
   });
 
   it("blocks an unreachable link without a safely identified employer", async () => {
@@ -46,7 +48,7 @@ describe("Onboarding Target Role URL", () => {
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
     await waitFor(() => expect(screen.getByRole("status")).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("keeps Continue available with a retryable error when the preview service fails", async () => {
@@ -56,7 +58,7 @@ describe("Onboarding Target Role URL", () => {
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We couldn't verify this job link");
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull();
     const callsBefore = fetchMock.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBefore));
@@ -66,7 +68,7 @@ describe("Onboarding Target Role URL", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network down"); }));
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile" } });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull());
     expect((await screen.findByRole("alert")).textContent).toContain("We couldn't verify this job link");
   });
 
@@ -74,7 +76,7 @@ describe("Onboarding Target Role URL", () => {
     localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull());
   });
 
   it("allows URL progression even when the current local credit balance is explicitly zero", async () => {
@@ -82,14 +84,14 @@ describe("Onboarding Target Role URL", () => {
     localStorage.setItem("bridge-tokens", "0");
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull());
   });
 
   it("confirms the reviewed employer for the reported Wellfound listing before the user continues", () => {
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile" } });
     expect(screen.getByRole("status").textContent).toContain("Company identified: ChatFin");
-    expect(document.querySelector("[data-reviewed-employer='true']")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull();
   });
 });
 
@@ -101,7 +103,7 @@ describe("Onboarding preview race safety", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: "Continue" }).getAttribute("aria-disabled")).toBeNull();
   });
 
   it("clears confirmation and requires the current canonical preview", async () => {
@@ -109,7 +111,7 @@ describe("Onboarding preview race safety", () => {
     render(<Onboarding/>); const input=screen.getByLabelText("Target Role URL"); const button=screen.getByRole("button",{name:"Continue"});
     fireEvent.change(input,{target:{value:"https://jobs.lever.co/meta/1"}}); await waitFor(()=>expect(screen.getByLabelText("Company domain")).toBeTruthy(),{timeout:1200});
     fireEvent.change(screen.getByLabelText("Company domain"),{target:{value:"meta.com"}}); fireEvent.change(input,{target:{value:"https://careers.beta.com/jobs/2"}});
-    expect(screen.queryByLabelText("Company domain")).toBeNull(); expect(button).toHaveProperty("disabled",false);
-    await waitFor(()=>expect(button).toHaveProperty("disabled",false),{timeout:1200});
+    expect(screen.queryByLabelText("Company domain")).toBeNull(); expect(button.getAttribute("aria-disabled")).toBeNull();
+    await waitFor(()=>expect(button.getAttribute("aria-disabled")).toBeNull(),{timeout:1200});
   });
 });

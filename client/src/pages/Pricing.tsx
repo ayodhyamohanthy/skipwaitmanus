@@ -5,8 +5,12 @@ import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
 import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalPricing from "./goal/pricing/GoalPricing";
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
+  // D-048-p3-pricing: the goal page when its surface is on (static import: /pricing is prerendered).
+  if (goalSurfaceOn("pricing")) return <GoalPricing />;
   return <PolicyPageShell
     screen="pricing"
     icon={Tag}

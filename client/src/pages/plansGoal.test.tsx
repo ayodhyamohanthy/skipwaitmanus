@@ -3,7 +3,7 @@
 // Money wording is referral-only (D-173, D-180): no rendered string may say
 // "credit", "credits" or the noun "ask"/"asks".
 import React from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Billing from "./Billing";
 import { assertGoalPage } from "@/test/goalPageContract";
@@ -52,9 +52,19 @@ const startSummary = { plan: "start", monthlyAllowance: 10, monthlyCreditsRemain
 const outSummary = { ...freeSummary, totalAvailable: 0, ledger: ledger(0, 0) };
 const settled = { id: 1, provider: "chargebee", amount: 499, currency: "USD", tokenCount: 3, status: "paid", providerInvoiceId: "INV-1001", createdAt: "2026-10-02T10:00:00.000Z" };
 const refunded = { ...settled, id: 2, amount: 999, status: "refunded", providerInvoiceId: "INV-1002" };
+const refundedInr = { ...refunded, id: 3, amount: 9900, currency: "INR", tokenCount: 1, providerInvoiceId: "INV-1003", createdAt: "2026-09-06T06:00:00.000Z" };
+const CANCEL_PATH = "/api/chargebee/subscription-cancel";
 
-const stubBilling = (options: { summary?: unknown; receipts?: unknown[]; summaryStatus?: number; summaryError?: string; receiptsStatus?: number; receiptsError?: string; cancel?: "ok" | "fail" } = {}) => {
-  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+const stubBilling = (options: {
+  summary?: unknown;
+  receipts?: unknown[];
+  summaryStatus?: number;
+  summaryError?: string;
+  receiptsStatus?: number;
+  receiptsError?: string;
+  cancel?: "fail" | Promise<ReturnType<typeof ok>>;
+} = {}) => {
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const path = String(url);
     if (path.includes("/billing/receipts")) {
       if (options.receiptsStatus) return fail(options.receiptsStatus, { error: options.receiptsError ?? "boom" });
@@ -64,8 +74,10 @@ const stubBilling = (options: { summary?: unknown; receipts?: unknown[]; summary
       if (options.summaryStatus) return fail(options.summaryStatus, { error: options.summaryError ?? "boom" });
       return ok({ summary: options.summary ?? freeSummary });
     }
-    if (path.includes("/subscription-cancel")) {
-      return options.cancel === "fail" ? fail(500, { error: "We could not schedule your cancellation" }) : ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
+    if (path === CANCEL_PATH) {
+      if (init?.method !== "POST") return fail(405, { error: "Expected POST to cancel renewal" });
+      if (options.cancel === "fail") return fail(500, { error: "We could not schedule your cancellation" });
+      return options.cancel ?? ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" });
     }
     return ok({});
   });
@@ -99,9 +111,12 @@ describe("Goal /billing page contract", () => {
     render(<Billing />);
     expect(await screen.findByText("Referral requests left")).toBeTruthy();
     expect(screen.getByText("Free plan")).toBeTruthy();
+    expect(within(screen.getByTestId("goal-billing-plan")).getByText(/open at once/).textContent).toBe("1 of 3 open at once");
     expect(screen.getByText("No payments yet.")).toBeTruthy();
     expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
     expectNoRetiredNouns();
+    expect(screen.queryByText(/DESIGN PREVIEW|Preview state|EXAMPLE RECEIPTS|Momentum|PLACEHOLDERS|\bPro\b|\bMax\b/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
     // The kit's invented-method ban carries over: no fabricated card rows.
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
   });
@@ -155,26 +170,49 @@ describe("Goal /billing page contract", () => {
 
 describe("Goal /billing plan and cancel states", () => {
   it("shows an active plan's renewal date and keeps the cancel control", async () => {
-    stubBilling({ summary: startSummary });
+    stubBilling({ summary: { ...startSummary, slots: slots("start", "Start", 6), ledger: ledger(13, 9) } });
     render(<Billing />);
     expect(await screen.findByText(/Renews 6 Nov 2026/)).toBeTruthy();
+    const plan = within(screen.getByTestId("goal-billing-plan"));
+    expect(plan.getByText(/open at once/).textContent).toBe("1 of 6 open at once");
+    expect(plan.getByText(/referral requests each month/).textContent).toBe("13 referral requests each month");
+    expect(screen.getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "See plans and prices" }).getAttribute("href")).toBe("/plans");
+  });
+
+  it("does not guess a paid plan's slot cap or allowance when those facts are omitted", async () => {
+    const { ledger: _ledger, slots: _slots, ...bare } = startSummary;
+    stubBilling({ summary: bare });
+    render(<Billing />);
+    expect(await screen.findByText(/Renews 6 Nov 2026/)).toBeTruthy();
+    const plan = within(screen.getByTestId("goal-billing-plan"));
+    expect(plan.queryByText(/open at once|referral requests each month/)).toBeNull();
     expect(screen.getByRole("button", { name: "Cancel renewal" })).toBeTruthy();
   });
 
   it("confirms the cancellation on the server and only then reports the term end", async () => {
-    const fetchMock = stubBilling({ summary: startSummary });
+    const pending = deferred<ReturnType<typeof ok>>();
+    const fetchMock = stubBilling({ summary: startSummary, cancel: pending.promise });
     render(<Billing />);
     fireEvent.click(await screen.findByRole("button", { name: "Cancel renewal" }));
     // Opening the confirmation makes its confirm action the page's single commit.
     expect(document.querySelectorAll("[data-g-primary]").length).toBe(1);
-    expect(screen.getByText("Before you go")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel anyway" }));
-    await waitFor(() => expect(fetchMock.mock.calls.some(call => String(call[0]).includes("/subscription-cancel"))).toBeTruthy());
-    const call = fetchMock.mock.calls.find(entry => String(entry[0]).includes("/subscription-cancel"));
-    expect(JSON.parse(String((call?.[1] as RequestInit).body))).toEqual({ role: "job_seeker" });
-    expect(await screen.findByText("Renewal cancelled.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(await screen.findByText(/Ends 6 Nov 2026/)).toBeTruthy();
+    const confirmation = within(screen.getByRole("dialog", { name: "Before you go" }));
+    expect(confirmation.getByText(/You keep Start until 6 Nov\./)).toBeTruthy();
+    expect(called(fetchMock, "/subscription-cancel")).toBe(0);
+    fireEvent.click(confirmation.getByRole("button", { name: "Cancel anyway" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(CANCEL_PATH, expect.objectContaining({ method: "POST" })));
+    const call = fetchMock.mock.calls.find(([url]) => url === CANCEL_PATH);
+    expect(JSON.parse(call?.[1]?.body?.toString() ?? "null")).toEqual({ role: "job_seeker" });
+    expect(screen.queryByRole("dialog", { name: "Renewal cancelled." })).toBeNull();
+    expect(screen.queryByText(/Ends 9 Nov 2026/)).toBeNull();
+    pending.resolve(ok({ currentTermEnd: "2026-11-09T00:00:00.000Z" }));
+    const done = within(await screen.findByRole("dialog", { name: "Renewal cancelled." }));
+    expect(done.getByText(/You keep Start until 9 Nov\./)).toBeTruthy();
+    fireEvent.click(done.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await screen.findByText(/Ends 9 Nov 2026/)).toBeTruthy();
+    expect(screen.getByText("Nothing else is charged. You keep everything until the term ends.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
   });
 
@@ -194,6 +232,10 @@ describe("Goal /billing plan and cancel states", () => {
     stubBilling({ summary: { ...startSummary, subscriptionStatus: "non_renewing" } });
     render(<Billing />);
     expect(await screen.findByText(/Ends 6 Nov 2026/)).toBeTruthy();
+    const plan = within(screen.getByTestId("goal-billing-plan"));
+    expect(plan.getByText(/open at once/).textContent).toBe("1 of 8 open at once");
+    expect(plan.getByText(/referral requests each month/).textContent).toBe("10 referral requests each month");
+    expect(plan.getByText("Nothing else is charged. You keep everything until the term ends.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
   });
 
@@ -214,10 +256,39 @@ describe("Goal /billing receipts", () => {
     stubBilling({ receipts: [settled, refunded] });
     render(<Billing />);
     expect(await screen.findByText("INV-1001")).toBeTruthy();
-    expect(screen.getAllByText("3 referral requests").length).toBe(2);
-    expect(screen.getByText("$4.99")).toBeTruthy();
-    expect(screen.getByText("$9.99")).toBeTruthy();
-    expect(screen.getByText("Refunded")).toBeTruthy();
+    const list = within(screen.getByTestId("goal-billing-receipts"));
+    const items = list.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    const paid = items.find(item => within(item).queryByText("INV-1001"));
+    const refund = items.find(item => within(item).queryByText("INV-1002"));
+    if (!paid || !refund) throw new Error("Expected both provider receipts");
+    expect(within(paid).getByText("$4.99")).toBeTruthy();
+    expect(within(paid).getByText("3 referral requests")).toBeTruthy();
+    expect(within(paid).getByText("2 Oct 2026")).toBeTruthy();
+    expect(paid.textContent).toContain("Chargebee · INV-1001");
+    expect(within(paid).queryByText("Refunded")).toBeNull();
+    expect(within(refund).getByText("$9.99")).toBeTruthy();
+    expect(within(refund).getByText("3 referral requests")).toBeTruthy();
+    expect(within(refund).getByText("2 Oct 2026")).toBeTruthy();
+    expect(refund.textContent).toContain("Chargebee · INV-1002");
+    expect(within(refund).getByText("Refunded")).toBeTruthy();
+    expectNoRetiredNouns();
+  });
+
+  it("keeps the INR refund amount, quantity, provider and date on its own receipt", async () => {
+    stubBilling({ receipts: [settled, refundedInr] });
+    render(<Billing />);
+    expect(await screen.findByText("INV-1003")).toBeTruthy();
+    const list = within(screen.getByTestId("goal-billing-receipts"));
+    const items = list.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    const refund = items.find(item => within(item).queryByText("INV-1003"));
+    if (!refund) throw new Error("Expected the INR refund receipt");
+    expect(within(refund).getByText("₹99")).toBeTruthy();
+    expect(within(refund).getByText("1 referral request")).toBeTruthy();
+    expect(within(refund).getByText("6 Sep 2026")).toBeTruthy();
+    expect(refund.textContent).toContain("Chargebee · INV-1003");
+    expect(within(refund).getByText("Refunded")).toBeTruthy();
     expectNoRetiredNouns();
   });
 });
