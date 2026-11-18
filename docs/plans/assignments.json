@@ -7977,7 +7977,7 @@
       "id": "REGISTER-nov18-search-direction",
       "title": "Register D-360 (Nov 18 owner search and sourcing direction) in docs/DECISIONS.md and the AGENTS.md product compass; docs only, no product code",
       "row": "D-068",
-      "packet": "docs/DECISIONS.md",
+      "packet": "docs/plans/REGISTER-nov18-search-direction.md",
       "tier": 3,
       "lane": "register",
       "branch": "agent/queue/register-nov18-search-direction",
