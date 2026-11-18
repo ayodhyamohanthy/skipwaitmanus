@@ -128,3 +128,19 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 The rows share the plan row "D-048": each task writes one line here, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
 - D-048-K-start: in progress — GPT-6.1 Sol · 97f1 — 2026-11-18 — branch `agent/queue/d048-k-start`; current main `e8845c36`, current decisions through D-359, `docs/BRIEF.md`, `docs/PRD.md`, `AGENTS.md`, `docs/DELEGATION.md`, `COLLABORATION.md`, this packet and the prior release/retirement outcomes checked. The start goal surface is live from PR #1074 (merge `c1f65aaa`, 2026-11-09); D-349 removes the soak requirement. Confirm exact release history, Sentry evidence and kit drift before deleting the legacy implementation. No behavior, copy, routing, API or auth changes intended.
+
+### D-048-K-start: ported assertions and evidence
+
+The legacy `Onboarding.tsx` body and `goalSurfaceOn("start")` switch are removed. The file remains the route-compatible default export and renders `GoalStart` directly. `GoalStart` retains the job-link preview, canonical URL guard, ambiguous/unreachable employer confirmation, retry state, draft continuity and clearing, fast-track handoff, bridge keys, and `/request` destination.
+
+| Legacy assertion | Goal assertion preserving the contract |
+|---|---|
+| Invalid target text shows an inline alert and disabled Continue | `GoalField` error plus `aria-disabled="true"`, visible recovery hint and a linked disabled reason |
+| Valid URL enables Continue without waiting for preview | Goal button becomes active from URL validity; preview remains background work |
+| Ambiguous or unsafe unreachable preview requires a company domain | Goal company-domain field and matching disabled/active transition |
+| Preview outage is recoverable | Goal alert and Try again action; retry produces a second preview request |
+| Saved draft and resume draft clear | Existing draft restoration and `/api/documents/draft` delete assertions remain |
+| Fast-track query survives handoff | Goal flow preserves `/request?fast=...` and existing bridge state |
+| Flag-off renders the legacy kit page | Replaced by a retirement contract: Onboarding has no surface-switch or kit import and always renders `data-testid="goal-start"` |
+
+Red first: `startGoal.test.tsx` retirement assertion failed against the old switch/body; after the cutover, 23 focused tests pass across `startGoal.test.tsx`, `onboarding.url.test.tsx` and `ask.startHandoff.test.tsx`. `pnpm check`, `node scripts/design-token-audit.mjs`, `bash scripts/lint-deploy-migrations.sh`, `node scripts/check-deploy-triggers.mjs`, `git diff --check` and `node scripts/scope-check.mjs D-048-K-start` pass. Sentry read-only searches on 2026-11-18 for `is:unresolved transaction:/start` over 30d returned no issues in `skipwait-webapp` or `skipwait-backend`. Kit drift after the goal build `f5e2a7d4`: none in `Onboarding.tsx`. Clean-browser proof from local Vite at commit `4c52e13c`: 1280x900 and 390x844 viewports, zero page errors, zero horizontal overflow; screenshots are retained outside the repository at `/private/var/folders/59/_4xyfhys6v57h36gwg4r7xf40000gn/T/skipwait-start-retirement/start-{1280,390}.png`. Compared with the released goal captures `design/goal-ui/captures/start/default-{1280,390}.png`, dimensions match; changed pixels are 0.5667% desktop and 1.3442% mobile, due to clean-browser/font/runtime rendering, with the rendered state visually identical. Full local suite and production build remain to run before the PR is ready.
