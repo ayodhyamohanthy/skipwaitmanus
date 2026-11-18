@@ -9,7 +9,7 @@ import Billing from "./Billing";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { GOAL_PAGE } from "./goal/plans/GoalBilling";
 
-const { authState, surfaces, planCatalogFlags } = vi.hoisted(() => ({
+const { authState, planCatalogFlags } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() },
   planCatalogFlags: { creditPacksOnSale: false },
 }));
