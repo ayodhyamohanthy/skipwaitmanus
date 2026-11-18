@@ -11,17 +11,17 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/referrer", go],
 }));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { CapacitySettingsPanel } from "./CapacitySettingsPanel";
+import { GoalCapacityPanel } from "@/pages/goal/referrer/GoalReferrer";
 import { orderAreas } from "./capacitySettingsData";
 
 type Reply = { ok: boolean; status?: number; json: () => Promise<unknown> };
 const ok = (body: unknown): Reply => ({ ok: true, json: async () => body });
 const preferences = (overrides: Record<string, unknown> = {}) => ({ preferences: { referralCapacity: 3, preferAreas: ["Design"], preferLevels: [], referrerVisibility: "anon", notifyNewAsk: true, notifyDigest: false, paused: false, ...overrides } });
 
-function renderPanel(props: Partial<React.ComponentProps<typeof CapacitySettingsPanel>> = {}) {
+function renderPanel(props: Partial<React.ComponentProps<typeof GoalCapacityPanel>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onSignIn = vi.fn();
-  render(<QueryClientProvider client={client}><CapacitySettingsPanel isSignedIn getToken={async () => "test-token"} onSignIn={onSignIn} {...props} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><GoalCapacityPanel isSignedIn getToken={async () => "test-token"} onSignIn={onSignIn} {...props} /></QueryClientProvider>);
   return { onSignIn };
 }
 

@@ -7,6 +7,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Referrer from "./Referrer";
 import ReferrerImpact from "./ReferrerImpact";
+// Warm real chunks; these component contracts still mount the lazy route entrypoints.
+import "./goal/referrer/GoalReferrer";
+import "./goal/referrer/GoalReferrerImpact";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 
 const { authState, userState, go, search } = vi.hoisted(() => ({
