@@ -2659,7 +2659,7 @@
       "tier": 1,
       "lane": "d048-release-public-profile",
       "branch": "agent/queue/d048-r-public-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-public-profile"
