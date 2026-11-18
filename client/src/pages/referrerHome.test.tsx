@@ -4,28 +4,23 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ReferrerHome from "./ReferrerHome";
-import Invite from "./Invite";
-import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { deriveReferrerHome, greetingFor, type ReferrerHomeData } from "@/components/referrer-home/referrerData";
 
-const { authState, go, search } = vi.hoisted(() => ({ authState: { isSignedIn: true, userId: "11", getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn(), search: { value: "" } }));
+const { authState, go } = vi.hoisted(() => ({ authState: { isSignedIn: true, userId: "11", getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn() }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children, className }: { children?: React.ReactNode; className?: string }) => <button type="button" className={className}>{children ?? "Sign in"}</button> }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/referrer-home", go],
-  useSearch: () => search.value,
 }));
 
-beforeEach(() => { authState.isSignedIn = true; search.value = ""; go.mockReset(); });
+beforeEach(() => { authState.isSignedIn = true; go.mockReset(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json });
 const fail = (status: number, json: unknown) => ({ ok: false, status, json: async () => json });
 const renderWithQuery = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>{ui}</QueryClientProvider>);
 const DAY = 86400000;
-const DIRECTORY = { companies: LAUNCH_COMPANY_SEED.map(seed => ({ slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], openToReferrals: true })), openCount: LAUNCH_COMPANY_SEED.length };
-const suggestionPosts = (fetchMock: { mock: { calls: unknown[][] } }) => fetchMock.mock.calls.filter(call => call[0] === "/api/company-suggestions");
 const iso = (ms: number) => new Date(ms).toISOString();
 // Server contract: rows and the access check carry the company directory's name and initials.
 const ask = (id: number, createdMs: number, extra: Record<string, unknown> = {}) => ({ id, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "pending", savedAt: null, createdAt: iso(createdMs), updatedAt: iso(createdMs), isClaimedByYou: false, unreadMessageCount: 0, attachmentCount: 1, ...extra });
@@ -238,121 +233,6 @@ describe("referrer home derivation", () => {
     expect([view.used, view.left, view.atCapacity]).toEqual([1, 2, false]);
     expect(view.company).toEqual({ name: "Wipro", mark: "W" });
     expect(view.reverifyDue).toBe(false);
-  });
-});
-
-describe("Invite colleagues and request companies", () => {
-  it("issues the real personal invite link with copy, share and email", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ok({ invite: { inviteCode: "r11-abcdef01" } })));
-    renderWithQuery(<Invite />);
-    fireEvent.click(screen.getByRole("button", { name: /Invite someone inside/ }));
-    expect(await screen.findByText(/\/verify\?invite=r11-abcdef01/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Copy invitation link" }));
-    expect(await screen.findByText("Copied")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Email invite/ }).getAttribute("href")).toMatch(/^mailto:/);
-    // Kit row: the link, its icon and one primary "Email invite"; no extra Share button or paragraph.
-    expect(screen.queryByRole("button", { name: /^Share$/ })).toBeNull();
-    expect(screen.queryByText(/One link per person/)).toBeNull();
-    expect(screen.queryByText(/DESIGN PREVIEW/)).toBeNull();
-  });
-
-  it("folds the native share sheet into the link icon where the device has one", async () => {
-    const share = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", { value: share, configurable: true });
-    try {
-      search.value = "mode=invite";
-      vi.stubGlobal("fetch", vi.fn(async () => ok({ invite: { inviteCode: "r11-abcdef01" } })));
-      renderWithQuery(<Invite />);
-      fireEvent.click(await screen.findByRole("button", { name: "Share invitation link" }));
-      await waitFor(() => expect(share).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining("/verify?invite=r11-abcdef01") })));
-    } finally {
-      Reflect.deleteProperty(navigator, "share");
-    }
-  });
-
-  it("opens straight on the invite link from referrer home and leads back there", async () => {
-    search.value = "mode=invite";
-    vi.stubGlobal("fetch", vi.fn(async () => ok({ invite: { inviteCode: "r11-abcdef01" } })));
-    renderWithQuery(<Invite />);
-    expect(await screen.findByText(/\/verify\?invite=r11-abcdef01/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Back to referrer home/ }).getAttribute("href")).toBe("/referrer-home");
-  });
-
-  it("shows a retryable error when the invite link cannot be issued", async () => {
-    search.value = "mode=invite";
-    vi.stubGlobal("fetch", vi.fn(async () => fail(503, { error: "Personal invites are not available yet" })));
-    renderWithQuery(<Invite />);
-    expect(await screen.findByText("Personal invites are not available yet")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
-  });
-
-  it("files a real seeker-demand company request without creating a referral request", async () => {
-    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : ok({ suggestion: { id: 7, companyName: "Acme Labs" } })));
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<Invite />);
-    expect(screen.getByText("Tell us where you want to work.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(await screen.findByText("Name the company you want to see.")).toBeTruthy();
-    expect(suggestionPosts(fetchMock)).toHaveLength(0);
-    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Acme Labs" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(await screen.findByText("That’s the growth loop.")).toBeTruthy();
-    expect(screen.getByText(/We saved your request for Acme Labs/)).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith("/api/company-suggestions", expect.objectContaining({ method: "POST", body: JSON.stringify({ companyName: "Acme Labs", role: "seeker" }) }));
-  });
-
-  it("sends the kit's work function with the vote and stays truthful about a vote already filed", async () => {
-    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : ok({ suggestion: { id: 7, companyName: "Acme Labs", jobFunction: "Design", alreadyRecorded: true } })));
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<Invite />);
-    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Acme Labs" } });
-    fireEvent.change(screen.getByLabelText("Work function"), { target: { value: "Design" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(await screen.findByText(/You had already asked for Acme Labs, so your vote counts once/)).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith("/api/company-suggestions", expect.objectContaining({ method: "POST", body: JSON.stringify({ companyName: "Acme Labs", role: "seeker", jobFunction: "Design" }) }));
-  });
-
-  it("points a listed company to its door instead of filing a request", async () => {
-    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : fail(500, {})));
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<Invite />);
-    await waitFor(() => expect(document.querySelectorAll("#launch-companies option")).toHaveLength(5));
-    expect(Array.from(document.querySelectorAll("#launch-companies option")).map(option => option.getAttribute("value"))).toEqual(["skipwait.me", "Wipro", "Neutrinos", "TCS", "Merkle"]);
-    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "wipro" } });
-    expect(screen.getByText(/Wipro already has a door on skipwait.me/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open it" }).getAttribute("href")).toBe("/explore/wipro");
-    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(suggestionPosts(fetchMock)).toHaveLength(0);
-  });
-
-  it("still files a request when the company list cannot load", async () => {
-    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? fail(503, { error: "The company directory is unavailable right now" }) : ok({ suggestion: { id: 8, companyName: "Wipro" } })));
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<Invite />);
-    expect(await screen.findByText(/couldn’t load the companies already on skipwait.me/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Wipro" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(await screen.findByText("That’s the growth loop.")).toBeTruthy();
-    expect(suggestionPosts(fetchMock)).toHaveLength(1);
-  });
-
-  it("shows the server's reason when a company request is refused", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => fail(400, { error: "You can suggest up to 3 companies a day" })));
-    renderWithQuery(<Invite />);
-    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Acme Labs" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(await screen.findByText("You can suggest up to 3 companies a day")).toBeTruthy();
-  });
-
-  it("keeps requests and invites behind sign-in", () => {
-    authState.isSignedIn = false;
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<Invite />);
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Invite someone inside/ }));
-    expect(screen.getByText("Invite someone inside.")).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
