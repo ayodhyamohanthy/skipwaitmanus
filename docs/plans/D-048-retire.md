@@ -126,7 +126,7 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 ## Status
 
 The rows share the plan row "D-048": each task writes one line here, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
-- D-048-K-messages: review — `agent/queue/d048-k-messages` — pending handoff commit (2026-11-19).
+- D-048-K-messages: review — `agent/queue/d048-k-messages` — `fe5dce4dc2` (2026-11-19).
 
 ### D-048-K-messages: ported assertions
 
