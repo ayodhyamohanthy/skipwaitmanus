@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Settings from "./Settings";
+import "./goal/settings/GoalSettings";
 import { getDisplayPrefs, setDisplayPrefs } from "@/lib/displayPrefs";
 
 let signedIn = true;
@@ -28,7 +29,7 @@ describe("Settings > Region display preferences", () => {
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
     mount();
-    await user.selectOptions(screen.getByLabelText("Date format"), "iso");
+    await user.selectOptions(await screen.findByLabelText("Date format"), "iso");
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/account/preferences");
@@ -42,7 +43,7 @@ describe("Settings > Region display preferences", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({}) })));
     const user = userEvent.setup();
     mount();
-    await user.selectOptions(screen.getByLabelText("Date format"), "dmy");
+    await user.selectOptions(await screen.findByLabelText("Date format"), "dmy");
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/could not save/i));
     expect(getDisplayPrefs().dateFormat).toBeNull();
   });
@@ -53,7 +54,7 @@ describe("Settings > Region display preferences", () => {
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
     mount();
-    await user.selectOptions(screen.getByLabelText("Date format"), "mdy");
+    await user.selectOptions(await screen.findByLabelText("Date format"), "mdy");
     expect(fetch).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem("sw:display-prefs") ?? "{}").dateFormat).toBe("mdy");
   });

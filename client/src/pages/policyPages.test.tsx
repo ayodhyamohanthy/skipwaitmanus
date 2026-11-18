@@ -192,11 +192,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound keep the kit bodies; the shell's More menu (Help & safety) carries the disclosures", () => {
-    // Owner decision (Oct 9 2026): the kit screens win, so neither body repeats
-    // a legal row or a support line. Both render inside the app shell, whose
-    // More menu opens Help & safety with Terms, Privacy and Support.
+  it("Settings and NotFound leave disclosures to the shell's More menu (Help & safety)", async () => {
+    // Retirement preserves the same shell-owned legal/support navigation.
     render(<Settings />);
+    await screen.findByRole("heading", { name: "Control your account." });
     expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
     cleanup();
     render(<NotFound />);
