@@ -3647,8 +3647,8 @@
       "tier": 1,
       "lane": "d048-retire-pricing",
       "branch": "agent/queue/d048-k-pricing",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-pricing"
       ],
