@@ -7954,14 +7954,14 @@
     },
     {
       "id": "PICKER-compact-claim-output",
-      "title": "A claim or preview prints a short board (one line per priority) so the assignment survives agent output limits; --status keeps the full board (D-358)",
+      "title": "A claim or preview prints a short board and a short decisions list (10 newest summarised, the rest by ID) so the assignment survives agent output limits; --status keeps the full board (D-358, D-360)",
       "row": "D-134",
       "packet": "docs/plans/PICKER-compact-claim-output.md",
       "tier": 2,
       "lane": "picker-compact-output",
       "branch": "agent/queue/picker-compact-output",
       "status": "todo",
-      "syncedTo": "D-358",
+      "syncedTo": "D-360",
       "dependsOn": [],
       "owns": [
         "scripts/next-task.mjs",
@@ -7970,7 +7970,7 @@
         "scripts/nextTaskArchitectReview.test.ts",
         "scripts/nextTaskBlockDedupe.test.ts"
       ],
-      "note": "Build docs/plans/PICKER-compact-claim-output.md. Changes only what a claim or preview prints; picking, claims, gates and --status are unchanged (D-358 (3))."
+      "note": "Build docs/plans/PICKER-compact-claim-output.md step 5 (D-360: the decisions block). The D-358 board summary landed in #1275 (ac8a6137). Picking, claims, gates and --status are unchanged (D-358 (3), D-360 (3))."
     }
   ]
 }
