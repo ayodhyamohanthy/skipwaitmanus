@@ -132,3 +132,27 @@ it("D-356: solHoldsTask reads only this task's Claim, Takeover and Fix claim mar
   expect(solHoldsTask("D-100.csp-release", ["Takeover D-100.csp-release: GPT-6.1 Sol · ca98"])).toBe(true);
   expect(solHoldsTask("D-100.csp-release", ["Takeover D-100Xcsp-release: GPT-6.1 Sol · ca98"])).toBe(false);
 });
+
+// D-357 (owner, Nov 18): "make sure this model has full rights on works too not only 6.1". A GPT-6 Sol session gets
+// exactly the GPT-6.1 Sol rights; no other name does.
+it("D-357: a GPT-6 Sol claim lets the branch change files outside owns, with a notice naming the session", () => {
+  const run = scopeCheckOwned("server/x.ts", "Takeover A: GPT-6 Sol · ca98");
+  expect(run.status).toBe(0);
+  expect(`${run.stdout}${run.stderr}`).toContain("D-357");
+  expect(`${run.stdout}${run.stderr}`).toContain("GPT-6 Sol");
+  expect(`${run.stdout}${run.stderr}`).toContain("server/x.ts");
+});
+
+it("D-357: solHoldsTask accepts GPT-6 Sol and GPT-6.1 Sol only", async () => {
+  const { solHoldsTask } = await import("./scope-check.mjs");
+  expect(solHoldsTask("A", ["Claim A: GPT-6 Sol · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Takeover A: GPT-6 Sol · ca98"])).toBe(true);
+  expect(solHoldsTask("A", ["Fix claim A: GPT-6 Sol · 12fe"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6 Sol"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6.1 Sol · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6.2 Sol · 1a2b"])).toBe(false);
+  expect(solHoldsTask("A", ["Claim A: GPT-6 Solar · 1a2b"])).toBe(false);
+  expect(solHoldsTask("A", ["Claim A: GPT-6X1 Sol · 1a2b"])).toBe(false);
+  expect(solHoldsTask("A", ["Claim A: Codex GPT-6 · 1a2b"])).toBe(false);
+  expect(solHoldsTask("A", ["Claim B: GPT-6 Sol · 1a2b"])).toBe(false);
+});
