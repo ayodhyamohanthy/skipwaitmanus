@@ -3230,8 +3230,8 @@
       "tier": 2,
       "lane": "d048-retire-onboarding",
       "branch": "agent/queue/d048-k-onboarding",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
