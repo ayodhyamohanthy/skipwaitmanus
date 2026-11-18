@@ -1,6 +1,6 @@
 {
   "synthetic": true,
-  "sourceCommit": "b28e901d3ee4def539ff1126fbb81cfbed1dd65b",
+  "sourceCommit": "b28e901d",
   "base": "http://127.0.0.1:4339",
   "results": [
     {
@@ -75,5 +75,7 @@
       "errors": [],
       "sha256": "ff4bb6e01f698d141f3d24bb8616bceb02d93812c375148b2a1b14b0228859d5"
     }
-  ]
+  ],
+  "homeEntryObject": "9178572f857a48cfc811b2ef7390803dfc537f4e",
+  "manifestReconciled": true
 }

@@ -38,6 +38,16 @@ describe("released public Home contracts", () => {
     expect(screen.queryByRole("button", { name: /My requests|My company inbox|Internal openings/i })).toBeNull();
   });
 
+  it("keeps goal navigation for exploring companies, reading the rules and joining as a referrer", () => {
+    render(<Home />);
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("link", { name: "How it goes" }).getAttribute("href")).toBe("#how");
+    expect(within(header).getByRole("link", { name: "Fair rules" }).getAttribute("href")).toBe("#rules");
+    expect(within(header).getByRole("link", { name: "Join as a referrer" }).getAttribute("href")).toBe("/sign-in?intent=referrer");
+    const exploreLink = screen.getAllByRole("link").find(link => link.textContent?.trim() === "Explore companies");
+    expect(exploreLink?.getAttribute("href")).toBe("/explore");
+  });
+
   it("keeps referrer entries on their existing flows", () => {
     render(<Home />);
     const links = screen.getAllByRole("link", { name: "Join as a referrer" });

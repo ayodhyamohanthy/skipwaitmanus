@@ -9,6 +9,19 @@ import path from "node:path";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const phase = process.argv[2];
 if (phase !== "before" && phase !== "after") throw new Error("Pass before or after");
+const sourceCommit = process.env.RETIREMENT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const homeEntryObject = execFileSync("git", ["rev-parse", `${sourceCommit}:client/src/pages/Home.tsx`], { encoding: "utf8" }).trim();
+if (process.argv.includes("--manifest-only")) {
+  const manifestPath = path.join(here, `${phase}.json`);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  for (const result of manifest.results) {
+    const actual = createHash("sha256").update(await readFile(path.join(here, phase, result.file))).digest("hex");
+    if (actual !== result.sha256) throw new Error(`Capture changed after it was recorded: ${result.file}`);
+  }
+  await writeFile(manifestPath, JSON.stringify({ ...manifest, sourceCommit, homeEntryObject, manifestReconciled: true }, null, 2));
+  console.log(JSON.stringify({ phase, sourceCommit, homeEntryObject, verifiedCaptures: manifest.results.length }, null, 2));
+  process.exit(0);
+}
 const base = "http://127.0.0.1:4339";
 const results = [];
 const account = { id: 21, openId: "synthetic-home", name: "Test Seeker", email: "seeker@example.test", role: "user", loginMethod: "fixture", createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z", lastSignedIn: "2026-10-01T00:00:00Z" };
@@ -56,6 +69,6 @@ try {
       await context.close();
     }
   }
-  await writeFile(path.join(here, `${phase}.json`), JSON.stringify({ synthetic: true, sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), base, results }, null, 2));
+  await writeFile(path.join(here, `${phase}.json`), JSON.stringify({ synthetic: true, sourceCommit, homeEntryObject, base, results }, null, 2));
   console.log(JSON.stringify(results, null, 2));
 } finally { await browser.close(); }
