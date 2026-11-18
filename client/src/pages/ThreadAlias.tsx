@@ -2,9 +2,7 @@ import { Redirect, useRoute } from "wouter";
 import UnifiedInbox from "./UnifiedInbox";
 import { AppShell } from "../components/AppShell";
 
-// Canonical v4 route: /thread (list) + /thread/:requestId (one request thread).
-// Live implementation lives at /inbox + /conversation/:requestId; this alias
-// keeps the v4 URL working with real data instead of a preview fork.
+// Keep existing /thread links on the same inbox and conversation as their canonical routes.
 export function ThreadListAlias() {
   return (
     <AppShell>

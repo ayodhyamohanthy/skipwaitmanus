@@ -1,4 +1,4 @@
-// Goal /start (D-048-p3-start, dark behind goalSurfaceOn('start')). The whole
+// Goal /start (D-048-p3-start). The whole
 // screen is the next step: paste the job link, then one black Continue. The
 // flow logic is the kit page's verbatim - draft continuity, 450ms debounced
 // preview, ambiguous-link domain confirmation, fast-track handoff, bridge
