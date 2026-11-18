@@ -3207,7 +3207,7 @@
       "lane": "d048-retire-start",
       "branch": "agent/queue/d048-k-start",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -3216,6 +3216,7 @@
         "client/src/pages/goal/start/**",
         "client/src/pages/startGoal.test.tsx",
         "client/src/pages/onboarding.url.test.tsx",
+        "server/mobilePwaAudit.test.ts",
         "client/src/components/onboarding/**"
       ],
       "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: start. Built by D-048-p3-start; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
@@ -3368,8 +3369,8 @@
       "tier": 1,
       "lane": "d048-retire-verify",
       "branch": "agent/queue/d048-k-verify",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-R-verify"
       ],
