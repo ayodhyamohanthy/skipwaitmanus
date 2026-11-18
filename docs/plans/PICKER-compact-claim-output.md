@@ -27,4 +27,4 @@ On Nov 18 a preview printed 526 lines (103 KB) and put the assignment at line 51
 **Gates.** Tier 2: focused tests red first, `vitest run scripts/`, a real preview run showing the line count before and after, required CI green (D-352).
 
 ## Status
-- `PICKER-compact-claim-output`: todo — Claude Code — 2026-11-18.
+- `PICKER-compact-claim-output`: review — agent/queue/picker-compact-output — Claude Code · d563 — 2026-11-18. `renderBoardSummary` prints one line per priority with counts and a `--status` pointer; the claim/preview path prints it instead of `renderBoard`. Live preview on main: 526 lines / 103,290 bytes (`NEXT:` at line 515) before, 50 lines / 8,139 bytes (`NEXT:` at line 39) after. Red first: 4 new cases failed; the two CLI tests now read board lines from `--status` in the same fixture and check the pointer. `vitest run scripts/` 64 files / 1,556 passed; `tsc --noEmit` clean.
