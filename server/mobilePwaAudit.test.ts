@@ -30,7 +30,7 @@ describe("comprehensive mobile-PWA audit safeguards", () => {
   });
 
   it("uses role-appropriate mobile keyboards and direct Enter actions in the Job Seeker and Referrer flows", () => {
-    const onboarding = source("client/src/pages/Onboarding.tsx");
+    const onboarding = source("client/src/pages/goal/start/GoalStart.tsx");
     const workEmail = source("client/src/components/WorkEmailSignIn.tsx");
 
     expect(onboarding).toContain('inputMode="url"');
