@@ -7873,20 +7873,20 @@
     },
     {
       "id": "PROCESS-sol-full-edit",
-      "title": "GPT-6.1 and GPT-6 Sol sessions may edit any file: scope-check skips owns violations on a branch a GPT-6.1 Sol or GPT-6 Sol session claimed (D-356, D-357)",
+      "title": "Every GPT and Claude model session may edit any file: scope-check skips owns violations on a branch a session whose model name contains GPT or Claude claimed (D-356, D-357, D-359)",
       "row": "D-134",
       "packet": "docs/plans/PROCESS-sol-full-edit.md",
       "tier": 2,
       "lane": "scope-check",
       "branch": "agent/queue/process-sol-full-edit",
       "status": "todo",
-      "syncedTo": "D-357",
+      "syncedTo": "D-359",
       "dependsOn": [],
       "owns": [
         "scripts/scope-check.mjs",
         "scripts/scopeCheck.test.ts"
       ],
-      "note": "Build docs/plans/PROCESS-sol-full-edit.md step 4 (D-357: also accept GPT-6 Sol). The D-356 part landed in 588a795. Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3), D-357 (3))."
+      "note": "Build docs/plans/PROCESS-sol-full-edit.md step 5 (D-359: any model name containing GPT or Claude). Steps 1-4 landed in 588a795 and #1271 (b57a775c). Queue gate, review gate, Tier 1 review and owner-reserved decisions unchanged (D-356 (3), D-359 (3))."
     },
     {
       "id": "D-174-worldwide-discovery.company-context",
@@ -7938,6 +7938,26 @@
       ],
       "note": "The D-174-seeker-journey-build release row stays todo/unclaimed; this narrow sub-row takes ONLY the COMPANY_TYPEAHEAD_ENABLED switch line (the ' (switch only)' overlap with the release row is the permitted, reported kind, D-309/D-314; the switch-only 12-line limit applies). Change: the switch becomes an env gate - `import.meta.env.VITE_COMPANY_TYPEAHEAD === \"true\"` - so any build can exercise the typeahead while production stays false (no production build config sets the var; landing this PR flips nothing). .env.example gains VITE_COMPANY_TYPEAHEAD=false (configContract.test.ts requires every referenced key). The recorded release gate is preserved unchanged and this row waives nothing: D-223 (3) - preview QA, a review and the CEO's sign-off - applies before the var is ever set for production, and who signs off (CEO-capacity session vs the owner) stays unresolved pending source evidence through main; the user is asked in plain outcome terms if needed, never about a code flag. Preview QA evidence required before any production enable: 1280+390 captures of directory, tata, google, no-match, degraded, card handoff (pick shown as context on /ask), unknown-company job link, and a real-provider round, on a flag-on preview build. COMPANY_JOBS_ENABLED's switch line stays with the release row, untouched. Widened 2026-11-18 (registry-only follow-up, after the dashboard inspection): the preview route is in-repo - no dashboard or API change. vite.config.ts gains ONE define entry for VITE_COMPANY_TYPEAHEAD fed by the pure resolver in vite.typeahead-flag.ts (whole file); the resolver forces the flag OFF on any CI build of main even if the env var is set, and ON only for Workers Builds non-main branch previews. companySearch.test.tsx gains the reconciled default-off pin (pin-only edits); companyTypeahead.define.test.ts (whole file) covers the resolver. Paths are plain literals because scope-check parses only the exact ' (switch only)' suffix (12-line limit); the narrowing for this row is human scope, stated here: ONE define entry in vite.config.ts and pin-only edits in companySearch.test.tsx. Reported permitted overlaps (D-309/D-314): companySearch.test.tsx is also owned by D-174-seeker-journey-build.search, D-174-worldwide-discovery and D-174-worldwide-discovery.company-context. The release gate stays as recorded. RELEASE FLIP 2026-11-18: production enable PREPARED in this row's second PR (#1266, under review at registration time). This row stays todo until the enable is merged, deployed and verified live on production; preparing the PR does not prove the user's typed-company workflow. The resolver now builds ON for CI main builds by default; the explicit variable overrides in either direction (VITE_COMPANY_TYPEAHEAD=false is the rollback). Authority: owner directive 2026-11-17 22:17 IST (WhatsApp, typed company not found; search must reach companies worldwide) - the owner instructed the outcome himself, so the D-223 (3) signer question is moot without any session asserting signing capacity. Gate evidence before the enable: independent review at exact heads (PRs #1264/#1265); preview QA captures and post-merge production checks are coordinator-reported, not reviewer-verified. Coverage is English-Wikidata discovery, not any-company-anywhere; misses keep the paste-a-link path, and the uncovered-company referral outcome is unverified live. SCOPE WIDENING 2026-11-18 (registry-only): adds TrustPrivacy.tsx and its test so the flip row can name Wikimedia in the /privacy processor list before enable - typed company names leave our server to Wikimedia without user identifiers, and the D-345 processor list must not stay silent about it. Reported permitted overlaps (D-309/D-314): both files are also owned by LAUNCH-legal-copy (done) and D-093-language (owner-parked). NOTE HISTORY: everything in this note before 'RELEASE FLIP 2026-11-18' is the pre-flip record; where it conflicts with the flip (the resolver forcing OFF on main, the unresolved signer path, 'activation stays held'), the release-flip paragraph and packet sections 8-9 are the current state. No repo assertion here is approval evidence: the enable authority is the owner's 2026-11-17 channel directive, and final activation clearance is main's. FLIP DONE 2026-11-18: #1266 merged (merge 9fca1276231e6bfc8298844c8ad2309fea51f2ea, exact reviewed head 21ee93b4) after main's activation clearance; Deploy Web run 44174090179, CI and Release verify green on the merge commit. Verified live on production ~02:30 IST (coordinator-reported captures): typing 'tata steel' on /explore returns discovered suggestions (Tata Steel tatasteel.com, Tata Steel IJmuiden tatasteeleurope.com) at 1280 and 390; a nonsense query gives the clean no-match state with the paste-a-job-link fallback intact. Rollback stays VITE_COMPANY_TYPEAHEAD=false + redeploy, or revert. Coverage honesty unchanged: English-Wikidata discovery, not any-company-anywhere; first-hours provider degradation follow-through continues.",
       "syncedTo": "D-356"
+    },
+    {
+      "id": "PICKER-compact-claim-output",
+      "title": "A claim or preview prints a short board (one line per priority) so the assignment survives agent output limits; --status keeps the full board (D-358)",
+      "row": "D-134",
+      "packet": "docs/plans/PICKER-compact-claim-output.md",
+      "tier": 2,
+      "lane": "picker-compact-output",
+      "branch": "agent/queue/picker-compact-output",
+      "status": "todo",
+      "syncedTo": "D-358",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskCompactBoard.test.ts",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/nextTaskBlockDedupe.test.ts"
+      ],
+      "note": "Build docs/plans/PICKER-compact-claim-output.md. Changes only what a claim or preview prints; picking, claims, gates and --status are unchanged (D-358 (3))."
     }
   ]
 }
