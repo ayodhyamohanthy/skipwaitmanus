@@ -3369,8 +3369,8 @@
       "tier": 1,
       "lane": "d048-retire-verify",
       "branch": "agent/queue/d048-k-verify",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-R-verify"
       ],
