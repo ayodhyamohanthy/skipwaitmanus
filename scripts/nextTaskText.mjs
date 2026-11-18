@@ -181,15 +181,24 @@ const resyncSteps = (pick, who, register = null) => {
 };
 
 /** D-202: the register block every pick opens with — the newest decisions, then the stop rule. */
+const DECISIONS_SUMMARISED = 10;
+const DECISION_SUMMARY_MAX = 160;
 function decisionsBlock(pick, register) {
   if (!register?.length) return "";
   const stamp = pick.task?.syncedTo;
   const at = stamp ? register.findIndex(e => e.id === stamp) : -1;
   const first = Math.max(0, Math.min(register.length - 5, at < 0 ? register.length - 5 : at));
   const shown = register.slice(first).reverse();
+  // D-361: the 10 newest with a short summary, every other entry by ID, so a stale syncedTo cannot push the
+  // assignment past an agent's output limit; nothing D-202 requires is dropped.
+  const summarised = shown.slice(0, DECISIONS_SUMMARISED);
+  const named = shown.slice(DECISIONS_SUMMARISED).map(e => e.id);
+  const short = title => (title.length > DECISION_SUMMARY_MAX ? `${title.slice(0, DECISION_SUMMARY_MAX - 1).trimEnd()}…` : title);
   return [
     "Newest decisions (read before you work):",
-    ...shown.map(e => `- ${e.id} · ${e.date} · ${e.title}`),
+    ...summarised.map(e => `- ${e.id} · ${e.date} · ${short(e.title)}`),
+    ...(named.length ? [`- Also newer than this task's syncedTo: ${named.join(", ")}`] : []),
+    "Read each of these in full in docs/DECISIONS.md before you work.",
     `If any of these changes what your task says, stop and run \`${CMD} --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn"\` (D-032). A newer decision always beats an older packet, note or chat message.`,
   ].join("\n");
 }
