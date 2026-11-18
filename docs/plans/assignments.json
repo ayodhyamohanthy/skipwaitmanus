@@ -3415,7 +3415,7 @@
       "tier": 1,
       "lane": "d048-retire-plans",
       "branch": "agent/queue/d048-k-plans",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-349",
       "dependsOn": [
         "D-048-R-plans"
