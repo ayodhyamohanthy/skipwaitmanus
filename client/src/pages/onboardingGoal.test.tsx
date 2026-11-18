@@ -9,11 +9,6 @@ const openSignIn = vi.fn();
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken: async () => "tok", openSignIn }),
 }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "onboarding" };
-});
 vi.mock("@/lib/resumeUpload", () => ({
   uploadResume: vi.fn(async () => ({ id: "att-1", fileName: "cv.pdf", mimeType: "application/pdf", byteSize: 10, storageKey: "k" })),
   validateResumeFile: () => null,
@@ -31,7 +26,7 @@ function stubFetch(saved: unknown) {
 }
 
 describe("goal onboarding", () => {
-  beforeEach(() => { authState.isSignedIn = true; flagState.on = true; openSignIn.mockReset(); });
+  beforeEach(() => { authState.isSignedIn = true; openSignIn.mockReset(); });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("opens on the goal with the next step focused", async () => {
@@ -100,11 +95,10 @@ describe("goal onboarding", () => {
     expect(openSignIn).toHaveBeenCalled();
   });
 
-  it("flags off keeps the kit wizard", async () => {
-    flagState.on = false;
+  it("renders the goal page by default without a surface override", async () => {
     vi.stubGlobal("fetch", stubFetch(emptyOnboarding()));
     render(<ProfileSetup />);
-    expect(await screen.findByText(/STEP 1 OF 6/)).toBeTruthy();
-    expect(screen.queryByTestId("goal-onboarding")).toBeNull();
+    expect(await screen.findByTestId("goal-onboarding")).toBeTruthy();
+    expect(screen.queryByText(/STEP 1 OF 6/)).toBeNull();
   });
 });
