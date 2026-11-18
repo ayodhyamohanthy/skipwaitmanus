@@ -48,8 +48,10 @@ export const SignedOut=({children})=>signedIn?null:children;`;
 const server = await createServer({
   configFile: path.join(root, "vite.config.ts"), mode: "retirement-capture", logLevel: "error",
   plugins: [{ name: "settings-retirement-fixture", enforce: "pre",
-  resolveId(id) {
-    const file = id.startsWith("@/") ? path.join(root, "client/src", `${id.slice(2)}.tsx`) : null;
+  resolveId(id, importer) {
+    const resolved = id.startsWith("@/") ? path.join(root, "client/src", id.slice(2))
+      : path.isAbsolute(id) ? id : importer && id.startsWith(".") ? path.resolve(path.dirname(importer), id) : "";
+    const file = resolved.endsWith(".tsx") ? resolved : `${resolved}.tsx`;
     return legacySources.has(file) ? file : undefined;
   },
   load(id) { return legacySources.get(id); },
