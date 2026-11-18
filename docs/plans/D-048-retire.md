@@ -127,4 +127,21 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 
 The rows share the plan row "D-048": each task writes one line here, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
-- (none started)
+- D-048-K-conversation: review — GPT-6.1 Sol · b53c — 2026-11-18 — [draft PR #1279](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1279), source `f00c756e`, branch `agent/queue/d048-k-conversation`, main `e8845c36`, claim `ca321bcf`. Read entry docs, packet, DESIGN, conversation/tests and decisions through D-359. Release `24a7196b` (PR #1199) is on main; launch-mode D-349 applies. No later kit-body drift. Goal-only entry; unused ThreadMain deleted, shared panels/modal retained for seeker milestone data. All data/actions and optional framed prop stay compatible. Red first: 2 retirement contracts fail on the old switch/imports. Candidate: 8 focused files/140 tests, TypeScript/build and token/migration/deploy/scope/diff checks pass. Route cases stay 48; assertions rise 176 to 177. Computed Tier 2 and test-integrity pass under D-352. Synthetic 1280/390: 22 pairs, zero page errors/overflow; 20 byte-identical, two phone loading/error frames differ by 18 shared-navigation-icon pixels each, visually inspected. Source hashes/manifests and exact pixel comparison committed. **Full local suite: 740 files passed, 5 skipped, 1 failed; 7,798 tests passed, 18 skipped, 1 failed** in 1,176s. Sole failure: unchanged `scripts/classifyCiChange.test.ts:655`, H1's 400-commit fixture exceeds 20s (27.8s); isolated rerun 53 passed/1 timeout (34.7s). Script/test/workflow bytes unchanged; no timeout or assertion weakened. Earlier 120s-tool-limit run incomplete. Exact-head PR CI and production verification pending; no merge/live claim. No rule, copy, API, migration or dependency change.
+
+### D-048-K-conversation: ported assertions
+
+No test or case is deleted. `referralConversation.test.tsx` retains its 48 cases; share-win (5), thread-model (8) and deadline-off (2) cases stay. The new retirement file adds two source contracts.
+
+| Legacy assertion | Goal assertion preserving the contract |
+|---|---|
+| Job function in `header .eyebrow` | Exact same server-derived `Data · Wipro` text in the goal page |
+| Native disabled Accept/Pass, unchecked radio inputs | Goal controls' `aria-disabled`/`aria-checked`, no decision POST before attestation/reason, and identical request body |
+| Pass reason's native label | Same `At capacity right now` accessible radio; same decline/passReason payload |
+| Referrer `Referral submitted` state | Goal `Referred` status; same intro_made state, resume/name/message visibility and progress request |
+| Server refusal inside kit dialog | Exact refusal in the goal alert; the named accept confirmation stays open |
+| Flag-off renders the kit page | Goal page renders by default, with no surface override or switch mock (D-332 retirement) |
+
+All seeker privacy, withdrawal, progress, error/retry, message draft and name-reveal assertions remain. All prior goal privacy, colleague assignment, unknown viewer, offline, phone pass sheet, attestation and unsupported-deadline assertions remain. `ThreadMain.tsx` had only the removed route import; no data/model/API module is deleted. Remaining shared kit panels are outside this deletion because their milestone export still has a live importer.
+
+- **CI receipt / completion on merge:** PR #1279 head `c359372b`, [CI 44309091323](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44309091323), passed TypeScript, all three unit shards and their required aggregate, production build, 8/8 E2E journeys, release-capture planner and the scope/review/test-integrity gates. The 400-commit Git fixture that timed out locally passes in CI. No separate review is required for the computed Tier 2 paths (D-352); no independent review is claimed. This docs/registry-only final checkpoint sets only this task's status to done effective when PR #1279 merges, and syncedTo to checked D-359. Exact final-head CI and normal protected auto-merge still apply; deployment and live acceptance remain unverified until post-merge checks complete. The local full-suite timeout remains recorded above.
