@@ -1,0 +1,85 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "file": "region-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "region-390.png",
+      "differentPixels": 7
+    },
+    {
+      "file": "notifications-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "notifications-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "app-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "app-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "privacy-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "privacy-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "account-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "account-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "guest-privacy-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "guest-privacy-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "guest-account-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "guest-account-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "access-error-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "access-error-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "offline-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "offline-390.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "active-consent-1280.png",
+      "differentPixels": 0
+    },
+    {
+      "file": "active-consent-390.png",
+      "differentPixels": 0
+    }
+  ]
+}
