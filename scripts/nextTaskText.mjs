@@ -229,6 +229,22 @@ export function renderBoard(rows) {
   return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
+/**
+ * D-358 (owner, Nov 18 2026): "let no agent be blocked for taking a task". What a claim or preview prints: the board
+ * header, one line per priority with counts and one pointer to `--status`, never a line per task, so an agent with an
+ * output cap still reads its assignment. `--status` and the CEO review keep `renderBoard`.
+ */
+export function renderBoardSummary(rows) {
+  const done = rows.filter(r => r.state === "done").length;
+  const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, ${s.released.length} released`);
+  return [
+    "STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)",
+    ...summaries,
+    `${rows.length} tasks, ${done} done. Every task, holder and report: node scripts/next-task.mjs --status`,
+    "",
+  ].join("\n");
+}
+
 /** The steps for one pick. ctx: { who, date, claimed, register, requestedTask } (claimed = this run took the lock or holds it). */
 function renderPickLegacy(pick, { who, date, claimed, register = null, requestedTask = null }) {
   const body = pickText(pick, { who, date, claimed, register, requestedTask });
