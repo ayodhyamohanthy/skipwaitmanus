@@ -4232,8 +4232,8 @@
       "tier": 1,
       "lane": "d048-retire-settings",
       "branch": "agent/queue/d048-k-settings",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
