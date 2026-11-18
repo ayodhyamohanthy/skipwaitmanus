@@ -229,16 +229,33 @@ export function renderBoard(rows) {
   return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
-/** The steps for one pick. ctx: { who, date, claimed, register } (claimed = this run took the lock or holds it). */
-function renderPickLegacy(pick, { who, date, claimed, register = null }) {
-  const body = pickText(pick, { who, date, claimed, register });
+/**
+ * D-358 (owner, Nov 18 2026): "let no agent be blocked for taking a task". What a claim or preview prints: the board
+ * header, one line per priority with counts and one pointer to `--status`, never a line per task, so an agent with an
+ * output cap still reads its assignment. `--status` and the CEO review keep `renderBoard`.
+ */
+export function renderBoardSummary(rows) {
+  const done = rows.filter(r => r.state === "done").length;
+  const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, ${s.released.length} released`);
+  return [
+    "STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)",
+    ...summaries,
+    `${rows.length} tasks, ${done} done. Every task, holder and report: node scripts/next-task.mjs --status`,
+    "",
+  ].join("\n");
+}
+
+/** The steps for one pick. ctx: { who, date, claimed, register, requestedTask } (claimed = this run took the lock or holds it). */
+function renderPickLegacy(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const body = pickText(pick, { who, date, claimed, register, requestedTask });
   // D-202: every pick opens with the newest decisions, so no agent works from an old packet unseen.
   const block = decisionsBlock(pick, register);
   return block ? `${block}\n\n${body}` : body;
 }
 
-function pickText(pick, { who, date, claimed, register = null }) {
-  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"\n`;
+function pickText(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const restriction = requestedTask ? ` --task ${requestedTask}` : "";
+  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"${restriction}\n`;
   switch (pick.kind) {
     case "stop": return head("STOP", [pick.reason, "Tell the owner what failed; do not choose work yourself."]);
     case "wait": return head("WAIT", waitLines(pick, who));

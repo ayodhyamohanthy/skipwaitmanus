@@ -158,7 +158,9 @@ globalThis.fetch = async input => {
       const claimed = run("--claim", "Worker · w1");
       expect(claimed.status, claimed.stderr).toBe(0);
       expect(claimed.stdout).toContain("BUILD NEXT");
-      expect(claimed.stdout).toContain("waiting for new evidence or 24h");
+      // D-358: a claim prints the short board and points to --status, which keeps every task's line.
+      expect(claimed.stdout).toContain("node scripts/next-task.mjs --status");
+      expect(run("--status").stdout).toContain("waiting for new evidence or 24h");
       writeFileSync(path.join(work, "progress.txt"), "new task evidence\n");
       git("add", "progress.txt"); git("commit", "-m", "new task work"); git("push", "origin", a.branch);
       const changed = run(...reportArgs);
