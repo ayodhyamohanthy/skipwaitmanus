@@ -1,11 +1,11 @@
-# `PROCESS-sol-full-edit`: GPT-6.1 and GPT-6 Sol sessions may edit any file (D-356, D-357)
+# `PROCESS-sol-full-edit`: every GPT and Claude model session may edit any file (D-356, D-357, D-359)
 
-> Read [`docs/BRIEF.md`](../BRIEF.md) first. Owner instructions: Nov 17 2026, "keep no blocker . let the gpt 6.1 sol have full rights to edit anything" (D-356); Nov 18 2026, "now using gpt 6 sol to work . make sure this model has full rights on works too not only 6.1" (D-357). Tier 2. Changes no price, plan, legal text, login rule or money path.
+> Read [`docs/BRIEF.md`](../BRIEF.md) first. Owner instructions: Nov 17 2026, "keep no blocker . let the gpt 6.1 sol have full rights to edit anything" (D-356); Nov 18 2026, "now using gpt 6 sol to work . make sure this model has full rights on works too not only 6.1" (D-357); Nov 18 2026, "let all gpt models have full access", "not only 6 or 6.1", "claude ,gpt models can have full access push this to repo" (D-359). Tier 2. Changes no price, plan, legal text, login rule or money path.
 
 | Field | Value |
 |---|---|
 | Row | `PROCESS-sol-full-edit` |
-| Synced to | D-357 |
+| Synced to | D-359 |
 | Order | appended last (FIFO, owner Oct 31) |
 | Depends on | nothing |
 
@@ -21,10 +21,13 @@
 3. Nothing else changes: the queue gate, review gate, decision-id check, test-integrity gate and the switch-only line limit for every other session.
 4. **D-357 (Nov 18), still to build.** The helper accepts `GPT-6 Sol` as well as `GPT-6.1 Sol` (only those two exact names, with or without the ` · <tag>` session part). Red first in `scripts/scopeCheck.test.ts`: `Claim A: GPT-6 Sol · 1a2b`, `Takeover A: GPT-6 Sol · ca98` and `Fix claim A: GPT-6 Sol · 12fe` return true, and an end-to-end branch claimed by `GPT-6 Sol` passes with the notice; `GPT-6.2 Sol`, `GPT-6 Solar`, `Codex GPT-6` and another task's `GPT-6 Sol` marker return false. The printed notice names D-356/D-357 and the actual session name.
 
+5. **D-359 (Nov 18), still to build.** The helper accepts any session whose model name (before ` · <tag>`) contains `GPT` or `Claude` in any case: `GPT-6.1 Sol`, `GPT-6 Sol`, `GPT-6.2 Sol`, `Codex GPT-6`, `Cue GPT`, `ChatGPT`, `gpt-7`, `Claude Code`, `Claude Opus`. Red first: those return true; `Codex`, `DeepSeek V4.1 Flash Free`, another task's GPT marker, and `Claude Code · a971 (asked GPT-6.1 Sol)` return false. The notice names D-356/D-359 and the actual session.
+
 **Owned paths.** `scripts/scope-check.mjs`, `scripts/scopeCheck.test.ts`.
 
 **Gates.** Tier 2: focused tests red first, `vitest run scripts/`, required CI green (D-200 (4), D-352).
 
 ## Status
+- `PROCESS-sol-full-edit`: review (step 5, D-359) — agent/queue/process-sol-full-edit — Claude Code · d563 — 2026-11-18. PR #1273: `solSessionOf` accepts any Claim/Takeover/Fix claim marker whose model name contains GPT or Claude (any case) and returns that name; other models keep owns. Red first: 4 cases failed on main; then scopeCheck 12/12, `vitest run scripts/` 63 files / 1,555 passed, `tsc --noEmit` clean. Step 4 (GPT-6 Sol) landed in #1271 (`b57a775c`).
 - `PROCESS-sol-full-edit`: review (step 4, D-357) — agent/queue/process-sol-full-edit — Claude Code · d563 — 2026-11-18. `scope-check` exports `solSessionOf` (returns the matched name) and keeps `solHoldsTask`'s boolean contract; it matches `GPT-6.1 Sol` or `GPT-6 Sol` exactly, and the notice names D-356/D-357 and the actual session. Red first: the 2 new D-357 cases failed on main; then `vitest run scripts/` 63 files / 1,552 passed, `tsc --noEmit` clean. Steps 1-3 (D-356) landed in `588a795`.
 - `PROCESS-sol-full-edit` (D-356 part, history): review — agent/queue/process-sol-full-edit — Claude Code · a971 — 2026-11-17. `scope-check` exports `solHoldsTask`; on a branch whose own subjects carry this task's `Claim`/`Takeover`/`Fix claim` marker by a GPT-6.1 Sol session, out-of-owns paths print as D-356 notices and exit 0. Red first: 2 new cases failed on main (exit 1 / missing export), the other-session control passed; then `scopeCheck.test.ts` 7/7, `vitest run scripts/` 60 files / 1,464 passed, `tsc --noEmit` 0. Queue gate, review gate, id check, test integrity and switch-only limits unchanged.
