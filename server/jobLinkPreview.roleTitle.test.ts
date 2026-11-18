@@ -161,3 +161,30 @@ describe("extractRoleTitle is linear on hostile bodies (F1)", () => {
     expect(extractRoleTitle(html)).toBe("Late Posting");
   });
 });
+
+describe("extractRoleTitle metadata scanner regressions", () => {
+  it("bounds metadata attribute work before falling back to the document title", () => {
+    const html = page(`<meta ${"x".repeat(64_000)}>${title("Fallback role")}`);
+    const start = performance.now();
+    expect(extractRoleTitle(html)).toBe("Fallback role");
+    expect(performance.now() - start).toBeLessThan(1_000);
+  });
+
+  it.each([
+    ["title", "meta", "script"],
+    ["TITLE", "META", "SCRIPT"],
+    ["TiTlE", "MeTa", "ScRiPt"],
+  ])("preserves %s/%s/%s tag case and title precedence", (titleTag, metaTag, scriptTag) => {
+    const documentTitle = `<${titleTag}>Document Engineer</${titleTag}>`;
+    const metadata = `<${metaTag} PROPERTY='og:title' CONTENT='Metadata Engineer'>`;
+    const posting = `<${scriptTag} TYPE="application/ld+json">${JSON.stringify({ "@type": "JobPosting", title: "Posting Engineer" })}</${scriptTag}>`;
+    expect(extractRoleTitle(page(documentTitle))).toBe("Document Engineer");
+    expect(extractRoleTitle(page(metadata + documentTitle))).toBe("Metadata Engineer");
+    expect(extractRoleTitle(page(posting + metadata + documentTitle))).toBe("Posting Engineer");
+  });
+
+  it("reads quoted and unquoted metadata values after attributes without values", () => {
+    expect(extractRoleTitle(page('<meta disabled property=og:title content="Design &amp; Research">'))).toBe("Design & Research");
+    expect(extractRoleTitle(page("<meta disabled name='og:title' content=Engineer>"))).toBe("Engineer");
+  });
+});

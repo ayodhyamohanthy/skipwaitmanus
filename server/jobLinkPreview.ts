@@ -33,10 +33,17 @@ export async function fetchPublicJobLink(input:string){let current=new URL(input
  */
 const TAG_SCAN_LIMIT = 500;
 type OpenTag = { attributes: string; contentStart: number };
+/** HTML tag names are ASCII-case-insensitive; retain offsets into the original text. */
+function tagStart(body: string, name: string, from: number): number {
+  for (let open = body.indexOf("<", from); open >= 0; open = body.indexOf("<", open + 1)) {
+    if (body.slice(open + 1, open + name.length + 1).toLowerCase() === name) return open;
+  }
+  return -1;
+}
 /** The next `<name ...>` at or after `from`, or undefined; never rescans backwards. */
 function nextOpenTag(body: string, name: string, from: number, seen: number): (OpenTag & { at: number }) | undefined {
   if (seen >= TAG_SCAN_LIMIT) return undefined;
-  const open = body.indexOf(`<${name}`, from);
+  const open = tagStart(body, name, from);
   if (open < 0) return undefined;
   const after = open + name.length + 1;
   const boundary = body[after];
@@ -52,9 +59,9 @@ function tagText(body: string, name: string): string | undefined {
   for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
     const tag = nextOpenTag(body, name, from, 0);
     if (!tag) return undefined;
-    const close = body.indexOf(`</${name}`, tag.contentStart);
+    const close = tagStart(body, `/${name}`, tag.contentStart);
     if (close < 0) return undefined; // no closing tag anywhere after it
-    const nextOpen = body.indexOf(`<${name}`, tag.contentStart);
+    const nextOpen = tagStart(body, name, tag.contentStart);
     if (nextOpen >= 0 && nextOpen < close) {
       // A nested opening tag before the close: this one is malformed, resume at the next.
       from = nextOpen;
@@ -83,7 +90,34 @@ function cleanTitle(value: string) {
 }
 function metaContent(tag: string, key: string): string | undefined {
   const attributes: Record<string, string> = {};
-  for (const match of Array.from(tag.matchAll(/([a-zA-Z:_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g))) attributes[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4] ?? "";
+  let position = 0;
+  // Consume each attribute once, including valueless names and malformed values.
+  // An unanchored name/value regex retries every suffix of a long invalid name.
+  while (position < tag.length) {
+    while (position < tag.length && /[\s/]/.test(tag[position])) position += 1;
+    const nameStart = position;
+    while (position < tag.length && !/[\s=/>]/.test(tag[position])) position += 1;
+    if (position === nameStart) { position += 1; continue; }
+    const name = tag.slice(nameStart, position).toLowerCase();
+    while (position < tag.length && /\s/.test(tag[position])) position += 1;
+    if (tag[position] !== "=") continue;
+    position += 1;
+    while (position < tag.length && /\s/.test(tag[position])) position += 1;
+    const quote = tag[position];
+    let valueStart: number;
+    let valueEnd: number;
+    if (quote === '"' || quote === "'") {
+      valueStart = position + 1;
+      valueEnd = tag.indexOf(quote, valueStart);
+      if (valueEnd < 0) break;
+      position = valueEnd + 1;
+    } else {
+      valueStart = position;
+      while (position < tag.length && !/[\s"'<>]/.test(tag[position])) position += 1;
+      valueEnd = position;
+    }
+    if (name === "property" || name === "name" || name === "content") attributes[name] = tag.slice(valueStart, valueEnd);
+  }
   const name = (attributes.property ?? attributes.name ?? "").toLowerCase();
   return name === key ? attributes.content : undefined;
 }
@@ -122,7 +156,7 @@ function jobPostingTitle(body: string): string | undefined {
     const tag = nextOpenTag(body, "script", from, 0);
     if (!tag) return undefined;
     if (!/\btype\s*=\s*["']?application\/ld\+json["']?/i.test(tag.attributes)) { from = tag.contentStart; continue; }
-    const close = body.indexOf("</script", tag.contentStart);
+    const close = tagStart(body, "/script", tag.contentStart);
     if (close < 0) return undefined; // unclosed JSON-LD: nothing after it is parseable
     let parsed: unknown;
     try { parsed = JSON.parse(body.slice(tag.contentStart, close)); } catch { from = tag.contentStart; continue; }
@@ -142,7 +176,7 @@ export function extractRoleTitle(body: string, companyName?: string): string | u
   for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
     const tag = nextOpenTag(body, "meta", from, 0);
     if (!tag) break;
-    const value = metaContent(`<meta${tag.attributes}>`, "og:title");
+    const value = metaContent(tag.attributes, "og:title");
     if (typeof value === "string" && value.trim()) { ogTitle = value; break; }
     from = tag.contentStart;
   }
