@@ -159,18 +159,18 @@ describe("crawlable landing and public snapshots", () => {
     expect(landingSnapshot(policyLinks)).toContain('href="/explore"');
   });
 
-  it("advertises no employee availability on Home's launch-company block or in any public route description (D-176)", () => {
+  it("advertises no employee availability in the Home entry or any public route description (D-176)", () => {
     // D-176: availability is backend routing, never a visible status. A public
     // route description is read without the page, so it must not promise that
     // anyone at a company is open to referrals.
     const availability = /open to referral requests?|available referrers?|availability|people at these companies|open doors? at launch/i;
     for (const publicRoute of PUBLIC_ROUTES) expect(publicRoute.description, publicRoute.route).not.toMatch(availability);
     const home = readFileSync(join(__dirname, "..", "client/src/pages/Home.tsx"), "utf8");
-    const start = home.indexOf("launch-companies");
-    const end = home.indexOf("launch-steps");
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-    expect(home.slice(start, end)).not.toMatch(availability);
+    // D-048-K-home removes the retired company list. The landing's own copy
+    // and snapshot contracts stay covered by home.snapshotParity.test.tsx.
+    expect(home).not.toMatch(/launch-companies|launch-steps/);
+    expect(home).toContain("GoalLandingV9");
+    expect(home).not.toMatch(availability);
     expect(home).not.toMatch(/available referrers/i);
   });
 
