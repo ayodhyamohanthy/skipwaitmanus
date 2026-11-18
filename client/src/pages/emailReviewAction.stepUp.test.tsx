@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// D-057-session-gate (§0b.8b; red first): the kit /email-review page handles a
+// D-057-session-gate (§0b.8b): the /email-review page handles a
 // 403 work_email_code_required in place — the in-session step-up through the
 // ordinary access verdict, never the standalone code sign-in — and retries the
 // same review link for the same account after the step-up confirms.
@@ -7,17 +7,17 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertGoalPage } from "@/test/goalPageContract";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { GOAL_PAGE } from "./goal/email-review/GoalEmailReviewAction";
 import EmailReviewAction from "./EmailReviewAction";
 
-const { authState, surfaces } = vi.hoisted(() => ({
+const { authState } = vi.hoisted(() => ({
   authState: { isSignedIn: true, isLoaded: true },
-  surfaces: { on: new Set<string>() },
 }));
 
 const getToken = vi.fn().mockResolvedValue("test-token");
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn, isLoaded: authState.isLoaded, getToken }) }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
-vi.mock("@/components/WorkEmailSignIn", () => ({ WorkEmailSignIn: () => <div>Work email sign in</div> }));
 vi.mock("wouter", () => ({
   useRoute: () => [true, { linkToken: "t".repeat(48) }],
   useLocation: () => ["/email-review", vi.fn()],
@@ -65,7 +65,6 @@ const stepUpFlow = async () => {
 };
 
 beforeEach(() => {
-  surfaces.on = new Set();
   authState.isSignedIn = true;
   accessCodeRequired = true;
   reviewLinkReplies = [];
@@ -77,11 +76,14 @@ describe("EmailReviewAction with a code_required session (D-057)", () => {
   it("shows the in-session step-up on the 403, never the standalone code sign-in", async () => {
     reviewLinkReplies = [CODE_REQUIRED];
     vi.stubGlobal("fetch", fetchMock);
-    renderPage();
+    const { container } = renderPage();
     await waitFor(() => expect(screen.getByText(/Confirm you still work at Acme/)).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeTruthy();
-    // The standalone sign-in (which would make another account) is never offered.
-    expect(screen.queryByText("Work email sign in")).toBeNull();
+    // The standalone sign-in would create another account; code_required must keep the same one.
+    expect(screen.queryByRole("link", { name: "Sign in with work email" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Accept & connect" })).toBeNull();
     expect(document.querySelector('a[href*="/api/auth/otp"]')).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(LINK, expect.objectContaining({ credentials: "include" }));
   });
@@ -89,21 +91,28 @@ describe("EmailReviewAction with a code_required session (D-057)", () => {
   it("retries the same review link after the step-up confirms, for the same account", async () => {
     reviewLinkReplies = [CODE_REQUIRED, READY];
     vi.stubGlobal("fetch", fetchMock);
-    renderPage();
+    const { container } = renderPage();
     await waitFor(() => expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeTruthy());
     await stepUpFlow();
-    await waitFor(() => expect(screen.getByText("Choose your decision.")).toBeTruthy());
+    expect(await screen.findByText(/Decide on this referral/)).toBeTruthy();
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     const linkCalls = fetchMock.mock.calls.filter(([url]) => String(url) === LINK);
     expect(linkCalls.length).toBe(2);
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/auth/otp"))).toBe(false);
+    expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeNull();
   });
 
-  it("keeps the signed-out work-email sign-in unchanged", async () => {
+  it("keeps the signed-out email review behind verified work-email sign-in, with no review read", async () => {
     authState.isSignedIn = false;
     vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-    expect(await screen.findByText("Work email sign in")).toBeTruthy();
+    const { container } = renderPage();
+    const href = referrerSignInHref("/email-review/" + "t".repeat(48));
+    const signIn = await screen.findByRole("link", { name: "Sign in with work email" });
+    expect(signIn.getAttribute("href")).toBe(href);
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "Accept & connect" })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("keeps the unavailable-link error unchanged", async () => {
@@ -116,60 +125,60 @@ describe("EmailReviewAction with a code_required session (D-057)", () => {
 });
 
 
-describe("coordinator isolated negative reproduction, no runtime change", () => {
-  it("POST403 then explicit verification retries the originally pressed body exactly once", async () => {
+describe("EmailReviewAction decision step-up", () => {
+  it("retries the pressed decision exactly once after verifying the same session", async () => {
     reviewLinkReplies = [READY];
     const posts: RequestInit[] = [];
     vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
       if (String(input) === LINK + "/decision") {
-        posts.push(init!);
-        return posts.length === 1 ? CODE_REQUIRED : { ok: true, status: 200, json: async () => ({status:"approved"}) };
+        posts.push(init ?? {});
+        return posts.length === 1 ? CODE_REQUIRED : { ok: true, status: 200, json: async () => ({ status: "approved" }) };
       }
       return fetchMock(input, init);
     });
-    renderPage();
-    await screen.findByText("Choose your decision.");
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", {name:"Accept & connect"}));
+    const { container } = renderPage();
+    await screen.findByText(/Decide on this referral/);
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+    fireEvent.click(screen.getByLabelText(/I’ll refer only through my company’s official process/));
+    fireEvent.click(screen.getByRole("button", { name: "Accept & connect" }));
     await screen.findByLabelText("Work email");
     await stepUpFlow();
-    await screen.findByText("Request accepted.");
+    expect(await screen.findByText("Request accepted.")).toBeTruthy();
     expect(posts).toHaveLength(2);
-    expect(posts.map(p=>JSON.parse(String(p.body)))).toEqual([
-      {decision:"approved",ethicsConfirmed:true}, {decision:"approved",ethicsConfirmed:true}
+    expect(posts.map(post => JSON.parse(String(post.body)))).toEqual([
+      { decision: "approved", ethicsConfirmed: true },
+      { decision: "approved", ethicsConfirmed: true },
     ]);
   });
-  it("a repeated403 after explicit verification is bounded to one automatic resume", async () => {
+
+  it("bounds the automatic resume after a repeated 403", async () => {
     reviewLinkReplies = [CODE_REQUIRED];
-    let gets = 0;
-    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
-      if (String(input) === LINK) {
-        gets++;
-        // Safety valve ends an actual loop so this reproduction cannot hammer forever.
-        if (gets > 5) return {ok:false,status:409,json:async()=>({error:"reproduction safety stop"})};
+    let reviewReads = 0;
+    vi.stubGlobal("fetch", async (input: string | URL | Request) => {
+      if (String(input) === LINK && ++reviewReads > 2) {
+        return { ok: false, status: 409, json: async () => ({ error: "The repeated-403 retry is bounded" }) };
       }
-      return fetchMock(input, init);
+      return fetchMock(input);
     });
     renderPage();
     await screen.findByLabelText("Work email");
     await stepUpFlow();
-    await new Promise(resolve=>setTimeout(resolve,1000));
-    console.log("ACTUAL_REPEATED403_GET_COUNT", gets);
-    expect(gets).toBeLessThanOrEqual(2);
+    await waitFor(() => expect(reviewReads).toBe(2));
+    expect(screen.queryByLabelText("Work email")).toBeNull();
+    expect(screen.queryByText("Checking your work email…")).toBeNull();
   });
 });
 
-
-it("explicit verification refreshes the actual outer access cache, not only the island client", async () => {
+it("refreshes the containing shell's access cache after email step-up", async () => {
   reviewLinkReplies = [CODE_REQUIRED, READY];
-  vi.stubGlobal("fetch",fetchMock);
-  const outer = new QueryClient({defaultOptions:{queries:{retry:false}}});
-  outer.setQueryData(["referrer-access",null],ACCESS_REQUIRED);
-  const invalidation=vi.spyOn(outer,"invalidateQueries");
-  render(<QueryClientProvider client={outer}><EmailReviewAction/></QueryClientProvider>);
+  vi.stubGlobal("fetch", fetchMock);
+  const outer = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  outer.setQueryData(["referrer-access", null], ACCESS_REQUIRED);
+  const invalidation = vi.spyOn(outer, "invalidateQueries");
+  render(<QueryClientProvider client={outer}><EmailReviewAction /></QueryClientProvider>);
   await screen.findByLabelText("Work email");
   await stepUpFlow();
-  await screen.findByText("Choose your decision.");
-  expect(invalidation).toHaveBeenCalledWith({queryKey:["referrer-access",null]});
-  expect(outer.getQueryState(["referrer-access",null])?.isInvalidated).toBe(true);
+  await screen.findByText(/Decide on this referral/);
+  expect(invalidation).toHaveBeenCalledWith({ queryKey: ["referrer-access", null] });
+  expect(outer.getQueryState(["referrer-access", null])?.isInvalidated).toBe(true);
 });
