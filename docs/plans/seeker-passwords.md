@@ -16,7 +16,9 @@
 
 ## Status
 
-- **Nov 13, D-333 (6): unparked to `todo`.** The D-163 condition is met (`D-057-session-gate` is done). The landing gate stays: the owner's WorkOS dashboard steps in §5 step 5 come **before** the deploy. Without the owner's recorded confirmation, the lander stops with `--report blocked` and does not land.
+- **Nov 17, D-350 continuation:** the owner confirmed the production WorkOS setup on Nov 16 ("workos is fully configured"), satisfying D-336's five-dashboard-step condition and returning this row to `todo`. `D-057-session-gate` is done, meeting the D-163/D-080 prerequisite. Do not repeat the superseded dashboard-confirmation block or ask the owner to confirm it again.
+- **Current carrier and remaining acceptance:** PR #324, `agent/claude/seeker-signin-finish` at `f50db639`, is still draft and far behind current main. Its historical green checks do not certify a new integration. The legitimate implementation session merges current main without rewriting history, preserves the released goal sign-in and adds its password fields there (D-354), sets `SEEKER_CODE_VERIFY_UNTIL` to the actual release plus 24 hours, and satisfies focused auth/privacy/identity tests, required exact-head CI, the applicable independent-review gate and exact-release/browser proof. This unblock makes no code, setting, login-rule, cutoff or release change.
+- **Read receipt:** GPT-6.1 Sol · 12fe, unblock `3bbb927c`, main `4844406d`, register through D-356; BRIEF, PRD, AGENTS, BUILD_CONTINUITY, DELEGATION, this packet, current registry, D-336/D-350 and PR #324 read. The prior Gemini dashboard block is obsolete under D-350; implementation and production behavior remain UNVERIFIED.
 
 ## 1. Goal
 Seekers sign in only on skipwait.me, never on an authkit.app page. They use Google, Microsoft, GitHub, LinkedIn or Slack, or personal email and password, with forgot and reset through WorkOS. There are no sign-in codes for seekers at all. Referrers keep the work-email code on every visit and can never get a password. Nothing links or merges on an unverified email, and a refused sign-in leaves no trace.
@@ -110,7 +112,7 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
    d. `sendVerificationEmail` after `email_verification_required`: does the new code complete the original pending token?
    e. **Pre-hijack (S-5):** create user X (a Gmail you control) via API with password P, unverified. Sign in with Google OAuth as X in the same environment. Then call `authenticateWithPassword(X, P)`. If it succeeds, implement S-5's witness-alias rule before release; if WorkOS refuses or the password was removed, record that in S-5 and close it.
 4. **Owner decisions (already ruled in §3 under D-074: Option B per §3.2, S-4 per §3.4; only the email-cost confirmation (iii) remains for the owner)** (one message, risks first, D-023): (i) Option A vs Option B for the sign-up code (§A5 row 2; recommend B); (ii) S-4: build the D-057 in-session work-email-code gate in this lane, or accept shipping passwords before it (record either way in D-049's status); (iii) confirm WorkOS emails are sent by WorkOS's own provider at no cost (or the D-049 cost argument changes). If Option B is chosen, change `passwordSignUpRequestSchema` (`shared/passwordAuth.ts:26`) to email-only, run the sign-up like `/forgot` (answer first, defer WorkOS), and route `email_verification_required` on sign-in to a reset link.
-5. **Owner WorkOS dashboard steps (production environment), before the deploy:**
+5. **Owner WorkOS dashboard steps (production environment), confirmed by D-350 on Nov 16:** the list is retained as the configuration contract, not an outstanding owner action. New evidence of actual misconfiguration is a new defect to report, not a reason to repeat the old confirmation request.
    1. Authentication: enable **Email + Password** (plan §6). Keep the methods the admin needs on the hosted page (`/api/auth/workos/admin` uses `provider: "authkit"`).
    2. Applications -> SkipWait app -> Redirects -> **Password reset URL = `https://skipwait.me/reset-password`** (the default is the AuthKit page, a D-030 violation; S-9).
    3. Emails -> Configuration: WorkOS sends **Password reset** (and **Email verification** if Option A) emails; confirm no custom email provider is set (cost); check WorkOS's default-provider sending caps against expected volume; check the email branding (sender name, logo) so seekers trust the mail.
@@ -125,7 +127,7 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
 ## 6. Definition of done
 - [ ] Every finding in §A3 is fixed with a test, or recorded as accepted in the row with the owner's OK. Rulings 1–8 are implemented.
 - [ ] Gate on the merged branch; draft PR; independent auth review (§7 and `docs/DELEGATION.md` §6).
-- [ ] The owner dashboard steps (§5 step 5) are done before the deploy.
+- [x] The owner dashboard steps (§5 step 5) are confirmed complete by D-350; deployment behavior still requires the checks below.
 - [ ] Screens at 1280 and 390 (§5 step 8).
 - [ ] Push; API CONVERGED; web `git-commit` matches.
 - [ ] One real end-to-end sign-up, forgot and reset on production lands on skipwait.me.

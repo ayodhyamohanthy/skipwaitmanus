@@ -25,17 +25,27 @@ const SERVER_OR_SHARED = /^(shared|server)\//;
 
 const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
-const SOL_SESSION = "GPT-6.1 Sol";
+// D-356 named GPT-6.1 Sol; D-357 (owner, Nov 18 2026) added GPT-6 Sol. Only these exact names qualify.
+const SOL_SESSIONS = ["GPT-6.1 Sol", "GPT-6 Sol"];
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * D-356 (owner, Nov 17 2026): "let the gpt 6.1 sol have full rights to edit anything". True when one of the
- * branch's commit subjects is this task's `Claim`, `Takeover` or `Fix claim` marker by a GPT-6.1 Sol session.
+ * D-356 (owner, Nov 17 2026): "let the gpt 6.1 sol have full rights to edit anything"; D-357 (owner, Nov 18 2026):
+ * "make sure this model has full rights on works too not only 6.1". Returns the Sol session name when one of the
+ * branch's commit subjects is this task's `Claim`, `Takeover` or `Fix claim` marker by such a session, else null.
  */
-export function solHoldsTask(taskId, subjects) {
-  const marker = new RegExp(`^(?:Claim|Takeover|Fix claim) ${escapeRegExp(taskId)}: ${escapeRegExp(SOL_SESSION)}(?: · \\S+)?$`);
-  return subjects.some(subject => marker.test(subject.trim()));
+export function solSessionOf(taskId, subjects) {
+  const names = SOL_SESSIONS.map(escapeRegExp).join("|");
+  const marker = new RegExp(`^(?:Claim|Takeover|Fix claim) ${escapeRegExp(taskId)}: (${names})(?: · \\S+)?$`);
+  for (const subject of subjects) {
+    const match = marker.exec(subject.trim());
+    if (match) return match[1];
+  }
+  return null;
 }
+
+/** True when a GPT-6.1 Sol or GPT-6 Sol session holds this task (D-356, D-357). */
+export const solHoldsTask = (taskId, subjects) => solSessionOf(taskId, subjects) !== null;
 
 /**
  * The rules, with no I/O, so they can be tested directly.
@@ -83,7 +93,8 @@ export function checkBranch(taskId) {
   }
   const violations = scopeViolations({ owns, changed, packet: task.packet, lineCounts });
   const subjects = git(["log", "--format=%s", "origin/main..HEAD"]).split("\n").filter(Boolean);
-  if (violations.length && solHoldsTask(task.id, subjects)) return { owns, violations: [], exempt: violations, skipped: null };
+  const solSession = violations.length ? solSessionOf(task.id, subjects) : null;
+  if (solSession) return { owns, violations: [], exempt: violations, solSession, skipped: null };
   return { owns, violations, exempt: [], skipped: null };
 }
 
@@ -121,14 +132,14 @@ async function main() {
     return 2;
   }
   try {
-    const { owns, violations, exempt = [], skipped } = checkBranch(taskId);
+    const { owns, violations, exempt = [], solSession, skipped } = checkBranch(taskId);
     if (skipped) {
       console.log(`scope-check: ${skipped} — nothing to compare.`);
       return 0;
     }
     if (exempt.length) {
-      for (const notice of exempt) console.log(`scope-check: notice (D-356, GPT-6.1 Sol full edit rights): ${notice}`);
-      console.log(`scope-check: ${exempt.length} change(s) outside owns allowed — a GPT-6.1 Sol session holds this task (D-356).`);
+      for (const notice of exempt) console.log(`scope-check: notice (D-356/D-357, ${solSession} full edit rights): ${notice}`);
+      console.log(`scope-check: ${exempt.length} change(s) outside owns allowed — a ${solSession} session holds this task (D-356/D-357).`);
       return 0;
     }
     if (!violations.length) {
