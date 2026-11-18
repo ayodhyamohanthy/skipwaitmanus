@@ -221,6 +221,56 @@ All seeker privacy, withdrawal, progress, error/retry, message draft and name-re
 
 - **CI receipt / completion on merge:** PR #1279 head `c359372b`, [CI 44309091323](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44309091323), passed TypeScript, all three unit shards and their required aggregate, production build, 8/8 E2E journeys, release-capture planner and the scope/review/test-integrity gates. The 400-commit Git fixture that timed out locally passes in CI. No separate review is required for the computed Tier 2 paths (D-352); no independent review is claimed. This docs/registry-only final checkpoint sets only this task's status to done effective when PR #1279 merges, and syncedTo to checked D-359. Exact final-head CI and normal protected auto-merge still apply; deployment and live acceptance remain unverified until post-merge checks complete. The local full-suite timeout remains recorded above.
 
+### D-048-K-onboarding: ported assertions
+
+- D-048-K-onboarding: ready for protected merge — GPT-6.1 Sol · ba11 — 2026-11-19 — [PR #1283](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1283), branch `agent/queue/d048-k-onboarding`. Read receipt includes main `bc920130`, BRIEF, AGENTS, PRD, BUILD_CONTINUITY, DELEGATION, DESIGN, this packet, source `19883f70`, local gate receipt `171c377f` and decisions through D-363. Scope is the profile-setup entry, goal onboarding autosave and the two component suites. It supports saved seeker progress (L6). D-019 covers the resume-persistence repair discovered while validating the retirement. Source `bde00185` and evidence commit `1b2d51f1` passed CI. The registry update takes effect on protected merge. Final CI and canonical deployment checks are pending.
+
+The platform release row is done. `d6dd9c66` (2026-11-09) added onboarding to `RELEASED`, and `7781e23b` recorded completion. D-349 suspends the soak in launch mode. Read-only Sentry searches for `is:unresolved environment:production transaction:/onboarding` over 30 days returned zero issues in both projects. `git log f485d2ae..origin/main -- client/src/pages/ProfileSetup.tsx` had zero entries. The kit wizard had received zero edits since the goal build.
+
+The unforced goal-default test failed on the original entrypoint when it rendered `STEP 1 OF 6`. The seven goal cases and twelve profile-setup scenarios remain, with an additional response-order case for resume upload.
+
+| Legacy assertion | Preserved goal contract or explicit design-only retirement |
+|---|---|
+| Kit eyebrow, six-step progress and flag-off kit rendering | Retired under D-332: the released goal heading/checklist is the default without a surface mock. The obsolete six-step design must not render. |
+| Private search-goal selection through radio cards | Same default and selected goal values through the existing pressed chips and `Edit Search goal` row. |
+| Continue disabled until roles; fourth role disabled | Retired wizard navigation/disabled styling only. The existing goal flow still caps selection at three; a fourth click remains unselected and the count stays 3/3. |
+| Skip/Finish and Add return to wizard steps | Existing goal checklist and Done/Skip navigation; missing fields remain Add, saved location becomes Edit, and resume/work/location editors remain reachable. No false ready state is introduced. |
+| Honest 40%/60% completion, restored account answers, no sample city | Same percentages, saved values, blank city, remote/authorization PATCH and account-save wording. |
+| Find a referrer and Set alerts destinations | Existing `onboardingGoal.test.tsx` ready-state case still asserts `/explore` and `/alerts`; the work editor still asserts `/work`. |
+| City/authorization native accessible names from kit labels | Existing goal visual labels and blank/persisted values remain asserted; controls use the goal placeholder/combobox selectors. Kit-specific label associations are retired with that markup; this deletion does not claim an accessibility repair to the unchanged goal fields. |
+| PATCH shape, save/load barrier, failure and retry | Same bounded body, trimmed city, resume attachment id/null, cookie credentials, no PATCH before load, visible save refusal and retry. |
+| Resume chunk upload, replace/remove and invalid/network failure | Same real shared upload protocol, uploaded filename, attachment PATCH/remove, rejection before an upload request and enabled retry picker. Selectors use the existing goal upload hint and visible error text rather than the retired kit alert markup. |
+| Signed-out upload requires sign-in | Same absent file picker, sign-in action and one sign-in invocation. |
+
+The retirement keeps the route, lazy import and fallback. Browser comparisons use synthetic local API fixtures.
+
+Preview proof: fresh Chromium captures of roles, resume, ready and signed-out states at 1280×900 and 390×900 are byte-identical in all eight before/after pairs, with no horizontal overflow or page errors. A real click on Product Designer followed by Done opens the resume picker. The complete before/after PNGs and hashes are preserved under `design/goal-ui/captures/onboarding/retire-630a/` (evidence path permitted by D-356/D-359). Desktop roles, phone roles and phone ready images were inspected natively; no layout or styling was changed.
+
+### D-048-K-onboarding: failed full local gate
+
+The production build passed. The one full run of `LANG=en_US.UTF-8 pnpm vitest run` exited 1: 733 files passed, 8 failed, 5 skipped (746); 7,774 tests passed, 12 failed, 31 skipped (7,817). The report contains twelve test failures and one failed suite hook, not thirteen failed tests. No rerun or configuration change was used to clear the result.
+
+| File | Observed failure |
+|---|---|
+| `client/src/_core/authCompat.test.ts:42` | Suite setup hook exceeded 20,000 ms. |
+| `scripts/classifyCiChange.test.ts:655` | 400-commit merge-base fixture exceeded 20,000 ms. |
+| `server/dataExport.test.ts:18` | Greater-than-10-MB export rejection test exceeded 20,000 ms. |
+| `server/jobLinkPreview.roleTitle.test.ts:70` | Two bounded-title timing assertions measured 1,128.41 and 1,186.27 ms against a 1,000-ms limit. |
+| `client/src/pages/myCompanyInbox.serverAccess.test.tsx:57` | Expected Private ask button was not found. |
+| `client/src/pages/onboardingGoal.test.tsx:35` | Initial goal marker was not found; diagnostic body contained only an empty div. |
+| `client/src/pages/profileSetup.test.tsx:162` | Uploaded resume was visible, but the recorded PATCH attachment id was null rather than 5. |
+| `client/src/pages/startGoal.test.tsx` | Five cases could not find the goal marker, Target Role URL control or restored-draft text. |
+
+### D-048-K-onboarding: autosave follow-up
+
+The full local rerun on `9ee6e733` finished with 7,791 passed, 24 failed and 18 skipped (748 files, 2,140.73s). Three failures were in the onboarding suites. The other 21 included 20-second Git and route fixture timeouts, job-title timing limits, a 407 from a local HTTP test and several delayed UI transitions. The [CI run for that commit](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44399573009) passed 7,815 tests with 18 skipped across all three shards. The original run is preserved in `design/goal-ui/captures/onboarding/retire-630a/gate-receipt.json`.
+
+The focused suites now wait for the real lazy module to resolve before checking the DOM. A controlled role-save response and the real chunk-upload client reproduced two failures on the released `GoalOnboarding` bytes with one Vitest worker. When the earlier role save succeeded before React committed the upload edit, the new attachment stayed unsaved. When that save remained pending past the upload debounce, a second full-profile PATCH started concurrently. The fix associates each snapshot with its edit revision, serializes PATCH requests, and only acknowledges the current edit. The two cases assert that attachment `5` is saved and later removed in order. The retry case verifies that a failed save can retry the same draft. This restores the existing account-save contract under D-019.
+
+The focused onboarding and profile-route run passed 27 tests. TypeScript, production build, token audit, migration lint, deploy-trigger audit, scope check and diff check passed. The [CI run for `bde00185`](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44412192020) passed 7,818 tests with 18 skipped across all three shards, plus E2E and the required checks. Clean Chromium sessions at 1280×900 and 390×900 held the role PATCH open during the chunk upload. The captured attachment IDs were `[null, 5, null]`, with the resume still visible after reload. There were zero page errors or overflow. The [capture receipt](../../design/goal-ui/captures/onboarding/retire-ba11/receipt.json) binds both images to the tested source. All browser requests used local synthetic fixtures.
+
+The full local suite on the repaired source used `LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=3`. It recorded 7,816 passed, 2 failed and 18 skipped across 748 files. Both onboarding suites passed. The 400-commit merge-base fixture exceeded its 20-second wall-clock budget locally and passed in 13.49 seconds in isolation on `bc920130`. The referrer step-up fixture's expired-proof assertion failed in the full local run and its entire suite passed 11/11 in isolation. Their source, tests and Vitest setup were identical on the PR and on main. Both suites passed in the [CI run on `1b2d51f1`](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44413564972). The Plans retirement was integrated from main `bc920130` with no overlapping source paths. Protected landing uses the checks on the combined commit.
+
 - D-048-K-start: done — `ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4` (PR #1282, protected merge; current main CI, API deploy and Pages deploy green). Live proof: `EXPECTED_SHA=ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4 bash scripts/verify-live-release.sh` returned `CONVERGED`; live `/start` at 1280 and 390 has `data-testid="goal-start"`, zero overflow and zero console errors; `workers.dev` returned 404.
 
 ### D-048-K-start: ported assertions and evidence
