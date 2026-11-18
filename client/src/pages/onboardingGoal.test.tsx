@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emptyOnboarding } from "@/components/onboarding/onboardingState";
@@ -16,6 +16,11 @@ vi.mock("@/lib/resumeUpload", () => ({
 
 import ProfileSetup from "@/pages/ProfileSetup";
 
+async function renderProfileSetup() {
+  render(<ProfileSetup />);
+  await act(() => vi.dynamicImportSettled());
+}
+
 function stubFetch(saved: unknown) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -31,7 +36,7 @@ describe("goal onboarding", () => {
 
   it("opens on the goal with the next step focused", async () => {
     vi.stubGlobal("fetch", stubFetch({ ...emptyOnboarding(), roles: [] }));
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     expect(await screen.findByTestId("goal-onboarding")).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Get ready to ask for a referral." })).toBeTruthy();
     expect(screen.getByText(/Which roles are you targeting/)).toBeTruthy();
@@ -41,7 +46,7 @@ describe("goal onboarding", () => {
   it("advances to the next unfinished item and saves edits", async () => {
     const fetchMock = stubFetch({ ...emptyOnboarding(), roles: [] });
     vi.stubGlobal("fetch", fetchMock);
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     const chip = await screen.findByRole("button", { name: /^Software Engineer/ });
     fireEvent.click(chip);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -55,7 +60,7 @@ describe("goal onboarding", () => {
 
   it("checklist rows focus their editor", async () => {
     vi.stubGlobal("fetch", stubFetch({ ...emptyOnboarding(), roles: ["Software Engineer"] }));
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     const row = await screen.findByRole("button", { name: /Add Work links/ });
     fireEvent.click(row);
     expect(await screen.findByText(/Show your work/)).toBeTruthy();
@@ -63,7 +68,7 @@ describe("goal onboarding", () => {
 
   it("ready state commits to finding a referrer", async () => {
     vi.stubGlobal("fetch", stubFetch({ ...emptyOnboarding(), roles: ["Software Engineer"], links: ["LinkedIn"], city: "Bengaluru", resume: { id: "a", fileName: "cv.pdf", mimeType: "application/pdf", byteSize: 1, storageKey: "k" } }));
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     expect(await screen.findByText(/% complete/)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Find a referrer/ }).getAttribute("href")).toBe("/explore");
     expect(screen.getByRole("link", { name: /Set alerts/ }).getAttribute("href")).toBe("/alerts");
@@ -75,7 +80,7 @@ describe("goal onboarding", () => {
       if (init?.method === "PATCH") return { ok: false, status: 500, json: async () => ({}) } as Response;
       return { ok: true, status: 200, json: async () => ({ ...emptyOnboarding(), roles: ["Software Engineer"] }) } as Response;
     }));
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     const row = await screen.findByRole("button", { name: /Add Work links/ });
     fireEvent.click(row);
     fireEvent.click(screen.getByRole("button", { name: /^LinkedIn$/ }));
@@ -85,7 +90,7 @@ describe("goal onboarding", () => {
 
   it("asks signed-out visitors to sign in for uploads and warns answers are not saved", async () => {
     authState.isSignedIn = false;
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     expect(await screen.findByTestId("goal-onboarding")).toBeTruthy();
     expect(screen.getByText(/Not saved yet/)).toBeTruthy();
     const row = screen.getByRole("button", { name: /Add Resume/ });
@@ -97,7 +102,7 @@ describe("goal onboarding", () => {
 
   it("renders the goal page by default without a surface override", async () => {
     vi.stubGlobal("fetch", stubFetch(emptyOnboarding()));
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     expect(await screen.findByTestId("goal-onboarding")).toBeTruthy();
     expect(screen.queryByText(/STEP 1 OF 6/)).toBeNull();
   });

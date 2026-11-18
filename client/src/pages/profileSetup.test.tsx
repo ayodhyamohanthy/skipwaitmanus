@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProfileSetup from "./ProfileSetup";
 import { emptyOnboarding, toSetupPatch } from "@/components/onboarding/onboardingState";
@@ -13,16 +13,18 @@ vi.mock("wouter", () => ({
 }));
 
 // In-memory stand-in for GET/PATCH /api/profile/setup. Anything else goes to `other`.
-function stubApi(initial: Record<string, unknown> = {}, other?: (url: string) => unknown, patchStatus = 200) {
+function stubApi(initial: Record<string, unknown> = {}, other?: (url: string) => unknown, patchStatus = () => 200, firstPatchReply?: Promise<void>) {
   const server = { saved: { ...emptyOnboarding(), ...initial } as Record<string, unknown>, patches: [] as Array<Record<string, unknown>> };
   const fetchMock = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
     if (String(url) === "/api/profile/setup") {
       if (init?.method === "PATCH") {
-        if (patchStatus !== 200) return { ok: false, status: patchStatus, json: async () => ({ error: "x" }) };
+        const status = patchStatus();
+        if (status !== 200) return { ok: false, status, json: async () => ({ error: "x" }) };
         const body = JSON.parse(init.body ?? "{}");
         server.patches.push(body);
         const { resumeAttachmentId, ...rest } = body;
         server.saved = { ...server.saved, ...rest };
+        if (server.patches.length === 1 && firstPatchReply) await firstPatchReply;
         return { ok: true, json: async () => server.saved };
       }
       return { ok: true, json: async () => server.saved };
@@ -36,10 +38,15 @@ function stubApi(initial: Record<string, unknown> = {}, other?: (url: string) =>
 const lastPatch = (server: { patches: Array<Record<string, unknown>> }) => server.patches[server.patches.length - 1] ?? {};
 
 beforeEach(() => { mockAuth.signedIn = true; mockAuth.openSignIn.mockReset(); stubApi(); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+async function renderProfileSetup() {
+  render(<ProfileSetup />);
+  await act(() => vi.dynamicImportSettled());
+}
 
 async function goToRoles() {
-  render(<ProfileSetup />);
+  await renderProfileSetup();
   await screen.findByTestId("goal-onboarding");
   if (mockAuth.signedIn) await screen.findByText(/Saved to your account\./);
   fireEvent.click(screen.getByRole("button", { name: /^(Add|Edit) Target roles$/ }));
@@ -126,18 +133,25 @@ describe("ProfileSetup onboarding", () => {
 
   it("never writes before the saved answers have loaded", async () => {
     const { server, fetchMock } = stubApi({ roles: ["Sales"] });
-    render(<ProfileSetup />);
+    await renderProfileSetup();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/profile/setup", expect.objectContaining({ credentials: "include" })));
     await new Promise(resolve => setTimeout(resolve, 700));
     expect(server.patches).toEqual([]);
   });
 
   it("shows an honest failure with a retry when saving fails", async () => {
-    stubApi({}, undefined, 500);
+    let status = 500;
+    const { server } = stubApi({}, undefined, () => status);
     await goToRoles();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     fireEvent.click(screen.getByRole("button", { name: "Sales" }));
-    expect(await screen.findByText(/We could not save your answers/, {}, { timeout: 3000 })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    expect(screen.getByText(/We could not save your answers/)).toBeTruthy();
+    status = 200;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    expect(lastPatch(server).roles).toEqual(["Sales"]);
+    expect(screen.getByText(/Saved to your account\./)).toBeTruthy();
   });
 
   it("builds a bounded PATCH body from the answers", () => {
@@ -146,23 +160,55 @@ describe("ProfileSetup onboarding", () => {
     expect(toSetupPatch(emptyOnboarding()).resumeAttachmentId).toBeNull();
   });
 
-  it("uploads a real resume through the shared chunk protocol", async () => {
+  it.each(["before upload renders", "after upload debounce"])("uploads a real resume through the shared chunk protocol with a role save reply %s", async (roleSaveOrder) => {
     vi.stubGlobal("crypto", { getRandomValues: (arr: Uint8Array) => arr, randomUUID: () => "12345678-1234-4123-8123-123456789012", subtle: { digest: vi.fn(async () => new Uint8Array(32).buffer), importKey: vi.fn(async () => ({})), encrypt: vi.fn(async () => new Uint8Array(16).buffer) } });
-    const { server, fetchMock } = stubApi({}, url => {
+    const roleSave = Promise.withResolvers<void>();
+    const uploadRequested = Promise.withResolvers<void>();
+    const completeUpload = Promise.withResolvers<void>();
+    const { server, fetchMock } = stubApi({}, async url => {
       if (url.endsWith("/uploads")) return { ok: true, json: async () => ({ sessionId: "s", chunkBytes: 1024 * 1024 }) };
       if (url.includes("/chunks")) return { ok: true, json: async () => ({}) };
+      uploadRequested.resolve();
+      await completeUpload.promise;
       return { ok: true, json: async () => ({ id: 5, fileName: "me.pdf" }) };
+    }, undefined, roleSave.promise);
+    await goToRoles();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    fireEvent.click(screen.getByRole("button", { name: "Product Designer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Resume" }));
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    expect(lastPatch(server)).toMatchObject({ roles: ["Product Designer"], resumeAttachmentId: null });
+    const picker = screen.getByLabelText("Choose resume");
+    await act(async () => {
+      fireEvent.change(picker, { target: { files: [new File(["bytes"], "me.pdf", { type: "application/pdf" })] } });
+      await uploadRequested.promise;
+      completeUpload.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+      if (roleSaveOrder === "before upload renders") {
+        expect(screen.queryByText("me.pdf")).toBeNull();
+        roleSave.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+      }
     });
-    await goToResume();
-    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(picker, { target: { files: [new File(["bytes"], "me.pdf", { type: "application/pdf" })] } });
-    expect(await screen.findByText("me.pdf")).toBeTruthy();
+    expect(screen.getByText("me.pdf")).toBeTruthy();
     expect(screen.getByText("Uploaded. Tap to replace.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/documents/uploads", expect.objectContaining({ method: "POST" }));
-    await waitFor(() => expect(lastPatch(server).resumeAttachmentId).toBe(5));
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    if (roleSaveOrder === "after upload debounce") {
+      expect(server.patches).toHaveLength(1);
+      await act(async () => {
+        roleSave.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+    expect(server.patches).toHaveLength(2);
+    expect(lastPatch(server).resumeAttachmentId).toBe(5);
+    expect(screen.getByText(/Saved to your account\./)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Remove me.pdf" }));
     expect(screen.getByText("Drop PDF or tap to choose")).toBeTruthy();
-    await waitFor(() => expect(lastPatch(server).resumeAttachmentId).toBeNull());
+    await act(() => vi.advanceTimersByTimeAsync(500));
+    expect(server.patches).toHaveLength(3);
+    expect(lastPatch(server).resumeAttachmentId).toBeNull();
   });
 
   it("shows a rejected file inside the drop zone without calling the server", async () => {
