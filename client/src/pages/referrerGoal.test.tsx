@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// D-048-p3-referrer: flag-off parity and flag-on goal rebuild for /referrer
-// (workspace, goal-email OTP dialog, setup & capacity) and /referrer/impact.
+// D-048-K-referrer: goal-only defaults for /referrer and /referrer/impact,
+// preserving work-email OTP, setup, capacity and private impact contracts.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,17 +9,13 @@ import Referrer from "./Referrer";
 import ReferrerImpact from "./ReferrerImpact";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 
-const { authState, userState, go, search, surfaces } = vi.hoisted(() => ({
+const { authState, userState, go, search } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, userId: "12", getToken: vi.fn().mockResolvedValue("test-token") },
   userState: { user: null as null | { primaryEmailAddress?: { emailAddress?: string } } },
   go: vi.fn(),
   search: { value: "" },
-  surfaces: { on: new Set<string>() },
 }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
-// The flag-off kit page still imports the kit form; the goal dialog renders its own.
-vi.mock("@/components/ReferrerOtpSignIn", () => ({ ReferrerOtpSignIn: () => <div data-testid="referrer-otp-sign-in" /> }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/referrer", go],
@@ -48,28 +44,26 @@ function stubWorkspace(impactSummary?: unknown) {
 
 beforeEach(() => {
   authState.isLoaded = true; authState.isSignedIn = true; userState.user = null;
-  search.value = ""; surfaces.on = new Set(["referrer"]);
+  search.value = "";
   window.sessionStorage.clear();
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); go.mockClear(); });
 
-describe("Goal flag gate", () => {
-  it("renders the kit workspace untouched when the flag is off", () => {
-    surfaces.on = new Set();
+describe("Goal-only referrer defaults", () => {
+  it("renders the goal workspace without a surface override", async () => {
     authState.isSignedIn = false;
     stubWorkspace();
     renderWithQuery(<Referrer />);
-    expect(document.querySelector(".referrer-workspace")).toBeTruthy();
-    expect(screen.queryByText("YOUR NEXT STEP")).toBeNull();
+    expect(await screen.findByText("Help when the fit feels right.")).toBeTruthy();
+    expect(document.querySelector(".referrer-workspace")).toBeNull();
   });
 
-  it("renders the kit impact page untouched when the flag is off", () => {
-    surfaces.on = new Set();
+  it("renders goal impact without a surface override", async () => {
     authState.isSignedIn = false;
     stubWorkspace();
     renderWithQuery(<ReferrerImpact />);
-    expect(document.querySelector(".impact-zero")).toBeTruthy();
-    expect(screen.queryAllByTestId("goal-button")).toHaveLength(0);
+    expect(await screen.findByRole("link", { name: "Sign in with work email" })).toBeTruthy();
+    expect(document.querySelector(".impact-zero")).toBeNull();
   });
 });
 
