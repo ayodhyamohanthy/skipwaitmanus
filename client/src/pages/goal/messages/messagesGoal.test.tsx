@@ -91,12 +91,13 @@ async function openChat(name: RegExp) {
 // Assert the page contract only on inbox states with its single next-step block.
 // Loading/error and open-chat/pre-acceptance panels intentionally have no such block.
 describe("goal /messages: inbox", () => {
-  it("flag off keeps the kit page", async () => {
+  it("renders the released goal page when the surface flag is off", async () => {
     flagState.on = false;
     server.threads = [];
-    render(<Messages />);
-    expect(await screen.findByText("Your chats live here.")).toBeTruthy();
-    expect(document.querySelector('[data-goal-page="messages"]')).toBeNull();
+    const { container } = render(<Messages />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.queryByText("Your chats live here.")).toBeNull();
   });
 
   it("opens on the goal with the chat waiting on you first and one black commit to answer it", async () => {
