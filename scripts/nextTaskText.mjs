@@ -189,7 +189,7 @@ function decisionsBlock(pick, register) {
   const at = stamp ? register.findIndex(e => e.id === stamp) : -1;
   const first = Math.max(0, Math.min(register.length - 5, at < 0 ? register.length - 5 : at));
   const shown = register.slice(first).reverse();
-  // D-360: the 10 newest with a short summary, every other entry by ID, so a stale syncedTo cannot push the
+  // D-361: the 10 newest with a short summary, every other entry by ID, so a stale syncedTo cannot push the
   // assignment past an agent's output limit; nothing D-202 requires is dropped.
   const summarised = shown.slice(0, DECISIONS_SUMMARISED);
   const named = shown.slice(DECISIONS_SUMMARISED).map(e => e.id);

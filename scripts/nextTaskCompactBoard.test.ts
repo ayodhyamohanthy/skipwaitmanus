@@ -57,10 +57,10 @@ describe("next-task claim and preview path (D-358)", () => {
   });
 });
 
-// D-360 (owner, Nov 18 2026): "zcode is stopping again after few mins". After D-358 the newest-decisions block still
+// D-361 (owner, Nov 18 2026): "zcode is stopping again after few mins". After D-358 the newest-decisions block still
 // listed every entry newer than a stale syncedTo in full (75 lines, 13 KB). It now summarises the 10 newest and names
 // every other entry by ID, so nothing D-202 requires is dropped and the assignment stays within output limits.
-describe("the newest-decisions block (D-360)", () => {
+describe("the newest-decisions block (D-361)", () => {
   it("names every entry newer than syncedTo, summarises only the 10 newest and stays short", async () => {
     const { parseDecisionRegister } = await import("./nextTaskCore.mjs");
     const { renderPick } = await import("./nextTaskText.mjs");
