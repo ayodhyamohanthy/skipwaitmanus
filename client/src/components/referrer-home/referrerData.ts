@@ -1,6 +1,6 @@
 // Referrer data boundary for /referrer-home, /referrer-setup and /invite.
-// Parses the live REST payloads with Zod at the edge and derives the kit v4
-// referrer-home view from them. Derivations are pure so the honesty rules
+// Parses the live REST payloads with Zod and derives the referrer-home view.
+// Derivations are pure so the honesty rules
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
 import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
@@ -223,13 +223,6 @@ export async function fetchProfileHandle(getToken: TokenSource): Promise<string 
 /** The verified company's directory name and initials ("Wipro", "W"); the raw domain otherwise. */
 export function companyIdentity(access: Pick<CompanyAccess, "domain" | "companyName" | "companyInitials">): CompanyIdentity {
   return companyIdentityOf({ companyDomain: access.domain, companyName: access.companyName, companyInitials: access.companyInitials });
-}
-
-/** Greeting for the viewer's local hour, so the heading never says evening at breakfast. */
-export function greetingFor(hour: number): string {
-  if (hour >= 5 && hour < 12) return "Good morning";
-  if (hour >= 12 && hour < 17) return "Good afternoon";
-  return "Good evening";
 }
 
 function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt" | "waitingForCoverage" | "coverageVisibleAt">): number | null {
