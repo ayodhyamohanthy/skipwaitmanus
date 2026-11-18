@@ -17,7 +17,7 @@ import Pricing from "./Pricing";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { money } from "@/components/plans/format";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
-import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { firstPackClaim } from "@shared/planCatalog";
 
 // Independent oracle for the goal line (packet §4), not GOAL_PAGE imported as its own proof.
@@ -104,6 +104,14 @@ describe("goal /pricing (D-048-p3-pricing)", () => {
     for (const provider of ["Razorpay", "PayPal", "Chargebee"]) expect(text).toContain(provider);
     expect(screen.getByRole("link", { name: "Shipping & delivery" }).getAttribute("href")).toBe("/shipping");
     expect(screen.getByRole("link", { name: "Hire on skipwait.me" }).getAttribute("href")).toBe("/employer");
+  });
+
+  it("shows the shared cost sentence and charge/refund rule without retyping them", () => {
+    render(<Pricing />);
+    expect(pageText()).toContain(ASK_COST_SENTENCE);
+    expect(pageText()).toContain(CREDIT_RULE);
+    const rules = screen.getByRole("region", { name: "How referral requests use your balance" });
+    expect(within(rules).getByText(CREDIT_RULE)).toBeTruthy();
   });
 
   it("says referrals, never credits or the noun ask (D-173, D-180)", () => {

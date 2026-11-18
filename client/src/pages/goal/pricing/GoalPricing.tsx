@@ -24,7 +24,7 @@ import { money } from "@/components/plans/format";
 import { applySeo } from "@/lib/seo";
 import { publicRoute } from "@shared/publicRoutes";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
-import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 
 export const GOAL_PAGE = { goalLine: "Know what a referral request costs." } as const;
 
@@ -87,6 +87,11 @@ export default function GoalPricing() {
             </GoalButton>
           </GoalNextStep>
           <Plans />
+          <section aria-labelledby="goal-pricing-balance" className="grid gap-2">
+            <h2 id="goal-pricing-balance" className="text-g-heading text-g-ink">How referral requests use your balance</h2>
+            <p className="text-g-meta text-g-ink-2">{ASK_COST_SENTENCE}</p>
+            <p className="text-g-meta text-g-ink-2">{CREDIT_RULE}</p>
+          </section>
           <section aria-labelledby="goal-pricing-payment" className="grid gap-2">
             <h2 id="goal-pricing-payment" className="text-g-heading text-g-ink">Payment</h2>
             <p className="text-g-meta text-g-ink-2">
