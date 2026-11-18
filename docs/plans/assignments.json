@@ -2659,7 +2659,7 @@
       "tier": 1,
       "lane": "d048-release-public-profile",
       "branch": "agent/queue/d048-r-public-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-344",
       "dependsOn": [
         "D-048-p3-public-profile"
@@ -3159,8 +3159,8 @@
       "tier": 1,
       "lane": "d048-retire-conversation",
       "branch": "agent/queue/d048-k-conversation",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-359",
       "dependsOn": [
         "D-048-R-conversation"
       ],
@@ -5750,6 +5750,25 @@
       ]
     },
     {
+      "id": "REL-review-email-retry-schema",
+      "title": "Apply and verify the additive 0122 owner-alert migration before email-retry runtime lands",
+      "row": "D-212",
+      "packet": "docs/plans/REL-review-email-retry-schema.md",
+      "tier": 1,
+      "lane": "notifications-schema",
+      "branch": "agent/queue/rel-review-email-retry-schema",
+      "status": "todo",
+      "syncedTo": "D-359",
+      "dependsOn": [
+        "D-174-job-catalog"
+      ],
+      "epic": "D-212",
+      "owns": [
+        "drizzle/deploy/0122_review_delivery_owner_alerts.sql"
+      ],
+      "note": "D-350 migration-before-code prerequisite, split from existing REL-review-email-retry under D-200/D-223. Migration-only PR copies the exact reviewed SQL from PR874 head0c4f79e3 (sha256 ff2f5ed03c0e9f5bd4117812eb7c7ec0551281ba161a012a434542f3824a14f3), lands through independent Tier1 review and required CI, then verifies the ordinary main-only Deploy API migrate-db result before this row is done. No runtime/schema-model/readiness/email/workflow change or direct database write; old binaries tolerate nullable extra columns. Placed directly before its existing parent without reordering unrelated work. Parent runtime landing waits for this actual schema output."
+    },
+    {
       "id": "REL-review-email-retry",
       "title": "A referrer's review email that failed or never went out is sent again, up to 5 attempts, then the owner is told (D-212)",
       "row": "D-212",
@@ -5758,9 +5777,10 @@
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-359",
       "dependsOn": [
-        "D-174-job-catalog"
+        "D-174-job-catalog",
+        "REL-review-email-retry-schema"
       ],
       "epic": "D-212",
       "owns": [
@@ -5783,7 +5803,7 @@
         "server/emailDelivery.ts",
         "server/emailDelivery*.test.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys)."
+      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys). Nov 18 execution split: REL-review-email-retry-schema lands and production-verifies only the existing additive 0122 SQL first. The Fixed marker on PR874 does not prove that schema output; this row resumes landing only after the prerequisite is done. Existing runtime repair, history, Fixed binding, CI and first-live-job acceptance stay unchanged."
     },
     {
       "id": "REL-heartbeats",
