@@ -108,7 +108,7 @@ describe("packet verdict and live-loader spawn contract", () => {
   }, 30000);
   it("(k) mocked GitHub gate-only exact lock run prints REVIEW and board state, no claim", () => {
     const f = harness(); try { // age the existing reviewer is quiet, so preview may offer another model
-      const r = f.run("--as", "Independent · 3"); expect(r.stdout + r.stderr).toMatch(/NEXT: REVIEW P/); expect(r.stdout).toContain("review in-review");
+      const r = f.run("--as", "Independent · 3"); expect(r.stdout + r.stderr).toMatch(/NEXT: REVIEW P/); expect(r.stdout).toContain("node scripts/next-task.mjs --status"); expect(f.run("--status").stdout).toContain("review in-review"); // D-358: the per-task board is on --status
     } finally { rmSync(f.dir, { recursive: true, force: true }); }
   }, 30000);
 });
