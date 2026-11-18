@@ -7972,6 +7972,19 @@
         "scripts/nextTaskBlockDedupe.test.ts"
       ],
       "note": "Build docs/plans/PICKER-compact-claim-output.md. Changes only what a claim or preview prints; picking, claims, gates and --status are unchanged (D-358 (3))."
+    },
+    {
+      "id": "REGISTER-nov18-search-direction",
+      "title": "Register D-360 (Nov 18 owner search and sourcing direction) in docs/DECISIONS.md and the AGENTS.md product compass; docs only, no product code",
+      "row": "D-068",
+      "packet": "docs/DECISIONS.md",
+      "tier": 3,
+      "lane": "register",
+      "branch": "agent/queue/register-nov18-search-direction",
+      "status": "todo",
+      "syncedTo": "D-360",
+      "dependsOn": [],
+      "note": "Docs-only registration by Instinct · 2cc6 on Nov 18 2026: records the owner's WhatsApp direction (21:42-22:07 IST) as D-360 with message-id evidence, separating owner direction from the proposed sourcing architecture and unverified vendor candidates. No product code, no vendor selection, no coverage claim. Mark done only after the pull request lands on main."
     }
   ]
 }
