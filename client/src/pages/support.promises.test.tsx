@@ -16,7 +16,7 @@ const shellSource = () => readFileSync(resolve(process.cwd(), "client/src/compon
 const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
 
 // P1-P5: the whole legal identity line, byte-exact.
-const P5 = '          <p className="mt-3 text-xs leading-5 text-[#505050]">Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me), D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India · <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</p>';
+const P5 = '          <p className="mt-3 text-xs leading-5 text-[#505050]">Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me) · Founder: <a href="mailto:ayodhya@skipwait.me" className="font-semibold text-black">ayodhya@skipwait.me</a></p>';
 // P6: the existing mailto constant (literal backslash-n sequences, not newlines).
 const P6 = 'const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("skipwait.me support request")}&body=${encodeURIComponent("Account email:\\nWhat happened:\\nReference (Ref-, payment id, or link), if any:\\n")}`;';
 // P7: the mailto anchor.
@@ -57,33 +57,35 @@ describe("SUPPORT-A block 1 — DO NOT TOUCH (passes on main and after R1-R5)", 
 
   it("D1: the rendered legal identity line keeps its exact text and classes", () => {
     const { container } = renderSupport();
-    const phone = container.querySelector('section[aria-label="Contact support"] a[href="tel:+919513064808"]');
-    expect(phone).not.toBeNull();
-    const line = phone!.closest("p")!;
-    expect(line.textContent).toBe("Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me), D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India · +91 95130 64808 (Mon–Fri, IST business hours).");
+    // Owner, Nov 18 2026: the home address and phone number are removed from /support; the founder email replaces them.
+    const founder = container.querySelector('section[aria-label="Contact support"] a[href="mailto:ayodhya@skipwait.me"]');
+    expect(founder).not.toBeNull();
+    const line = founder!.closest("p")!;
+    expect(line.textContent).toBe("Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me) · Founder: ayodhya@skipwait.me");
     expect(line.getAttribute("class")).toBe("mt-3 text-xs leading-5 text-[#505050]");
   });
 
-  it("D2: the phone link keeps its exact href, text and classes", () => {
+  it("D2: no phone number is shown; the founder email link has its exact href, text and classes", () => {
     const { container } = renderSupport();
     const phones = Array.from(container.querySelectorAll('a[href^="tel:"]'));
-    expect(phones).toHaveLength(1);
-    expect(phones[0].getAttribute("href")).toBe("tel:+919513064808");
-    expect(phones[0].textContent).toBe("+91 95130 64808");
-    expect(phones[0].getAttribute("class")).toBe("font-semibold text-black");
+    expect(phones).toHaveLength(0);
+    const founder = container.querySelector('a[href="mailto:ayodhya@skipwait.me"]')!;
+    expect(founder.getAttribute("href")).toBe("mailto:ayodhya@skipwait.me");
+    expect(founder.textContent).toBe("ayodhya@skipwait.me");
+    expect(founder.getAttribute("class")).toBe("font-semibold text-black");
   });
 
-  it("D3: proprietor, address and business hours each appear once in the rendered page", () => {
+  it("D3: the proprietor appears once; the home address and phone number never appear", () => {
     const { container } = renderSupport();
     const text = container.textContent ?? "";
     expect(occurrences(text, "Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me)")).toBe(1);
-    expect(occurrences(text, "D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India")).toBe(1);
-    expect(occurrences(text, "(Mon–Fri, IST business hours).")).toBe(1);
+    expect(occurrences(text, "Gopalapatnam")).toBe(0);
+    expect(occurrences(text, "95130")).toBe(0);
   });
 
   it("D4: the single mailto keeps its exact href and visible address", () => {
     const { container } = renderSupport();
-    const mailtos = Array.from(container.querySelectorAll('a[href^="mailto:"]'));
+    const mailtos = Array.from(container.querySelectorAll('a[href^="mailto:support@"]'));
     expect(mailtos).toHaveLength(1);
     expect(mailtos[0].closest('section[aria-label="Contact support"]')).not.toBeNull();
     expect(mailtos[0].getAttribute("href")).toBe("mailto:support@skipwait.me?subject=skipwait.me%20support%20request&body=Account%20email%3A%0AWhat%20happened%3A%0AReference%20(Ref-%2C%20payment%20id%2C%20or%20link)%2C%20if%20any%3A%0A");

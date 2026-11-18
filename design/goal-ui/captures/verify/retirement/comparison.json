@@ -1,0 +1,167 @@
+{
+  "beforeSourceSha256": "6ae088520337e9a551655d6f0fcb48de98cfb1c28991f0f7b2cd81bfe33e4760",
+  "afterSourceSha256": "3e86ab6faf59675126feaf2bb22de753e5251b1e79316f27b46b649d2778348c",
+  "unchangedFiles": [
+    "client/src/pages/goal/verify/GoalVerify.tsx",
+    "client/src/components/verify/verifyApi.ts",
+    "client/src/pages/loginRule.test.tsx",
+    "client/src/pages/signIn.test.tsx"
+  ],
+  "matchingApiCallSequences": true,
+  "results": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "changedPixels": 26,
+      "bounds": {
+        "xMin": 74,
+        "yMin": 889,
+        "xMax": 290,
+        "yMax": 1615
+      }
+    },
+    {
+      "state": "auth-loading",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "auth-loading",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "directory-loading",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "directory-loading",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "directory-error",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "directory-error",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "empty",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "empty",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "company",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "company",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "email",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "email",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "invalid-email",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "invalid-email",
+      "width": 390,
+      "changedPixels": 7,
+      "bounds": {
+        "xMin": 290,
+        "yMin": 1311,
+        "xMax": 666,
+        "yMax": 1615
+      }
+    },
+    {
+      "state": "code",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "code",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "locked",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "locked",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "enrollment-error",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "enrollment-error",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "verified",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "verified",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    }
+  ]
+}
