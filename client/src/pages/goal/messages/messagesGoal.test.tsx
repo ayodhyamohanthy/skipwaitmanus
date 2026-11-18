@@ -4,31 +4,25 @@
 // server says a referrer has not accepted (the thread's sendBlock or a 403 on
 // send), the refusal's own words are shown as they are, a refused draft never
 // travels to another chat, and a failed load renders its error, never an
-// empty inbox. Flag off, the kit page renders unchanged.
+// empty inbox.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { GOAL_PAGE } from "./GoalMessages";
 
-const { getToken, openSignIn, authState, flagState } = vi.hoisted(() => ({
+const { getToken, openSignIn, authState } = vi.hoisted(() => ({
   getToken: vi.fn().mockResolvedValue("test-token"),
   openSignIn: vi.fn(),
   authState: { isSignedIn: true },
-  flagState: { on: true },
 }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken, openSignIn }),
-  SignInButton: ({ children }: { children?: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
 }));
 vi.mock("wouter", () => ({
   useLocation: () => ["/messages", vi.fn()],
   Link: ({ children, href, ...rest }: { children: React.ReactNode; href: string } & Record<string, unknown>) => <a href={href} {...rest}>{children}</a>,
 }));
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "messages" };
-});
 
 import Messages from "../../Messages";
 
@@ -57,7 +51,7 @@ async function resolveReply(reply: Reply) {
   return respond(typeof reply === "function" ? await reply() : reply);
 }
 beforeEach(() => {
-  flagState.on = true; authState.isSignedIn = true; openSignIn.mockClear();
+  authState.isSignedIn = true; openSignIn.mockClear();
   server.threads = [summary(22, "Referrer · acme.com", true), summary(33, "Member · Asha", false, 2)];
   server.listReply = null; server.threadReply = {}; server.sendBlock = {}; server.postReply = null; server.posts = []; server.gets = [];
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
@@ -76,10 +70,7 @@ beforeEach(() => {
     return respond({ status: 200, body: { thread: thread(id, label), sendBlock: server.sendBlock[id] ?? null } });
   }));
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.sessionStorage.clear(); });
-// Warm the lazily loaded goal chunk so a cold transform on a busy runner
-// never outlasts findBy's timeout.
-beforeAll(async () => { await import("./GoalMessages").catch(() => undefined); }, 60_000);
+afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); window.sessionStorage.clear(); });
 
 const primaries = () => document.querySelectorAll("[data-g-primary]");
 /** Opens a chat from its row in the list (the next-step button names the same person). */
@@ -92,7 +83,7 @@ async function openChat(name: RegExp) {
 // Loading/error and open-chat/pre-acceptance panels intentionally have no such block.
 describe("goal /messages: inbox", () => {
   it("renders the released goal page when the surface flag is off", async () => {
-    flagState.on = false;
+    vi.stubEnv("VITE_GOAL_SURFACES", "");
     server.threads = [];
     const { container } = render(<Messages />);
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
@@ -108,17 +99,23 @@ describe("goal /messages: inbox", () => {
     expect(rows[0]?.textContent).toMatch(/Member · Asha/);
     expect(rows[0]?.textContent).toMatch(/Waiting on you/);
     expect(rows[1]?.textContent).toMatch(/Referrer · acme\.com/);
+    expect(rows[1]?.textContent).toContain("you: Thanks again");
     expect(primaries()).toHaveLength(1);
     expect(primaries()[0]?.textContent).toMatch(/Reply to Member · Asha/);
     fireEvent.click(primaries()[0] as HTMLElement);
     expect(await screen.findByRole("heading", { level: 1, name: "Member · Asha" })).toBeTruthy();
     expect(server.gets).toContain("/api/dms/threads/33");
+    expect(within(screen.getByRole("list", { name: "Messages" })).getByText("Happy to help")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Write a message")).toBeTruthy();
   });
 
-  it("states the acceptance rule in plain words on the inbox", async () => {
+  it("states the acceptance rule and offers no way to start a new chat from the inbox", async () => {
     render(<Messages />);
     await screen.findAllByTestId("goal-chat-row");
     expect(screen.getByText(/Messages with a referrer open after they accept your request\./)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New chat" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "New chat" })).toBeNull();
+    expect(document.querySelector("a[href='/wall']")).toBeNull();
   });
 
   it("an empty inbox points at a referral request and names where those conversations live", async () => {
@@ -126,9 +123,12 @@ describe("goal /messages: inbox", () => {
     const { container } = render(<Messages />);
     expect(await screen.findByText("No chats yet.")).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByText(/Referral-request conversations stay in/)).toBeTruthy();
+    expect(screen.getByText(/Messages with a referrer open after they accept your request\./)).toBeTruthy();
     expect(screen.getByRole("link", { name: "My requests" }).getAttribute("href")).toBe("/requests");
     expect(primaries()).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Ask for a referral/ }).getAttribute("href")).toBe("/ask");
+    expect(screen.queryByRole("link", { name: /Find referrers/ })).toBeNull();
   });
 
   it("shows loading while the chats are on their way", async () => {
@@ -176,6 +176,8 @@ describe("goal /messages: inbox", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
     assertGoalPage(container, GOAL_PAGE);
     expect(screen.getByText("Messages with a referrer open after they accept your request.")).toBeTruthy();
+    expect(screen.getByText("Sign in to see your messages.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
     expect(container.querySelectorAll("button button")).toHaveLength(0);
     const signIn = screen.getByRole("button", { name: "Sign in" });
     fireEvent.click(signIn);
@@ -205,6 +207,7 @@ describe("goal /messages: a chat", () => {
     server.sendBlock[22] = memberBlock;
     render(<Messages />);
     await openChat(/Referrer · acme\.com/);
+    expect(within(screen.getByRole("list", { name: "Messages" })).getByText("Happy to help")).toBeTruthy();
     expect(screen.queryByLabelText("Message")).toBeNull();
     expect(screen.queryByRole("button", { name: "Send message" })).toBeNull();
     const rule = screen.getByTestId("goal-dm-rule");
@@ -239,8 +242,11 @@ describe("goal /messages: a chat", () => {
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Can you refer me?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
     const rule = await screen.findByTestId("goal-dm-rule");
-    expect(rule.textContent).toMatch(/Messages with a referrer open after they accept your request\./);
+    expect(within(rule).getByRole("heading", { name: "Messages open after acceptance" })).toBeTruthy();
+    expect(rule.textContent).toMatch(/Messages with a referrer open after they accept your request\. No plan or follow changes this\./);
     expect(screen.queryByLabelText("Message")).toBeNull();
+    expect(within(rule).getByRole("link", { name: "Go to My requests" }).getAttribute("href")).toBe("/requests");
+    expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.getByTestId("goal-dm-unsent").textContent).toMatch(/Can you refer me\?/);
     expect(window.sessionStorage.length).toBe(0);
   });
@@ -273,6 +279,7 @@ describe("goal /messages: a chat", () => {
     await waitFor(() => expect(window.sessionStorage.length).toBe(0));
     expect(screen.queryByTestId("goal-dm-rule")).toBeNull();
     expect(screen.getByLabelText("Message")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Can you refer me?");
   });
 
   it.each([
@@ -304,10 +311,14 @@ describe("goal /messages: a chat", () => {
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
     const card = await screen.findByTestId("goal-dm-follow-rule");
+    expect(card.getAttribute("role")).toBe("status");
     expect(card.textContent).toMatch(/Follow each other to message/);
     expect(card.textContent).toMatch(/You can message this member once you follow each other\./);
     expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Hi there");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector("a[href^='/premium'], a[href^='/plans']")).toBeNull();
     expect(document.body.textContent).not.toMatch(/upgrade|premium|\bPro\b|\bMax\b/i);
+    expect(document.body.textContent).not.toMatch(/message (verified )?referrers directly|answers faster/i);
   });
 
   it("a 429 says when to try again and a 409 keeps the text without a duplicate", async () => {
