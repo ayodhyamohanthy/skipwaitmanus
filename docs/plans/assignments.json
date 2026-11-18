@@ -7946,7 +7946,9 @@
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskText.mjs",
-        "scripts/nextTaskCompactBoard.test.ts"
+        "scripts/nextTaskCompactBoard.test.ts",
+        "scripts/nextTaskArchitectReview.test.ts",
+        "scripts/nextTaskBlockDedupe.test.ts"
       ],
       "note": "Build docs/plans/PICKER-compact-claim-output.md. Changes only what a claim or preview prints; picking, claims, gates and --status are unchanged (D-358 (3))."
     }
