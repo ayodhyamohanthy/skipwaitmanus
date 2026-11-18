@@ -5,8 +5,8 @@
 // next step" block holding the one black commit, which goes to /plans), the
 // kit page's price claims kept exactly (sourced from shared/planFamily.ts and
 // shared/moneyCopy.ts, never retyped), referral-only wording (D-173, D-180),
-// and the one switch in Pricing.tsx. The kit page's own pins stay in
-// pricing.test.tsx and policyPages.test.tsx, unchanged.
+// and the released goal page always rendering from Pricing.tsx. The kit page's
+// price and allowance pins stay in pricing.test.tsx and policyPages.test.tsx.
 import React from "react";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,30 +20,17 @@ import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { firstPackClaim } from "@shared/planCatalog";
 
-// Independent oracle for the goal line (packet §4), not GOAL_PAGE imported as its own proof.
-const GOAL_LINE = "Know what a referral request costs.";
-
-const { flag } = vi.hoisted(() => ({ flag: { on: true, asked: [] as string[] } }));
-vi.mock("@/lib/goalSurfaces", async importOriginal => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return {
-    ...actual,
-    goalSurfaceOn: (id: string) => {
-      flag.asked.push(id);
-      return id === "pricing" && flag.on;
-    },
-  };
-});
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/pricing", vi.fn()],
 }));
 
+// Independent oracle for the goal line (packet §4), not GOAL_PAGE imported as its own proof.
+const GOAL_LINE = "Know what a referral request costs.";
+
 const fetchSpy = vi.fn(() => { throw new Error("/pricing must not fetch"); });
 
 beforeEach(() => {
-  flag.on = true;
-  flag.asked = [];
   fetchSpy.mockClear();
   vi.stubGlobal("fetch", fetchSpy);
 });
@@ -67,7 +54,6 @@ describe("goal /pricing (D-048-p3-pricing)", () => {
     expect(container.querySelector("[data-goal-page='pricing']")).toBeTruthy();
     // The kit body is not what the goal page renders.
     expect(container.querySelector(".brand-button")).toBeNull();
-    expect(flag.asked).toContain("pricing");
   });
 
   it("exports GOAL_PAGE with the goal line", async () => {
@@ -156,12 +142,11 @@ describe("goal /pricing (D-048-p3-pricing)", () => {
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://skipwait.me/pricing");
   });
 
-  it("keeps the kit page when the goal flag is off", () => {
-    flag.on = false;
+  it("renders the released goal page with no legacy pricing branch", () => {
     const { container } = render(<Pricing />);
-    expect(container.querySelector("[data-goal-page='pricing']")).toBeNull();
+    expect(container.querySelector("[data-goal-page='pricing']")).toBeTruthy();
     expect(container.querySelector("[data-skipwait-screen='pricing']")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /see plans and prices/i }).getAttribute("href")).toBe("/plans");
+    expect(container.querySelector(".brand-button")).toBeNull();
   });
 });
 
@@ -187,11 +172,10 @@ describe("goal /pricing money boundary (packet §7)", () => {
     }
   });
 
-  it("changes Pricing.tsx by the switch only (at most 12 lines)", () => {
+  it("renders GoalPricing unconditionally and imports no legacy pricing UI", () => {
     const source = readFileSync(join(__dirname, "Pricing.tsx"), "utf8");
-    expect(source).toMatch(/goalSurfaceOn\("pricing"\)/);
-    const switchLines = source.split("\n").filter(line => /GoalPricing|goalSurfaceOn|D-048-p3-pricing/.test(line));
-    expect(switchLines.length).toBeGreaterThan(0);
-    expect(switchLines.length).toBeLessThanOrEqual(12);
+    expect(source).toMatch(/import GoalPricing from "\.\/goal\/pricing\/GoalPricing"/);
+    expect(source).toMatch(/return <GoalPricing \/>/);
+    expect(source).not.toMatch(/goalSurfaceOn|components\/kit|PolicyPageShell|PolicySection/);
   });
 });
