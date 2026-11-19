@@ -1,0 +1,464 @@
+{
+  "task": "D-048-K-referrer",
+  "session": "GPT-6.1 Sol · 630a",
+  "date": "2026-11-18",
+  "baseMain": "b63ea2e34971f6710b2998c1765c7bd0372e3271",
+  "releaseMerge": "3bcf3786",
+  "beforeEntrypointCommit": "30de78abec5ec59ac9b560847b6beabbaef66d03",
+  "browser": "Managed Chromium, headless",
+  "syntheticApiFixtures": true,
+  "liveSignedInAcceptance": false,
+  "goalSourceHashes": {
+    "GoalReferrer": "6f085c0368203f686c34ec8da4d3c62ec617ed05a07660ff835f7473b7abc08e",
+    "GoalReferrerImpact": "417db9508dfe431ae4d49f861013e7e8192f1bf5b966017b0fe55262e579c16c",
+    "GoalOtpSignIn": "72fd08623f91ad5c2b32b4dbb54ca61de231d9c001990182382928b0b26f7eca",
+    "capacitySettingsData": "37ed7e5dab93246ee95e8ca57a1b1e9f5a5bc9a299edee43c27294267d9efaba"
+  },
+  "focusedTests": {
+    "filesPassed": 9,
+    "testsPassed": 63,
+    "testsFailed": 0,
+    "command": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=2 (nine scoped files)"
+  },
+  "typescript": {
+    "completedSource": "passed",
+    "durationSeconds": 135.5,
+    "preliminaryRun": "incomplete at 300-second tool deadline; not a pass"
+  },
+  "pageErrors": [],
+  "initialByteIdenticalPairs": 14,
+  "finalWholePageByteIdenticalPairs": 18,
+  "totalPairs": 20,
+  "initialPixelDifferences": [
+    {
+      "scenario": "workspace-overview",
+      "width": 1280,
+      "size": [
+        1280,
+        900
+      ],
+      "changedPixels": 2161,
+      "boundingBox": [
+        989,
+        12,
+        1224,
+        44
+      ]
+    },
+    {
+      "scenario": "impact-ready",
+      "width": 1280,
+      "size": [
+        1280,
+        900
+      ],
+      "changedPixels": 2161,
+      "boundingBox": [
+        989,
+        12,
+        1224,
+        44
+      ]
+    },
+    {
+      "scenario": "impact-step-up",
+      "width": 1280,
+      "size": [
+        1280,
+        900
+      ],
+      "changedPixels": 2161,
+      "boundingBox": [
+        989,
+        12,
+        1224,
+        44
+      ]
+    },
+    {
+      "scenario": "impact-unverified",
+      "width": 1280,
+      "size": [
+        1280,
+        900
+      ],
+      "changedPixels": 2161,
+      "boundingBox": [
+        989,
+        12,
+        1224,
+        44
+      ]
+    },
+    {
+      "scenario": "workspace-overview",
+      "width": 390,
+      "beforeSize": [
+        390,
+        999
+      ],
+      "afterSize": [
+        390,
+        983
+      ]
+    },
+    {
+      "scenario": "workspace-unverified",
+      "width": 390,
+      "size": [
+        390,
+        900
+      ],
+      "changedPixels": 51641,
+      "boundingBox": [
+        0,
+        6,
+        390,
+        653
+      ]
+    }
+  ],
+  "settledHeaderCaptures": [
+    {
+      "scenario": "workspace-overview",
+      "width": 1280,
+      "name": "after-settled-workspace-overview-1280.png",
+      "byteIdentical": false,
+      "beforeSha256": "6482d009397c2ba9d0e60a33adb7454e4ab951a487359a615543609833444ab3",
+      "afterSha256": "af585179a96c2ced2744d017e21b4ac9e104d708bc39f91999ee55acfddfe6cf",
+      "settleCondition": "Shared header displays its existing balance-error state; no app state or DOM changed by script"
+    },
+    {
+      "scenario": "impact-ready",
+      "width": 1280,
+      "name": "after-settled-impact-ready-1280.png",
+      "byteIdentical": false,
+      "beforeSha256": "8b5a9832fabe8fe6e9bf25f4fb3c3637d3a5d0c2e84065a059ea5822910942ac",
+      "afterSha256": "3bbd63fe156b287555af352f78e21f99ac3c3b55bc8b68f74e73d9f5b8858a8a",
+      "settleCondition": "Shared header displays its existing balance-error state; no app state or DOM changed by script"
+    },
+    {
+      "scenario": "impact-step-up",
+      "width": 1280,
+      "name": "after-settled-impact-step-up-1280.png",
+      "byteIdentical": true,
+      "beforeSha256": "cf1d8a38da08530d29e10108c646155d1f6af54c6fa01c67c7b48c32e64c06e8",
+      "afterSha256": "cf1d8a38da08530d29e10108c646155d1f6af54c6fa01c67c7b48c32e64c06e8",
+      "settleCondition": "Shared header displays its existing balance-error state; no app state or DOM changed by script"
+    },
+    {
+      "scenario": "impact-unverified",
+      "width": 1280,
+      "name": "after-settled-impact-unverified-1280.png",
+      "byteIdentical": true,
+      "beforeSha256": "764736aa87673a1dc3222525b5d036d9fb39c15be1fa83498730222dd01e0e29",
+      "afterSha256": "764736aa87673a1dc3222525b5d036d9fb39c15be1fa83498730222dd01e0e29",
+      "settleCondition": "Shared header displays its existing balance-error state; no app state or DOM changed by script"
+    },
+    {
+      "scenario": "workspace-overview",
+      "width": 390,
+      "name": "after-settled-workspace-overview-390.png",
+      "byteIdentical": true,
+      "beforeSha256": "f207bd5048708b9096229603f9bb9f3394165548891f1744ed6de63e1f23b357",
+      "afterSha256": "f207bd5048708b9096229603f9bb9f3394165548891f1744ed6de63e1f23b357",
+      "settleCondition": "Shared header displays its existing balance-error state; no app state or DOM changed by script"
+    },
+    {
+      "scenario": "workspace-unverified",
+      "width": 390,
+      "name": "after-settled-workspace-unverified-390.png",
+      "byteIdentical": true,
+      "beforeSha256": "999a17dfc4dc26bfc431cd876627086292db3dadeb19b910892b6f6575e849c0",
+      "afterSha256": "999a17dfc4dc26bfc431cd876627086292db3dadeb19b910892b6f6575e849c0",
+      "settleCondition": "Shared header displays its existing balance-error state; no app state or DOM changed by script"
+    }
+  ],
+  "settlingMethod": "Waited for actual shared header balance-error text; no DOM or app-state writes; dismissed real signed-out dialogs via their Close setup controls between cases.",
+  "nativeVisualInspection": [
+    "before-workspace-overview-1280.png",
+    "after-workspace-overview-1280.png",
+    "before-workspace-overview-390.png",
+    "after-workspace-overview-390.png",
+    "before-workspace-unverified-390.png",
+    "after-workspace-unverified-390.png",
+    "after-workspace-signed-out-390.png",
+    "after-workspace-setup-1280.png",
+    "after-impact-ready-390.png",
+    "after-impact-step-up-390.png"
+  ],
+  "pairs": [
+    {
+      "scenario": "workspace-signed-out",
+      "width": 1280,
+      "height": 900,
+      "before": "before-workspace-signed-out-1280.png",
+      "after": "after-workspace-signed-out-1280.png",
+      "beforeSha256": "9a452e02c67116e7b23bd606864e50496fb4007453e7377cacebaeb576320610",
+      "afterSha256": "9a452e02c67116e7b23bd606864e50496fb4007453e7377cacebaeb576320610",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "workspace-overview",
+      "width": 1280,
+      "height": 900,
+      "before": "before-workspace-overview-1280.png",
+      "after": "after-workspace-overview-1280.png",
+      "beforeSha256": "6482d009397c2ba9d0e60a33adb7454e4ab951a487359a615543609833444ab3",
+      "afterSha256": "af585179a96c2ced2744d017e21b4ac9e104d708bc39f91999ee55acfddfe6cf",
+      "wholePageByteIdentical": false,
+      "privateReadsAfter": 1,
+      "horizontalOverflow": false,
+      "pixelDifference": {
+        "scenario": "workspace-overview",
+        "width": 1280,
+        "size": [
+          1280,
+          900
+        ],
+        "changedPixels": 2161,
+        "boundingBox": [
+          989,
+          12,
+          1224,
+          44
+        ]
+      },
+      "visualDisposition": "Only shared header balance-pill loading/error state differs; referrer content unchanged."
+    },
+    {
+      "scenario": "workspace-setup",
+      "width": 1280,
+      "height": 900,
+      "before": "before-workspace-setup-1280.png",
+      "after": "after-workspace-setup-1280.png",
+      "beforeSha256": "866597ad88b597a8fa099d293f7d537d2f904b1aa48902b2ae26ef9c2ce97e87",
+      "afterSha256": "866597ad88b597a8fa099d293f7d537d2f904b1aa48902b2ae26ef9c2ce97e87",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "workspace-unverified",
+      "width": 1280,
+      "height": 900,
+      "before": "before-workspace-unverified-1280.png",
+      "after": "after-workspace-unverified-1280.png",
+      "beforeSha256": "46ed34dccf92e6b2fe739a1f355b417d99fc4d4779cc0fee14393c5b6ca30203",
+      "afterSha256": "46ed34dccf92e6b2fe739a1f355b417d99fc4d4779cc0fee14393c5b6ca30203",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-signed-out",
+      "width": 1280,
+      "height": 900,
+      "before": "before-impact-signed-out-1280.png",
+      "after": "after-impact-signed-out-1280.png",
+      "beforeSha256": "67a6ef5ec8cd5df984fa2fa8db0d63180072e3961fe8e67ccbb7690982377a1f",
+      "afterSha256": "67a6ef5ec8cd5df984fa2fa8db0d63180072e3961fe8e67ccbb7690982377a1f",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-ready",
+      "width": 1280,
+      "height": 900,
+      "before": "before-impact-ready-1280.png",
+      "after": "after-impact-ready-1280.png",
+      "beforeSha256": "8b5a9832fabe8fe6e9bf25f4fb3c3637d3a5d0c2e84065a059ea5822910942ac",
+      "afterSha256": "3bbd63fe156b287555af352f78e21f99ac3c3b55bc8b68f74e73d9f5b8858a8a",
+      "wholePageByteIdentical": false,
+      "privateReadsAfter": 1,
+      "horizontalOverflow": false,
+      "pixelDifference": {
+        "scenario": "impact-ready",
+        "width": 1280,
+        "size": [
+          1280,
+          900
+        ],
+        "changedPixels": 2161,
+        "boundingBox": [
+          989,
+          12,
+          1224,
+          44
+        ]
+      },
+      "visualDisposition": "Only shared header balance-pill loading/error state differs; referrer content unchanged."
+    },
+    {
+      "scenario": "impact-zero",
+      "width": 1280,
+      "height": 900,
+      "before": "before-impact-zero-1280.png",
+      "after": "after-impact-zero-1280.png",
+      "beforeSha256": "d1b03b22fdd1f0657855fa32bccd23c4b90985ba55ff17c74390a8e080f20c9a",
+      "afterSha256": "d1b03b22fdd1f0657855fa32bccd23c4b90985ba55ff17c74390a8e080f20c9a",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 1,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-step-up",
+      "width": 1280,
+      "height": 900,
+      "before": "before-impact-step-up-1280.png",
+      "after": "after-settled-impact-step-up-1280.png",
+      "beforeSha256": "cf1d8a38da08530d29e10108c646155d1f6af54c6fa01c67c7b48c32e64c06e8",
+      "afterSha256": "cf1d8a38da08530d29e10108c646155d1f6af54c6fa01c67c7b48c32e64c06e8",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-unverified",
+      "width": 1280,
+      "height": 900,
+      "before": "before-impact-unverified-1280.png",
+      "after": "after-settled-impact-unverified-1280.png",
+      "beforeSha256": "764736aa87673a1dc3222525b5d036d9fb39c15be1fa83498730222dd01e0e29",
+      "afterSha256": "764736aa87673a1dc3222525b5d036d9fb39c15be1fa83498730222dd01e0e29",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-error",
+      "width": 1280,
+      "height": 900,
+      "before": "before-impact-error-1280.png",
+      "after": "after-impact-error-1280.png",
+      "beforeSha256": "01738e8ac018aab71e2a36b97520383f597836154f53dec2adca038e7a305bcc",
+      "afterSha256": "01738e8ac018aab71e2a36b97520383f597836154f53dec2adca038e7a305bcc",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "workspace-signed-out",
+      "width": 390,
+      "height": 900,
+      "before": "before-workspace-signed-out-390.png",
+      "after": "after-workspace-signed-out-390.png",
+      "beforeSha256": "64fe59bd2d555f8b512f2a2a06db0f4e89ee0db68729f821721e956849ec6054",
+      "afterSha256": "64fe59bd2d555f8b512f2a2a06db0f4e89ee0db68729f821721e956849ec6054",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "workspace-overview",
+      "width": 390,
+      "height": 900,
+      "before": "before-workspace-overview-390.png",
+      "after": "after-settled-workspace-overview-390.png",
+      "beforeSha256": "f207bd5048708b9096229603f9bb9f3394165548891f1744ed6de63e1f23b357",
+      "afterSha256": "f207bd5048708b9096229603f9bb9f3394165548891f1744ed6de63e1f23b357",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 1,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "workspace-setup",
+      "width": 390,
+      "height": 900,
+      "before": "before-workspace-setup-390.png",
+      "after": "after-workspace-setup-390.png",
+      "beforeSha256": "5fa015be18fd9d9ae9b68166e2ee56e522e026a2374e9ceccf907be2bbce872a",
+      "afterSha256": "5fa015be18fd9d9ae9b68166e2ee56e522e026a2374e9ceccf907be2bbce872a",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "workspace-unverified",
+      "width": 390,
+      "height": 900,
+      "before": "before-workspace-unverified-390.png",
+      "after": "after-settled-workspace-unverified-390.png",
+      "beforeSha256": "999a17dfc4dc26bfc431cd876627086292db3dadeb19b910892b6f6575e849c0",
+      "afterSha256": "999a17dfc4dc26bfc431cd876627086292db3dadeb19b910892b6f6575e849c0",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-signed-out",
+      "width": 390,
+      "height": 900,
+      "before": "before-impact-signed-out-390.png",
+      "after": "after-impact-signed-out-390.png",
+      "beforeSha256": "1e951dacacd811a145a6b371de225ada7d5476665cc4eafc8b154bb9fce2f361",
+      "afterSha256": "1e951dacacd811a145a6b371de225ada7d5476665cc4eafc8b154bb9fce2f361",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-ready",
+      "width": 390,
+      "height": 900,
+      "before": "before-impact-ready-390.png",
+      "after": "after-impact-ready-390.png",
+      "beforeSha256": "38e834db6d71a0c83afff98fa0f9994f3bb4a467dcd891d352b56d82bc2d37db",
+      "afterSha256": "38e834db6d71a0c83afff98fa0f9994f3bb4a467dcd891d352b56d82bc2d37db",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 1,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-zero",
+      "width": 390,
+      "height": 900,
+      "before": "before-impact-zero-390.png",
+      "after": "after-impact-zero-390.png",
+      "beforeSha256": "34d96241e057026badbb350ddb8f98f37c0a41bfe214f65ffd804142a420bb55",
+      "afterSha256": "34d96241e057026badbb350ddb8f98f37c0a41bfe214f65ffd804142a420bb55",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 1,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-step-up",
+      "width": 390,
+      "height": 900,
+      "before": "before-impact-step-up-390.png",
+      "after": "after-impact-step-up-390.png",
+      "beforeSha256": "705758098bb6dc178b4d19ba24df3e5c5690bc1d65efd5dd474ced573864b798",
+      "afterSha256": "705758098bb6dc178b4d19ba24df3e5c5690bc1d65efd5dd474ced573864b798",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-unverified",
+      "width": 390,
+      "height": 900,
+      "before": "before-impact-unverified-390.png",
+      "after": "after-impact-unverified-390.png",
+      "beforeSha256": "4bb4f6b8f89dcac269e698fde582e6e89b4dd0a607a714784e04ecfb24206090",
+      "afterSha256": "4bb4f6b8f89dcac269e698fde582e6e89b4dd0a607a714784e04ecfb24206090",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "scenario": "impact-error",
+      "width": 390,
+      "height": 900,
+      "before": "before-impact-error-390.png",
+      "after": "after-impact-error-390.png",
+      "beforeSha256": "68f08189e5bc7b1f1b7d6790ed84220058a3f6d200e540f99bd6131d475c7e6e",
+      "afterSha256": "68f08189e5bc7b1f1b7d6790ed84220058a3f6d200e540f99bd6131d475c7e6e",
+      "wholePageByteIdentical": true,
+      "privateReadsAfter": 0,
+      "horizontalOverflow": false
+    }
+  ]
+}
