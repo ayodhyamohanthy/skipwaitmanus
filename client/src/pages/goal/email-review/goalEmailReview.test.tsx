@@ -166,11 +166,13 @@ describe("Goal /email-review states", () => {
     vi.stubGlobal("fetch", fetchMock);
     const { container } = render(<EmailReviewAction />);
     expect(await screen.findByRole("button", { name: "Decline - not now" })).toBeTruthy();
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
     fireEvent.click(screen.getByRole("button", { name: "Decline - not now" }));
     expect(await screen.findByText("Passed")).toBeTruthy();
     expect(screen.getByText("This referral request remains open to other verified colleagues.")).toBeTruthy();
     expect(screen.queryByText("Request declined.")).toBeNull();
-    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Passed privately.");
+    expect(container.querySelectorAll("h1")).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       method: "POST",

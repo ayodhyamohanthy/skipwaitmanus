@@ -79,7 +79,8 @@ describe("EmailReviewAction with a code_required session (D-057)", () => {
     const { container } = renderPage();
     await waitFor(() => expect(screen.getByText(/Confirm you still work at Acme/)).toBeTruthy());
     expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
-    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Confirm your work email.");
+    expect(container.querySelectorAll("h1")).toHaveLength(1);
     expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeTruthy();
     // The standalone sign-in would create another account; code_required must keep the same one.
     expect(screen.queryByRole("link", { name: "Sign in with work email" })).toBeNull();
@@ -109,7 +110,8 @@ describe("EmailReviewAction with a code_required session (D-057)", () => {
     const href = referrerSignInHref("/email-review/" + "t".repeat(48));
     const signIn = await screen.findByRole("link", { name: "Sign in with work email" });
     expect(signIn.getAttribute("href")).toBe(href);
-    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Use your company email.");
+    expect(container.querySelectorAll("h1")).toHaveLength(1);
     expect(document.querySelector('[data-skipwait-screen="referrer-step-up"]')).toBeNull();
     expect(screen.queryByRole("button", { name: "Accept & connect" })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
