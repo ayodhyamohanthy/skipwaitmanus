@@ -3017,7 +3017,7 @@
       "tier": 1,
       "lane": "d048-retire-sign-in",
       "branch": "agent/queue/d048-k-sign-in",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-sign-in"
