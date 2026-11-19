@@ -4688,7 +4688,7 @@
       "lane": "d048-retire-admin-ops",
       "branch": "agent/queue/d048-k-admin-ops",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-365",
       "dependsOn": [
         "D-048-release-platform"
       ],

@@ -3,18 +3,20 @@
 // no production admin data. Run a local client with this surface id on, then the
 // driver:
 //   VITE_GOAL_SURFACES=admin-ops node node_modules/vite/bin/vite.js --port 5199 --strictPort
-//   node design/goal-ui/captures/admin-ops/capture.mjs [390|1280]
+//   node design/goal-ui/captures/admin-ops/capture.mjs [390|1280|all] [output-directory]
 // Output: goal-admin-ops-<scenario>-<width>.png (whole page) plus
 // manifest-<width|all>.json beside this file, with the rendered h1, the count of
 // black commits, horizontal overflow, unmatched API calls and console errors.
 import { createRequire } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const require = createRequire(new URL("../../../../package.json", import.meta.url));
 const { chromium } = require("playwright");
 const BASE = process.env.CAPTURE_BASE || "http://localhost:5199";
-const out = new URL("./", import.meta.url);
+const out = process.argv[3] ? pathToFileURL(`${resolve(process.argv[3])}/`) : new URL("./", import.meta.url);
 const ADMIN = { id: 1, name: "Ops Admin", email: "ops@example.com", role: "admin", openId: "fixture", loginMethod: "fixture" };
 
 const ok = (path, body, method = "GET") => ({ method, path, match: "prefix", status: 200, body });
@@ -130,8 +132,8 @@ const scenarios = [
   ["partners-signed-out", "/admin/partners", { screen: "admin-partners-sign-in", signedIn: false, api: [] }],
 ];
 
-const widths = [[390, 844, 2], [1280, 900, 1]].filter(([w]) => !process.argv[2] || w === Number(process.argv[2]));
-await mkdir(new URL("./", import.meta.url), { recursive: true });
+const widths = [[390, 844, 2], [1280, 900, 1]].filter(([w]) => !process.argv[2] || process.argv[2] === "all" || w === Number(process.argv[2]));
+await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
 const results = [];
 try {
@@ -163,6 +165,7 @@ try {
         }
         if (url.pathname === "/api/dev-auth/session") return json(200, account ? { signedIn: true, account } : { signedIn: false });
         if (url.pathname === "/api/account/preferences") return json(200, { preferences: { timeZone: null, dateFormat: null } });
+        if (url.pathname === "/api/account/signup-language" && method === "POST") return json(200, {});
         const hit = (opts.api || []).find(item => item.method.toUpperCase() === method && (item.match === "prefix" ? url.pathname.startsWith(item.path) : url.pathname === item.path));
         if (hit) return json(hit.status || 200, hit.body ?? {});
         unmatched.add(`${method} ${url.pathname}`);
