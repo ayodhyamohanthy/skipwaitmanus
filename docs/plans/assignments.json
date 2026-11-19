@@ -4848,8 +4848,8 @@
       "tier": 2,
       "lane": "d048-retire-system",
       "branch": "agent/queue/d048-k-system",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4868,7 +4868,7 @@
         "client/src/pages/appStates.test.tsx",
         "client/src/components/app-states/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: system. Built by D-048-p3-system; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Done: protected1349 mergec0a16f818a6795f3d0a21d74bb90ab939e707c13. Final4c8ea73a CI44607779508,mainCI44608281423,Pages44608281490 and releaseverify44609299599 passed.4stable lazy wrappers goal-only;goalbodies/content/browser/API unchanged,sharedSystemStateskept.78synthetic1280/390pairs byte-identical with equal text/requests/browsercalls/4goalhashes;nativeinspected. Initialfocus5fail65pass retained,realmodule readiness5changedfiles30pass;8independent moneycontracts pass after obsolete3Kitwordingcases removed,not repinned. InitialCI44603219666 retainedfailed,no oldjobrerun/timeouts/assertion/gatechange. Main-first1348 names obsolete r7test;inlineassertionmap/actualintegrity pass. Canonical8cases exactwebSHA,1root,0overflow/errors/privateReads/writes;404links,offline retry affordance,masked13-template selector/report outcome and9statechips/Loading verified through page;no install/permission/email/auth interaction. API411067f8 freshremote matchCONVERGED,direct404,4postreleaseSentryqueries0. Full-localonce pending/notgreen;test/docs/mainintegration occurred during it,not exact-final-head proof. Existing senderbranding difference preserved,not live-sendercertification. Policy syntheticproperty intact;futurepolicymerge mustkeep itschanges+bothhistories. Premerge report e7c16c40 recorded. Evidence/limits docs/evidence/D-048-K-system and D-048-retire;systemstaysRELEASED,rollbackprotectedrevert1349.",
       "epic": "D-048-p3"
     },
     {
@@ -4987,8 +4987,8 @@
       "tier": 2,
       "lane": "d048-retire-discovery",
       "branch": "agent/queue/d048-k-discovery",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
