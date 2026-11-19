@@ -96,3 +96,33 @@ describe("frozen banded plan family (owner freeze Oct 25)", () => {
     }
   });
 });
+
+describe("job level to referral band (owner, Nov 19 2026, D-367)", () => {
+  it("maps every L1-L10 level to exactly the owner's band", async () => {
+    const { JOB_LEVEL_REFERRAL_LEVEL, referralLevelForJobLevel } = await import("./planFamily");
+    const { JOB_LEVEL_LABELS } = await import("./jobLevel");
+    const expected = { 1: "early", 2: "early", 3: "early", 4: "mid", 5: "senior", 6: "senior", 7: "senior", 8: "senior", 9: "executive", 10: "executive" } as const;
+    expect(JOB_LEVEL_REFERRAL_LEVEL).toEqual(expected);
+    // Every level the classifier can return has a band; nothing is left unmapped.
+    for (const key of Object.keys(JOB_LEVEL_LABELS)) {
+      const level = Number(key) as keyof typeof expected;
+      expect(referralLevelForJobLevel(level)).toBe(expected[level]);
+    }
+    expect(Object.keys(JOB_LEVEL_LABELS)).toHaveLength(10);
+  });
+
+  it("refuses a level outside L1-L10 instead of guessing", async () => {
+    const { referralLevelForJobLevel } = await import("./planFamily");
+    for (const bad of [0, 11, -1, 2.5]) expect(() => referralLevelForJobLevel(bad as never)).toThrow("unknown job level");
+  });
+
+  it("covers a job only when its band level is inside the plan's band", async () => {
+    const { planCoversJobLevel } = await import("./planFamily");
+    // Early to Mid reaches L1-L4; Mid to Senior L4-L8; Senior to Executive L5-L10.
+    const covered = (id: "early_to_mid" | "mid_to_senior" | "senior_to_executive") =>
+      ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const).filter(level => planCoversJobLevel(id, level));
+    expect(covered("early_to_mid")).toEqual([1, 2, 3, 4]);
+    expect(covered("mid_to_senior")).toEqual([4, 5, 6, 7, 8]);
+    expect(covered("senior_to_executive")).toEqual([5, 6, 7, 8, 9, 10]);
+  });
+});
