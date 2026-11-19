@@ -1,0 +1,30 @@
+{
+  "task": "D-048-K-admin",
+  "session": "GPT-6.1 Sol · 814e",
+  "testedRuntimeSource": "094c532d3d",
+  "command": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=3",
+  "exitCode": 1,
+  "durationSeconds": 2926.07,
+  "files": {"passed":735,"failed":6,"skipped":5,"total":746},
+  "tests": {"passed":7773,"failed":6,"skipped":18,"total":7797},
+  "failures": [
+    {"file":"scripts/classifyCiChange.test.ts","line":655,"reason":"400-commit merge-base fixture timed out in 20000ms","changedByTask":false},
+    {"file":"scripts/nextTask.test.ts","line":1664,"reason":"current-head verdict integration fixture timed out in 20000ms","changedByTask":false},
+    {"file":"server/chargebeeGiftSafety.test.ts","line":56,"reason":"gift_cancelled acknowledgement expected HTTP202, received407","changedByTask":false},
+    {"file":"server/chargebeeUnmatched.test.ts","line":116,"reason":"retired-item reconciliation expected HTTP200, received404 with empty body","changedByTask":false},
+    {"file":"server/db.referredDeadline.test.ts","line":88,"reason":"revoked document access expected HTTP404, received407","changedByTask":false},
+    {"file":"server/dmRoutes.test.ts","line":94,"reason":"self-messaging refusal expected HTTP400, received407","changedByTask":false}
+  ],
+  "causeEstablished":false,
+  "adminPathFailures":0,
+  "focusedCasesCovered":99,
+  "runtimeChangedDuringFullRun":false,
+  "failedTestsRerun":false,
+  "assertionsOrTimeoutsWeakened":false,
+  "localFullSuiteGreen":false,
+  "separateExactHeadCI":"https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44526234882",
+  "separateCIGreen":true,
+  "browserPairs":24,
+  "pixelIdenticalPairs":24,
+  "releaseStatus":"Not landed; final exact-head CI and canonical release verification pending"
+}
