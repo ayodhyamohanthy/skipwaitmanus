@@ -8,7 +8,7 @@
 // seeker has no credit then (D-047).
 import type { PublicCompany } from "@shared/companies";
 import { JOB_FUNCTIONS, parseJobFunction, type JobFunction } from "@shared/jobFunctions";
-import { HOSTED_JOB_PLATFORMS, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { completeTargetRoleUrl, HOSTED_JOB_PLATFORMS, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
 export type DirectoryFilter = { query: string; fn: JobFunction | null };
 export const FILTER_FUNCTIONS: readonly JobFunction[] = JOB_FUNCTIONS;
@@ -33,7 +33,7 @@ export type LinkHint = { tone: "pass" | "muted"; text: string } | { tone: "error
 const possessive = (name: string) => `${name}${name.toLowerCase().endsWith("s") ? "’" : "’s"}`;
 
 const hostOf = (value: string) => {
-  try { return new URL(value.trim()).hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
+  try { return new URL(completeTargetRoleUrl(value).trim()).hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
 };
 
 /** What the job-link field says under itself. `touched` decides whether an unfinished link is an error yet. */
@@ -57,7 +57,7 @@ const GENERIC_SEGMENTS = new Set(["jobs", "job", "view", "careers", "career", "a
  */
 export function roleTitleFromUrl(url: string): string | null {
   let segments: string[];
-  try { segments = new URL(url.trim()).pathname.split("/").map(segment => decodeURIComponent(segment)).filter(Boolean); }
+  try { segments = new URL(completeTargetRoleUrl(url).trim()).pathname.split("/").map(segment => decodeURIComponent(segment)).filter(Boolean); }
   catch { return null; }
   const candidate = [...segments].reverse().find(segment => /[a-z]{2,}/i.test(segment) && !GENERIC_SEGMENTS.has(segment.toLowerCase()) && !/^\d+$/.test(segment));
   if (!candidate) return null;

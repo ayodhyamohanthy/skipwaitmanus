@@ -26,7 +26,7 @@ export default function About() {
       }{REFERRER_MONEY_SENTENCE} Everything we sell is digital and is added to your account once the payment provider confirms the payment. See <Link href="/pricing" className="font-semibold text-black">Pricing</Link>.</p>
     </PolicySection>
     <PolicySection number="03" title="Who runs skipwait.me">
-      <p>skipwait.me is owned and operated by <strong>{BUSINESS.operator}</strong>, {BUSINESS.country}. Reach us at <a href={`mailto:${BUSINESS.email}`} className="font-semibold text-black">{BUSINESS.email}</a> or see <Link href="/contact" className="font-semibold text-black">Contact us</Link>.</p>
+      <p>skipwait.me is owned and operated by {BUSINESS.operator}. Reach us at <a href={`mailto:${BUSINESS.email}`} className="font-semibold text-black">{BUSINESS.email}</a> or see <Link href="/contact" className="font-semibold text-black">Contact us</Link>.</p>
     </PolicySection>
   </PolicyPageShell>;
 }
