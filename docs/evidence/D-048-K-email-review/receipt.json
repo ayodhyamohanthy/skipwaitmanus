@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-11-19T13:31:07.609Z",
+  "expected": "e7783e101ed329d9949989c739c8f12f8c06a649",
+  "phase": "released",
+  "readOnly": true,
+  "canonical": "https://skipwait.me",
+  "route": "/email-review/:synthetic-token",
+  "results": [
+    {
+      "width": 1280,
+      "status": 200,
+      "webSha": "e7783e101ed329d9949989c739c8f12f8c06a649",
+      "overflow": 0,
+      "privateReads": [],
+      "blockedMutations": [
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        }
+      ],
+      "errors": [],
+      "file": "email-review-1280.png",
+      "sha256": "43aee440b163e175a39b88011bff53e2f92d84d9e242bc28d1ceefd7221d430f"
+    },
+    {
+      "width": 390,
+      "status": 200,
+      "webSha": "e7783e101ed329d9949989c739c8f12f8c06a649",
+      "overflow": 0,
+      "privateReads": [],
+      "blockedMutations": [
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        }
+      ],
+      "errors": [],
+      "file": "email-review-390.png",
+      "sha256": "09fd9541c745607120b1a39353287767ea2739ab23941429608d99e3f3c569ab"
+    }
+  ]
+}
