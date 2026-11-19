@@ -119,6 +119,26 @@ describe("goal /admin/money-check", () => {
     expect(fetchMock.mock.calls.filter(([, init]) => init?.body === JSON.stringify({ apply: true }))).toHaveLength(0);
   });
 
+  it("does not repeat an unconfirmed close and requires a fresh preview before another attempt", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (!String(url).includes("close-abandoned")) return reply(STATUS);
+      if (init?.body === JSON.stringify({ apply: true })) throw new Error("connection lost after submit");
+      return reply(PREVIEW);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Preview what would close" }));
+    await screen.findByRole("button", { name: "Close these 3 pages" });
+    fireEvent.click(screen.getByRole("button", { name: "Close these 3 pages" }));
+    expect(await screen.findByText("The close result could not be confirmed. Read the preview again before any further action.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Close these 3 pages" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Read the preview again" }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("close-abandoned"))).toHaveLength(3));
+    expect(await screen.findByRole("button", { name: "Close these 3 pages" })).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.body === JSON.stringify({ apply: true }))).toHaveLength(1);
+  });
+
   it("uses the administrator sign-in recovery on 401 and 403", async () => {
     const fetchMock = vi.fn(async () => reply({ error: "Administrator access is required" }, 403));
     vi.stubGlobal("fetch", fetchMock);

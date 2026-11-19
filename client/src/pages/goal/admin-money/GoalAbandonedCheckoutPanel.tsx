@@ -15,9 +15,11 @@ export function GoalAbandonedCheckoutPanel({ onNeedsSignIn }: { onNeedsSignIn():
   const [plan, setPlan] = useState<AbandonedCheckoutResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [applyAttempted, setApplyAttempted] = useState(false);
 
   const closeAbandoned = async (apply: boolean) => {
-    if (loading) return;
+    if (loading || (apply && applyAttempted)) return;
+    if (apply) setApplyAttempted(true);
     setLoading(true);
     setError("");
     try {
@@ -33,17 +35,18 @@ export function GoalAbandonedCheckoutPanel({ onNeedsSignIn }: { onNeedsSignIn():
         return;
       }
       if (!response.ok) {
-        setError(responseError(payload, "We could not check abandoned checkouts."));
+        setError(apply ? "The close result could not be confirmed. Read the preview again before any further action." : responseError(payload, "We could not check abandoned checkouts."));
         return;
       }
       const parsed = abandonedCheckoutResultSchema.safeParse(payload);
       if (!parsed.success) {
-        setError("The abandoned-checkout result could not be read. Nothing was reported as closed.");
+        setError(apply ? "The close result could not be confirmed. Read the preview again before any further action." : "The abandoned-checkout result could not be read. Nothing was reported as closed.");
         return;
       }
       setPlan(parsed.data);
+      if (!apply) setApplyAttempted(false);
     } catch {
-      setError("We could not check abandoned checkouts. The result is unconfirmed; read it again before another action.");
+      setError(apply ? "The close result could not be confirmed. Read the preview again before any further action." : "We could not check abandoned checkouts. The result is unconfirmed; read it again before another action.");
     } finally {
       setLoading(false);
     }
@@ -74,7 +77,7 @@ export function GoalAbandonedCheckoutPanel({ onNeedsSignIn }: { onNeedsSignIn():
               {plan.byCurrency.map(row => <li key={row.currency}>{row.currency}: <GoalNum>{row.count}</GoalNum></li>)}
             </ul>
           ) : null}
-          {!plan.applied && plan.candidates > 0 ? (
+          {!plan.applied && plan.candidates > 0 && !applyAttempted ? (
             <div className="mt-4 border-t border-g-hairline pt-3">
               <p className="text-g-meta text-g-ink-2">This second action marks the previewed pending rows. It does not delete them or change a wallet.</p>
               <GoalButton className="mt-3" variant="outline" busy={loading} busyLabel="Recording notes…" onClick={() => { void closeAbandoned(true); }}>Close these {plan.candidates} pages</GoalButton>
