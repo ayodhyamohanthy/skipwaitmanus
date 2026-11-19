@@ -53,7 +53,7 @@ describe("released /agents goal route", () => {
   it("keeps agent keys in the shared assistants route family", async () => {
     stubServer();
     render(<SeekerAgents />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Let your agent prepare a better referral" })).toBeTruthy();
+    expect((await screen.findByRole("link", { name: "Approvals" })).getAttribute("href")).toBe("/approve");
   });
 });
 
