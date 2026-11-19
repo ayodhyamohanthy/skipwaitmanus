@@ -968,7 +968,8 @@
         "client/src/pages/premiumGoal.test.tsx",
         "design/goal-ui/captures/premium/**",
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "docs/DECISIONS.md"
       ]
     },
     {
