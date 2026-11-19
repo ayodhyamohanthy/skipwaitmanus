@@ -4622,6 +4622,7 @@
         "D-048-R-admin-money"
       ],
       "owns": [
+        "docs/DECISIONS.md",
         "client/src/pages/AdminPaymentsReview.tsx",
         "client/src/pages/AdminCatalogSync.tsx",
         "client/src/pages/AdminTokenRecovery.tsx",
