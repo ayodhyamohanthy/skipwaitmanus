@@ -137,7 +137,7 @@ describe("F2: goal /admin/catalog-sync shows what apply would do before it can r
     render(<GoalAdminCatalogSync />);
     const extras = await screen.findByRole("region", { name: "Extra objects left alone" });
     expect(extras.textContent).toContain("legacy-extra-price");
-    expect(extras.textContent).toContain("item_price");
+    expect(extras.textContent).toContain("Item price");
     expect(extras.textContent).toContain("active");
     expect(extras.textContent).toContain("Not in the sold catalog");
     const excluded = screen.getByRole("region", { name: "Excluded prices" });
@@ -176,14 +176,14 @@ describe("F2: goal /admin/catalog-sync shows what apply would do before it can r
     const result = await screen.findByRole("region", { name: "Apply result" });
     expect(result.textContent).toContain("Sync partial");
     expect(result.textContent).toContain("plan-mid");
-    expect(result.textContent).toContain("name: expected Mid plan item, Chargebee has Mid plan");
+    expect(result.textContent).toContain("name: expected Mid plan item, provider returned Mid plan");
     expect(result.textContent).toContain("plan-mid-inr-monthly");
     expect(result.textContent).toContain("The provider did not confirm this price.");
     expect(result.textContent).toContain("plan-senior-inr-monthly");
     expect(screen.queryByRole("button", { name: "Apply the catalog plan" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Run the dry run again" }));
-    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "GET")).toHaveLength(2));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === undefined)).toHaveLength(2));
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
     expect(screen.queryByRole("region", { name: "Apply result" })).toBeNull();
     expect((screen.getByLabelText("Type the site to confirm") as HTMLInputElement).value).toBe("");

@@ -1,0 +1,14 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops-admin@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/credits/summary", "body": { "summary": { "totalAvailable": 0 } } },
+    { "method": "GET", "path": "/api/account/preferences", "body": { "preferences": {} } },
+    { "method": "GET", "path": "/api/admin/money-check/status", "body": { "latestOutcome": "failure", "latestAt": "2026-11-19T08:00:00.000Z", "lastSuccessAt": "2026-11-15T08:00:00.000Z", "failuresLast7Days": 2, "ownerNotReached": true } }
+  ]
+}
