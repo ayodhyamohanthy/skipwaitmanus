@@ -4854,6 +4854,7 @@
         "D-048-release-platform"
       ],
       "owns": [
+        "scripts/r7ReleaseAcceptance.test.ts",
         "client/src/pages/NotFound.tsx",
         "client/src/pages/Offline.tsx",
         "client/src/pages/Emails.tsx",
