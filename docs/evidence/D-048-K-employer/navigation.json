@@ -1,0 +1,37 @@
+{
+  "task": "D-048-K-employer",
+  "baselineHead": "4161501065e5e3f204afa3c5ea76b57742179108",
+  "retirementSourceCheckedAgainstMain": "b66afae3519be6f284789c0744a414ab8c902f27",
+  "employerPageBodiesChangedBetweenThoseCommits": false,
+  "goalBuild": {"pullRequest": 966, "mergeSha": "7d69a3cee3cc77a42dcded60c681e89c2d8bb0ce"},
+  "release": {"pullRequest": 1074, "mergeSha": "c1f65aaa4ee43443278dd8db7e312239e36921f5", "date": "2026-11-09", "surfaceRemainsReleased": true},
+  "navigationProbe": {
+    "path": "navigation.probe.tsx",
+    "sha256": "7f67335a95526a9e70a244c5a9b4258aa3bd93c6720d993f01e5ecff278b96ba",
+    "route": "/employer",
+    "command": "LANG=en_US.UTF-8 pnpm exec vitest run client/src/pages/employerRetirementParity.probe.test.tsx --maxWorkers=1",
+    "mode": "Vitest: one established approved employer fixture; empty surface override for Kit, employer override for the released goal implementation. Mocked GETs only.",
+    "expectedDestinations": ["/", "/employer", "/employer/billing", "/employer/opportunities", "/employer/talent", "/for-companies"],
+    "kitDestinations": ["/", "/employer", "/employer/billing", "/employer/opportunities", "/employer/talent", "/for-companies"],
+    "goalDestinations": ["/", "/employer", "/employer/opportunities"],
+    "result": {"exitCode": 1, "passed": 1, "failed": 1, "failedCase": "released goal", "missing": ["/employer/billing", "/employer/talent", "/for-companies"]}
+  },
+  "unchangedFocusedSuites": {"head": "504c19acd3d1df410f858757f10e489fabfa2840", "exitCode": 0, "filesPassed": 3, "testsPassed": 28},
+  "baselineBuild": {"command": "VITE_APP_ID=skipwait pnpm build", "exitCode": 0},
+  "captures": {
+    "environment": "Local production build with no surface override, existing capture.mjs and synthetic employer fixtures. No authenticated production session or write.",
+    "fixtureStates": 8,
+    "viewportWidths": [1280, 390],
+    "horizontalOverflowPx": 0,
+    "publishedState": "goal-employer-default",
+    "desktop": {"file": "goal-employer-default-1280.png", "sha256": "af58749e8996260332b05544f142b53b06cb61b64d204c7cc4bec35e2164a7e0"},
+    "phone": {"file": "goal-employer-default-390.png", "sha256": "e0c2c14973d96a65ba9ff4dbdd1ccc0896738340d2a2db80a6527b2c9fd65a9c"},
+    "limits": "The existing harness mocks API requests. Signed-in fixtures did not stub account preferences. Browser console also shows the local WorkOS configuration warning and the expected account error in the corresponding fixture. These are baseline captures, not after-change or canonical signed-in QA."
+  },
+  "sentry": {
+    "project": "skipwait/skipwait-webapp",
+    "queryPattern": "is:unresolved environment:production transaction:<route> lastSeen:-30d",
+    "results": [{"route": "/employer", "matches": 0, "hasMore": false}, {"route": "/employer/opportunities", "matches": 0, "hasMore": false}]
+  },
+  "disposition": "No runtime changes or test suppression. Restore established-employer tool reachability on goal-page lineage before deleting either fallback; retain existing server authorization, price and purchase flow."
+}
