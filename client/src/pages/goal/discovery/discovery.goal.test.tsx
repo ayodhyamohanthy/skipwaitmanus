@@ -9,7 +9,9 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertGoalPage } from "@/test/goalPageContract";
-import { readReferralDraft } from "@/lib/pwaContinuity";
+import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
+import JobExplorer from "../../JobExplorer";
+import OpportunityWall from "../../OpportunityWall";
 import GoalWall, { GOAL_PAGE as WALL_GOAL } from "./GoalWall";
 import GoalJobs, { GOAL_PAGE as JOBS_GOAL } from "./GoalJobs";
 
@@ -57,14 +59,16 @@ beforeEach(() => { localStorage.clear(); auth.isSignedIn = false; window.history
 afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); window.history.replaceState(null, "", "/"); });
 
 describe("goal /wall", () => {
-  it("meets the goal-page contract with the anonymity line and one black commit", async () => {
+  it("meets the goal-page contract through the default route with no flag override", async () => {
     stubWall();
-    const { container } = render(<GoalWall />);
+    const { container } = render(<OpportunityWall />);
     await screen.findByRole("heading", { level: 3, name: "Product Designer" });
     assertGoalPage(container, WALL_GOAL);
     expect(WALL_GOAL.goalLine).toBe("See openings shared by verified employees.");
     expect(screen.getByText(/never shows an employee name, a candidate name or a resume/)).toBeTruthy();
     expect(screen.getByText("Identity hidden")).toBeTruthy();
+    expect(screen.getByText("Verified employee at")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Share an opening you can refer for" }).getAttribute("href")).toBe("/post-opportunity");
     expect(container.textContent).not.toMatch(/@/);
   });
 
@@ -83,14 +87,14 @@ describe("goal /wall", () => {
   });
 
   it("keeps a paid placement labelled (D-040) and an organic one marked as employee-shared", async () => {
-    stubWall({ opportunities: [opening({ id: 1, roleTitle: "Data Analyst", isSponsored: true }), opening({ id: 2, roleTitle: "QA Engineer" })] });
+    stubWall({ opportunities: [opening({ id: 1, roleTitle: "QA Engineer" }), opening({ id: 2, roleTitle: "Data Analyst", isSponsored: true })] });
     render(<GoalWall />);
     const list = await screen.findByRole("list", { name: "Openings" });
     const rows = within(list).getAllByRole("listitem");
-    expect(rows[0].textContent).toContain("Featured listing · paid placement");
-    expect(rows[1].textContent).toContain("Employee-shared opening");
-    expect(rows[1].textContent).not.toContain("Featured listing");
-    // The selected sponsored opening's detail says so too.
+    expect(rows[0].textContent).toContain("Employee-shared opening");
+    expect(rows[0].textContent).not.toContain("Featured listing");
+    expect(rows[1].textContent).toContain("Featured listing · paid placement");
+    fireEvent.click(screen.getByRole("button", { name: /^Data Analyst/ }));
     const step = screen.getByRole("region", { name: "Your next step" });
     expect(step.textContent).toContain("Featured listing · paid placement");
   });
@@ -103,6 +107,10 @@ describe("goal /wall", () => {
     expect(screen.getByRole("heading", { level: 3, name: "QA Engineer" })).toBeTruthy();
     expect(screen.getByText("Posted by Ravi")).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole("link", { name: "Synthetic Co" })[0].getAttribute("href")).toBe("/explore/synthetic"));
+    expect(screen.queryByText("Identity hidden")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Product Designer/ }));
+    expect(screen.getByText("Identity hidden")).toBeTruthy();
+    expect(screen.queryByText(/Posted by/)).toBeNull();
   });
 
   it("opens the deep-linked opening from ?opening=<id>", async () => {
@@ -154,6 +162,19 @@ describe("goal /wall", () => {
     await waitFor(() => expect(fetch.mock.calls.filter(([url]) => String(url) === "/api/opportunities").length).toBe(before + 1));
   });
 
+  it("recovers from an unreadable gateway response without displaying the parser error", async () => {
+    const fetch = stubWall();
+    fetch.mockImplementationOnce(async () => ({ ...fail({}, 503), json: async () => { throw new SyntaxError("Unexpected token '<'"); } }));
+    render(<GoalWall />);
+    const error = await screen.findByRole("alert");
+    expect(error.textContent).toContain("Internal openings are temporarily unavailable. Please try again.");
+    expect(error.textContent).not.toContain("Unexpected token");
+    fireEvent.click(within(error).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { level: 3, name: "Product Designer" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(fetch.mock.calls.filter(([url]) => url === "/api/opportunities")).toHaveLength(2);
+  });
+
   it("at 390px deep-link, selects opening 11 of 12 and places its commit action in view above the list", async () => {
     window.history.replaceState(null, "", "/wall?opening=11");
     const opportunities = Array.from({ length: 12 }, (_, i) =>
@@ -175,9 +196,9 @@ describe("goal /wall", () => {
 });
 
 describe("goal /jobs", () => {
-  it("meets the goal-page contract with save and paste as quiet actions", async () => {
+  it("meets the goal-page contract through the default route with save and paste as quiet actions", async () => {
     stubJobs();
-    const { container } = render(<GoalJobs />);
+    const { container } = render(<JobExplorer />);
     await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     assertGoalPage(container, JOBS_GOAL);
     expect(JOBS_GOAL.goalLine).toBe("Browse roles worth a referral.");
@@ -185,22 +206,27 @@ describe("goal /jobs", () => {
     expect(screen.getAllByRole("button", { name: /^Save/ }).length).toBeGreaterThan(0);
   });
 
-  it("carries the selected job into the referral draft", async () => {
+  it("carries the selected job into the referral draft for a signed-out visitor and clears stale role context", async () => {
     stubJobs();
+    saveReferralDraft({ name: "Fixture seeker", targetUrl: "https://other.example/jobs/old" });
     localStorage.setItem("bridge-target-compensation", "Old");
+    localStorage.setItem("bridge-company-confirmation", "old company");
     localStorage.setItem("skipwait-job-source", "sample");
     render(<GoalJobs />);
     await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     fireEvent.click(screen.getByRole("button", { name: "Request a referral" }));
     expect(readReferralDraft()?.targetUrl).toBe("https://careers.synthetic.example/jobs/11");
+    expect(readReferralDraft()?.name).toBe("Fixture seeker");
     expect(localStorage.getItem("bridge-target-url")).toBe("https://careers.synthetic.example/jobs/11");
     expect(localStorage.getItem("bridge-target-compensation")).toBeNull();
+    expect(localStorage.getItem("bridge-company-confirmation")).toBeNull();
     expect(localStorage.getItem("skipwait-job-source")).toBeNull();
     expect(go).toHaveBeenCalledWith("/start");
   });
 
   it("a role without a job link cannot commit and says why", async () => {
     stubJobs();
+    saveReferralDraft({ name: "Fixture seeker", targetUrl: "https://other.example/jobs/old" });
     render(<GoalJobs />);
     await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     fireEvent.click(screen.getByRole("button", { name: /^Backend Engineer/ }));
@@ -209,6 +235,7 @@ describe("goal /jobs", () => {
     expect(screen.getByText(/This role has no job link/)).toBeTruthy();
     fireEvent.click(commit);
     expect(go).not.toHaveBeenCalled();
+    expect(readReferralDraft()?.targetUrl).toBe("https://other.example/jobs/old");
   });
 
   it("signed in, saves a role and filters to saved roles", async () => {
@@ -216,6 +243,12 @@ describe("goal /jobs", () => {
     const fetch = stubJobs({ saved: [12] });
     render(<GoalJobs />);
     await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
+    expect((await screen.findByRole("button", { name: "Saved Backend Engineer" })).getAttribute("aria-pressed")).toBe("true");
+    const roles = screen.getByRole("list", { name: "Roles" });
+    expect(within(roles).getByRole("button", { name: /^Senior Product Designer/ }).textContent).toContain("Synthetic Co · Bengaluru · Senior · Hybrid");
+    const backend = within(roles).getByRole("button", { name: /^Backend Engineer/ });
+    expect(backend.textContent).toContain("Example Labs · Remote · Mid");
+    expect(backend.textContent).not.toContain("Remote · Mid · Remote");
     await screen.findByRole("button", { name: /^Saved roles/, pressed: false });
     fireEvent.click(screen.getByRole("button", { name: "Save Senior Product Designer" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/saved-roles/11", expect.objectContaining({ method: "PUT" })));
@@ -234,9 +267,14 @@ describe("goal /jobs", () => {
   });
 
   it("shows the honest empty state and still offers the paste path as the commit", async () => {
-    stubJobs({ list: [] });
+    const fetch = stubJobs();
+    fetch.mockImplementationOnce(async () => ok({ jobs })).mockImplementationOnce(async () => ok({ jobs: [] }));
     const { container } = render(<GoalJobs />);
+    await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search roles" }), { target: { value: "astronaut" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await screen.findByText("No jobs match. Try a broader search.");
+    expect(fetch).toHaveBeenCalledWith("/api/jobs?query=astronaut");
     assertGoalPage(container, JOBS_GOAL);
     fireEvent.click(screen.getByRole("button", { name: "Paste a job link" }));
     expect(go).toHaveBeenCalledWith("/start");
