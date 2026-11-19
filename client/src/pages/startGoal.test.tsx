@@ -59,6 +59,25 @@ describe("goal start", () => {
     expect(source).not.toMatch(/goalSurfaceOn|@\/components\/kit/);
   });
 
+  it("completes a link without https:// instead of showing an error (owner, Nov 19 2026)", async () => {
+    stubFetch(() => ({}));
+    render(<Onboarding />);
+    const input = await screen.findByLabelText(/Target Role URL/i) as HTMLInputElement;
+    typeUrl("careers.acme.com/jobs/123");
+    expect(screen.queryByText(TARGET_ROLE_URL_ERROR)).toBeNull();
+    expect(input.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.blur(input);
+    expect(input.value).toBe("https://careers.acme.com/jobs/123");
+    typeUrl("");
+    fireEvent.change(input, { target: { value: "Apply here: www.linkedin.com/jobs/view/4446365088" } });
+    fireEvent.blur(input);
+    expect(input.value).toBe("https://www.linkedin.com/jobs/view/4446365088");
+    fireEvent.change(input, { target: { value: "<https://acme.com/jobs/9>" } });
+    fireEvent.blur(input);
+    expect(input.value).toBe("https://acme.com/jobs/9");
+    expect(screen.queryByText(TARGET_ROLE_URL_ERROR)).toBeNull();
+  });
+
   it("opens on the goal with one commit and rejects an invalid link inline", async () => {
     stubFetch(() => ({}));
     render(<Onboarding />);
