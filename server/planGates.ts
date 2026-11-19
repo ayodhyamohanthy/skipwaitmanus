@@ -4,6 +4,7 @@
 // db.ts can use these inside its transactions without an import cycle.
 import { and, eq, gt, isNotNull, isNull, or, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
+import { ASK_PRICE_CHANGED, type AcceptedAskCost } from "../shared/acceptedAskCost";
 import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
 import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
@@ -60,6 +61,21 @@ export class CoverageOpenedUpError extends Error {
     super("This company just opened up to referrals, so sending now uses its cost in credits. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
     this.name = "CoverageOpenedUpError";
     this.companyDomain = companyDomain;
+  }
+}
+
+/**
+ * D-132-item3: a covered referral request whose cost changed since the seeker confirmed it (`expectedCost`).
+ * Thrown before the spend writes anything, inside the create transaction, so the whole send rolls back:
+ * nothing is created or charged. `acceptedCost` is the current cost the seeker confirms to send again.
+ */
+export class AskPriceChangedError extends Error {
+  readonly code = ASK_PRICE_CHANGED;
+  readonly acceptedCost: AcceptedAskCost;
+  constructor(acceptedCost: AcceptedAskCost) {
+    super("The cost of this referral request changed since you confirmed it. Nothing was sent and nothing was charged. Check the new cost and confirm again to send.");
+    this.name = "AskPriceChangedError";
+    this.acceptedCost = acceptedCost;
   }
 }
 

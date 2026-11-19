@@ -120,17 +120,34 @@ export async function writeLedgerRow(tx: LedgerTx, row: LedgerInsert): Promise<n
 export type SpendMeta = { idempotencyKey: string; referenceType: string; referenceId: string };
 export type PromoHolding = PromoBucket & { tokenCount: number };
 
+/** What `spendCreditsTx` takes to decide a spend, without the transaction or the ledger keys. */
+export type SpendPlanInput = { wallet: WalletRow; grants: readonly GrantRow[]; promo: PromoHolding | null; credits: number; now: Date };
+
+/**
+ * The allocation a spend of `credits` would make from this wallet now, in
+ * spend order, and any shortfall. Pure: it writes nothing. `spendCreditsTx`
+ * decides every spend through it, so a preview and the spend that follows it
+ * on the same reconciled wallet cannot disagree (D-132-item3).
+ */
+export function previewSpend(input: SpendPlanInput): { allocations: SpendAllocation[]; shortfall: number } {
+  const rules = cycleRulesFor(input.wallet.plan, input.wallet.role);
+  const buckets = spendableBuckets({ wallet: input.wallet, carryover: rules.carryover, grants: input.grants.map(asLedgerGrant), promo: input.promo, now: input.now });
+  return allocateSpend(buckets, input.credits);
+}
+
 /**
  * Spends `credits` across the buckets in spend order (soonest expiry first)
  * from a locked, reconciled wallet, or refuses the whole spend. One ledger row
  * per bucket drawn, keyed `${idempotencyKey}#${n}`; row #1 marks the spend done.
+ * `accept`, when given, sees the allocation after the shortfall refusal and
+ * before the first write; a throw there refuses the spend with nothing written
+ * (D-132-item3: the compared allocation is exactly the one spent).
  */
-export async function spendCreditsTx(tx: LedgerTx, input: { wallet: WalletRow; grants: GrantRow[]; promo: PromoHolding | null; credits: number; meta: SpendMeta; now: Date }): Promise<{ wallet: WalletRow; grants: GrantRow[]; promoRemaining: number | null; allocations: SpendAllocation[] }> {
+export async function spendCreditsTx(tx: LedgerTx, input: SpendPlanInput & { grants: GrantRow[]; meta: SpendMeta; accept?: (allocations: readonly SpendAllocation[]) => void }): Promise<{ wallet: WalletRow; grants: GrantRow[]; promoRemaining: number | null; allocations: SpendAllocation[] }> {
   const { wallet, now, meta } = input;
-  const rules = cycleRulesFor(wallet.plan, wallet.role);
-  const buckets = spendableBuckets({ wallet, carryover: rules.carryover, grants: input.grants.map(asLedgerGrant), promo: input.promo, now });
-  const { allocations, shortfall } = allocateSpend(buckets, input.credits);
+  const { allocations, shortfall } = previewSpend(input);
   if (shortfall > 0) throw new InsufficientCreditsError(input.credits, input.credits - shortfall);
+  input.accept?.(allocations);
   let monthly = wallet.monthlyCreditsRemaining;
   let balance = wallet.balance;
   let promoRemaining = input.promo?.credits ?? null;
