@@ -1,0 +1,709 @@
+{
+  "task": "D-048-K-developers",
+  "phase": "before",
+  "source": "b1d0882efde27470378ff8f25e107c7d5756ef3a",
+  "sourceHashes": {
+    "client/src/pages/Developers.tsx": "2e62cb8d19341f05cc759daa45c5866e0b49b6fe07e311b5b3a421daf4caf0ea",
+    "client/src/pages/DeveloperConsole.tsx": "0c3eecdae30294c7bd86aa10e326bea1c15fd4cd6ced6df443eb06aa02566aba",
+    "client/src/pages/goal/developers/GoalDevelopers.tsx": "42a944a224e6dc096854f5560b2df0a955477016dd9d11d1b9fb935bf7e0d9a0",
+    "client/src/pages/goal/developers/GoalDeveloperConsole.tsx": "9ef07b5bfe62a19e8df1d3e0af82bae08270a76a4f79d381c104e8c305e9c5a8"
+  },
+  "runtime": "Local Vite preview, released goal UI; browser API fixtures intercept every API request and fulfill external telemetry locally",
+  "synthetic": true,
+  "productionRequests": 0,
+  "secretsRendered": false,
+  "results": [
+    {
+      "name": "public",
+      "route": "/developers",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": false,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [],
+      "screenshot": "public-1280.png",
+      "sha256": "28aba33f8837e2bd18c27fcf2323c5b26eb2b5a29392aa385cd635dfdbc6d4c6"
+    },
+    {
+      "name": "signed-out",
+      "route": "/developer-console",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": false,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [],
+      "screenshot": "signed-out-1280.png",
+      "sha256": "68a4805865349b14302a6b1e92c59c3ac30ac4cbe4ce58a51f17f4dd2a7956a5"
+    },
+    {
+      "name": "list",
+      "route": "/developer-console",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "list-1280.png",
+      "sha256": "939d1df4826abbb9fe33e9f6532f160e66188cc4b1fe4b647a7bb4bfd5e538d5"
+    },
+    {
+      "name": "empty",
+      "route": "/developer-console",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "empty-1280.png",
+      "sha256": "2011aaaf62dc448338726436f45bb47440155543716e6b1c4cf3b2dc658f34b5"
+    },
+    {
+      "name": "load-error",
+      "route": "/developer-console",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 0,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "load-error-1280.png",
+      "sha256": "35c1a51b104e7f960e3dbbd3018b3d929b9a7b816d1c558e4ee85ee8279f8112"
+    },
+    {
+      "name": "details",
+      "route": "/developer-console?app=3&details=1",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "details-1280.png",
+      "sha256": "ddd08164f9f1907667f4412ea196ff473f6709496c51cea801fd35923e63a2b9"
+    },
+    {
+      "name": "in-review",
+      "route": "/developer-console?app=3",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "in-review-1280.png",
+      "sha256": "75e24624018f63b8b454b51fa7245dae8596545a026b1a385a19fd296e5b8195"
+    },
+    {
+      "name": "rejected",
+      "route": "/developer-console?app=3",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "rejected-1280.png",
+      "sha256": "0a5ace30d54a3545ceb5a04bd43ed8a220c2ca369a837442f3ed2e0fdeed5c0b"
+    },
+    {
+      "name": "suspended",
+      "route": "/developer-console?app=3",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "suspended-1280.png",
+      "sha256": "d860f72eba80b7bacfda71004944ba2576efaff0ac19c22f995045a0758d94eb"
+    },
+    {
+      "name": "not-found",
+      "route": "/developer-console?app=99",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "not-found-1280.png",
+      "sha256": "f94be1ae9c2492ac9c394c6e51b04b9bfe31eb1b3238e31cc62d273b6aca5017"
+    },
+    {
+      "name": "register",
+      "route": "/developer-console?new=1",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "register-1280.png",
+      "sha256": "c08ef4f0a69a6e508a4bd2268d4dfee4909438a0bbf3c52c38ebc63433f0b726"
+    },
+    {
+      "name": "edit-rejected",
+      "route": "/developer-console?new=1&from=3",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "edit-rejected-1280.png",
+      "sha256": "7a00e25ed5ddc5957bf374b66335e740f35e67efa672f244fe522de89fba8979"
+    },
+    {
+      "name": "webhook-saved",
+      "route": "/developer-console?app=3&details=1",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        },
+        {
+          "method": "PUT",
+          "path": "/api/developer-apps/3/webhook",
+          "body": {
+            "webhookUrl": "https://synthetic.example/hooks"
+          }
+        }
+      ],
+      "screenshot": "webhook-saved-1280.png",
+      "sha256": "21564d95a09dedebcc2bfc3b31ab6ff34207aca29f618dd6a18b1f204f94f571"
+    },
+    {
+      "name": "submitted",
+      "route": "/developer-console?app=3",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/developer-apps/3/submit",
+          "body": null
+        }
+      ],
+      "screenshot": "submitted-1280.png",
+      "sha256": "75e24624018f63b8b454b51fa7245dae8596545a026b1a385a19fd296e5b8195"
+    },
+    {
+      "name": "registered",
+      "route": "/developer-console?app=7",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/developer-apps",
+          "body": {
+            "name": "Synthetic app",
+            "kind": "web_app",
+            "description": "Tracks referral requests",
+            "redirectUrls": [],
+            "scopes": [
+              "companies:read",
+              "requests:read",
+              "asks:draft"
+            ],
+            "agreeToTerms": true
+          }
+        }
+      ],
+      "screenshot": "registered-1280.png",
+      "sha256": "86231493b851cac8da54ac62561270539b76fc425152af1ff84b1de5c6464584"
+    },
+    {
+      "name": "public",
+      "route": "/developers",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": false,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [],
+      "screenshot": "public-390.png",
+      "sha256": "1b082d55b91fe44d6e225cd91f953ace48d85244ed6df4960fd5977302e72c2c"
+    },
+    {
+      "name": "signed-out",
+      "route": "/developer-console",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": false,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [],
+      "screenshot": "signed-out-390.png",
+      "sha256": "3f5e22d31afdd19f1f1e3a467612191b22587d5033c492f57162910a254f01c9"
+    },
+    {
+      "name": "list",
+      "route": "/developer-console",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "list-390.png",
+      "sha256": "3e48ffadc1bf187dc69ecb59a05cb327780b6a2e4c1659f90f6e4a1545d57253"
+    },
+    {
+      "name": "empty",
+      "route": "/developer-console",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "empty-390.png",
+      "sha256": "1a360f3d39d47140d8b83a1ee20678cb621000b1619f5b522c952a0c0bbb1a26"
+    },
+    {
+      "name": "load-error",
+      "route": "/developer-console",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 0,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "load-error-390.png",
+      "sha256": "dc4f0d05a8caa0d25dc989ee1b6c2a845525d24e8ad77a924f07d9c759afb73e"
+    },
+    {
+      "name": "details",
+      "route": "/developer-console?app=3&details=1",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "details-390.png",
+      "sha256": "65b5604312520f527c0702b64eebe75b3cfda938eca2ce0dadab76d8b0500b8b"
+    },
+    {
+      "name": "in-review",
+      "route": "/developer-console?app=3",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "in-review-390.png",
+      "sha256": "d3c3d22702c49ba336d4208c9e31c60d9a51ea007ae0749db8764c64b4db9d94"
+    },
+    {
+      "name": "rejected",
+      "route": "/developer-console?app=3",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "rejected-390.png",
+      "sha256": "cfc3f857ad8bdfc630ea2548e4c85bd3280fcd271960b9613a1e09a6495ff5cd"
+    },
+    {
+      "name": "suspended",
+      "route": "/developer-console?app=3",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "suspended-390.png",
+      "sha256": "8fcb13ed5174d62f3d47d04f4c63726352c945026318066b456bd98951468081"
+    },
+    {
+      "name": "not-found",
+      "route": "/developer-console?app=99",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "not-found-390.png",
+      "sha256": "b539b5b9ece8c057525d9b0decbad7b176baf95a48f77eeef97f65f509003e31"
+    },
+    {
+      "name": "register",
+      "route": "/developer-console?new=1",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "register-390.png",
+      "sha256": "5172411b57506d242927b193001e1547895d1282b0a732abba6510e8603a4516"
+    },
+    {
+      "name": "edit-rejected",
+      "route": "/developer-console?new=1&from=3",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        }
+      ],
+      "screenshot": "edit-rejected-390.png",
+      "sha256": "506e5c4c788f7023ffb79b30b4d8fe5d9ee0a8e3a3c55bf55ce2594071be6c95"
+    },
+    {
+      "name": "webhook-saved",
+      "route": "/developer-console?app=3&details=1",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        },
+        {
+          "method": "PUT",
+          "path": "/api/developer-apps/3/webhook",
+          "body": {
+            "webhookUrl": "https://synthetic.example/hooks"
+          }
+        }
+      ],
+      "screenshot": "webhook-saved-390.png",
+      "sha256": "afe8260ee331d67461ca5573f7459a020442dd6300f46903fb2ccf87a5b34b6c"
+    },
+    {
+      "name": "submitted",
+      "route": "/developer-console?app=3",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/developer-apps/3/submit",
+          "body": null
+        }
+      ],
+      "screenshot": "submitted-390.png",
+      "sha256": "d3c3d22702c49ba336d4208c9e31c60d9a51ea007ae0749db8764c64b4db9d94"
+    },
+    {
+      "name": "registered",
+      "route": "/developer-console?app=7",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "signedIn": true,
+      "roots": 1,
+      "overflow": 0,
+      "primaryActions": 1,
+      "pageErrors": [],
+      "unmatchedApi": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/developer-apps",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/developer-apps",
+          "body": {
+            "name": "Synthetic app",
+            "kind": "web_app",
+            "description": "Tracks referral requests",
+            "redirectUrls": [],
+            "scopes": [
+              "companies:read",
+              "requests:read",
+              "asks:draft"
+            ],
+            "agreeToTerms": true
+          }
+        }
+      ],
+      "screenshot": "registered-390.png",
+      "sha256": "38ac58039915bedb674b95d7145befb8b17c1cfcffa09edc0c324e3d1d3d2682"
+    }
+  ]
+}
