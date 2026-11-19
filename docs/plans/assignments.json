@@ -6013,8 +6013,8 @@
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-086.count",
         "D-086.ui",
@@ -6022,7 +6022,7 @@
         "D-090-BYOR",
         "D-048-p3-live-review-find"
       ],
-      "note": "D-086 packet §5.4 (release row, D-223 (3)): flips COMPANY_DEMAND_ADMIN_ENABLED and COMPANY_DEMAND_PUBLIC_ENABLED after D-086.count, D-086.ui and D-086.mount land, QA with captures, the normal privacy review inside the independent Tier 1 review, and the CEO's sign-off. Public demand counts every live request (the runtime's own isAskExpired, no age cutoff of its own) at every listed company whatever its coverage (D-176/D-174), k-anonymous; it is not D-193 (3)'s private waiting count. Unlisted companies reach public display only through admin admission (packet §4.5); D-086.admit is the admin view and does not hold this row. The ask-to-any-company path already exists (packet §3.6-§3.7, §3.11); the 90-day closure is replaced by D-174 plus D-193 (4) in D-174-held-ask-reconfirm and D-174-expiry-clock-removal. D-099-bonus-pages, D-089-request-inbox (by its note) and DEPLOY-gate-docs-sync keep waiting for this row.",
+      "note": "D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
       "owns": [
         "shared/companyDemand.ts (switch only)",
         "AGENTS.md",
