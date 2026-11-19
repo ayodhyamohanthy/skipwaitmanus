@@ -1,0 +1,256 @@
+{
+  "task": "D-048-K-links",
+  "baseline": "ca5afa55e06aba4c761f3b50d4416ca2c27e4511",
+  "candidate": "f0ee6ed5bf94446d52d7f990ef3b375085917118",
+  "runner": "design/goal-ui/captures/links/capture.mjs",
+  "fixtures": "design/goal-ui/captures/links/fixtures.json",
+  "browser": "Chromium, one fresh context per capture",
+  "viewports": [
+    {
+      "width": 1280,
+      "height": 900,
+      "deviceScaleFactor": 1
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2
+    }
+  ],
+  "syntheticApiFixtures": true,
+  "surfaceOverride": false,
+  "nativeInspection": [
+    "fast-long-domain-390.png",
+    "vanity-ready-1280.png",
+    "share-ready-390.png",
+    "share-unavailable-1280.png"
+  ],
+  "pairs": [
+    {
+      "file": "fast-loading-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "74a31075fd1f6751a6d9696f64c91a81b7a3294b06a9ab4253f544b7fc9c571d",
+      "afterSha256": "74a31075fd1f6751a6d9696f64c91a81b7a3294b06a9ab4253f544b7fc9c571d",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "fast-loading-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "7991507eaedd68423750ecd731f946f1dfa4f161c3ad690c73ad5d4a11b5461a",
+      "afterSha256": "7991507eaedd68423750ecd731f946f1dfa4f161c3ad690c73ad5d4a11b5461a",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "fast-long-domain-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "50d51e4e157f28ae2a8813d3d0ac3fa232752eaf166564ba08929b799b8531d4",
+      "afterSha256": "50d51e4e157f28ae2a8813d3d0ac3fa232752eaf166564ba08929b799b8531d4",
+      "differentPixels": 0,
+      "retained": true
+    },
+    {
+      "file": "fast-long-domain-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "d58573069e5848bcffc088c13d04a0dede6ddbc7899aa6011a2b91f86975ac0d",
+      "afterSha256": "d58573069e5848bcffc088c13d04a0dede6ddbc7899aa6011a2b91f86975ac0d",
+      "differentPixels": 0,
+      "retained": true
+    },
+    {
+      "file": "fast-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "c0dcc81be129063ab6386c9a59115a6f5f61cc24ce6fce0ca363ae1aa20156be",
+      "afterSha256": "c0dcc81be129063ab6386c9a59115a6f5f61cc24ce6fce0ca363ae1aa20156be",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "fast-ready-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "f95c169407835a49724ea9068d8a12b7abd8a3007dccd9cff232ea8236bb8649",
+      "afterSha256": "f95c169407835a49724ea9068d8a12b7abd8a3007dccd9cff232ea8236bb8649",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "fast-unavailable-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "f3f24de93d2743c919e7335fc9ffbf8d1667df65ad5a951ff31ddd2bd2cda240",
+      "afterSha256": "f3f24de93d2743c919e7335fc9ffbf8d1667df65ad5a951ff31ddd2bd2cda240",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "fast-unavailable-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "b1b0f6e406c6c62eb6a098d41613f7b39eadfc4818d2a688a2459f46595cbbf2",
+      "afterSha256": "b1b0f6e406c6c62eb6a098d41613f7b39eadfc4818d2a688a2459f46595cbbf2",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "share-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "836e0ae1ab138f09130b9a97d8ef69a692c57cb8fe0ab431b0db6c09724d526e",
+      "afterSha256": "836e0ae1ab138f09130b9a97d8ef69a692c57cb8fe0ab431b0db6c09724d526e",
+      "differentPixels": 0,
+      "retained": true
+    },
+    {
+      "file": "share-ready-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "56dc2ed68c3548d61e01d3fe7f0068668d00da2f003249f6ca7bc91bf9e1a2be",
+      "afterSha256": "56dc2ed68c3548d61e01d3fe7f0068668d00da2f003249f6ca7bc91bf9e1a2be",
+      "differentPixels": 0,
+      "retained": true
+    },
+    {
+      "file": "share-unavailable-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "d3c616815f6ed12bb6f350fdb62a3d07d0f15860fd3959d33ffa90cdac28933c",
+      "afterSha256": "d3c616815f6ed12bb6f350fdb62a3d07d0f15860fd3959d33ffa90cdac28933c",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "share-unavailable-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "db34e45b9034893e91084d024705c7d2ca3e07f0568d609ca268f507733a8574",
+      "afterSha256": "db34e45b9034893e91084d024705c7d2ca3e07f0568d609ca268f507733a8574",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "vanity-long-domain-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "dca592acfd356770527fefb513440bef13dbc1b21d56a436e74e24bc5901cd15",
+      "afterSha256": "dca592acfd356770527fefb513440bef13dbc1b21d56a436e74e24bc5901cd15",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "vanity-long-domain-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "afa32203280fca753635775758c2383f20ad0246bb305165c2fb2c83698e73d3",
+      "afterSha256": "afa32203280fca753635775758c2383f20ad0246bb305165c2fb2c83698e73d3",
+      "differentPixels": 0,
+      "retained": false
+    },
+    {
+      "file": "vanity-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "beforeSha256": "c0dcc81be129063ab6386c9a59115a6f5f61cc24ce6fce0ca363ae1aa20156be",
+      "afterSha256": "c0dcc81be129063ab6386c9a59115a6f5f61cc24ce6fce0ca363ae1aa20156be",
+      "differentPixels": 0,
+      "retained": true
+    },
+    {
+      "file": "vanity-ready-390.png",
+      "width": 780,
+      "height": 1688,
+      "beforeSha256": "f95c169407835a49724ea9068d8a12b7abd8a3007dccd9cff232ea8236bb8649",
+      "afterSha256": "f95c169407835a49724ea9068d8a12b7abd8a3007dccd9cff232ea8236bb8649",
+      "differentPixels": 0,
+      "retained": true
+    }
+  ],
+  "overflow": [
+    {
+      "shot": "fast-ready",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-ready",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-unavailable",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-unavailable",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-loading",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-loading",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "vanity-ready",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "vanity-ready",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "share-ready",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "share-ready",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "share-unavailable",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "share-unavailable",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-long-domain",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "fast-long-domain",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "vanity-long-domain",
+      "width": 1280,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "shot": "vanity-long-domain",
+      "width": 390,
+      "horizontalOverflowPx": 0
+    }
+  ]
+}
