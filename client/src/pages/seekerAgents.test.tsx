@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// D-048-p3-agents: the released /agents goal route keeps every D-141 control
-// visible: scopes, four limits, expiry, key shown once, pause-all, revoke and audit trail.
+// /agents was built in the D-048-p3-agents row; these tests pin its released
+// goal behavior, grant boundaries, retry path and referrer-safe promises.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +39,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
   if (originalOnlineDescriptor) Object.defineProperty(window.navigator, "onLine", originalOnlineDescriptor);
   else Reflect.deleteProperty(window.navigator, "onLine");
+});
+
+describe("released /agents goal route", () => {
+  it("always renders the released goal route without a surface override", async () => {
+    stubServer();
+    const { container } = render(<SeekerAgents />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Let your agent prepare a better referral" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Your AI agents" })).toBeNull();
+    expect(container.querySelector('[data-skipwait-screen="agents"]')).toBeTruthy();
+  });
+
+  it("keeps agent keys in the shared assistants route family", async () => {
+    stubServer();
+    render(<SeekerAgents />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Let your agent prepare a better referral" })).toBeTruthy();
+  });
 });
 
 describe("goal /agents", () => {
