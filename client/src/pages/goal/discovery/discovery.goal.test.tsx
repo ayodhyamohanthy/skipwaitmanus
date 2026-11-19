@@ -238,10 +238,10 @@ describe("goal /jobs", () => {
     expect(readReferralDraft()?.targetUrl).toBe("https://other.example/jobs/old");
   });
 
-  it("signed in, saves a role and filters to saved roles", async () => {
+  it("sets saved roles with explicit save and remove requests through /jobs", async () => {
     auth.isSignedIn = true;
     const fetch = stubJobs({ saved: [12] });
-    render(<GoalJobs />);
+    render(<JobExplorer />);
     await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     expect((await screen.findByRole("button", { name: "Saved Backend Engineer" })).getAttribute("aria-pressed")).toBe("true");
     const roles = screen.getByRole("list", { name: "Roles" });
@@ -251,10 +251,17 @@ describe("goal /jobs", () => {
     expect(backend.textContent).not.toContain("Remote · Mid · Remote");
     await screen.findByRole("button", { name: /^Saved roles/, pressed: false });
     fireEvent.click(screen.getByRole("button", { name: "Save Senior Product Designer" }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/saved-roles/11", expect.objectContaining({ method: "PUT" })));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/saved-roles/11", { method: "PUT", credentials: "include" }));
     fireEvent.click(screen.getByRole("button", { name: /^Saved roles/, pressed: false }));
     const list = screen.getByRole("list", { name: "Roles" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    fireEvent.click(within(list).getByRole("button", { name: "Saved Senior Product Designer", pressed: true }));
+    await waitFor(() => expect(fetch.mock.calls.filter(([, init]) => init?.method)).toEqual([
+      ["/api/saved-roles/11", { method: "PUT", credentials: "include" }],
+      ["/api/saved-roles/11", { method: "DELETE", credentials: "include" }],
+    ]));
+    expect(within(list).queryByRole("button", { name: /^Senior Product Designer/ })).toBeNull();
+    expect(within(list).getByRole("button", { name: "Saved Backend Engineer", pressed: true })).toBeTruthy();
   });
 
   it("signed out, Save opens the sign-in step instead of saving", async () => {
