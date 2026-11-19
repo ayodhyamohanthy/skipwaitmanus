@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 // Goal /help, /report and /safety (D-048-p3-support; packet docs/plans/D-048-account.md).
-// Behind goalSurfaceOn('support'): each page opens with its goal line and one
+// Each page opens with its goal line and one
 // "Your next step" block holding the single black commit; every kit behaviour
 // is kept (help search and categories, the live policy links, the 3-step
 // report with its block toggle and urgency, the safety answers and links);
 // money lines come from shared/moneyCopy.ts; a failed report or block says so
 // and never shows as filed; offline, the report's commit names why it waits.
-// Flag off, the kit pages render unchanged.
 import { readFileSync } from "node:fs";
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -16,9 +15,8 @@ import { FREE_PLAN } from "@shared/planCatalog";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { HELP_ANSWERS, REPORT_REASONS, SAFETY_ANSWERS } from "./supportContent";
 
-const { authState, flagState, go } = vi.hoisted(() => ({
+const { authState, go } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() },
-  flagState: { on: true },
   go: vi.fn(),
 }));
 vi.mock("@/_core/auth", () => ({
@@ -31,11 +29,6 @@ vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/report", go],
 }));
-vi.mock("@/lib/goalSurfaces", async importOriginal => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "support" };
-});
-
 import Help from "../../Help";
 import Report from "../../Report";
 import Safety from "../../Safety";
@@ -89,7 +82,7 @@ const primary = (container: HTMLElement) => container.querySelector("[data-g-pri
 beforeAll(async () => {
   await Promise.all([import("./GoalHelp"), import("./GoalReport"), import("./GoalSafety")]);
 }, 60_000);
-beforeEach(() => { flagState.on = true; authState.isLoaded = true; authState.isSignedIn = true; authState.openSignIn.mockReset(); go.mockReset(); });
+beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; authState.openSignIn.mockReset(); go.mockReset(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("goal /help", () => {
@@ -103,6 +96,12 @@ describe("goal /help", () => {
     expect(primary(container)?.textContent).toBe("Contact support");
     expect(primary(container)?.getAttribute("href")).toBe("/support");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not show preview-only copy", async () => {
+    const { container } = render(<Help />);
+    await screen.findByRole("heading", { level: 1, name: HELP_LINE });
+    expect(container.textContent).not.toMatch(/design preview|before the platform launches|this design preview/i);
   });
 
   it("keeps the live policy links and the money lines from shared/moneyCopy.ts", async () => {
@@ -134,7 +133,7 @@ describe("goal /help", () => {
 });
 
 describe("goal /safety", () => {
-  it("meets the contract and keeps every kit answer and link", async () => {
+  it("meets the contract and keeps supported safety answers and links", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const { container } = render(<Safety />);
@@ -150,6 +149,12 @@ describe("goal /safety", () => {
     expect(primary(container)?.getAttribute("href")).toBe("/explore");
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("does not show preview-only copy", async () => {
+    const { container } = render(<Safety />);
+    await screen.findByRole("heading", { level: 1, name: SAFETY_LINE });
+    expect(container.textContent).not.toMatch(/design preview|before the platform launches|this design preview/i);
+  });
 });
 
 describe("goal /report", () => {
@@ -162,6 +167,12 @@ describe("goal /report", () => {
     assertGoalPage(container, { goalLine: REPORT_LINE });
     expect(screen.getByRole("button", { name: "Sign in" })).toBe(primary(container));
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not show preview-only copy", async () => {
+    const { container } = render(<Report />);
+    await screen.findByRole("heading", { level: 1, name: REPORT_LINE });
+    expect(container.textContent).not.toMatch(/design preview|before the platform launches|this design preview/i);
   });
 
   it("keeps the 3-step shape with one commit per step and files the real reference", async () => {
@@ -251,21 +262,16 @@ describe("goal /report", () => {
   });
 });
 
-describe("flag off: the kit pages render unchanged", () => {
-  it("renders the kit help, safety and report pages", () => {
-    flagState.on = false;
-    vi.stubGlobal("fetch", vi.fn());
-    const help = render(<Help />);
-    expect(screen.getByText("How can we help")).toBeTruthy();
-    expect(help.container.querySelector("[data-goal-page]")).toBeNull();
-    help.unmount();
-    const safety = render(<Safety />);
-    expect(screen.getByText(/Help & safety/)).toBeTruthy();
-    expect(safety.container.querySelector("[data-goal-page]")).toBeNull();
-    safety.unmount();
-    const report = render(<Report />);
-    expect(screen.getByRole("heading", { level: 1, name: "What's going on?" })).toBeTruthy();
-    expect(report.container.querySelector("[data-goal-page]")).toBeNull();
+describe("support route retirement", () => {
+  it.each([
+    ["../../Help.tsx", "GoalHelp"],
+    ["../../Report.tsx", "GoalReport"],
+    ["../../Safety.tsx", "GoalSafety"],
+  ] as const)("%s has only its released goal page", (file, goalPage) => {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    expect(source).not.toMatch(/goalSurfaceOn|@\/components\/kit|function Kit/);
+    expect(source).toContain(`lazy(() => import("./goal/support/${goalPage}"))`);
+    expect(source).toContain(`<${goalPage} />`);
   });
 });
 

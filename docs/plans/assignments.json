@@ -4456,8 +4456,8 @@
       "tier": 2,
       "lane": "d048-retire-support",
       "branch": "agent/queue/d048-k-support",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-support"
       ],
@@ -4470,7 +4470,7 @@
         "client/src/pages/reportBlock.test.tsx",
         "client/src/pages/safetyIntake.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: support. Built by D-048-p3-support; released by D-048-R-support (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1314. Retires Help/Report/Safety Kit bodies while preserving lazy exports, goal runtime, report/block/privacy rules and shared copy. Release PR1193/6c64f04d is on main; support remains RELEASED and D-349 suspends soak. Original61focused/TypeScript/build/audits pass; own full local3600s is incomplete without totals, never green or rerun.12 retained synthetic capture pairs:11identical and one6pixel shell-edge difference; all state checks pass. D-365 corrected gate receipt URL location: docs/evidence/D-048-K-support/gate-814e.json, no scanner exclusion. D-366 (7) re-sync: current owner D-364/D-365 source/support/legal changes are preserved; ported supportGoal/trustCluster/safetyIntake have no owner-name expectations and integrated support.promises S1/D1 require no personal name/mailbox. All73focused tests pass. Finaldc8da4e passed all required checks,3complete CI shards/aggregate and E2E in CI44556622241, but was behind main. Integrated main2db96257 and read D-366 in full; no source delta, only launch/QA docs/workflow. This row's D-366 resync is limited to support; all other ownership/holds stay. Fresh exact-head CI and canonical verification still required. Proof/limits: docs/plans/D-048-retire.md, docs/evidence/D-048-K-support/ and client/src/pages/goal/support/retirement/. Rollback is a protected revert of this PR.",
       "epic": "D-048-p3"
     },
     {
