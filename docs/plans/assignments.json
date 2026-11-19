@@ -5465,8 +5465,8 @@
       "tier": 1,
       "lane": "d048-retire-for-companies",
       "branch": "agent/queue/d048-k-for-companies",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -5769,7 +5769,7 @@
       "tier": 1,
       "lane": "notifications-schema",
       "branch": "agent/queue/rel-review-email-retry-schema",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-359",
       "dependsOn": [
         "D-174-job-catalog"
@@ -5778,7 +5778,7 @@
       "owns": [
         "drizzle/deploy/0122_review_delivery_owner_alerts.sql"
       ],
-      "note": "D-350 migration-before-code prerequisite, split from existing REL-review-email-retry under D-200/D-223. Migration-only PR copies the exact reviewed SQL from PR874 head0c4f79e3 (sha256 ff2f5ed03c0e9f5bd4117812eb7c7ec0551281ba161a012a434542f3824a14f3), lands through independent Tier1 review and required CI, then verifies the ordinary main-only Deploy API migrate-db result before this row is done. No runtime/schema-model/readiness/email/workflow change or direct database write; old binaries tolerate nullable extra columns. Placed directly before its existing parent without reordering unrelated work. Parent runtime landing waits for this actual schema output."
+      "note": "Done: migration-only PR #1341 merged at e285f13c25da90b69ca3df172cb15f27dbb9826c after independent review and final CI 44614764176. Main CI 44615379369 and Deploy API 44615379181 passed; migrate-db applied 0122 and recorded the matching checksum before the API deployed. Release verify 44615462269 passed; canonical readiness and api-runtime matched e285f13c (CONVERGED). No retry runtime or notification shipped. Parent #874 retains its exact-head gates and separate live retry acceptance; see the schema packet for evidence."
     },
     {
       "id": "REL-review-email-retry",
