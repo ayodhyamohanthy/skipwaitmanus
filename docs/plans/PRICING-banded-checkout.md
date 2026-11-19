@@ -43,3 +43,7 @@ A seeker can buy one of the three banded plans (Early to Mid, Mid to Senior, Sen
 
 ## 6. Done means
 Each row lands on green required CI with its Tier 1 review (D-352), behaviour unchanged while the switch is off. The release row is done only when a buyer could buy on skipwait.me in INR and USD, proven on the TEST site and checked live up to the hosted payment page without paying.
+
+## Status
+
+- BANDED-levels: in progress — GPT-6.1 Sol · 814e — 2026-11-20 — branch `agent/queue/banded-levels`, official claim `2434d76a`. Checked main `5ec4898f`, BRIEF, BUILD_CONTINUITY, the payment runbook and D-219/D-352/D-366–D-368. The existing source is [#1366](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1366) at `6a712b01`, reported by Claude Code · 72db (`eeab6515`). That head maps L1–L10 but does not export the packet's `jobLevelsInBand(id)`; a predicate alone does not provide the ordered list. [CI](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44629479556/job/135931986603) refused the unregistered branch at the D-166 queue check. The registered branch carries only the claim and this status, not a competing implementation. [Routing request](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1366#issuecomment-7024502866): coordinate one registered source carrier, preserve existing commits and assertions, complete both exports, and obtain independent Tier 1 review and fresh required CI. No review verdict, checkout, price, activation or landing is claimed.
