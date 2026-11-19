@@ -763,8 +763,14 @@ required by D-344 (7)/D-352. This UNBLOCK is not a Fixed/Pass, cannot impersonat
 the fixer, and changes neither gate code nor status-only allowances. A fresh
 marker alone is not authority to land the unchanged `7e1d3649` source.
 
+CI 44566540332 passed compiler, review/id/integrity gates, all test shards,
+build and E2E, but correctly refused `docs/DECISIONS.md` outside this task's
+owns. Declare that one path for this bounded D-200 ruling. An UNBLOCK marker
+does not qualify for the GPT Claim/Takeover/Fix scope exemption; no fake
+participation marker, alternate-branch escape or gate change is used.
+
 Only this row's contract advances `syncedTo` to D-366, with status still todo
-for that fix stage. Owns, dependencies, other holds and every owner-reserved
+for that fix stage. Dependencies, other holders/holds and every owner-reserved
 call stay unchanged. The packet also removes its obsolete model-level review
 rule and production-verification waiver: the ungated quote preview reconciles
 wallets even before a caller sends the new confirmation object. Canonical

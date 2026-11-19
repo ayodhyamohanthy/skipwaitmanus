@@ -88,7 +88,8 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 - `server/db.askPriceGuard.test.ts` (new): uses `askCreateFixtureDb` only, never a permissive fixture
 - `server/askQuoteRoute.test.ts`
 - `server/privateReferralRoutes.integration.test.ts`
-- this packet (Status line only)
+- this packet: Status plus the bounded D-366 qualification in §13 and the conflicting requirements it supersedes (D-200).
+- `docs/DECISIONS.md`: only this task's dated D-200/D-366 engineering ruling, declared after CI 44566540332's scope-only refusal. An UNBLOCK marker does not claim the GPT build/takeover/fix exemption; no marker, branch-routing or gate bypass is used.
 
 **Out of scope:**
 - Skippy callers (`server/skippieSeeker.ts`, `server/skippieSeekerDeps.ts`): that is `SKIPPY-fix` S-3, which reuses this contract.
