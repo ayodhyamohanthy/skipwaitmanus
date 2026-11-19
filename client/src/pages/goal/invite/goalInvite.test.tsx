@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Invite from "../../Invite";
+// Warm the real chunk; the cases still mount the actual lazy route entrypoint.
+import "./GoalInvite";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 
 const { authState, search } = vi.hoisted(() => ({
