@@ -36,7 +36,9 @@ An old page is never deleted before its goal page is live: that would break a ba
 
 One row, one surface, one agent. Its `owns` is its build row's files plus the tests that import its pages.
 
-For `D-048-K-admin-money` only, `docs/DECISIONS.md` is also declared for the bounded D-200 ruling on the catalog parity/release-acceptance block reported in PR #1315. This scope registration changes no retirement/source contract, status, decision-sync stamp or dependency; the UNBLOCK holder is not a builder/fixer and does not use a fabricated participation marker. Scope is published on main before the architect ruling because the checker reads main's declarations.
+For `D-048-K-admin-money`, `docs/DECISIONS.md` is also declared for the bounded D-200 ruling on the catalog parity/release-acceptance block reported in PR #1315. This scope registration changes no retirement/source contract, status, decision-sync stamp or dependency; the UNBLOCK holder is not a builder/fixer and does not use a fabricated participation marker. Scope is published on main before the architect ruling because the checker reads main's declarations.
+
+For `D-048-K-post-opportunity`, the same one-path declaration is limited to the D-200 ruling on the missing hiring-now required-link constraint recorded in PR #1297. The scope prerequisite alone neither dispatches the source repair nor clears the retirement hold; the ruling follows separately on the official architect branch.
 
 `D-048-K-system` also owns `scripts/r7ReleaseAcceptance.test.ts` solely to retire its obsolete Kit/goal source-text and wording comparison once the old Emails implementation is removed. Its useful consumer guarantees stay in public Emails/goal tests and the Ported assertions table; policy assertions are not part of that source-only file. This one-path declaration is published on main before deletion because test-integrity rule 1 reads main's owns even for GPT/Claude scope-exempt builders. No gate exception, status, dependency, runtime or assertion weakening is authorized.
 
