@@ -20,7 +20,7 @@ describe("Onboarding Target Role URL", () => {
     const continueButton = screen.getByRole("button", { name: "Continue" });
 
     fireEvent.change(input, { target: { value: "product designer at Example" } });
-    expect(screen.getByText(/complete job link/i)).toBeTruthy();
+    expect(screen.getByText(/look like a job link/i)).toBeTruthy();
     expect(continueButton.getAttribute("aria-disabled")).toBe("true");
     expect(document.getElementById("continue-hint")?.textContent).toBe("Fix the link above to continue");
     const disabledReasonId = continueButton.getAttribute("aria-describedby");
