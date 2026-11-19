@@ -13,14 +13,12 @@ import UnifiedInbox from "./UnifiedInbox";
 import { ThreadListAlias } from "./ThreadAlias";
 import { assertGoalPage } from "@/test/goalPageContract";
 
-const { authState, accessState, flags, go } = vi.hoisted(() => ({
+const { authState, accessState, go } = vi.hoisted(() => ({
   authState: { isSignedIn: true },
   accessState: { status: "unverified" as string },
-  flags: { inbox: true },
   go: vi.fn(),
 }));
 
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => (flags as Record<string, boolean>)[id] === true }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken: vi.fn().mockResolvedValue("t"), openSignIn: vi.fn() }),
   useUser: () => ({ user: { id: "u1", emailAddresses: [{ emailAddress: "seeker@example.com" }] } }),
@@ -67,7 +65,7 @@ function setOnline(value: boolean) {
 
 const nextStepBlock = () => screen.getByRole("heading", { name: "Your next step" }).closest("section") as HTMLElement;
 
-beforeEach(() => { authState.isSignedIn = true; accessState.status = "unverified"; flags.inbox = true; go.mockClear(); setOnline(true); });
+beforeEach(() => { authState.isSignedIn = true; accessState.status = "unverified"; go.mockClear(); setOnline(true); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("goal inbox", () => {
@@ -263,13 +261,13 @@ describe("goal inbox", () => {
     }
   });
 
-  it("renders the kit inbox untouched while the surface is off (release control)", async () => {
-    flags.inbox = false;
+  it("renders the released inbox without a surface override", async () => {
     stubFetch((url) => (url.includes("/api/company-referrals/mine") ? { requests: [askingRow(5)] } : { requests: [] }));
     render(<Page />);
-    expect(await screen.findByText("Inbox")).toBeTruthy();
-    expect(screen.getByText("MESSAGES")).toBeTruthy();
-    expect(screen.queryByText(GOAL_LINE)).toBeNull();
+    const row = await screen.findByRole("link", { name: /Your referrer · Quillmint, Product Designer 5, Accepted/ });
+    expect(row.getAttribute("href")).toBe("/conversation/5");
+    expect(screen.getByRole("heading", { level: 1, name: GOAL_LINE })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your next step" })).toBeTruthy();
   });
 
   it("renders the same goal inbox through the /thread list alias", async () => {

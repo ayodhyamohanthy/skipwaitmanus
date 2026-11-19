@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Profile from "./Profile";
 import Work from "./Work";
 import PublicProfile from "./PublicProfile";
@@ -17,6 +17,10 @@ vi.mock("wouter", () => ({
 
 beforeEach(() => { authState.isSignedIn = true; go.mockReset(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+beforeAll(async () => {
+  await Promise.all([import("./goal/profile/GoalProfile"), import("./goal/profile/GoalWork")]);
+}, 60_000);
 
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
 
@@ -40,12 +44,12 @@ describe("Profile page", () => {
     fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
     expect(await screen.findByText("Profile text must be a string")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
-    expect(await screen.findByText("Profile saved")).toBeTruthy();
+    expect(await screen.findByText("Profile saved.")).toBeTruthy();
     // Partial update: public-page columns (handle, open-to, location...) are never resent or cleared.
     expect(bodies).toEqual([{ headline: "Staff Designer" }, { headline: "Staff Designer" }]);
   });
 
-  it("renders only the kit fields and the three kit privacy rows", async () => {
+  it("renders only the allowed profile fields and the privacy summary", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok(me())));
     render(<Profile />);
     expect(await screen.findByDisplayValue("Designer")).toBeTruthy();
@@ -58,7 +62,7 @@ describe("Profile page", () => {
     expect(screen.queryByText(/Verified at/)).toBeNull();
     expect(screen.getByText("Block and report available")).toBeTruthy();
     expect(screen.getByText("Leave a conversation without losing access to support.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /View public profile/ }).getAttribute("href")).toBe("/p/asha-r");
+    expect(screen.getByRole("link", { name: "View your public page and who can see it" }).getAttribute("href")).toBe("/p/asha-r");
   });
 
   it("opens the profile handle field focused for /profile?focus=handle and saves only the handle", async () => {
@@ -75,7 +79,7 @@ describe("Profile page", () => {
     window.history.replaceState(null, "", "/profile?focus=handle");
     try {
       render(<Profile />);
-      const sheet = await screen.findByRole("dialog", { name: "Profile link" });
+      const sheet = await screen.findByRole("dialog", { name: "Choose your profile link" });
       const input = within(sheet).getByPlaceholderText("yourname");
       expect(document.activeElement).toBe(input);
       expect(within(sheet).getByRole("heading", { name: "Choose your profile link" })).toBeTruthy();
@@ -86,7 +90,7 @@ describe("Profile page", () => {
       fireEvent.click(within(sheet).getByRole("button", { name: "Save link" }));
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       expect(puts).toEqual([{ handle: "taken-handle" }, { handle: "asha-r" }]);
-      expect(screen.getByRole("link", { name: /View public profile/ }).getAttribute("href")).toBe("/p/asha-r");
+      expect(screen.getByRole("link", { name: "View your public page and who can see it" }).getAttribute("href")).toBe("/p/asha-r");
     } finally { window.history.replaceState(null, "", "/"); }
   });
 
@@ -99,7 +103,7 @@ describe("Profile page", () => {
       render(<Profile />);
       expect(screen.queryByRole("dialog")).toBeNull();
       release();
-      const sheet = await screen.findByRole("dialog", { name: "Profile link" });
+      const sheet = await screen.findByRole("dialog", { name: "Change your profile link" });
       expect(within(sheet).getByDisplayValue("asha-r")).toBeTruthy();
       expect(within(sheet).getByRole("heading", { name: "Change your profile link" })).toBeTruthy();
       fireEvent.click(within(sheet).getByRole("button", { name: "Close" }));
@@ -107,10 +111,14 @@ describe("Profile page", () => {
     } finally { window.history.replaceState(null, "", "/"); }
   });
 
-  it("keeps the profile behind sign-in", () => {
+  it("keeps the profile behind sign-in", async () => {
     authState.isSignedIn = false;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     render(<Profile />);
-    expect(screen.getByText(/Profile & privacy/)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByLabelText("Headline")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("switches to the referrer profile with the verified company and honest privacy copy", async () => {
@@ -119,9 +127,10 @@ describe("Profile page", () => {
       return ok(me({ headline: "Design Lead", profileVisibility: "private" }));
     }));
     render(<Profile />);
-    expect(await screen.findByText("Only referrers reviewing your ask see context.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Referrer profile" }));
-    expect(screen.getByRole("option", { name: "wipro.com" })).toBeTruthy();
+    expect(await screen.findByText("Only referrers reviewing your referral request see context.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Referrer profile" }));
+    expect(screen.getByText("wipro.com · verified by work email")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Verify your work email" })).toBeNull();
     expect(screen.queryByText("Resume")).toBeNull();
     expect(await screen.findByText("Seekers see your company and function. Your name is shown only after you accept.")).toBeTruthy();
     expect(screen.queryByText(/Verified through your work email/)).toBeNull();
@@ -134,9 +143,10 @@ describe("Profile page", () => {
     expect(await screen.findByText("Publicly discoverable")).toBeTruthy();
     expect(screen.queryByText("Not publicly discoverable")).toBeNull();
     expect(screen.queryByText(/PREVIEW ONLY/)).toBeNull();
-    expect(screen.queryByRole("link", { name: /View public profile/ })).toBeNull();
-    fireEvent.click(screen.getByRole("tab", { name: "Referrer profile" }));
-    expect(screen.getByRole("option", { name: "Select verified company" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "View your public page and who can see it" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Referrer profile" }));
+    expect(screen.getByText("No verified company yet.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Verify your work email" }).getAttribute("href")).toBe("/verify");
   });
 
   it("offers a retry when the profile cannot load", async () => {
@@ -182,9 +192,8 @@ describe("Work showcase", () => {
     fireEvent.change(screen.getByPlaceholderText("e.g. Redesigned onboarding for a fintech app"), { target: { value: "Launch" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish to profile" }));
     expect(await screen.findByText("Launch")).toBeTruthy();
-    const launchCard = screen.getByText("Launch").closest("article") as HTMLElement;
-    fireEvent.click(within(launchCard).getByRole("button", { name: "Pin" }));
-    expect(await screen.findByText("1 pinned")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pin Launch" }));
+    await waitFor(() => expect(screen.getByTestId("pin-count").textContent).toBe("1 pinned"));
     expect(screen.queryByRole("button", { name: "Delete Launch" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Edit Launch" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "Edit work" })).getByRole("button", { name: "Remove work" }));
@@ -192,7 +201,7 @@ describe("Work showcase", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("edits a piece in the kit sheet and links its title out instead of an extra row", async () => {
+  it("edits a piece in the work dialog and links its title out instead of an extra row", async () => {
     const patches: Array<Record<string, unknown>> = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === "PATCH") {
@@ -234,7 +243,7 @@ describe("Work showcase", () => {
     }));
     render(<Work />);
     fireEvent.click(await screen.findByRole("button", { name: "Set your profile link" }));
-    const sheet = screen.getByRole("dialog", { name: "Profile link" });
+    const sheet = screen.getByRole("dialog", { name: "Choose your profile link" });
     fireEvent.change(within(sheet).getByPlaceholderText("yourname"), { target: { value: "taken-handle" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Save link" }));
     expect(await screen.findByText("That handle is already taken")).toBeTruthy();
@@ -254,11 +263,12 @@ describe("Work showcase", () => {
     render(<Work />);
     expect(await screen.findByText("Redesign")).toBeTruthy();
     expect(screen.getByText("Private draft")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "What a referrer sees" }));
+    fireEvent.click(screen.getByRole("button", { name: "What a referrer sees" }));
     await waitFor(() => expect(screen.queryByText("Private draft")).toBeNull());
     expect(screen.getByText("Redesign")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Pin" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Unpin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(Pin|Unpin) / })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Redesign" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Who can see Redesign" })).toBeNull();
   });
 
   it("publishes privately or to the profile and switches visibility per piece", async () => {
@@ -287,12 +297,11 @@ describe("Work showcase", () => {
     expect(posts).toHaveLength(0);
     fireEvent.change(screen.getByPlaceholderText("e.g. Redesigned onboarding for a fintech app"), { target: { value: "Notes" } });
     fireEvent.click(screen.getByRole("radio", { name: "Article" }));
-    fireEvent.click(screen.getByRole("button", { name: "Only me" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Only me" }));
     fireEvent.click(screen.getByRole("button", { name: "Save privately" }));
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).toMatchObject({ title: "Notes", kind: "article", visibleOnProfile: false });
-    const card = (await screen.findByText("Redesign")).closest("article") as HTMLElement;
-    fireEvent.change(within(card).getByRole("combobox", { name: "Who can see this" }), { target: { value: "hidden" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Who can see Redesign" }), { target: { value: "hidden" } });
     await waitFor(() => expect(patches).toEqual([{ visibleOnProfile: false }]));
     expect(screen.queryByText(/Import from other platforms/)).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW/)).toBeNull();
