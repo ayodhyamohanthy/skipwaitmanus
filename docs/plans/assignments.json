@@ -4696,7 +4696,7 @@
       "lane": "d048-retire-admin-ops",
       "branch": "agent/queue/d048-k-admin-ops",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -7998,6 +7998,28 @@
       "syncedTo": "D-360",
       "dependsOn": [],
       "note": "Docs-only registration by Instinct · 2cc6 on Nov 18 2026: records the owner's WhatsApp direction (21:42-22:07 IST) as D-360 with message-id evidence, separating owner direction from the proposed sourcing architecture and unverified vendor candidates. No product code, no vendor selection, no coverage claim. Mark done only after the pull request lands on main."
+    },
+    {
+      "id": "D-048-admin-ops-mobile-width",
+      "title": "Keep existing admin flow-health tables and schema statements inside the phone viewport without hiding data",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-admin-ops-mobile-width.md",
+      "tier": 2,
+      "lane": "d048-admin-ops-mobile-width",
+      "branch": "agent/queue/d048-admin-ops-mobile-width",
+      "status": "todo",
+      "syncedTo": "D-366",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/admin-ops/goalOpsParts.tsx",
+        "client/src/pages/goal/admin-ops/GoalAdminSchema.tsx",
+        "client/src/pages/goal/admin-ops/GoalAdminFlowHealth.tsx",
+        "client/src/pages/goal/admin-ops/GoalFlowBaselinePanel.tsx",
+        "e2e/admin-ops-width.e2e.ts",
+        "design/goal-ui/captures/admin-ops/mobile-width/**"
+      ],
+      "note": "P2 correctness follow-up measured during D-048-K-admin-ops / PR #1332, November 19: four 390@2x full-document images exceed 780px (1464/1140 for flow health and 1270 for both schema states), despite a zero root scroll-width metric. All 36 before/after retirement pairs are identical, so this predates that behavior-preserving deletion and does not hold it. Reproduce with actual browser/document/PNG-width checks, then bound the goal panel/grid/table and statement text locally without hiding data. No API/auth/money/global typography/release change. New row appended; existing FIFO order retained; no edge solely for shared files (D-314).",
+      "epic": "D-048-p3"
     },
     {
       "id": "PICKER-stale-fixed-landing",
