@@ -62,4 +62,4 @@ Rating 7/10: it addresses an observed dead end without changing financial code o
 
 ## Status
 
-Registered by the D-100.provider-recon unblock disposition, GPT-6.1 Sol · 74ff, 2026-11-19, under D-200; decisions through D-363 read, including every entry newer than the consumer's D-227 stamp. No implementation, source dispatch, product verdict, Fixed/pass marker, consumer landing or live session continuation is claimed.
+Registered by the D-100.provider-recon unblock disposition, GPT-6.1 Sol · 74ff, 2026-11-19, under D-200; decisions through D-366 read, including every entry newer than the consumer's D-227 stamp. D-364/D-365 concern unrelated public input/copy. D-366 preserves session-level review independence and required checks; this contract uses those current rules and does not carry forward the earlier ordinary-recovery packet's model-level restriction. No implementation, source dispatch, product verdict, Fixed/pass marker, consumer landing or live session continuation is claimed.

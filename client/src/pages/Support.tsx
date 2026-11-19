@@ -37,7 +37,6 @@ export default function Support() {
           <h2 className="text-base font-semibold text-black">Email support</h2>
           <p className="mt-1 text-sm leading-6 text-[#505050]">Write from the email on your account and include a reference (Ref-0007, a payment id, or the link you opened). We reply from <span className="font-semibold text-black">{SUPPORT_EMAIL}</span>.</p>
           <a href={mailto} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3 text-sm font-bold text-white hover:bg-[#0000cc] sm:w-auto">Email {SUPPORT_EMAIL} <ArrowRight className="h-4 w-4" /></a>
-          <p className="mt-3 text-xs leading-5 text-[#505050]">Ayodhya Ram Mohanthy (sole proprietor, trading as skipwait.me) · Founder: <a href="mailto:ayodhya@skipwait.me" className="font-semibold text-black">ayodhya@skipwait.me</a></p>
         </div>
       </div>
     </section>

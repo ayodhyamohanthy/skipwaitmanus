@@ -81,7 +81,7 @@ try {
       await page.getByTestId("goal-start").waitFor();
       const input = page.getByLabel("Target Role URL", { exact: true });
       if (!["start", "draft", "private"].includes(state)) await input.fill(state === "invalid" ? "not a job link" : url);
-      if (state === "invalid") await page.getByText("Paste a complete job link that starts with http:// or https://.").waitFor();
+      if (state === "invalid") await page.getByText("That doesn't look like a job link yet. Copy the link from the job posting and paste it here.").waitFor();
       if (state === "checking" || state === "draft") await page.getByText("Checking the link…", { exact: true }).waitFor();
       if (state === "identified") await page.getByText("Company identified: Quillmint", { exact: true }).waitFor();
       if (state === "ambiguous" || state === "confirmed") {

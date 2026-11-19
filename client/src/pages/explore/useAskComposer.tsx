@@ -36,7 +36,7 @@ import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapN
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
-import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
+import { completeTargetRoleUrl, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
@@ -216,7 +216,9 @@ function clearStartHandoff(): void {
 export type AskComposer = {
   signedIn: boolean;
   url: string;
-  onUrlChange(value: string): void;
+  /** `pasted`: the change came from a paste, so a link missing "https://" is completed at once. */
+  onUrlChange(value: string, pasted?: boolean): void;
+  /** Leaving the field completes a link typed without "https://" (owner, Nov 19 2026). */
   onUrlBlur(): void;
   hint: LinkHint;
   resumeView: AskResume;
@@ -391,6 +393,8 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   // a prefill; the seeker still pastes a real job link. Consumed on use, cleared on sign-out.
   const [discoveryPick] = useState(() => readDiscoveryHandoff());
   useEffect(() => { if (discoveryPick) clearDiscoveryHandoff(); }, [discoveryPick]);
+  // What is sent and saved: the link with "https://" added when the seeker left it off.
+  const jobUrl = completeTargetRoleUrl(url).trim();
   const hint = !company && discoveryPick && !url.trim() ? { tone: "muted" as const, text: `You picked ${discoveryPick.name} (${discoveryPick.domain}) - paste its job link below` } : linkHint(url, company, linkTouched || attempted);
   // D-094 item 2 (D-264 (2), packet §4.2–4.4): the switch ships false, so this
   // makes no request and changes no check until the release row flips it. On a
@@ -503,7 +507,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       // Save the seeker's work even when the directory cannot resolve the company.
       saveAskPrefill({
         companySlug: company?.slug ?? null,
-        targetRoleUrl: url,
+        targetRoleUrl: jobUrl,
         note: composeWhyMe(reasons),
         opportunityId: postSelection?.opportunityId,
       });
@@ -514,12 +518,12 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       const doc = await ensureResume();
       setSendStage("ask");
       const body = buildAskBody({
-        targetRoleUrl: url,
+        targetRoleUrl: jobUrl,
         reasons,
         resumeId: doc.id,
         companySlug: company?.slug ?? null,
         fastTrack: fastTrackAskFields(window.location.search),
-        confirmedCompanyDomain: confirmedDomain(url.trim()),
+        confirmedCompanyDomain: confirmedDomain(jobUrl),
         opportunityId: postSelection?.opportunityId,
         workItemIds: selectedWork,
         // Review F2 (55e5aa3a): expectedCoverage exists only for the by-level
@@ -620,10 +624,10 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
 
   const saveDraft = async () => {
     if (!company) return;
-    if (!isValidTargetRoleUrl(url.trim())) { setLinkTouched(true); setSendError("Add a valid job link to save a draft."); return; }
+    if (!isValidTargetRoleUrl(url.trim())) { setLinkTouched(true); setSendError(TARGET_ROLE_URL_ERROR); return; }
     setDraftState("saving");
     try {
-      await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note: composeWhyMe(reasons) }, fetchToken);
+      await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: jobUrl, note: composeWhyMe(reasons) }, fetchToken);
       setDraftState("saved");
     } catch (reason) {
       setDraftState("idle");
@@ -640,14 +644,14 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       setSendError("We could not save your selected resume or work. Your ask is still here. Try again.");
       return;
     }
-    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons), opportunityId: postSelection?.opportunityId }, store)) {
+    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: jobUrl, note: composeWhyMe(reasons), opportunityId: postSelection?.opportunityId }, store)) {
       clearAskTopUpSelection(store);
       setSendError("We could not save your ask before opening credits. Your ask is still here. Try again.");
       return;
     }
     if (isSignedIn && company && isValidTargetRoleUrl(url.trim())) {
       try {
-        await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note: composeWhyMe(reasons) }, fetchToken);
+        await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: jobUrl, note: composeWhyMe(reasons) }, fetchToken);
       } catch (reason) {
         setSendError(reason instanceof Error ? reason.message : "We could not save your draft. Try again.");
         return;
@@ -679,8 +683,8 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   return {
     signedIn: Boolean(isSignedIn),
     url,
-    onUrlChange: value => { setUrl(value); setDraftState("idle"); },
-    onUrlBlur: () => setLinkTouched(true),
+    onUrlChange: (value, pasted) => { setUrl(pasted ? completeTargetRoleUrl(value) : value); setDraftState("idle"); },
+    onUrlBlur: () => { setUrl(current => completeTargetRoleUrl(current)); setLinkTouched(true); },
     hint,
     resumeView,
     pickResume,

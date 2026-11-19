@@ -32,7 +32,7 @@ import { useAskDraft } from "@/lib/askDraftApi";
 import { useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { applySeo } from "@/lib/seo";
 import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
-import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
+import { completeTargetRoleUrl, jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import { domainBelongsToCompany, isSafePreview, jobLinkPrefillEnabled } from "./explore/jobLinkPrefill";
 import { JobLinkFromPosting } from "./explore/JobLinkFromPosting";
@@ -73,7 +73,7 @@ export default function Ask() {
     // domains match locally. A hosted link takes its company only from a safe
     // preview domain a directory company owns, and otherwise from none.
     let host = "";
-    try { host = new URL(composer.url.trim()).hostname; } catch { host = ""; }
+    try { host = new URL(completeTargetRoleUrl(composer.url).trim()).hostname; } catch { host = ""; }
     const direct = host ? companies.find(item => domainBelongsToCompany(host, item.domains)) ?? null : null;
     if (direct) { setUrlCompany(direct); return; }
     const preview = composer.jobLinkPreview;
@@ -191,7 +191,7 @@ function AskFields({ composer, company, companies }: { composer: Composer; compa
           placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
           value={composer.url}
           invalid={composer.hint?.tone === "error"}
-          onChange={event => composer.onUrlChange(event.target.value)}
+          onChange={event => composer.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
           onBlur={composer.onUrlBlur}
         />
       </GoalField>

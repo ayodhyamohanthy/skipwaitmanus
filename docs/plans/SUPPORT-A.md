@@ -105,6 +105,8 @@ Lines reviewed and kept (F §1.1): L14–16 self-serve cards, L17 (flagged above
 
 ## 4. Preservation list: P1–P9, all DO NOT TOUCH (byte-exact)
 
+> **Superseded for P1–P5 by D-362 and D-365 (owner, Nov 18–19 2026).** The owner removed the home address and phone (D-362), then the proprietor's name and personal email (D-365), from /support. P1–P5 below are history; `client/src/pages/support.promises.test.tsx` now pins that /support names no person, links no personal email and shows no address or phone. P6–P9 are unchanged.
+
 ### P1 · Proprietor name · `client/src/pages/Support.tsx:41` · **DO NOT TOUCH**
 
 ~~~text
