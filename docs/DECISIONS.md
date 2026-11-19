@@ -387,6 +387,7 @@ IDs are unique and never reused: immediately before committing a new entry, fetc
 | D-363 | 2026-11-18 | **D-360 adds two points: a company website link is a search input, and a seeker can send an open referral request to a company with no referrer yet, which the first verified referrer there sees when they join (owner, Nov 18 2026).** (1) **The owner's words.** "One search box accepts a company or brand name, job title, description, job link, or company website link. People don't have to choose a search type or find a job ID." "Jobs still appear even if nobody at that company has joined as a referrer. We show 'No referrers yet' honestly and let people share to bring someone in. users can still create a open referral ask . whenever a referrer joins they will see it." "That's the agreed experience, not a claim that it's built. Which sources can supply the jobs for free, with permission to display them, is still unresolved." (2) **Website link.** A pasted company website (for example a careers or home page URL) resolves to that company, like a typed company name; it is one more input to the single search box, never a separate mode. (3) **Open request with no referrer.** From a company's results with "No referrers yet", the seeker can still send a referral request. It waits at no cost under D-034/D-047 (no debit, no referrer surface) and is delivered, and charged once, when the first verified referrer at that company can see it; a seeker with no credit at that moment is held with one plain notice (D-047). The waiting state is shown honestly; nothing implies a referrer exists or that a reply is likely. (4) **Known conflict, stated.** The legacy 90-day waiting-close clock (`ask-expiry-sweep`) still runs until `D-174-expiry-clock-removal` lands after `D-174-held-ask-reconfirm` (D-174, D-193), so today a waiting request can still be closed before a referrer joins. "Whenever a referrer joins they will see it" is fully true only after that row lands; until then copy must not promise an indefinite wait. (5) **Unchanged.** D-360 (6) automation-first sourcing and (7): this is direction, not shipped capability; free sources with display permission remain unresolved and gated by D-031 and per-source permission checks; prices and money rules are unchanged. | Owner chat message to this Claude Code session, Nov 18 2026 (quoted in (1)). | Adds to D-360; restates D-034/D-047 for no-referrer companies; names the D-174/D-193 clock conflict. Affects tasks: none (the clock removal is already queued as D-174-expiry-clock-removal). | adopted - owner instruction; direction, not shipped |
 | D-364 | 2026-11-19 | **A job link pasted or typed without "https://" is completed automatically, never refused (owner, Nov 19 2026).** (1) **The instruction, verbatim.** "Paste a complete job link that starts with http:// or https://. error shouldnot be shown we should automatically do it. remove all such frictions, user experience should be flaw less 10/10". (2) **What changes.** `completeTargetRoleUrl` in `shared/referralUrl.ts` turns a bare host ("careers.acme.com/jobs/1", "www.linkedin.com/jobs/view/…"), a protocol-relative "//host/…", a link in quotes or angle brackets, and a link inside pasted text ("Apply here: https://…" or "… www.acme.com/jobs/1") into a complete `https://` link. `isValidTargetRoleUrl`, `normalizeTargetRoleUrl` and `jobLinkFitsCompany` use it, so the start page, the ask composer and drawer, the server ask, quote and preview routes, ask drafts and Skippy all accept such a link and store the completed one. The start page, the composer and the referrer post form complete the field on paste and when the field loses focus. (3) **What still shows a message.** Text that cannot be a web link (plain words, `mailto:`, `javascript:`) still cannot be sent; the message no longer mentions "http" and reads "That doesn't look like a job link yet. Copy the link from the job posting and paste it here." (4) **Not changed.** A referrer opportunity post still refuses an explicit `http://` link and every other existing safety check in `server/opportunityTargetUrl.ts` (only the missing scheme is added there); employer resolution, the company-match check and every money rule are unchanged. (5) **Landing.** No queue row exists for this immediate change, so it lands through the queue gate's `owner-direct` exception, which only the owner may apply. | Owner chat message to this Claude Code session, Nov 19 2026. | Applies to the job-link field on /start, /ask, the explore ask drawer and /post-opportunity. Affects tasks: none. | adopted - owner instruction |
 | D-365 | 2026-11-19 | **No person's name, and no personal email, is shown anywhere on the site; the business is described as "a sole proprietorship based in India" (owner, Nov 19 2026; changeable only by the owner).** (1) **The instruction, verbatim.** "dont show my name in support page or any where", quoting the /support line that D-362 had set (the proprietor's name and the founder email). (2) **What changes.** /support drops that line entirely and links only support@skipwait.me. `BUSINESS.operator` in `client/src/lib/business.ts` becomes "a sole proprietorship based in India", so /about, /contact and the refund and cancellation policies no longer name a person. /terms section 09 reads "operated by a sole proprietor based in India, trading as skipwait.me" and section 11 names the grievance officer as "the Proprietor, skipwait.me". `client/src/pages/noPersonalName.test.ts` fails CI if any shipped file (client source and public files, Pages functions, shared) carries the name or the personal mailbox again. (3) **Not changed.** The postal address and phone number still appear on /terms, /contact, /refunds and /cancellation (the owner asked about the name only; D-362 left those pages for a separate call). Internal, never-rendered uses stay: the admin and alert mailbox settings on the server and the Cloudflare account hostname in the internal API origin. (4) **Risk the owner accepted by instructing this.** The payment providers' merchant review and India's consumer e-commerce and IT grievance rules may expect the legal name of the seller and of the grievance officer on the site; for a sole proprietorship that is the proprietor's name. If a provider or regulator asks, restoring it is a one-line change in `client/src/lib/business.ts` and /terms. (5) **Landing.** Ships with D-364 in the same owner-direct pull request on this session's branch. | Owner chat message to this Claude Code session, Nov 19 2026. | Amends D-362 (removes the founder line it set on /support) and SUPPORT-A's P1–P5. Affects tasks: none. | adopted - owner instruction |
+| D-366 | 2026-11-19 | **Launch push: green work goes to production without waiting, live QA runs now, the banded plans get built to go on sale, and nothing is built on a replaced decision (owner, Nov 19 2026).** (1) **The owner's words.** Answering a five-point launch-blocker list: "1) fix it 2) fix it turn on 3) work os is integrated right for seeker login and otp for referrer work email only login 4) fix it 5) no worries about this"; then "dont block anything. if something is green pasts all tests push it to production" and "everything should be up to date with up to date discussions make sure old decisions are not built or been building". (2) **Live QA (LAUNCH-live-qa).** Run it now with the D-346 (4) reviewer sign-in and the demo accounts, no money. The owner's "fix it" authorises an agent session to reset the two reviewer passwords with the `reviewer-qa-passwords` workflow (OPS-reviewer-qa-passwords) and keep the plaintext only in that session's private storage; the passwords are never written to the repository or a log. (3) **Sales: the owner's word to sell the D-219 banded plans (D-123).** No checkout for them exists yet, so "turn on" means building it as Tier 1 work behind a switch that starts off, then switching it on after test-site QA; the D-219 (8) open points (L1-L10 to band mapping, taxes and gateway fees, INR-first or both currencies, the price after a founding cap) still go to the owner before the switch-on. The superseded D-132 per-level credit cost stays off. (4) **Sign-in is right for launch as integrated:** WorkOS for seekers and the work-email code as the only referrer sign-in. Seeker email and password (D-049, PR #324) is not a launch blocker; D-049 is not reopened. (5) **Referrer supply is not a launch gate.** (6) **Green goes to production.** A pull request green on every required check is merged with auto-merge (merge commit) and deploys; no session holds back green work, and a branch that falls behind `main` is updated, not parked. "Green" includes every required check, among them the D-352 review gate where changed paths compute Tier 1. (7) **Nothing is built on a replaced decision.** A Nov 19 audit found open rows whose packets still describe superseded behaviour; each is named below and is held until re-synced: the D-174 seeker-journey rows (composer-neutral, public-payload, jobs-list) predate D-360 (5) and D-363 (jobs show with or without referrers, honestly labelled; "No referrers yet" with a share invite); D-174-ask-from-job and the job-ask row still price by the superseded D-132 per-level credit cost (D-219, D-221); SKIPPY-3 still sells a credit pack in the chat while packs are paused and archived (D-219 (6), D-214 (3)); SKIPPY-6 shows "credits" to users (D-180, D-344); D-048-p3-premium (PR #1254) ports the legacy per-request checkout and a 5-referral first-payment bonus (D-219 (2), (3)); D-132-item3 (PR #1269) tests its guard with the per-level cost switched on; the D-099 bonus pages and the D-086 release lead with an employer bonus, against D-323 (4) and `docs/POSITIONING.md` (the owner decides that conflict); PICKER-landing-wait-fallthrough assumes the retired landing slot (D-347 (2)); PICKER-gate-red-review-route, REVIEW-GATE-fetch-parity, PICKER-ordinary-gate-red-recovery and PROCESS-model-provenance assume model-level review independence, replaced by per-session independence (D-344 (1), D-352); D-048-K-policy and D-048-K-support would carry the owner's name forward in their ported tests (D-365). (8) **Status drift fixed.** `RELEASED` already holds inbox, assistants and for-companies, so D-048-p3-inbox, D-048-R-assistants and D-048-p3-for-companies are marked done. | Owner chat messages to this Claude Code session, Nov 19 2026; read-only audit of origin/main the same day. | Amends how D-346 (4) QA starts (an agent may run the password reset) and confirms D-123 for D-219. Affects tasks: LAUNCH-live-qa, OPS-reviewer-qa-passwords, D-174-seeker-journey-build.composer-neutral, D-174-seeker-journey-build.public-payload, D-174-seeker-journey-build.jobs-list, D-174-ask-from-job, D-174-seeker-journey-build.job-ask, SKIPPY-3, SKIPPY-6, D-048-p3-premium, D-132-item3, D-099-bonus-pages, D-099-bonus-line, D-086-demand-list, PICKER-landing-wait-fallthrough, PICKER-gate-red-review-route, REVIEW-GATE-fetch-parity, PICKER-ordinary-gate-red-recovery, PROCESS-model-provenance, D-048-K-policy, D-048-K-support | adopted - owner instruction |
 
 Status, 2026-10-22: D-141 implemented behind `SKIPPIE_AGENT_ENABLED` (off in production) - grant screen at /agents, per-agent keys (swa_, stored hashed, shown once), lookup/draft scopes, limits, expiry 7-30 days, instant revoke, pause-all, audit log. Drafts only; no send, no purchase path. Verified locally against the skipwait_qa scratch schema (PR #453). Merged Oct 22 with no independent review; the CEO review (D-201) found it opens to every account when its flag is on (S-4), and SKIPPY-fix adds the allow-list and the live proof.
 
@@ -736,3 +737,110 @@ step 6 and §12, not only §1/§4.8. The old GoalSignIn path now belongs to
 DEVICE-SIGNIN-passkeys, not nobody; it remains untouched. Preserve D033 role
 choice and locked behavior, not the rejected old role-card layout. All existing
 owns/deps/holds and the separate release boundary remain unchanged.
+
+### November 19 D-132-item3 accepted-price fixture re-sync (D-366)
+
+Engineering ruling under D-200 by the officially assigned UNBLOCK session
+GPT-6.1 Sol · 814e, against main `6f7f6811` and PR #1269 head `7e1d3649`.
+This applies D-219/D-221 and the owner's D-366 (7), not a new owner decision
+or a change to prices, band mapping, spending order, flags, sales or refunds.
+The authoritative bounded fix-stage contract is
+[`D-132-item3-accepted-price.md` §13](plans/D-132-item3-accepted-price.md#13-november-19-d-366-fixture-and-gate-re-sync).
+
+The previous repo-only blocks `26394cc2` and `bc15a3dc` correctly identified
+that `Fixed d1300293` does not carry across the two later non-status-only
+commits. D-366 now also requires a real source-test correction: the new
+split/amount guard cases generate prices through the superseded level-cost
+flag. Replace that policy coupling with deterministic synthetic counts,
+without reducing the real-create multi-unit split and rollback coverage.
+Retain the distinct dormant coverage-precedence and unchanged legacy quote
+compatibility cases; no old pricing is enabled or rebuilt by this ruling.
+
+Keep reviewer 630a's independent findings and b53c's F1/F2 repair history.
+After actual fixture repair and current-main integration, an eligible official
+FIX holder records its own current-head Fixed evidence; no re-review is
+required by D-344 (7)/D-352. This UNBLOCK is not a Fixed/Pass, cannot impersonate
+the fixer, and changes neither gate code nor status-only allowances. A fresh
+marker alone is not authority to land the unchanged `7e1d3649` source.
+
+The review-lock readback `1660edc6` still has Land claim `5efd662c` by
+session 6c22 as its latest non-heartbeat stage, not FIX. The official
+`--fixed` authorization is stage/holder-bound. After this re-sync, take only
+the picker stage actually offered; if no eligible FIX is offered, report
+that exact route/refusal. Never synthesize a claim, failure or marker to
+create a stage. This UNBLOCK is not source-fix authorization.
+
+CI 44566540332 passed compiler, review/id/integrity gates, all test shards,
+build and E2E, but correctly refused the undeclared decision-register path.
+The branch-only declaration at `74b56939` was still refused because scope
+reads origin/main. Scope-only PR #1337 then merged `ad928481` with green CI,
+declaring this single ruling path while keeping the D-366 hold. After normal
+main integration, the unchanged scope check passes at `3df9171f`: 14 owned
+paths, every change inside. No fake participation marker, alternate-branch
+escape or gate change is used; the actual ruling stays on its original lock.
+
+Only this row's contract advances `syncedTo` to D-366, with status still todo
+for that fix stage. Dependencies, other holders/holds and every owner-reserved
+call stay unchanged. The packet also removes its obsolete model-level review
+rule and production-verification waiver: the ungated quote preview reconciles
+wallets even before a caller sends the new confirmation object. Canonical
+readiness/deployed identity and release-scoped Sentry remain required;
+no real-money QA or new consumer activation is authorized. No new decision ID,
+source change, approval or product-completion claim is created here.
+
+
+### November 19 admin-money catalog parity and unfinished acceptance (D-200)
+
+Official UNBLOCK D-048-K-admin-money, GPT-6.1 Sol · 814e, checked main
+`09295de6`, prior block `7a3396d9` and draft #1315 at `a73fb6ba`.
+This applies D-332/D-344 (2), D-349 and D-352 without a new owner decision.
+All three retained catalog source hashes match current source; native
+inspection of existing synthetic captures confirms missing extras/excluded
+IDs/explanations and partial-result failure/unattempted detail/read recovery.
+No reported failing test was rerun. Keep both goal regressions and legacy
+controls; the four separate wrapper reds await retirement, not catalog fix.
+
+Release #1204 merged `df6559ce` and admin-money is enabled, but canonical
+acceptance remains unfinished, with no closing receipt found. The picker
+treats its merged/deleted branch as landed despite todo, so that old branch
+does not expose another FIX. Register fresh, unoccupied
+`agent/queue/d048-r-admin-money-acceptance` under the same still-todo release
+row, priority, lane and build dependency. Preserve old PR/refs/reports/review
+history; inherit no pass, replay no release and fabricate no stage/identity.
+Only an actual eligible picker claim after registration authorizes work.
+K remains todo and depends on genuine successor acceptance, not old ancestry.
+
+Restore existing catalog plan/result truth and one deliberate fresh GET,
+not automatic apply. Preserve the full reviewed plan fingerprint, typed
+exact-site confirmation, create-only provider boundary and all API/schema/
+auth/audit/money/sales rules. Reconcile the already-assigned fourth route
+`/admin/money-check` (admin packet §10/split/route catalog): add its page and
+existing test to release owns and retirement's explicit post-release scope.
+Keep run/status/findings/alerts/auth/429 and abandoned-checkout preview/apply
+behavior; do not call all of those side effects read-only or execute them
+live for proof. Goal implementation stays in the owned goal directory.
+
+The bounded contract is [retirement packet §3b](plans/D-048-retire.md#3b-admin-money-catalog-parity-and-release-acceptance-november-19-d-200).
+Require source/capture proof at 1280/390 for all four routes, current-head
+required CI, path-computed D-352 review/fix chain, protected landing and
+canonical readiness/identity/route acceptance plus the existing 24-hour
+Sentry release watch before closing R. D-349 suspends the seven-day
+retirement soak, not these requirements. Only then may K delete/port with
+no behavior changes. No live catalog apply, test alert, abandoned close,
+real-money QA, source fix or completion/approval is authorized by this ruling.
+
+Both row stamps advance to checked D-366, not done. K's original source
+branch/PR1315 and dependency stay. The release successor is an explicit
+routing amendment, not a takeover or new task; other owners/holds stay.
+Scope prerequisite #1339 merged `6e856444`, declaring the decision-register
+path on main before this architect ruling. Use the unchanged scope gate;
+no forged participation marker or gate exception. No new decision ID.
+
+Actual picker projection with known merged-release evidence confirms old R
+is skipped as done and the registered successor is BUILD, not inherited FIX.
+An initial throwaway assertion wrongly expected targeted K always refused;
+D-315 can offer draft build-ahead with the unfinished R in `ahead` when no
+existing K branch/PR is modeled. This diagnostic is not a live claim and
+does not waive D-134 review/fix/landing dependency gates or current holders.
+
+
