@@ -6214,7 +6214,7 @@
       "tier": 2,
       "lane": "picker-packet-findings",
       "branch": "agent/queue/picker-packet-findings-exit",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-354",
       "dependsOn": [],
       "owns": [
