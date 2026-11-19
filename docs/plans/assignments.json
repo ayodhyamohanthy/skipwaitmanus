@@ -4457,7 +4457,7 @@
       "lane": "d048-retire-support",
       "branch": "agent/queue/d048-k-support",
       "status": "done",
-      "syncedTo": "D-363",
+      "syncedTo": "D-365",
       "dependsOn": [
         "D-048-R-support"
       ],
@@ -4470,7 +4470,7 @@
         "client/src/pages/reportBlock.test.tsx",
         "client/src/pages/safetyIntake.test.tsx"
       ],
-      "note": "Completion effective only on protected merge of PR #1314. Existing source retires Help/Report/Safety Kit bodies while preserving lazy exports, goal runtime, report/block/privacy rules, shared copy and /support D-362 details. Release PR1193/6c64f04d is already on main and support remains RELEASED; the old todo hold was stale. D-349 suspends soak. Own integrated61focused tests, TypeScript/build/audits pass; exact-source CI44540471159 is green. Own full local suite hit3600s without totals (incomplete, not green; no rerun/weakening). Independently decoded12 retained synthetic capture pairs:11identical and one6pixel shell-edge difference, all state checks pass. Latest main28a2d7d1 integrated at88bd399e; all histories and current sign-in behavior preserved. Final exact-head CI and canonical verification still required. Full proof and limits: docs/plans/D-048-retire.md and client/src/pages/goal/support/retirement/. Rollback is a protected revert of this PR.",
+      "note": "Completion effective only on protected merge of PR #1314. Retires Help/Report/Safety Kit bodies while preserving lazy exports, goal runtime, report/block/privacy rules and shared copy. Release PR1193/6c64f04d is already on main and support remains RELEASED; D-349 suspends soak. Source CI44540471159 and original61focused/TypeScript/build/audits pass; own full local3600s command is incomplete without totals, never green or rerun. Independently decoded12 retained synthetic capture pairs:11identical and one6pixel shell-edge difference, all state checks pass. Integrated main d3d7dbad at c1bfe8bb, preserving the completed sign-in retirement plus owner D-364 URL completion and D-365 public identity/support/legal changes. CI44552783560 correctly rejected the gate receipt's GitHub URL in shipped client source; receipt moved unchanged to docs/evidence/D-048-K-support/gate-814e.json with no scanner exclusion or weakening. Final repaired exact-head CI and canonical verification still required. Full proof and limits: docs/plans/D-048-retire.md, docs/evidence/D-048-K-support/ and client/src/pages/goal/support/retirement/. Rollback is a protected revert of this PR.",
       "epic": "D-048-p3"
     },
     {
