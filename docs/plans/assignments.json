@@ -4848,8 +4848,8 @@
       "tier": 2,
       "lane": "d048-retire-system",
       "branch": "agent/queue/d048-k-system",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4868,7 +4868,7 @@
         "client/src/pages/appStates.test.tsx",
         "client/src/components/app-states/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: system. Built by D-048-p3-system; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Done: protected1349 mergec0a16f818a6795f3d0a21d74bb90ab939e707c13. Final4c8ea73a CI44607779508,mainCI44608281423,Pages44608281490 and releaseverify44609299599 passed.4stable lazy wrappers goal-only;goalbodies/content/browser/API unchanged,sharedSystemStateskept.78synthetic1280/390pairs byte-identical with equal text/requests/browsercalls/4goalhashes;nativeinspected. Initialfocus5fail65pass retained,realmodule readiness5changedfiles30pass;8independent moneycontracts pass after obsolete3Kitwordingcases removed,not repinned. InitialCI44603219666 retainedfailed,no oldjobrerun/timeouts/assertion/gatechange. Main-first1348 names obsolete r7test;inlineassertionmap/actualintegrity pass. Canonical8cases exactwebSHA,1root,0overflow/errors/privateReads/writes;404links,offline retry affordance,masked13-template selector/report outcome and9statechips/Loading verified through page;no install/permission/email/auth interaction. API411067f8 freshremote matchCONVERGED,direct404,4postreleaseSentryqueries0. Full-localonce pending/notgreen;test/docs/mainintegration occurred during it,not exact-final-head proof. Existing senderbranding difference preserved,not live-sendercertification. Policy syntheticproperty intact;futurepolicymerge mustkeep itschanges+bothhistories. Premerge report e7c16c40 recorded. Evidence/limits docs/evidence/D-048-K-system and D-048-retire;systemstaysRELEASED,rollbackprotectedrevert1349.",
       "epic": "D-048-p3"
     },
     {
@@ -4936,8 +4936,8 @@
       "tier": 2,
       "lane": "d048-retire-links",
       "branch": "agent/queue/d048-k-links",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-links"
       ],
@@ -4949,7 +4949,7 @@
         "client/src/pages/fastTrack.dm.test.tsx",
         "client/src/pages/shareCard.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: links. Built by D-048-p3-links; released by D-048-R-links (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retired in PR #1350, protected merge b66afae3519be6f284789c0744a414ab8c902f27. The three links routes retain their released goal layout, attribution, and recovery; links stays in RELEASED. Exact PR and main CI, Pages deployment and release verification passed. The 16 synthetic desktop/phone pairs are pixel-identical; all three routes returned HTTP 200 with the exact merged SHA and passed six live viewport checks on the successor c0a16f81. API readiness matched api-runtime. Local full Vitest was interrupted and is not a pass. Evidence in docs/plans/D-048-retire.md and docs/evidence/D-048-K-links/; rollback by protected revert of #1350.",
       "epic": "D-048-p3"
     },
     {
@@ -4987,8 +4987,8 @@
       "tier": 2,
       "lane": "d048-retire-discovery",
       "branch": "agent/queue/d048-k-discovery",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -5465,8 +5465,8 @@
       "tier": 1,
       "lane": "d048-retire-for-companies",
       "branch": "agent/queue/d048-k-for-companies",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -5769,7 +5769,7 @@
       "tier": 1,
       "lane": "notifications-schema",
       "branch": "agent/queue/rel-review-email-retry-schema",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-359",
       "dependsOn": [
         "D-174-job-catalog"
@@ -5778,7 +5778,7 @@
       "owns": [
         "drizzle/deploy/0122_review_delivery_owner_alerts.sql"
       ],
-      "note": "D-350 migration-before-code prerequisite, split from existing REL-review-email-retry under D-200/D-223. Migration-only PR copies the exact reviewed SQL from PR874 head0c4f79e3 (sha256 ff2f5ed03c0e9f5bd4117812eb7c7ec0551281ba161a012a434542f3824a14f3), lands through independent Tier1 review and required CI, then verifies the ordinary main-only Deploy API migrate-db result before this row is done. No runtime/schema-model/readiness/email/workflow change or direct database write; old binaries tolerate nullable extra columns. Placed directly before its existing parent without reordering unrelated work. Parent runtime landing waits for this actual schema output."
+      "note": "Done: migration-only PR #1341 merged at e285f13c25da90b69ca3df172cb15f27dbb9826c after independent review and final CI 44614764176. Main CI 44615379369 and Deploy API 44615379181 passed; migrate-db applied 0122 and recorded the matching checksum before the API deployed. Release verify 44615462269 passed; canonical readiness and api-runtime matched e285f13c (CONVERGED). No retry runtime or notification shipped. Parent #874 retains its exact-head gates and separate live retry acceptance; see the schema packet for evidence."
     },
     {
       "id": "REL-review-email-retry",
@@ -6013,8 +6013,8 @@
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "owner",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-086.count",
         "D-086.ui",
@@ -6022,7 +6022,7 @@
         "D-090-BYOR",
         "D-048-p3-live-review-find"
       ],
-      "note": "D-086 packet §5.4 (release row, D-223 (3)): flips COMPANY_DEMAND_ADMIN_ENABLED and COMPANY_DEMAND_PUBLIC_ENABLED after D-086.count, D-086.ui and D-086.mount land, QA with captures, the normal privacy review inside the independent Tier 1 review, and the CEO's sign-off. Public demand counts every live request (the runtime's own isAskExpired, no age cutoff of its own) at every listed company whatever its coverage (D-176/D-174), k-anonymous; it is not D-193 (3)'s private waiting count. Unlisted companies reach public display only through admin admission (packet §4.5); D-086.admit is the admin view and does not hold this row. The ask-to-any-company path already exists (packet §3.6-§3.7, §3.11); the 90-day closure is replaced by D-174 plus D-193 (4) in D-174-held-ask-reconfirm and D-174-expiry-clock-removal. D-099-bonus-pages, D-089-request-inbox (by its note) and DEPLOY-gate-docs-sync keep waiting for this row.",
+      "note": "D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
       "owns": [
         "shared/companyDemand.ts (switch only)",
         "AGENTS.md",
