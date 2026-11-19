@@ -1,0 +1,69 @@
+{
+  "task": "D-048-K-admin-people",
+  "session": "GPT-6.1 Sol · 2339",
+  "date": "2026-11-19",
+  "baselineCommit": "0a81f9a3",
+  "candidateCommit": "676501db3c06b2b21a7c271edec811a2ada34477",
+  "runtimeCommit": "01892507",
+  "release": { "pullRequest": 1205, "commit": "276c0fea1da3722b919e6859b4d742238a4fdabb", "mergedAt": "2026-11-16T14:09:43Z" },
+  "scope": "Existing goal-only route entries; no goal implementation, API, authorization, privacy, money, copy or dependency change.",
+  "redFirst": { "commit": "20fba084", "testsFailed": 2, "reason": "Both original page entries still contain goalSurfaceOn and the legacy body." },
+  "focused": { "filesPassed": 5, "testsPassed": 43 },
+  "typecheck": "passed",
+  "productionBuild": "passed for baseline and integrated candidate",
+  "designTokenAudit": "passed",
+  "migrationLint": "passed",
+  "deployTriggerAudit": "passed",
+  "scopeCheck": "passed",
+  "computedTier": 2,
+  "fullLocalSuite": {
+    "command": "LANG=en_US.UTF-8 pnpm exec vitest run --maxWorkers=3",
+    "filesPassed": 739,
+    "filesFailed": 3,
+    "filesSkipped": 5,
+    "testsPassed": 7792,
+    "testsFailed": 3,
+    "testsSkipped": 18,
+    "durationSeconds": 1160.39,
+    "failures": [
+      "scripts/classifyCiChange.test.ts: 400-commit merge-base fixture timed out at 20000ms",
+      "scripts/modelProvenance.test.ts: actual CLI/gate loader composition timed out at 30000ms",
+      "server/bodyErrors.test.ts: malformed JSON case timed out at 20000ms"
+    ],
+    "unchangedFiles": true,
+    "isolatedRerun": { "filesPassed": 3, "testsPassed": 83, "testsFailed": 0 },
+    "status": "failed; isolated rerun is not a full-suite pass"
+  },
+  "browser": {
+    "backend": "ZCode in-app browser",
+    "data": "Existing synthetic admin-people fixtures served locally by preview.mjs; no production requests or actions",
+    "viewports": [{ "width": 1280, "height": 900 }, { "width": 390, "height": 844 }],
+    "usersState": "Synthetic Avery account selected, same detail and suspension action",
+    "privacyState": "Synthetic four-status queue, no request selected",
+    "usersPairs": "Both byte-identical, zero changed pixels",
+    "privacyReadyPairs": "Desktop: 5288 differing pixels, max channel delta 25, mean 1.2173. Phone: 2108 differing pixels, max channel delta 3, mean 1.0697. Not pixel-identical.",
+    "candidateHorizontalOverflowPx": { "users": 0, "privacy": 0 },
+    "desktopPrivacyHeadingGeometry": { "x": 84, "y": 113, "width": 1112, "height": 28 },
+    "fonts": "Instrument Sans, loaded; same desktop heading geometry",
+    "limitations": [
+      "Full-page phone users images are 380px wide excluding the scrollbar; verified browser viewport is 390px.",
+      "High-level candidate account clicks timed out; an observed DOM control click selected the account successfully.",
+      "One privacy screenshot request timed out; subsequent captures completed.",
+      "No browser console-error instrumentation was installed; zero console errors is not claimed.",
+      "This model and the image-inspection session both received media omitted because image input is unsupported. Human visual acceptance is UNVERIFIED.",
+      "No signed-out or all-state parity screenshots were completed; guest, loading, error, denial and recovery behavior is covered by the focused suites."
+    ]
+  },
+  "sentry": {
+    "webProject": "skipwait/skipwait-webapp",
+    "webQuery": "is:unresolved transaction:[/admin/users,/admin/privacy-requests]",
+    "webResults": 0,
+    "backendProject": "skipwait/skipwait-backend",
+    "backendQuery": "is:unresolved transaction:[/api/admin/users,/api/admin/privacy-requests]",
+    "backendResults": 0,
+    "period": "CLI default; no explicit time window was passed",
+    "readOnly": true
+  },
+  "remaining": ["Visual acceptance by an image-capable reviewer", "Exact final-head required CI", "Protected merge and canonical post-deploy verification"],
+  "productionAcceptance": "UNVERIFIED; no merge or deploy claimed"
+}
