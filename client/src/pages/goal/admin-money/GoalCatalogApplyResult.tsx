@@ -18,7 +18,7 @@ export function GoalCatalogApplyResult({ report }: { report: CatalogSyncApplyRes
   const state = {
     applied: { status: "accepted", label: "Sync applied" },
     partial: { status: "waiting", label: "Sync partially applied" },
-    failed: { status: "expired", label: "Sync failed" },
+    failed: { status: "waiting", label: "Sync failed · check provider" },
     nothing_to_do: { status: "accepted", label: "Nothing needed" },
   } as const;
   const outcome = state[report.outcome];

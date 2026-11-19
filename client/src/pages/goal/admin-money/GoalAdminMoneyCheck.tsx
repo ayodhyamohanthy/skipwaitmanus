@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
@@ -14,6 +15,8 @@ export const GOAL_PAGE = { goalLine: "Keep the money truthful." } as const;
 const STATUS_PATH = "/api/admin/money-check/status";
 const RUN_PATH = "/api/admin/money-check/run";
 
+class AdminMoneyCheckAccessError extends Error {}
+
 function time(value: string | null): string {
   return value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) : "Not recorded";
 }
@@ -21,49 +24,26 @@ function time(value: string | null): string {
 export default function GoalAdminMoneyCheck() {
   const { isSignedIn } = useAuth();
   const [needsSignIn, setNeedsSignIn] = useState(false);
-  const [status, setStatus] = useState<MoneyCheckAlertStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(true);
-  const [statusError, setStatusError] = useState("");
+  const statusQuery = useQuery({
+    queryKey: ["admin-money-check-alert-status"],
+    enabled: Boolean(isSignedIn),
+    retry: false,
+    queryFn: async (): Promise<MoneyCheckAlertStatus> => {
+      const response = await fetch(STATUS_PATH, { credentials: "include" });
+      const payload: unknown = await response.json().catch(() => null);
+      if (response.status === 401 || response.status === 403) throw new AdminMoneyCheckAccessError("Administrator access is required");
+      if (!response.ok) throw new Error(responseError(payload, "We could not load the owner-alert status."));
+      const parsed = moneyCheckAlertStatusSchema.safeParse(payload);
+      if (!parsed.success) throw new Error("The owner-alert status could not be read. It is not shown as clear.");
+      return parsed.data;
+    },
+  });
+  const status = statusQuery.data ?? null;
   const [run, setRun] = useState<MoneyCheckRun | null>(null);
   const [runLoading, setRunLoading] = useState(false);
   const [runError, setRunError] = useState("");
   const [testMessage, setTestMessage] = useState("");
   const [testingAlert, setTestingAlert] = useState(false);
-
-  const loadStatus = async () => {
-    setStatusLoading(true);
-    setStatusError("");
-    try {
-      const response = await fetch(STATUS_PATH, { credentials: "include" });
-      const payload: unknown = await response.json().catch(() => null);
-      if (response.status === 401 || response.status === 403) {
-        setNeedsSignIn(true);
-        setStatus(null);
-        return;
-      }
-      if (!response.ok) {
-        setStatusError(responseError(payload, "We could not load the owner-alert status."));
-        return;
-      }
-      const parsed = moneyCheckAlertStatusSchema.safeParse(payload);
-      if (!parsed.success) {
-        setStatusError("The owner-alert status could not be read. It is not shown as clear.");
-        return;
-      }
-      setStatus(parsed.data);
-    } catch {
-      setStatusError("We could not load the owner-alert status. The delivery state is unconfirmed.");
-    } finally {
-      setStatusLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isSignedIn) void loadStatus();
-    else setStatusLoading(false);
-    // This read is tied to the signed-in administrator state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn]);
 
   const runCheck = async () => {
     if (runLoading) return;
@@ -87,7 +67,7 @@ export default function GoalAdminMoneyCheck() {
         return;
       }
       setRun(parsed.data);
-      void loadStatus();
+      void statusQuery.refetch();
     } catch {
       setRunError("The run result could not be confirmed. Check the owner-alert status before another run.");
     } finally {
@@ -119,7 +99,7 @@ export default function GoalAdminMoneyCheck() {
     }
   };
 
-  if (!isSignedIn || needsSignIn) {
+  if (!isSignedIn || needsSignIn || statusQuery.error instanceof AdminMoneyCheckAccessError) {
     return (
       <AdminMoneyGoalFrame screen="admin-money-check-sign-in" current="/admin/money-check">
         <AdminMoneyHeading current="/admin/money-check" />
@@ -155,11 +135,11 @@ export default function GoalAdminMoneyCheck() {
       <section aria-label="Owner alert delivery" className="mt-6 border border-g-hairline bg-g-surface p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-g-label text-g-ink">Owner alert delivery</h2>
-          {statusLoading ? <GoalStatus status="queue_review" label="Checking delivery" /> : statusError ? <GoalStatus status="queue_review" label="Not confirmed" /> : <GoalStatus status={status?.ownerNotReached ? "expired" : "accepted"} label={status?.ownerNotReached ? "Latest alert failed" : "Latest alert delivered or not needed"} />}
+          {statusQuery.isPending ? <GoalStatus status="queue_review" label="Checking delivery" /> : statusQuery.isError ? <GoalStatus status="queue_review" label="Not confirmed" /> : <GoalStatus status={status?.ownerNotReached ? "waiting" : "accepted"} label={status?.ownerNotReached ? "Latest alert failed" : "Latest alert delivered or not needed"} />}
         </div>
-        {statusLoading ? <GoalSkeletonRows density="company" count={2} className="mt-3 px-0" /> : null}
-        {statusError ? <GoalErrorState className="mt-2 px-0" title={statusError} retry={{ label: "Check alert status again", onClick: () => { void loadStatus(); } }} /> : null}
-        {!statusLoading && !statusError && status ? (
+        {statusQuery.isPending ? <GoalSkeletonRows density="company" count={2} className="mt-3 px-0" /> : null}
+        {statusQuery.isError ? <GoalErrorState className="mt-2 px-0" title={statusQuery.error instanceof Error ? statusQuery.error.message : "The delivery state is unconfirmed."} retry={{ label: "Check alert status again", onClick: () => { void statusQuery.refetch(); } }} /> : null}
+        {!statusQuery.isPending && !statusQuery.isError && status ? (
           <div className="mt-3 grid gap-2 text-g-meta text-g-ink-2">
             <p>Latest attempt: {time(status.latestAt)}{status.latestOutcome ? ` · ${status.latestOutcome}` : ""}</p>
             <p>Last successful delivery: {time(status.lastSuccessAt)}</p>

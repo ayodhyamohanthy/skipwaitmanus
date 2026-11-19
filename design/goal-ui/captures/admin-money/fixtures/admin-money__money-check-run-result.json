@@ -1,8 +1,6 @@
 {
   "signedIn": {
     "id": 1,
-    "name": "Ops Admin",
-    "email": "ops-admin@example.com",
     "role": "admin"
   },
   "routes": [
