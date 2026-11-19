@@ -1,0 +1,27 @@
+{
+  "dryRun": {
+    "version": 1,
+    "site": "fixture-test",
+    "environment": "test",
+    "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "checkedAt": "2026-11-19T00:00:00.000Z",
+    "family": { "id": "fixture-family", "action": "create", "reason": "Fixture family is missing." },
+    "toCreate": [{ "kind": "item_family", "params": { "id": "fixture-family", "name": "Fixture family" } }],
+    "correct": [],
+    "mismatched": [],
+    "blocked": [],
+    "extras": [{ "kind": "item_price", "id": "fixture-extra-INR", "status": "active", "note": "Fixture legacy price is left alone." }],
+    "excluded": [{ "itemPriceId": "fixture-excluded-INR", "reason": "Fixture price is excluded from self-serve checkout." }],
+    "counts": { "desired": 1, "correct": 0, "mismatched": 0, "blocked": 0, "toCreate": 1, "itemPricesToCreate": 0, "extras": 1, "excluded": 1 }
+  },
+  "report": {
+    "outcome": "partial",
+    "site": "fixture-test",
+    "environment": "test",
+    "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "created": [{ "kind": "item_family", "id": "fixture-family", "diffs": [] }],
+    "failed": { "kind": "item_price", "id": "fixture-failed-INR", "httpStatus": 400, "apiErrorCode": "invalid_request", "errorCode": "param_wrong_value", "message": "Fixture billing frequency was refused." },
+    "notAttempted": [{ "kind": "item_price", "id": "fixture-unattempted-INR" }],
+    "stoppedReason": "provider_error"
+  }
+}

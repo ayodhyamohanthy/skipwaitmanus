@@ -1,0 +1,126 @@
+{
+  "source": "2ccb36d6d25e4283d599d489f01c72b238d4c261",
+  "capturedAt": "2026-11-19T10:03:30.526Z",
+  "command": "node client/src/pages/goal/admin-money/retirement/capture.mjs",
+  "synthetic": true,
+  "productionRequests": 0,
+  "sourceHashes": {
+    "client/src/pages/AdminCatalogSync.tsx": "90cd072d4454509a8287fdbd1741c839da77d4e741f11772e4c54152455b4dc0",
+    "client/src/pages/goal/admin-money/GoalAdminCatalogSync.tsx": "437654ed1e799095092e267ba9b268946797051a67348f872fd4379328d96e77",
+    "client/src/pages/goal/admin-money/GoalCatalogPlanDetails.tsx": "445799e342cb4c7abf9e9715e8f1b78f42b92f870a50f518dc2a1855947af857"
+  },
+  "results": [
+    {
+      "design": "legacy",
+      "width": 1280,
+      "synthetic": true,
+      "visible": {
+        "extra": true,
+        "excluded": true,
+        "failure": true,
+        "reason": true,
+        "unattempted": true,
+        "rerun": 1
+      },
+      "reportText": "Stopped partway. Read what was created, what failed and what was left alone.\n\n1 created · 1 not attempted\n\nfixture-familycreated\n\nfixture-failed-INR was refused.\n\nFixture billing frequency was refused.\n\nNot attempted: fixture-unattempted-INR\n\nRun the dry run again",
+      "calls": [
+        {
+          "path": "/api/admin/billing/catalog-sync",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/admin/billing/catalog-sync/apply",
+          "method": "POST",
+          "body": "{\"planHash\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"confirmSite\":\"fixture-test\"}"
+        }
+      ],
+      "errors": [],
+      "overflow": 0
+    },
+    {
+      "design": "legacy",
+      "width": 390,
+      "synthetic": true,
+      "visible": {
+        "extra": true,
+        "excluded": true,
+        "failure": true,
+        "reason": true,
+        "unattempted": true,
+        "rerun": 1
+      },
+      "reportText": "Stopped partway. Read what was created, what failed and what was left alone.\n\n1 created · 1 not attempted\n\nfixture-familycreated\n\nfixture-failed-INR was refused.\n\nFixture billing frequency was refused.\n\nNot attempted: fixture-unattempted-INR\n\nRun the dry run again",
+      "calls": [
+        {
+          "path": "/api/admin/billing/catalog-sync",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/admin/billing/catalog-sync/apply",
+          "method": "POST",
+          "body": "{\"planHash\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"confirmSite\":\"fixture-test\"}"
+        }
+      ],
+      "errors": [],
+      "overflow": 0
+    },
+    {
+      "design": "goal",
+      "width": 1280,
+      "synthetic": true,
+      "visible": {
+        "extra": false,
+        "excluded": false,
+        "failure": false,
+        "reason": false,
+        "unattempted": false,
+        "rerun": 0
+      },
+      "reportText": "Sync partial\n\n1 created · the provider refused one object. Check the Chargebee dashboard before acting again.",
+      "calls": [
+        {
+          "path": "/api/admin/billing/catalog-sync",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/admin/billing/catalog-sync/apply",
+          "method": "POST",
+          "body": "{\"planHash\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"confirmSite\":\"fixture-test\"}"
+        }
+      ],
+      "errors": [],
+      "overflow": 0
+    },
+    {
+      "design": "goal",
+      "width": 390,
+      "synthetic": true,
+      "visible": {
+        "extra": false,
+        "excluded": false,
+        "failure": false,
+        "reason": false,
+        "unattempted": false,
+        "rerun": 0
+      },
+      "reportText": "Sync partial\n\n1 created · the provider refused one object. Check the Chargebee dashboard before acting again.",
+      "calls": [
+        {
+          "path": "/api/admin/billing/catalog-sync",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/admin/billing/catalog-sync/apply",
+          "method": "POST",
+          "body": "{\"planHash\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"confirmSite\":\"fixture-test\"}"
+        }
+      ],
+      "errors": [],
+      "overflow": 0
+    }
+  ]
+}
