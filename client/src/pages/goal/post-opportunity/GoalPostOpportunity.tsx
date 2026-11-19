@@ -15,6 +15,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
 import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
+import { completeTargetRoleUrl } from "@shared/referralUrl";
 
 type OpportunityMode = "hiring_now" | "walk_in";
 function localInputToIso(value: string) { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date.toISOString(); }
@@ -119,7 +120,7 @@ function GoalPostOpportunityBody() {
             <h2 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Add useful details.</h2>
             <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">A link and location help candidates act without exposing you.</p>
             <div className="mt-5 grid gap-4">
-              <GoalField label={mode === "hiring_now" ? "Public job link" : "Public job link (optional)"} htmlFor="goal-opp-link" help={mode === "hiring_now" ? "Required for hiring-now posts. We check the link before publishing." : undefined}><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl(event.target.value)} placeholder="https://careers.company.com/role" /></GoalField>
+              <GoalField label={mode === "hiring_now" ? "Public job link" : "Public job link (optional)"} htmlFor="goal-opp-link" help={mode === "hiring_now" ? "Required for hiring-now posts. We check the link before publishing." : undefined}><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl((event.nativeEvent as InputEvent).inputType === "insertFromPaste" ? completeTargetRoleUrl(event.target.value) : event.target.value)} onBlur={() => setTargetRoleUrl(current => completeTargetRoleUrl(current))} placeholder="https://careers.company.com/role" /></GoalField>
               <GoalField label={mode === "walk_in" ? "Location" : "Location (optional)"} htmlFor="goal-opp-location" help={mode === "walk_in" ? "Required for walk-ins." : undefined}><GoalTextInput id="goal-opp-location" value={location} onChange={event => setLocation(event.target.value)} placeholder="e.g. Bengaluru or Remote" /></GoalField>
               <GoalField label="Compensation (optional)" htmlFor="goal-opp-comp" help="One line for the public pay range. Leave blank if you prefer not to share."><GoalTextInput id="goal-opp-comp" aria-label="Compensation" value={compensation} onChange={event => setCompensation(event.target.value.slice(0, 80))} placeholder="₹12–18 LPA or $80k–$110k" /></GoalField>
               <label className="flex items-start gap-3 rounded-[10px] border border-g-hairline p-4"><input type="checkbox" checked={showPosterFirstName} onChange={event => setShowPosterFirstName(event.target.checked)} className="mt-0.5 h-4 w-4 accent-g-ink" /><span><strong className="block text-g-label text-g-ink">Show my first name</strong><span className="mt-1 block text-g-meta leading-[1.5] text-g-ink-3">Candidates see just your first name on the card. Your last name and work email never appear.</span></span></label>

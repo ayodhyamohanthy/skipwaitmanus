@@ -181,15 +181,24 @@ const resyncSteps = (pick, who, register = null) => {
 };
 
 /** D-202: the register block every pick opens with — the newest decisions, then the stop rule. */
+const DECISIONS_SUMMARISED = 10;
+const DECISION_SUMMARY_MAX = 160;
 function decisionsBlock(pick, register) {
   if (!register?.length) return "";
   const stamp = pick.task?.syncedTo;
   const at = stamp ? register.findIndex(e => e.id === stamp) : -1;
   const first = Math.max(0, Math.min(register.length - 5, at < 0 ? register.length - 5 : at));
   const shown = register.slice(first).reverse();
+  // D-361: the 10 newest with a short summary, every other entry by ID, so a stale syncedTo cannot push the
+  // assignment past an agent's output limit; nothing D-202 requires is dropped.
+  const summarised = shown.slice(0, DECISIONS_SUMMARISED);
+  const named = shown.slice(DECISIONS_SUMMARISED).map(e => e.id);
+  const short = title => (title.length > DECISION_SUMMARY_MAX ? `${title.slice(0, DECISION_SUMMARY_MAX - 1).trimEnd()}…` : title);
   return [
     "Newest decisions (read before you work):",
-    ...shown.map(e => `- ${e.id} · ${e.date} · ${e.title}`),
+    ...summarised.map(e => `- ${e.id} · ${e.date} · ${short(e.title)}`),
+    ...(named.length ? [`- Also newer than this task's syncedTo: ${named.join(", ")}`] : []),
+    "Read each of these in full in docs/DECISIONS.md before you work.",
     `If any of these changes what your task says, stop and run \`${CMD} --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn"\` (D-032). A newer decision always beats an older packet, note or chat message.`,
   ].join("\n");
 }
@@ -229,16 +238,33 @@ export function renderBoard(rows) {
   return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
-/** The steps for one pick. ctx: { who, date, claimed, register } (claimed = this run took the lock or holds it). */
-function renderPickLegacy(pick, { who, date, claimed, register = null }) {
-  const body = pickText(pick, { who, date, claimed, register });
+/**
+ * D-358 (owner, Nov 18 2026): "let no agent be blocked for taking a task". What a claim or preview prints: the board
+ * header, one line per priority with counts and one pointer to `--status`, never a line per task, so an agent with an
+ * output cap still reads its assignment. `--status` and the CEO review keep `renderBoard`.
+ */
+export function renderBoardSummary(rows) {
+  const done = rows.filter(r => r.state === "done").length;
+  const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, ${s.released.length} released`);
+  return [
+    "STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)",
+    ...summaries,
+    `${rows.length} tasks, ${done} done. Every task, holder and report: node scripts/next-task.mjs --status`,
+    "",
+  ].join("\n");
+}
+
+/** The steps for one pick. ctx: { who, date, claimed, register, requestedTask } (claimed = this run took the lock or holds it). */
+function renderPickLegacy(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const body = pickText(pick, { who, date, claimed, register, requestedTask });
   // D-202: every pick opens with the newest decisions, so no agent works from an old packet unseen.
   const block = decisionsBlock(pick, register);
   return block ? `${block}\n\n${body}` : body;
 }
 
-function pickText(pick, { who, date, claimed, register = null }) {
-  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"\n`;
+function pickText(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const restriction = requestedTask ? ` --task ${requestedTask}` : "";
+  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"${restriction}\n`;
   switch (pick.kind) {
     case "stop": return head("STOP", [pick.reason, "Tell the owner what failed; do not choose work yourself."]);
     case "wait": return head("WAIT", waitLines(pick, who));

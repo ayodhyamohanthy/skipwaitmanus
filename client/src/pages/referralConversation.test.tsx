@@ -22,14 +22,10 @@ vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userSt
 // the ask's referrerId so a colleague's pending ask never offers Accept (#831 F1).
 const { meState } = vi.hoisted(() => ({ meState: { data: { id: 9 } as { id: number } | undefined } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { profile: { mine: { useQuery: () => ({ data: undefined }) } }, auth: { me: { useQuery: () => meState } } } }));
-// D-048-p3-conversation: the referrer branch moves to the goal page behind
-// goalSurfaceOn("conversation"). Off by default here, exactly like vitest's
-// real flag module (no VITE_GOAL_SURFACES), so every kit case below is unchanged.
-const { surfaces, referrerAccessOverride } = vi.hoisted(() => ({
-  surfaces: { on: new Set<string>() },
+// Retirement: every route-level case exercises the released goal page directly.
+const { referrerAccessOverride } = vi.hoisted(() => ({
   referrerAccessOverride: { value: null as null | { status: "verified"; access: { verified: true; domain: string; companyName: string | null; companyInitials: string | null } } },
 }));
-vi.mock("@/lib/goalSurfaces", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/goalSurfaces")>()), goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("@/hooks/useReferrerAccess", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks/useReferrerAccess")>();
   return { ...actual, useReferrerAccess: () => referrerAccessOverride.value ?? actual.useReferrerAccess() };
@@ -45,7 +41,6 @@ const { captureSpy } = vi.hoisted(() => ({ captureSpy: vi.fn() }));
 vi.mock("@/lib/sentry", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/sentry")>()), captureClientError: captureSpy }));
 
 beforeEach(() => {
-  surfaces.on.clear();
   referrerAccessOverride.value = null;
   authState.isSignedIn = true;
   authState.getToken = vi.fn().mockResolvedValue("test-token");
@@ -90,7 +85,7 @@ describe("ReferralConversation thread", () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [] }) : url.endsWith("/601/preview") ? ok({ request: { ...referrerPreview, companyName: "Wipro", companyInitials: "W", jobFunction: "Data" } }) : ok({ messages: [] })));
     renderPage();
     await screen.findByText(/Product Designer/);
-    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Data · Wipro");
+    expect(screen.getByText("Data · Wipro", { exact: true })).toBeTruthy();
   });
 
   it("never names the platform as the company: unknown company falls back to the role title and neutral copy", async () => {
@@ -158,8 +153,8 @@ describe("ReferralConversation thread", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Accept & connect/ }));
     const acceptButton = await screen.findByRole("button", { name: "Accept" });
-    expect(acceptButton.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(screen.getByLabelText(/I'll refer only through/));
+    expect(acceptButton.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(screen.getByLabelText(/refer only through/));
     fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/one-click-review", expect.objectContaining({ method: "POST" })));
   });
@@ -178,11 +173,11 @@ describe("ReferralConversation thread", () => {
     // D-052: no reason is preselected, and Pass stays off until the referrer picks one.
     const reasons = await screen.findAllByRole("radio");
     expect(reasons).toHaveLength(7);
-    expect(reasons.filter(radio => (radio as HTMLInputElement).checked)).toHaveLength(0);
-    expect((screen.getByRole("button", { name: /^Pass$/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(reasons.filter(radio => radio.getAttribute("aria-checked") === "true")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: /^Pass$/ }).getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
-    fireEvent.click(await screen.findByLabelText("At capacity right now"));
+    fireEvent.click(await screen.findByRole("radio", { name: /At capacity right now/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "/api/company-referrals/601/one-click-review",
@@ -409,7 +404,7 @@ describe("ReferralConversation thread", () => {
     expect(screen.getByText(/I have led two end-to-end redesigns/)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Resume.pdf/ }).getAttribute("href")).toBe("/api/documents/31");
     expect(screen.getByText("Rahul K.")).toBeTruthy();
-    expect(screen.getByText("Referral submitted")).toBeTruthy();
+    expect(screen.getByText("Referred", { exact: true })).toBeTruthy();
     expect(screen.getByLabelText("Message")).toBeTruthy();
   });
 
@@ -454,7 +449,7 @@ describe("ReferralConversation thread", () => {
     expect(screen.queryByText(/Resume access has ended/)).toBeNull();
   });
 
-  it("keeps the accept dialog open with the server error when accepting fails", async () => {
+  it("keeps the accept confirmation open with the server error when accepting fails", async () => {
     stubFetch(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });
       if (url.endsWith("/preview")) return ok({ request: referrerPreview });
@@ -463,10 +458,11 @@ describe("ReferralConversation thread", () => {
     });
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Accept & connect/ }));
-    fireEvent.click(screen.getByLabelText(/I'll refer only through/));
+    fireEvent.click(screen.getByLabelText(/refer only through/));
     fireEvent.click(screen.getByRole("button", { name: "Accept" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(await within(dialog).findByText("Another verified employee already accepted this request")).toBeTruthy();
+    const confirmation = await screen.findByRole("group", { name: "Accept this request" });
+    expect((await screen.findByRole("alert")).textContent).toBe("Another verified employee already accepted this request");
+    expect(confirmation).toBeTruthy();
   });
 
   it("surfaces a failed message send without losing the draft", async () => {
@@ -484,11 +480,8 @@ describe("ReferralConversation thread", () => {
   });
 });
 
-// D-048-p3-conversation (packet docs/plans/D-048-referrer.md §4-§5): the
-// referrer's side of /conversation/:requestId on the goal system, behind
-// goalSurfaceOn("conversation"). Seeker cases above are untouched.
+// D-048-p3-conversation's goal contracts continue without any flag forcing.
 describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () => {
-  const goalOn = () => { surfaces.on.add("conversation"); };
   const pendingFetch = (extra?: (url: string, init?: RequestInit) => unknown) => vi.fn(async (url: string, init?: RequestInit) => {
     const hit = extra?.(String(url), init);
     if (hit) return hit;
@@ -505,15 +498,14 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
     return ok({ request: { ...referrerPreview, status, referrerId: 9, candidateName: "Asha R.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", url: "/api/documents/31" }] } });
   });
 
-  it("keeps the kit referrer page while the conversation flag is off (flag-off parity)", async () => {
+  it("renders the released goal referrer page by default without a surface override", async () => {
     stubFetch(pendingFetch());
     renderPage();
     expect(await screen.findByText("Would you refer this person?")).toBeTruthy();
-    expect(screen.queryByTestId("goal-referrer-conversation")).toBeNull();
+    expect(screen.getByTestId("goal-referrer-conversation")).toBeTruthy();
   });
 
   it("renders the pending ask as a goal page: one next step, one black Accept, identity, resume and composer hidden (D-019)", async () => {
-    goalOn();
     stubFetch(pendingFetch());
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
@@ -533,7 +525,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("accepts only after the official-process attestation, through one-click review", async () => {
-    goalOn();
     const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "approved", companyDomain: "acme.com" }) : undefined));
     stubFetch(fetchMock);
     renderPage();
@@ -553,7 +544,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("renders a server refusal of the accept in plain words and keeps the confirm open", async () => {
-    goalOn();
     stubFetch(pendingFetch(url => (url.includes("/one-click-review") ? fail(409, "Another verified employee already accepted this request") : undefined)));
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Accept & connect/ }));
@@ -565,7 +555,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("passes privately with an actively picked reason and says the identity stayed hidden (D-052)", async () => {
-    goalOn();
     const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "passed", companyDomain: "acme.com" }) : undefined));
     stubFetch(fetchMock);
     renderPage();
@@ -586,7 +575,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("opens names, resume and messages only after acceptance, and marks Referred with the optional reference", async () => {
-    goalOn();
     const bodies: unknown[] = [];
     stubFetch(acceptedFetch("approved", (url, init) => {
       if (url.endsWith("/progress")) { bodies.push(JSON.parse(String(init?.body))); return ok({ progress: { status: "intro_made", changed: true } }); }
@@ -607,7 +595,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("sends a message as the accepted referrer and keeps the draft when the server refuses", async () => {
-    goalOn();
     stubFetch(acceptedFetch("approved", (url, init) => (init?.method === "POST" && url.endsWith("/conversation") ? fail(403, "We could not send this private message") : undefined)));
     renderPage();
     const composer = await screen.findByLabelText("Message");
@@ -618,7 +605,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("states the referred outcome without promising a hire", async () => {
-    goalOn();
     stubFetch(acceptedFetch("intro_made"));
     renderPage();
     const page = await screen.findByTestId("goal-referrer-conversation");
@@ -627,7 +613,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("keeps a claimed but not yet accepted ask anonymous with no composer", async () => {
-    goalOn();
     stubFetch(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });
       if (url.endsWith("/preview")) return fail(404, "claimed");
@@ -641,7 +626,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("says the referrer is offline instead of failing silently", async () => {
-    goalOn();
     stubFetch(pendingFetch());
     renderPage();
     await screen.findByTestId("goal-referrer-conversation");
@@ -653,7 +637,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("shows a verified referrer no credits pill and no seeker money copy, only the never-paid line (D-055)", async () => {
-    goalOn();
     referrerAccessOverride.value = { status: "verified", access: { verified: true, domain: "acme.com", companyName: "Acme", companyInitials: "A" } };
     stubFetch(pendingFetch());
     renderPage();
@@ -664,7 +647,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
   // #831 review findings (Cline · 4255 on 0da0c28).
   it("never offers Accept on a pending ask a colleague holds; says it is with a colleague (#831 F1)", async () => {
-    goalOn();
     meState.data = { id: 9 };
     stubFetch(vi.fn(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });
@@ -682,7 +664,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("offers no decision until the signed-in account is known when the ask names a referrer (#831 F1)", async () => {
-    goalOn();
     meState.data = undefined;
     stubFetch(vi.fn(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });
@@ -701,7 +682,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   // routes actually serve; the deadline line is a server-field question for the
   // P0 lane and is not promised here.
   it("reads only the preview for a pending ask and never probes the claimed detail (#831 F1)", async () => {
-    goalOn();
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).endsWith("/mine")) return ok({ requests: [] });
       if (String(url).endsWith("/preview")) return ok({ request: referrerPreview });
@@ -720,7 +700,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("keeps the preview's pending card when no assignment exists, with no extra request (#831 F1)", async () => {
-    goalOn();
     const fetchMock = pendingFetch();
     stubFetch(fetchMock);
     renderPage();
@@ -732,7 +711,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("never renders a decision deadline from a field the server does not serve, even if a payload carries one (#831 F1)", async () => {
-    goalOn();
     stubFetch(vi.fn(async (url: string) => {
       if (String(url).endsWith("/mine")) return ok({ requests: [] });
       if (String(url).endsWith("/preview")) return ok({ request: { ...referrerPreview, decisionDueAt: "2026-11-14T09:00:00.000Z" } });
@@ -749,7 +727,6 @@ describe("ReferralConversation referrer goal page (D-048-p3-conversation)", () =
   });
 
   it("opens the pass reasons as a bottom sheet on a phone, so the header and the ask stay unclipped (#831 F3)", async () => {
-    goalOn();
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("max-width"), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false }));
     const fetchMock = pendingFetch(url => (url.includes("/one-click-review") ? ok({ status: "passed", companyDomain: "acme.com" }) : undefined));
     stubFetch(fetchMock);

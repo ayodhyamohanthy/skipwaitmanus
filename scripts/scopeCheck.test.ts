@@ -132,3 +132,57 @@ it("D-356: solHoldsTask reads only this task's Claim, Takeover and Fix claim mar
   expect(solHoldsTask("D-100.csp-release", ["Takeover D-100.csp-release: GPT-6.1 Sol · ca98"])).toBe(true);
   expect(solHoldsTask("D-100.csp-release", ["Takeover D-100Xcsp-release: GPT-6.1 Sol · ca98"])).toBe(false);
 });
+
+// D-357 (owner, Nov 18): "make sure this model has full rights on works too not only 6.1". A GPT-6 Sol session gets
+// exactly the GPT-6.1 Sol rights. D-359 widens this to every GPT and Claude name (below).
+it("D-357: a GPT-6 Sol claim lets the branch change files outside owns, with a notice naming the session", () => {
+  const run = scopeCheckOwned("server/x.ts", "Takeover A: GPT-6 Sol · ca98");
+  expect(run.status).toBe(0);
+  expect(`${run.stdout}${run.stderr}`).toContain("D-357");
+  expect(`${run.stdout}${run.stderr}`).toContain("GPT-6 Sol");
+  expect(`${run.stdout}${run.stderr}`).toContain("server/x.ts");
+});
+
+it("D-357/D-359: solHoldsTask accepts GPT-6 Sol, GPT-6.1 Sol and any other GPT version", async () => {
+  const { solHoldsTask } = await import("./scope-check.mjs");
+  expect(solHoldsTask("A", ["Claim A: GPT-6 Sol · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Takeover A: GPT-6 Sol · ca98"])).toBe(true);
+  expect(solHoldsTask("A", ["Fix claim A: GPT-6 Sol · 12fe"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6 Sol"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6.1 Sol · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6.2 Sol · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6 Solar · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: GPT-6X1 Sol · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim A: Codex GPT-6 · 1a2b"])).toBe(true);
+  expect(solHoldsTask("A", ["Claim B: GPT-6 Sol · 1a2b"])).toBe(false);
+});
+
+// D-359 (owner, Nov 18): "let all gpt models have full access", "not only 6 or 6.1", "claude ,gpt models can have full
+// access". Any session whose model name (before ` · <tag>`) contains GPT or Claude, in any case; every other model keeps owns.
+it("D-359: a Claude Code claim lets the branch change files outside owns, with a notice naming the session", () => {
+  const run = scopeCheckOwned("server/x.ts", "Claim A: Claude Code · d563");
+  expect(run.status).toBe(0);
+  expect(`${run.stdout}${run.stderr}`).toContain("D-359");
+  expect(`${run.stdout}${run.stderr}`).toContain("Claude Code");
+  expect(`${run.stdout}${run.stderr}`).toContain("server/x.ts");
+});
+
+it("D-359: a Codex GPT-6 takeover is exempt; a Qwen claim still fails", () => {
+  expect(scopeCheckOwned("server/x.ts", "Takeover A: Codex GPT-6 · 2295").status).toBe(0);
+  expect(scopeCheckOwned("server/x.ts", "Claim A: Qwen 3 · k3f9").status).toBe(1);
+});
+
+it("D-359: solSessionOf matches any GPT or Claude model name and nothing else", async () => {
+  const { solSessionOf } = await import("./scope-check.mjs");
+  expect(solSessionOf("A", ["Claim A: Cue GPT · 77aa"])).toBe("Cue GPT");
+  expect(solSessionOf("A", ["Claim A: ChatGPT · 1"])).toBe("ChatGPT");
+  expect(solSessionOf("A", ["Fix claim A: gpt-7 · 1"])).toBe("gpt-7");
+  expect(solSessionOf("A", ["Takeover A: Claude Opus · 9"])).toBe("Claude Opus");
+  expect(solSessionOf("A", ["Claim A: claude code"])).toBe("claude code");
+  expect(solSessionOf("A", ["Claim A: Codex · 1a2b"])).toBe(null);
+  expect(solSessionOf("A", ["Claim A: DeepSeek V4.1 Flash Free · c744"])).toBe(null);
+  expect(solSessionOf("A", ["Claim A: Qwen 3 · k3f9 (asked GPT)"])).toBe(null);
+  expect(solSessionOf("A", ["Review claim A: Claude Code · 1"])).toBe(null);
+  expect(solSessionOf("A", ["Claim B: Claude Code · 1"])).toBe(null);
+  expect(solSessionOf("A", ["Report A: green — GPT-6 Sol · 1"])).toBe(null);
+});

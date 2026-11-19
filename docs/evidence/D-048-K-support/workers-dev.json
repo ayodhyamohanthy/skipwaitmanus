@@ -1,0 +1,9 @@
+{
+  "task": "D-048-K-support",
+  "webMergeSha": "c27ce712393d04aae2b6ce493c7a6c89ca832486",
+  "checkedAt": "2026-11-19T15:50:06.979Z",
+  "url": "https://skipwaitmanus.ayodhya-711.workers.dev/api/health/ready",
+  "httpStatus": 404,
+  "expectedStatus": 404,
+  "readOnly": true
+}

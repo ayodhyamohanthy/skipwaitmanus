@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-// D-048-p3-admin-ops switch (D-048-admin.md §3): each of the five ops pages
-// renders its goal variant only when goalSurfaceOn("admin-ops") is true, and
-// the untouched kit page otherwise - the row adds a switch only, the goal
-// implementation lives under pages/goal/admin-ops (D-048 split method).
+// D-048-K-admin-ops: every existing route export renders its released goal page
+// without a surface override, and none retains a legacy fallback or switch.
 import React from "react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,11 +18,8 @@ import { GOAL_PAGE as SCHEMA_PAGE } from "./GoalAdminSchema";
 import { GOAL_PAGE as SMOKE_PAGE } from "./GoalAdminSmoke";
 import { GOAL_PAGE as PARTNERS_PAGE } from "./GoalAdminPartners";
 
-const { flag, auth } = vi.hoisted(() => ({ flag: { on: false, asked: [] as string[] }, auth: { isSignedIn: false } }));
-
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isLoaded: true, isSignedIn: auth.isSignedIn, getToken: async () => null }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: false, getToken: async () => null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("wouter", () => ({
@@ -32,42 +29,32 @@ vi.mock("wouter", () => ({
 }));
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
-
-/** The signed-out kit screen each page shows today - proof the kit page still renders with the flag off. */
 const CASES = [
-  ["AdminActivity", AdminActivity, ACTIVITY_PAGE, "Administrator activity"],
-  ["AdminFlowHealth", AdminFlowHealth, FLOW_HEALTH_PAGE, "Admin Flow Health"],
-  ["AdminSchema", AdminSchema, SCHEMA_PAGE, "Schema reconcile"],
-  ["AdminSmoke", AdminSmoke, SMOKE_PAGE, "Protected smoke fixture"],
-  ["AdminPartners", AdminPartners, PARTNERS_PAGE, "Administrator sign-in required"],
+  ["AdminActivity", AdminActivity, ACTIVITY_PAGE],
+  ["AdminFlowHealth", AdminFlowHealth, FLOW_HEALTH_PAGE],
+  ["AdminSchema", AdminSchema, SCHEMA_PAGE],
+  ["AdminSmoke", AdminSmoke, SMOKE_PAGE],
+  ["AdminPartners", AdminPartners, PARTNERS_PAGE],
 ] as const;
 
-// The fixture surface only shows a screen at all while it is enabled, so its
-// status route answers as an enabled fixture; every other route 404s, which
-// leaves the other four pages on their signed-out screens.
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    void url;
-    if (String(url).includes("/smoke/status")) return { ok: true, status: 200, url: "http://localhost/api", json: async () => ({ enabled: true, active: false, csrf: "test-csrf" }) } as unknown as Response;
-    return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
-  }));
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(
+    String(input).includes("/smoke/status") ? { enabled: true, active: false, csrf: "test-csrf" } : {},
+  ), { status: String(input).includes("/smoke/status") ? 200 : 404, headers: { "Content-Type": "application/json" } })));
 });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = false; flag.asked = []; auth.isSignedIn = false; });
-
-describe("admin-ops switch (D-048-p3-admin-ops)", () => {
-  it.each(CASES)("%s renders the goal page when the goal flag is on", async (_name, Page, goalPage) => {
-    flag.on = true;
+describe("retired admin operations routes", () => {
+  it.each(CASES)("%s renders its released goal page without a surface override", async (_name, Page, goalPage) => {
     const { container } = renderPage(<Page />);
     expect(await screen.findByRole("heading", { level: 1, name: goalPage.goalLine })).toBeTruthy();
-    expect(container.querySelector("[data-goal-page='admin']")).toBeTruthy();
-    expect(flag.asked).toContain("admin-ops");
+    expect(container.querySelectorAll("[data-goal-page='admin']")).toHaveLength(1);
   });
 
-  it.each(CASES)("%s keeps the kit page when the goal flag is off", async (_name, Page, _goalPage, kitHeading) => {
-    const { container } = renderPage(<Page />);
-    expect(await screen.findByRole("heading", { level: 1, name: kitHeading })).toBeTruthy();
-    expect(container.querySelector("[data-goal-page]")).toBeNull();
-    expect(flag.asked).toContain("admin-ops");
+  it.each(CASES)("%s retains only its goal route and lazy boundary", (name) => {
+    const source = readFileSync(join(__dirname, "..", "..", `${name}.tsx`), "utf8");
+    expect(source).not.toMatch(/goalSurfaceOn|@\/components\/kit/);
+    expect(source).toContain(`<Goal${name} />`);
+    expect(source).toContain("<Suspense fallback={null}>");
   });
 });
