@@ -4031,9 +4031,10 @@
       "lane": "d048-retire-post-opportunity",
       "branch": "agent/queue/d048-k-post-opportunity",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-367",
       "dependsOn": [
-        "D-048-R4"
+        "D-048-R4",
+        "D-048-p3-post-link-parity"
       ],
       "owns": [
         "docs/DECISIONS.md",
@@ -4043,7 +4044,7 @@
         "client/src/pages/postOpportunity.test.tsx",
         "client/src/components/opportunities/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: post-opportunity. Built by D-048-p3-post; released by D-048-R4 (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "D-332 retirement of the released post-opportunity surface (D-048-p3-post, D-048-R4). Keep draft PR #1297 and its tests; D-367 adds the actual missing output, D-048-p3-post-link-parity. Do not remove the Kit form or land until that goal-build follow-up has shipped with current acceptance evidence. Re-run the drift gate in D-048-retire.md §3, reconcile the same regression from both branches, and preserve or explicitly port every legacy assertion before deleting the body/switch. No behavior, copy, route or price change in retirement. D-349 suspends the seven-day soak in launch mode, not parity, CI or exact-release verification.",
       "epic": "D-048-p3"
     },
     {
@@ -8018,6 +8019,28 @@
       ],
       "note": "Registered FIFO at the tail by the Nov19 D-200 execution ruling for D-100.provider-recon. Implement only docs/plans/PICKER-stale-fixed-landing.md: positive shared-gate stale-Fixed diagnosis on the same tip plus exact gate-only red and a quiet ordinary landing may reach the existing qualified FIX flow. Current gateClear:false conflates errors and conservative status recognition; unknown/malformed/off-tip facts cannot grant recovery. No acceptance/independence/provenance/status-only semantics or completion permissions change. Existing active leases, packet rows, currently clear gates and other failures retain their routes. Red-first new tests and actual read-only picker proof required; no demonstration marker on the consumer. No runtime application, provider/key, payment, schema, flag or settings change. The earlier ordinary-recovery implementation #1093 is preserved, not reopened.",
       "epic": "D-200"
+    },
+    {
+      "id": "D-048-p3-post-link-parity",
+      "title": "Restore the required job link on the released Goal hiring-now form before Kit retirement",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-retire.md",
+      "tier": 2,
+      "lane": "d048-post",
+      "branch": "agent/queue/d048-p3-post-link-parity",
+      "status": "todo",
+      "syncedTo": "D-367",
+      "dependsOn": [
+        "D-048-p3-post",
+        "D-048-R4"
+      ],
+      "owns": [
+        "client/src/pages/goal/post-opportunity/GoalPostOpportunity.tsx",
+        "client/src/pages/goal/post-opportunity/goalPostOpportunity.test.tsx",
+        "design/goal-ui/captures/post-opportunity/**"
+      ],
+      "note": "D-367 routing, D-048-retire.md §3c. Repair only the released Goal form's native hiring-now required-link parity; walk-ins stay optional, D-364 paste/blur completion and existing server/work-email gates stay unchanged. Carry forward #1297's missing-link regression, keep the legacy controls and prove blank blocks and valid link publishes in intercepted browser tests at 1280/390. No Kit deletion, route/release toggle, API, sign-in or payment change. Protected current-head CI and canonical web acceptance are required before retirement. This is the goal-build follow-up, not a reopening of the original build/release.",
+      "epic": "D-048-p3"
     }
   ]
 }
