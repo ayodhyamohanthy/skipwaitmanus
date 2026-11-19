@@ -4144,7 +4144,7 @@
       "lane": "d048-retire-email-review",
       "branch": "agent/queue/d048-k-email-review",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-email-review"
       ],
