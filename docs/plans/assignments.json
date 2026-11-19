@@ -5465,8 +5465,8 @@
       "tier": 1,
       "lane": "d048-retire-for-companies",
       "branch": "agent/queue/d048-k-for-companies",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
