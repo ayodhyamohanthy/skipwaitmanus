@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-// D-048-p3-referrer-home: flag-off parity and flag-on goal rebuild for
-// /referrer-home. Stubs mirror client/src/pages/referrerHome.test.tsx.
+// D-048-K-referrer-home: the released home and setup are the only route bodies.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,9 +11,8 @@ import { REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { GOAL_PAGE as HOME_GOAL } from "./goal/referrer-home/GoalReferrerHome";
 import { GOAL_PAGE as SETUP_GOAL } from "./goal/referrer-home/GoalReferrerSetup";
 
-const { authState, surfaces } = vi.hoisted(() => ({ authState: { isSignedIn: true, userId: "11", getToken: vi.fn().mockResolvedValue("test-token") }, surfaces: { on: new Set<string>() } }));
-vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
+const authState = vi.hoisted(() => ({ isSignedIn: true, userId: "11", getToken: vi.fn().mockResolvedValue("test-token") }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => authState }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/referrer-home", vi.fn()],
@@ -34,7 +32,7 @@ function setOffline() {
   window.dispatchEvent(new Event("offline"));
 }
 
-type HomeStub = { verified?: boolean; paused?: boolean; reverifyDays?: number; fresh?: unknown[]; neverReviewed?: boolean };
+type HomeStub = { verified?: boolean; paused?: boolean; reverifyDays?: number; fresh?: unknown[]; neverReviewed?: boolean | null };
 function stubHome(options: HomeStub = {}) {
   const now = Date.now();
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
@@ -45,7 +43,7 @@ function stubHome(options: HomeStub = {}) {
     if (path.endsWith("/referrer-preferences")) return ok({ preferences: { referralCapacity: 3, preferAreas: ["Design"], referrerVisibility: "anon", notifyNewAsk: true, paused: options.paused ?? false } });
     if (path.endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: options.reverifyDays === undefined ? iso(now - 20 * DAY) : iso(now - (30 - options.reverifyDays) * DAY), referralCapacity: 3 } });
     if (path.endsWith("/referrer-impact/me")) return ok({ summary: { reviewed: options.neverReviewed ? 0 : 2, approved: 1, introductions: 1, interviews: 0, offers: 0, repliedWithin3DaysPct: 100 } });
-    if (path.includes("scope=new")) return ok({ requests: options.fresh ?? [ask(31, now - 2 * DAY), ask(32, now - 2 * DAY, { expiresAt: iso(now + 5 * HOUR) })], hasEverReviewed: options.neverReviewed ? false : true });
+    if (path.includes("scope=new")) return ok({ requests: options.fresh ?? [ask(31, now - 2 * DAY), ask(32, now - 2 * DAY, { expiresAt: iso(now + 5 * HOUR) })], hasEverReviewed: options.neverReviewed === null ? undefined : !options.neverReviewed });
     if (path.includes("scope=completed")) return ok({ requests: options.neverReviewed ? [] : [{ id: 40, companyDomain: "wipro.com", status: "approved", isClaimedByYou: true, unreadMessageCount: 0, createdAt: iso(now - 10 * DAY) }] });
     return ok({});
   });
@@ -54,7 +52,7 @@ function stubHome(options: HomeStub = {}) {
 }
 const HOUR = 3600000;
 
-beforeEach(() => { onlineManager.setOnline(true); authState.isSignedIn = true; surfaces.on = new Set(["referrer-home"]); });
+beforeEach(() => { onlineManager.setOnline(true); authState.isSignedIn = true; });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -64,13 +62,13 @@ afterEach(() => {
   onlineManager.setOnline(true);
 });
 
-describe("Goal /referrer-home flag gate", () => {
-  it("renders the kit home untouched when the flag is off", async () => {
-    surfaces.on = new Set();
+describe("Goal /referrer-home retirement", () => {
+  it("renders the goal page without a surface override", async () => {
     stubHome();
-    renderWithQuery(<ReferrerHome />);
-    expect(await screen.findByText("Waiting for you")).toBeTruthy();
-    expect(screen.queryByText("Answer the asks waiting for you.")).toBeNull();
+    const { container } = renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText(HOME_GOAL.goalLine)).toBeTruthy();
+    expect(screen.queryByText("Waiting for you")).toBeNull();
+    assertGoalPage(container, HOME_GOAL);
   });
 });
 
@@ -111,6 +109,7 @@ describe("Goal /referrer-home", () => {
     renderWithQuery(<ReferrerHome />);
     expect(await screen.findByText("Verify a work email to begin.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Verify work email" }).getAttribute("href")).toBe("/verify");
+    expect(screen.queryByTestId("goal-referrer-sample-rows")).toBeNull();
   });
 
   it("shows the Become a referrer link only before verification", async () => {
@@ -129,10 +128,29 @@ describe("Goal /referrer-home", () => {
     stubHome({ fresh: [], neverReviewed: true });
     renderWithQuery(<ReferrerHome />);
     expect(await screen.findByText("SAMPLE · NOT REAL REFERRAL REQUESTS")).toBeTruthy();
-    expect(screen.getAllByText("SAMPLE").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("SAMPLE")).toHaveLength(2);
     expect(screen.queryByRole("link", { name: /Sample/ })).toBeNull();
-    const sampleText = screen.getByTestId("goal-referrer-sample-rows").textContent ?? "";
-    expect(sampleText).not.toMatch(/credit|release|pass/i);
+    const sampleZone = screen.getByTestId("goal-referrer-sample-rows");
+    expect(sampleZone.querySelectorAll("a, button, [tabindex], [role='button']")).toHaveLength(0);
+    expect(sampleZone.querySelector("ul")?.getAttribute("aria-hidden")).toBe("true");
+    expect(sampleZone.textContent).toContain("Examples only; these rows do not count toward your capacity or private record.");
+    expect(sampleZone.textContent).not.toMatch(/credit|release|pass/i);
+    expect(screen.getByText("Referral requests waiting").parentElement?.textContent).toBe("0Referral requests waiting");
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuetext")).toBe("3 of 3 remaining");
+  });
+
+  it("says new referral requests reach verified referrers privately", async () => {
+    const fetchMock = stubHome({ fresh: [] });
+    const homeImplementation = fetchMock.getMockImplementation();
+    if (!homeImplementation) throw new Error("Expected the home stub implementation.");
+    // New by impact, but not the explicit sample state (hasEverReviewed=false).
+    fetchMock.mockImplementation((url, init) => String(url).endsWith("/referrer-impact/me")
+      ? Promise.resolve(ok({ summary: { reviewed: 0, approved: 0, introductions: 0, interviews: 0, offers: 0, repliedWithin3DaysPct: 0 } }))
+      : homeImplementation(url, init));
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Your first referral request will appear here.")).toBeTruthy();
+    expect(screen.getByTestId("goal-empty-state").textContent).toContain("Referral requests for Wipro now reach you privately. Share your profile when you are ready.");
+    expect(screen.queryByText(/People can find verified referrers/)).toBeNull();
   });
 
   it("resumes a paused queue with a real preferences write", async () => {
@@ -143,11 +161,12 @@ describe("Goal /referrer-home", () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/referrer-preferences") && call[1]?.method === "PUT" && String(call[1]?.body).includes('"paused":false'))).toBeTruthy());
   });
 
-  it("shows an explicit empty state after a verified referrer has reviewed before", async () => {
-    stubHome({ fresh: [], neverReviewed: false });
+  it.each([false, null])("shows an honest empty state without samples when neverReviewed is %s", async (neverReviewed) => {
+    stubHome({ fresh: [], neverReviewed });
     renderWithQuery(<ReferrerHome />);
     expect(await screen.findByTestId("goal-empty-state")).toBeTruthy();
     expect(screen.getByText("No referral requests right now.")).toBeTruthy();
+    expect(screen.queryByTestId("goal-referrer-sample-rows")).toBeNull();
   });
 
   it("keeps the loading state visible while the home request is stalled", () => {
@@ -169,6 +188,53 @@ describe("Goal /referrer-home", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText(HOME_GOAL.goalLine)).toBeTruthy();
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBeforeRetry);
+  });
+
+  it("R1: the capacity bar shows what remains and states it in its aria-label", async () => {
+    stubHome();
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Monthly capacity remaining")).toBeTruthy();
+    // Stub: capacity 3, one claimed approved referral in use, so 2 of 3 remain.
+    const bar = screen.getByRole("progressbar");
+    expect(bar.getAttribute("aria-label")).toBe("2 of 3 monthly referral capacity remaining");
+    expect(bar.getAttribute("aria-valuenow")).toBe("2");
+    expect(bar.getAttribute("aria-valuemin")).toBe("0");
+    expect(bar.getAttribute("aria-valuemax")).toBe("3");
+    expect(bar.getAttribute("aria-valuetext")).toBe("2 of 3 remaining");
+    const fill = bar.firstElementChild as HTMLElement | null;
+    expect(fill?.style.width).toBe(`${(2 / 3) * 100}%`);
+  });
+
+  it("R2: a titled referral request keeps its Ref ID first in the row metadata, visible at mobile width", async () => {
+    const now = Date.now();
+    stubHome({ fresh: [ask(31, now - 2 * DAY, { jobTitle: "Senior Product Designer", jobFunction: "design" })] });
+    renderWithQuery(<ReferrerHome />);
+    const link = await screen.findByRole("link", { name: /Private referral request · Ref-1031/ });
+    expect(link.textContent).toContain("Senior Product Designer");
+    const meta = link.querySelector('[data-testid="goal-referrer-row-meta"]') as HTMLElement | null;
+    expect(meta).toBeTruthy();
+    expect((meta?.textContent ?? "").startsWith("Ref-1031")).toBe(true);
+    // No responsive class may hide the Ref ID below the desktop breakpoint (390px).
+    const ref = meta?.querySelector('[data-testid="goal-referrer-row-ref"]') as HTMLElement | null;
+    expect(ref?.textContent).toBe("Ref-1031");
+    for (let node: HTMLElement | null = ref; node && node !== link; node = node.parentElement) {
+      expect(node.className).not.toMatch(/(^|\s)(hidden|sr-only)(\s|$)/);
+    }
+    // The longer metadata line must truncate inside its column, never widen the row past it
+    // (seen in the 1280/390 captures): the grid item opts out of its min-content minimum.
+    expect(link.parentElement?.tagName).toBe("LI");
+    expect(link.parentElement?.className).toMatch(/(^|\s)min-w-0(\s|$)/);
+  });
+
+  it("R2: an untitled referral request also leads its metadata with the Ref ID, named once (390 truncates the title)", async () => {
+    const now = Date.now();
+    stubHome({ fresh: [ask(31, now - 2 * DAY)] });
+    renderWithQuery(<ReferrerHome />);
+    const link = await screen.findByRole("link", { name: /Private referral request · Ref-1031/ });
+    expect(link.querySelector("strong")?.textContent).toBe("Private referral request");
+    const meta = link.querySelector('[data-testid="goal-referrer-row-meta"]') as HTMLElement | null;
+    expect((meta?.textContent ?? "").startsWith("Ref-1031")).toBe(true);
+    expect((link.textContent ?? "").match(/Ref-1031/g)?.length).toBe(1);
   });
 
   it("announces an offline connection after the page has loaded", async () => {
@@ -195,6 +261,13 @@ function stubSetup(preferences: Record<string, unknown> = SETUP_PREFS) {
 }
 
 describe("Goal /referrer-setup", () => {
+  it("renders the goal setup without a surface override", async () => {
+    stubSetup();
+    const { container } = renderWithQuery(<ReferrerSetup />);
+    expect(await screen.findByText(SETUP_GOAL.goalLine)).toBeTruthy();
+    assertGoalPage(container, SETUP_GOAL);
+  });
+
   it("keeps setup behind work-email sign-in via the referrer OTP href", async () => {
     authState.isSignedIn = false;
     const fetchMock = vi.fn();

@@ -2,16 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
 import { adminCompanyListResponseSchema } from "@shared/companies";
 import { ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { AdminShell, type AdminView } from "@/components/admin/AdminShell";
 import { companyCoverageMetric, type LiveMetric, OverviewView } from "@/components/admin/AdminOverviewView";
 import { CompaniesView, ReportsView, UsersView, VerificationsView } from "@/components/admin/AdminSectionViews";
+import { UnlistedDemandView } from "@/components/admin/UnlistedDemandView";
 import { AdminAccessError, adminKeys, adminRequest, adminRetry, flowHealthSchema, loadEnrollments, OPEN_ENROLLMENT_STATUSES, safetyReportsSchema, TERMINAL_CASE_STATUSES } from "@/components/admin/adminApi";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-admin: the goal reskin of this surface (switch only; the goal
+// implementation lives under pages/goal/admin).
+const GoalAdminOverview = lazy(() => import("./goal/admin/GoalAdminOverview"));
 
 export default function AdminOverview() {
+  if (goalSurfaceOn("admin")) return <Suspense fallback={null}><GoalAdminOverview /></Suspense>;
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [view, setView] = useState<AdminView>("overview");
@@ -37,6 +44,7 @@ export default function AdminOverview() {
       {failure ? <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[7px] border border-destructive bg-background p-4 text-sm"><span className="text-destructive">{failure.message}</span><Button variant="outline" size="sm" onClick={retry}>Try again</Button></div> : null}
       {view === "overview" && <OverviewView onView={setView} verificationQueue={verificationQueue} openReports={reportsMetric} companyCoverage={companyCoverageMetric(companies.data, companies.isLoading, Boolean(companies.error))} health={health.data} healthLoading={health.isLoading} healthFailed={Boolean(health.error)} />}
       {view === "companies" && <CompaniesView companies={companies.data} loading={companies.isLoading} failed={Boolean(companies.error)} />}
+      {view === "companies" && <UnlistedDemandView />}
       {view === "verifications" && <VerificationsView queue={verificationQueue} />}
       {view === "reports" && <ReportsView reports={reportsMetric} />}
       {view === "users" && <UsersView />}

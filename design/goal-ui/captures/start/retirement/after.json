@@ -1,0 +1,171 @@
+{
+  "synthetic": true,
+  "baselineRef": "e8845c360425d3ac546ccad8c5de89c77cda12b1",
+  "sourceHead": "ae5e4cc4f096eda5ceda0cc5b779952ef8b70113",
+  "entrySha256": "e9c733ec69b27f407ea0083f8613bd3db9d5332acb758e62e3d2c03dc6057d22",
+  "baselineEntryOnly": false,
+  "results": [
+    {
+      "state": "start",
+      "width": 1280,
+      "file": "start-1280.png",
+      "sha256": "ff659872b241fd61d94a42e22d9bd56941409a33714a4e87a0068a0848730252",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "start",
+      "width": 390,
+      "file": "start-390.png",
+      "sha256": "2d2a1a1f30771c911be14514739c2bdeb231573755c7727b1d797588acd7fac6",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "invalid",
+      "width": 1280,
+      "file": "invalid-1280.png",
+      "sha256": "4c8512761021a416685f278ef75cca64a4423385c7e732f526f4e5bfed2ee47b",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "invalid",
+      "width": 390,
+      "file": "invalid-390.png",
+      "sha256": "31cbca661296d86897d105815894c931811417e72f794657fd0b93577fcd61c0",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "checking",
+      "width": 1280,
+      "file": "checking-1280.png",
+      "sha256": "fe52943903e9f90c8704bd11e5e6a68a28d2804d4b47d15f50be7f79de223c46",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "checking",
+      "width": 390,
+      "file": "checking-390.png",
+      "sha256": "618e749b3f22e579ec3a76001faf01074ccd39f839c6ef40ed6b93b06600a6bd",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "identified",
+      "width": 1280,
+      "file": "identified-1280.png",
+      "sha256": "292f04d3eb6dd3ff20763d1ab44b8ac042386e4bdee91a7efa8cfd668d5751df",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "identified",
+      "width": 390,
+      "file": "identified-390.png",
+      "sha256": "07aba5a243028e9dcd2abde996b9e555bef6ba5116523b908e0e4086a8c7fbec",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "ambiguous",
+      "width": 1280,
+      "file": "ambiguous-1280.png",
+      "sha256": "3034e58f0e179910af68647dafcdb92dbc476327228202d69f0af313fabfddab",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "ambiguous",
+      "width": 390,
+      "file": "ambiguous-390.png",
+      "sha256": "0e8715f1b57d76424729f4c573708caf3253b8d0b22fb55109431a57e523884a",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "confirmed",
+      "width": 1280,
+      "file": "confirmed-1280.png",
+      "sha256": "54ec7d37b505d090840b7a360b88c94f9675955beacc75de688e8b9a5203483c",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "confirmed",
+      "width": 390,
+      "file": "confirmed-390.png",
+      "sha256": "2720d57d46f70afa73488f784049e93adfa09e65738ff68be1202eedc79a6e3c",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "outage",
+      "width": 1280,
+      "file": "outage-1280.png",
+      "sha256": "b70b4a6389c2b5b9543030983fadfb54c060d129d88abdede4aefcdcae219670",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "outage",
+      "width": 390,
+      "file": "outage-390.png",
+      "sha256": "c1c2b6db7726d288e479ea31b593ca30824b5d180a12279c75153a8f47d33a4c",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "draft",
+      "width": 1280,
+      "file": "draft-1280.png",
+      "sha256": "eaf8490eb67bc764558c76352528ff3c82a2a96ca3d48d5a0b55edd23be451e4",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "draft",
+      "width": 390,
+      "file": "draft-390.png",
+      "sha256": "f1e8a837570accb2b4f38a8e159d44669aecc4776876d20fc164f7a757e7e0c2",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": false
+    },
+    {
+      "state": "private",
+      "width": 1280,
+      "file": "private-1280.png",
+      "sha256": "a8bbb7d555cba9eba00009300ece9dec0615e7c00f2d86bb8d604fd976be0a04",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    },
+    {
+      "state": "private",
+      "width": 390,
+      "file": "private-390.png",
+      "sha256": "2d6259ff03d5a821761ee2852163b68bd34f0c87207fd6cf985dba9ba43147d0",
+      "errors": [],
+      "horizontalOverflowPx": 0,
+      "continueDisabled": true
+    }
+  ]
+}

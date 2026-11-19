@@ -71,6 +71,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/privacy",
   "/profile",
   "/queue",
+  "/r/:token",
   "/refer/:companySlug/:vanityAlias",
   "/referrer",
   "/referrer-home",
@@ -160,6 +161,7 @@ const CSP_REPORT_ONLY = [
   "script-src 'self' 'unsafe-inline' https://cdn.usefathom.com",
   "connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com",
   "frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com",
+  "report-uri /api/csp-report",
 ].join("; ");
 
 export const onRequest: PagesFunction = async context => {

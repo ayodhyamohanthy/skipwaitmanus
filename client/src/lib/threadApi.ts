@@ -4,6 +4,7 @@ import { jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { isPostApprovalReferralStatus, referralStatuses, type ReferralStatus } from "@shared/referral";
 import { isOpenAskAttachment, referrerAskAttachmentSchema, type ReferrerAskAttachment } from "@shared/referrerAskView";
 import { readApiJson } from "@/lib/apiResponse";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "./referrerStepUpApi";
 
 /*
  * Private referral thread API. Every response is parsed with Zod at this
@@ -132,6 +133,8 @@ export async function authedFetch(path: string, getToken: TokenGetter, init?: Re
     throw new Error(NETWORK_ERROR);
   }
   const payload = await readApiJson<Record<string, unknown>>(response, FALLBACK_ERROR);
+  // D-057: a referrer action refused for this session re-checks the verdict, so the page shows the step-up.
+  if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
   if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : FALLBACK_ERROR);
   return payload;
 }

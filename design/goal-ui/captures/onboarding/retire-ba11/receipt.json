@@ -1,0 +1,33 @@
+{
+  "sourceCommit": "bde001853d4fae6679a38993e7d465d0850c34ad",
+  "sourceSha256": "324452013cb41765820a1ffb13ac7ca8168ed04206da8d8a53c5c871f32a634c",
+  "synthetic": true,
+  "results": [
+    {
+      "width": 1280,
+      "height": 900,
+      "attachmentPatches": [
+        null,
+        5,
+        null
+      ],
+      "restoredAfterReload": true,
+      "overflow": 0,
+      "pageErrors": [],
+      "sha256": "4271107e8b6a9ac18bfd13d3af236a2117292ecee3def7c4f72dd2e4ce85133f"
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "attachmentPatches": [
+        null,
+        5,
+        null
+      ],
+      "restoredAfterReload": true,
+      "overflow": 0,
+      "pageErrors": [],
+      "sha256": "265537fed180b08a97700de14d772147a28a41b9a6569f0c8f6715db20982b43"
+    }
+  ]
+}

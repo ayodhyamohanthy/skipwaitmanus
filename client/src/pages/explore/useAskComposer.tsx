@@ -18,10 +18,12 @@ import { useAskQuote } from "@/hooks/useAskQuote";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { ASK_PREFILL_TTL_MS, clearAskPrefill, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
+import { clearDiscoveryHandoff, readDiscoveryHandoff } from "./discoveryHandoff";
 import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { defaultPinnedWorkIds, useAskWorkPieces } from "@/lib/askWorkPieces";
 import { discardAskDraftRemote, saveAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
+import { canShowNudge, markNudgeShown } from "@/lib/upgradeNudges";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
@@ -39,6 +41,7 @@ import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReaso
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
 import { linkHint, roleTitleFromUrl, type AskCostQuote, type LinkHint } from "./findModel";
+import { jobLinkMismatch, jobLinkPrefillEnabled, useJobLinkPreview, type JobLinkPreview } from "./jobLinkPrefill";
 import { askSignInReturnTo, goToSeekerSignIn } from "./signInHandoff";
 
 const MIN_WORDS = 10;
@@ -245,6 +248,8 @@ export type AskComposer = {
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
+  /** D-094 item 2 (switch off): the preview for the current link, read by /ask's company rule (§4.5). */
+  jobLinkPreview: JobLinkPreview | null;
   /** D-174: pick a posted role in place. Replaces the whole selection - a
    * linkless pick clears any stale link and identity from an earlier pick. */
   selectPost(selection: OpportunityAskSearch | null): void;
@@ -254,7 +259,7 @@ export type AskComposer = {
   clearAfterClose(): void;
 };
 
-export function useAskComposer(company: PublicCompany | null): AskComposer {
+export function useAskComposer(company: PublicCompany | null, options?: { companyDoor?: boolean }): AskComposer {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const online = useOnlineStatus();
@@ -342,8 +347,13 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   // a linkless post clears the previous post's link so no stale link, pass
   // check or opportunity id can leak into the next ask.
   const selectPost = (selection: OpportunityAskSearch | null) => {
+    if (selection === null && postSelection === null) return;
     setPostSelection(selection);
-    setUrl(selection?.jobUrl ?? "");
+    if (selection) {
+      setUrl(selection.jobUrl ?? "");
+    } else {
+      setUrl(remoteDraft && company && remoteDraft.companySlug === company.slug ? remoteDraft.targetRoleUrl : "");
+    }
     setDraftState("idle");
   };
 
@@ -360,6 +370,9 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     if (!prefill || (window.location.pathname !== "/ask" && (!company || prefill.companySlug !== company.slug))) return;
     setUrl(current => current || prefill.targetRoleUrl);
     setReasons(current => (current.some(reason => reason.trim()) ? current : splitWhyMe(prefill.note)));
+    if (prefill.opportunityId) {
+      setPostSelection(current => (current ? { ...current, opportunityId: prefill.opportunityId! } : { opportunityId: prefill.opportunityId!, jobUrl: prefill.targetRoleUrl || null }));
+    }
   }, [prefill, company]);
 
   // Lowest fill precedence: the /start hand-off fills only the still-empty
@@ -373,8 +386,22 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
 
   const resumeView: AskResume = resumeFile ? { name: resumeFile.name } : uploaded ? { name: uploaded.fileName } : setup?.resume ? { name: setup.resume.fileName } : null;
   const resumeDoc = uploaded ?? (resumeFile ? null : setup?.resume ?? null);
-  const hint = linkHint(url, company, linkTouched || attempted);
-  const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains));
+  // D-174-worldwide-discovery.company-context: a fresh discovered-company pick surfaces as
+  // displayed context through this existing hint field only - never a company binding, never
+  // a prefill; the seeker still pastes a real job link. Consumed on use, cleared on sign-out.
+  const [discoveryPick] = useState(() => readDiscoveryHandoff());
+  useEffect(() => { if (discoveryPick) clearDiscoveryHandoff(); }, [discoveryPick]);
+  const hint = !company && discoveryPick && !url.trim() ? { tone: "muted" as const, text: `You picked ${discoveryPick.name} (${discoveryPick.domain}) - paste its job link below` } : linkHint(url, company, linkTouched || attempted);
+  // D-094 item 2 (D-264 (2), packet §4.2–4.4): the switch ships false, so this
+  // makes no request and changes no check until the release row flips it. On a
+  // company door a safe preview naming another company blocks Send before the
+  // press; no preview, or one that is not safe, keeps today's server decision.
+  const previewState = useJobLinkPreview(url, { enabled: jobLinkPrefillEnabled() });
+  const jobLinkPreview = previewState.preview;
+  const jobLinkBlocked = jobLinkPrefillEnabled() && options?.companyDoor === true && company !== null && jobLinkPreview !== null
+    ? jobLinkMismatch(jobLinkPreview, company)
+    : null;
+  const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains)) && !jobLinkBlocked;
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
   // D-132 item 3 (flag VITE_ASK_LEVEL_COST): the single shared by-level quote
@@ -420,12 +447,12 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
-    ? (hint?.tone === "error" ? hint.text : "Add the official job link first.")
+    ? (jobLinkBlocked ?? (hint?.tone === "error" ? hint.text : "Add the official job link first."))
     : isSignedIn && !resumeView ? "Add your resume first."
       : tooLong ? `Keep each reason to ${WHY_ME_MAX} characters.`
         : words < MIN_WORDS ? "Write your reasons first (at least a sentence or two)."
           : null;
-  const blocked = !online ? "You’re offline. Sending needs a connection." : isSignedIn ? cost.blockedReason ?? undefined : undefined;
+  const blocked = !online ? "You’re offline. Sending needs a connection." : isSignedIn ? cost.blockedReason ?? jobLinkBlocked ?? undefined : jobLinkBlocked ?? undefined;
 
   const resetForm = (options?: { clearResume?: boolean }) => {
     setUrl("");
@@ -474,8 +501,13 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     }
     if (!isSignedIn) {
       // Save the seeker's work even when the directory cannot resolve the company.
-      saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) });
-      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search));
+      saveAskPrefill({
+        companySlug: company?.slug ?? null,
+        targetRoleUrl: url,
+        note: composeWhyMe(reasons),
+        opportunityId: postSelection?.opportunityId,
+      });
+      goToSeekerSignIn(askSignInReturnTo(window.location.pathname, window.location.search, postSelection, { companyDoor: options?.companyDoor === true }));
       return;
     }
     try {
@@ -509,7 +541,15 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       const capped = parseSlotCapReached(response.status, payload);
       if (capped) {
         const copy = slotCapNudgeCopy(capped.slots);
-        setSendError(<><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>);
+        // Packet item 5: the upgrade nudge shows once per session (per
+        // account, UPGRADE_NUDGES.md); the send's failure reason is always
+        // shown, so later sends state the cap plainly without the CTA.
+        const account = userId ?? "signed-out";
+        const nudge = canShowNudge("slot_cap", account);
+        if (nudge) markNudgeShown("slot_cap", account);
+        setSendError(nudge
+          ? <><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>
+          : <>{copy.title}. {copy.body}</>);
         return;
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
@@ -600,7 +640,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
       setSendError("We could not save your selected resume or work. Your ask is still here. Try again.");
       return;
     }
-    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons) }, store)) {
+    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons), opportunityId: postSelection?.opportunityId }, store)) {
       clearAskTopUpSelection(store);
       setSendError("We could not save your ask before opening credits. Your ask is still here. Try again.");
       return;
@@ -679,6 +719,7 @@ export function useAskComposer(company: PublicCompany | null): AskComposer {
     },
     postSelection,
     selectPost,
+    jobLinkPreview,
     resetForm,
     clearAfterClose,
   };

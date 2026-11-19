@@ -1,9 +1,10 @@
 import { ArrowRight, BarChart3, Building2, Check, ShieldCheck, Users } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, lazy, Suspense, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { EMPLOYER_PLANS, employerPlanPriceLabel } from "@/components/employer/employerPlans";
 import { useCompanyDirectory } from "@/lib/companyDirectory";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 
 // Cards 2-4 keep claims the product backs today; the kit's insight, ATS and
@@ -27,7 +28,12 @@ export function demoRequestMailto({ email, company, teamSize }: { email: string;
   return `mailto:hello@skipwait.me?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+// D-048-p3-for-companies: the goal reskin of this surface (switch only; the
+// goal implementation lives under pages/goal/for-companies).
+const GoalForCompanies = lazy(() => import("./goal/for-companies/GoalForCompanies"));
+
 export default function ForCompanies() {
+  if (goalSurfaceOn("for-companies")) return <Suspense fallback={null}><GoalForCompanies /></Suspense>;
   const directory = useCompanyDirectory();
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");

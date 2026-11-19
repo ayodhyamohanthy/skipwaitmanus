@@ -75,6 +75,10 @@ function KitReferrerImpact() {
     <Button type="button" className="mt-8" disabled={access.retrying} onClick={access.retry}><RefreshCw />{access.retrying ? "Trying again…" : "Try again"}</Button>
   </ImpactState>);
 
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  // The step-up is goal-native: the goal impact page renders it in place.
+  if (access.status === "code_required") return <Suspense fallback={null}><GoalReferrerImpact /></Suspense>;
+
   if (!hasVerifiedWorkEmail) return frame("referrer-impact-setup", <ImpactState icon={ShieldCheck} eyebrow="PRIVATE BY DEFAULT" title="Verify your work email" text="Confirm a company email with a one-time code to unlock your private referral impact.">
     <Button asChild className="mt-8"><Link href="/referrer?setup=work-email">Add work email <ArrowRight /></Link></Button>
   </ImpactState>);

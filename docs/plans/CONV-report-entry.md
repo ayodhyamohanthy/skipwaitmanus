@@ -1,6 +1,6 @@
 # Packet CONV-report-entry: the seeker conversation's "Report or block" link carries the ask only when it is accepted (D-278)
 
-Tier 1 (privacy/safety; declared above the Tier 2 that `scripts/tierClassifyCore.mjs` computes for the three owned paths, which GATE-tier-floor (D-212) allows, see §7.4) · lane `conv-report-entry` · branch `agent/queue/conv-report-entry` · waits for `D-048-p3-live-review-conversation` · builder: a non-Claude development session through the picker (D-225) · registered by D-278 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276 (D-277 is held by open PR #962).
+Tier 1 (privacy/safety; declared above the Tier 2 that `scripts/tierClassifyCore.mjs` computes for the three owned paths, which GATE-tier-floor (D-212) allows, see §7.4) · lane `conv-report-entry` · branch `agent/queue/conv-report-entry` · waits for `D-048-p3-live-review-conversation` · builder: a development session other than the Claude Code session through the picker (D-225) · registered by D-278 on 2026-11-02 at `main` `27dac5f9`, checked against the register through D-276 (D-277 is held by open PR #962).
 
 Source and authority:
 - Route **R-B-min** and the corrected rule from correction **E** on #831, comment [6568171751](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/831#issuecomment-6568171751) (bound to `origin/main` `27dac5f9`, #831 head `d5c76594`). E is authoritative.
@@ -179,4 +179,6 @@ Nothing in this packet edits #831's row. If and when #831 (`D-048-p3-conversatio
 - Builder: if the admin read in §5.3 cannot be made green with the seeded admin cookie, stop and report; do not change `server/safetyRoutes.ts` or the seeder.
 
 ## Status
-Registered 2026-11-02 (D-278), docs only; tier corrected to Tier 1 on #963. No code written. Not built, not reviewed. A docs landing does not lower the runtime independent-review bar: the build still needs its independent Tier 1 review (D-151).
+- 2026-11-02: registered by D-278 (docs only); tier corrected to Tier 1 on #963. No code written. Not built, not reviewed. A docs landing does not lower the runtime independent-review bar: the build still needs its independent Tier 1 review (D-151).
+- 2026-11-07: in progress — Gemini 2.5 · ca0e — branch agent/queue/conv-report-entry
+- 2026-11-07: review — Gemini 2.5 · ca0e — branch agent/queue/conv-report-entry — head 278b5a31. Built and gate verified: red-first component test (C1-C5 in reportEntry.test.tsx), seeker report link carries request id when accepted in SeekerConversation.tsx, red-first e2e unprivileged admin probe and full journey in report-from-conversation.e2e.ts. Gates clean: pnpm check 0, design-token-audit 0 errors, lint-deploy-migrations clean, check-deploy-triggers clean, focused vitest 59/59 passed, pnpm build clean, scope-check 3 owned paths clean. Ready for independent Tier 1 review (D-151) on draft PR #1018.

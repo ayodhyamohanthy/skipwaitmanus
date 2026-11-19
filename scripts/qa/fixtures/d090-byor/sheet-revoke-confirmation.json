@@ -1,0 +1,149 @@
+{
+  "signedIn": {
+    "id": 4106,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "expiredRequestIds": [],
+        "requests": [
+          {
+            "id": 42,
+            "title": "Product Designer",
+            "targetRoleUrl": "https://careers.acme.com/jobs/product-designer",
+            "companyDomain": "acme.com",
+            "companyName": "Acme",
+            "companyInitials": "A",
+            "jobFunction": "Design",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "waitingForCoverage": true,
+            "queueStatus": "waiting_for_coverage",
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-06T06:00:00.000Z",
+            "updatedAt": "2026-10-06T06:00:00.000Z",
+            "attachmentCount": 2,
+            "expiresAt": "2027-01-04T06:00:00.000Z"
+          }
+        ],
+        "slots": {
+          "plan": "free",
+          "planLabel": "Free",
+          "open": 1,
+          "cap": 3,
+          "full": false,
+          "nextPlan": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 2,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "promoExpiresAt": null,
+          "promoStatus": null,
+          "promoOfferActive": false,
+          "totalAvailable": 2,
+          "cycleKey": "2026-10",
+          "subscriptionStatus": null,
+          "subscriptionCurrentTermEnd": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/company-referrals/42/invite-link",
+      "match": "exact",
+      "status": 201,
+      "body": {
+        "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "url": "https://skipwait.me/r/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "expiresAt": "2026-10-15T06:00:00.000Z"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "dmy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    }
+  ],
+  "actionsWeb": [
+    {
+      "click": "button:has-text(\"Invite someone you know\")"
+    },
+    {
+      "click": "button:has-text(\"Create one-time link\")"
+    },
+    {
+      "waitFor": "input[aria-label=\"One-time invite link\"]"
+    },
+    {
+      "click": "button:has-text(\"Revoke this link\")"
+    },
+    {
+      "waitFor": "text=Revoke this invite link?"
+    }
+  ],
+  "actionsMobile": [
+    {
+      "click": "button:has-text(\"Invite someone you know\")"
+    },
+    {
+      "click": "button:has-text(\"Create one-time link\")"
+    },
+    {
+      "waitFor": "input[aria-label=\"One-time invite link\"]"
+    },
+    {
+      "click": "button:has-text(\"Revoke this link\")"
+    },
+    {
+      "waitFor": "text=Revoke this invite link?"
+    }
+  ]
+}

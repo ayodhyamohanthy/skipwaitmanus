@@ -23,6 +23,7 @@ describe("logout privacy cleanup", () => {
       "bridge-job-seeker-token-reset-3-free-v1",
       "skipwait-pwa-referral-draft",
       "manus-runtime-user-info",
+      "skipwait:discovery-handoff",
     ].forEach(key => localStorage.setItem(key, "private"));
     sessionStorage.setItem("skipwait-pending-resume-submit", "true");
   });
@@ -34,6 +35,9 @@ describe("logout privacy cleanup", () => {
     expect(localStorage.getItem("bridge-seeker-attachments")).toBeNull();
     expect(localStorage.getItem("skipwait-pwa-referral-draft")).toBeNull();
     expect(localStorage.getItem("bridge-tokens")).toBeNull();
+    // D-174-worldwide-discovery.company-context: a discovered-company pick is display
+    // context for one /ask visit and must not cross a signed-out boundary.
+    expect(localStorage.getItem("skipwait:discovery-handoff")).toBeNull();
     expect(sessionStorage.getItem("skipwait-pending-resume-submit")).toBeNull();
     expect(pendingResume.clear).toHaveBeenCalledTimes(1);
   });

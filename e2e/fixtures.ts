@@ -1,7 +1,10 @@
 // Shared journey helpers (GATE-e2e-journeys, D-212). Every journey fails on any
 // page error or any 5xx response in any browser context it opens, and signs
 // people in only through the dev plane (/api/dev-auth/login) or the sessions
-// scripts/seed-test-accounts.ts minted (e2e/.auth/seed.json).
+// scripts/seed-test-accounts.ts minted (e2e/.auth/seed.json). The seeded
+// referrer is a plain test_seed session; the seeder confirmed its work email in
+// that same session through the real step-up send/verify handlers, with the
+// code captured locally (D-057 §0b.8a), so the referrer gate lets it act.
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,7 +29,7 @@ type Fixtures = {
   breakage: string[];
   /** A fresh, watched, signed-out browser context. */
   newContext: () => Promise<BrowserContext>;
-  /** A watched page signed in as the seeded verified referrer at acme.example. */
+  /** A watched page signed in as the seeded verified referrer at acme.example, its session already stepped up. */
   referrerPage: Page;
 };
 
@@ -53,6 +56,12 @@ export const test = base.extend<Fixtures>({
   referrerPage: async ({ newContext, baseURL }, use) => {
     const context = await newContext();
     await context.addCookies([{ name: "app_session_id", value: seededCookie(SEEDED_REFERRER_EMAIL), url: baseURL! }]);
+    // The gate is unchanged: this session acts only because its own step-up proof exists. Fail loudly if it does not.
+    const access = await context.request.get("/api/company-referrals/access");
+    expect(access.status(), "the seeded referrer's /access").toBe(200);
+    const verdict = (await access.json()) as { verifiedCompanyAccess?: boolean; codeRequired?: boolean };
+    expect(verdict.verifiedCompanyAccess, "the seeded referrer is verified at acme.example").toBe(true);
+    expect(verdict.codeRequired, "the seeded referrer session has no step-up proof; re-run node scripts/e2e-server.mjs start").not.toBe(true);
     await use(await context.newPage());
   },
 });
@@ -152,19 +161,20 @@ export async function seekerSendsAcmeAsk(context: BrowserContext): Promise<void>
   await page.close();
 }
 
-/** The shell's balance chip, read as the screen labels it ("2 credits" / "2 referrals", D-180). */
+/** The shell's balance chip, read as the screen labels it ("2 referrals left", D-180, D-344). */
 export async function readBalance(page: Page): Promise<number> {
-  // GoalShell's pill: aria-label "<n> credits available. Open credit details".
-  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) available/i }).first();
+  // GoalShell's pill: aria-label "<n> referrals left. Open plan details" (D-344; it said
+  // "<n> credits available" before). The old wording still matches so a stale build reads too.
+  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) (available|left)\b/i }).first();
   await expect(chip).toBeVisible();
   const value = Number((await chip.innerText()).match(/\d+/)?.[0]);
   expect(Number.isFinite(value)).toBeTruthy();
   return value;
 }
 
-/** The compose screen's cost line ("Uses 1 credit ..."), read as the number it quotes. */
+/** The compose cost line names the amount deducted from the balance before Send. */
 export function costLine(page: Page) {
-  return page.getByText(/^Uses \d+ (credit|referral)s?\b/i).first();
+  return page.getByText(/^Uses \d+ from your balance\b/i).first();
 }
 
 export async function quotedCost(page: Page): Promise<number> {

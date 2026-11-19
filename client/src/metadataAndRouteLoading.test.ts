@@ -24,4 +24,9 @@ describe("skipwait.me metadata and route loading", () => {
     // The raw error message goes to Sentry, never onto the screen.
     expect(app).not.toContain("this.state.error.message");
   });
+
+  it("lazy-loads the private BYOR token landing route", () => {
+    expect(app).toContain('lazy(() => import("./pages/AskInviteLink")');
+    expect(app).toContain('<Route path="/r/:token" component={AskInviteLink} />');
+  });
 });

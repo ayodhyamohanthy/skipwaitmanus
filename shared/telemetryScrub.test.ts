@@ -11,6 +11,8 @@ describe("scrubTelemetryPath (FND-4)", () => {
     expect(scrubTelemetryPath(`/share-card/${SECRET}`)).toBe("/share-card/:token");
     expect(scrubTelemetryPath(`/fast/${SECRET}`)).toBe("/fast/:token");
     expect(scrubTelemetryPath(`/refer/acme/${SECRET}`)).toBe("/refer/:token/:token");
+    // D-090-BYOR: the one-time bring-your-own-referrer link.
+    expect(scrubTelemetryPath(`/r/${SECRET}`)).toBe("/r/:token");
   });
 
   it("replaces the token segment of every token-bearing API route and keeps the rest of the path", () => {
@@ -21,6 +23,9 @@ describe("scrubTelemetryPath (FND-4)", () => {
     expect(scrubTelemetryPath(`/api/referrer-review-links/${SECRET}`)).toBe("/api/referrer-review-links/:token");
     expect(scrubTelemetryPath(`/api/referrer-review-links/${SECRET}/decision`)).toBe("/api/referrer-review-links/:token/decision");
     expect(scrubTelemetryPath(`/api/documents/by-key/${SECRET}`)).toBe("/api/documents/by-key/:token");
+    // D-090-BYOR: the invite landing and its claim action.
+    expect(scrubTelemetryPath(`/api/ask-invites/${SECRET}`)).toBe("/api/ask-invites/:token");
+    expect(scrubTelemetryPath(`/api/ask-invites/${SECRET}/claim`)).toBe("/api/ask-invites/:token/claim");
   });
 
   it("replaces a storage key in full, even one that carries slashes or a person's file name", () => {

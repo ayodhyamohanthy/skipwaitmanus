@@ -5,29 +5,29 @@ import { BUSINESS } from "@/lib/business";
 
 /**
  * /cancellations — Cancellation policy (its own URL for the Razorpay
- * "Cancellation" field). Mirrors real behaviour: withdraw returns the
- * reserved credit, Chargebee subscriptions cancel at end of term, unused
- * purchased credits refundable within 14 days (same as /refunds).
+ * "Cancellation" field). Describes conditional balance returns and preserves
+ * existing end-of-term cancellation and 14-day purchase refund rights.
  */
 export default function CancellationPolicy() {
   return <PolicyPageShell
     screen="cancellation-policy"
     icon={CircleSlash}
     eyebrow="Cancellation policy"
-    title="Cancel any time. Here is exactly what happens."
-    intro="How to cancel a referral request, a paid plan, or a credit purchase, and when any money comes back."
-    updated="September 23, 2026"
+    title="Understand your cancellation options."
+    intro="When you can withdraw a referral request, stop an existing plan renewal, or request a purchase refund."
+    updated="16 Nov 2026"
     footnote="Statutory consumer rights in your country apply in addition to this policy and are not limited by it."
   >
     <PolicySection number="01" title="Cancelling a referral request">
       <ul>
         <li>You can cancel (withdraw) a referral request from <Link href="/requests" className="font-semibold text-black">My requests</Link> <strong>at any time before a verified employee claims it</strong>.</li>
-        <li>The reserved credit is <strong>returned to your balance immediately</strong>. No money is charged for a request, so there is nothing to refund.</li>
-        <li>Once a Referrer has claimed or accepted the request, it can no longer be cancelled.</li>
+        <li>If your request has used referral balance, withdrawal before pickup returns it once, only if its original balance or allowance is still valid and has room for the return. A free monthly referral from a month that has already ended cannot be returned. A request that has not used any balance has nothing to return.</li>
+        <li>You cannot withdraw while a verified employee holds the request. After a claimed request is declined, the request reopens to other employees at the company. If a claimed request reopens after an employee declines, you can withdraw it, but the referral stays used.</li>
       </ul>
     </PolicySection>
 
     <PolicySection number="02" title="Cancelling a paid plan">
+      <p>New paid plans are not on sale right now. These cancellation rights continue to apply to existing renewing plans.</p>
       <ul>
         <li>Cancel renewal <strong>at any time</strong> from <Link href="/plans" className="font-semibold text-black">Plans</Link>, or email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email.</li>
         <li>The cancellation takes effect at the <strong>end of the current billing cycle</strong>. Your plan and its allowance stay active until then and <strong>no further charges are made</strong>.</li>
@@ -36,6 +36,7 @@ export default function CancellationPolicy() {
     </PolicySection>
 
     <PolicySection number="03" title="Cancelling a credit purchase">
+      <p>Legacy referral packs are paused. The rights below still apply to eligible existing purchases.</p>
       <ul>
         <li>You can cancel a one-off credit purchase and get a refund for <strong>unused purchased credits within 14 days</strong> of purchase. Credits already used on accepted referrals are not refundable.</li>
         <li>To cancel, email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email with the payment reference from your receipt.</li>
