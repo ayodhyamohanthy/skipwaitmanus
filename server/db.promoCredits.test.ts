@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { notifications, operationalActivityLogs, paymentFulfillments, promoCreditGrants, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
+import { notifications, operationalActivityLogs, paymentFulfillments, planCreditGrants, promoCreditGrants, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
 import { getTokenWallet, fulfillChargebeePayment, revokePromoGrant, spendToken } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -11,7 +11,7 @@ vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 const dialect = new MySqlDialect();
 const NOW = new Date("2026-10-01T00:00:00.000Z");
 
-type Table = typeof users | typeof tokenBalances | typeof tokenTransactions | typeof promoCreditGrants | typeof paymentFulfillments | typeof notifications | typeof operationalActivityLogs;
+type Table = typeof users | typeof tokenBalances | typeof tokenTransactions | typeof promoCreditGrants | typeof planCreditGrants | typeof paymentFulfillments | typeof notifications | typeof operationalActivityLogs;
 let tables: Record<string, Array<Record<string, unknown>>>;
 let failPromoTables = false;
 const schemaMissingError = () => Object.assign(new Error("Table 'skipwait.promoCreditGrants' doesn't exist"), { code: "ER_NO_SUCH_TABLE", errno: 1146 });
@@ -25,6 +25,7 @@ function rowsFor(table: Table): Array<Record<string, unknown>> {
   if (table === paymentFulfillments) return tables.payments;
   if (table === notifications) return tables.notes;
   if (table === operationalActivityLogs) return tables.activity;
+  if (table === planCreditGrants) return tables.planGrants;
   throw new Error("Unexpected table");
 }
 
@@ -111,7 +112,7 @@ const walletRow = () => ({ id: 1, userId: 7, role: "job_seeker" as const, balanc
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   vi.stubEnv("PROMO_GRANTS_ENABLED", "true");
-  tables = { users: [{ id: 7 }], wallets: [walletRow()], txns: [], grants: [], payments: [], notes: [], activity: [] };
+  tables = { users: [{ id: 7 }], wallets: [walletRow()], txns: [], grants: [], planGrants: [], payments: [], notes: [], activity: [] };
   failPromoTables = false;
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());

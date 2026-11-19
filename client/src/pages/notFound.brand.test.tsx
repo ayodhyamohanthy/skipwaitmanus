@@ -2,19 +2,32 @@
 import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import NotFound from "./NotFound";
+import NotFound, { NotFoundContent } from "./NotFound";
 
 vi.mock("wouter", () => ({
-  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+  Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
+}));
+vi.mock("@/components/AppShell", () => ({
+  AppShell: ({ children }: { children: React.ReactNode }) => <div data-testid="app-shell">{children}</div>,
 }));
 
 afterEach(cleanup);
 
 describe("Not Found recovery", () => {
   it("uses skipwait.me branding and a clear return-home action", () => {
-    render(<NotFound />);
-    expect(screen.getByRole("heading", { name: "This page isn’t on skipwait.me." })).toBeTruthy();
+    render(<NotFoundContent />);
+    expect(screen.getByRole("heading", { name: "This door doesn't lead anywhere." })).toBeTruthy();
+    expect(screen.getByText("The page may have moved, or the link was mistyped.")).toBeTruthy();
     expect(screen.queryByText(/Bridge/)).toBeNull();
-    expect(screen.getByRole("link", { name: "Return home" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
+    expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
+    // Kit NotFoundComponent: wordmark, title, body and the two actions, nothing else.
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+    expect(screen.queryByText(/Contact support/)).toBeNull();
+  });
+
+  it("keeps the app shell's navigation around an unmatched path, as the kit does", () => {
+    render(<NotFound />);
+    expect(screen.getByTestId("app-shell").querySelector('[data-skipwait-screen="not-found"]')).toBeTruthy();
   });
 });

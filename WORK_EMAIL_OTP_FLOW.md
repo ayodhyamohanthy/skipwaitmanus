@@ -21,3 +21,10 @@ derived solely from successful proof-of-delivery to the company address: the
 session is issued only after the code was verified server-side against the
 hashed code stored for that exact email. This keeps personal inboxes out of
 the employee pool and preserves the hidden-identity model.
+
+This code stays the referrer sign-in on every visit (D-030 as amended by
+D-049). D-057 (owner, Oct 18 2026; not built yet) keeps a referrer's private
+record with the person rather than one employer's email: from inside the
+portal a referrer may add a personal login and, after a job change, verify the
+new work email by code; reviewing or accepting asks still needs a work-email
+code in that session.

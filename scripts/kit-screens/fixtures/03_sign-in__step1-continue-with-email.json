@@ -1,0 +1,4 @@
+{
+  "signedIn": false,
+  "actions": [{ "click": "text=Continue with email" }, { "wait": 300 }]
+}

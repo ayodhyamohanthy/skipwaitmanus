@@ -1,0 +1,188 @@
+// Edge contracts and fetchers for /settings. Every route already exists:
+//   GET    /api/company-referrals/access   -> { verifiedCompanyAccess, workEmailDomain }
+//   GET    /api/privacy/requests           -> { requests: PrivacyRequest[] }
+//   GET    /api/privacy/export             -> JSON file download (kept as a fallback, no longer linked)
+//   POST   /api/privacy/export-requests    -> { id, alreadyRequested } (429 + Retry-After inside 24h)
+//   GET    /api/privacy/export-requests/latest -> { export: {...} | null }
+//   GET    /api/privacy/export-requests/:id/download -> ZIP
+//   POST   /api/privacy/requests/erasure   -> { request: { alreadyRequested? } }
+//   GET|PUT|DELETE /api/referrer/slack-webhook -> { connected, active }
+//   GET    /api/blocks/mine                -> { blocks: BlockRow[] }
+//   DELETE /api/blocks/:id
+// The server owns validation; the client parses what comes back so a malformed
+// payload reads as an error instead of a wrong state.
+import { z } from "zod";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
+import { readApiJson } from "@/lib/apiResponse";
+
+export type TokenSource = () => Promise<string | null | undefined>;
+
+export const ACCESS_ERROR = "We could not check your work-email access";
+export const PRIVACY_REQUESTS_ERROR = "We could not load privacy requests";
+export const EXPORT_ERROR = "We could not prepare your data export";
+export const EXPORT_REQUEST_ERROR = "We could not start your data export";
+export const SESSIONS_ERROR = "We could not load your sessions";
+export const ERASURE_ERROR = "We could not create your request";
+export const BLOCKS_ERROR = "We could not load your blocked list";
+export const UNBLOCK_ERROR = "We could not remove this block";
+export const SLACK_STATUS_ERROR = "We could not load your Slack triage status";
+export const SLACK_CONNECT_ERROR = "We could not connect your Slack triage channel";
+export const SLACK_DISCONNECT_ERROR = "We could not disconnect your Slack triage channel";
+
+export type CompanyAccess = { verifiedCompanyAccess: boolean; workEmailDomain: string | null };
+
+const privacyRequestSchema = z.object({
+  id: z.number(),
+  kind: z.literal("erasure"),
+  status: z.enum(["requested", "in_review", "completed", "declined"]),
+  resolution: z.string().nullish(),
+  createdAt: z.string().nullish(),
+});
+export type PrivacyRequest = z.infer<typeof privacyRequestSchema>;
+const privacyRequestsSchema = z.object({ requests: z.array(privacyRequestSchema).default([]) });
+const erasureSchema = z.object({ request: z.object({ alreadyRequested: z.boolean().optional() }).optional() });
+
+const slackStatusSchema = z.object({ connected: z.boolean().optional(), active: z.boolean().optional() });
+export type SlackStatus = { connected: boolean; active: boolean };
+
+const blockRowSchema = z.object({ id: z.number(), blockedUserId: z.number(), reason: z.string().nullish(), createdAt: z.string().nullish() });
+export type BlockRow = z.infer<typeof blockRowSchema>;
+const blocksSchema = z.object({ blocks: z.array(blockRowSchema).default([]) });
+
+const dataExportSchema = z.object({ export: z.object({
+  id: z.number(),
+  status: z.enum(["requested", "ready", "failed", "expired"]),
+  requestedAt: z.string().nullish(),
+  readyAt: z.string().nullish(),
+  expiresAt: z.string().nullish(),
+  byteSize: z.number().default(0),
+  fileName: z.string().nullish(),
+}).nullable() });
+export type DataExportSummary = NonNullable<z.infer<typeof dataExportSchema>["export"]>;
+
+const sessionRowSchema = z.object({ id: z.string(), device: z.string(), lastActive: z.string().nullish(), signedInAt: z.string().nullish(), current: z.boolean() });
+export type SessionRow = z.infer<typeof sessionRowSchema>;
+const sessionsSchema = z.object({ sessions: z.array(sessionRowSchema).default([]), currentKnown: z.boolean().default(false), note: z.string().optional() });
+export type SessionList = z.infer<typeof sessionsSchema>;
+
+export const settingsKeys = {
+  sessions: ["settings", "sessions"] as const,
+  dataExport: ["settings", "data-export"] as const,
+  access: ["settings", "company-access"] as const,
+  privacyRequests: ["settings", "privacy-requests"] as const,
+  slack: ["settings", "slack-webhook"] as const,
+  blocks: ["settings", "blocks"] as const,
+};
+
+type Method = "GET" | "POST" | "PUT" | "DELETE";
+
+async function call(url: string, getToken: TokenSource, method: Method = "GET", body?: Record<string, string>): Promise<Response> {
+  const token = await getToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  if (body || method === "POST") headers["Content-Type"] = "application/json";
+  return fetch(url, { ...(method === "GET" ? {} : { method }), credentials: "include", headers, ...(body ? { body: JSON.stringify(body) } : {}) });
+}
+
+/** Reads a JSON reply, surfacing the server's own error message on a non-2xx. */
+async function readReply<S extends z.ZodType>(response: Response, schema: S, fallback: string): Promise<z.infer<S>> {
+  const payload = await readApiJson<Record<string, unknown>>(response, fallback);
+  if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
+  const parsed = schema.safeParse(payload);
+  if (!parsed.success) throw new Error(fallback);
+  return parsed.data;
+}
+
+export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
+  const reply = await readReply(await call(REFERRER_ACCESS_PATH, getToken), referrerAccessResponseSchema, ACCESS_ERROR);
+  return { verifiedCompanyAccess: reply.verifiedCompanyAccess, workEmailDomain: reply.workEmailDomain };
+}
+
+/** The shared verified-referrer predicate (shared/referrerAccess.ts). */
+export const hasVerifiedWorkEmail = (access: CompanyAccess | undefined): boolean => isVerifiedReferrer(access);
+
+export async function fetchPrivacyRequests(getToken: TokenSource): Promise<PrivacyRequest[]> {
+  return (await readReply(await call("/api/privacy/requests", getToken), privacyRequestsSchema, PRIVACY_REQUESTS_ERROR)).requests;
+}
+
+export async function requestErasure(getToken: TokenSource): Promise<{ alreadyRequested: boolean }> {
+  const reply = await readReply(await call("/api/privacy/requests/erasure", getToken, "POST"), erasureSchema, ERASURE_ERROR);
+  return { alreadyRequested: Boolean(reply.request?.alreadyRequested) };
+}
+
+/** Downloads the account export as a JSON file through a temporary object URL. */
+export async function downloadPersonalData(getToken: TokenSource): Promise<void> {
+  const response = await call("/api/privacy/export", getToken);
+  if (!response.ok) {
+    const payload = await readApiJson<Record<string, unknown>>(response, EXPORT_ERROR);
+    throw new Error(typeof payload.error === "string" && payload.error ? payload.error : EXPORT_ERROR);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "skipwait-personal-data.json";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function fetchSlackStatus(getToken: TokenSource): Promise<SlackStatus> {
+  const reply = await readReply(await call("/api/referrer/slack-webhook", getToken), slackStatusSchema, SLACK_STATUS_ERROR);
+  return { connected: Boolean(reply.connected), active: Boolean(reply.active) };
+}
+
+export async function connectSlack(webhookUrl: string, getToken: TokenSource): Promise<void> {
+  await readReply(await call("/api/referrer/slack-webhook", getToken, "PUT", { webhookUrl }), slackStatusSchema, SLACK_CONNECT_ERROR);
+}
+
+export async function disconnectSlack(getToken: TokenSource): Promise<void> {
+  await readReply(await call("/api/referrer/slack-webhook", getToken, "DELETE"), slackStatusSchema, SLACK_DISCONNECT_ERROR);
+}
+
+export const isSlackWebhookUrl = (value: string) => /^https:\/\/hooks\.slack(-trusted)?\.com\/.*$/i.test(value);
+
+export async function fetchBlocks(getToken: TokenSource): Promise<BlockRow[]> {
+  return (await readReply(await call("/api/blocks/mine", getToken), blocksSchema, BLOCKS_ERROR)).blocks;
+}
+
+export async function unblock(id: number, getToken: TokenSource): Promise<void> {
+  const response = await call(`/api/blocks/${id}`, getToken, "DELETE");
+  if (!response.ok) throw new Error(UNBLOCK_ERROR);
+}
+
+export async function fetchLatestDataExport(getToken: TokenSource): Promise<DataExportSummary | null> {
+  return (await readReply(await call("/api/privacy/export-requests/latest", getToken), dataExportSchema, EXPORT_ERROR)).export;
+}
+
+export async function requestDataExport(getToken: TokenSource): Promise<void> {
+  await readReply(await call("/api/privacy/export-requests", getToken, "POST"), z.object({ id: z.number().optional() }).passthrough(), EXPORT_REQUEST_ERROR);
+}
+
+/** Downloads a ready export ZIP through a temporary object URL. */
+export async function downloadDataExport(id: number, fileName: string | null | undefined, getToken: TokenSource): Promise<void> {
+  const response = await call(`/api/privacy/export-requests/${id}/download`, getToken);
+  if (!response.ok) {
+    const payload = await readApiJson<Record<string, unknown>>(response, EXPORT_ERROR);
+    throw new Error(typeof payload.error === "string" && payload.error ? payload.error : EXPORT_ERROR);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName || "skipwait-personal-data.zip";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function fetchSessions(getToken: TokenSource): Promise<SessionList> {
+  return readReply(await call("/api/account/sessions", getToken), sessionsSchema, SESSIONS_ERROR);
+}
+
+export async function revokeSessionById(id: string, getToken: TokenSource): Promise<void> {
+  await readReply(await call(`/api/account/sessions/${encodeURIComponent(id)}`, getToken, "DELETE"), z.object({}).passthrough(), "We could not sign out that device");
+}
+
+export async function revokeOtherSessions(getToken: TokenSource): Promise<void> {
+  await readReply(await call("/api/account/sessions/revoke-others", getToken, "POST"), z.object({}).passthrough(), "We could not sign out your other devices");
+}

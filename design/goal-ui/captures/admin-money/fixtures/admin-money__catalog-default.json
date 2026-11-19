@@ -1,0 +1,69 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops-admin@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/billing/catalog-sync",
+      "status": 200,
+      "body": {
+        "version": 1,
+        "site": "skipwait-test",
+        "environment": "test",
+        "checkedAt": "2026-11-04T10:00:00.000Z",
+        "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "family": {
+          "id": null,
+          "action": "reuse",
+          "reason": "Family present"
+        },
+        "toCreate": [],
+        "correct": [],
+        "mismatched": [],
+        "blocked": [],
+        "extras": [],
+        "excluded": [],
+        "counts": {
+          "desired": 0,
+          "correct": 0,
+          "mismatched": 0,
+          "blocked": 0,
+          "toCreate": 0,
+          "itemPricesToCreate": 0,
+          "extras": 0,
+          "excluded": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ]
+}

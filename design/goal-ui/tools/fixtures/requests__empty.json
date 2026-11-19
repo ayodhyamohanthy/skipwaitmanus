@@ -1,0 +1,47 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [],
+        "slots": {
+          "plan": "free",
+          "planLabel": "Free",
+          "open": 0,
+          "cap": 3,
+          "full": false,
+          "nextPlan": null
+        }
+      }
+    }
+  ]
+}

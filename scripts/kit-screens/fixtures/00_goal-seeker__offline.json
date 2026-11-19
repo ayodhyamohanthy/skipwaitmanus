@@ -1,0 +1,7 @@
+{
+  "signedIn": { "id": 41, "name": "Asha Rao", "email": "asha@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/credits/summary", "match": "prefix", "abort": true },
+    { "method": "GET", "path": "/api/company-referrals/access", "match": "exact", "abort": true }
+  ]
+}

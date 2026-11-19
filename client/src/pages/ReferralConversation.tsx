@@ -1,111 +1,135 @@
-import { useEffect, useRef, useState } from "react";
-import { useAuth, SignInButton } from "@/_core/auth";
-import { ArrowLeft, ArrowUp, CheckCircle2, Copy, LockKeyhole, Share2 } from "lucide-react";
-import { useLocation, useRoute } from "wouter";
-import { isPostApprovalReferralStatus, referralStatusSteps, type ReferralStatus } from "@shared/referral";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRoute } from "wouter";
+import { useAuth, useUser } from "@/_core/auth";
+import { ConversationSignInGate, SeekerConversation } from "./conversation/SeekerConversation";
+import { ReferrerConversation } from "./conversation/ReferrerConversation";
+import { ShareWinCard } from "@/components/thread/ShareWinCard";
+import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
+import { usePersistFn } from "@/hooks/usePersistFn";
+import { decideReview, confirmReferredBySeeker, extendReferredDeadline, loadConversation, loadThread, recordProgress, sendConversationMessage, stepBackFromReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
+import { trpc } from "@/lib/trpc";
 
-type ConversationMessage = { id: number; body: string; createdAt: string; isMine: boolean };
-type ReferralShareCard = { shareUrl: string; companyDomain: string; status: "accepted" };
-const progressOptions = [
-  { status: "intro_made", label: "Introduction made" },
-  { status: "interview", label: "Interview started" },
-  { status: "offer", label: "Offer received" },
-  { status: "closed", label: "Close request" },
-] as const;
+const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
-function shortTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Just now";
-  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
-}
-
-export default function ReferralConversation() {
+export default function ReferralConversation(_props: { framed?: boolean } = {}) {
   const [, params] = useRoute("/conversation/:requestId");
-  const [, go] = useLocation();
   const { isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
   const requestId = Number(params?.requestId);
+  const validId = Number.isInteger(requestId) && requestId > 0;
   const returnPath = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from") === "inbox" ? "/inbox" : "/requests";
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [draft, setDraft] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const [showProgress, setShowProgress] = useState(false);
-  const [updatingProgress, setUpdatingProgress] = useState(false);
-  const [progressError, setProgressError] = useState("");
-  const [progressStatus, setProgressStatus] = useState<ReferralStatus>("approved");
-  const [shareCard, setShareCard] = useState<ReferralShareCard | null>(null);
-  const [shareCardBusy, setShareCardBusy] = useState(false);
-  const [shareCardStatus, setShareCardStatus] = useState("");
-  const messageListRef = useRef<HTMLDivElement>(null);
+  const fetchToken = usePersistFn(getToken);
 
-  const request = async (path: string, init?: RequestInit) => {
-    const token = await getToken();
-    const response = await fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "We could not complete this private conversation action");
-    return payload;
-  };
-  const loadConversation = async () => {
-    if (!isSignedIn || !Number.isInteger(requestId) || requestId <= 0) return;
+  const [role, setRole] = useState<ThreadRole | null>(null);
+  const [request, setRequest] = useState<ThreadRequest | null>(null);
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
+  const [referenceId, setReferenceId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [passed, setPassed] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [messageError, setMessageError] = useState("");
+  const sendingRef = useRef(false);
+
+  trpc.profile.mine.useQuery(undefined, { enabled: Boolean(isSignedIn) && role === "seeker", retry: false, staleTime: 60_000 });
+  // The signed-in account, the same auth.me the auth layer already holds: the
+  // referrer goal page offers a decision on a pending ask only when the ask is
+  // unassigned or assigned to this account (#831 F1).
+  // A partial tRPC client (the share-win harness) has no auth router; the
+  // client is fixed for the module's lifetime, so the hook order never changes.
+  const authMe = (trpc as { auth?: typeof trpc.auth }).auth?.me;
+  const me = authMe?.useQuery(undefined, { enabled: Boolean(isSignedIn) && role !== null && role !== "seeker", retry: false, staleTime: 60_000 });
+  const meId = (me?.data as { id?: unknown } | null | undefined)?.id;
+  const viewerId: number | null | undefined = typeof meId === "number" ? meId : me?.data === null ? null : undefined;
+
+  const reload = useCallback(async () => {
+    if (!isSignedIn || !validId) return;
     setLoading(true); setError("");
-    try { const payload = await request(`/api/company-referrals/${requestId}/conversation`); setMessages(payload.messages || []); if (isPostApprovalReferralStatus(payload.progressStatus)) setProgressStatus(payload.progressStatus); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "We could not open this private conversation"); }
+    try {
+      const thread = await loadThread(requestId, fetchToken);
+      setRole(thread.role); setRequest(thread.request);
+      if (!canMessage(thread.role, thread.request)) { setMessages([]); return; }
+      try {
+        const conversation = await loadConversation(requestId, fetchToken);
+        setMessages(conversation.messages); setReferenceId(conversation.referenceId);
+        setMessageError("");
+      } catch (reason) { setMessageError(errorText(reason, "We could not load these private messages")); }
+    } catch (reason) { setError(errorText(reason, "We could not open this private thread")); }
     finally { setLoading(false); }
-  };
-  useEffect(() => { void loadConversation(); }, [isSignedIn, requestId]);
-  useEffect(() => {
-    const messageList = messageListRef.current;
-    if (!messageList) return;
-    if (typeof messageList.scrollTo === "function") messageList.scrollTo({ top: messageList.scrollHeight, behavior: "smooth" });
-    else messageList.scrollTop = messageList.scrollHeight;
-  }, [messages.length]);
+  }, [fetchToken, isSignedIn, requestId, validId]);
+
+  useEffect(() => { void reload(); }, [reload]);
+
+  if (!isSignedIn) return <ConversationSignInGate returnPath={returnPath} />;
 
   const send = async () => {
     const body = draft.trim();
-    if (!body || sending) return;
-    setSending(true); setError("");
+    if (!body || sendingRef.current || !request) return;
+    sendingRef.current = true; setSending(true); setMessageError("");
     try {
-      await request(`/api/company-referrals/${requestId}/conversation`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
+      await sendConversationMessage(request.id, body, fetchToken);
       setDraft("");
-      await loadConversation();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not send this private message"); }
-    finally { setSending(false); }
-  };
-  const updateProgress = async (status: (typeof progressOptions)[number]["status"]) => {
-    if (updatingProgress) return;
-    setUpdatingProgress(true); setProgressError("");
-    try {
-      const payload = await request(`/api/company-referrals/${requestId}/progress`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      if (isPostApprovalReferralStatus(payload.progress?.status)) setProgressStatus(payload.progress.status);
-      setShowProgress(false);
-    } catch (reason) { setProgressError(reason instanceof Error ? reason.message : "We could not record this referral progress"); }
-    finally { setUpdatingProgress(false); }
-  };
-  const createShareCard = async () => {
-    if (shareCardBusy) return;
-    setShareCardBusy(true); setShareCardStatus("");
-    try { const payload = await request(`/api/referral-share-cards/${requestId}`, { method: "POST" }); setShareCard(payload as ReferralShareCard); setShareCardStatus("Share card ready."); }
-    catch (reason) { setShareCardStatus(reason instanceof Error ? reason.message : "We could not create a share card"); }
-    finally { setShareCardBusy(false); }
-  };
-  const revokeShareCard = async () => {
-    if (shareCardBusy) return;
-    setShareCardBusy(true); setShareCardStatus("");
-    try { await request(`/api/referral-share-cards/${requestId}`, { method: "DELETE" }); setShareCard(null); setShareCardStatus("Share card removed."); }
-    catch (reason) { setShareCardStatus(reason instanceof Error ? reason.message : "We could not remove the share card"); }
-    finally { setShareCardBusy(false); }
-  };
-  const copyShareCard = async () => { if (!shareCard) return; try { await navigator.clipboard.writeText(shareCard.shareUrl); setShareCardStatus("Link copied."); } catch { setShareCardStatus("Copy the link from this page when ready."); } };
-  const openSocialShare = (network: "linkedin" | "x") => {
-    if (!shareCard) return;
-    const text = `A private referral request was accepted at ${shareCard.companyDomain}. Shared voluntarily. No hiring outcome is implied.`;
-    const target = network === "linkedin" ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareCard.shareUrl)}` : `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareCard.shareUrl)}`;
-    window.open(target, "_blank", "noopener,noreferrer");
+      setMessages((await loadConversation(request.id, fetchToken)).messages);
+    } catch (reason) { setMessageError(errorText(reason, "We could not send this private message")); }
+    finally { sendingRef.current = false; setSending(false); }
   };
 
-  if (!isSignedIn) return <main data-skipwait-screen="referral-conversation-sign-in" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><button type="button" onClick={() => go(returnPath)} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button></header><section className="flex flex-1 flex-col justify-center"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#ededff] text-black"><LockKeyhole className="h-5 w-5" /></span><h1 className="font-display mt-3 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Continue securely.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Sign in to access your accepted referral conversation.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><SignInButton><button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">Secure sign in <ArrowUp className="h-4 w-4" /></button></SignInButton></footer></div></main>;
+  const failure = validId ? error : "This private thread link is invalid.";
+  // Names are revealed only after the referrer accepts: the referrer sees their own name, the seeker the name the server returns (never before accept).
+  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName && !request.referrerName.includes("@") ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
+  // Both sides use the released goal pages. Preserve the seeker loading frame
+  // until the server response identifies which side owns this thread.
+  if (role === null || role === "seeker") {
+    return (
+      <SeekerConversation
+        request={request}
+        failure={failure}
+        loading={loading}
+        onReload={() => { void reload(); }}
+        returnPath={returnPath}
+        referrerLabel={seekerSeesReferrer ?? "Referrer"}
+        referrerName={seekerSeesReferrer}
+        messages={messages}
+        messageError={messageError}
+        referenceId={referenceId}
+        canMessage={Boolean(request) && canMessage("seeker", request!)}
+        draft={draft}
+        setDraft={setDraft}
+        sending={sending}
+        onSend={() => { void send(); }}
+        onWithdraw={async () => { await withdrawThreadRequest(request!.id, fetchToken); await reload(); }}
+        onProgress={async status => { await recordProgress(request!.id, status, fetchToken); await reload(); }}
+        onConfirmReferredEmail={async () => { await confirmReferredBySeeker(request!.id, fetchToken); await reload(); }}
+        extra={request && isAccepted(request) ? <div className="mt-6"><ShareWinCard roleTitle={request.title} companyName={companyName(request)} status={request.status} /></div> : null}
+      />
+    );
+  }
 
-  const availableProgressOptions = progressOptions.filter(option => option.status === "closed" ? progressStatus !== "closed" : referralStatusSteps.indexOf(option.status) > referralStatusSteps.indexOf(progressStatus));
-  return <main data-skipwait-screen="referral-conversation" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><button type="button" onClick={() => go(returnPath)} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button>{availableProgressOptions.length ? <button type="button" onClick={() => { setShowProgress(current => !current); setProgressError(""); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-black"><CheckCircle2 className="h-3.5 w-3.5" />Update</button> : null}</header><section className="mt-4 shrink-0"><h1 className="font-display mt-2 text-2xl font-semibold tracking-[-.02em]">Private conversation</h1><p className="mt-2 text-sm leading-5 text-[#505050]">Only you and the accepted referral partner can read or send messages here.</p></section>{showProgress ? <section aria-label="Referral progress update" className="mt-3 shrink-0 rounded-xl border border-[#c2c2ff] bg-[#ededff] p-3"><p className="text-xs font-bold text-black">Record a real milestone</p><p className="mt-1 text-[11px] leading-4 text-[#505050]">Your partner will receive a private factual update. No reward or public post is created.</p><div className="mt-3 grid grid-cols-2 gap-2">{availableProgressOptions.map(option => <button key={option.status} type="button" disabled={updatingProgress} onClick={() => { void updateProgress(option.status); }} className="rounded-lg border border-[#c2c2ff] bg-white px-2 py-2 text-left text-xs font-bold text-black">{option.label}</button>)}</div>{progressError ? <p role="alert" className="mt-2 text-xs font-medium text-[#B91C1C]">{progressError}</p> : null}</section> : null}{error ? <section className="flex flex-1 flex-col justify-center"><div role="alert" className="rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4"><p className="text-sm font-semibold text-[#B91C1C]">Conversation unavailable</p><p className="mt-1 text-sm leading-5 text-[#B91C1C]">{error}</p><div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => { setError(""); void loadConversation(); }} className="inline-flex min-h-11 items-center rounded-lg bg-black px-4 text-sm font-bold text-white">Try again</button><button type="button" onClick={() => go(returnPath)} className="inline-flex min-h-11 items-center text-sm font-bold text-black">Return to your requests</button></div></div></section> : loading ? <section className="flex flex-1 flex-col justify-center"><div className="h-28 animate-pulse rounded-xl border border-[#e5e5e5] bg-white" /></section> : <><div ref={messageListRef} className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1" aria-live="polite">{messages.length ? <div className="flex flex-col gap-3 pb-3">{messages.map(message => <article key={message.id} className={`flex flex-col ${message.isMine ? "items-end" : "items-start"}`}><p className="mb-1 px-1 text-[11px] font-bold text-[#505050]">{message.isMine ? "You" : "Private referral partner"}</p><div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-5 ${message.isMine ? "rounded-br-md bg-[#0000ff] text-white" : "rounded-bl-md border border-[#e5e5e5] bg-white text-black"}`}><p className="whitespace-pre-wrap break-words">{message.body}</p><p className={`mt-1 text-[10px] ${message.isMine ? "text-[#ededff]" : "text-[#505050]"}`}>{shortTime(message.createdAt)}</p></div></article>)}</div> : <div className="flex h-full flex-col items-center justify-center text-center"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#ededff] text-black"><LockKeyhole className="h-5 w-5" /></span><p className="mt-4 text-sm font-bold text-black">Start the conversation.</p><p className="mt-1 max-w-xs text-sm leading-5 text-[#505050]">Ask one clear question or confirm the next referral step.</p></div>}</div><footer className="shrink-0 border-t border-[#e5e5e5] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">{shareCard ? <section className="mb-3 rounded-xl border border-[#c2c2ff] bg-[#ededff] p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-black">Accepted at {shareCard.companyDomain}</p><p className="mt-1 text-[11px] leading-4 text-[#505050]">Shared voluntarily. No hiring outcome is implied.</p></div><button type="button" onClick={() => { void revokeShareCard(); }} disabled={shareCardBusy} className="text-xs font-bold text-[#505050]">Remove</button></div><div className="mt-3 grid grid-cols-3 gap-2"><button type="button" onClick={() => openSocialShare("linkedin")} className="rounded-lg bg-[#0000ff] px-2 py-2 text-xs font-bold text-white">LinkedIn</button><button type="button" onClick={() => openSocialShare("x")} className="rounded-lg bg-[#0000ff] px-2 py-2 text-xs font-bold text-white">X</button><button type="button" onClick={() => { void copyShareCard(); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#0000ff] bg-white px-2 py-2 text-xs font-bold text-black"><Copy className="h-3.5 w-3.5" />Copy</button></div></section> : <button type="button" onClick={() => { void createShareCard(); }} disabled={shareCardBusy} className="mb-3 inline-flex min-h-9 items-center gap-2 text-xs font-bold text-black"><Share2 className="h-3.5 w-3.5" />{shareCardBusy ? "Creating share card…" : "Share this milestone"}</button>}{shareCardStatus ? <p role="status" className="mb-2 text-xs font-semibold text-[#505050]">{shareCardStatus}</p> : null}<label className="sr-only" htmlFor="conversation-message">Message</label><div className="flex items-end gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2 focus-within:border-[#c2c2ff] focus-within:ring-2 focus-within:ring-[#c2c2ff]"><textarea id="conversation-message" value={draft} onChange={event => setDraft(event.target.value.slice(0, 3000))} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder="Write a private message" rows={1} className="max-h-24 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-[#505050]" /><button type="button" aria-label="Send message" onClick={() => { void send(); }} disabled={!draft.trim() || sending} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#0000ff] text-white"><ArrowUp className="h-4 w-4" /></button></div></footer></>}</div></main>;
+  return (
+      <ReferrerConversation
+        request={request}
+        role={role}
+        viewerId={viewerId}
+        failure={failure}
+        loading={loading}
+        onReload={() => { void reload(); }}
+        returnPath={returnPath}
+        passed={passed}
+        ownName={request && isAccepted(request) ? user?.fullName ?? null : null}
+        messages={messages}
+        messageError={messageError}
+        referenceId={referenceId}
+        canMessage={Boolean(request) && canMessage(role, request!)}
+        draft={draft}
+        setDraft={setDraft}
+        sending={sending}
+        onSend={() => { void send(); }}
+        onAccept={async () => { await decideReview(request!.id, "approved", undefined, fetchToken); await reload(); }}
+        onPass={async (reason, passReason) => { await decideReview(request!.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
+        onMarkReferred={async reference => { await recordProgress(request!.id, "intro_made", fetchToken, reference); await reload(); }}
+        onExtendReferredDeadline={async () => { await extendReferredDeadline(request!.id, fetchToken); await reload(); }}
+        onStepBack={async () => { await stepBackFromReferral(request!.id, fetchToken); await reload(); }}
+      />
+  );
 }

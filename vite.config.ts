@@ -5,8 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { resolveCompanyTypeaheadFlag } from "./vite.typeahead-flag";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
-import { VitePWA } from "vite-plugin-pwa";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -152,7 +152,7 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const productionPlugins = [react(), tailwindcss(), gitCommitMetaPlugin()];
+const productionPlugins = [react(), tailwindcss(), gitCommitMetaPlugin(), swBuildStampPlugin()];
 const developmentPlugins = [
   ...productionPlugins,
   jsxLocPlugin(),
@@ -179,7 +179,49 @@ function gitCommitMetaPlugin(): Plugin {
   };
 }
 
+/** Stamps the worker's cache name with the build so every deploy gets a fresh shell cache and an update prompt. */
+function swBuildStampPlugin(): Plugin {
+  let stamp = String(Date.now());
+  try {
+    stamp = (fs.readFileSync(path.join(PROJECT_ROOT, "commit-sha.txt"), "utf8").trim() || execSync("git rev-parse --short HEAD", { cwd: PROJECT_ROOT }).toString().trim() || stamp).slice(0, 12);
+  } catch {
+    try { stamp = execSync("git rev-parse --short HEAD", { cwd: PROJECT_ROOT }).toString().trim() || stamp; } catch { /* keep timestamp */ }
+  }
+  return {
+    name: "skipwait-sw-build-stamp",
+    apply: "build",
+    closeBundle() {
+      const file = path.resolve(PROJECT_ROOT, "dist/public/sw.js");
+      if (!fs.existsSync(file)) return;
+      // Precache what the offline screen needs to render: the entry assets plus the lazy
+      // Offline chunk and the chunks it imports, so a first visit followed by no signal still works.
+      const root = path.resolve(PROJECT_ROOT, "dist/public");
+      const assetsDir = path.join(root, "assets");
+      const html = fs.existsSync(path.join(root, "index.html")) ? fs.readFileSync(path.join(root, "index.html"), "utf8") : "";
+      const urls = new Set<string>(Array.from(html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g), m => m[1]));
+      const queue = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir).filter(f => /^Offline-.*\.js$/.test(f)) : [];
+      for (const url of Array.from(urls)) if (url.endsWith(".js")) queue.push(path.basename(url));
+      const seen = new Set<string>();
+      while (queue.length) {
+        const name = queue.pop()!;
+        if (seen.has(name) || !fs.existsSync(path.join(assetsDir, name))) continue;
+        seen.add(name);
+        urls.add(`/assets/${name}`);
+        const code = fs.readFileSync(path.join(assetsDir, name), "utf8");
+        for (const m of Array.from(code.matchAll(/\bfrom\s*["']\.\/([^"']+\.js)["']/g))) queue.push(m[1]);
+      }
+      fs.writeFileSync(file, fs.readFileSync(file, "utf8").replaceAll("__SW_BUILD__", stamp).replace("[]/*__SW_ASSETS__*/", JSON.stringify(Array.from(urls))));
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
+  define: {
+    // D-174-seeker-journey-build.typeahead-flip: the only define this row adds. Feeds the
+    // env-gated switch from the pure resolver - on for Workers Builds branch previews,
+    // forced off on every CI build of main (see vite.typeahead-flag.ts).
+    "import.meta.env.VITE_COMPANY_TYPEAHEAD": JSON.stringify(resolveCompanyTypeaheadFlag(process.env)),
+  },
   plugins: mode === "development" ? developmentPlugins : productionPlugins,
   resolve: {
     alias: [

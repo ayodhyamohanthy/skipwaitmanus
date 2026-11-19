@@ -1,7 +1,7 @@
 # skipwait.me API server (Cloudflare Containers compatible)
 FROM node:22-slim AS build
 WORKDIR /app
-RUN npm install -g pnpm@10.4.1
+RUN npm install -g pnpm@10.34.7
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile

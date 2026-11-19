@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-022, D-035, D-055).
+
 # From No Distribution to Trusted Liquidity
 
 ## A zero-distribution playbook for skipwait.me

@@ -11,7 +11,7 @@ describe("identity provider user role synchronization", () => {
   });
 
   it("durably promotes the designated administrator email regardless of provider role input", () => {
-    expect(resolveSyncedUserRole({ openId: "workos-ayodhya", email: " Ayodhya@SkipWait.Me ", loginMethod: "workos", requestedRole: "user", existingRole: "user" })).toBe("admin");
+    expect(resolveSyncedUserRole({ openId: "workos-ayodhya", email: " Ayodhya@SkipWait.me ", loginMethod: "workos", requestedRole: "user", existingRole: "user" })).toBe("admin");
   });
   it("never promotes a self-asserted development address",()=>{expect(resolveSyncedUserRole({openId:"dev-ayodhya",email:"ayodhya@skipwait.me",loginMethod:"dev",existingRole:"user"})).toBe("user")});
 

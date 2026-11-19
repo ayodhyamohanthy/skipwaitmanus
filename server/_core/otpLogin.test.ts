@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("../workEmailOtp", () => ({ workEmailOtpService: { verifyCode: mocks.verifyCode, sendCode: mocks.sendCode } }));
 vi.mock("../db", () => ({ isWorkEmailDomain: () => true, getUserByOpenId: mocks.getUserByOpenId, upsertUser: mocks.upsertUser, resolveLoginIdentity: mocks.resolveLoginIdentity, getVerifiedWorkEmailAccess: mocks.getVerifiedWorkEmailAccess, saveVerifiedWorkEmail: mocks.saveVerifiedWorkEmail }));
-vi.mock("./sdk", () => ({ sdk: { createSessionToken: mocks.createSessionToken, revokeSession: mocks.revokeSession } }));
+vi.mock("./sdk", () => ({ SESSION_ACCESS_TTL_MS: 30 * 24 * 60 * 60_000, sdk: { createSessionToken: mocks.createSessionToken, revokeSession: mocks.revokeSession } }));
 vi.mock("./cookies", () => ({ getSessionCookieOptions: () => ({ httpOnly: true, sameSite: "lax", secure: false, path: "/" }) }));
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 
@@ -19,6 +19,13 @@ describe("referrer OTP login completion", () => {
     expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({ provider: "work_email_otp", subject: "employee@acme.com", openId: "workemail_employee@acme.com", emailVerified: true }));
     expect(mocks.saveVerifiedWorkEmail).toHaveBeenCalledWith(7, "employee@acme.com");
     expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
+  });
+  // P0-referrer-exposure: the part before the @ plus the company rebuilds the work
+  // email, and a referrer's identity stays hidden until they accept an ask.
+  it("never stores the work email's local part as a new account's display name", async () => {
+    const response = await request(app()).post("/api/auth/otp/verify").send({ email: "zoya.quill@quasar-ledgers.com", code: "123456" });
+    expect(response.status).toBe(200);
+    expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({ subject: "zoya.quill@quasar-ledgers.com", name: null }));
   });
   it("fails before provisioning when the code is invalid", async () => { mocks.verifyCode.mockResolvedValue(false); const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "000000" }); expect(response.status).toBe(400); expect(mocks.resolveLoginIdentity).not.toHaveBeenCalled(); });
   it("still issues a session when profile enrollment needs asynchronous repair", async () => {

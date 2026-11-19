@@ -1,0 +1,53 @@
+name: DB move rehearsal (manual, never deploys)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'inventory (read-only on both) | rehearse (writes only skipwait_rehearsal on the NEW server) | verify (read-only on both)'
+        required: true
+        default: 'inventory'
+        type: choice
+        options: [inventory, rehearse, verify, inflight, cutover-copy, inspect-late, delta-sync, oldstats]
+      delta_tables:
+        description: 'delta-sync only: space separated table names'
+        required: false
+        default: ''
+        type: string
+      target_db:
+        description: 'skipwait_rehearsal (default) or skipwait (cutover-copy and verify after it)'
+        required: false
+        default: 'skipwait_rehearsal'
+        type: choice
+        options: [skipwait_rehearsal, skipwait]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-rehearsal
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure MySQL client tools
+        run: |
+          command -v mysqldump >/dev/null || { sudo apt-get update -y >/dev/null && sudo apt-get install -y mysql-client >/dev/null; }
+          mysql --version; mysqldump --version
+      - name: Run ${{ inputs.mode }}
+        env:
+          OLD_HOST: ${{ vars.SKIPWAIT_DB_HOST }}
+          OLD_USER: ${{ vars.SKIPWAIT_DB_USER }}
+          OLD_NAME: ${{ vars.SKIPWAIT_DB_NAME }}
+          OLD_PORT: ${{ vars.SKIPWAIT_DB_PORT }}
+          OLD_PWD: ${{ secrets.SKIPWAIT_DB_PASSWORD }}
+          NEW_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
+          NEW_USER: ${{ vars.SKIPWAIT_NEWDB_USER }}
+          NEW_PWD: ${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}
+          TARGET_DB: ${{ inputs.target_db }}
+          DELTA_TABLES: ${{ inputs.delta_tables }}
+        run: bash scripts/db-copy.sh "${{ inputs.mode }}"

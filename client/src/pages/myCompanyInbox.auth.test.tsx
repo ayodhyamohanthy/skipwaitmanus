@@ -1,87 +1,130 @@
 // @vitest-environment jsdom
+// Auth, gates and queue composition on the goal page (D-048 phase 3 W1):
+// signed-out routing, the one-tap capacity action, header + row anatomy,
+// deep links, pre-accept privacy, and the claimed-row hand-off to the thread.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
 
-const { go, authState } = vi.hoisted(() => ({ go: vi.fn(), authState: { signedIn: false } }));
+const Queue = () => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>;
+
+const { go, getToken, search } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("t"), search: { value: "" } }));
 
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-token") }),
-  useUser: () => ({ user: authState.signedIn ? { emailAddresses: [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] } : undefined }),
+  useAuth: () => ({ isSignedIn: true, getToken }),
+  useUser: () => ({ user: { emailAddresses: [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] } }),
 }));
 vi.mock("wouter", () => ({
-  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
-  useLocation: () => ["/inbox", go],
+  Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
+  useLocation: () => ["/queue", go],
+  useSearch: () => search.value,
 }));
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "verified", access: { verified: true, domain: "acme.com", companyName: "Acme", companyInitials: "AC" } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
-vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
+vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div data-skipwait-logo-mark="true" /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
-beforeEach(() => { authState.signedIn = false; });
-afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
+const row = (id: number, extra: Record<string, unknown> = {}) => ({ id, jobTitle: `Product Designer ${id}`, targetRoleUrl: null, companyDomain: "acme.com", companyName: "Acme", companyInitials: "AC", jobFunction: "Product", status: "pending", savedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), attachmentCount: 1, isClaimedByYou: false, publicRef: `R-T${id}ST`, ...extra });
+const previewOf = (id: number) => ({ request: { id, candidateName: `Seeker ${id}`, candidateMessage: "One\nTwo\nThree", companyDomain: "acme.com", targetRoleUrl: "https://acme.com/jobs/1", attachments: [{ id: 1 }], publicRef: `R-T${id}ST` } });
 
-describe("My Company Inbox employee access", () => {
-  it("routes signed-out employees to the dedicated work-email-only sign-in flow", () => {
-    render(<MyCompanyInbox />);
-    expect(screen.getByRole("button", { name: "Use company email" })).toBeTruthy();
-    expect(screen.queryByText("Secure employee sign in")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Use company email" }));
-    expect(go).toHaveBeenCalledWith("/referrer");
+function stubFetch(handler: (url: string, init?: RequestInit) => unknown) {
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    const body = handler(url, init) as { __status?: number } | undefined;
+    if (body && typeof body === "object" && "__status" in body) return { ok: false, status: body.__status, json: async () => ({ error: (body as { error?: string }).error }) };
+    return { ok: true, json: async () => body ?? {} };
   });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
 
-  it("gives a verified employee a one-tap private capacity action when the New inbox is empty", async () => {
-    authState.signedIn = true;
-    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("availability/open") ? { availability: { allocatedCount: 1 } } : { requests: [] } }));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<MyCompanyInbox />);
-    await waitFor(() => expect(document.querySelector('[aria-label="Open referral capacity"]')).toBeTruthy());
+beforeEach(() => { go.mockClear(); search.value = ""; });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe("My Company Inbox auth and composition", () => {
+  it("gives a verified employee a one-tap private capacity action when the queue is empty", async () => {
+    const fetchMock = stubFetch((url) => {
+      if (url.includes("/inbox")) return { requests: [] };
+      if (url.includes("/availability/open")) return { availability: { allocatedCount: 0 } };
+      return {};
+    });
+    render(<Queue />);
+    expect(await screen.findByText("Ready to help?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Open referral capacity" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/availability/open", expect.objectContaining({ method: "POST", body: JSON.stringify({ slotCount: 1 }) })));
-    expect(await screen.findByText("1 waiting request is now available for your review.")).toBeTruthy();
-    expect(screen.queryByText("No new requests.")).toBeNull();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/availability/open", expect.objectContaining({ method: "POST" })));
   });
 
-  it("shows the server-filtered New request count and keeps it visible across inbox tabs", async () => {
-    authState.signedIn = true;
-    const newRequests = [
-      { id: 1, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/one", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
-      { id: 2, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/two", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
-    ];
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=saved") ? [] : newRequests }) })));
-    render(<MyCompanyInbox />);
-    await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
-    fireEvent.click(screen.getByRole("tab", { name: "Saved" }));
-    await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
+  it("heads the queue with the count and Verified mark, rows with role, status and countdown", async () => {
+    stubFetch((url) => (url.includes("scope=new") ? { requests: [row(3)] } : { requests: [] }));
+    render(<Queue />);
+    await screen.findByRole("button", { name: /Product Designer 3/ });
+    expect(screen.getAllByRole("heading", { name: "Referral queue" }).length).toBeGreaterThan(0);
+    expect(screen.getByText("1", { exact: false })).toBeTruthy();
+    expect(screen.getByText(/waiting/)).toBeTruthy();
+    expect(screen.getByText(/Verified/)).toBeTruthy();
+    expect(screen.getByText(/Names and resumes stay hidden until you accept/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Settings/ }).getAttribute("href")).toBe("/referrer?view=setup");
+    const queueRow = screen.getByRole("button", { name: /Product Designer 3/ });
+    expect(queueRow.textContent).toContain("New");
+    expect(queueRow.textContent).toContain("Product");
+    expect(queueRow.textContent).toMatch(/\d+ days left/);
+    expect(screen.getByText("Referrers are never charged.")).toBeTruthy();
   });
 
-  it("shows the matching candidate note, role link, and resume before direct acceptance or a concise one-click decline", async () => {
-    authState.signedIn = true;
-    const inboxRequest = { id: 7, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false };
-    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "approved" } : { requests: [inboxRequest] } }));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<MyCompanyInbox />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Review candidate" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Review candidate" }));
-    await waitFor(() => expect(screen.getByText("Avery")).toBeTruthy());
-    expect(screen.getByText("I led a measurable product design launch.")).toBeTruthy();
-    expect(screen.getByText("avery-resume.pdf")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Not a fit" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Can’t support" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Not now" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Accept & submit referral" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved" }) })));
+  it("lists routed new requests, then saved ones, deduped, without scope tabs or a pager", async () => {
+    stubFetch((url) => (url.includes("scope=new") ? { requests: [row(3)] } : { requests: [row(3), row(9)] }));
+    render(<Queue />);
+    await screen.findByRole("button", { name: /Product Designer 3/ });
+    await screen.findByRole("button", { name: /Product Designer 9/ });
+    expect(screen.getAllByRole("button", { name: /Product Designer/ })).toHaveLength(2);
+    expect(screen.queryByRole("tab")).toBeNull();
   });
 
-  it("shows a genuine unread conversation cue only for the Referrer's accepted request", async () => {
-    authState.signedIn = true;
-    const completedRequest = { id: 11, companyDomain: "acme.com", status: "approved", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, unreadMessageCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-02", isClaimedByYou: true };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=completed") ? [completedRequest] : [] }) })));
-    render(<MyCompanyInbox />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Done" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("tab", { name: "Done" }));
-    await waitFor(() => expect(screen.getByText("The Job Seeker sent 1 new private message.")).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Open conversation · 1 new" })).toBeTruthy();
+  it("opens the request named in ?request= straight into its detail", async () => {
+    search.value = "?request=9";
+    stubFetch((url) => {
+      if (url.includes("/preview")) return previewOf(9);
+      return { requests: url.includes("scope=new") ? [row(3), row(9)] : [] };
+    });
+    render(<Queue />);
+    const detail = await screen.findByTestId("goal-detail-pane");
+    expect(detail.textContent).toContain("Product Designer 9");
+    expect(detail.textContent).toContain("R-T9ST");
+  });
+
+  it("sends a claimed deep link to the conversation without fetching a private preview", async () => {
+    search.value = "?request=9";
+    const fetchMock = stubFetch(url => ({ requests: url.includes("scope=new") ? [row(9, { status: "approved", isClaimedByYou: true })] : [] }));
+    render(<Queue />);
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/conversation/9?from=inbox"));
+    expect(screen.queryByTestId("goal-detail-pane")).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/preview"))).toBe(false);
+  });
+
+  it("shows Why me reasons and the role link but never the seeker's name before acceptance", async () => {
+    stubFetch((url) => {
+      if (url.includes("/preview")) return previewOf(7);
+      return { requests: url.includes("scope=new") ? [row(7)] : [] };
+    });
+    render(<Queue />);
+    fireEvent.click(await screen.findByRole("button", { name: /Product Designer 7/ }));
+    const detail = await screen.findByTestId("goal-detail-pane");
+    await waitFor(() => expect(detail.textContent).toContain("Three"));
+    expect(detail.textContent).toContain("One");
+    expect(detail.textContent).toContain("Identity and resume are shared after you accept");
+    expect(detail.textContent).not.toContain("Seeker 7");
+    expect(detail.textContent).not.toContain("resume.pdf");
+    expect(detail.textContent).toContain("R-T7ST");
+  });
+
+  it("keeps decided requests out of the dock and hands an acceptance straight to the conversation", async () => {
+    stubFetch((url) => (url.includes("scope=new") ? { requests: [row(5, { status: "approved", isClaimedByYou: true })] } : { requests: [] }));
+    render(<Queue />);
+    const queueRow = await screen.findByRole("button", { name: /Product Designer 5/ });
+    expect(queueRow.textContent).toContain("Under review");
+    fireEvent.click(queueRow);
+    expect(go).toHaveBeenCalledWith("/conversation/5?from=inbox");
+    expect(screen.queryByTestId("goal-detail-pane")).toBeNull();
   });
 });

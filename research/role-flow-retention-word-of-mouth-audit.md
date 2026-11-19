@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-058).
+
 # skipwait.me: Role Flow, Retention, and Word-of-Mouth Audit
 
 **Author:** Manus AI  

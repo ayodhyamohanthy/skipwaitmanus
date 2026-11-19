@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-004).
+
 # skipwait.me — Risk Register
 
 > Living document. Review at each checkpoint.

@@ -69,6 +69,11 @@ export type InvokeParams = {
   model?: string;
   thinking?: Record<string, unknown>;
   reasoning?: Record<string, unknown>;
+  /**
+   * D-115 cost accounting: when set (and usage comes back), one row is
+   * written to aiToolCallLogs via server/aiCostLog. Never affects the call.
+   */
+  costContext?: { tool: string; planId?: string | null; userId?: number | null };
 };
 
 export type ToolCall = {
@@ -417,7 +422,19 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const result = (await response.json()) as InvokeResult;
+  if (result.usage) {
+    const { recordAiToolCall } = await import("../aiCostLog");
+    await recordAiToolCall({
+      tool: params.costContext?.tool ?? "llm_invoke",
+      model: model ?? "default",
+      tokensIn: result.usage.prompt_tokens ?? 0,
+      tokensOut: result.usage.completion_tokens ?? 0,
+      planId: params.costContext?.planId ?? null,
+      userId: params.costContext?.userId ?? null,
+    });
+  }
+  return result;
 }
 
 export type ModelInfo = {

@@ -1,0 +1,6 @@
+{
+  "signedIn": false,
+  "routes": [
+    { "method": "GET", "path": "/api/referral-impact", "match": "exact", "status": 200, "body": { "acceptedReferrals": 17 } }
+  ]
+}

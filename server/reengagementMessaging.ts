@@ -25,6 +25,6 @@ export function referrerReviewReengagementMessage(companyDomain: string): Verifi
     companyDomain: company,
     subject: `Private referral review at ${company}`,
     headline: `A private review is ready at ${company}`,
-    body: "Reviewing is optional and always free. Sign in with your verified company email before any decision is recorded.",
+    body: "Reviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.",
   };
 }

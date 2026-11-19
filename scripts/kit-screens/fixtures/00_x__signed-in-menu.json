@@ -1,0 +1,9 @@
+{
+  "signedIn": { "id": 7, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "localStorage": { "skipwait:cookie-consent": "essential" },
+  "routes": [
+    { "method": "GET", "path": "/api/referral-impact", "match": "exact", "status": 200, "body": { "acceptedReferrals": 17 } }
+  ],
+  "actionsMobile": [{ "click": "button[aria-label='Open navigation']" }, { "wait": 200 }],
+  "actionsWeb": [{ "wait": 200 }]
+}

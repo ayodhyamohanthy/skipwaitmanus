@@ -2,35 +2,58 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0000ff" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/skipwait-icon.svg" />
-    <link rel="apple-touch-icon" href="/skipwait-icon.svg" />
+    <link rel="icon" href="/brand/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
     <meta name="git-commit" content="%VITE_GIT_COMMIT_SHA%" />
     <meta name="application-name" content="skipwait.me" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <title>skipwait.me — Job Referrals</title>
-    <meta name="description" content="Request or review private job referrals with verified company-email safeguards." />
+    <title>Private job referrals from verified employees — skipwait.me</title>
+    <meta name="description" content="Verified employees privately decide whether to refer you. 3 free referrals every month; extra referral requests use your balance. Referrers are never paid." />
     <link rel="canonical" href="https://skipwait.me/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="skipwait.me" />
-    <meta property="og:title" content="skipwait.me — Private job referrals, made simpler." />
-    <meta property="og:description" content="Request or review private job referrals with verified company-email safeguards." />
+    <meta property="og:title" content="Private job referrals from verified employees — skipwait.me" />
+    <meta property="og:description" content="Verified employees privately decide whether to refer you. 3 free referrals every month; extra referral requests use your balance. Referrers are never paid." />
     <meta property="og:url" content="https://skipwait.me/" />
-    <meta property="og:image" content="https://skipwait.me/og-skipwait.png" />
+    <meta property="og:image" content="https://skipwait.me/brand/og.png" />
     <meta property="og:image:alt" content="skipwait.me private job referral workflow" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="skipwait.me — Private job referrals, made simpler." />
-    <meta name="twitter:description" content="Request or review private job referrals with verified company-email safeguards." />
-    <meta name="twitter:image" content="https://skipwait.me/og-skipwait.png" />
+    <meta name="twitter:title" content="Private job referrals from verified employees — skipwait.me" />
+    <meta name="twitter:description" content="Verified employees privately decide whether to refer you. 3 free referrals every month; extra referral requests use your balance. Referrers are never paid." />
+    <meta name="twitter:image" content="https://skipwait.me/brand/og.png" />
       <script type="application/ld+json">
-      {"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://skipwait.me/#organization","name":"skipwait.me","url":"https://skipwait.me/","description":"Private job referrals from verified employees. Job seekers get real referrals; referrers stay anonymous.","logo":"https://skipwait.me/skipwait-icon.svg"},{"@type":"WebSite","@id":"https://skipwait.me/#website","url":"https://skipwait.me/","name":"skipwait.me","publisher":{"@id":"https://skipwait.me/#organization"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://skipwait.me/jobs?q={search_term_string}"},"query-input":"required name=search_term_string"}}]}
+      {"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://skipwait.me/#organization","name":"skipwait.me","url":"https://skipwait.me/","description":"Private job referrals from verified employees. Job seekers get real referrals; referrers stay anonymous.","logo":"https://skipwait.me/brand/icon-512.png"},{"@type":"WebSite","@id":"https://skipwait.me/#website","url":"https://skipwait.me/","name":"skipwait.me","publisher":{"@id":"https://skipwait.me/#organization"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://skipwait.me/jobs?q={search_term_string}"},"query-input":"required name=search_term_string"}}]}
     </script>
   </head>
   <body>
+    <style>html.sw-boot #root{visibility:hidden}</style>
+    <script>
+      // Keep the app invisible until the brand font is ready, so users never see text in a fallback font
+      // or half-built pieces. A hard timer guarantees the page is never left hidden.
+      document.documentElement.classList.add("sw-boot");
+      window.__swReveal = function () { document.documentElement.classList.remove("sw-boot"); };
+      // If the app bundle never even parses (blocked or failed script), reveal the static
+      // snapshot after 2.5s so the page still has content. If the bundle IS alive but simply
+      // slow, revealing then would paint the old static snapshot before React commits - the
+      // 12s absolute timer is the last-resort failsafe for a bundle that loaded but never mounted.
+      setTimeout(function () { if (!window.__swBootAlive) window.__swReveal(); }, 2500);
+      setTimeout(window.__swReveal, 12000);
+      // Start the referrer home data request now, in parallel with the app and sign-in loading (the session cookie
+      // authenticates it). The page uses it once if it is fresh, and otherwise asks again. Only started when this browser loaded the bundle before (hint set by the app), so signed-out visitors do not log a 401.
+      try {
+        if (location.pathname === "/referrer-home" && localStorage.getItem("sw-home-prefetch-ok") === "1") {
+          window.__swHomeBundle = { at: Date.now(), response: fetch("/api/referrer/home-bundle", { credentials: "include" }) };
+        }
+      } catch (e) {}
+    </script>
+    <noscript><style>html.sw-boot #root{visibility:visible}</style></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-036, D-046, D-055).
+
 # skipwait.me: Global Platform Playbook Assessment
 
 **Purpose.** This is a product and growth assessment, not an implementation plan. It tests the strongest relevant patterns from professional networks, job platforms, employee-referral systems, two-sided marketplaces, and viral product loops against skipwait.me’s distinctive model: a Job Seeker supplies a real role URL and resume; employees remain hidden, verify a work email, and can privately claim and decide on a request.

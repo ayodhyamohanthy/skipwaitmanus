@@ -1,0 +1,53 @@
+{
+  "signedIn": {
+    "id": 21,
+    "name": "Dev Instinct",
+    "email": "dev@instinct.app",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/developer-apps",
+      "status": 200,
+      "body": {
+        "apps": [
+          {
+            "id": 1,
+            "name": "Instinct",
+            "kind": "agent_mcp",
+            "description": "An AI agent that helps job seekers find roles and draft asks.",
+            "website": "https://instinct.app",
+            "redirectUrls": [
+              "https://instinct.app/oauth/skipwait"
+            ],
+            "scopes": [
+              "companies:read",
+              "requests:read",
+              "asks:draft"
+            ],
+            "status": "rejected",
+            "rejectReasons": [
+              "Your app sends asks without showing the user the final note first.",
+              "Privacy policy link is missing."
+            ],
+            "webhookUrl": null,
+            "clientId": "sw_app_7f3k29ab",
+            "createdAt": "2026-10-01T09:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Your apps"
+    },
+    {
+      "click": "button:has-text('Instinct')"
+    },
+    {
+      "waitFor": "text=Changes needed"
+    }
+  ]
+}

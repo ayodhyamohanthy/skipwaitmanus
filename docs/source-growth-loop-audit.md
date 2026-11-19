@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-055).
+
 # skipwait.me Source-App Growth Loop Audit
 
 **Scope.** This audit treats the current skipwait.me source application—not the deferred VibecodeApp workspace—as the product source of truth. It evaluates the five requested pillars against the platform’s privacy, fairness, and company-routing requirements.

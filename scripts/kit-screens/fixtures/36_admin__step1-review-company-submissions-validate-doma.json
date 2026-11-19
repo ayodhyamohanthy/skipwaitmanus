@@ -1,0 +1,273 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ayo Admin",
+    "email": "ops@skipwait.me",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/flow-health",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "health": {
+          "funnel": {
+            "requestsCreated": 48,
+            "requestsClaimed": 31,
+            "decisionsRecorded": 22,
+            "waitingForCoverage": 9
+          },
+          "coverageGaps": [
+            {
+              "companyDomain": "freshworks.com",
+              "waitingRequests": 4,
+              "verifiedCoverage": 0
+            },
+            {
+              "companyDomain": "zoho.com",
+              "waitingRequests": 2,
+              "verifiedCoverage": 0
+            }
+          ],
+          "instrumentation": {
+            "uploadedDocuments": 40,
+            "recordedFailures": 3
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/approval-queue",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "kind": "referrer_enrollment",
+            "id": 311,
+            "status": "pending",
+            "companyDomain": "wipro.co.in",
+            "createdAt": "2026-10-08T02:30:00.000Z",
+            "updatedAt": "2026-10-08T02:30:00.000Z",
+            "summary": "Referrer enrollment",
+            "meta": {
+              "otpTime": "2026-10-08T02:29:00.000Z",
+              "referrerName": "Kiran M.",
+              "referrerEmail": "kiran.m@wipro.co.in"
+            }
+          },
+          {
+            "kind": "referral_request",
+            "id": 501,
+            "status": "pending",
+            "companyDomain": "tcs.com",
+            "createdAt": "2026-10-08T01:00:00.000Z",
+            "updatedAt": "2026-10-08T01:00:00.000Z",
+            "summary": "Referral request",
+            "meta": {
+              "waitingForCoverage": true
+            }
+          },
+          {
+            "kind": "referrer_enrollment",
+            "id": 309,
+            "status": "pending",
+            "companyDomain": "merkle.com",
+            "createdAt": "2026-10-07T04:30:00.000Z",
+            "updatedAt": "2026-10-07T04:30:00.000Z",
+            "summary": "Referrer enrollment",
+            "meta": {
+              "otpTime": "2026-10-07T04:28:00.000Z",
+              "referrerName": null,
+              "referrerEmail": "a.shah@merkle.com"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/safety-reports",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "reports": [
+          {
+            "id": 1048,
+            "reporterUserId": 90,
+            "reason": "Asked for or offered money",
+            "details": "They asked for ₹5,000 to push my profile.",
+            "referralRequestId": 812,
+            "reportedUserId": 377,
+            "urgent": true,
+            "status": "open",
+            "createdAt": "2026-10-08T03:52:00.000Z",
+            "updatedAt": "2026-10-08T03:52:00.000Z"
+          },
+          {
+            "id": 1045,
+            "reporterUserId": 91,
+            "reason": "Spam or repeated asks",
+            "details": "Same note text 14 times in one hour.",
+            "referralRequestId": null,
+            "reportedUserId": 402,
+            "urgent": false,
+            "status": "open",
+            "createdAt": "2026-10-07T23:30:00.000Z",
+            "updatedAt": "2026-10-07T23:30:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/company-suggestions",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "suggestions": [
+          {
+            "id": 87,
+            "submitterUserId": 92,
+            "companyName": "Freshworks",
+            "website": "https://www.freshworks.com",
+            "role": "seeker",
+            "status": "open",
+            "createdAt": "2026-10-07T04:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/companies",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "companies": [
+          {
+            "slug": "skipwait",
+            "name": "SkipWait",
+            "initials": "SW",
+            "industry": "Technology",
+            "location": "Global · Remote",
+            "functions": [
+              "Engineering",
+              "Product",
+              "Design"
+            ],
+            "blurb": "Build the platform making warm introductions more accessible.",
+            "domains": [
+              "skipwait.me"
+            ],
+            "openToReferrals": true,
+            "id": 1,
+            "status": "listed",
+            "sortOrder": 10,
+            "primaryDomain": "skipwait.me",
+            "updatedAt": "2026-10-13T00:00:00.000Z"
+          },
+          {
+            "slug": "wipro",
+            "name": "Wipro",
+            "initials": "W",
+            "industry": "Technology services",
+            "location": "Global",
+            "functions": [
+              "Engineering",
+              "Data",
+              "Operations"
+            ],
+            "blurb": "Explore roles across technology, consulting, and business operations.",
+            "domains": [
+              "wipro.com"
+            ],
+            "openToReferrals": true,
+            "id": 2,
+            "status": "listed",
+            "sortOrder": 20,
+            "primaryDomain": "wipro.com",
+            "updatedAt": "2026-10-13T00:00:00.000Z"
+          },
+          {
+            "slug": "go-neutrinos",
+            "name": "Go Neutrinos",
+            "initials": "GN",
+            "industry": "Digital products",
+            "location": "India · Remote",
+            "functions": [
+              "Engineering",
+              "Product",
+              "Design"
+            ],
+            "blurb": "Connect around product, design, and engineering opportunities.",
+            "domains": [
+              "goneutrinos.com"
+            ],
+            "openToReferrals": true,
+            "id": 3,
+            "status": "listed",
+            "sortOrder": 30,
+            "primaryDomain": "goneutrinos.com",
+            "updatedAt": "2026-10-13T00:00:00.000Z"
+          },
+          {
+            "slug": "tcs",
+            "name": "TCS",
+            "initials": "T",
+            "industry": "Technology services",
+            "location": "Global",
+            "functions": [
+              "Engineering",
+              "Data",
+              "Operations"
+            ],
+            "blurb": "Find a warmer path into global technology and consulting teams.",
+            "domains": [
+              "tcs.com"
+            ],
+            "openToReferrals": true,
+            "id": 4,
+            "status": "listed",
+            "sortOrder": 40,
+            "primaryDomain": "tcs.com",
+            "updatedAt": "2026-10-13T00:00:00.000Z"
+          },
+          {
+            "slug": "merkle",
+            "name": "Merkle",
+            "initials": "M",
+            "industry": "Customer experience",
+            "location": "Global",
+            "functions": [
+              "Data",
+              "Design",
+              "Operations"
+            ],
+            "blurb": "Explore opportunities across experience, data, media, and technology.",
+            "domains": [
+              "merkle.com"
+            ],
+            "openToReferrals": true,
+            "id": 5,
+            "status": "listed",
+            "sortOrder": 50,
+            "primaryDomain": "merkle.com",
+            "updatedAt": "2026-10-13T00:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "click": "text=Review company submissions"
+    },
+    {
+      "wait": 300
+    }
+  ]
+}

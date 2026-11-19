@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-036).
+
 # Payment Route Detection Notes
 
 skipwait.me should not perform an IP-address lookup merely to remove a currency choice. Browser locale data is sufficient to provide a sensible low-friction default, while a small user-initiated correction path resolves the cases where a device setting does not match the user’s current billing country.

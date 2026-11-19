@@ -1,209 +1,132 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { ArrowRight, Check } from "lucide-react";
 import { useAuth } from "@/_core/auth";
-import { ArrowLeft, ArrowRight, Check, Gift, LoaderCircle } from "lucide-react";
-import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
+import { ASK_COST_SENTENCE, CREDIT_RULE, PAID_PLANS_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { REFERRERS_NEVER_PAY } from "@shared/referrerPurchases";
+import type { CatalogCurrency } from "@shared/planCatalog";
+import { Button } from "@/components/kit/button";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { readApiJson } from "@/lib/apiResponse";
+import { applySeo } from "@/lib/seo";
+import { failureMessage, parseSummary, type CreditSummary } from "@/components/plans/billingApi";
+import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansCredits";
+import { FairBand, PlansReference } from "@/components/plans/PlansReference";
+import { PlanCards } from "@/components/plans/PlanCards";
+import { PendingCheckoutReturn } from "@/components/plans/PendingCheckoutReturn";
+import { CoverageBlock, PacksSection, PassesSection, useKitCheckout } from "@/components/plans/PlansKitSections";
+import { PlansCatalogOfflineError, usePlansCatalog } from "@/components/plans/plansCatalogApi";
+import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
+import { activePaidPlan, creditFrom } from "@/components/plans/planCatalog";
 
-type Plan = "pro" | "max";
-type CreditSummary = { plan: "free" | Plan; monthlyAllowance: number; monthlyCreditsRemaining: number; totalAvailable: number; subscriptionStatus: string | null; subscriptionCurrentTermEnd: string | null };
-type PlanPrice = { display: string; referencePrice?: string; savings?: string };
+// /plans: Free, the account's own plan when it holds one, credits, usage and the
+// fairness promise. D-067 removed the Pro/Max plans, their checkout and the gift
+// flow; the D-046 passes are sold here in their own slice, so this screen opens
+// no plan checkout at all (credits are bought on /premium). A trusted referrer
+// account is never shown a purchase (D-055): referring is never charged.
 
-const plans: Record<Plan, { name: string; monthlyCredits: number; INR: PlanPrice; USD: PlanPrice }> = {
-  pro: {
-    name: "Pro",
-    monthlyCredits: 10,
-    INR: { display: "₹599/month" },
-    USD: { display: "$7/month" },
-  },
-  max: {
-    name: "Max",
-    monthlyCredits: 30,
-    INR: { display: "₹1,299/month" },
-    USD: { display: "$15/month" },
-  },
-};
-
-// Gift checkout stays hidden until the flow is verified end to end on the
-// Chargebee TEST site (#77/#78). Build with VITE_GIFT_CHECKOUT_ENABLED=true to show it.
-const giftCheckoutEnabled = () => import.meta.env.VITE_GIFT_CHECKOUT_ENABLED === "true";
+const authHeaders = (token: string | null | undefined): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 export default function Plans() {
-  const role = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
-  const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const [selected, setSelected] = useState<Plan>(() => params.get("plan") === "max" ? "max" : "pro");
+  const isReferrer = params.get("role") === "referrer";
+  const payment = params.get("payment");
+  const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const [route, setRoute] = useState<PaymentRoute>(() => params.get("currency") === "INR" ? "INR" : params.get("currency") === "USD" ? "USD" : browserPaymentRoute());
   const [summary, setSummary] = useState<CreditSummary | null>(null);
-  const [status, setStatus] = useState<"idle" | "opening" | "pending">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("payment") === "pending" ? "pending" : "idle");
   const [cancelling, setCancelling] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
-  const [error, setError] = useState("");
-  const [giftStatus, setGiftStatus] = useState<"idle" | "opening">("idle");
-  const [giftError, setGiftError] = useState("");
-  const [sentGifts, setSentGifts] = useState<Array<{ giftId: string; plan: string | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string }>>([]);
-  const [claimableGifts, setClaimableGifts] = useState<Array<{ giftId: string; plan: string | null; receiverEmail: string | null }>>([]);
-  const [claimingId, setClaimingId] = useState<string | null>(null);
-  const [claimedPlan, setClaimedPlan] = useState("");
-  const [summaryKey, setSummaryKey] = useState(0);
-  const giftReturn = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("gift") : null;
-  const selectedPrice = useMemo(() => plans[selected][route], [route, selected]);
-  const price = selectedPrice.display;
-  const routeDetails = paymentRouteDetails(route);
+  const [cancelError, setCancelError] = useState("");
+
+  // Live prices, packs and passes; referrers never see a purchase (D-055).
+  const catalogQuery = usePlansCatalog(!isReferrer);
+  const catalog = catalogQuery.data ?? null;
+  // One currency per view: the server's region answer (catalog) wins over the browser guess once loaded.
+  const currency: CatalogCurrency = catalog?.currency ?? (route as CatalogCurrency);
+  const routeDetails = paymentRouteDetails(currency);
+  const creditPrice = creditFrom(catalog);
+  const packsOnSale = catalog !== null && catalog.packs.some(pack => pack.available);
+  const creditsHref = packsOnSale ? "/plans#packs" : `/premium?role=${isReferrer ? "referrer" : "job_seeker"}`;
+  const activePlan = activePaidPlan(summary);
+  const checkout = useKitCheckout({ role: isReferrer ? "referrer" : "job_seeker", currency, isSignedIn, getToken, openSignIn });
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    applySeo({ title: "Plans and credits", description: PAID_PLANS_SENTENCE, path: "/plans" });
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     let active = true;
     void (async () => {
       try {
-        const sessionToken = await getToken();
-        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {} });
-        const payload = await readApiJson<{ summary?: CreditSummary }>(response, "We could not refresh your plan details");
-        if (active && response.ok && payload.summary) setSummary(payload.summary);
+        const response = await fetch(`/api/credits/summary?role=${isReferrer ? "referrer" : "job_seeker"}`, { credentials: "include", headers: authHeaders(await getToken()) });
+        const payload = await readApiJson<Record<string, unknown>>(response, "We could not refresh your plan details");
+        const parsed = parseSummary(payload);
+        if (active && response.ok && parsed) setSummary(parsed);
       } catch {
-        // Keep comparison available if the secure account summary retries.
+        // The page still compares the free allowance if the account summary retries.
       }
     })();
     return () => { active = false; };
-  }, [getToken, isSignedIn, role, summaryKey]);
+  }, [getToken, isLoaded, isSignedIn, isReferrer]);
 
-  useEffect(() => {
-    if (!isSignedIn) return;
-    let active = true;
-    void (async () => {
-      try {
-        const sessionToken = await getToken();
-        const response = await fetch("/api/chargebee/gifts/mine", { credentials: "include", headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {} });
-        const payload = await readApiJson<{ sent?: typeof sentGifts; claimable?: typeof claimableGifts }>(response, "We could not load your gifts");
-        if (!active || !response.ok) return;
-        setSentGifts(Array.isArray(payload.sent) ? payload.sent : []);
-        setClaimableGifts(Array.isArray(payload.claimable) ? payload.claimable : []);
-      } catch {
-        // Gifts stay hidden until the next successful load; buying still works.
-      }
-    })();
-    return () => { active = false; };
-  }, [getToken, isSignedIn]);
 
-  const startCheckout = async () => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      const destination = new URL(window.location.href);
-      destination.searchParams.set("role", role);
-      destination.searchParams.set("plan", selected);
-      destination.searchParams.set("currency", route);
-      openSignIn({ returnTo: `${destination.pathname}${destination.search}${destination.hash}` });
-      return;
-    }
-    if (summary?.plan !== "free" && (summary?.subscriptionStatus === "active" || summary?.subscriptionStatus === "non_renewing")) return;
-    setError("");
-    setStatus("opening");
-    try {
-      const sessionToken = await getToken();
-      const response = await fetch("/api/chargebee/subscription-checkout", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) },
-        body: JSON.stringify({ plan: selected, currency: route, billingCountry: routeDetails.billingCountry, role }),
-      });
-      const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open secure plan checkout");
-      if (!response.ok || typeof payload.checkoutUrl !== "string") throw new Error(payload.error || "Unable to open secure plan checkout");
-      openChargebeeCheckout(payload.checkoutUrl);
-    } catch (checkoutError) {
-      setError(checkoutError instanceof Error ? checkoutError.message : "Unable to open secure plan checkout");
-      setStatus("idle");
-    }
-  };
-
-  const startGiftCheckout = async () => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      const destination = new URL(window.location.href);
-      destination.searchParams.set("role", role);
-      destination.searchParams.set("plan", selected);
-      destination.searchParams.set("currency", route);
-      openSignIn({ returnTo: `${destination.pathname}${destination.search}${destination.hash}` });
-      return;
-    }
-    setGiftError("");
-    setGiftStatus("opening");
-    try {
-      const sessionToken = await getToken();
-      const response = await fetch("/api/chargebee/gift-checkout", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) },
-        body: JSON.stringify({ plan: selected, currency: route, billingCountry: routeDetails.billingCountry }),
-      });
-      const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open the gift checkout");
-      if (!response.ok || typeof payload.checkoutUrl !== "string") throw new Error(payload.error || "Unable to open the gift checkout");
-      openChargebeeCheckout(payload.checkoutUrl);
-    } catch (checkoutError) {
-      setGiftError(checkoutError instanceof Error ? checkoutError.message : "Unable to open the gift checkout");
-      setGiftStatus("idle");
-    }
-  };
-
-  const claimGift = async (giftId: string) => {
-    if (!isSignedIn) return;
-    setClaimingId(giftId);
-    setGiftError("");
-    try {
-      const sessionToken = await getToken();
-      const response = await fetch("/api/chargebee/gifts/claim", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) },
-        body: JSON.stringify({ giftId }),
-      });
-      const payload = await readApiJson<{ status?: string; error?: string }>(response, "We could not claim this gift");
-      if (!response.ok) throw new Error(payload.error || "We could not claim this gift");
-      const claimed = claimableGifts.find(gift => gift.giftId === giftId);
-      setClaimableGifts(current => current.filter(gift => gift.giftId !== giftId));
-      setClaimedPlan(claimed?.plan === "max" ? "Max" : "Pro");
-      setSummaryKey(key => key + 1);
-    } catch (claimError) {
-      setGiftError(claimError instanceof Error ? claimError.message : "We could not claim this gift");
-    } finally {
-      setClaimingId(null);
-    }
-  };
-
+  // QA review (#359 finding 1): until a pass is proven fixed-term on the provider
+  // side, an active subscription keeps its cancel-renewal control.
   const scheduleCancellation = async () => {
     if (!isSignedIn || summary?.subscriptionStatus !== "active") return;
-    setError("");
+    setCancelError("");
     setCancelling(true);
     try {
-      const sessionToken = await getToken();
       const response = await fetch("/api/chargebee/subscription-cancel", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) },
-        body: JSON.stringify({ role }),
+        headers: { "Content-Type": "application/json", ...authHeaders(await getToken()) },
+        body: JSON.stringify({ role: isReferrer ? "referrer" : "job_seeker" }),
       });
       const payload = await readApiJson<{ currentTermEnd?: string; error?: string }>(response, "We could not schedule your cancellation");
       if (!response.ok) throw new Error(payload.error || "We could not schedule your cancellation");
       setSummary(current => current ? { ...current, subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: payload.currentTermEnd ?? current.subscriptionCurrentTermEnd } : current);
-    } catch (cancellationError) {
-      setError(cancellationError instanceof Error ? cancellationError.message : "We could not schedule your cancellation");
+    } catch (reason) {
+      setCancelError(failureMessage(reason, "We could not schedule your cancellation"));
     } finally {
       setCancelling(false);
     }
   };
 
-  if (status === "pending") {
-    return <main data-skipwait-screen="plans" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><Link href="/requests" className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex flex-1 flex-col justify-center text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#ededff] text-black"><Check className="h-6 w-6" /></span><h1 className="font-display mt-3 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">We’re activating your monthly credits.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Access starts only after the verified payment event reaches our server.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><Link href="/requests" className="inline-flex w-full items-center justify-center rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-semibold text-white">View my requests</Link></footer></div></main>;
+  if (payment === "pending") {
+    return <main data-skipwait-screen="plans" className="page-content plans-page"><PendingCheckoutReturn role={isReferrer ? "referrer" : "job_seeker"} getToken={getToken} /></main>;
   }
 
-  const hasActivePlan = summary?.plan !== "free" && (summary?.subscriptionStatus === "active" || summary?.subscriptionStatus === "non_renewing");
+  return <main data-skipwait-screen="plans" className="page-content plans-page">
+    <div className="page-heading"><div><span className="eyebrow">PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. {ASK_COST_SENTENCE} {isReferrer ? `${REFERRERS_NEVER_PAY} Reviewing requests is free, and skipwait.me never pays a referrer.` : REFERRER_MONEY_SENTENCE} Queue position never changes.</p></div>{isReferrer ? null : <CreditCta summary={summary} creditPrice={creditPrice} href={creditsHref} />}</div>
 
-  return <main data-skipwait-screen="plans" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href={`/premium?role=${role}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="min-h-0 flex-1 overflow-hidden"><div className="flex h-full flex-col justify-center"><h1 className="font-display mt-3 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Keep choices simple.</h1><p className="mt-3 text-sm leading-6 text-[#505050]">Free includes 3 referral requests every month — for seekers and referrers alike. Plans raise that monthly allowance; a $1 credit pack is always available for occasional extra requests.</p>{giftReturn === "done" ? <p role="status" className="mt-4 rounded-xl border border-[#15803d]/30 bg-[#15803d]/10 p-3 text-sm text-[#15803d]">Gift checkout complete. Your recipient gets an email to claim their plan.</p> : null}
-{giftReturn === "cancelled" ? <p role="status" className="mt-4 rounded-xl border border-[#e5e5e5] bg-white p-3 text-sm text-[#505050]">Gift checkout was cancelled. Nothing was charged.</p> : null}
-{claimedPlan ? <p role="status" className="mt-4 rounded-xl border border-[#15803d]/30 bg-[#15803d]/10 p-3 text-sm text-[#15803d]">Your gifted {claimedPlan} plan is active. Monthly credits are on your balance.</p> : null}
-{claimableGifts.length ? <div role="alert" className="mt-4 rounded-xl border border-[#c2c2ff] bg-[#ededff] p-4 text-left"><p className="flex items-center gap-2 text-sm font-bold text-black"><Gift className="h-4 w-4" />You received a gift</p>{claimableGifts.map(gift => <div key={gift.giftId} className="mt-3 flex items-center justify-between gap-3"><p className="text-sm text-black">{gift.plan === "max" ? "Max" : "Pro"} plan · monthly credits included</p><button type="button" disabled={claimingId === gift.giftId} onClick={() => { void claimGift(gift.giftId); }} className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-[#0000ff] px-4 py-2 text-xs font-bold text-white">{claimingId === gift.giftId ? "Claiming…" : "Claim gift"}</button></div>)}</div> : null}
-<div className="mt-5 grid grid-cols-2 gap-3">{(["pro", "max"] as const).map((plan) => { const planPrice = plans[plan][route]; return <button key={plan} type="button" aria-pressed={selected === plan} onClick={() => setSelected(plan)} className={`rounded-xl border p-4 text-left ${selected === plan ? "border-[#0000ff] bg-[#ededff]" : "border-[#e5e5e5] bg-white"}`}><p className="text-sm font-bold">{plans[plan].name}</p><p className="mt-2 text-2xl font-semibold tracking-[-.02em]">{plans[plan].monthlyCredits}</p><p className="text-xs text-[#505050]">requests/month</p><p className="mt-3 text-xs font-semibold text-black">{planPrice.display}</p>{planPrice.referencePrice && <p className="mt-1 text-[10px] leading-4 text-[#505050]"><span className="line-through">Global equivalent {planPrice.referencePrice}</span><span className="ml-1 font-semibold text-black">India price · {planPrice.savings}</span></p>}</button>; })}</div><div role="status" className="mt-5 rounded-xl border border-[#c2c2ff] bg-[#ededff] p-3 text-sm text-black"><strong className="text-black">Pay {price}</strong> with {routeDetails.gateway}.<span className="block pt-1 text-xs text-[#505050]">{routeDetails.gatewayDescriptor}.</span>{selectedPrice.referencePrice && <span className="block pt-1 text-xs text-[#505050]"><span className="line-through">Global equivalent {selectedPrice.referencePrice}/month</span> · India regional price, {selectedPrice.savings}.</span>}</div><p className="mt-4 text-xs leading-5 text-[#505050]"><Check className="mr-1 inline h-3.5 w-3.5 text-black" />Monthly credits reset with your plan cycle. Separately bought credit packs never expire. Cancel anytime; paid access stays through the current cycle. <Link href="/refunds" className="font-semibold text-[#505050] underline-offset-2 hover:underline">Refund & cancellation policy</Link>.</p><button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="mt-3 text-left text-sm font-semibold text-[#505050] underline decoration-[#cfcfcf] underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></div></section><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4"><div className="mb-3 flex items-center justify-between text-sm"><span>{hasActivePlan ? `${summary?.plan === "max" ? "Max" : "Pro"} is active` : `${plans[selected].name} · ${plans[selected].monthlyCredits} each month`}</span><strong>{hasActivePlan ? `${summary?.monthlyCreditsRemaining} left` : price}</strong></div><button type="button" onClick={() => { void startCheckout(); }} disabled={!isLoaded || status === "opening" || Boolean(hasActivePlan)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-semibold text-white">{!isLoaded ? "Checking sign-in…" : status === "opening" ? <><LoaderCircle className="h-4 w-4 animate-spin" />Opening secure checkout…</> : hasActivePlan ? summary?.subscriptionStatus === "non_renewing" ? "Renewal is off" : "Your current plan is active" : isSignedIn ? `Choose ${plans[selected].name}` : `Sign in to pay ${price}`}<ArrowRight className="h-4 w-4" /></button>{summary?.subscriptionStatus === "active" && (confirmingCancel ? <div className="mt-3 rounded-xl border border-[#e5e5e5] bg-white p-3 text-center"><p className="text-xs leading-5 text-[#505050]">Cancel at the end of this paid cycle? Your allowance stays until then.</p><div className="mt-2 flex justify-center gap-3"><button type="button" disabled={cancelling} onClick={() => { void scheduleCancellation(); setConfirmingCancel(false); }} className="inline-flex min-h-11 items-center rounded-lg bg-black px-4 text-xs font-bold text-white">{cancelling ? "Scheduling…" : "Yes, cancel renewal"}</button><button type="button" onClick={() => setConfirmingCancel(false)} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#505050]">Keep plan</button></div></div> : <button type="button" onClick={() => setConfirmingCancel(true)} className="mt-3 block w-full text-center text-sm font-semibold text-[#505050]">Cancel renewal</button>)}{summary?.subscriptionStatus === "non_renewing" && <p className="mt-3 text-center text-xs leading-5 text-[#505050]">Renewal is off. Your current allowance remains available through this paid cycle.</p>}{giftCheckoutEnabled() && <button type="button" onClick={() => { void startGiftCheckout(); }} disabled={!isLoaded || giftStatus === "opening"} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-5 py-3 text-sm font-semibold text-black">{!isLoaded ? "Preparing gift options…" : giftStatus === "opening" ? <><LoaderCircle className="h-4 w-4 animate-spin" />Preparing gift checkout…</> : <><Gift className="h-4 w-4" />Gift {plans[selected].name} · {price}</>}</button>}
-{giftError ? <p role="alert" className="mt-3 text-xs leading-5 text-[#B91C1C]">{giftError}</p> : null}
-{sentGifts.length ? <details className="mt-3 rounded-xl border border-[#e5e5e5] bg-white p-3 text-left"><summary className="cursor-pointer text-xs font-bold text-black">Gifts you have sent ({sentGifts.length})</summary><ul className="mt-2 space-y-1.5">{sentGifts.map(gift => <li key={gift.giftId} className="text-xs leading-5 text-[#505050]">{gift.plan === "max" ? "Max" : "Pro"} → {gift.receiverEmail || "recipient"} · {gift.fulfillmentStatus === "credited" ? "claimed" : gift.fulfillmentStatus === "pending" ? "waiting for claim" : gift.fulfillmentStatus}</li>)}</ul></details> : null}
-{error && <p role="alert" className="mt-3 text-xs leading-5 text-[#B91C1C]">{error}</p>}<Link href={`/premium?role=${role}`} className="mt-3 block text-center text-sm font-semibold text-black">Prefer flexibility? Add one-time credits</Link></footer></div></main>;
+    {payment === "cancelled" ? <p role="status" className="plan-grid-note font-semibold">Checkout was cancelled. Nothing was charged.</p> : null}
+
+    {isReferrer
+      ? <section className="plans-section" aria-label="Referrers never pay"><span className="eyebrow">REFERRING</span><h2>{REFERRERS_NEVER_PAY}</h2><p>Reviewing requests, accepting one and building your verified track record cost you nothing — there is no plan to buy and no credit to spend. Referrers keep the same queue and the same rules whatever a seeker has paid for.</p><Button asChild variant="outline" className="brand-button"><Link href="/referrer">Referrer workspace<ArrowRight /></Link></Button></section>
+      : <>
+        <PlanCards
+          currency={currency}
+          creditPrice={creditPrice}
+          activePlan={activePlan}
+          endsAt={summary?.subscriptionCurrentTermEnd ?? null}
+          renewing={summary?.subscriptionStatus === "active"}
+          cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
+        />
+        {isSignedIn ? <CoverageBlock isSignedIn={isSignedIn} getToken={getToken} /> : null}
+        {catalog ? <PacksSection catalog={catalog} checkout={checkout} /> : null}
+        {catalog ? <PassesSection catalog={catalog} activePlan={activePlan} checkout={checkout} /> : null}
+        {catalogQuery.isError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{catalogQuery.error instanceof PlansCatalogOfflineError ? catalogQuery.error.message : "We could not load live prices. Check your connection and try again."} <button type="button" className="underline underline-offset-4" onClick={() => void catalogQuery.refetch()}>Try again</button></p> : null}
+        <p className="plan-grid-note">Every account starts on the free tier, and tracking every request is free. {CREDIT_RULE}</p>
+        <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. {catalog ? null : <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button>}</p>
+        {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
+
+        <CreditsSection summary={summary} creditPrice={creditPrice} creditsHref={creditsHref} />
+        {summary ? <UsagePanel summary={summary} /> : null}
+        {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref)} /> : null}
+      </>}
+    <FairBand />
+    <PlansReference />
+  </main>;
 }

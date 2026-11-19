@@ -2,7 +2,10 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
+
+const Queue = () => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>;
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => null), openSignIn: vi.fn() }),
@@ -10,8 +13,11 @@ vi.mock("@/_core/auth", () => ({
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
-  useLocation: () => ["/inbox", vi.fn()],
+  useLocation: () => ["/queue", vi.fn()],
+  useSearch: () => "",
 }));
+// The verified-referrer gate itself is covered in myCompanyInbox.serverAccess.test.tsx; these cases start verified.
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "verified", access: { verified: true, domain: "acme.com", companyName: null, companyInitials: null } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
@@ -27,7 +33,7 @@ describe("inbox parallel secondary loads", () => {
 
   it("handles secondary failures when the primary load also fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 503, json: async () => ({ error: "everything is down" }) })));
-    render(<MyCompanyInbox />);
+    render(<Queue />);
     expect(await screen.findByRole("alert")).toBeTruthy();
   });
 });

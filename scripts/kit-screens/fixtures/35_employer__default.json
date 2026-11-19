@@ -1,0 +1,18 @@
+{
+  "signedIn": { "id": 41, "name": "Priya Menon", "email": "priya.menon@merkle.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "prefix", "status": 200, "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/employer/account", "match": "exact", "status": 200, "body": { "account": { "id": 7, "userId": 41, "companyName": "Merkle", "billingEmail": "priya.menon@merkle.com", "credits": 18, "budgetMonthlyUsdCents": 50000, "creditDebt": 0, "approvalStatus": "approved", "approvedAt": "2026-09-02T09:00:00.000Z", "submittedAt": "2026-09-01T09:00:00.000Z", "decidedAt": "2026-09-02T09:00:00.000Z", "decisionNote": null } } },
+    { "method": "GET", "path": "/api/employer/opportunities", "match": "exact", "status": 200, "body": { "opportunities": [
+      { "id": 301, "companyDomain": "merkle.com", "kind": "hiring_now", "roleTitle": "Senior Product Designer", "location": "Bengaluru", "compensation": null, "isActive": true, "sponsoredTier": "featured", "sponsoredUntil": "2026-10-20T00:00:00.000Z", "createdAt": "2026-09-20T00:00:00.000Z", "isSponsored": true },
+      { "id": 302, "companyDomain": "merkle.com", "kind": "hiring_now", "roleTitle": "Data Analyst", "location": "Mumbai", "compensation": null, "isActive": true, "sponsoredTier": null, "sponsoredUntil": null, "createdAt": "2026-09-18T00:00:00.000Z", "isSponsored": false },
+      { "id": 303, "companyDomain": "merkle.com", "kind": "walk_in", "roleTitle": "Backend Engineer", "location": "Pune", "compensation": null, "isActive": true, "sponsoredTier": null, "sponsoredUntil": null, "createdAt": "2026-09-10T00:00:00.000Z", "isSponsored": false }
+    ] } },
+    { "method": "GET", "path": "/api/employer/spend-history", "match": "exact", "status": 200, "body": { "spend": [
+      { "kind": "profile_unlock", "creditsSpent": 1, "displayRef": "Access record", "createdAt": "2026-10-07T10:00:00.000Z" },
+      { "kind": "profile_unlock", "creditsSpent": 1, "displayRef": "Access record", "createdAt": "2026-10-05T10:00:00.000Z" },
+      { "kind": "sponsorship", "creditsSpent": 5, "opportunityId": 301, "tier": "featured", "createdAt": "2026-10-01T10:00:00.000Z" },
+      { "kind": "credit_purchase", "creditsAdded": 25, "pack": "starter", "createdAt": "2026-09-28T10:00:00.000Z" }
+    ] } }
+  ]
+}

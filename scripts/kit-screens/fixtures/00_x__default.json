@@ -1,0 +1,7 @@
+{
+  "signedIn": false,
+  "localStorage": { "skipwait:cookie-consent": "all" },
+  "routes": [
+    { "method": "GET", "path": "/api/referral-impact", "match": "exact", "status": 200, "body": { "acceptedReferrals": 0 } }
+  ]
+}

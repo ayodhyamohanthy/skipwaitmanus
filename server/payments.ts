@@ -82,11 +82,9 @@ async function paypalOrder(input: { amountUsd: number; reference: string }) {
   return (await response.json()) as { id: string; status: string };
 }
 
-type PlanPricing = { inrAmount: number; usdAmount: number };
-
 export type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> };
 
-export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId: string, tokens: number) => PlanPricing | undefined; resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: ActivityInput) => Promise<void> }) {
+export function registerPaymentRoutes(app: Express, deps: { resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: ActivityInput) => Promise<void> }) {
   // Fail closed until direct-provider checkout has a durable intent and verified
   // fulfillment path. Chargebee is the canonical consumer token rail.
   const unavailable = async (req: Request, res: Response) => {

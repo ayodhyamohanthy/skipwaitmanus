@@ -1,14 +1,17 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-021, D-034, D-035, D-038, D-048, D-052, D-055; the live colours are the ones in `DESIGN.md` and `client/src/index.css`, not the "Scoreboard" values in the note below).
+
 # Pending Screens — Developer Handoff Notes
 _Design source: `docs/design/pending-screens-canvas.html` (interactive infinite canvas — open in any browser; scroll to pan, ⌘scroll to zoom)_
 _Style preset: 17 Takram (Soft Precision) for layout, hierarchy, motion and copy — **superseded on colour**._
 
 > **Colour authority: [`DESIGN.md`](../../DESIGN.md) + `client/src/index.css`.**
 > This doc governs structure, states, copy and behaviour; it is not a colour
-> source. The original preset shipped `#0B57D0` on warm-paper neutrals, which
-> the approved "Moving Parts" system replaced with primary action blue
-> `#0000ff` on white. The tokens in §1 below are the approved values — use these
-> and never introduce a new hex. Run `node scripts/design-token-audit.mjs` to
-> prove the surface is clean.
+> source. Two palettes have been retired under it: the original `#0B57D0`
+> warm-paper preset, and the later "Moving Parts" system (action blue `#0000ff`
+> on white). The shipping "Scoreboard" world is paper `#f4f4f1`, ink `#131311`,
+> one signal red `#e8442e`, so **every hex quoted in §1 and below is
+> historical** — take colours from DESIGN.md and run
+> `node scripts/design-token-audit.mjs` to prove the surface is clean.
 
 ---
 

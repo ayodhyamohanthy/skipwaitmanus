@@ -1,110 +1,497 @@
-import { ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ExternalLink, FileText, Inbox, LockKeyhole } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useAuth, useUser } from "@/_core/auth";
-import { useLocation } from "wouter";
-import { AccountMenu } from "@/components/AccountMenu";
-import { Brand } from "@/components/Brand";
-import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
-import { ReferrerCreditsCard } from "@/components/ReferrerCreditsCard";
-import { ReferrerFastTrackCard } from "@/components/ReferrerFastTrackCard";
-import { referralStatusLabels, type ReferralStatus } from "@shared/referral";
-import { readApiJson } from "@/lib/apiResponse";
-import { ActionErrorCard } from "@/components/ActionErrorCard";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+// Referral queue (goal UI, D-048 phase 3 W1). Faithful transcription of
+// design/goal-ui/pick/referral-queue: the master list (dot+text New / Under
+// review, mono days-left, amber at <=2) beside the reading pane (HMAC public
+// ref, dates, Why me, ask quality, identity lock) with the one decision dock
+// (Pass privately [P] ghost, Accept & connect [A] primary). Asks come from
+// GET /api/company-referrals/inbox (new + saved); the unclaimed preview
+// supplies the pitch and document count. Public refs are the server's HMAC
+// R-XXXXX, never the sequential id.
+import { ChevronDown, ChevronUp, HandHelping, Settings } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import { useAuth } from "@/_core/auth";
+import {
+  GoalAppShell,
+  GoalButton,
+  GoalDetailPane,
+  GoalEmptyState,
+  GoalErrorState,
+  GoalIconButton,
+  GoalListRow,
+  GoalLockedPanel,
+  GoalNum,
+  GoalSheet,
+  GoalSkeletonRows,
+  GoalStatus,
+  GoalVerifiedMark,
+} from "@/components/goal";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
+import { displayJobFunction, parseJobFunction, type JobFunction } from "@shared/jobFunctions";
+import { getAskShelfLifeEndsAtMs, type ReferralStatus } from "@shared/referral";
+import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
+import { askWorkItemsListSchema, ASK_WORK_SECTION_TITLE, safeAskWorkUrl } from "@shared/askWorkItems";
+import { workKindLabel } from "@/components/profile/workItems";
+import { splitWhyMe } from "@shared/whyMe";
+import { formatDay } from "@/lib/displayPrefs";
+import { readApiJson } from "@/lib/apiResponse";
+import { cn } from "@/lib/utils";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
-type DeclineReason = "role_not_a_fit" | "cannot_support" | "timing";
-const declineReasonOptions: Array<{ value: DeclineReason; label: string; hint: string }> = [
-  { value: "role_not_a_fit", label: "Not a fit", hint: "The role and profile don’t line up." },
-  { value: "cannot_support", label: "Can’t support", hint: "You can’t vouch for this referral." },
-  { value: "timing", label: "Not now", hint: "You’re out of capacity at the moment." },
-];
+type QueueItem = {
+  id: number;
+  publicRef?: string;
+  targetRoleUrl: string | null;
+  companyDomain: string;
+  companyName?: string | null;
+  companyInitials?: string | null;
+  jobFunction?: JobFunction | null;
+  jobTitle?: string | null;
+  askStrength?: "strong" | "good" | "basic" | null;
+  status: ReferralStatus;
+  createdAt: string;
+  attachmentCount: number;
+  isClaimedByYou: boolean;
+  expiresAt?: string | null;
+  decisionDueAt?: string | null;
+  waitingForCoverage?: boolean | null;
+  coverageVisibleAt?: string | null;
+};
+type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown };
+type InboxPayload = { requests?: QueueItem[] };
+/** Read model for the honest empty state: paused / active (capacity left) / at_capacity. */
+type RoutingState = "paused" | "active" | "at_capacity";
+type ReferrerHomePayload = { home?: { routing?: { state?: string } } };
+type ReferrerPrefsPayload = { preferences?: { notifyNewAsk?: boolean } };
+/** Prod has no Resend key yet, so ask emails are not reliably sent. Do not promise
+    email in copy until the key is live; then the promise also respects notifyNewAsk. */
+const EMAIL_DELIVERY_LIVE = false;
 
-type InboxScope = "new" | "saved" | "completed";
-type Attachment = { id: number; fileName: string; mimeType: string; fileSize: number; url: string };
-type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number };
-type CandidatePreview = { id: number; candidateName: string | null; candidateMessage: string; targetRoleUrl: string | null; companyDomain: string; attachments: Attachment[] };
-type PrivateImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
-const personalEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
-const scopes: Array<{ id: InboxScope; label: string; description: string }> = [{ id: "new", label: "New", description: "Available private requests" }, { id: "saved", label: "Saved", description: "Return when ready" }, { id: "completed", label: "Done", description: "Recorded decisions" }];
-const displayRef = (id: number) => `Ref-${1000 + id}`;
+const DAY_MS = 86_400_000;
+
+/** Comp rule: "N days left" reads neutral until 2 days, then amber - never crimson in the queue. */
+function daysLeft(item: QueueItem, nowMs: number): { label: string; soon: boolean } | null {
+  if (item.status !== "pending") return null;
+  const ms = item.expiresAt ? Date.parse(item.expiresAt) : getAskShelfLifeEndsAtMs({ createdAt: item.createdAt, waitingForCoverage: item.waitingForCoverage, coverageVisibleAt: item.coverageVisibleAt });
+  if (ms === null || Number.isNaN(ms)) return null;
+  const days = Math.ceil((ms - nowMs) / DAY_MS);
+  if (days < 0) return { label: "Expired", soon: false };
+  return { label: days === 1 ? "1 day left" : `${days} days left`, soon: days <= 2 };
+}
+
+function roleTitle(item: QueueItem): string {
+  return item.jobTitle?.trim() || "Private ask";
+}
+
+/** D-038-A: the server's 48-hour decision deadline for the viewer's own claim or allocation.
+    Neutral wording, never a countdown: the ask goes back to colleagues and nothing is taken. */
+function decisionDue(item: QueueItem, nowMs: number): string | null {
+  const ms = item.decisionDueAt ? Date.parse(item.decisionDueAt) : Number.NaN;
+  if (Number.isNaN(ms)) return null;
+  const hours = Math.ceil((ms - nowMs) / 3_600_000);
+  return hours <= 0 ? "Decision due now" : `Decide within ${hours} hour${hours === 1 ? "" : "s"}`;
+}
 
 export default function MyCompanyInbox() {
   const [, go] = useLocation();
+  const requestedId = Number(new URLSearchParams(useSearch()).get("request"));
   const { isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
-  const [scope, setScope] = useState<InboxScope>("new");
-  const [requests, setRequests] = useState<CompanyInboxItem[]>([]);
-  const [newRequestCount, setNewRequestCount] = useState(0);
-  const [preview, setPreview] = useState<CandidatePreview | null>(null);
-  const [loading, setLoading] = useState(false);
+  const access = useReferrerAccess();
+  const verified = access.status === "verified";
+  const [requests, setRequests] = useState<QueueItem[]>([]);
+  const [loading, setLoading] = useState(Boolean(isSignedIn));
   const [error, setError] = useState("");
-  const [capacityMessage, setCapacityMessage] = useState("");
-  const [decidedRequestId, setDecidedRequestId] = useState<number | null>(null);
-  const [impact, setImpact] = useState<PrivateImpactSummary | null>(null);
-  const [workingId, setWorkingId] = useState<number | null>(null);
-  const [openingCapacity, setOpeningCapacity] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [pendingDecline, setPendingDecline] = useState<DeclineReason | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewAttempt, setPreviewAttempt] = useState(0);
+  const [working, setWorking] = useState(false);
+  const [passOpen, setPassOpen] = useState(false);
+  const [openingCapacity, setOpeningCapacity] = useState(false);
+  const [routingState, setRoutingState] = useState<RoutingState | null>(null);
+  const [notifyNewAsk, setNotifyNewAsk] = useState<boolean | null>(null);
   const { showSkeleton, isSlow } = useSlowLoad(loading);
-  const hasVerifiedWorkEmail = Boolean(user?.emailAddresses.some(address => { const domain = address.emailAddress.trim().toLowerCase().split("@")[1]; return address.verification?.status === "verified" && domain && !personalEmailDomains.has(domain); }));
 
   const companyFetch = async <T extends object>(path: string, init?: RequestInit): Promise<T & { error?: string }> => {
     const token = await getToken();
     const response = await fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
     const payload = await readApiJson<T & { error?: string }>(response, "We could not complete that private company request");
+    // D-057: a refusal for this session re-checks the verdict, so the queue flips to the step-up in place.
+    if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
     if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
     return payload;
   };
-  const loadInbox = async (nextScope = scope) => {
+
+  const loadInbox = async () => {
     if (!isSignedIn) return;
     setLoading(true); setError(""); setLoadFailed(false);
     try {
-      // Kick off the secondary loads in parallel with the primary inbox fetch
-      // so tab switches don't serialize three round-trips.
-      const impactPromise = companyFetch<{ summary?: PrivateImpactSummary }>("/api/referrer-impact/me");
-      const newCountPromise = nextScope === "new" ? null : companyFetch<{ requests?: CompanyInboxItem[] }>("/api/company-referrals/inbox?scope=new");
-      // Eager no-op rejection handlers: if the primary fetch below throws,
-      // these promises are never awaited, and their later rejection would be
-      // an unhandled rejection (fails test runners, noise in browsers). The
-      // awaited handling further down is unaffected.
-      void impactPromise.catch(() => undefined);
-      if (newCountPromise) void newCountPromise.catch(() => undefined);
-      const payload = await companyFetch<{ requests?: CompanyInboxItem[] }>(`/api/company-referrals/inbox?scope=${nextScope}`);
-      setRequests(payload.requests || []);
-      try { const impactPayload = await impactPromise; setImpact(impactPayload.summary || null); } catch { setImpact(null); }
-      if (nextScope === "new") setNewRequestCount((payload.requests || []).length);
-      else if (newCountPromise) { try { const newPayload = await newCountPromise; setNewRequestCount((newPayload.requests || []).length); } catch { /* keep the previous count */ } }
-      setActiveIndex(0);
-    } catch (reason) { setLoadFailed(true); setError(reason instanceof Error ? reason.message : "We could not load your private company inbox"); }
+      const [fresh, saved, home, prefs] = await Promise.all([
+        companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=new"),
+        companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=saved"),
+        companyFetch<ReferrerHomePayload>("/api/referrer/home").catch(() => null),
+        companyFetch<ReferrerPrefsPayload>("/api/referrer-preferences").catch(() => null),
+      ]);
+      const state = home?.home?.routing?.state;
+      setRoutingState(state === "paused" || state === "active" || state === "at_capacity" ? state : null);
+      setNotifyNewAsk(typeof prefs?.preferences?.notifyNewAsk === "boolean" ? prefs.preferences.notifyNewAsk : null);
+      const withFunction = (row: QueueItem): QueueItem => ({ ...row, jobFunction: parseJobFunction(row.jobFunction) });
+      const freshRows = (fresh.requests || []).map(withFunction);
+      const seen = new Set(freshRows.map(row => row.id));
+      setRequests([...freshRows, ...(saved.requests || []).filter(row => !seen.has(row.id)).map(withFunction)]);
+    } catch (reason) { setLoadFailed(true); setError(reason instanceof Error ? reason.message : "We could not load your queue"); }
     finally { setLoading(false); }
   };
-  const raceError = error.includes("Another employee accepted");
-  useEffect(() => { void loadInbox(scope); }, [isSignedIn, scope]);
-  const save = async (requestId: number, saved: boolean) => { setWorkingId(requestId); setError(""); try { await companyFetch(`/api/company-referrals/${requestId}/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ saved }) }); await loadInbox(scope); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not update this private request"); } finally { setWorkingId(null); } };
-  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
-  const claim = async (requestId: number) => { setWorkingId(requestId); setError(""); try { await companyFetch(`/api/company-referrals/${requestId}/claim`, { method: "POST" }); go(`/referrer?request=${requestId}`); } catch (reason) { const message = reason instanceof Error ? reason.message : "This request is no longer available"; setError(message.includes("no longer available") ? "Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); } finally { setWorkingId(null); } };
-  const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason) => {
-    setWorkingId(requestId); setError("");
+  // The queue loads once the server confirms verification; a retried check that
+  // succeeds also brings the queue in, and an unverified account never requests it.
+  useEffect(() => { if (verified) void loadInbox(); }, [isSignedIn, verified]);
+
+  const selected = useMemo(() => requests.find(row => row.id === selectedId) ?? null, [requests, selectedId]);
+
+  // /referrer-home rows link here as /queue?request=:id and open that ask directly.
+  useEffect(() => {
+    if (!verified || !Number.isInteger(requestedId) || requestedId <= 0 || !requests.length || selectedId) return;
+    const requested = requests.find(item => item.id === requestedId);
+    if (!requested) return;
+    if (requested.status !== "pending" || requested.isClaimedByYou) go(`/conversation/${requested.id}?from=inbox`);
+    else setSelectedId(requested.id);
+  }, [verified, requestedId, requests, selectedId]);
+
+  // The pitch and document count only exist on the unclaimed preview; claimed
+  // asks read from the conversation instead.
+  useEffect(() => {
+    if (!selected || selected.status !== "pending") { setPreview(null); return; }
+    let cancelled = false;
+    setPreviewLoading(true); setPreview(null); setPreviewError("");
+    void companyFetch<{ request?: Preview }>(`/api/company-referrals/${selected.id}/preview`)
+      .then(payload => {
+        // Task 13: a preview without the list reads as "no pinned work" instead
+        // of crashing the pane — the web bundle can lead the API by one deploy.
+        const request = payload.request;
+        if (!request) throw new Error("We could not load this private ask.");
+        if (!cancelled) setPreview({ ...request, workItems: askWorkItemsListSchema.parse(request.workItems) });
+      })
+      .catch(() => { if (!cancelled) { setPreview(null); setPreviewError("We could not load this private ask. Try again before deciding."); } })
+      .finally(() => { if (!cancelled) setPreviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedId, previewAttempt]);
+
+  const review = async (requestId: number, decision: "approved" | "declined", passReason?: PassReasonCode) => {
+    if (working || !verified || !preview || previewLoading || previewError) return;
+    setWorking(true); setError("");
     try {
-      await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, declineReason }) });
-      setPreview(null); setPendingDecline(null); setScope("completed"); setDecidedRequestId(decision === "approved" ? requestId : null); setCapacityMessage(decision === "approved" ? "Referral accepted. You can now message the Job Seeker privately." : "Decision recorded and shared privately with the Job Seeker."); await loadInbox("completed");
-    } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed — Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
-    finally { setWorkingId(null); }
+      const option = passReason ? PASS_REASON_OPTIONS.find(entry => entry.code === passReason) : null;
+      await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(decision === "approved" ? { decision, ethicsConfirmed: true } : { decision, declineReason: option?.legacy, passReason }) });
+      setPassOpen(false); setSelectedId(null); setPreview(null);
+      setNotice(decision === "approved" ? "Request accepted. You can now message the job seeker privately." : "Passed privately. The job seeker gets a short private note - never your name.");
+      // Acceptance hands off at once; a slow inbox refresh must not strand the referrer.
+      if (decision === "approved") { void loadInbox(); go(`/conversation/${requestId}?from=inbox`); }
+      else await loadInbox();
+    } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed - Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
+    finally { setWorking(false); }
   };
-  const openReferralCapacity = async () => { setOpeningCapacity(true); setError(""); setCapacityMessage(""); setDecidedRequestId(null); try { const payload = await companyFetch<{ availability?: { allocatedCount?: number } }>("/api/company-referrals/availability/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slotCount: 1 }) }); const allocatedCount = payload.availability?.allocatedCount ?? 0; setCapacityMessage(allocatedCount ? `${allocatedCount} waiting request${allocatedCount === 1 ? " is" : "s are"} now available for your review.` : "No waiting requests at your company right now."); await loadInbox("new"); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not open referral capacity"); } finally { setOpeningCapacity(false); } };
-  const selectScope = (nextScope: InboxScope) => { setPreview(null); setScope(nextScope); setActiveIndex(0); };
 
-  if (!isSignedIn) return <main data-skipwait-screen="company-inbox-sign-in" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><Brand /></header><section className="flex flex-1 flex-col justify-center"><h1 className="font-display mt-6 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Give referrals with control.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Use a company email to see only matching private requests. Your identity stays hidden.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" onClick={() => go("/referrer")} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">Use company email <ArrowRight className="h-4 w-4" /></button></footer></div></main>;
-  if (!hasVerifiedWorkEmail) return <main data-skipwait-screen="company-inbox-setup" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center justify-between"><Brand /><AccountMenu /></header><section className="flex flex-1 flex-col justify-center"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#ededff] text-black"><LockKeyhole className="h-5 w-5" /></span><h1 className="font-display mt-3 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Verify your work email.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">A one-time code confirms your company corridor. Your name and work email never appear to Job Seekers.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" onClick={() => go("/referrer?setup=work-email")} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">Add work email <ArrowRight className="h-4 w-4" /></button></footer></div></main>;
+  const openReferralCapacity = async () => {
+    setOpeningCapacity(true); setError(""); setNotice("");
+    try {
+      const payload = await companyFetch<{ availability?: { allocatedCount?: number } }>("/api/company-referrals/availability/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slotCount: 1 }) });
+      const allocatedCount = payload.availability?.allocatedCount ?? 0;
+      setNotice(allocatedCount ? `${allocatedCount} waiting request${allocatedCount === 1 ? " is" : "s are"} now available for your review.` : "No waiting requests at your company right now.");
+      await loadInbox();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not open referral capacity"); }
+    finally { setOpeningCapacity(false); }
+  };
 
-  if (preview) return <main data-skipwait-screen="company-candidate-preview" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><button type="button" onClick={() => setPreview(null)} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button><AccountMenu /></header><section className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4"><h1 className="font-display mt-3 text-[2.2rem] font-semibold leading-[.94] tracking-[-.02em]">{preview.candidateName || "Job Seeker"}</h1><a href={preview.targetRoleUrl || undefined} target="_blank" rel="noreferrer" className="mt-5 inline-flex max-w-full items-center gap-2 truncate text-sm font-bold text-black"><ExternalLink className="h-4 w-4 shrink-0" /><span className="truncate">{preview.targetRoleUrl || "Role link unavailable"}</span></a><article className="mt-5 rounded-xl border border-[#e5e5e5] bg-white p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-[#505050]">Job Seeker’s note</p><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#505050]">{preview.candidateMessage}</p></article><article className="mt-3 rounded-xl border border-[#e5e5e5] bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[.14em] text-[#505050]">Resume & documents</p><p className="text-xs font-semibold text-black">{preview.attachments.length} attached</p></div>{preview.attachments.map(attachment => <div key={attachment.id} className="mt-3 rounded-lg bg-white p-3"><div className="flex items-center justify-between gap-3"><span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-black" /><span className="truncate text-sm font-semibold text-black">{attachment.fileName}</span></span><a href={attachment.url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-bold text-black">Open</a></div>{attachment.mimeType === "application/pdf" || attachment.mimeType.startsWith("image/") ? <iframe title={`Preview ${attachment.fileName}`} src={attachment.url} className="mt-3 h-48 w-full rounded-lg border border-[#e5e5e5] bg-white" /> : null}</div>)}{preview.attachments.length === 0 ? <p className="mt-3 text-sm text-[#505050]">No resume was attached.</p> : null}</article></section><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">{error ? <ActionErrorCard className="mb-3" title={raceError ? "Accept failed" : "That didn’t go through"} detail={error.replace(/^Accept failed — /, "")} reassurance={raceError ? undefined : "Nothing was recorded and the request is still in your queue."} onRetry={raceError ? undefined : () => { setError(""); void (pendingDecline ? oneClickReview(preview.id, "declined", pendingDecline) : oneClickReview(preview.id, "approved")); }} retrying={workingId === preview.id} dismissLabel="Back to queue" onDismiss={() => { setError(""); setPreview(null); setPendingDecline(null); void loadInbox(scope); }} /> : null}{pendingDecline ? <div role="group" aria-label="Confirm decline" className="rounded-xl border border-[#e5e5e5] bg-white p-4"><p className="text-sm font-bold text-black">Decline as “{declineReasonOptions.find(option => option.value === pendingDecline)?.label}”?</p><p className="mt-1 text-sm leading-6 text-[#505050]">{declineReasonOptions.find(option => option.value === pendingDecline)?.hint} The Job Seeker sees a short private note — never your name — and their credit is returned.</p><div className="mt-3 flex gap-2"><button type="button" disabled={workingId === preview.id} onClick={() => { void oneClickReview(preview.id, "declined", pendingDecline); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-[#b91c1c]/30 bg-white px-4 py-2.5 text-sm font-bold text-[#b91c1c]">{workingId === preview.id ? "Recording…" : "Confirm decline"}</button><button type="button" disabled={workingId === preview.id} onClick={() => setPendingDecline(null)} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white px-4 py-2.5 text-sm font-bold text-[#505050]">Cancel</button></div></div> : <><button type="button" onClick={() => { void oneClickReview(preview.id, "approved"); }} disabled={workingId === preview.id || !preview.attachments.length} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">{workingId === preview.id ? "Recording decision…" : "Accept & submit referral"}<CheckCircle2 className="h-4 w-4" /></button><p className="mt-3 text-center text-[11px] font-semibold text-[#505050]">Or decline with one reason</p><div className="mt-2 grid grid-cols-3 gap-2">{declineReasonOptions.map(option => <button key={option.value} type="button" disabled={workingId === preview.id} onClick={() => setPendingDecline(option.value)} className="min-h-11 rounded-lg border border-[#e5e5e5] bg-white px-2 py-2 text-[11px] font-bold text-[#505050]">{option.label}</button>)}</div></>}</footer></div></main>;
+  // Keyboard: K previous, J next, P pass sheet, A accept (comp decision-dock hints).
+  const openIndex = selected ? requests.findIndex(row => row.id === selected.id) : -1;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || working || passOpen) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "j" || key === "k") {
+        if (!requests.length) return;
+        event.preventDefault();
+        const next = key === "j" ? Math.min(requests.length - 1, openIndex + 1) : Math.max(0, openIndex < 0 ? 0 : openIndex - 1);
+        const nextAsk = requests[next];
+        if (nextAsk && (nextAsk.status !== "pending" || nextAsk.isClaimedByYou)) go(`/conversation/${nextAsk.id}?from=inbox`);
+        else setSelectedId(nextAsk?.id ?? null);
+      } else if (key === "p" && selected?.status === "pending" && preview && !previewLoading && !previewError) { event.preventDefault(); setPassOpen(true); }
+      else if (key === "a" && selected?.status === "pending" && !working && !passOpen) { event.preventDefault(); void review(selected.id, "approved"); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
-  const request = requests[activeIndex];
-  const currentScope = scopes.find(item => item.id === scope)!;
-  const unreadConversationCount = scope === "completed" && request?.status === "approved" ? request.unreadMessageCount : 0;
-  const detail = scope === "completed" ? request?.status === "approved" ? unreadConversationCount ? `The Job Seeker sent ${unreadConversationCount} new private message${unreadConversationCount === 1 ? "" : "s"}.` : "You accepted this referral request. You can now continue privately with the Job Seeker." : "Decision recorded for this private request." : request?.isQueueOpenAllocation ? "You opened capacity for this request. Review the candidate’s note, role link, and resume before deciding." : "Review the candidate’s note, role link, and resume before deciding whether to take this referral request.";
-  const badge = scope === "completed" ? referralStatusLabels[request?.status ?? "pending"] : scope === "saved" ? "Saved privately" : request?.isQueueOpenAllocation ? "Ready to review" : "New private request";
-  return <main data-skipwait-screen="company-inbox" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between gap-3"><Brand /><AccountMenu /></header><div className="mt-5 grid shrink-0 grid-cols-3 gap-2" role="tablist" aria-label="Company inbox views">{scopes.map(item => <button key={item.id} type="button" role="tab" aria-selected={scope === item.id} onClick={() => selectScope(item.id)} className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-sm font-bold ${scope === item.id ? "bg-[#0000ff] text-white" : "border border-[#e5e5e5] bg-white text-[#505050]"}`}>{item.label}{item.id === "new" && newRequestCount > 0 ? <span aria-label={`${newRequestCount} new private request${newRequestCount === 1 ? "" : "s"}`} className={`min-w-5 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${scope === "new" ? "bg-white text-black" : "bg-[#0000ff] text-white"}`}>{newRequestCount > 99 ? "99+" : newRequestCount}</span> : null}</button>)}</div>{capacityMessage ? <div role="status" className="mt-3 rounded-lg bg-[#ededff] px-3 py-2 text-center text-xs font-semibold text-black"><p>{capacityMessage}</p>{decidedRequestId ? <p className="mt-1 text-[11px] font-medium text-[#505050]">Tip: open the conversation to introduce yourself and share how you can help. <button type="button" onClick={() => go(`/conversation/${decidedRequestId}?from=inbox`)} className="ml-1 rounded-md border border-[#0000ff] bg-white px-2 py-1 text-[11px] font-bold text-black">Open conversation</button></p> : null}</div> : null}{showSkeleton ? <section className="flex flex-1 flex-col justify-center"><LoadingSkeleton title="Loading your queue…" caption="Checking your company’s private requests." slow={isSlow} /></section> : error ? <section className="flex flex-1 flex-col justify-center"><ActionErrorCard title={raceError ? "Accept failed" : loadFailed ? "We couldn’t load your queue" : "That didn’t go through"} detail={error.replace(/^Accept failed — /, "")} reassurance={raceError ? undefined : loadFailed ? "Nothing changed on your side. Your queue is intact." : "Nothing was recorded. Your queue is unchanged."} retryLabel={raceError ? "Refresh queue" : "Try again"} onRetry={() => { setError(""); void loadInbox(scope); }} retrying={loading} /></section> : request ? <section className="flex min-h-0 flex-1 flex-col"><div className="flex min-h-0 flex-1 flex-col justify-center"><div className="mt-4 flex items-start justify-between gap-3"><div><p className="text-sm font-bold uppercase tracking-[.14em] text-[#505050]">{request.companyDomain}{request.compensation ? <> · <span className="normal-case tracking-normal">{request.compensation}</span></> : null} · {displayRef(request.id)}</p><h1 className="font-display mt-2 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Private request</h1></div><span className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${scope === "completed" ? "bg-[#15803d]/10 text-[#15803d]" : scope === "saved" ? "bg-[#b45309]/10 text-[#B45309]" : "bg-[#ededff] text-black"}`}>{badge}</span></div><a href={request.targetRoleUrl || undefined} target="_blank" rel="noreferrer" className="mt-5 inline-flex max-w-full items-center gap-2 truncate text-sm font-bold text-black"><ExternalLink className="h-4 w-4 shrink-0" /><span className="truncate">{request.targetRoleUrl || "Role link unavailable"}</span></a><div className="mt-6 rounded-xl border border-[#e5e5e5] bg-white p-4"><p className="text-sm leading-6 text-[#505050]">{detail}</p></div><div className="mt-4 grid grid-cols-2 gap-2 text-center text-[11px] font-semibold text-[#505050]"><span className="rounded-lg bg-[#f0f0f0] px-2 py-2">{request.attachmentCount} document{request.attachmentCount === 1 ? "" : "s"}</span><span className="rounded-lg bg-[#f0f0f0] px-2 py-2">Identity remains hidden</span></div></div><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">{requests.length > 1 ? <div className="mb-3 grid grid-cols-2 gap-2"><button type="button" disabled={activeIndex === 0} onClick={() => setActiveIndex(current => Math.max(0, current - 1))} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#e5e5e5] px-3 py-2.5 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Previous</button><button type="button" disabled={activeIndex === requests.length - 1} onClick={() => setActiveIndex(current => Math.min(requests.length - 1, current + 1))} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#e5e5e5] px-3 py-2.5 text-sm font-semibold text-[#505050]">Next<ArrowRight className="h-4 w-4" /></button></div> : null}{scope !== "completed" ? <button type="button" onClick={() => { void reviewCandidate(request.id); }} disabled={workingId === request.id} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">{workingId === request.id ? "Loading candidate…" : "Review candidate"}<ArrowRight className="h-4 w-4" /></button> : request.status === "approved" ? <><button type="button" onClick={() => go(`/conversation/${request.id}?from=inbox`)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">{unreadConversationCount ? `Open conversation · ${unreadConversationCount} new` : "Message Job Seeker"} <ArrowRight className="h-4 w-4" /></button><button type="button" onClick={() => go("/post-opportunity")} className="mt-3 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#505050]">Share an opportunity</button></> : <button type="button" onClick={() => go("/post-opportunity")} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">Share an opportunity <ArrowRight className="h-4 w-4" /></button>}{scope === "new" && <button type="button" onClick={() => { void save(request.id, true); }} disabled={workingId === request.id} className="mt-3 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#505050]"><Bookmark className="h-4 w-4 text-black" />Save for later</button>}{scope === "saved" && <button type="button" onClick={() => { void save(request.id, false); }} disabled={workingId === request.id} className="mt-3 inline-flex w-full items-center justify-center text-sm font-semibold text-[#505050]">Return to New</button>}</footer></section> : scope === "new" ? <section aria-label="Open referral capacity" className="flex flex-1 flex-col justify-center"><span className="grid h-16 w-16 place-items-center rounded-3xl bg-[#ededff] text-black"><Inbox className="h-7 w-7" /></span><h1 className="font-display mt-3 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Ready to help?</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Open one real referral slot. Only the next private request for your company is notified.</p>{impact ? <div aria-label="Your private impact" className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-[#e5e5e5] bg-white p-3 text-center"><span><strong className="block text-lg leading-none text-black">{impact.reviewed}</strong><small className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#505050]">Reviewed</small></span><span><strong className="block text-lg leading-none text-black">{impact.approved}</strong><small className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#505050]">Approved</small></span><span><strong className="block text-lg leading-none text-black">{impact.interviews}</strong><small className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#505050]">Interviews</small></span></div> : null}<ReferrerCreditsCard /><ReferrerFastTrackCard /><div className="mt-4"><button type="button" onClick={() => { void openReferralCapacity(); }} disabled={openingCapacity} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3.5 text-sm font-bold text-white">{openingCapacity ? "Opening capacity…" : "Open referral capacity"}<ArrowRight className="h-4 w-4" /></button></div></section> : <section aria-label="No private referral requests" className="flex flex-1 flex-col items-center justify-center"><span className="grid h-16 w-16 place-items-center rounded-3xl bg-[#ededff] text-black">{scope === "completed" ? <CheckCircle2 className="h-7 w-7" /> : <Inbox className="h-7 w-7" />}</span><ZeroActivityShareCard audience="referrer" /></section>}</div></main>;
+  const shell = (body: ReactNode) => (
+    <GoalAppShell active="queue" pageTitle="Referral queue">
+      <header className="border-b border-g-hairline px-4 py-5 gdesk:px-5">
+        <h1 className="text-g-display text-g-ink">Help the right person get referred.</h1>
+        <p className="mt-2 text-g-meta text-g-ink-2">Read one private ask. Accept only when you can help through your company’s official process.</p>
+      </header>
+      {notice ? <p role="status" className="mx-4 my-3 text-g-meta text-g-ink-2">{notice}</p> : null}
+      {error && requests.length && !loadFailed && !selected ? <p role="alert" className="mx-4 my-3 text-g-meta text-g-ink-2">{error}</p> : null}
+      {body}
+    </GoalAppShell>
+  );
+
+  if (!isSignedIn) return shell(<GoalEmptyState title="Give referrals with control." body="Use a company email to see only matching private requests. Your identity stays hidden." action={{ label: "Use company email", onClick: () => go("/sign-in") }} />);
+  if (access.status === "checking") return shell(
+    <section aria-busy="true" className="p-4">
+      <p className="mb-2 text-g-meta text-g-ink-3">Checking your verification.</p>
+      <GoalSkeletonRows density="queue" count={5} />
+    </section>
+  );
+  if (access.status === "error") return shell(<GoalErrorState title="We couldn’t check your verification" body={`${access.error.message || "Check your connection and try again."} Nothing changed on your account. Try again in a moment.`} retry={{ label: "Try again", onClick: access.retry }} />);
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  if (access.status === "code_required") return shell(<GoalWorkEmailStepUp access={access.access} />);
+  if (!verified) return shell(<GoalEmptyState title="Verify your work email." body="A one-time code confirms your company. Your name and work email never appear to job seekers." action={{ label: "Add work email", onClick: () => go("/sign-in") }} />);
+
+  const nowMs = Date.now();
+  const company = requests[0]?.companyName ?? null;
+
+  const listHead = (
+    <header className="border-b border-g-hairline px-3 pb-3 pt-4 gdesk:px-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-g-heading text-g-ink">Referral queue</h2>
+        <span className="text-g-meta text-g-ink-3"><GoalNum>{requests.length}</GoalNum> waiting</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-3">
+        <GoalVerifiedMark as="span" mutedText>{`Verified${company ? ` · ${company}` : ""}`}</GoalVerifiedMark>
+        <Link href="/referrer/impact" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><HandHelping aria-hidden="true" className="size-4" />Impact</Link>
+        <Link href="/referrer?view=setup" className="flex min-h-11 items-center gap-1 text-g-meta text-g-ink-2"><Settings aria-hidden="true" className="size-4" />Settings</Link>
+      </div>
+      <p className="mt-1 text-g-meta text-g-ink-3">Asks for {company ?? "your company"} roles. Names and resumes stay hidden until you accept.</p>
+    </header>
+  );
+
+  let body: ReactNode;
+  if (showSkeleton) body = (
+    <section aria-busy="true" className="p-3">
+      {isSlow ? <p role="status" className="mb-2 text-g-meta text-g-ink-2">Still loading. Your queue is intact.</p> : null}
+      <GoalSkeletonRows density="queue" count={5} />
+    </section>
+  );
+  else if (loadFailed || (error && !requests.length)) body = <GoalErrorState title="We could not load your queue" body={error} retry={{ label: "Try again", onClick: () => { setError(""); void loadInbox(); } }} />;
+  else if (!requests.length) body = routingState === "paused" ? (
+    <GoalEmptyState
+      title="New asks are paused"
+      body="You paused new private asks. Resume anytime from Setup & capacity."
+      action={{ label: "Open settings", onClick: () => go("/referrer?view=setup") }}
+    />
+  ) : routingState === "active" ? (
+    <GoalEmptyState title="No asks right now." body={EMAIL_DELIVERY_LIVE && notifyNewAsk ? "Enjoy the quiet. We'll email you when a private ask for your company arrives." : "Enjoy the quiet. New asks show up here."} />
+  ) : (
+    <GoalEmptyState
+      title="Ready to help?"
+      body="Open one real referral slot. Only the next private request for your company is notified."
+      action={{ label: openingCapacity ? "Opening capacity…" : "Open referral capacity", onClick: () => { if (!openingCapacity) void openReferralCapacity(); } }}
+    />
+  );
+  else body = (
+    <div className="gdesk:grid gdesk:content-start gdesk:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+      {!selected ? <section aria-labelledby="queue-next-step" className="m-4 border border-g-hairline p-4 gdesk:col-span-2">
+        <h2 id="queue-next-step" className="text-g-heading text-g-ink">Your next step</h2>
+        <p className="mt-2 text-g-meta text-g-ink-2">Read an ask before deciding. Names and resumes stay private until you accept.</p>
+        <GoalButton variant="primary" className="mt-4" onClick={() => {
+          const next = requests.find(item => item.status === "pending" && !item.isClaimedByYou) ?? requests[0];
+          if (next.status !== "pending" || next.isClaimedByYou) go(`/conversation/${next.id}?from=inbox`);
+          else setSelectedId(next.id);
+        }}>Read next ask</GoalButton>
+      </section> : null}
+      <section aria-labelledby="queue-h" className={cn("min-w-0 gdesk:border-r gdesk:border-g-hairline", selected ? "max-gdesk:hidden" : "")}>
+        <span id="queue-h" className="sr-only">Referral queue</span>
+        {listHead}
+        <ul>
+          {requests.map(item => {
+            const left = daysLeft(item, nowMs);
+            const due = decisionDue(item, nowMs);
+            const claimed = item.status !== "pending" || item.isClaimedByYou;
+            return (
+              <GoalListRow
+                key={item.id}
+                density="queue"
+                selected={item.id === selectedId}
+                onSelect={() => { setError(""); setNotice(""); if (claimed) go(`/conversation/${item.id}?from=inbox`); else setSelectedId(item.id); }}
+                title={roleTitle(item)}
+                trailing={<GoalStatus status={claimed ? "queue_review" : "queue_new"} label={claimed ? "Under review" : "New"} />}
+                meta={<span>{displayJobFunction(item.jobFunction) ?? item.companyName ?? item.companyDomain}{left ? <>{" · "}<GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></> : null}{due ? <>{" · "}<GoalNum>{due}</GoalNum></> : null}</span>}
+              />
+            );
+          })}
+        </ul>
+        <p className="px-3 py-3 text-g-meta text-g-ink-3 gdesk:px-4">Referrers are never charged.</p>
+      </section>
+      <section className={cn("min-w-0", selected ? "" : "max-gdesk:hidden")} aria-label="Ask detail">
+        {error && selected ? <p role="alert" className="mx-4 my-3 text-g-meta text-g-ink-2">{error}</p> : null}
+        {selected ? (
+          <QueueDetail
+            item={selected}
+            index={openIndex}
+            count={requests.length}
+            preview={preview}
+            previewLoading={previewLoading}
+            previewError={previewError}
+            onRetryPreview={() => setPreviewAttempt(value => value + 1)}
+            nowMs={nowMs}
+            working={working}
+            passOpen={passOpen}
+            onMove={step => {
+              const next = Math.max(0, Math.min(requests.length - 1, openIndex + step));
+              const nextAsk = requests[next];
+              if (nextAsk && nextAsk.id !== selected.id) {
+                if (nextAsk.status !== "pending" || nextAsk.isClaimedByYou) go(`/conversation/${nextAsk.id}?from=inbox`);
+                else setSelectedId(nextAsk.id);
+              }
+            }}
+            onPassOpen={open => { if (!working && !previewLoading && preview) setPassOpen(open); }}
+            onAccept={() => { void review(selected.id, "approved"); }}
+            onPass={reason => { void review(selected.id, "declined", reason); }}
+            onBack={() => setSelectedId(null)}
+          />
+        ) : (
+          <GoalEmptyState title="Pick an ask to read it." className="max-gdesk:hidden" />
+        )}
+      </section>
+    </div>
+  );
+  return shell(body);
+}
+
+function QueueDetail({ item, index, count, preview, previewLoading, previewError, onRetryPreview, nowMs, working, passOpen, onMove, onPassOpen, onAccept, onPass, onBack }: {
+  item: QueueItem; index: number; count: number; preview: Preview | null; previewLoading: boolean; nowMs: number;
+  previewError: string; onRetryPreview(): void;
+  working: boolean; passOpen: boolean; onMove(step: -1 | 1): void; onPassOpen(open: boolean): void; onAccept(): void; onPass(reason: PassReasonCode): void; onBack(): void;
+}) {
+  const left = daysLeft(item, nowMs);
+  const reasons = splitWhyMe(preview?.candidateMessage ?? "");
+  // Task 13: the send-time snapshot, parsed once here. Ordered as the seeker chose it.
+  const pinnedWork = askWorkItemsListSchema.parse(preview?.workItems);
+  const company = item.companyName ?? item.companyDomain;
+  const fn = displayJobFunction(item.jobFunction);
+  const closes = item.expiresAt ?? null;
+  const strengthLabel = item.askStrength === "strong" ? "Strong" : item.askStrength === "good" ? "Good" : item.askStrength === "basic" ? "Basic" : null;
+  return (
+    <GoalDetailPane
+      labelledBy="ask-role"
+      titleSize="display"
+      eyebrow={<>{fn ? `${fn} · ` : ""}{company}</>}
+      refId={preview?.publicRef ?? item.publicRef}
+      title={roleTitle(item)}
+      meta={([
+        left ? <span key="left"><GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></span> : null,
+        closes ? <span key="closes">Closes <GoalNum>{formatDay(closes) ?? ""}</GoalNum></span> : null,
+        <span key="received">Received <GoalNum>{formatDay(item.createdAt) ?? ""}</GoalNum></span>,
+      ] as (ReactNode | null)[]).filter(entry => entry !== null) as ReactNode[]}
+      phoneBack={{ href: "/queue", label: "Referral queue" }}
+      phonePosition={<GoalNum>{index + 1} / {count}</GoalNum>}
+      dock={item.status === "pending" ? (
+        <section aria-labelledby="queue-decision-next-step" className="m-3 border border-g-hairline px-3 py-3 gdesk:m-4 gdesk:px-4">
+          <h2 id="queue-decision-next-step" className="mb-3 text-g-heading text-g-ink">Your next step</h2>
+          <GoalLockedPanel title="Identity and resume are shared after you accept" documentCount={preview?.attachments.length ?? 0} />
+          <p className="mt-2 text-g-meta text-g-ink-3">Accepting shares names both ways and their resume. Referring comes later, through {company}&rsquo;s own process.</p>
+          <p className="mt-1 text-g-meta text-g-ink-3">By accepting, you confirm you&apos;ll refer only through {company}&apos;s official process.</p>
+          <div className="mt-3 flex items-center gap-1.5">
+            {/* Comp phone rule: position and K/J move to the sub bar (phonePosition
+                above); the two actions split the bar evenly. */}
+            <span className="contents max-gdesk:hidden">
+              <GoalIconButton icon={ChevronUp} iconSize={18} aria-label="Previous ask" disabledReason={index <= 0 ? "First ask" : undefined} onClick={() => onMove(-1)} />
+              <GoalIconButton icon={ChevronDown} iconSize={18} aria-label="Next ask" disabledReason={index >= count - 1 ? "Last ask" : undefined} onClick={() => onMove(1)} />
+              <span className="text-g-meta text-g-ink-3"><GoalNum>{index + 1} / {count}</GoalNum></span>
+            </span>
+            <span className="ml-auto max-gdesk:hidden" />
+            <GoalButton variant="ghost" keys={["P"]} disabledReason={working ? "Working…" : previewLoading || !preview ? "Read the ask first" : undefined} aria-keyshortcuts="p" onClick={() => onPassOpen(true)} className="max-gdesk:flex-1">Pass privately</GoalButton>
+            <GoalButton
+              variant="primary"
+              keys={["A"]}
+              disabledReason={previewLoading || !preview ? "Read the ask first" : undefined}
+              busy={working}
+              busyLabel="Working…"
+              onClick={onAccept}
+              className="max-gdesk:flex-1"
+              title={`By accepting, you confirm you'll refer only through ${company}'s official process.`}
+              aria-keyshortcuts="a"
+            >
+              Accept &amp; connect
+            </GoalButton>
+          </div>
+          <p className="mt-2 text-g-meta text-g-ink-3">Keyboard: J next ask, K previous ask, P pass privately, A accept and connect. Shortcuts pause while a dialog is open or a decision is saving.</p>
+        </section>
+      ) : undefined}
+    >
+      {previewLoading ? <GoalSkeletonRows density="queue" count={3} className="p-3" /> : previewError ? (
+        <GoalErrorState title="We could not load this ask" body={previewError} retry={{ label: "Try preview again", onClick: onRetryPreview }} />
+      ) : (
+        <div className="px-3 py-3 gdesk:px-4">
+          {preview?.targetRoleUrl || item.targetRoleUrl ? (
+            <p className="mb-3 text-g-meta text-g-ink-3">Job posting <a className="ml-2 text-g-ink underline underline-offset-2" href={(preview?.targetRoleUrl ?? item.targetRoleUrl) as string} target="_blank" rel="noreferrer">{(preview?.targetRoleUrl ?? item.targetRoleUrl)?.replace(/^https?:\/\//, "")}</a></p>
+          ) : null}
+          <section aria-labelledby="why-h">
+            <h3 id="why-h" className="text-g-meta uppercase tracking-[0.12em] text-g-ink-3">Why me</h3>
+            <ol className="mt-2 space-y-3">
+              {reasons.filter(Boolean).map((reason, reasonIndex) => (
+                <li key={reasonIndex} className="flex gap-3">
+                  <span aria-hidden="true" className="text-g-meta text-g-ink-3"><GoalNum>{String(reasonIndex + 1).padStart(2, "0")}</GoalNum></span>
+                  <p className="text-g-label text-g-ink">{reason}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+          {pinnedWork.length > 0 ? (
+            <section aria-labelledby="pinned-h" className="mt-5">
+              <h3 id="pinned-h" className="text-g-meta uppercase tracking-[0.12em] text-g-ink-3">{ASK_WORK_SECTION_TITLE}</h3>
+              <p className="mt-1 text-pretty text-g-meta text-g-ink-3">Work the seeker chose to show with this ask, from their own portfolio. It is what they sent — a later edit never rewrites it.</p>
+              <ul className="mt-2 space-y-2">
+                {pinnedWork.map((piece, pieceIndex) => {
+                  const href = safeAskWorkUrl(piece.url);
+                  return (
+                    <li key={`${pieceIndex}-${piece.title}`} className="flex items-start gap-3">
+                      <span aria-hidden="true" className="text-g-meta text-g-ink-3"><GoalNum>{String(pieceIndex + 1).padStart(2, "0")}</GoalNum></span>
+                      <span className="min-w-0">
+                        {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="block truncate text-g-label text-g-ink underline underline-offset-2">{piece.title}</a> : <span className="block truncate text-g-label text-g-ink">{piece.title}</span>}
+                        <span className="text-g-meta text-g-ink-3">{workKindLabel(piece.kind)}{piece.source ? ` · ${piece.source}` : ""}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+          <section aria-labelledby="quality-h" className="mt-5">
+            <h3 id="quality-h" className="text-g-meta uppercase tracking-[0.12em] text-g-ink-3">Ask quality</h3>
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-g-meta text-g-ink-2">
+              <li>{(preview?.targetRoleUrl ?? item.targetRoleUrl) ? "✓" : "·"} Official job link</li>
+              <li>{reasons.some(Boolean) ? "✓" : "·"} Specific proof of fit</li>
+              <li>{(preview?.attachments.length ?? 0) > 0 ? "✓" : "·"} Resume attached</li>
+              <li>{pinnedWork.length > 0 ? "✓" : "·"} Work attached</li>
+              {strengthLabel ? <li>✓ Ask strength: {strengthLabel}</li> : null}
+            </ul>
+            <p className="mt-1 text-g-meta text-g-ink-3">Checks on the ask, never a score of the person.</p>
+          </section>
+        </div>
+      )}
+      <GoalSheet open={passOpen} onOpenChange={onPassOpen} title="Pass privately" description="The seeker sees a kind note with your reason. Never your name.">
+        <ul className="mt-3 space-y-1" role="radiogroup" aria-label="Pass reason">
+          {PASS_REASON_OPTIONS.map((option, optionIndex) => (
+            <li key={option.code}>
+              <button type="button" disabled={working} onClick={() => onPass(option.code)} className="flex min-h-11 w-full items-center gap-3 rounded-g-tile px-3 text-left text-g-label text-g-ink hover:bg-g-surface-hover">
+                <span className="text-g-meta text-g-ink-3 flex-1">{option.label}</span>
+                <GoalNum className="text-g-ink-3">{optionIndex + 1}</GoalNum>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-g-meta text-g-ink-3">With Prefer not to say, the seeker sees no reason.</p>
+        <div className="mt-3 flex justify-end gap-2">
+          <GoalButton variant="ghost" onClick={() => onPassOpen(false)}>Cancel</GoalButton>
+        </div>
+      </GoalSheet>
+    </GoalDetailPane>
+  );
 }

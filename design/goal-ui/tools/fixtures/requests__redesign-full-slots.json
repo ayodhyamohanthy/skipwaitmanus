@@ -1,0 +1,114 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 611,
+            "title": "Product Designer",
+            "targetRoleUrl": "https://careers.alderbeam.example/jobs/611",
+            "companyDomain": "alderbeam.example",
+            "companyName": "Alderbeam Labs",
+            "companyInitials": "AL",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "queueStatus": null,
+            "waitingForCoverage": false,
+            "coverageVisibleAt": null,
+            "heldForReferrer": false,
+            "unclaimedAssignment": false,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-18T08:00:00.000Z",
+            "updatedAt": "2026-10-18T08:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": null
+          },
+          {
+            "id": 612,
+            "title": "Frontend Engineer",
+            "targetRoleUrl": "https://careers.alderbeam.example/jobs/612",
+            "companyDomain": "alderbeam.example",
+            "companyName": "Alderbeam Labs",
+            "companyInitials": "AL",
+            "compensation": null,
+            "status": "approved",
+            "referrerId": 77,
+            "queueStatus": null,
+            "waitingForCoverage": false,
+            "coverageVisibleAt": null,
+            "heldForReferrer": false,
+            "unclaimedAssignment": false,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-17T08:00:00.000Z",
+            "updatedAt": "2026-10-17T08:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": null
+          },
+          {
+            "id": 613,
+            "title": "Data Analyst",
+            "targetRoleUrl": "https://careers.alderbeam.example/jobs/613",
+            "companyDomain": "alderbeam.example",
+            "companyName": "Alderbeam Labs",
+            "companyInitials": "AL",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "queueStatus": null,
+            "waitingForCoverage": false,
+            "coverageVisibleAt": null,
+            "heldForReferrer": false,
+            "unclaimedAssignment": false,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-16T08:00:00.000Z",
+            "updatedAt": "2026-10-16T08:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": null
+          }
+        ],
+        "slots": {
+          "plan": "free",
+          "planLabel": "Free",
+          "open": 3,
+          "cap": 3,
+          "full": true,
+          "nextPlan": null
+        }
+      }
+    }
+  ]
+}

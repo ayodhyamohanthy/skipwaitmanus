@@ -3,6 +3,8 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
+import CancellationPolicy from "./CancellationPolicy";
+import Guidelines from "./Guidelines";
 import RefundPolicy from "./RefundPolicy";
 import ShippingPolicy from "./ShippingPolicy";
 import About from "./About";
@@ -11,6 +13,14 @@ import Pricing from "./Pricing";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
+import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
+import { money } from "@/components/plans/format";
+import { FREE_PLAN, firstPackClaim } from "@shared/planCatalog";
+
+
+// Independent literal, not MONEY_SENTENCE imported as its own oracle.
+const EXPECTED_ALLOWANCE_COST = "3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.";
+const noBlanketReferralPromise = (text: string) => text.replace(EXPECTED_ALLOWANCE_COST, "");
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
 vi.mock("@/_core/auth", () => ({
@@ -20,32 +30,118 @@ vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
   SignedOut: () => null,
 }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: undefined, isError: false, refetch: () => Promise.resolve() }) }));
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "none", access: { verified: false } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
+// Settings reads talent-consent state through tRPC; without this the render
+// throws "Unable to find tRPC Context" instead of checking the disclosure links.
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    talentConsent: {
+      state: { useQuery: () => ({ data: undefined, isLoading: false }) },
+      grant: { useMutation: () => ({ mutate: vi.fn() }) },
+      revoke: { useMutation: () => ({ mutate: vi.fn() }) },
+    },
+    useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn() } } }),
+  },
+}));
 
 beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) }))); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const policyLinks = (container: HTMLElement) => Array.from(container.querySelectorAll('nav[aria-label="Policies"] a')).map(a => a.getAttribute("href"));
 
+it("rejects extra free or guaranteed referral promises outside the exact allowance", () => {
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST)).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Referrals are free.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited free referrals.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited referrals.")).toMatch(/unlimited referrals/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " Unlimited requests.")).toMatch(/unlimited requests/i);
+  expect(noBlanketReferralPromise(EXPECTED_ALLOWANCE_COST + " A guaranteed referral.")).toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+});
+
 describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Terms restate credit and privacy behaviour and never promise a hiring outcome", () => {
     const { container } = render(<Terms />);
     expect(document.querySelector('[data-skipwait-screen="terms"]')).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Plain terms");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Terms.");
+    // The live preamble, including the acceptance clause, stays on the page.
+    expect(screen.getByText(/Plain terms for a private referral handoff\. .*By creating an account or using skipwait\.me, you agree to these terms\./)).toBeTruthy();
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
-    expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
+    expect(screen.getByText(/3 referral requests per calendar month/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
+    // LAUNCH-legal-copy: the old "Referrals are always free" bullet was untrue
+    // while asks cost referrals and packs sell for money. It must never return.
+    expect(screen.queryByText(/Referrals are always free/)).toBeNull();
+    expect(screen.getByText(/A request uses your referral balance only when a verified employee can see it/)).toBeTruthy();
+    // Section 4 must not contradict itself: the note is visible to verified
+    // employees while open; the resume only after that employee accepts.
+    expect(screen.getByText(/Your resume is visible only to you and the verified employee who accepts your request/)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/resume.*employee who claims your request/);
+    expect(screen.queryByText(/resume and note are visible only to you and verified employees of the target company/)).toBeNull();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
-    expect(policyLinks(container)).toEqual(["/terms", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
-    expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
+    // The kit's design-only banner never ships.
+    expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
+    expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
+    expect(screen.getByRole("link", { name: "skipwait.me home" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("navigation", { name: "Legal" }).querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/terms");
+  });
+
+  it("Terms describe paused sales, conditional card verification and the Indian business without new promises", () => {
+    const { container } = render(<Terms />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Legacy referral packs are paused");
+    expect(text).toContain("card verification when required");
+    expect(text).toContain("Unused monthly allowance does not carry forward");
+    expect(text).toContain("not GST-registered");
+    expect(text).toContain("We do not charge GST");
+    expect(text).toContain("governed by the laws of India");
+    expect(text).toContain("You must be at least 18");
+    expect(text).toContain("We may pause or close accounts");
+    expect(text).not.toMatch(/referral packs add more|Additional credits can be bought|notice in the product before the change applies/);
+  });
+
+  it("Terms keep every live clause, each reachable from the On this page rail", () => {
+    const { container } = render(<Terms />);
+    const clauses = ["What skipwait.me is", "Accounts and verification", "Credits, plans, and payment", "Privacy inside a request", "Acceptable use", "Administrator review", "Liability and changes", "Contact", "Business identity", "Governing law", "Grievance officer"];
+    const headings = screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent);
+    clauses.forEach((clause, index) => expect(headings).toContain(`${index + 1}. ${clause}`));
+    const rail = screen.getByRole("navigation", { name: "On this page" });
+    const anchors = Array.from(rail.querySelectorAll("a"));
+    expect(anchors.map(anchor => anchor.textContent)).toEqual(clauses);
+    for (const anchor of anchors) expect(container.querySelector(anchor.getAttribute("href") ?? "#missing")).toBeTruthy();
+    expect(screen.getByText(/Grievance officer: /).textContent).toContain("within 48 hours");
+    expect(screen.getAllByRole("link", { name: "support@skipwait.me" }).every(link => link.getAttribute("href") === "mailto:support@skipwait.me")).toBe(true);
+  });
+
+  it("Guidelines carry the no-money rules and the D-063 cost line, published, with no intro paragraph", () => {
+    const { container } = render(<Guidelines />);
+    expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
+    expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
+    expect(screen.getByText("Never pay a referrer, and never ask a seeker for money.")).toBeTruthy();
+    expect(screen.getByText("3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(FREE_PLAN.creditsPerMonth).toBe(3);
+    expect((document.body.textContent ?? "").split(EXPECTED_ALLOWANCE_COST)).toHaveLength(2);
+    expect(noBlanketReferralPromise(document.body.textContent ?? "")).not.toMatch(/Referrals are free|free referrals|unlimited (?:free )?(?:referrals?|requests?)|guaranteed? referrals?/i);
+    expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
+    expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");
+    expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
+    expect(policyLinks(container)).toContain("/guidelines");
+    expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();
   });
 
   it("Refund policy matches the billing rules the product enforces", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
-    expect(screen.getByText(/reserves one credit/)).toBeTruthy();
-    expect(screen.getByText(/withdraw before a verified employee claims/)).toBeTruthy();
+    expect(screen.getByText(/The moment one can see your referral request, 1 is deducted from your balance/)).toBeTruthy();
+    expect(screen.getByText(/withdraw before someone picks it up/)).toBeTruthy();
+    expect(screen.getByText(/not on sale right now/)).toBeTruthy();
+    expect(screen.queryByText(/Momentum|Keep warm/)).toBeNull();
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
     expect(screen.getByText(/approved by a skipwait.me administrator/)).toBeTruthy();
     expect(screen.getByText(/free for Referrers/)).toBeTruthy();
@@ -69,9 +165,20 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
     cleanup();
     render(<Pricing />);
-    expect(screen.getByText(/₹599\/month or \$7\/month/)).toBeTruthy();
-    expect(screen.getByText(/₹1,299\/month or \$15\/month/)).toBeTruthy();
-    expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
+    // Oct 25 2026 freeze: /pricing lists the frozen banded founding prices from
+    // shared/planFamily.ts (config-sourced, not literals, so a price change fails here).
+    for (const plan of PLAN_FAMILY) {
+      expect(screen.getByText(money(planFeeMinor(plan.id, "INR"), "INR"))).toBeTruthy();
+      expect(screen.getByText(money(planFeeMinor(plan.id, "USD"), "USD"))).toBeTruthy();
+    }
+    // D-219 (6) / D-214 (3): the legacy credit packs are paused, so /pricing
+    // states the pause and never lists a pack price. Re-enabling packs on this
+    // page therefore fails this guard until the copy is updated on purpose.
+    expect(screen.getByText(/old referral packs are paused/)).toBeTruthy();
+    expect(screen.queryByText(firstPackClaim("INR")!)).toBeNull();
+    const text = document.body.textContent ?? "";
+    // "₹1,299" was the old Max price and now equals the frozen Senior to Executive INR price - dropped from the retired list.
+    for (const retired of ["₹599", "$7/month", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {
@@ -85,12 +192,120 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound link to the disclosures so they are reachable before account commitment", () => {
+  it("Settings and NotFound leave disclosures to the shell's More menu (Help & safety)", async () => {
+    // Retirement preserves the same shell-owned legal/support navigation.
     render(<Settings />);
-    const legalNav = screen.getByRole("navigation", { name: "Legal and support" });
-    expect(Array.from(legalNav.querySelectorAll("a")).map(a => a.getAttribute("href"))).toEqual(["/terms", "/refunds", "/support"]);
+    await screen.findByRole("heading", { name: "Control your account." });
+    expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
     cleanup();
     render(<NotFound />);
-    expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
+    expect(screen.queryByRole("link", { name: "Contact support" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "More" }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () => {
+  it("Terms say a decline does not return the credit", () => {
+    const { container } = render(<Terms />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("it stays charged, even if they pass");
+    expect(text).not.toMatch(/reserved when a request is sent/);
+    expect(text).not.toMatch(/Momentum|Keep warm/);
+  });
+  it("Cancellation policy names the ended-month exception and the used-after-pickup rule", () => {
+    const { container } = render(<CancellationPolicy />);
+    const text = container.textContent ?? "";
+    // Actual ledger behaviour (shared/moneyCopy CREDIT_RULE + server/db.ts):
+    // a withdraw before pickup returns the referral at once, except a free
+    // monthly referral from a month that has already ended; after a verified
+    // employee claims or declines, the referral stays used.
+    expect(text).toMatch(/month that has already ended/);
+    expect(text).toMatch(/request reopens to other employees at the company/);
+    expect(text).toMatch(/If a claimed request reopens after an employee declines, you can withdraw it, but the referral stays used/);
+    expect(text).toMatch(/original balance or allowance is still valid and has room for the return/);
+    expect(text).not.toMatch(/comes back if you withdraw it then/);
+    expect(text).not.toMatch(/claimed or accepted the request, it can no longer be cancelled/);
+    expect(text).not.toMatch(/No money is charged for a request, so there is nothing to refund/);
+  });
+  it("Cancellation preserves existing purchase refund rights while stating that new sales are paused", () => {
+    const { container } = render(<CancellationPolicy />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Legacy referral packs are paused");
+    expect(text).toContain("unused purchased credits within 14 days");
+    expect(text).toContain("original payment method");
+    expect(text).toContain("Statutory consumer rights");
+  });
+  it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
+    const { container } = render(<RefundPolicy />);
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/picks your request up, the credit stays spent/);
+    expect(text).not.toMatch(/reserves one credit/);
+    expect(text).toMatch(/expires unclaimed/);
+  });
+});
+
+describe("public credit copy matches the decline rule", () => {
+  it("no landing, premium or guide copy says a credit is used only on acceptance", async () => {
+    const { LANDING_FAQ } = await import("@shared/landingContent").then(m => ({ LANDING_FAQ: Object.values(m).flat().map(v => JSON.stringify(v)).join(" ") }));
+    const routes = await import("@shared/publicRoutes").then(m => JSON.stringify(Object.values(m)));
+    const guides = await import("@/content/guides").then(m => JSON.stringify(Object.values(m)));
+    for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance|spent on acceptance/);
+    // D-063: the cost answer is the credit rule exactly as the ledger keeps it,
+    // never "spent once picked up" with an unconditional credit back.
+    const { CREDIT_RULE } = await import("@shared/moneyCopy");
+    expect(LANDING_FAQ).toContain(CREDIT_RULE);
+    expect(LANDING_FAQ).not.toMatch(/withdrawn or expired asks get the credit back|spent once a verified employee picks up/);
+  });
+});
+
+describe("paused credit packs copy guard (D-044, D-153, D-219, PR666 F2)", () => {
+  it("public snapshots, landing content, About and Premium metadata make no pack-sale claim while credit packs are paused", async () => {
+    // 1. Check publicSnapshots from scripts/prerender-public-pages
+    const { publicSnapshots } = await import("../../../scripts/prerender-public-pages");
+    const snapshots = publicSnapshots();
+    const premiumSnap = snapshots.find(s => s.route === "/premium");
+    const plansSnap = snapshots.find(s => s.route === "/plans");
+    const employerSnap = snapshots.find(s => s.route === "/employer");
+
+    for (const snap of [premiumSnap, plansSnap, employerSnap]) {
+      expect(snap?.markup).not.toMatch(/Buy credits/i);
+      expect(snap?.markup).not.toMatch(/Credits for \$1 each/i);
+      expect(snap?.markup).not.toMatch(/Extra credits cost \$1 each/i);
+      expect(snap?.markup).not.toMatch(/More credits are sold on the credits page/i);
+      expect(snap?.markup).not.toMatch(/use credits for more/i);
+    }
+
+    // 2. Check LANDING_EXPLORE from shared/landingContent
+    const { LANDING_EXPLORE } = await import("@shared/landingContent");
+    const premiumLink = LANDING_EXPLORE.find(l => l.href === "/premium");
+    expect(premiumLink?.label).not.toMatch(/Buy credits/i);
+    expect(premiumLink?.summary).not.toMatch(/Extra referral credits are sold in one-time packs/i);
+
+    // 3. Check About page
+    render(<About />);
+    const aboutText = document.body.textContent ?? "";
+    expect(aboutText).not.toMatch(/buy online as one-off credit packs that never expire/i);
+    cleanup();
+
+    // 4. Check Premium page metadata / SEO
+    const { default: Premium } = await import("./Premium");
+    render(<Premium />);
+    expect(document.title).not.toMatch(/Buy referral credits/i);
+    const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
+    expect(metaDesc).not.toMatch(/Extra credits are sold in packs/i);
+    cleanup();
+  });
+});
+
+describe("/pricing free allowance copy (D-219, D-173, D-180, PR666 F3)", () => {
+  it("/pricing states 3 free referrals a month at any level with a verified card and contains no credit/ask in its free line", () => {
+    render(<Pricing />);
+    const freeSection = screen.getByRole("heading", { name: "Free" }).closest("section")!;
+    expect(freeSection.textContent).toContain("3 free referrals a month at any level with a verified card");
+    const freeLine = freeSection.querySelector("p")?.textContent ?? "";
+    expect(freeLine).toBe("3 free referrals a month at any level with a verified card; no carry-forward.");
+    expect(freeLine).not.toMatch(/\bcredits?\b/i);
+    expect(freeLine).not.toMatch(/\basks?\b/i);
+    cleanup();
   });
 });

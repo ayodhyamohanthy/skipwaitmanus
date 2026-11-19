@@ -11,21 +11,21 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock("wouter", () => ({
+  useLocation: () => ["/", vi.fn()],
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+}));
 
 afterEach(() => cleanup());
 
 describe("landing discovery entry", () => {
-  it("keeps the mobile menu to public entries while workspace links live in the account menu", () => {
+  it("keeps the mobile menu on public entries while workspace links stay signed-in only", () => {
     render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
-    expect(screen.getByRole("dialog", { name: "Menu" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^Internal openings$/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const nav = screen.getByRole("navigation", { name: "Website navigation" });
+    expect(within(nav).getByText("Explore companies")).toBeTruthy();
+    expect(within(nav).getByText("For referrers")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /My requests/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
-    const menu = within(screen.getByRole("dialog", { name: "Menu" }));
-    expect(menu.getByText("How it works")).toBeTruthy();
-    expect(menu.getByText("Privacy")).toBeTruthy();
-    expect(menu.getByRole("button", { name: /Sign in/i })).toBeTruthy();
-    expect(screen.queryByText(/Use saved device sign-in/i)).toBeNull();
   });
 });

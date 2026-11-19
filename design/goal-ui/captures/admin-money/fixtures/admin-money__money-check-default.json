@@ -1,0 +1,46 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops-admin@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/money-check/status",
+      "status": 200,
+      "body": {
+        "lastRunAt": null,
+        "consecutiveFailures": 0,
+        "alertEnabled": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ]
+}

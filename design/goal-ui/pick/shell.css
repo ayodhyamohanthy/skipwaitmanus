@@ -1,0 +1,271 @@
+/* Your pick (D-070) · base, app shell and shared components for the three comps.
+   Triage Desk's shell (dimmed rail, list then detail, pinned bars), set in Signal's type scale.
+   One navigation, no mode switch anywhere: everyone gets Find, My asks and Inbox; a verified referrer
+   also gets the Referral queue; everyone else gets a quiet "Give a referral" text link with its
+   "Work email only" note, at the bottom of the rail (beside the avatar on phones).
+   Values come from tokens.css; this file adds no colour of its own.
+   Comp note: pinned areas (drawer footer, decision bar, bottom bar) are laid out in flow here,
+   because full-page captures misplace sticky/fixed elements. In the build they are position: sticky. */
+
+/* Instrument Sans latin-ext faces: the same installed @fontsource files as tools/fonts.css (which
+   loads latin only), limited to the currency block so the rupee sign renders in the product face. */
+@font-face { font-family: "Instrument Sans"; font-weight: 400; unicode-range: U+20A0-20C0; src: url("../../../node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-ext-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 500; unicode-range: U+20A0-20C0; src: url("../../../node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-ext-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 600; unicode-range: U+20A0-20C0; src: url("../../../node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-ext-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 700; unicode-range: U+20A0-20C0; src: url("../../../node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-ext-700-normal.woff2") format("woff2"); }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--sw-canvas);
+  color: var(--sw-ink);
+  font: var(--sw-type-body);
+  letter-spacing: var(--sw-track-body);
+  font-variant-numeric: var(--sw-numeric);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3, p, ol, ul, dl, dd { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+button, input, textarea { font: inherit; letter-spacing: inherit; color: inherit; }
+button { margin: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+kbd { font: inherit; }
+.icon { display: block; flex: none; }
+
+/* Mono = data only: credits, counts, IDs, clocks, dates, counters. JetBrains Mono 500, 13px at most
+   (D-070), wherever the figure sits, including 600-weight lines: "Uses 1 of your 2 credits" beside
+   Send ask and "1 credit spent" on an ask set their figures in mono, as Signal's comps do, so every
+   money phrase reads in one face. Prose keeps its figures in the sans (only its dates switch); the
+   numeral rule itself is written in tokens.css. Generators apply it through lib.mjs data()/dates(). */
+.mono {
+  font-family: var(--sw-font-mono); font-weight: 500; font-size: min(1em, 13px);
+  letter-spacing: 0; word-spacing: -0.2em; white-space: nowrap;
+  font-variant-numeric: tabular-nums; font-variant-ligatures: none;
+}
+.sep { padding: 0 6px; color: var(--sw-ink-3); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+@media (min-width: 641px) { .only-phone { display: none !important; } }
+@media (max-width: 640px) { .only-desktop { display: none !important; } }
+
+/* Focus: ink ring, never blue (blue means "work email verified" and nothing else). */
+:where(a, button, input, textarea, [tabindex]):focus-visible { outline: none; box-shadow: var(--sw-focus-ring); }
+
+/* 44px touch target around compact controls without changing their drawn size. */
+.hit { position: relative; }
+.hit::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: max(100%, var(--sw-touch)); height: max(100%, var(--sw-touch));
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- App grid ---------- */
+.app {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: var(--sw-rail-w) minmax(0, 1fr);
+  grid-template-rows: var(--sw-topbar-h) minmax(0, 1fr);
+  grid-template-areas: "rail top" "rail main";
+  background: var(--sw-canvas);
+}
+
+/* ---------- Rail: dimmed chrome so content leads; one navigation for everyone ---------- */
+.rail {
+  grid-area: rail;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 8px 20px;
+  background: var(--sw-surface-sunken);
+  border-right: 1px solid var(--sw-hairline);
+}
+.rail__brand {
+  display: flex; align-items: center; height: var(--sw-topbar-h);
+  font: 700 16px/24px var(--sw-font-sans); letter-spacing: var(--sw-track-display); color: var(--sw-ink);
+}
+.rail__nav { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.rail__item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: var(--sw-rail-tile-w); height: var(--sw-rail-tile-h); border-radius: var(--sw-radius-tile);
+  color: var(--sw-ink-3); font: var(--sw-type-badge); letter-spacing: var(--sw-track-badge);
+  transition: background-color var(--sw-dur-hover) var(--sw-ease-out), color var(--sw-dur-hover) var(--sw-ease-out);
+}
+.rail__item:hover { color: var(--sw-ink); }
+.rail__item[aria-current="page"] { background: var(--sw-surface-selected); color: var(--sw-ink); font-weight: 600; }
+/* The account sits at the foot; for anyone who isn't a verified referrer, "Give a referral" sits just above it.
+   The foot spans the rail's full width so the note keeps one line. */
+.rail__foot {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  width: calc(100% + 16px); margin: auto -8px 0;
+}
+
+/* "Give a referral": a quiet text link to work-email verification (D-030). Not a destination, not a toggle,
+   never paired with social sign-in. The label is a link (underlined); the note says who it is for. */
+.give { display: grid; gap: 2px; color: var(--sw-ink-2); }
+.give__label {
+  font: var(--sw-type-meta); letter-spacing: 0; white-space: nowrap;
+  text-decoration: underline; text-decoration-color: var(--sw-control-edge); text-underline-offset: 3px;
+}
+.give__hint { font: var(--sw-type-badge); letter-spacing: 0; color: var(--sw-ink-3); white-space: nowrap; }
+.give:hover { color: var(--sw-ink); }
+.give:hover .give__label { text-decoration-color: var(--sw-ink); }
+.give--rail { justify-items: center; text-align: center; padding: 6px 0; border-radius: var(--sw-radius-control); }
+
+.avatar {
+  display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--sw-surface-selected); box-shadow: inset 0 0 0 1px var(--sw-hairline);
+  color: var(--sw-ink-2); font: 600 12px/16px var(--sw-font-sans); letter-spacing: 0.02em;
+}
+
+/* ---------- Top bar: page name on the left; credits (seeker pages) and alerts on the right ---------- */
+.topbar {
+  grid-area: top;
+  display: flex; align-items: center; gap: 8px;
+  height: var(--sw-topbar-h); padding: 0 12px 0 24px;
+  background: var(--sw-surface);
+  border-bottom: 1px solid var(--sw-hairline);
+}
+.topbar__account { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.topbar__title { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); white-space: nowrap; }
+.topbar__end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+.credits {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 12px 0 10px;
+  border: 1px solid var(--sw-control-edge); border-radius: var(--sw-radius-control);
+  color: var(--sw-ink); font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); white-space: nowrap;
+}
+.credits .icon { color: var(--sw-ink-2); }
+
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: 36px; height: 36px; border-radius: var(--sw-radius-control);
+  color: var(--sw-ink-2);
+  transition: background-color var(--sw-dur-hover) var(--sw-ease-out), color var(--sw-dur-hover) var(--sw-ease-out);
+}
+.icon-btn:hover { background: var(--sw-surface-hover); color: var(--sw-ink); }
+
+.bottombar { display: none; }
+
+/* ---------- Buttons and keycaps (Raycast action-bar anatomy) ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--sw-control-h); padding: 0 14px;
+  border: 1px solid transparent; border-radius: var(--sw-radius-control);
+  font: var(--sw-type-label); letter-spacing: var(--sw-track-label); white-space: nowrap;
+  transition: background-color var(--sw-dur-hover) var(--sw-ease-out), border-color var(--sw-dur-hover) var(--sw-ease-out);
+}
+.btn--sm { height: 36px; padding: 0 12px; }
+.btn--xs { height: 32px; padding: 0 10px; }
+.btn--primary { background: var(--sw-primary); color: var(--sw-on-primary); }
+.btn--primary:hover { background: var(--sw-primary-hover); }
+.btn--primary:active { background: var(--sw-primary-pressed); }
+.btn--ghost { color: var(--sw-ink); }
+.btn--ghost:hover, .btn--ghost[aria-expanded="true"] { background: var(--sw-surface-hover); }
+.btn--outline { border-color: var(--sw-ink); color: var(--sw-ink); }   /* ink outline: the Pass confirm */
+.btn[aria-disabled="true"] { border-color: var(--sw-control-edge); color: var(--sw-ink-3); cursor: not-allowed; }
+.btn:has(.kbds) { padding-right: 10px; }
+
+.kbds { display: inline-flex; gap: 4px; margin-left: 2px; }
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 5px;
+  border: 1px solid var(--sw-control-edge); border-radius: var(--sw-radius-keycap);
+  background: var(--sw-surface); color: var(--sw-ink-2);
+  font: var(--sw-type-badge); letter-spacing: 0;
+}
+.kbd .icon { width: 12px; height: 12px; }
+.btn--primary .kbd { background: transparent; border-color: rgb(255 255 255 / 0.4); color: var(--sw-on-primary); }
+.vdivider { width: 1px; height: 24px; background: var(--sw-hairline); flex: none; }
+
+/* ---------- Chips (Signal's chip type: 14/20, 500; 600 when selected) ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--sw-hairline); border-radius: var(--sw-radius-control);
+  color: var(--sw-ink-2); font: var(--sw-type-label); font-weight: 500; letter-spacing: var(--sw-track-label); white-space: nowrap;
+  transition: background-color var(--sw-dur-hover) var(--sw-ease-out);
+}
+.chip:hover { background: var(--sw-surface-hover); }
+.chip[aria-pressed="true"] { padding-left: 10px; background: var(--sw-surface-selected); border-color: var(--sw-surface-selected); color: var(--sw-ink); font-weight: 600; }
+
+/* ---------- Status: 8px dot + text, same hue; tones used strictly by role ---------- */
+.dot { width: var(--sw-dot); height: var(--sw-dot); border-radius: 50%; background: currentColor; flex: none; }
+.dot--ring { background: transparent; box-shadow: inset 0 0 0 1.5px var(--sw-control-edge); }
+.tone-ink { color: var(--sw-ink); }
+.tone-muted { color: var(--sw-ink-3); }
+.tone-amber { color: var(--sw-amber); }
+.tone-emerald { color: var(--sw-emerald); }
+.tone-crimson { color: var(--sw-crimson); }
+
+/* Trust blue appears only here, with badge-check and its text. */
+.verified {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--sw-trust); font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta);
+}
+
+.mark {
+  display: grid; place-items: center; flex: none;
+  width: 28px; height: 28px; border-radius: var(--sw-radius-control);
+  background: var(--sw-surface-selected);
+  color: var(--sw-ink-2); font: 600 12px/16px var(--sw-font-sans); letter-spacing: 0.02em;
+}
+.is-selected .mark { background: var(--sw-surface); }
+
+/* Selected list row: the #F4F4F5 tile and the only stripe, a 2px ink bar inside the left edge. */
+.row-select { position: relative; border-radius: var(--sw-radius-tile); transition: background-color var(--sw-dur-list); }
+.row-select:hover { background: var(--sw-surface-hover); }
+.row-select.is-selected { background: var(--sw-surface-selected); }
+.row-select.is-selected::before {
+  content: ""; position: absolute; left: 0; top: 12px; bottom: 12px;
+  width: 2px; border-radius: 0 2px 2px 0; background: var(--sw-ink);
+}
+
+.input {
+  width: 100%; height: var(--sw-control-h); padding: 0 12px;
+  border: 1px solid var(--sw-control-edge); border-radius: var(--sw-radius-control);
+  background: var(--sw-surface); color: var(--sw-ink);
+  font: var(--sw-type-body);
+  text-overflow: ellipsis;
+}
+.input::placeholder { color: var(--sw-ink-3); }
+.link { text-decoration: underline; text-decoration-color: var(--sw-control-edge); text-underline-offset: 3px; }
+.link:hover { text-decoration-color: var(--sw-ink); }
+
+/* ---------- Phone (390): account area + bottom bar (3 items, or 4 for a verified referrer), 44px targets, no keycaps ---------- */
+@media (max-width: 640px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--sw-topbar-h) minmax(calc(100vh - var(--sw-topbar-h) - var(--sw-bottombar-h)), auto) var(--sw-bottombar-h);
+    grid-template-areas: "top" "main" "nav";
+  }
+  .rail { display: none; }
+  .topbar { gap: 4px; padding: 0 4px 0 10px; }
+  .topbar__account .avatar { margin: 0 6px 0 2px; }
+  .topbar__end { gap: 0; }
+  .give--top { min-height: var(--sw-touch); align-content: center; padding: 0 6px; border-radius: var(--sw-radius-control); }
+  .credits { height: 36px; margin-right: 4px; }
+  .icon-btn { min-width: 44px; height: 44px; }
+  .kbds, .kbd, .vdivider { display: none; }
+  .btn { height: 44px; }
+  .btn:has(.kbds) { padding-right: 14px; }
+  .input { height: var(--sw-control-h-phone); }
+
+  .bottombar {
+    grid-area: nav;
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    height: var(--sw-bottombar-h);
+    background: var(--sw-surface); border-top: 1px solid var(--sw-hairline);
+  }
+  .bottombar__item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: var(--sw-ink-3); font: var(--sw-type-badge); letter-spacing: var(--sw-track-badge);
+  }
+  .bottombar__item[aria-current="page"] { color: var(--sw-ink); font-weight: 600; }
+}
+
+/* Comp presentation only: phone frames stack on one page, separated by a hairline-grey band. */
+@media (max-width: 640px) { .frame-break { border-top: 24px solid var(--sw-hairline); } }

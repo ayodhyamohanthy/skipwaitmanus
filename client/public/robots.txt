@@ -4,8 +4,10 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 Disallow: /conversation/
+Disallow: /inbox
 Disallow: /messages
-Disallow: /settings
+Disallow: /notifications
 Disallow: /requests
+Disallow: /settings
 
 Sitemap: https://skipwait.me/sitemap.xml

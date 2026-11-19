@@ -1,0 +1,98 @@
+/* Your pick (D-070) · tokens.
+   Owner, 18 Oct 2026: "1 is good but the typeface of 3 is good".
+   - Colours, surfaces, lines, radii, elevation, focus and motion: Triage Desk, BRIEF.md section 4, verbatim.
+   - Type: Signal's scale, BRIEF.md section 6, verbatim (display, heading, body, label, meta, badge, mono).
+   - Layout sizes: Triage Desk's, re-tuned where marked so the larger type breathes and nothing clips.
+   No new colour, no new font: Instrument Sans 400/500/600/700 and JetBrains Mono 500 are installed. */
+:root {
+  color-scheme: light;
+  /* Surfaces */
+  --sw-canvas: #FFFFFF;
+  --sw-surface: #FFFFFF;
+  --sw-surface-sunken: #FAFAFA;    /* rail, list headers, locked panel */
+  --sw-surface-hover: #F4F4F5;
+  --sw-surface-selected: #F4F4F5;  /* selected row tile, active rail tile */
+  --sw-scrim: rgb(10 10 10 / 0.24);/* phone sheets only; the desktop drawer has no scrim */
+  /* Ink */
+  --sw-ink: #0A0A0A;               /* 19.80:1 */
+  --sw-ink-2: #52525B;             /* 7.73:1 */
+  --sw-ink-3: #6B6B73;             /* 5.28:1 on white, 4.81:1 on #F4F4F5 */
+  --sw-ink-inverse: #FFFFFF;
+  /* Lines */
+  --sw-hairline: #EBEBEB;          /* dividers only (1.19:1) */
+  --sw-control-edge: #8A8A8A;      /* inputs, radios, keycaps, rings: 3.45:1 */
+  /* Primary */
+  --sw-primary: #0A0A0A;
+  --sw-primary-hover: #262626;
+  --sw-primary-pressed: #404040;
+  --sw-on-primary: #FFFFFF;
+  /* Trust and status: dot + text, same hue for both, no fills in rows */
+  --sw-trust: #1D4ED8;
+  --sw-emerald: #047857;
+  --sw-amber: #B45309;
+  --sw-crimson: #B91C1C;
+  --sw-dot: 8px;
+
+  /* Type: Signal's scale (BRIEF.md section 6). Instrument Sans 400/500/600/700 + JetBrains Mono 500, 4px baseline */
+  --sw-font-sans: "Instrument Sans", system-ui, sans-serif;
+  --sw-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --sw-type-display: 700 28px/36px var(--sw-font-sans); --sw-track-display: -0.02em; /* one per screen */
+  --sw-type-heading: 600 20px/28px var(--sw-font-sans); --sw-track-heading: -0.01em;
+  --sw-type-body:    400 16px/24px var(--sw-font-sans); --sw-track-body: 0;          /* reasons, notes, inputs */
+  --sw-type-label:   600 14px/20px var(--sw-font-sans); --sw-track-label: 0.01em;    /* buttons, field labels, row titles */
+  --sw-type-meta:    500 13px/20px var(--sw-font-sans); --sw-track-meta: 0.01em;     /* secondary lines, status */
+  --sw-type-badge:   500 12px/16px var(--sw-font-sans); --sw-track-badge: 0.02em;    /* nav labels, keycaps */
+  --sw-type-mono:    500 13px/20px var(--sw-font-mono);                              /* IDs, days, counts, dates */
+  /* Numeral rule (D-070, one rule for every money phrase): a figure the product counts or computes
+     (credits, counts, IDs, clocks, positions, dates) is set in --sw-type-mono's face, JetBrains Mono 500
+     at 13px, whatever the weight or size of the line around it, so "1 credit spent" reads the same in a
+     600 14px label, a 13px row and the history. Figures inside prose and text a person typed (the cost
+     condition "within 7 days", the three reasons, the seeker's compensation) stay in Instrument Sans's
+     tabular figures; only their dates switch to mono. */
+  --sw-numeric: tabular-nums;
+
+  /* Space */
+  --sw-space-1: 4px;  --sw-space-2: 8px;  --sw-space-3: 12px; --sw-space-4: 16px;
+  --sw-space-5: 20px; --sw-space-6: 24px; --sw-space-8: 32px; --sw-space-10: 40px;
+  /* Radius */
+  --sw-radius-keycap: 4px;
+  --sw-radius-control: 6px;        /* buttons, inputs, chips, marks */
+  --sw-radius-tile: 8px;           /* selected rows, rail tiles, locked panel */
+  --sw-radius-popover: 12px;
+  --sw-radius-sheet: 12px;         /* phone sheet top corners */
+  --sw-radius-drawer: 0;           /* desktop drawer is docked flush */
+  /* Elevation: none on page content */
+  --sw-shadow-popover: 0 0 0 1px rgb(0 0 0 / 0.08), 0 1px 1px rgb(0 0 0 / 0.02),
+                       0 4px 8px -4px rgb(0 0 0 / 0.04), 0 16px 24px -8px rgb(0 0 0 / 0.06);
+  --sw-shadow-drawer: -1px 0 0 #EBEBEB, -16px 0 32px -24px rgb(0 0 0 / 0.16);
+  /* Focus */
+  --sw-focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #0A0A0A;
+  /* Motion */
+  --sw-dur-list: 0ms;  --sw-dur-hover: 100ms; --sw-dur-menu: 150ms;
+  --sw-dur-drawer-in: 200ms; --sw-dur-drawer-out: 150ms;
+  --sw-ease-out: cubic-bezier(0, 0, 0.2, 1); --sw-ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Layout: Triage Desk's, re-tuned for the larger type (D-070) */
+  --sw-rail-w: 104px;              /* was 88: "Work email only" is 89px at 12px, so the quiet link keeps one line per phrase with room either side */
+  --sw-rail-tile-w: 88px;          /* was 72 */
+  --sw-rail-tile-h: 56px;
+  --sw-topbar-h: 56px;             /* was 52 */
+  --sw-bottombar-h: 56px;
+  --sw-drawer-w: 480px; --sw-list-w: 360px; --sw-detail-max: 680px;
+  --sw-asks-list-w: 440px;
+  --sw-decision-bar-h: 72px;       /* was 64: 40px buttons with 16px above and below */
+  --sw-decision-bar-h-phone: 72px;
+  --sw-subheader-h-phone: 48px;
+  --sw-control-h: 40px;            /* desktop buttons and inputs (was 36) */
+  --sw-control-h-phone: 48px;      /* phone inputs and primary buttons */
+  --sw-touch: 44px;
+  --sw-type-row-phone: 600 16px/24px var(--sw-font-sans);  /* row titles on phones (Signal's card titles) */
+}
+@media (prefers-reduced-motion: reduce) { :root { --sw-dur-hover: 0ms; --sw-dur-menu: 0ms; --sw-dur-drawer-in: 0ms; --sw-dur-drawer-out: 0ms; } }
+
+/* D-130 (owner Oct 21 16:43/16:46): warm landing hero band + V6-B mark.
+   Colour on the landing hero band only; mark values are the designer's V6-B. */
+:root {
+  --sw-warm-1: #fce9da; --sw-warm-2: #f6cfdd; --sw-warm-3: #e7d6f4;
+  --sw-mark-1: #c9c9c9; --sw-mark-2: #8a8a8a; --sw-mark-3: #0a0a0a;
+}

@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-004, D-046, D-067).
+
 # skipwait.me — Handover Pack
 
 > Everything a new maintainer needs to operate and extend this project.

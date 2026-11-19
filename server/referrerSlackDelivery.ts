@@ -14,7 +14,9 @@ export function isValidSlackIncomingWebhookUrl(value: string): boolean {
   if (parsed.username || parsed.password) return false;
   if (parsed.search || parsed.hash) return false;
   const host = parsed.hostname.toLowerCase();
-  const allowedHosts = new Set(["hooks.slack.com", "hooks.slack.com.", "hooks.slack-trusted.com"]);
+  // Trailing dot is the same FQDN and survives a paste. Anything looser here ships the
+  // single-use review link to whoever owns that host.
+  const allowedHosts = new Set(["hooks.slack.com", "hooks.slack.com."]);
   return allowedHosts.has(host);
 }
 

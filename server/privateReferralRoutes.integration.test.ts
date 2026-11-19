@@ -2,6 +2,8 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+import { CoverageOpenedUpError } from "./planGates";
+import { publicAskRef } from "./askRef";
 
 describe("authenticated work email OTP routes", () => {
   function setup(result: { sent: boolean; reason: string }) {
@@ -9,6 +11,7 @@ describe("authenticated work email OTP routes", () => {
     app.use(express.json());
     const sendWorkEmailOtp = vi.fn(async () => result);
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
       sendWorkEmailOtp,
     } as unknown as PrivateReferralRouteDeps);
@@ -50,26 +53,32 @@ describe("private referral HTTP routes", () => {
     const app = express();
     app.use(express.json());
     let claimedBy: number | undefined;
+    let acceptedBy: number | undefined;
     let submittedCandidateMessage = "";
     let submittedCompensation: string | undefined;
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
     const attachment = { id: 77, ownerId: 1, fileName: "resume.pdf", fileKey: "private/resume.pdf", mimeType: "application/pdf", fileSize: 3, referrerId: undefined as number | undefined };
     const identities = new Map([["seeker", { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }], ["employee", { account: { id: 2, openId: "workos-employee" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }], ["outsider", { account: { id: 3, openId: "workos-outsider" }, primaryEmail: { emailAddress: "outsider@other.com", verification: { status: "verified" } } }]]);
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))),
       dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
       createReferralAttachment: async () => attachment,
-      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === claimedBy ? { ...attachment, referrerId: claimedBy } : undefined,
+      // db.getAccessibleReferralAttachment: the owner, or the referrer once they accepted (D-019(e)); never a claim alone.
+      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === acceptedBy ? { ...attachment, referrerId: acceptedBy } : undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }),
       createCompanyReferralRequest: async (_userId, input) => { submittedCandidateMessage = input.personalPitch; submittedCompensation = input.compensation; return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }; },
       listJobSeekerCompanyReferrals: async () => [{ id: 501 }, { id: 500 }, { id: 499 }],
       listCompanyReferralInbox: async () => [{ id: 501, companyDomain: "acme.com" }],
       getUnclaimedCompanyReferralPreview: async (userId, requestId) => userId === 2 && requestId === 501 && !claimedBy ? { id: requestId, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
       claimCompanyReferralRequest: async (userId, requestId) => { claimedBy = userId; return { requestId, claimed: true }; },
-      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, candidateName: "Avery", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
+      // Hands the route MORE than db.ts returns before acceptance (the name, the storage key): the route's allow-list is under test.
+      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, title: "Product Designer", candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", referrerId: userId, status: acceptedBy === userId ? "approved" : "pending", revision: acceptedBy === userId ? 3 : 2, documentAccessActive: acceptedBy === userId, attachments: [attachment] } : undefined,
+      oneClickReviewReferralRequest: async (userId, input) => { if (input.decision === "approved") { claimedBy = userId; acceptedBy = userId; } return { status: input.decision, companyDomain: "acme.com" }; },
       listPublicCompanyOpportunities: async () => [{ id: 91, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer" }],
       publishCompanyOpportunity: async (_userId, input) => ({ id: 92, companyDomain: "acme.com", ...input }),
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       recordActivity: async input => { activity.push(input); },
     });
 
@@ -85,16 +94,51 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/company-referrals/501").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "outsider")).status).toBe(404);
     const preview = await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee");
-    expect(preview.status).toBe(200); expect(preview.body.request).toMatchObject({ candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0]).toMatchObject({ availability: "after_claim", fileName: "resume.pdf" }); expect(preview.body.request.attachments[0]).not.toHaveProperty("url"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
+    expect(preview.status).toBe(200); expect(preview.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(preview.body)).not.toContain("Avery"); expect(preview.body.request).toMatchObject({ candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" }]); expect(JSON.stringify(preview.body)).not.toContain("resume.pdf"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
     expect((await request(app).post("/api/company-referrals/501/claim").set("x-test-user", "employee")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
+    // D-019(e): a claim is not an acceptance. The claimed detail keeps the role and the note, but no name, file name or link.
+    const lockedDetail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
+    expect(lockedDetail.status).toBe(200); expect(lockedDetail.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(lockedDetail.body)).not.toMatch(/Avery|resume\.pdf|\/api\/documents|signed\.example|fileKey/);
+    expect(lockedDetail.body.request).toMatchObject({ status: "pending", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
+    expect(lockedDetail.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" }]);
+    expect((await request(app).get("/api/documents/77").set("x-test-user", "employee")).status).toBe(404);
+    expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved", ethicsConfirmed: true })).status).toBe(200);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
-    expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    expect(detail.status).toBe(200); expect(detail.body.request.candidateName).toBe("Avery"); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    // D-019(d): the referrer who accepted the ask reads it with its role title and the seeker's note attached.
+    expect(detail.body.request).toMatchObject({ status: "approved", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");
     expect(securedDocument.status).toBe(307); expect(securedDocument.headers.location).toBe("https://signed.example/resume.pdf");
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));
     expect(activity.some(item => item.action === "workflow.request_completed" && item.metadata?.route === "/api/company-referrals" && item.metadata?.method === "POST" && item.metadata?.statusCode === 201)).toBe(true);
     expect(JSON.stringify(activity)).not.toContain("resume.pdf");
+  });
+
+  it("D-132 item 3: expectedCoverage waits-free ask refuses a charge when coverage opened up - 409, nothing created", async () => {
+    const app = express();
+    app.use(express.json());
+    let seenExpected: unknown = "unset";
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => String(req.header("x-test-user")) === "seeker" ? { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
+      createCompanyReferralRequest: async (_userId, input) => {
+        seenExpected = (input as { expectedCoverage?: string }).expectedCoverage;
+        if ((input as { expectedCoverage?: string }).expectedCoverage === "waiting_for_company_coverage") throw new CoverageOpenedUpError("acme.com");
+        return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 };
+      },
+      recordActivity: async () => {},
+    });
+    const flipped = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", expectedCoverage: "waiting_for_company_coverage" });
+    expect(flipped.status).toBe(409);
+    expect(flipped.body.code).toBe("company_coverage_changed");
+    expect(flipped.body.companyDomain).toBe("acme.com");
+    expect(flipped.body.error).toContain("Nothing was sent and nothing was charged");
+    expect(seenExpected).toBe("waiting_for_company_coverage");
+    const confirmed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000002").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." });
+    expect(confirmed.status).toBe(201);
+    expect(seenExpected).toBeUndefined();
   });
 
   it("loads each matching employee's unclaimed request on inbox launch, then removes it after the first claim", async () => {
@@ -107,6 +151,7 @@ describe("private referral HTTP routes", () => {
     ]);
     const unclaimedRequest = { id: 701, companyDomain: "acme.com", status: "pending", referrerId: null };
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 2 }),
@@ -116,17 +161,57 @@ describe("private referral HTTP routes", () => {
     });
 
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-a")).body).toMatchObject({ scope: "new", requests: [unclaimedRequest] });
-    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([unclaimedRequest]);
+    // Rows gain the directory's display identity (null outside the directory)
+    // and a normalized job function (null when the ask has none).
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([{ ...unclaimedRequest, companyName: null, companyInitials: null, jobFunction: null, publicRef: publicAskRef(701) }]);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "outsider")).body.requests).toEqual([]);
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([]);
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-b")).status).toBe(409);
   });
 
-  it("queues a no-coverage referral for manual administrator follow-up after reserving the Job Seeker credit", async () => {
+  // D-038-A (§4.7): the 5-claim cap is a state conflict the referrer can act on, not a server fault.
+  it("answers 409, with the cap copy, when the referrer already holds five claims", async () => {
+    const app = express(); app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => req.header("x-test-user") === "employee-a" ? { account: { id: 2, openId: "workos-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], listCompanyReferralInboxByState: async () => [],
+      claimCompanyReferralRequest: async () => { const cap = new Error("You can hold 5 asks at once. Accept or pass one of them first."); cap.name = "ReferralTransitionConflict"; throw cap; },
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+
+    const response = await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a");
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("You can hold 5 asks at once. Accept or pass one of them first.");
+  });
+
+  it("answers 409, not a server error, when a referrer who already passed or lapsed tries to claim again", async () => {
+    const app = express(); app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => req.header("x-test-user") === "employee-a" ? { account: { id: 2, openId: "workos-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], listCompanyReferralInboxByState: async () => [],
+      claimCompanyReferralRequest: async () => { throw new Error("You already passed on this referral request"); },
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+
+    const response = await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a");
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("You already passed on this referral request");
+  });
+
+  it("saves a no-coverage referral as waiting, reserves no Job Seeker credit and queues the coverage follow-up", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
       dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 88, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
@@ -137,7 +222,8 @@ describe("private referral HTTP routes", () => {
     const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ requestId: 880, notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2 });
-    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: true } }));
+    // D-034: the credit is spent at first visibility, not at create, so nothing is reserved yet.
+    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: false } }));
   });
 
   it("opens only exact-company referral capacity with bounded slots and no Referrer identity in the Job Seeker-facing result", async () => {
@@ -149,6 +235,7 @@ describe("private referral HTTP routes", () => {
     ]);
     let allocationOpenings = 0;
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -176,6 +263,7 @@ describe("private referral HTTP routes", () => {
       ["outsider", { account: { id: 72, openId: "workos-outsider" }, primaryEmail: { emailAddress: "person@example.com", verification: { status: "verified" } } }],
     ]);
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -192,6 +280,7 @@ describe("private referral HTTP routes", () => {
     const identities = new Map([["one", { account: { id: 1, openId: "one" }, emailAddresses: [] }], ["two", { account: { id: 2, openId: "two" }, emailAddresses: [] }]]);
     const consumed = new Set<string>();
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "x" }), storageGetSignedUrl: async () => "x", createReferralAttachment: async () => ({ id: 1, fileName: "x", mimeType: "application/pdf", fileSize: 1 }), getAccessibleReferralAttachment: async () => undefined,
       sendWorkEmailOtp: async () => ({ sent: true, reason: "sent" }), verifyWorkEmailOtp: async () => true,
@@ -214,6 +303,7 @@ describe("private referral HTTP routes", () => {
     let savedWorkEmail = false;
     let fulfilledInvite: { userId: number; inviteCode: string; workEmailDomain: string } | undefined;
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async (_userId, email) => { if (email.endsWith("@gmail.com")) throw new Error("Use a verified company email, not a personal email domain"); savedWorkEmail = true; return { workEmailDomain: "acme.com" }; }, getVerifiedWorkEmailAccess: async userId => userId === 2 ? { workEmailDomain: "acme.com" } : undefined, fulfillCompanyCoverageInvitation: async (userId, input) => { fulfilledInvite = { userId, ...input }; return { rewarded: true, tokenCount: 1 }; }, createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -221,8 +311,8 @@ describe("private referral HTTP routes", () => {
     });
     const listed = await request(app).get("/api/opportunities");
     expect(listed.status).toBe(200); expect(listed.body.opportunities[0]).not.toHaveProperty("ownerId");
-    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "employee")).body).toEqual({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" });
-    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "personal")).body).toEqual({ verifiedCompanyAccess: false, workEmailDomain: null });
+    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "employee")).body).toEqual({ verifiedCompanyAccess: true, workEmailDomain: "acme.com", companyName: null, companyInitials: null });
+    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "personal")).body).toEqual({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
     expect((await request(app).post("/api/opportunities").send({ kind: "hiring_now", roleTitle: "Product Designer" })).status).toBe(401);
     const personalEmailVerification = await request(app).post("/api/company-referrals/verify-work-email").set("x-test-user", "personal").send({ email: "person@gmail.com" });
     expect(personalEmailVerification.status).toBe(400); expect(personalEmailVerification.body.error).toMatch(/personal email domain/i);
@@ -243,6 +333,7 @@ describe("private referral HTTP routes", () => {
     ]);
     let claimed: { userId: number; inviteCode: string; verifiedEmail: string } | undefined;
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -257,7 +348,7 @@ describe("private referral HTTP routes", () => {
     expect(claimed).toEqual({ userId: 10, inviteCode: "r9-abcdef12", verifiedEmail: "joiner@example.com" });
   });
 
-  it("creates a private Fast-Track Link only for the verified Referrer and resolves no employee identity publicly", async () => {
+  it("creates a private referral link (D-128 \"Your link\") only for the verified Referrer and resolves no employee identity publicly", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     const identities = new Map([
@@ -267,11 +358,12 @@ describe("private referral HTTP routes", () => {
     let receivedFastTrackCode: string | undefined;
     let receivedVanity: { companySlug?: string; alias?: string } | undefined;
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme-corp.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedFastTrackCode = input.fastTrackCode; receivedVanity = { companySlug: input.fastTrackCompanySlug, alias: input.fastTrackAlias }; return { requestId: 802, companyDomain: "acme-corp.com", notifiedEmployees: 1, fastTrack: true }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 802, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
-      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating a Fast-Track Link"); return { linkCode: "a".repeat(32), vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com", isActive: true }; },
+      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating your link"); return { linkCode: "a".repeat(32), vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com", isActive: true }; },
       getPublicReferrerFastTrackLink: async code => code === "a".repeat(32) ? { companyDomain: "acme-corp.com", isActive: true } : undefined,
       getPublicReferrerFastTrackVanityLink: async (companySlug, alias) => companySlug === "acme-corp" && alias === "ref-a1b2c3d4e5" ? { companyDomain: "acme-corp.com", isActive: true } : undefined,
       deactivateReferrerFastTrackLink: async userId => ({ deactivated: userId === 31 }), recordActivity: async entry => { activity.push(entry); },
@@ -298,6 +390,7 @@ describe("private referral HTTP routes", () => {
     const app = express(); app.use(express.json());
     let receivedTargetRoleUrl = "";
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async () => ({ account: { id: 12, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedTargetRoleUrl = input.targetRoleUrl; return { requestId: 1, companyDomain: "chatfin.ai", notifiedEmployees: 0 }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -312,6 +405,7 @@ describe("private referral HTTP routes", () => {
     const identities = new Map([["admin", { account: { id: 7, openId: "workos-admin", role: "admin" as const } }], ["member", { account: { id: 8, openId: "workos-member", role: "user" as const } }]]);
     let activityQuery: Record<string, unknown> | undefined;
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -321,5 +415,193 @@ describe("private referral HTTP routes", () => {
     const adminFeed = await request(app).get("/api/admin/activity?action=document&query=avery&outcome=denied").set("x-test-user", "admin");
     expect(adminFeed.status).toBe(200); expect(adminFeed.body.events).toHaveLength(1); expect(adminFeed.body.events[0].action).toBe("document.uploaded");
     expect(activityQuery).toMatchObject({ action: "document", query: "avery", outcome: "denied" });
+  });
+});
+
+describe("withdrawal activity reports only authoritative credit movement", () => {
+  function setup(creditRefunded?: boolean, failure?: string) {
+    const app = express(); app.use(express.json());
+    const wireResult = { withdrawn: true, requestId: 501, status: "withdrawn", revision: 4, creditSummary: { totalAvailable: 2 } };
+    const withdrawCompanyReferralRequest = vi.fn(async (userId: number, requestId: number) => {
+      if (userId !== 7) throw new Error("This referral request is not in your account");
+      if (failure) throw new Error(failure);
+      return { ...wireResult, requestId, ...(creditRefunded === undefined ? {} : { creditRefunded }) };
+    });
+    const recordActivity = vi.fn<NonNullable<PrivateReferralRouteDeps["recordActivity"]>>(async () => {});
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: req.header("x-test-user") === "seeker" ? 7 : 8, openId: "test-user" } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async key => ({ key }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
+      createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }),
+      getAccessibleReferralAttachment: async () => undefined, saveVerifiedWorkEmail: async () => undefined,
+      createCompanyReferralRequest: async () => ({ requestId: 501, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 501, claimed: true }),
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({}),
+      withdrawCompanyReferralRequest, recordActivity,
+    });
+    const withdrawalEvents = () => recordActivity.mock.calls.map(([event]) => event).filter(event => event.action === "referral_request.withdrawn");
+    return { app, wireResult, withdrawCompanyReferralRequest, withdrawalEvents };
+  }
+
+  it.each([
+    ["free ask", false], ["previous pickup", false], ["replay", false], ["eligible refund", true],
+  ] as const)("records the operation's refund outcome for %s without changing the wire response", async (_scenario, creditRefunded) => {
+    const { app, wireResult, withdrawCompanyReferralRequest, withdrawalEvents } = setup(creditRefunded);
+    const response = await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.body).toEqual(wireResult);
+    expect(withdrawCompanyReferralRequest).toHaveBeenCalledWith(7, 501);
+    expect(withdrawalEvents()).toEqual([{ actorUserId: 7, action: "referral_request.withdrawn", outcome: "success", resourceType: "referral_request", resourceId: 501, metadata: { creditRefunded } }]);
+  });
+
+  it("omits unknown refund metadata for an older dependency instead of inventing a boolean", async () => {
+    const { app, wireResult, withdrawalEvents } = setup();
+    const response = await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker");
+    expect(response.status).toBe(200); expect(response.body).toEqual(wireResult);
+    expect(withdrawalEvents()).toHaveLength(1);
+    expect(withdrawalEvents()[0].metadata).toBeUndefined();
+  });
+
+  it.each([[undefined, 401], ["outsider", 404]] as const)("never records a successful withdrawal for identity %s", async (identity, status) => {
+    const { app, withdrawCompanyReferralRequest, withdrawalEvents } = setup(false);
+    const call = request(app).post("/api/company-referrals/501/withdraw");
+    if (identity) call.set("x-test-user", identity);
+    expect((await call).status).toBe(status);
+    expect(withdrawalEvents()).toEqual([]);
+    if (!identity) expect(withdrawCompanyReferralRequest).not.toHaveBeenCalled();
+  });
+
+  it.each([["not-a-number", 400], ["0", 400]] as const)("rejects invalid reference %s before the operation", async (reference, status) => {
+    const { app, withdrawCompanyReferralRequest, withdrawalEvents } = setup(false);
+    expect((await request(app).post(`/api/company-referrals/${reference}/withdraw`).set("x-test-user", "seeker")).status).toBe(status);
+    expect(withdrawCompanyReferralRequest).not.toHaveBeenCalled(); expect(withdrawalEvents()).toEqual([]);
+  });
+
+  it.each([
+    ["This request was already claimed by a verified employee and can no longer be withdrawn", 409],
+    ["This ask has already closed, so it can no longer be withdrawn", 409],
+    ["Database unavailable", 500],
+  ] as const)("does not emit a successful refund claim when the operation fails with %s", async (failure, status) => {
+    const { app, withdrawalEvents } = setup(false, failure);
+    expect((await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker")).status).toBe(status);
+    expect(withdrawalEvents()).toEqual([]);
+  });
+});
+
+describe("/api/company-referrals/mine hasEverAsked (sample empty states)", () => {
+  function setup(hasEver: ((userId: number) => Promise<boolean>) | undefined) {
+    const app = express();
+    app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      listJobSeekerCompanyReferrals: async () => [],
+      hasEverCreatedReferralRequest: hasEver,
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+    } as unknown as PrivateReferralRouteDeps);
+    return app;
+  }
+
+  it("passes a first-timer's false through to the payload", async () => {
+    const app = setup(async () => false);
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(false);
+  });
+
+  it("fails closed to true when the durable check throws", async () => {
+    const app = setup(async () => { throw new Error("db down"); });
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(true);
+  });
+
+  it("fails closed to true when the dep is absent (old wiring)", async () => {
+    const app = setup(undefined);
+    const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverAsked).toBe(true);
+  });
+});
+
+describe("/api/company-referrals/inbox hasEverReviewed (sample empty states)", () => {
+  function setup(hasEver: ((userId: number) => Promise<boolean>) | undefined) {
+    const app = express();
+    app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      listCompanyReferralInboxByState: async () => [],
+      hasEverReviewedReferral: hasEver,
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+    } as unknown as PrivateReferralRouteDeps);
+    return app;
+  }
+
+  it("passes a first-timer's false through to the payload", async () => {
+    const app = setup(async () => false);
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(false);
+  });
+
+  it("fails closed to true when the durable check throws", async () => {
+    const app = setup(async () => { throw new Error("db down"); });
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(true);
+  });
+
+  it("fails closed to true when the dep is absent (old wiring)", async () => {
+    const app = setup(undefined);
+    const response = await request(app).get("/api/company-referrals/inbox?scope=new").set("x-test-user", "referrer");
+    expect(response.status).toBe(200);
+    expect(response.body.hasEverReviewed).toBe(true);
+  });
+});
+
+describe("personal invite link route (D-155)", () => {
+  function setup(state: { status: "locked" } | { status: "unlocked"; inviteCode: string } | undefined) {
+    const app = express();
+    app.use(express.json());
+    const getPersonalReferralInviteState = vi.fn(async () => state);
+    const getOrCreatePersonalReferralInvite = vi.fn(async () => ({ inviteCode: "r1-legacy" }));
+    registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 7, openId: "workos-test" } } : undefined,
+      getPersonalReferralInviteState: state === undefined ? undefined : getPersonalReferralInviteState,
+      getOrCreatePersonalReferralInvite,
+    } as unknown as PrivateReferralRouteDeps);
+    return { app, getPersonalReferralInviteState, getOrCreatePersonalReferralInvite };
+  }
+
+  it("returns locked with no invite and never creates one before the first paid invoice", async () => {
+    const { app, getOrCreatePersonalReferralInvite } = setup({ status: "locked" });
+    const response = await request(app).get("/api/personal-invites/me").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ invite: null, locked: true });
+    expect(getOrCreatePersonalReferralInvite).not.toHaveBeenCalled();
+  });
+
+  it("returns the invite unlocked after a paid invoice", async () => {
+    const { app } = setup({ status: "unlocked", inviteCode: "r7-abc12345" });
+    const response = await request(app).get("/api/personal-invites/me").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ invite: { inviteCode: "r7-abc12345" }, locked: false });
+  });
+
+  it("falls back to legacy get-or-create when the gated dep is absent", async () => {
+    const { app, getOrCreatePersonalReferralInvite } = setup(undefined);
+    const response = await request(app).get("/api/personal-invites/me").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ invite: { inviteCode: "r1-legacy" }, locked: false });
+    expect(getOrCreatePersonalReferralInvite).toHaveBeenCalledWith(7);
+  });
+
+  it("requires sign-in", async () => {
+    const { app } = setup({ status: "locked" });
+    expect((await request(app).get("/api/personal-invites/me")).status).toBe(401);
   });
 });

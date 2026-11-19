@@ -1,0 +1,6 @@
+{
+  "signedIn": { "id": 4102, "name": "Kabir Shah", "email": "kabir.shah@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } }
+  ]
+}

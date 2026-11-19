@@ -1,0 +1,69 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "route": "/explore",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/setup",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "goal": "Actively looking",
+        "roles": [],
+        "level": "",
+        "links": [],
+        "city": "",
+        "countries": "",
+        "remote": true,
+        "visa": "No sponsorship needed",
+        "resume": {
+          "id": 77,
+          "fileName": "asha-resume.pdf"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/ask-drafts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "draft": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies",
+      "match": "exact",
+      "status": 500,
+      "body": {
+        "error": "directory unavailable"
+      }
+    }
+  ]
+}

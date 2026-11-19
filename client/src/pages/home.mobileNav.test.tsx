@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import Home from "./Home";
 
 vi.mock("@/_core/auth", () => ({
@@ -23,31 +23,33 @@ vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 describe("Home mobile navigation", () => {
   afterEach(() => { cleanup(); go.mockReset(); vi.unstubAllGlobals(); });
 
-  it("keeps public navigation behind one hamburger menu on mobile", () => {
+  it("opens the kit navigation menu with the public destinations", () => {
     render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
-
-    expect(screen.getByRole("dialog", { name: "Menu" })).toBeTruthy();
-    const menu = within(screen.getByRole("dialog", { name: "Menu" }));
-    expect(menu.getByText("How it works")).toBeTruthy();
-    expect(menu.getByText("Privacy")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const nav = screen.getByRole("navigation", { name: "Website navigation" });
+    expect(within(nav).getByText("Explore companies")).toBeTruthy();
+    expect(within(nav).getByText("For referrers")).toBeTruthy();
+    expect(within(nav).getByText("Help & safety")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close navigation" }));
+    expect(screen.getByRole("navigation", { name: "Website navigation" }).className).not.toContain("open");
   });
 
-  it("keeps the two role entry points prominent and routed to their flows", () => {
+  it("routes the hero entries to explore and the referrer flow", () => {
     render(<Home />);
-
-    fireEvent.click(screen.getByRole("button", { name: /I need a referral/i }));
-    expect(go).toHaveBeenCalledWith("/start");
-
-    go.mockReset();
-    fireEvent.click(screen.getByRole("button", { name: /I can refer someone/i }));
-    expect(go).toHaveBeenCalledWith("/referrer");
+    const ctas = screen.getAllByRole("link", { name: /Explore companies/ });
+    expect(ctas.length).toBeGreaterThanOrEqual(2);
+    expect(ctas[0].getAttribute("href")).toBe("/explore");
+    expect(screen.getAllByRole("link", { name: /Become a referrer/ }).every(link => link.getAttribute("href") === "/referrer")).toBe(true);
   });
 
-  it("shows only a truthful aggregate referral-impact indicator, never named or queue-based activity", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 17 }) })));
+  it("closes with the money sentence only: no activity counts and no data fetch on the landing", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
-    await waitFor(() => expect(screen.getByText("Referral requests are private and acceptance is recorded on SkipWait")).toBeTruthy());
-    expect(document.body.textContent).not.toMatch(/sarah|netflix|minutes ago|fast-tracked|queue|rank/i);
+    const final = screen.getByText("3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.").closest("section") as HTMLElement;
+    expect(final.className).toBe("launch-final");
+    expect(final.querySelectorAll("p")).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/referral requests accepted/);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

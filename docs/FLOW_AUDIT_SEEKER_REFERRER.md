@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-021, D-052, D-058).
+
 # Job Seeker & Referrer Flow Audit — skipwait.me
 
 _Date: 2026-09-03 · Method: code inspection + live browser walkthrough (autoglm) + test suite._

@@ -1,0 +1,68 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 500,
+      "body": {
+        "error": "The billing service is unavailable"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/spend-history",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "spend": [
+          {
+            "kind": "credit_purchase",
+            "creditsAdded": 50,
+            "pack": "growth",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "sponsorship",
+            "creditsSpent": 10,
+            "tier": "featured",
+            "createdAt": "2026-10-06T11:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 2,
+            "displayRef": "Access record",
+            "createdAt": "2026-10-02T11:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/employer/unlock-credits/purchase",
+      "match": "prefix",
+      "status": 200,
+      "body": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Nothing was changed"
+    }
+  ]
+}

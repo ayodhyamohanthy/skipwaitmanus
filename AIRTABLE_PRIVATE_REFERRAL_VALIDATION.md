@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-058).
+
 # Isolated Private Referral Lifecycle Validation
 
 **Validation date:** 2026-08-14  

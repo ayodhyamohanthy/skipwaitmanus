@@ -31,7 +31,7 @@ Why: ZeptoMail is pay-per-credit with no monthly minimum (10,000 credits ≈ $1�
    - `WORKOS_REDIRECT_URI=https://skipwait.me/api/auth/workos/callback` (optional; this is the default)
    - `WORKOS_POST_SIGNIN_PATH=/` (optional)
    - `VITE_WORKOS_ENABLED=true` (client build flag — routes `startLogin()` to AuthKit)
-5. AuthKit verifies the sign-in email itself; verified addresses enroll in the employee pool through the existing verified-email endpoint. Enrollment of a *separate* company address uses the new server-owned OTP, delivered via ZeptoMail.
+5. AuthKit verifies the sign-in email itself; verified addresses enroll in the employee pool through the existing verified-email endpoint. Enrollment of a *separate* company address uses the new server-owned OTP, delivered via ZeptoMail. (This AuthKit-verified enrollment path predates D-030: under D-030 as amended by D-049/D-057, referrer sign-in and verification use the work-email code only — never a personal email, social login or password.)
 
 ## 3. What changed in the code
 

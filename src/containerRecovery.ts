@@ -35,3 +35,22 @@ export async function fetchContainerWithStoppedRecovery(
   });
   return container.fetch(request);
 }
+
+/**
+ * For requests the origin treats as idempotent (the scheduled-jobs tick, whose
+ * jobRuns leases make a repeat a no-op): after the exact stopped-instance
+ * diagnostic, start the container and send a freshly built request once.
+ * The factory rebuilds the request so a body or time-bound header is never
+ * reused.
+ */
+export async function fetchContainerReplayingIdempotent(
+  container: ContainerRecoveryStub,
+  makeRequest: () => Promise<Request>
+): Promise<Response> {
+  const first = await container.fetch(await makeRequest());
+  if (first.status !== 500) return first;
+  const diagnostic = await first.clone().text();
+  if (diagnostic.trim() !== STOPPED_CONTAINER_PROXY_ERROR) return first;
+  await container.start(undefined, { portToCheck: 3000, retries: 8, waitInterval: 500 });
+  return container.fetch(await makeRequest());
+}

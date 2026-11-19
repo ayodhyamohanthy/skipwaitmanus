@@ -25,7 +25,9 @@ describe("talent-market consent and grants", () => {
   });
 
   it("has a preview-before-grant UI and warns that re-opt-in restores nothing", () => {
-    const settings = readFileSync(new URL("../client/src/pages/Settings.tsx", import.meta.url), "utf8");
+    // The kit Settings rewrite renders this from the Privacy tab (Settings -> PrivacyPanels -> TalentConsentPanel).
+    const settings = readFileSync(new URL("../client/src/components/settings/TalentConsentPanel.tsx", import.meta.url), "utf8");
+    expect(readFileSync(new URL("../client/src/components/settings/PrivacyPanels.tsx", import.meta.url), "utf8")).toContain("TalentConsentPanel");
     expect(settings).toContain("I reviewed this preview - opt in");
     expect(settings).toContain("does not restore old employer access");
     expect(settings).toContain("Opt out and revoke access");

@@ -1,6 +1,6 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
 
 const validWebhook = "https://hooks.slack.com/services/T000/B000/XXXXXXXXXXXXXXXX";
@@ -79,6 +79,22 @@ describe("Slack dispatch alongside email review notifications", () => {
     const slackRecord = activity.find(entry => entry.action === "company_referral.review_slack_dispatched");
     expect(slackRecord).toBeTruthy();
     expect(slackRecord?.metadata).toMatchObject({ intendedRecipientCount: 1, sentCount: 1 });
+  });
+
+  it("responds before slow referrer deliveries finish, then records the late outcome with timing", async () => {
+    let release: (v: { sent: boolean; reason: string }) => void = () => {};
+    const gate = new Promise<{ sent: boolean; reason: string }>(resolve => { release = resolve; });
+    const { app, activity } = buildApp({
+      createCompanyReferralRequest: async () => ({ requestId: 9, companyDomain: "acme.com", notifiedEmployees: 1 }),
+      prepareReferrerReviewEmailNotifications: async () => [{ referrerId: 77, email: "ref@acme.com", linkToken: "T".repeat(40), companyDomain: "acme.com" }],
+      sendReferrerReviewEmail: async () => gate,
+    });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
+    expect(created.status).toBe(201);
+    expect(activity.find(entry => entry.action === "company_referral.review_email_dispatched")).toBeUndefined();
+    release({ sent: true, reason: "sent" });
+    await vi.waitFor(() => expect(activity.find(entry => entry.action === "company_referral.review_email_dispatched")).toBeTruthy());
+    expect(activity.find(entry => entry.action === "company_referral.review_email_dispatched")?.metadata).toMatchObject({ intendedRecipientCount: 1, sentCount: 1, elapsedMs: expect.any(Number) });
   });
 
   it("does not dispatch Slack when no review links exist and still records a truthful outcome", async () => {

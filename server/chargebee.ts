@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { SUBSCRIPTION_PLANS, subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { resolvePlanItemPrice, type BillablePlanId, type BillingPeriod } from "../shared/billingCatalog";
 import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
 export type TokenRole = "job_seeker" | "referrer";
@@ -20,6 +20,11 @@ export type ParsedPaidPaymentEvent = {
   passThruContent?: string;
   amount: number;
   currency: string;
+  subscriptionId?: string;
+  customerId?: string;
+  occurredAt?: Date;
+  /** The invoice and subscription objects named different subscriptions - never stamp paid evidence from this event. */
+  subscriptionIdentityConflict?: boolean;
 };
 
 export type VerifiedChargebeeHostedPage = {
@@ -40,7 +45,12 @@ export type ParsedSubscriptionEvent = {
   hostedPageId?: string;
   passThruContent?: string;
   subscriptionId: string;
-  plan?: PaidSubscriptionPlan;
+  /** The plan the subscription's item price sells (a kit pass or Keep warm); undefined for any other item price, including the retired Pro/Max (D-067). */
+  plan?: BillablePlanId;
+  /** The term that item price sells ("30d"/"90d" pass, "yearly" Keep warm). */
+  interval?: BillingPeriod;
+  /** The item price itself, so a webhook can be tied to the term the checkout intent named. */
+  itemPriceId?: string;
   status: string;
   currency?: "INR" | "USD";
   currentTermStart?: Date;
@@ -97,12 +107,64 @@ export function parsePaidPaymentEvent(payload: any) {
     : typeof payment.pass_thru_content === "string"
       ? payment.pass_thru_content
       : undefined;
-  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency } satisfies ParsedPaidPaymentEvent;
+  // D-155: the subscription this settled invoice belongs to. The invoice's
+  // own subscription_id is authoritative - the invoice is what was actually
+  // paid. A content.subscription.id that disagrees with it is a provider
+  // identity conflict, not paid evidence: no subscription id is returned and
+  // the caller alerts rather than stamps. A bare content.subscription.id
+  // with no invoice reference is likewise not enough: it is detached from
+  // the settled invoice.
+  const invoiceSubscriptionId = typeof invoice?.subscription_id === "string" && invoice.subscription_id.length > 0 ? invoice.subscription_id : undefined;
+  const contentSubscriptionId = typeof payload?.content?.subscription?.id === "string" && payload.content.subscription.id.length > 0 ? payload.content.subscription.id : undefined;
+  const subscriptionIdentityConflict = invoiceSubscriptionId !== undefined && contentSubscriptionId !== undefined && invoiceSubscriptionId !== contentSubscriptionId;
+  const subscriptionId = subscriptionIdentityConflict ? undefined : invoiceSubscriptionId;
+  const customerId = typeof payload?.content?.customer?.id === "string" ? payload.content.customer.id : undefined;
+  const occurredAt = dateFromChargebeeSeconds(payload?.occurred_at);
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency, subscriptionId, customerId, occurredAt, subscriptionIdentityConflict } satisfies ParsedPaidPaymentEvent;
+}
+
+export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };
+
+/**
+ * A provider refund (event `payment_refunded`). Fields that cannot be read are
+ * left undefined and the handler treats that as "needs a human", never as
+ * "nothing to do": a refund we cannot map must not disappear silently.
+ */
+export function parseRefundEvent(payload: any): ParsedRefundEvent | undefined {
+  if (payload?.event_type !== "payment_refunded") return undefined;
+  const eventId = getChargebeeEventId(payload);
+  if (!eventId) return undefined;
+  const content = payload?.content ?? {};
+  const transaction = content.transaction;
+  const creditNote = content.credit_note;
+  const invoice = content.invoice;
+  const invoiceId = typeof invoice?.id === "string" ? invoice.id : typeof creditNote?.reference_invoice_id === "string" ? creditNote.reference_invoice_id : undefined;
+  const rawAmount = transaction && (transaction.type === undefined || transaction.type === "refund") && transaction.amount !== undefined ? transaction.amount : creditNote?.total;
+  const amount = Number(rawAmount);
+  const rawCurrency = transaction?.currency_code ?? creditNote?.currency_code ?? invoice?.currency_code;
+  const currency = typeof rawCurrency === "string" ? rawCurrency.toUpperCase() : undefined;
+  return { eventId, invoiceId, refundAmount: Number.isInteger(amount) && amount > 0 ? amount : undefined, currency };
 }
 
 function dateFromChargebeeSeconds(value: unknown) {
   const seconds = Number(value);
   return Number.isSafeInteger(seconds) && seconds > 0 ? new Date(seconds * 1000) : undefined;
+}
+
+/** D-079: the payment-source events that confirm a validated card. Deletions and
+ * every other event are ignored; the caller needs every field to act, so a
+ * partial payload parses to nothing. */
+export type ParsedPaymentSourceEvent = { eventId: string; eventType: string; customerId: string; paymentSourceId: string; status: string };
+export function parsePaymentSourceEvent(payload: any): ParsedPaymentSourceEvent | undefined {
+  const eventType = typeof payload?.event_type === "string" ? payload.event_type : "";
+  if (eventType !== "payment_source_added" && eventType !== "payment_source_updated") return undefined;
+  const source = payload?.content?.payment_source;
+  const eventId = typeof payload?.id === "string" && payload.id ? payload.id : undefined;
+  const customerId = typeof source?.customer_id === "string" && source.customer_id ? source.customer_id : undefined;
+  const paymentSourceId = typeof source?.id === "string" && source.id ? source.id : undefined;
+  const status = typeof source?.status === "string" && source.status ? source.status : undefined;
+  if (!eventId || !customerId || !paymentSourceId || !status) return undefined;
+  return { eventId, eventType, customerId, paymentSourceId, status };
 }
 
 export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | undefined {
@@ -113,7 +175,11 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
   const subscriptionId = typeof subscription?.id === "string" ? subscription.id : undefined;
   if (!eventId || !subscriptionId) return undefined;
   const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
-  const parsedPlan = subscriptionPlanFromItemPrice(itemPriceId);
+  // One price book decides which plan and term an item price sells: the kit
+  // catalog (30/90-day passes, Keep warm yearly) resolves here, so a live kit
+  // pass can never arrive unmatched. A retired Pro/Max item price (D-067)
+  // resolves to no plan, so the wallet records the event and grants nothing.
+  const resolvedPrice = resolvePlanItemPrice(itemPriceId);
   const currency = typeof subscription?.currency_code === "string" ? subscription.currency_code.toUpperCase() : undefined;
   const hostedPage = payload?.content?.hosted_page;
   const resourceVersion = Number(subscription?.resource_version);
@@ -123,9 +189,11 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
     hostedPageId: typeof hostedPage?.id === "string" ? hostedPage.id : undefined,
     passThruContent: typeof hostedPage?.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined,
     subscriptionId,
-    plan: parsedPlan?.plan,
+    plan: resolvedPrice?.plan,
+    interval: resolvedPrice?.interval,
+    itemPriceId: typeof itemPriceId === "string" ? itemPriceId : undefined,
     status: typeof subscription?.status === "string" ? subscription.status : "cancelled",
-    currency: currency === "INR" || currency === "USD" ? currency : parsedPlan?.currency,
+    currency: currency === "INR" || currency === "USD" ? currency : resolvedPrice?.currency,
     currentTermStart: dateFromChargebeeSeconds(subscription?.current_term_start),
     currentTermEnd: dateFromChargebeeSeconds(subscription?.current_term_end),
     resourceVersion: Number.isSafeInteger(resourceVersion) && resourceVersion > 0 ? resourceVersion : undefined,
@@ -170,65 +238,6 @@ export function parseGiftEvent(payload: any): ParsedGiftEvent | undefined {
     buyerUserId: buyerUserIdFromGifter(gifter?.customer_id),
     gifterSignature: typeof gifter?.signature === "string" ? gifter.signature.slice(0, 50) : undefined,
     resourceVersion: Number.isSafeInteger(resourceVersion) && resourceVersion > 0 ? resourceVersion : undefined,
-  };
-}
-
-export function buildGiftSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; gifterCustomerId: string; redirectUrl: string; cancelUrl: string }) {
-  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
-  const form = new URLSearchParams();
-  form.set("subscription_items[item_price_id][0]", price.itemPriceId);
-  form.set("subscription_items[quantity][0]", "1");
-  form.set("gifter[customer_id]", input.gifterCustomerId);
-  form.set("redirect_url", input.redirectUrl);
-  form.set("cancel_url", input.cancelUrl);
-  return form;
-}
-
-export async function createGiftSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; buyerUserId: number; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string }) {
-  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
-  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
-  if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/checkout_gift_for_items`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: buildGiftSubscriptionCheckoutForm({ plan: input.plan, currency: input.currency, gifterCustomerId: `skipwait-u${input.buyerUserId}`, redirectUrl: input.redirectUrl, cancelUrl: input.cancelUrl }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Chargebee gift checkout failed (${response.status})`);
-  const hostedPage = body?.hosted_page;
-  const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
-  const hostedPageId = hostedPage?.id;
-  if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete gift checkout");
-  return { checkoutUrl, hostedPageId };
-}
-
-export type RetrievedGiftSubscription = {
-  subscriptionId: string;
-  plan?: PaidSubscriptionPlan;
-  currency?: "INR" | "USD";
-  status?: string;
-};
-
-export async function retrieveGiftSubscriptionPlan(subscriptionId: string, input: { site?: string; apiKey?: string } = {}): Promise<RetrievedGiftSubscription | undefined> {
-  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
-  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
-  if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/subscriptions/${encodeURIComponent(subscriptionId)}`, {
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!response.ok) return undefined;
-  const subscription = (await response.json().catch(() => ({})))?.subscription;
-  if (!subscription || subscription.id !== subscriptionId) return undefined;
-  const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
-  const parsed = subscriptionPlanFromItemPrice(itemPriceId);
-  const currency = typeof subscription?.currency_code === "string" ? subscription.currency_code.toUpperCase() : undefined;
-  return {
-    subscriptionId,
-    plan: parsed?.plan,
-    currency: currency === "INR" || currency === "USD" ? currency : parsed?.currency,
-    status: typeof subscription?.status === "string" ? subscription.status : undefined,
   };
 }
 
@@ -292,7 +301,7 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
     // comes only from the catalog constant, never from the client, and payment
     // reconciliation already matches on invoice amount + currency.
     form.set("charges[amount][0]", String(pack.amount * quantity));
-    form.set("charges[description][0]", `SkipWait credits x ${quantity}`);
+    form.set("charges[description][0]", `skipwait.me credits x ${quantity}`);
   }
   form.set("currency_code", pack.currency);
   if (input.email) form.set("customer[email]", input.email);
@@ -306,23 +315,6 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
   if (input.billingAddress?.zip) form.set("billing_address[zip]", input.billingAddress.zip);
   if (input.billingAddress?.stateCode) form.set("billing_address[state_code]", input.billingAddress.stateCode);
   if (input.billingAddress?.country) form.set("billing_address[country]", input.billingAddress.country);
-  form.set("redirect_url", input.redirectUrl);
-  form.set("cancel_url", input.cancelUrl);
-  form.set("pass_thru_content", input.checkoutIntentId);
-  return form;
-}
-
-export function buildSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
-  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
-  const form = new URLSearchParams();
-  form.set("subscription_items[item_price_id][0]", price.itemPriceId);
-  form.set("subscription_items[quantity][0]", "1");
-  if (input.email) form.set("customer[email]", input.email);
-  if (input.firstName) form.set("customer[first_name]", input.firstName);
-  if (input.lastName) form.set("customer[last_name]", input.lastName);
-  if (input.billingAddress?.country) form.set("billing_address[country]", input.billingAddress.country);
-  if (input.billingAddress?.stateCode) form.set("billing_address[state_code]", input.billingAddress.stateCode);
-  if (input.billingAddress?.city) form.set("billing_address[city]", input.billingAddress.city);
   form.set("redirect_url", input.redirectUrl);
   form.set("cancel_url", input.cancelUrl);
   form.set("pass_thru_content", input.checkoutIntentId);
@@ -358,26 +350,6 @@ export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTok
   const hostedPageId = hostedPage?.id;
   if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete hosted checkout");
   return { checkoutUrl, hostedPageId, checkoutIntentId, customerId: typeof hostedPage?.customer?.id === "string" ? hostedPage.customer.id : undefined };
-}
-
-export async function createChargebeeSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
-  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
-  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
-  if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const checkoutIntentId = input.checkoutIntentId ?? crypto.randomUUID();
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/checkout_new_for_items`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: buildSubscriptionCheckoutForm({ ...input, checkoutIntentId }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Chargebee subscription checkout failed (${response.status})`);
-  const hostedPage = body?.hosted_page;
-  const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
-  const hostedPageId = hostedPage?.id;
-  if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete subscription checkout");
-  return { checkoutUrl, hostedPageId, checkoutIntentId };
 }
 
 export async function scheduleChargebeeSubscriptionCancellation(input: { subscriptionId: string; site?: string; apiKey?: string }) {

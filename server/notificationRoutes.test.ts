@@ -24,7 +24,7 @@ describe("private notification routes", () => {
     expect((await request(app).get("/api/notifications")).status).toBe(401);
     const listed = await request(app).get("/api/notifications").set("x-test-user", "member");
     expect(listed.status).toBe(200); expect(listed.headers["cache-control"]).toContain("private");
-    expect(listed.body.notifications).toEqual([{ id: 99, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request.", readAt: null, createdAt: "2026-08-19T09:00:00.000Z" }]);
+    expect(listed.body.notifications).toEqual([{ id: 99, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request.", readAt: null, createdAt: "2026-08-19T09:00:00.000Z", kind: null, refId: null }]);
     expect(listed.body.notifications[0]).not.toHaveProperty("userId");
     expect((await request(app).post("/api/notifications/invalid/read").set("x-test-user", "member")).status).toBe(400);
     expect((await request(app).post("/api/notifications/99/read").set("x-test-user", "member")).status).toBe(200);

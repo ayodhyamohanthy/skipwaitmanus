@@ -7,22 +7,191 @@ import { isValidTargetRoleUrl } from "../shared/referralUrl";
 import { BoundedTtlCache } from "./boundedTtlCache";
 
 export type EmployerConfidence = "verified"|"direct-domain"|"ambiguous"|"unreachable";
-export type JobLinkPreview = { canonicalUrl:string; status:"fresh"|"unreachable"; employerConfidence:EmployerConfidence; companyDomain?:string; companyName?:string; reason:string; recoveryAction:string };
+export type JobLinkPreview = { canonicalUrl:string; status:"fresh"|"unreachable"; employerConfidence:EmployerConfidence; companyDomain?:string; companyName?:string; roleTitle?:string; fetched?:boolean; reason:string; recoveryAction:string };
 const cache=new BoundedTtlCache<string,JobLinkPreview>(5000);
 const pending=new Map<string,Promise<JobLinkPreview>>();
 export function resetJobLinkPreviewCache(){cache.clear();pending.clear()}
 export function jobLinkPreviewCacheSize(){return cache.size}
-const blockedRanges=new Set(["unspecified","broadcast","multicast","linkLocal","loopback","private","uniqueLocal","carrierGradeNat","reserved"]);
-export function isPublicAddress(address:string){try{return !blockedRanges.has(ipaddr.parse(address).range())}catch{return false}}
-async function pinnedDispatcher(hostname:string){const answers=await lookup(hostname,{all:true,verbatim:true});if(!answers.length||answers.some(a=>!isPublicAddress(a.address)))throw Error("unsafe_destination");const allowed=new Map(answers.map(a=>[a.address,a.family]));return new Agent({connect:{lookup:(_host,opts,cb)=>{const first=answers[0];if(!allowed.has(first.address))return cb(Error("dns_rebinding"),"",4);if((opts as {all?:boolean}).all)return cb(null,answers as never);cb(null,first.address,first.family)}}});}
+const blockedRanges=new Set(["unspecified","broadcast","multicast","linkLocal","loopback","private","uniqueLocal","carrierGradeNat","reserved","rfc6052"]);
+// ipaddr reports an IPv4 address written in IPv6 form (`::ffff:169.254.169.254`) as
+// its own `ipv4Mapped` range, so classifying it directly admits loopback, private
+// space, carrier-grade NAT, and the cloud metadata service. `URL.hostname` also
+// brackets IPv6 literals, which `ipaddr.parse` does not accept.
+export function isPublicAddress(address:string){try{const parsed=ipaddr.parse(address.replace(/^\[|\]$/g,""));const checked=parsed instanceof ipaddr.IPv6&&parsed.isIPv4MappedAddress()?parsed.toIPv4Address():parsed;return !blockedRanges.has(checked.range())}catch{return false}}
+export async function pinnedDispatcher(hostname:string){const answers=await lookup(hostname,{all:true,verbatim:true});if(!answers.length||answers.some(a=>!isPublicAddress(a.address)))throw Error("unsafe_destination");const allowed=new Map(answers.map(a=>[a.address,a.family]));return new Agent({connect:{lookup:(_host,opts,cb)=>{const first=answers[0];if(!allowed.has(first.address))return cb(Error("dns_rebinding"),"",4);if((opts as {all?:boolean}).all)return cb(null,answers as never);cb(null,first.address,first.family)}}});}
 const allowedHostedApi=(url:URL)=>
   (url.hostname==="www.linkedin.com"&&url.pathname.startsWith("/jobs-guest/jobs/api/jobPosting/")) ||
   ((url.hostname==="boards.greenhouse.io"||url.hostname==="job-boards.greenhouse.io") && /^\/[a-z0-9._-]+(?:\/|$)/i.test(url.pathname));
 export async function fetchPublicJobLink(input:string){let current=new URL(input);for(let redirect=0;redirect<8;redirect++){if(!["http:","https:"].includes(current.protocol))throw Error("unsupported_protocol");if(isHostedJobPlatform(current.hostname)&&!allowedHostedApi(current))throw Error("hosted_redirect_blocked");const dispatcher=await pinnedDispatcher(current.hostname);const response=await undiciFetch(current,{dispatcher,redirect:"manual",signal:AbortSignal.timeout(5000),headers:{"user-agent":"skipwait.me job preview","accept":"text/html,application/xhtml+xml"}});if(response.status>=300&&response.status<400){const location=response.headers.get("location");if(!location)throw Error("bad_redirect");current=new URL(location,current);continue}if(!response.ok)throw Error("unreachable");const length=Number(response.headers.get("content-length")||0);if(length>512000){await response.body?.cancel();return {canonicalUrl:current.toString(),body:""}};const reader=response.body?.getReader();let total=0;const chunks:Uint8Array[]=[];while(reader){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>512000){await reader.cancel();return {canonicalUrl:current.toString(),body:""}}chunks.push(value)}return {canonicalUrl:current.toString(),body:Buffer.concat(chunks).toString("utf8")}}throw Error("redirect_limit")}
+/**
+ * F1 (PR #1172 review): the body is attacker-controlled - any public domain can be
+ * pasted, the route needs no sign-in, and a query string defeats the cache - so tag
+ * scanning must never rescan the rest of the body from every unclosed tag. Every pass
+ * below walks forward with indexOf from a monotonically increasing position and gives
+ * up when a tag cannot close, so a 512 KB body of repeated opening tags costs one
+ * linear pass instead of ~17 seconds. The candidate count is bounded as well.
+ */
+const TAG_SCAN_LIMIT = 500;
+type OpenTag = { attributes: string; contentStart: number };
+/** HTML tag names are ASCII-case-insensitive; retain offsets into the original text. */
+function tagStart(body: string, name: string, from: number): number {
+  for (let open = body.indexOf("<", from); open >= 0; open = body.indexOf("<", open + 1)) {
+    if (body.slice(open + 1, open + name.length + 1).toLowerCase() === name) return open;
+  }
+  return -1;
+}
+/** The next `<name ...>` at or after `from`, or undefined; never rescans backwards. */
+function nextOpenTag(body: string, name: string, from: number, seen: number): (OpenTag & { at: number }) | undefined {
+  if (seen >= TAG_SCAN_LIMIT) return undefined;
+  const open = tagStart(body, name, from);
+  if (open < 0) return undefined;
+  const after = open + name.length + 1;
+  const boundary = body[after];
+  if (boundary === undefined) return undefined;
+  if (boundary !== ">" && boundary !== "/" && !/\s/.test(boundary)) return nextOpenTag(body, name, after, seen + 1);
+  const close = body.indexOf(">", after);
+  if (close < 0) return undefined; // the tag never closes: nothing after it can be a real tag
+  return { attributes: body.slice(after, close), contentStart: close + 1, at: open };
+}
+/** The inner text of the first well-formed `<name ...>…</name>`, or undefined. */
+function tagText(body: string, name: string): string | undefined {
+  let from = 0;
+  for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
+    const tag = nextOpenTag(body, name, from, 0);
+    if (!tag) return undefined;
+    const close = tagStart(body, `/${name}`, tag.contentStart);
+    if (close < 0) return undefined; // no closing tag anywhere after it
+    const nextOpen = tagStart(body, name, tag.contentStart);
+    if (nextOpen >= 0 && nextOpen < close) {
+      // A nested opening tag before the close: this one is malformed, resume at the next.
+      from = nextOpen;
+      continue;
+    }
+    return body.slice(tag.contentStart, close);
+  }
+  return undefined;
+}
+const ROLE_TITLE_LIMIT = 120;
+// Bound work before regex cleanup, not just the eventual display string.
+const RAW_TITLE_LIMIT = 4_096;
+const JSON_LD_MAX_DEPTH = 64;
+const JSON_LD_MAX_NODES = 1_000;
+const HTML_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+function decodeHtmlEntities(value: string) {
+  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, entity: string) => {
+    const lower = entity.toLowerCase();
+    const code = lower.startsWith("#x") ? Number.parseInt(lower.slice(2), 16) : lower.startsWith("#") ? Number.parseInt(lower.slice(1), 10) : undefined;
+    if (code !== undefined) return Number.isInteger(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    return HTML_ENTITIES[lower] ?? whole;
+  });
+}
+function cleanTitle(value: string) {
+  return decodeHtmlEntities(value.slice(0, RAW_TITLE_LIMIT)).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+function metaContent(tag: string, key: string): string | undefined {
+  const attributes: Record<string, string> = {};
+  let position = 0;
+  // Consume each attribute once, including valueless names and malformed values.
+  // An unanchored name/value regex retries every suffix of a long invalid name.
+  while (position < tag.length) {
+    while (position < tag.length && /[\s/]/.test(tag[position])) position += 1;
+    const nameStart = position;
+    while (position < tag.length && !/[\s=/>]/.test(tag[position])) position += 1;
+    if (position === nameStart) { position += 1; continue; }
+    const name = tag.slice(nameStart, position).toLowerCase();
+    while (position < tag.length && /\s/.test(tag[position])) position += 1;
+    if (tag[position] !== "=") continue;
+    position += 1;
+    while (position < tag.length && /\s/.test(tag[position])) position += 1;
+    const quote = tag[position];
+    let valueStart: number;
+    let valueEnd: number;
+    if (quote === '"' || quote === "'") {
+      valueStart = position + 1;
+      valueEnd = tag.indexOf(quote, valueStart);
+      if (valueEnd < 0) break;
+      position = valueEnd + 1;
+    } else {
+      valueStart = position;
+      while (position < tag.length && !/[\s"'<>]/.test(tag[position])) position += 1;
+      valueEnd = position;
+    }
+    if (name === "property" || name === "name" || name === "content") attributes[name] = tag.slice(valueStart, valueEnd);
+  }
+  const name = (attributes.property ?? attributes.name ?? "").toLowerCase();
+  return name === key ? attributes.content : undefined;
+}
+function jsonLdRecords(value: unknown): Record<string, unknown>[] {
+  // Both queued values (including arrays/primitives) and depth are bounded;
+  // an iterative walk never consumes the JS call stack for page-supplied JSON.
+  const records: Record<string, unknown>[] = [];
+  const pending: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  let scheduled = 1;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || current.depth > JSON_LD_MAX_DEPTH) continue;
+    if (Array.isArray(current.value)) {
+      for (let index = Math.min(current.value.length, JSON_LD_MAX_NODES - scheduled) - 1; index >= 0; index -= 1) {
+        pending.push({ value: current.value[index], depth: current.depth + 1 });
+        scheduled += 1;
+      }
+      continue;
+    }
+    if (!current.value || typeof current.value !== "object") continue;
+    const record = current.value as Record<string, unknown>;
+    records.push(record);
+    for (let index = 2; index >= 0; index -= 1) {
+      const key = ["@graph", "itemListElement", "mainEntity"][index];
+      if (key in record && scheduled < JSON_LD_MAX_NODES) {
+        pending.push({ value: record[key], depth: current.depth + 1 });
+        scheduled += 1;
+      }
+    }
+  }
+  return records;
+}
+function jobPostingTitle(body: string): string | undefined {
+  let from = 0;
+  for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
+    const tag = nextOpenTag(body, "script", from, 0);
+    if (!tag) return undefined;
+    if (!/\btype\s*=\s*["']?application\/ld\+json["']?/i.test(tag.attributes)) { from = tag.contentStart; continue; }
+    const close = tagStart(body, "/script", tag.contentStart);
+    if (close < 0) return undefined; // unclosed JSON-LD: nothing after it is parseable
+    let parsed: unknown;
+    try { parsed = JSON.parse(body.slice(tag.contentStart, close)); } catch { from = tag.contentStart; continue; }
+    for (const record of jsonLdRecords(parsed)) {
+      const type = record["@type"];
+      const isJobPosting = type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"));
+      if (isJobPosting && typeof record.title === "string" && record.title.trim()) return record.title;
+    }
+    from = tag.contentStart;
+  }
+  return undefined;
+}
+/** The role title from a body already fetched, or undefined: JSON-LD JobPosting, og:title, <title>. Never a second request (D-094 item 2). */
+export function extractRoleTitle(body: string, companyName?: string): string | undefined {
+  let ogTitle: string | undefined;
+  let from = 0;
+  for (let seen = 0; seen < TAG_SCAN_LIMIT; seen += 1) {
+    const tag = nextOpenTag(body, "meta", from, 0);
+    if (!tag) break;
+    const value = metaContent(tag.attributes, "og:title");
+    if (typeof value === "string" && value.trim()) { ogTitle = value; break; }
+    from = tag.contentStart;
+  }
+  const documentTitle = tagText(body, "title");
+  const raw = jobPostingTitle(body) ?? ogTitle ?? documentTitle;
+  if (typeof raw !== "string") return undefined;
+  const title = cleanTitle(raw).slice(0, ROLE_TITLE_LIMIT).trim();
+  if (!title) return undefined;
+  if (companyName && title.toLowerCase() === companyName.trim().toLowerCase()) return undefined;
+  return title;
+}
 export async function previewJobLink(input:string,resolve:(url:string)=>Promise<string|undefined>,fetcher=fetchPublicJobLink):Promise<JobLinkPreview>{
   const canonicalUrl=normalizeTargetRoleUrl(input);if(!isValidTargetRoleUrl(canonicalUrl))throw Error("unsafe_cache_key");
   const hit=cache.get(canonicalUrl);if(hit)return hit;
   const active=pending.get(canonicalUrl);if(active)return active;
-  const work=(async()=>{let reachable=true;const direct=directEmployerDomainFromTargetUrl(canonicalUrl);const reviewed=reviewedEmployerFromTargetRoleUrl(canonicalUrl);const host=new URL(canonicalUrl).hostname;const publicGreenhouse=host==="boards.greenhouse.io"||host==="job-boards.greenhouse.io";if(direct||publicGreenhouse){try{await fetcher(canonicalUrl)}catch{reachable=false}}else if(!reviewed){reachable=false}let domain:string|undefined;try{domain=await resolve(canonicalUrl)}catch{/* unresolved */}const trustedDomain=domain&&(reachable||reviewed)?domain:undefined;const value:JobLinkPreview=trustedDomain?{canonicalUrl,status:reachable?"fresh":"unreachable",employerConfidence:reviewed?"verified":"direct-domain",companyDomain:trustedDomain,...(reviewed?{companyName:reviewed.name}:{}),reason:reachable?"Company identified from the job link.":"Company identified from a reviewed listing, but the job page could not be reached.",recoveryAction:reachable?"Continue to your resume.":"Check that the job is still open."}:{canonicalUrl,status:reachable?"fresh":"unreachable",employerConfidence:reachable?"ambiguous":"unreachable",reason:reachable?"We could not safely identify one company from this hosted job link.":"We could not reach this job link.",recoveryAction:reachable?"Confirm the company domain before continuing.":"Check the link and try again."};cache.set(canonicalUrl,value,value.status==="fresh"?120000:15000);return value})();
+  const work=(async()=>{let reachable=true;let body:string|undefined;const direct=directEmployerDomainFromTargetUrl(canonicalUrl);const reviewed=reviewedEmployerFromTargetRoleUrl(canonicalUrl);const host=new URL(canonicalUrl).hostname;const publicGreenhouse=host==="boards.greenhouse.io"||host==="job-boards.greenhouse.io";const requestedBody=Boolean(direct||publicGreenhouse);if(requestedBody){try{body=(await fetcher(canonicalUrl)).body}catch{reachable=false}}else if(!reviewed){reachable=false}let domain:string|undefined;try{domain=await resolve(canonicalUrl)}catch{/* unresolved */}const roleTitle=body===undefined?undefined:extractRoleTitle(body,reviewed?.name);const trustedDomain=domain&&(reachable||reviewed)?domain:undefined;const value:JobLinkPreview=trustedDomain?{canonicalUrl,status:reachable?"fresh":"unreachable",employerConfidence:reviewed?"verified":"direct-domain",companyDomain:trustedDomain,...(reviewed?{companyName:reviewed.name}:{}),...(roleTitle?{roleTitle}:{}),fetched:requestedBody,reason:reachable?"Company identified from the job link.":"Company identified from a reviewed listing, but the job page could not be reached.",recoveryAction:reachable?"Continue to your resume.":"Check that the job is still open."}:{canonicalUrl,status:reachable?"fresh":"unreachable",employerConfidence:reachable?"ambiguous":"unreachable",...(roleTitle?{roleTitle}:{}),fetched:requestedBody,reason:reachable?"We could not safely identify one company from this hosted job link.":"We could not reach this job link.",recoveryAction:reachable?"Confirm the company domain before continuing.":"Check the link and try again."};cache.set(canonicalUrl,value,value.status==="fresh"?120000:15000);return value})();
   pending.set(canonicalUrl,work);try{return await work}finally{pending.delete(canonicalUrl)}
 }

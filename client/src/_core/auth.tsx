@@ -28,7 +28,7 @@ type CompatValue = {
   isSignedIn: boolean;
   userId: string | null;
   getToken: () => Promise<string | null>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { returnTo?: string }) => Promise<void>;
   user: CompatUser;
   openSignIn: (options?: { returnTo?: string }) => void;
 };
@@ -78,10 +78,13 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
       : null;
 
   const openSignIn = useCallback((options?: { returnTo?: string }) => {
-    if (!isLoaded || signedIn) return;
+    // An explicit click must not disappear while either client auth plane is
+    // loading. The server still owns authentication; this only starts its flow.
+    // Known signed-in users keep their existing session without another flow.
+    if (signedIn) return;
     const returnTo = safeAuthReturnTo(options?.returnTo ?? window.location.href, window.location.origin) ?? "/";
     window.location.href = `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo })}`;
-  }, [isLoaded, signedIn]);
+  }, [signedIn]);
 
   // Publish the SDK access token for non-React API clients (tRPC link).
   useEffect(() => {
@@ -106,7 +109,7 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     identifyClarity(user?.id ?? null);
   }, [user?.id]);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (options?: { returnTo?: string }) => {
     signingOut.current = true;
     try {
       let response = await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" });
@@ -121,7 +124,8 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     try { sessionStorage.removeItem("manus-cookie"); } catch {}
     await utils.auth.me.cancel();
     utils.auth.me.setData(undefined, null);
-    window.location.href = "/";
+    // Callers may bring the person back to a same-origin page (e.g. an OAuth consent screen with its query).
+    window.location.href = safeAuthReturnTo(options?.returnTo, window.location.origin) ?? "/";
   }, [auth.signOut, utils]);
 
   const getToken = useCallback(async () => {

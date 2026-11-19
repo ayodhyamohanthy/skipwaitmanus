@@ -1,0 +1,655 @@
+#!/usr/bin/env node
+// D-083 / D-085: `build`, `resume`, `continue` and `next` for any AI coding
+// agent. Prints the one next task from docs/plans/assignments.json (Claude Code
+// decides the order) and, with --claim, takes it by pushing a marker to origin
+// (first push wins). Your own unfinished work always comes back first.
+//
+//   node scripts/next-task.mjs                                  # show the next task
+//   node scripts/next-task.mjs --claim "<your model name>"      # take it (or get your own back); prints your session name
+//   node scripts/next-task.mjs --claim "<session name>" --avoid <id>[,<id>]   # never hand me these tasks (my own instruction or a missing tool)
+//   node scripts/next-task.mjs --claim "<session name>" --task <id>   # only that task under the normal rules, or why not (D-353 (2))
+//   node scripts/next-task.mjs --heartbeat --as "<session name>"       # keep your claim alive
+//   node scripts/next-task.mjs --report green|red|blocked|review|landed --task <id> --as "<session name>" --note "<one line>"
+//   node scripts/next-task.mjs --status                                # the board: every priority, green or not
+//   node scripts/next-task.mjs --verdict pass|findings --task <id> --as "<session name>"
+//   node scripts/next-task.mjs --fixed --task <id> --as "<session name>"
+//   node scripts/next-task.mjs --landed --task <id> --as "<session name>"
+//
+// Exit codes: 0 work to do (claimed, your own work, CEO review), 1 error,
+// 2 STOP (GitHub unreadable), 3 SYNC FIRST (your work is not on origin),
+// 4 WAIT, 5 NOTHING TO PICK, 6 requested task NOT ELIGIBLE (nothing claimed).
+//
+// It reads the task list from origin/main, never a local copy, and never
+// switches branches or touches the working tree. It does read the local clone
+// to report work that origin cannot see (D-085). NEXT_TASK_LIST_REF=<ref> reads
+// the list from another ref; it exists only to test the picker itself.
+import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import {
+  BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
+  mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
+} from "./nextTaskCore.mjs";
+import { renderBoard, renderBoardSummary, renderPick } from "./nextTaskText.mjs";
+import { pathToFileURL } from "node:url";
+import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
+import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
+import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
+
+// Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
+// ignores unless NODE_USE_ENV_PROXY=1 (Node >= 22.21); without it the CI read
+// fails and the picker stops. Re-run once with the proxy switched on.
+if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE_ENV_PROXY !== "1") {
+  const rerun = spawnSync(process.execPath, ["--disable-warning=UNDICI-EHPA", ...process.argv.slice(1)], { stdio: "inherit", env: { ...process.env, NODE_USE_ENV_PROXY: "1" } });
+  process.exit(rerun.status ?? 1);
+}
+
+const LIST = "docs/plans/assignments.json";
+const REGISTER = "docs/DECISIONS.md";
+const LIST_REF = process.env.NEXT_TASK_LIST_REF || "origin/main";
+const CLAIMABLE = ["build", "takeover", "fix-main", "review", "fix", "green", "land", "architect", "resync", "unblock", "continue"];
+const EXIT = { stop: 2, wait: 4, none: 5, ineligible: 6 };
+const REPORTS = "agent/reports/log";
+const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
+// PROCESS-provenance-loader-bounds: both wrappers read Git through the one shared
+// bounded reader. The trusted registry is larger than the legacy 1MiB execFileSync
+// buffer, so the picker used to fail closed on size. Same env, same stdio, same trim,
+// same throw/null split; only the output bound is finite and named. Exported so the
+// regression exercises these exact bindings instead of a copy of them.
+export const git = boundedGitReader({ env: GIT_ENV });
+export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
+const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
+
+/**
+ * PICKER-avoid-repeat: the task ids every `--avoid` value names. A value is one id or a comma list,
+ * and the flag may repeat, because every hand-out says to re-run "with --avoid <id> added".
+ */
+export function avoidSetOf(values) {
+  const list = Array.isArray(values) ? values : values === undefined ? [] : [values];
+  return new Set(list.flatMap(value => String(value).split(",")).map(id => id.trim()).filter(Boolean));
+}
+
+export function argsOf(argv) {
+  const out = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--fixed") out.fixed = true;
+    else if (a === "--heartbeat") out.heartbeat = true;
+    else if (a === "--status") out.status = true;
+    else if (a === "--landed") out.landed = true;
+    else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid", "--provenance", "--execution"].includes(a)) {
+      const v = argv[++i];
+      if (!v || v.startsWith("--")) fail(`${a} needs a value`);
+      // --avoid accumulates (a second flag must not silently drop the first); every other flag is last-wins.
+      if (a === "--avoid") (out.avoid ??= []).push(v);
+      else out[a.slice(2)] = v;
+    } else fail(`unknown argument ${a}`);
+  }
+  for (const k of ["claim", "as"]) if (out[k] !== undefined && !sanitizeName(out[k])) fail(`--${k} needs a name`);
+  if (out.as) out.as = sanitizeName(out.as);
+  if (out.verdict && !["pass", "findings"].includes(out.verdict)) fail("--verdict is pass or findings");
+  if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<session name>\"");
+  if (out.landed && (!out.task || !out.as)) fail("--landed needs --task <id> and --as \"<session name>\"");
+  if (out.heartbeat && !out.as) fail("--heartbeat needs --as \"<session name>\" (the name your claim printed)");
+  if (out.report && !REPORT_STATUSES.includes(out.report)) fail(`--report is one of ${REPORT_STATUSES.join(", ")}`);
+  if (out.report && (!out.task || !out.as)) fail("--report needs --task <id> and --as \"<session name>\"");
+  return out;
+}
+
+/**
+ * PICKER-claim-task (D-353 (2)): the answer to `--claim "<name>" --task <id>` when that task cannot be handed to this
+ * session now: the reason the picker recorded for it. Nothing is claimed.
+ */
+export function renderIneligible(pick, who) {
+  const id = pick.task?.id ?? pick.id ?? "that task";
+  return [
+    `NEXT: NOT ELIGIBLE — ${id}${pick.task?.title ? ` — ${pick.task.title}` : ""}`,
+    `${pick.reason}.`,
+    `Nothing was claimed. Run \`node scripts/next-task.mjs --claim "${who}"\` without --task to be handed the next eligible task, or ask again with --task once this changes.`,
+    "",
+  ].join("\n");
+}
+
+/** The GitHub CLI's token, when an agent is signed in with it; never printed. */
+function ghToken() {
+  try { return execFileSync("gh", ["auth", "token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null; }
+  catch { return null; }
+}
+
+async function github(repo, path) {
+  // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
+  const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
+  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers, signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
+  return res.json();
+}
+
+/**
+ * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
+ * commit that changes files is work, whatever its subject says (D-190).
+ */
+function commitsOn(ref) {
+  return parseProvenanceLog(tryGit("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
+}
+
+const markersOn = commits => commits.flatMap(({ sha, subject, body, files }) => {
+  const m = files.length ? null : parseMarker(subject);
+  return m ? [{ ...m, sha, body, ...(m.verb === "Verdict" ? { reviewed: /^reviewed ([a-f0-9]{40})$/m.exec(body)?.[1] ?? null } : {}) }] : [];
+});
+
+function loadBranches(tasks) {
+  const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
+  const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
+  const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)%09%(objectname)", "refs/remotes/origin/agent");
+  const branches = new Map();
+  for (const line of refs.split("\n").filter(Boolean)) {
+    const [name, unix, sha] = line.split("\t");
+    const fixMain = name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-");
+    if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
+    const ref = `refs/remotes/origin/${name}`;
+    const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
+    const commits = commitsOn(ref);
+    // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
+    // PICKER-landed-marker-continuity: only provably empty, recognized markers (and no merge commit) beyond main.
+    const merges = Number(tryGit("rev-list", "--merges", "--count", `origin/main..${ref}`) ?? NaN);
+    branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markerOnly: markerOnlyOf(commits, merges), markers: markersOn(commits) });
+  }
+  return branches;
+}
+
+/**
+ * PICKER-landed-marker-continuity: verified merged pull requests for the todo rows whose branch is gone or carries
+ * only markers, beyond the newest-100 closed window (S1, S2). Merged pull requests are cached in the clone's git
+ * directory (never in the repository); an incomplete or failed read is unknown, which the core never counts as landed.
+ */
+async function landedEvidenceFor(doc, branches, mergedHeads, closedFirst) {
+  if (mergedHeads === null || closedFirst === null) return new Map();
+  const candidates = doc.tasks.filter(t => {
+    if (t.status !== "todo") return false;
+    const info = branches.get(t.branch);
+    if (!info) return !mergedHeads.has(t.branch);
+    return info.markerOnly === true && !info.merged;
+  }).map(t => t.branch);
+  if (!candidates.length) return new Map();
+  const dir = tryGit("rev-parse", "--git-common-dir");
+  const file = dir ? path.join(path.resolve(dir), "skipwait-next-task", "merged-pulls.json") : null;
+  let cache = null;
+  try { cache = file ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { cache = null; }
+  const out = await collectLandedEvidence({
+    repo: doc.repo, candidates, firstPage: closedFirst, cache, now: Date.now(),
+    fetchPage: page => github(doc.repo, `/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=${page}`),
+    verify: pull => verifyMergedPull(pull, { repo: doc.repo, tryGit, mainRef: "origin/main" }),
+  });
+  try { if (file) { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, JSON.stringify(out.cache) + "\n"); } } catch (e) { console.error(`next-task: could not save the merged pull request cache: ${e.message}`); }
+  const unknown = [...out.evidence].filter(([, e]) => e.state === "unknown");
+  if (unknown.length) console.error(`next-task: landed state UNKNOWN for ${unknown.length} branch(es) (${unknown[0][1].reason}); they are treated as not landed`);
+  return out.evidence;
+}
+
+/** D-085: every local branch with commits no origin branch has, and every worktree with uncommitted changes. */
+function localState() {
+  const top = tryGit("rev-parse", "--show-toplevel") ?? ".";
+  const worktrees = new Map();
+  for (const block of (tryGit("worktree", "list", "--porcelain") ?? "").split("\n\n")) {
+    const path = /^worktree (.+)$/m.exec(block)?.[1];
+    const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1];
+    if (path && branch) worktrees.set(branch, path);
+  }
+  const local = [];
+  for (const branch of (tryGit("for-each-ref", "--format=%(refname:strip=2)", "refs/heads") ?? "").split("\n").filter(Boolean)) {
+    const path = worktrees.get(branch) ?? top;
+    const unpushed = Number(tryGit("rev-list", "--count", branch, "--not", "--remotes=origin") ?? 0);
+    const dirty = worktrees.has(branch) && Boolean(tryGit("-C", path, "status", "--porcelain"));
+    if (!unpushed && !dirty) continue;
+    const onOrigin = tryGit("rev-parse", "--verify", "-q", `refs/remotes/origin/${branch}`) !== null;
+    // ahead: commits only this clone has; null means the branch itself is missing from origin with commits on it.
+    local.push({ branch, ahead: onOrigin ? unpushed : (unpushed ? null : 0), dirty, path });
+  }
+  const mainBehind = tryGit("rev-parse", "--verify", "-q", "refs/heads/main") ? Number(tryGit("rev-list", "--count", "main..origin/main") ?? 0) : 0;
+  return { local, mainBehind };
+}
+
+/** D-085: the reports the team sent the CEO, newest first (one marker commit each on agent/reports/log), cleaned again on read. */
+function loadReports(context) {
+  const raw = tryGit("log", "-n", "500", "--format=%H%x1f%ct%x1f%s%x1f%b%x1e", `refs/remotes/origin/${REPORTS}`);
+  if (!raw) return [];
+  const restored = new Set();
+  return raw.split("\x1e").map(rec => rec.trim()).filter(Boolean).flatMap(rec => {
+    const [sha, ct, subject, body = ""] = rec.split("\x1f");
+    const m = parseMarker(subject ?? "");
+    if (m?.verb !== "Report") return [];
+    const report = { id: m.id, status: m.status, who: sanitizeName(m.who), at: Number(ct) * 1000, ...parseReportBody(body) };
+    if (report.status === "blocked" && !report.evidence && context && !restored.has(report.id)) {
+      restored.add(report.id);
+      const task = context.tasks.find(row => row.id === report.id);
+      if (task && task.status !== "done") {
+        // The report log's tree is an old marker snapshot, not main at report
+        // time. Recover the actual main history rather than that stale tree.
+        const mainAt = tryGit("rev-list", "-1", `--before=${Number(ct) + 1}`, "origin/main");
+        const oldList = mainAt ? tryGit("show", `${mainAt}:${LIST}`) : null;
+        const oldRegister = mainAt ? tryGit("show", `${mainAt}:${REGISTER}`) : null;
+        if (oldList && oldRegister) {
+          const historicalTasks = JSON.parse(oldList).tasks;
+          const oldTask = historicalTasks.find(row => row.id === report.id) ?? task;
+          const historicalBranches = new Map();
+          for (const name of [task.branch, architectLockOf(task)]) {
+            const tipSha = tryGit("rev-list", "-1", `--before=${Number(ct) + 1}`, originRef(name));
+            if (tipSha) historicalBranches.set(name, { tipSha });
+          }
+          report.evidence = blockEvidenceFor({ task: oldTask, tasks: historicalTasks, branches: historicalBranches, register: parseDecisionRegister(oldRegister) });
+        }
+      }
+    }
+    return [report];
+  });
+}
+
+const originRef = name => `refs/remotes/origin/${name}`;
+
+/**
+ * PICKER-path-tier-review (D-353 (1)): for each open pull request of a task, the paths its tip changed against main and
+ * whether the CI review gate already clears that tip, read with the gate's own functions (changedPathsOf,
+ * reviewGateViolation) so the picker and CI never disagree. Any failure leaves the paths unknown (the declared tier then
+ * decides) and gateClear false (the review stage is handed out as before). A landing's status commit is not recognised
+ * here (isStatusCommit is false), so such a head reads as not clear: stricter than the gate, never looser.
+ */
+function pullRequestFacts(tasks, heads, branches) {
+  const facts = new Map();
+  let trusted = null;
+  for (const head of heads) {
+    const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+    if (!tipSha) continue;
+    let paths = null;
+    try { paths = changedPathsOf(tipSha); } catch { paths = null; }
+    let gateClear = false;
+    const task = findGateRow(tasks, head);
+    if (task && Array.isArray(paths) && paths.length) {
+      try {
+        trusted ??= loadTrustedProvenance(tryGit);
+        const nonMergeCommitsSince = sha => {
+          if (tryGit("merge-base", "--is-ancestor", sha, tipSha) === null) return null;
+          return (tryGit("rev-list", "--no-merges", `${sha}..${tipSha}`, "--not", "origin/main") ?? "").split("\n").filter(Boolean);
+        };
+        const isEmptyCommit = sha => {
+          const tree = tryGit("rev-parse", `${sha}^{tree}`);
+          return tree !== null && tree === tryGit("rev-parse", `${sha}^1^{tree}`);
+        };
+        gateClear = reviewGateViolation({
+          task, head: tipSha, workMarkers: branches.get(head)?.markers ?? [], lockMarkers: branches.get(reviewLockOf(task))?.markers ?? [],
+          nonMergeCommitsSince, isStatusCommit: () => false, isEmptyCommit,
+          tierOf: changed => classifyTier(changed).tier, tierReasonPaths, changedPaths: paths, provenance: { ...trusted, git: tryGit },
+        }) === null;
+      } catch { gateClear = false; }
+    }
+    facts.set(head, { tipSha, paths, gateClear });
+  }
+  return facts;
+}
+const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) !== null;
+const tip = name => git("rev-parse", originRef(name));
+const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
+
+/**
+ * Push one empty marker commit onto `parent` as `branch`. Returns the new
+ * commit, or null when another agent got there first; any other refusal
+ * (auth, a ruleset, the network) stops the run with git's own words.
+ */
+function pushMarker(branch, parent, subject, body) {
+  const sha = git("commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject, ...(body ? ["-m", body] : []));
+  const res = spawnSync("git", ["push", "-q", "origin", `${sha}:refs/heads/${branch}`], { encoding: "utf8", env: GIT_ENV });
+  if (res.status === 0) {
+    tryGit("update-ref", originRef(branch), sha);
+    return sha;
+  }
+  if (classifyPushError(res.stderr) === "race") return null;
+  fail(`could not push ${branch}: ${(res.stderr || res.error?.message || "unknown error").trim()}`);
+}
+
+/**
+ * D-085: record that `who` is still on a held task. A quiet claim is re-taken on
+ * the ref a takeover pushes to (first push wins); a fresh one gets a heartbeat.
+ * Returns false when another agent took it first.
+ */
+function keepClaim(pick, who, branches, provenanceBody) {
+  const all = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
+  const external = all.some(m => m.id === pick.task?.id && markerReferences(m.body).external);
+  const leasePreview = leaseFor(pick, branches, Date.now());
+  if (external && (leasePreview.verb !== "Heartbeat" || pick.of === "land")) {
+    const refs = markerReferences(provenanceBody);
+    const role = ({ review: "review", land: "land", fix: "fix", build: "build" })[pick.of];
+    const result = routeIdentity(loadTrustedProvenance(tryGit).registry, refs.route, who, pick.task.id, role);
+    if (refs.invalid || !result.ok) fail("external reclaim requires its actual qualified operator route");
+  }
+  if (pick.of === "land") {
+    const slot = landingSlot(branches, Date.now());
+    // PICKER-heartbeat-slot-safety: another lander's fresh slot is theirs. Renewing this holder's own LAND lease
+    // below never writes it; a free or quiet slot is taken as before (first push wins, a lost race fails closed).
+    const othersFresh = Boolean(slot.holder) && slot.holder !== who && !slot.quiet;
+    if (!othersFresh && (slot.holder !== who || slot.quiet)) {
+      const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
+      const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
+      if (!took) return false;
+    }
+  }
+  const lease = leaseFor(pick, branches, Date.now());
+  const subject = markerSubject(lease.verb, lease.id, who);
+  let parent = base(lease.ref);
+  let sha = pushMarker(lease.ref, parent, subject, lease.verb === "Heartbeat" ? undefined : provenanceBody);
+  if (!sha && lease.retry) {
+    // Only this holder writes its side heartbeat; a refused one is a stale view, so read it again once.
+    // A refused push on a shared lock or a takeover ref means another agent won it: never retry on top of them.
+    tryGit("fetch", "-q", "origin", lease.ref);
+    parent = base(lease.ref);
+    sha = pushMarker(lease.ref, parent, subject, lease.verb === "Heartbeat" ? undefined : provenanceBody);
+  }
+  if (!sha) return false;
+  // A reclaim adds an empty commit to your own branch: move your local copy onto it so your next push is a fast-forward.
+  if (lease.reclaim) {
+    const localTip = tryGit("rev-parse", "--verify", "-q", `refs/heads/${lease.ref}`);
+    const moved = localTip === parent && tryGit("update-ref", `refs/heads/${lease.ref}`, sha, parent) !== null;
+    if (localTip && !moved && localTip !== sha) console.error(`next-task: origin/${lease.ref} gained your claim marker; run git merge --ff-only origin/${lease.ref} (or git pull --no-rebase) in your worktree before your next push, and never force-push`);
+  }
+  return true;
+}
+
+async function state() {
+  if (tryGit("fetch", "-q", "--prune", "origin") === null) fail("git fetch origin failed; check your network and GitHub access");
+  const raw = tryGit("show", `${LIST_REF}:${LIST}`);
+  if (raw === null) fail(`${LIST} is missing on ${LIST_REF}`);
+  let doc;
+  try { doc = JSON.parse(raw); } catch (e) { fail(`${LIST} is not valid JSON: ${e.message}`); }
+  // D-202: the decision register is read with the list, from the same ref, and an unreadable
+  // register stops the picker: a guess at which decision is newest would hand out stale work.
+  const registerRaw = tryGit("show", `${LIST_REF}:${REGISTER}`);
+  if (registerRaw === null) fail(`${REGISTER} is missing on ${LIST_REF}; the picker cannot tell which decision is newest`);
+  let register;
+  try { register = parseDecisionRegister(registerRaw); } catch (e) { fail(`${e.message}; fix the register before any work is picked`); }
+  const errors = validateAssignments(doc, p => tryGit("cat-file", "-e", `${LIST_REF}:${p}`) !== null, register);
+  if (errors.length) fail(`${LIST} is invalid; tell Claude Code:\n- ${errors.join("\n- ")}`);
+  // D-085: every GitHub read is known or unknown; an unknown one stops the picker instead of looking like "nothing there".
+  let mainCi = { state: "unknown" }, openPrs = null, mergedHeads = null, closedFirst = null;
+  const prCi = new Map();
+  try { mainCi = ciStateFromRuns((await github(doc.repo, "/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10")).workflow_runs); }
+  catch (e) { console.error(`next-task: ${e.message}`); }
+  try {
+    // BRANCH-HYGIENE "See every pull request": page by page, never one page of 100 (D-085).
+    const first = await github(doc.repo, "/pulls?state=open&per_page=100&page=1");
+    const read = await collectOpenPulls({ firstPage: first, fetchPage: page => github(doc.repo, `/pulls?state=open&per_page=100&page=${page}`) });
+    if (!read.complete) throw new Error(`open pull requests unknown: ${read.reason}`);
+    openPrs = new Map(read.pulls.filter(p => p.head?.repo?.full_name === doc.repo).map(p => [p.head.ref, p.html_url]));
+  } catch (e) { console.error(`next-task: ${e.message}`); }
+  try {
+    const closed = await github(doc.repo, "/pulls?state=closed&sort=updated&direction=desc&per_page=100");
+    closedFirst = closed;
+    mergedHeads = new Map();
+    for (const p of closed) {
+      if (!p.merged_at || p.head?.repo?.full_name !== doc.repo) continue;
+      if (!mergedHeads.has(p.head.ref)) mergedHeads.set(p.head.ref, new Set());
+      mergedHeads.get(p.head.ref).add(p.head.sha);
+    }
+  } catch (e) { console.error(`next-task: ${e.message}`); }
+  // D-109: one read for every pull request's CI (the newest 100 runs, grouped by branch), not one read per branch,
+  // so agents without a token stay inside GitHub's 60 reads an hour. A branch with no run among them reads unknown.
+  const slugs = doc.tasks.map(t => `/${slugOf(t.branch)}`);
+  const heads = [...(openPrs?.keys() ?? [])].filter(head => head.startsWith("agent/") && slugs.some(s => head.endsWith(s)));
+  if (heads.length) {
+    try {
+      const runs = (await github(doc.repo, "/actions/workflows/ci.yml/runs?per_page=100")).workflow_runs;
+      for (const head of heads) prCi.set(head, ciStateFromRuns(runs.filter(r => r.head_branch === head)));
+    } catch (e) {
+      console.error(`next-task: ${e.message}`);
+      for (const head of heads) prCi.set(head, { state: "error" });
+    }
+    // PICKER-land-exact-head (D-293): find the tip's run when it has aged out of the newest 100 runs.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state === "error") continue;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!tipSha || ci?.sha === tipSha) continue;
+      try {
+        const runs = (await github(doc.repo, `/actions/workflows/ci.yml/runs?head_sha=${tipSha}&per_page=10`)).workflow_runs;
+        if (Array.isArray(runs) && runs.length) prCi.set(head, ciStateFromRuns(runs));
+      } catch (e) {
+        console.error(`next-task: ${e.message}`);
+      }
+    }
+    // PICKER-gate-red-review-route (D-291): a red run on the branch's exact tip gets one read of its jobs, so a red
+    // that is only the review gate's own step can be handed REVIEW. Fail closed: a missing run id, a run not on the
+    // tip, or any fetch or parse error leaves gateOnly false and the picker keeps handing MAKE GREEN.
+    for (const head of heads) {
+      const ci = prCi.get(head);
+      if (ci?.state !== "red") continue;
+      ci.gateOnly = false;
+      ci.legacyScope = false;
+      const tipSha = tryGit("rev-parse", "--verify", "-q", originRef(head));
+      if (!Number.isSafeInteger(ci.runId) || !tipSha || ci.sha !== tipSha) continue;
+      try {
+        const jobs = await github(doc.repo, `/actions/runs/${ci.runId}/jobs?per_page=100`);
+        ci.gateOnly = gateOnlyRedFromJobs(jobs) === true;
+        // D-314: the same one read tells a pre-D-292 run red only at the old scope-check step (still MAKE GREEN).
+        ci.legacyScope = !ci.gateOnly && legacyScopeRedFromJobs(jobs) === true;
+      }
+      catch (e) { console.error(`next-task: ${e.message}`); }
+    }
+  }
+  // Count main-only commits, not branch-only commits. Missing refs stay unknown,
+  // never a misleading zero; use argv (not a shell) for branch names from GitHub.
+  const prBehind = new Map();
+  for (const head of openPrs?.keys() ?? []) {
+    const raw = tryGit("rev-list", "--count", `${originRef(head)}..origin/main`);
+    const count = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null;
+    prBehind.set(head, Number.isSafeInteger(count) ? count : null);
+  }
+  const branches = loadBranches(doc.tasks);
+  const prFacts = pullRequestFacts(doc.tasks, heads, branches);
+  const landedEvidence = await landedEvidenceFor(doc, branches, mergedHeads, closedFirst);
+  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports: loadReports({ tasks: doc.tasks }) };
+}
+
+function claim(pick, who, branches, provenanceBody) {
+  const history = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
+  if (!provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
+  const origin = () => git("rev-parse", "origin/main");
+  switch (pick.kind) {
+    case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody));
+    case "takeover":
+    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody));
+    case "land": {
+      const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
+      const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
+      if (!tookSlot) return false;
+      if (pick.tier1) {
+        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who), provenanceBody));
+      }
+      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody));
+    }
+    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody));
+    case "architect":
+    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
+    case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
+    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody));
+    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody));
+    case "continue": return keepClaim(pick, who, branches, provenanceBody);
+    default: return false;
+  }
+}
+
+function printSync(sync) {
+  if (!sync.blocking.length && !sync.notes.length) return;
+  console.log("LOCAL WORK ORIGIN CANNOT SEE (D-085):");
+  for (const line of sync.blocking) console.log(`- MUST PUSH: ${line}`);
+  for (const line of sync.notes) console.log(`- ${line}`);
+  console.log("");
+}
+
+/** --report and --fixed speak for work that must already be on origin. */
+function requireSynced(doc, branches, who) {
+  const { local, mainBehind } = localState();
+  const sync = localSyncIssues({ local, branches, claimant: who, mainBehind, tasks: doc.tasks });
+  if (!sync.blocking.length) return;
+  printSync(sync);
+  fail("your own work is not on origin yet (the MUST PUSH lines above); push it, then run this again", 3);
+}
+
+async function main() {
+  const args = argsOf(process.argv.slice(2));
+  const date = new Date().toLocaleDateString("en-CA");
+  if (args.verdict || args.fixed) {
+    const { doc, branches, openPrs } = await state();
+    const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    const lockName = reviewLockOf(task), lock = branches.get(lockName);
+    const stage = reviewStateOf(lock, task.id);
+    const holder = stageHolderOf(lock, task.id);
+    // PROCESS-review-gate (D-166): the reviewer who passed may re-record the pass on the current head (after a merge of main, or
+    // over a verdict written before verdicts named their head); a landing refuses a head no verdict names.
+    const reviewer = [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb === "Review claim")?.who ?? null;
+    const rerecord = args.verdict === "pass" && ["passed", "landing"].includes(stage) && reviewer === args.as;
+    if (args.verdict && !rerecord && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
+    // D-344 (7): the fixer may re-record its own Fixed marker on a newer head (stage needs-review, its own Fixed last).
+    const refreshFixed = args.fixed && stage === "needs-review" && holder === args.as && [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb !== "Heartbeat")?.verb === "Fixed";
+    if (args.fixed && !refreshFixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
+    if (args.fixed) requireSynced(doc, branches, args.as);
+    const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
+    // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
+    const architect = architectLockOf(task);
+    const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
+    const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
+    // D-344 (7): a Fixed marker names the head it fixed, so the review gate can land it without a re-review.
+    const fixedAt = args.fixed ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to mark fixed`)) : null;
+    const body = [reviewed ? `reviewed ${reviewed}` : null, fixedAt ? `fixed ${fixedAt}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
+    const history = [...(branches.get(reviewedBranch)?.markers ?? []), ...(lock?.markers ?? [])];
+    if (args.provenance || history.some(m => markerReferences(m.body).external)) {
+      if (!args.provenance || !args.execution) fail("external completion requires qualified route and execution IDs");
+      const head = reviewed || tip(task.branch);
+      const marker = { id: task.id, who: args.as, verb: args.verdict ? "Verdict" : "Fixed", verdict: args.verdict, reviewed, body };
+      const trusted = loadTrustedProvenance(tryGit);
+      const result = resolveTaskProvenance({ taskId: task.id, head, workMarkers: branches.get(reviewedBranch)?.markers ?? [], lockMarkers: [...(lock?.markers ?? []), marker], ...trusted, git: tryGit });
+      if (!result.ok) fail(`external completion held: ${result.reason}`);
+      const model = result.reviewers?.get(args.as);
+      if (args.verdict && (!model || [...result.builders, ...result.fixers].includes(model))) fail("external reviewer also built or fixed this work");
+    }
+    if (!pushMarker(lockName, tip(lockName), subject, body || undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}${fixedAt ? ` (fixed ${fixedAt})` : ""}`);
+    if (fixedAt) console.log("The PR's review-gate result was computed before this marker: re-run its failed checks (or push a merge of main) so CI re-evaluates the gate on this head.");
+    return;
+  }
+  if (args.landed) {
+    const { doc, branches } = await state();
+    const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    const err = releaseLandingSlotError({ branches, task, claimant: args.as, now: Date.now() });
+    if (err) fail(err);
+    const subject = markerSubject("Landed", task.id, args.as);
+    const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
+    if (!pushMarker(LAND_SLOT, parent, subject)) fail(`could not push ${LAND_SLOT}: it moved; fetch and run again`);
+    console.log(`Released landing slot ${LAND_SLOT}: ${subject}`);
+    return;
+  }
+  if (args.status) {
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const newest = register.at(-1);
+    console.log(`Register: ${newest.id}, ${newest.date} — ${newest.title}`);
+    console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register })));
+    return;
+  }
+  if (args.report) {
+    const { doc, branches, register, reports, openPrs, mergedHeads, landedEvidence } = await state();
+    const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
+    // A report can hold or release every lower priority, so only the task's own people or the CEO send one (D-085).
+    if (!mayReport({ task, branches, claimant: args.as })) fail(`"${args.as}" holds no part of ${task.id}; only its builder, reviewer, fixer, lander, unblocker or the CEO reports on it`);
+    requireSynced(doc, branches, args.as);
+    const blockInput = { task, tasks: doc.tasks, branches, register, reports, openPrs: openPrs ?? new Map(), mergedHeads: mergedHeads ?? new Map(), landedEvidence, now: Date.now() };
+    if (args.report === "blocked") {
+      const duplicate = blockedReportError(blockInput);
+      if (duplicate) fail(duplicate);
+    }
+    // One plain line: no secrets, tokens or personal data (the repo is public, D-059).
+    const note = sanitizeNote(args.note);
+    const subject = markerSubject("Report", task.id, args.as, args.report);
+    const body = args.report === "blocked" ? blockedReportBody(note, blockEvidenceFor(blockInput)) : note;
+    let sha = pushMarker(REPORTS, base(REPORTS), subject, body);
+    if (!sha) {
+      tryGit("fetch", "-q", "origin", REPORTS);
+      if (args.report === "blocked") {
+        const duplicate = blockedReportError({ ...blockInput, reports: loadReports({ tasks: doc.tasks }) });
+        if (duplicate) fail(duplicate);
+      }
+      sha = pushMarker(REPORTS, base(REPORTS), subject, body);
+    }
+    if (!sha) fail(`could not push ${REPORTS}: other reports keep arriving; run again`);
+    console.log(`Reported to the CEO on ${REPORTS}: ${subject}${note ? ` — ${note}` : ""}`);
+    return;
+  }
+  if (args.heartbeat) {
+    const { doc, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, branches, reports } = await state();
+    // Without the pull requests, a Tier 1 branch under review would look like a build to keep alive, and a claim marker would land on it.
+    if (openPrs === null || mergedHeads === null) fail("cannot read the pull requests from GitHub; a heartbeat now could push a claim onto a branch under review (D-085); run this again when GitHub answers", 2);
+    const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
+    // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
+    // D-134: every claim you hold stays alive, not only the first one in queue order.
+    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, claimant: args.as, mainSha, now: Date.now() });
+    if (!helds.length) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
+    // Commits only on this machine are the real heartbeat: push them first, or a marker on origin would leave your branch diverged.
+    const { local, mainBehind } = localState();
+    const sync = localSyncIssues({ local, branches, claimant: args.as, mainBehind, tasks: doc.tasks });
+    const unpushed = helds.map(h => h.work ?? h.lock).filter(b => sync.unpushed.includes(b));
+    if (unpushed.length) { printSync(sync); fail(`push your commits on ${unpushed.join(", ")} first (that push keeps the claim alive), then run this again`, 3); }
+    const lost = helds.filter(h => !keepClaim(h, args.as, branches, args.provenance ? `provenance ${args.provenance}` : undefined));
+    for (const h of helds.filter(h => !lost.includes(h))) console.log(`Heartbeat recorded: ${h.of === "fix-main" ? h.lock : h.task.id} stays yours for the next 2 hours.`);
+    if (lost.length) fail(`another agent took ${lost.map(h => h.task?.id ?? h.lock).join(", ")} first; run --claim "${args.as}" to see what is yours`);
+    return;
+  }
+  // D-085: a bare model name gets a unique session tag, so two sessions of one model never share a claim.
+  const who = args.claim ? sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4)) : args.as ?? null;
+  if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
+  // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const now = Date.now();
+    const avoid = avoidSetOf(args.avoid);
+    const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
+    // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
+    if (args.provenance) pick.provenanceRoute = args.provenance;
+    // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
+    if (pick.kind === "ceo") pick.board = board;
+    // D-358: the short board, so the assignment below survives an agent's output cap; --status prints the full one.
+    else console.log(renderBoardSummary(board));
+    const { local, mainBehind } = localState();
+    const sync = localSyncIssues({ local, branches, claimant: who, mainBehind, tasks: doc.tasks });
+    printSync(sync);
+    const continuing = pick.kind === "continue" ? pick.work ?? pick.lock : null;
+    // New work waits until your own work is on origin; your own claim waits until its commits are.
+    if (CLAIMABLE.includes(pick.kind) && sync.blocking.length && (!continuing || sync.unpushed.includes(continuing))) {
+      console.log("NEXT: SYNC FIRST\nYour own work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
+      process.exit(3);
+    }
+    if (pick.kind === "ineligible") {
+      console.log(renderIneligible(pick, who ?? "<your session name>"));
+      process.exit(EXIT.ineligible);
+    }
+    if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
+      console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register, requestedTask: args.task }));
+      process.exit(EXIT[pick.kind] ?? 0);
+    }
+    if (args.provenance) {
+      const role = ({ build: "build", takeover: "build", green: "build", review: "review", fix: "fix", land: "land" })[pick.kind === "continue" ? pick.of : pick.kind];
+      if (!role) fail("external provenance is unsupported for this picked stage");
+      const route = routeIdentity(provenance.registry, args.provenance, who, pick.task.id, role);
+      if (!route.ok) fail(route.reason);
+    }
+    if (claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
+  }
+  fail("six claims in a row were taken by other agents; run again in a minute");
+}
+
+// PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the
+// regression can import these real bindings without starting a picker run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(e => fail(e.stack ?? String(e)));
+}

@@ -57,6 +57,13 @@ describe("Smart Pitch and referral share cards", () => {
     expect(previewHtml.status).toBe(200); expect(previewHtml.text).toContain('property="og:image"'); expect(previewHtml.text).toContain("Accepted at acme.com"); expect(previewHtml.text).not.toMatch(/seeker|referrer|requestId|queue/i);
     const previewImage = await request(app).get(`/api/referral-share-cards/public/${"a".repeat(32)}/image.png`);
     expect(previewImage.status).toBe(200); expect(previewImage.headers["content-type"]).toMatch(/image\/png/);
+    // Server share previews ship the product token system, not a legacy palette:
+    // paper (#f4f4f1), ink (#131311), and one signal red (#e8442e).
+    const previewBrand = previewHtml.text;
+    for (const banned of ["#0000ff", "#ededff", "#c2c2ff", "#e0e0ff", "#fffc52", "#0b57d0", "#dbeafe", "#f5f4ef", "#191713", "#3f3b33", "#625d52", "#e2ddd2", "#f9e4de"]) {
+      expect(previewBrand).not.toContain(banned);
+    }
+    for (const expected of ["#f4f4f1", "#131311", "#e8442e"]) expect(previewBrand).toContain(expected);
     expect((await request(app).delete("/api/referral-share-cards/901").set("x-test-user", "outsider")).status).toBe(403);
     expect((await request(app).delete("/api/referral-share-cards/901").set("x-test-user", "referrer")).body).toEqual({ revoked: true }); expect(revokeCalls).toEqual([2]);
     expect((await request(app).get(`/api/referral-share-cards/public/${"a".repeat(32)}`)).status).toBe(404);
@@ -85,5 +92,17 @@ describe("Smart Pitch and referral share cards", () => {
     expect(page.status).toBe(200);
     expect(page.text).toContain("/start?invite=r1-deadbeef");
     expect(page.text).toContain("Get your own referral");
+  });
+
+  it("builds the share-card URL from the configured public origin, never a spoofed request host", async () => {
+    const prev = { PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL, WORKOS_REDIRECT_URI: process.env.WORKOS_REDIRECT_URI };
+    process.env.WORKOS_REDIRECT_URI = "https://skipwait.me/api/auth/workos/callback"; delete process.env.PUBLIC_BASE_URL;
+    try {
+      const { app } = appFor();
+      const res = await request(app).post("/api/referral-share-cards/901").set("x-test-user", "seeker").set("Host", "evil.example");
+      expect(res.status).toBe(201); expect(res.body.shareUrl).toBe("https://skipwait.me/share-card/" + "a".repeat(32));
+    } finally {
+      for (const [key, value] of Object.entries(prev)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    }
   });
 });

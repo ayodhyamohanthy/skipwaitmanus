@@ -1,8 +1,15 @@
 // Per-route SEO: titles, descriptions, canonical URLs, and structured data.
 // Single-page apps ship one <head>; without this every route is titled the
 // same and search engines index the shell instead of the page.
+//
+// Titles, descriptions and canonical URLs are declared per route in
+// @shared/publicRoutes so the <head> a crawler reads cannot drift from the
+// no-JavaScript HTML the build writes.
+import { breadcrumbJsonLd } from "@shared/publicRoutes";
+
 const SITE = "https://skipwait.me";
 const SUFFIX = " · skipwait.me";
+const JSON_LD_MARKER = "data-skipwait-jsonld";
 
 function upsertMeta(attribute: "name" | "property", key: string, content: string) {
   if (typeof document === "undefined") return;
@@ -32,13 +39,21 @@ export function applySeo(input: { title?: string; description?: string; path?: s
   upsertMeta("property", "og:url", url);
   upsertCanonical(url);
 
-  const existing = document.getElementById("route-jsonld");
-  if (existing) existing.remove();
-  if (input.jsonLd) {
+  // Every script this module owns is tagged so a route change clears all of
+  // them. A route's own structured data and its breadcrumb trail are separate
+  // blocks, so a shared id would leave a stale duplicate in the head.
+  document.querySelectorAll(`script[${JSON_LD_MARKER}]`).forEach(stale => stale.remove());
+  const crumbs = breadcrumbJsonLd(path);
+  const blocks: Array<{ id: string; data: unknown }> = [
+    ...(crumbs ? [{ id: "route-breadcrumb-jsonld", data: crumbs }] : []),
+    ...(input.jsonLd ? [{ id: "route-jsonld", data: input.jsonLd }] : []),
+  ];
+  for (const block of blocks) {
     const script = document.createElement("script");
     script.type = "application/ld+json";
-    script.id = "route-jsonld";
-    script.textContent = JSON.stringify(input.jsonLd);
+    script.id = block.id;
+    script.setAttribute(JSON_LD_MARKER, block.id);
+    script.textContent = JSON.stringify(block.data);
     document.head.appendChild(script);
   }
 }
@@ -60,6 +75,22 @@ export function jobsJsonLd(jobs: Array<{ id: number; title: string; company: str
         url: `${SITE}/jobs?job=${job.id}`,
         datePosted: new Date().toISOString().slice(0, 10),
       },
+    })),
+  };
+}
+
+/**
+ * FAQ structured data. Only pass entries that are rendered as visible page
+ * copy; search engines reject FAQ markup for questions a visitor cannot read.
+ */
+export function faqJsonLd(entries: ReadonlyArray<{ question: string; answer: string }>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: entries.map(entry => ({
+      "@type": "Question",
+      name: entry.question,
+      acceptedAnswer: { "@type": "Answer", text: entry.answer },
     })),
   };
 }

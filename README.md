@@ -1,9 +1,13 @@
 # skipwait.me — private job referrals, made simpler
 
+> AI models and contributors: read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`.
+>
+> **Owner says `build`, `resume`, `continue` or `next`?** Continue current work, never restart an old plan. First follow [the current-instruction preflight](./docs/BUILD_CONTINUITY.md) (D-225): fetch current main, read latest instructions and decisions plus the previous repo-only outcome, check goal alignment and ownership, then use `node scripts/next-task.mjs --claim "<your model name>"`. Read its assignment against those decisions before implementation; stale or conflicting context holds only the affected task. Claude handles intelligence/reasoning; other tools develop. Keep the picker's exact session-tagged name for later flags. The picker is not proof that the preflight was read.
+
 A mobile-first PWA where a Job Seeker shares one real job link and a resume, and only verified employees of that employer can review it. Employee identities stay hidden until a Referrer chooses to claim and approve a request.
 
-- **Stack:** React 19 + Vite + Tailwind 4 + tRPC + Express + Drizzle (MySQL) + WorkOS AuthKit auth + Razorpay/PayPal/Chargebee payments + Cloudflare (Pages + Containers)
-- **Product docs:** see `docs/skipwait-vibecodingapp-handoff.md` (build spec), `todo.md` (history), `GROWTH_AND_MONETIZATION_AUDIT.md`
+- **Stack:** React 19 + Vite + Tailwind 4 + tRPC + Express + Drizzle (MySQL) + WorkOS AuthKit auth + Chargebee payments (Razorpay for INR, PayPal for USD as its gateways, D-004) + Cloudflare (Pages + Containers)
+- **Product docs:** start with `AGENTS.md` and `docs/DECISIONS.md` (the decision register wins over every other doc); also `docs/skipwait-vibecodingapp-handoff.md` (original build spec), `todo.md` (history), `GROWTH_AND_MONETIZATION_AUDIT.md` (its pricing is superseded by D-146; see `docs/PRICING.md`)
 
 ## Quick start (local development)
 
@@ -52,7 +56,7 @@ Real work-email OTP requires `ZEPTOMAIL_API_KEY` (any transactional sender
 | `VITE_WORKOS_CLIENT_ID` / `VITE_WORKOS_ENABLED` | Browser side of AuthKit (client id is public) |
 | `ZEPTOMAIL_API_KEY` / `ZEPTOMAIL_FROM_EMAIL` | Work-email OTP delivery (referrer sign-in) |
 | `R2_*` (optional) | Cloudflare R2 document storage; falls back to the database adapter when unset |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` | INR / USD checkout (optional; Chargebee remains the fallback) |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` | Direct provider APIs: the Razorpay employer checkout (on until Chargebee employer prices exist, D-069) and PayPal webhook verification (Razorpay webhooks use `RAZORPAY_WEBHOOK_SECRET`). Seeker checkout runs only through Chargebee; the direct seeker order routes return 503 (D-004) |
 | `SKIPWAIT_ADMIN_EMAIL` | The only address allowed through the admin sign-in gate |
 | `VITE_APP_TITLE` | Managed app title (`skipwait.me`) |
 | `CHARGEBEE_SITE` / `CHARGEBEE_API_KEY` / `CHARGEBEE_WEBHOOK_SECRET` | Payments (webhook-only fulfillment) |

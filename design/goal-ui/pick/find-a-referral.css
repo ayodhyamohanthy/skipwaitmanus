@@ -1,0 +1,142 @@
+/* Screen A · Find a referral, ask drawer open for Kestrel Pay. Triage Desk layout, Signal's type.
+   Desktop: rail 104 | directory 696 (632 content) | drawer 480 docked flush, no scrim.
+   Phone: directory frame, then the full-height ask sheet (frame 2). */
+
+.app--find {
+  grid-template-columns: var(--sw-rail-w) minmax(0, 1fr) var(--sw-drawer-w);
+  grid-template-areas: "rail top top" "rail main drawer";
+}
+
+/* ---------- Directory ---------- */
+.find { grid-area: main; min-width: 0; padding: 40px 32px 32px; }
+.find__heading { font: var(--sw-type-display); letter-spacing: var(--sw-track-display); text-wrap: balance; }
+.find__sub { margin-top: 8px; font: var(--sw-type-body); color: var(--sw-ink-2); text-wrap: pretty; }
+
+.search { position: relative; margin-top: 24px; }
+.search .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--sw-ink-3); pointer-events: none; }
+.search input {
+  width: 100%; height: 44px; padding: 0 12px 0 44px;
+  border: 1px solid var(--sw-control-edge); border-radius: var(--sw-radius-control);
+  background: var(--sw-surface); font: var(--sw-type-body);
+}
+.search input::placeholder { color: var(--sw-ink-3); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.summary { margin-top: 28px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+.summary .mono { color: var(--sw-ink-2); }
+
+.co-list { margin: 8px -8px 0; }
+.co-row {
+  display: grid; align-items: center; column-gap: 12px;
+  grid-template-columns: 28px auto minmax(0, 1fr) auto;
+  grid-template-areas: "mark name fn avail";
+  height: 52px; padding: 0 12px 0 10px;
+}
+.co-row .mark { grid-area: mark; }
+.co-row__name { grid-area: name; font: var(--sw-type-label); letter-spacing: var(--sw-track-label); color: var(--sw-ink); white-space: nowrap; }
+.co-row__fn { grid-area: fn; min-width: 0; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.avail { grid-area: avail; display: inline-flex; align-items: center; gap: 8px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink); white-space: nowrap; }
+.avail--no { color: var(--sw-ink-3); }
+.footnote { margin-top: 16px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+
+/* ---------- Ask drawer: 480px, docked flush under the top bar ---------- */
+.drawer-frame { grid-area: drawer; display: flex; flex-direction: column; min-width: 0; }
+.drawer {
+  flex: 1; display: flex; flex-direction: column;
+  background: var(--sw-surface); border-radius: var(--sw-radius-drawer);
+  box-shadow: var(--sw-shadow-drawer);
+}
+.drawer__grabber { display: none; }
+.drawer__head {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 76px; padding: 14px 12px 14px 24px;
+  border-bottom: 1px solid var(--sw-hairline);
+}
+.drawer__titles { flex: 1; min-width: 0; }
+.drawer__title { font: var(--sw-type-heading); letter-spacing: var(--sw-track-heading); }
+.drawer__ctx { margin-top: 2px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); }
+
+.drawer__body { display: flex; flex-direction: column; gap: 28px; padding: 24px; }
+.drawer__intro { display: grid; gap: 8px; }
+.drawer__privacy { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); text-wrap: pretty; }
+
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.field__label { font: var(--sw-type-label); letter-spacing: var(--sw-track-label); color: var(--sw-ink); }
+.field__help { margin-top: -4px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); text-wrap: pretty; }
+.field__hint { display: flex; align-items: center; gap: 8px; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); }
+.field__hint--pass { color: var(--sw-ink); }     /* a passed check is ink, not emerald */
+
+/* The file name over its date, so the 16px name never has to share a line with the date and Change. */
+.file {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto;
+  grid-template-areas: "icon name change" "icon meta change";
+  align-items: center; column-gap: 12px;
+  padding: 8px 6px 8px 14px;
+  border: 1px solid var(--sw-hairline); border-radius: var(--sw-radius-control);
+}
+.file > .icon { grid-area: icon; color: var(--sw-ink-2); }
+.file__name { grid-area: name; min-width: 0; font: var(--sw-type-body); color: var(--sw-ink); overflow-wrap: anywhere; }
+.file__meta { grid-area: meta; font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-3); white-space: nowrap; }
+.file__change { grid-area: change; }
+
+.reasons__list { display: grid; gap: 8px; }
+.reason {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 8px; row-gap: 4px;
+  padding: 12px 12px 8px;
+  border: 1px solid var(--sw-control-edge); border-radius: var(--sw-radius-control);
+  background: var(--sw-surface);
+}
+.reason__n { font: var(--sw-type-mono); line-height: 24px; color: var(--sw-ink-3); }
+.reason__text { font: var(--sw-type-body); color: var(--sw-ink); text-wrap: pretty; min-height: 24px; }
+.reason__text:focus-visible { box-shadow: none; }
+.reason__ph { color: var(--sw-ink-3); }
+.reason__count { grid-column: 2; justify-self: end; font: var(--sw-type-mono); color: var(--sw-ink-3); }
+.reason:focus-within, .reason.is-focus { border-color: var(--sw-ink); box-shadow: var(--sw-focus-ring); }
+.caret { display: inline-block; width: 2px; height: 20px; margin-left: 1px; vertical-align: -4px; background: var(--sw-ink); }
+
+/* Sticky in the build: the cost and its condition stay beside Send ask from the first moment. */
+.drawer__foot {
+  display: grid; gap: 4px;
+  margin-top: auto; padding: 16px 24px 20px;
+  background: var(--sw-surface); border-top: 1px solid var(--sw-hairline);
+}
+.cost { font: var(--sw-type-label); letter-spacing: var(--sw-track-label); color: var(--sw-ink); }
+.cost__detail { font: var(--sw-type-meta); letter-spacing: var(--sw-track-meta); color: var(--sw-ink-2); text-wrap: pretty; }
+.drawer__actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+/* ---------- Phone ---------- */
+@media (max-width: 640px) {
+  .app--find {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--sw-topbar-h) minmax(calc(100vh - var(--sw-topbar-h) - var(--sw-bottombar-h)), auto) var(--sw-bottombar-h) auto;
+    grid-template-areas: "top" "main" "nav" "sheet";
+  }
+  .find { padding: 24px 16px 24px; }
+  .search { margin-top: 20px; }
+  .search input { height: var(--sw-control-h-phone); }
+  .chips { gap: 12px 8px; margin-top: 16px; }   /* 12px row gap keeps the 44px targets apart */
+  .summary { margin-top: 24px; }
+  .co-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-areas: "mark name avail" "mark fn fn";
+    row-gap: 0; height: auto; min-height: 64px; padding: 10px 12px 10px 10px;
+  }
+  .co-row .mark { width: 32px; height: 32px; }
+  .co-row__name { font: var(--sw-type-row-phone); letter-spacing: 0; }
+
+  /* Frame 2: the full-height ask sheet, 8px top inset over the scrim. */
+  .drawer-frame { grid-area: sheet; position: relative; padding-top: 8px; background: var(--sw-canvas); }
+  .drawer-frame::before { content: ""; position: absolute; inset: 0; background: var(--sw-scrim); }
+  .drawer {
+    position: relative; min-height: calc(100vh - 8px);
+    border-radius: var(--sw-radius-sheet) var(--sw-radius-sheet) 0 0; box-shadow: none;
+  }
+  .drawer__grabber { display: block; width: 32px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--sw-control-edge); }
+  .drawer__head { min-height: 64px; padding: 4px 4px 12px 16px; }
+  .drawer__body { gap: 24px; padding: 20px 16px; }
+  .file { padding: 8px 4px 8px 12px; }
+  .file__change { height: 44px; }
+  .drawer__foot { padding: 16px 16px 20px; }
+  .drawer__actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+  .drawer__actions .btn { height: var(--sw-control-h-phone); }
+}

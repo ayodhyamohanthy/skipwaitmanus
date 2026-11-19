@@ -1,0 +1,68 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera.iyer@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer-preferences",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "referralCapacity": 3,
+          "preferAreas": [
+            "Design"
+          ],
+          "referrerVisibility": "anon",
+          "notifyNewAsk": true,
+          "notifyDigest": false,
+          "paused": false,
+          "preferLevels": [
+            "Mid-level",
+            "Senior"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/me",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "displayName": "Meera Iyer",
+        "profile": {
+          "handle": null,
+          "workEmailVerifiedAt": "2026-09-20T06:00:00.000Z",
+          "referralCapacity": 3
+        },
+        "workItems": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ]
+}

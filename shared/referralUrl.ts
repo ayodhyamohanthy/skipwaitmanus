@@ -53,3 +53,30 @@ export function reviewedEmployerFromTargetRoleUrl(value: string): ReviewedEmploy
     return undefined;
   }
 }
+
+/** Job boards and applicant systems that host listings for many employers. */
+export const HOSTED_JOB_PLATFORMS = [
+  "linkedin.com", "indeed.com", "glassdoor.com", "greenhouse.io", "lever.co", "ashbyhq.com",
+  "workable.com", "smartrecruiters.com", "jobvite.com", "teamtailor.com", "bamboohr.com",
+  "myworkdayjobs.com", "icims.com", "rippling.com", "recruitee.com", "breezy.hr",
+  "monster.com", "ziprecruiter.com", "naukri.com", "shine.com", "foundit.in", "wellfound.com",
+  "dice.com", "simplyhired.com", "talent.com", "jooble.org", "flexjobs.com", "jobstreet.com",
+  "stepstone.com", "seek.com.au", "bayt.com", "adzuna.com", "lensa.com", "careerbuilder.com",
+  "snagajob.com", "cutshort.io", "instahyre.com", "hirist.com", "timesjobs.com",
+  // Multi-tenant ATS hosts: "acme.keka.com" is Acme's job, never Keka's (D-012).
+  // Host-specific entries where the parent domain is the vendor's own company.
+  "keka.com", "darwinbox.in", "darwinbox.com", "zohorecruit.com", "zohorecruit.in", "zohorecruit.eu",
+  "jobs.zoho.com", "taleo.net", "successfactors.com", "successfactors.eu", "sapsf.com", "sapsf.eu",
+  "oraclecloud.com", "myworkdaysite.com", "freshteam.com",
+];
+
+/**
+ * Pre-check for a company page: the link must sit on one of the company's own
+ * domains or on a hosted job board. The server still resolves the real employer.
+ */
+export function jobLinkFitsCompany(value: string, companyDomains: readonly string[]): boolean {
+  let host: string;
+  try { host = new URL(value.trim()).hostname.toLowerCase().replace(/^www\./, ""); } catch { return false; }
+  const on = (domain: string) => host === domain || host.endsWith(`.${domain}`);
+  return companyDomains.some(domain => on(domain.trim().toLowerCase())) || HOSTED_JOB_PLATFORMS.some(on);
+}

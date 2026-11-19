@@ -10,17 +10,23 @@ describe("skipwait.me metadata and route loading", () => {
     expect(html).toContain('<link rel="canonical" href="https://skipwait.me/"');
     expect(html).toContain('<meta property="og:url" content="https://skipwait.me/"');
     expect(html).toContain('<meta property="og:site_name" content="skipwait.me"');
-    expect(html).toContain('content="https://skipwait.me/og-skipwait.png"');
+    expect(html).toContain('content="https://skipwait.me/brand/og.png"');
     expect(html).not.toContain("manus-storage");
     expect(html).not.toMatch(/Sarah was just|fast-tracked|hiring guarantee/i);
   });
 
-  it("uses a fixed-viewport loading shell while dashboard-heavy screens are imported on demand", () => {
+  it("shows the kit loading skeleton while dashboard-heavy screens are imported on demand", () => {
     expect(app).toContain('lazy(() => import("./pages/MyRequests")');
     expect(app).toContain('lazy(() => import("./pages/MyCompanyInbox")');
-    expect(app).toContain('<Suspense');
-    expect(app).toContain('data-skipwait-screen="route-loading"');
-    expect(app).toContain('h-dvh min-h-dvh overflow-hidden');
+    expect(app).toContain('<Suspense fallback={<LoadingScreen />}>');
     expect(app).toContain('RouteErrorBoundary');
+    expect(app).toContain('<ErrorScreen screen="route-error"');
+    // The raw error message goes to Sentry, never onto the screen.
+    expect(app).not.toContain("this.state.error.message");
+  });
+
+  it("lazy-loads the private BYOR token landing route", () => {
+    expect(app).toContain('lazy(() => import("./pages/AskInviteLink")');
+    expect(app).toContain('<Route path="/r/:token" component={AskInviteLink} />');
   });
 });

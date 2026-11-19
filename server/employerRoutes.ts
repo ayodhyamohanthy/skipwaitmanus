@@ -24,6 +24,8 @@ export type EmployerRouteDeps = {
   requestEmployerTalentIntro: (employerUserId: number, seekerUserId: number) => Promise<{ ok: boolean; reason?: string; created?: boolean }>;
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
   sponsorCompanyOpportunity: (userId: number, opportunityId: number, input: { tier: "featured" | "spotlight"; idempotencyKey: string; isAdmin?: boolean; chargedUserId?: number }) => Promise<unknown>;
+  /** Owner switch (D-040): paid placement can be paused without a code change. Absent = enabled. */
+  employerSponsorshipEnabled?: () => boolean;
   endCompanyOpportunitySponsorship: (adminUserId: number, opportunityId: number) => Promise<unknown>;
   listSponsoredCompanyOpportunities: (limit?: number) => Promise<unknown[]>;
   listEmployerOpportunities: (userId: number) => Promise<unknown[]>;
@@ -179,6 +181,8 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
     try {
       const gate = await requireEmployer(req);
       if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
+      // D-040: no charge while paid placement is paused, and the reason is said plainly.
+      if (deps.employerSponsorshipEnabled && !deps.employerSponsorshipEnabled()) return res.status(503).json({ error: "Paid placement is paused right now. Nothing was charged — please try again later." });
       const opportunityId = Number(req.params.opportunityId);
       const tier = req.body?.tier;
       if (!Number.isInteger(opportunityId) || opportunityId <= 0) return res.status(400).json({ error: "Invalid opportunity reference" });

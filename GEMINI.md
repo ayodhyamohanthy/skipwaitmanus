@@ -1,0 +1,8 @@
+# Instructions for AI coding agents
+
+**Read [`docs/BRIEF.md`](./docs/BRIEF.md) first** — the one-page brief every AI model starts from (D-073). The full rules follow; they win any conflict with the brief.
+
+**Owner says `build`, `resume`, `continue` or `next`?** Continue current work, never restart an old plan. First follow [the current-instruction preflight](./docs/BUILD_CONTINUITY.md) (D-225): fetch current main, read latest instructions and decisions plus the previous repo-only outcome, check goal alignment and ownership, then use `node scripts/next-task.mjs --claim "<your model name>"`. Read its assignment against those decisions before implementation; stale or conflicting context holds only the affected task. Claude handles intelligence/reasoning; other tools develop. Keep the picker's exact session-tagged name for later flags. The picker is not proof that the preflight was read.
+
+All instructions for this repository live in [`AGENTS.md`](./AGENTS.md) — read it first, starting with section 0, together with the decision register [`docs/DECISIONS.md`](./docs/DECISIONS.md) (its table runs oldest to newest, so read the newest entries at the end; it wins over every other doc).
+Pick work only from the priority queue in [`docs/KIT_V4_BUILD_PLAN.md`](./docs/KIT_V4_BUILD_PLAN.md) §3b through the picker: it claims on origin, your first commit on the task branch sets the §3b row (or, when several tasks share that row, your line in the packet's Status section; the picker says which, D-134), which reaches `main` with the work, and a claim nobody pushed to (commit or `--heartbeat`) for 2 hours is free (D-083, D-085). Every change updates every affected markdown doc in the same push (D-068).

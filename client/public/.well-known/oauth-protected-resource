@@ -1,0 +1,13 @@
+{
+  "resource": "https://skipwait.me/api/mcp",
+  "authorization_servers": [
+    "https://skipwait.me"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "scopes_supported": [
+    "read",
+    "draft"
+  ]
+}

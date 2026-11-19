@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import { AuthProvider } from "./_core/auth";
+import { DisplayPrefsSync } from "./components/DisplayPrefsSync";
 import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
@@ -12,7 +13,9 @@ import { initializeDevicePreferences } from "./lib/device";
 import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
 import { captureClientError, initClientSentry, testClientSentry } from "./lib/sentry";
+import { reportQueryCacheError } from "./lib/apiFetch";
 import { initClarity } from "./lib/clarity";
+import { applyAnalyticsConsent, readCookieConsent } from "./components/CookieConsent";
 
 const clientSentryActive = initClientSentry();
 if (import.meta.env.DEV) {
@@ -20,6 +23,8 @@ if (import.meta.env.DEV) {
   window.__sentryTest = testClientSentry;
 }
 const clarityActive = initClarity();
+// Apply the stored cookie choice on every entry route, not only when the home page mounts the banner.
+applyAnalyticsConsent(readCookieConsent());
 if (import.meta.env.DEV) {
   console.info(`[Clarity] replay reporting ${clarityActive ? "ACTIVE" : "INACTIVE (set VITE_CLARITY_PROJECT_ID and restart dev to enable)"}`);
 }
@@ -50,8 +55,15 @@ if (import.meta.env.DEV) {
   // current deploy and only fall back to the cached shell when offline.
   void navigator.serviceWorker?.register("/sw.js").then(registration => {
     registration.update().catch(() => undefined);
-    navigator.serviceWorker?.addEventListener("controllerchange", () => {
-      if (!sessionStorage.getItem("skipwait:sw-reloaded")) { sessionStorage.setItem("skipwait:sw-reloaded", "1"); window.location.reload(); }
+    // A waiting worker means a newer deploy is installed. Only prompt when an older worker
+    // already controls the page (first installs have nothing to update from).
+    const announce = (worker: ServiceWorker | null) => {
+      if (worker && navigator.serviceWorker.controller) window.dispatchEvent(new CustomEvent("skipwait:sw-update", { detail: worker }));
+    };
+    announce(registration.waiting);
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      worker?.addEventListener("statechange", () => { if (worker.state === "installed") announce(worker); });
     });
   }).catch(() => undefined);
 }
@@ -71,6 +83,7 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
+    reportQueryCacheError(error, "query");
     if (!(error instanceof Error && error.message.includes("Unexpected token '<'"))) console.error("[API Query Error]", error);
   }
 });
@@ -79,6 +92,7 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
+    reportQueryCacheError(error, "mutation");
     if (!(error instanceof Error && error.message.includes("Unexpected token '<'"))) console.error("[API Mutation Error]", error);
   }
 });
@@ -126,10 +140,34 @@ const mount=()=>createRoot(document.getElementById("root")!).render(
       {/* Auth reads the server session via tRPC (works for both the
           AuthKit and work-email OTP planes), so it must sit INSIDE tRPC. */}
       <AuthProvider>
+        <DisplayPrefsSync />
         <App />
       </AuthProvider>
     </trpc.Provider>
   </QueryClientProvider>
 );;
 const nativeFetch=globalThis.fetch.bind(globalThis);
-void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount()});
+// Marks that the app bundle parsed and is booting, so index.html's 2.5s reveal
+// failsafe does not paint the static snapshot while React is still loading.
+(window as unknown as { __swBootAlive?: boolean }).__swBootAlive = true;
+// Reveal the app only once the brand font is ready (index.html hides it until then; a 2.5s timer there is the failsafe).
+function revealWhenFontsReady() {
+  const reveal = (window as unknown as { __swReveal?: () => void }).__swReveal;
+  if (!reveal) return;
+  const fonts = document.fonts;
+  if (!fonts || typeof fonts.load !== "function") { reveal(); return; }
+  const loads = ["400", "500", "600", "700"].map(weight => fonts.load(`${weight} 1em "Instrument Sans"`, "Abc 123 skipwait.me").catch(() => []));
+  void Promise.race([Promise.all(loads), new Promise(resolve => setTimeout(resolve, 1800))]).then(() => requestAnimationFrame(() => requestAnimationFrame(reveal)));
+}
+// The prerendered static snapshot lives inside #root for crawlers. Revealing on
+// fonts alone would paint that snapshot before React commits, flashing the old
+// static page for about a second. Reveal only after React's first commit (which
+// replaces the snapshot), still waiting for the brand font; the 2.5s timer in
+// index.html stays the failsafe.
+function revealAfterFirstCommit() {
+  const rootEl = document.getElementById("root");
+  if (!rootEl || typeof MutationObserver === "undefined") { revealWhenFontsReady(); return; }
+  const observer = new MutationObserver(() => { observer.disconnect(); revealWhenFontsReady(); });
+  observer.observe(rootEl, { childList: true });
+}
+void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount();revealAfterFirstCommit()});

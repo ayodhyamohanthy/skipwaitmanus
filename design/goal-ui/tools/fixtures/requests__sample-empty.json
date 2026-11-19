@@ -1,0 +1,8 @@
+{
+  "signedIn": { "id": "7", "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/company-referrals/access", "match": "exact", "status": 200, "body": { "verifiedCompanyAccess": false } },
+    { "method": "GET", "path": "/api/credits/summary", "match": "prefix", "status": 200, "body": { "summary": { "totalAvailable": 0 } } },
+    { "method": "GET", "path": "/api/company-referrals/mine", "match": "exact", "status": 200, "body": { "requests": [], "expiredRequestIds": [], "hasEverAsked": false, "slots": { "open": 0, "cap": 3, "full": false, "plan": "free", "planLabel": "Open Door", "nextPlan": null } } }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "beforeSourceSha256": "f5a0ac827f324734d1212dce69892fe383ae2342029b72c990f357c2c9bd235e",
+  "afterSourceSha256": "998061a28240a2ba8ff2bc518871e22758e4dfa3f8b83b1e3a77294ee0f03714",
+  "unchangedGoalFiles": [
+    "client/src/pages/conversation/ReferrerConversation.tsx",
+    "client/src/pages/conversation/SeekerConversation.tsx"
+  ],
+  "results": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "loading",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "loading",
+      "width": 390,
+      "changedPixels": 18,
+      "bounds": {
+        "xMin": 216,
+        "yMin": 1606,
+        "xMax": 222,
+        "yMax": 1615
+      }
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "error",
+      "width": 390,
+      "changedPixels": 18,
+      "bounds": {
+        "xMin": 216,
+        "yMin": 1606,
+        "xMax": 222,
+        "yMax": 1615
+      }
+    },
+    {
+      "state": "pending",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "pending",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "accept",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "accept",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "pass",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "pass",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "accepted",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "accepted",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "referred",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "referred",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "colleague",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "colleague",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "seeker-pending",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "seeker-pending",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "seeker-accepted",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null
+    },
+    {
+      "state": "seeker-accepted",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null
+    }
+  ]
+}

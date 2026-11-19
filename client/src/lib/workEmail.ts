@@ -1,9 +1,5 @@
 import { isCorporateEmailDomain } from "@shared/const";
 
-const personalEmailDomains = new Set<string>([
-  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com",
-]);
-
 export function normalizeWorkEmail(value: string) {
   return value.trim().toLowerCase();
 }
@@ -14,7 +10,7 @@ export function isCompanyEmail(value: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !domain) return false;
   // Corporate check from the shared canonical list, then the extended
   // client-side personal-domain list for extra safety before any network call.
-  return isCorporateEmailDomain(domain) && !personalEmailDomains.has(domain);
+  return isCorporateEmailDomain(domain);
 }
 
 export function workEmailError(value: string) {

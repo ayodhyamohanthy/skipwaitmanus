@@ -1,0 +1,82 @@
+# SkipWait — LLM Development Handoff
+
+> Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
+>
+> **Owner says `build`, `resume`, `continue` or `next`?** Continue current work, never restart an old plan. First follow [the current-instruction preflight](./docs/BUILD_CONTINUITY.md) (D-225): fetch current main, read latest instructions and decisions plus the previous repo-only outcome, check goal alignment and ownership, then use `node scripts/next-task.mjs --claim "<your model name>"`. Read its assignment against those decisions before implementation; stale or conflicting context holds only the affected task. Claude handles intelligence/reasoning; other tools develop. Keep the picker's exact session-tagged name for later flags. The picker is not proof that the preflight was read.
+
+
+> **AI coding platforms: read `FOR_AI_BUILDERS.md` first.** It lists every rule, backend requirement and placeholder not visible in the designs.
+
+Give this whole folder to your LLM / developer. Start by reading `AGENTS.md` and `docs/DECISIONS.md` (the decision register wins over this file, D-026), then this file, then `reference/`.
+
+## 1. Product
+SkipWait (skipwait.me) is a global platform for **private job referrals**. Seekers send a referral request to verified employees at a company; referrers accept, chat privately, and refer. Free is 3 referrals a month at any level with a verified card (D-219 (3); the card switch, D-079, stays off until enabled); users see referrals, while "credit" and "ask" are internal terms (D-173, D-180). Referrers are never paid and never ask you for money (D-055, D-063). No commissions; nobody buys a referral, a ranking of people or seeker visibility (D-006, D-040). The one priority SkipWait may sell is an opt-in referrer plan (D-196, D-219 (7)): not built, and it charges nothing until its routing design is reviewed and tested.
+
+Launch companies (real employees there refer; whether one is available only routes a request and is never shown as a status, D-176): **SkipWait, Wipro, Neutrinos, TCS, Merkle**.
+Hard rule: never invent user counts, testimonials, outcomes, or fake activity. Label demo data as preview in the prototype only; the product ships no preview labels or sample data (AGENTS.md §0a).
+
+## 2. What is in this package
+- `app/` — the complete design prototype source (React 19 + TanStack Start + Vite 7 + Tailwind v4). Every screen is a working, clickable design. It is NOT connected to a backend.
+- `reference/` — original build kit, journey PDF, launch audit, growth & monetization audit. These were the source of truth for requirements; `docs/DECISIONS.md` now wins wherever they differ (D-048).
+- `app/AGENTS.md` — architecture rules. `app/roadmap.md` — what is designed.
+
+## 3. Design system (do not change without approval)
+- Kit v4 is RETIRED (D-120, Oct 21): the goal-focused UI is the one design, landing to platform - the contract in `DESIGN.md`, the doctrine in `design/goal-ui/DOCTRINE.md`, comps in `design/goal-ui/pick/`, tokens in `client/src/index.css`, primitives in `client/src/components/goal/`, token audit. Surfaces migrate one at a time through the gate (`docs/plans/GOAL_UI_MIGRATION.md`); until a surface migrates, its live tokens stay.
+- Goal UI uses white surfaces, hairlines, ink #0a0a0a and trust blue #1d4ed8 on verified marks only (`DESIGN.md`). The Kit v4 palette is retired; unmigrated surfaces keep their existing tokens until their own migration, never extend that palette (D-120).
+- Goal-UI fonts: Instrument Sans for UI and JetBrains Mono for numerals (`DESIGN.md`). Existing unmigrated surfaces keep their live fonts until their own migration (D-120).
+- Signature motif: the "door" (opening a door = a referral). Keep it.
+- Live goal-UI tokens are in `client/src/index.css`; `app/src/styles.css` is the retired prototype reference. Never hardcode colors in components.
+
+## 4. Screens / routes
+| Route | Purpose |
+|---|---|
+| `/` | Public launch homepage (no app nav) |
+| `/sign-in` | Seeker/referrer intent; seekers use social logins or personal email + password (D-049), referrers the work-email code only (D-030) |
+| `/explore`, `/explore/:slug` | Company discovery + company detail + request flow |
+| `/requests` | Seeker request tracking (statuses: Draft→Requested→Accepted→Referred→Interviewing→Offer→Hired / Expired / Withdrawn / Closed; a pass reopens the ask to the company's other verified employees, D-021) |
+| `/inbox` | Private conversations (open only after acceptance) |
+| `/referrer` | Referrer onboarding, work-email verification, review queue, capacity, impact |
+| `/profile` | Profile & privacy controls |
+| `/invite` | Self-growth / invite loop |
+| `/safety` | Trust, rules, reporting |
+| `/work` | Profile-only work showcase (no feed/likes/followers); add, import, pin, per-item privacy |
+| `/plans` | Plans & credits in one page (Free plus the account's own pass, credits, usage panel, upgrade moments; passes are not sold (D-146); the referrer role sees no purchase, D-055) — `/wallet` redirects here |
+| `/for-companies` | Standalone employer sales page (no app nav) |
+| `/admin` | Separate internal console, direct URL only, not in any menu: overview, company approvals, verifications, safety reports, users |
+
+App shell: desktop = left sidebar (Explore, Requests, Inbox, Refer + "Your space": Profile, My work, Plans & credits; More last = Help & safety, For companies; More never highlighted); mobile = bottom tab bar with the same items with safe-area insets and ≥44px touch targets.
+
+## 5. Build instructions for the production app
+1. Redesign each surface to the goal doctrine when its queue row comes up (D-150, D-149), never ad hoc; replace demo data in `src/lib/marketplace-data.ts` with real data.
+2. Backend: the live Express + Azure MySQL (Drizzle) app, schema in `drizzle/schema.ts`; admin checked server-side only. There is no Supabase row-level security, so every query applies explicit ownership and tenant checks (AGENTS.md §3).
+3. Auth: seekers use social logins (Google, Microsoft, GitHub, LinkedIn, Slack) or personal email + password; referrers sign in with a work-email code only (D-030 as amended by D-049/D-057).
+4. Rules: open asks capped per plan (Free 3, D-039) and at 2 per company (D-006); referrer sets monthly capacity; D-174 suspends ask expiry as launch direction, so never describe an expiry or a waiting cap as product behaviour, although the legacy runtime clocks (7 days after a verified referrer can first see an ask, 90 days for an uncovered ask, D-061) stay live until `D-174-expiry-clock-removal` lands after `D-174-held-ask-reconfirm` (D-193); chat opens only after acceptance; contact details hidden until both agree.
+5. Notifications: email + web push for request accepted/declined/new message.
+6. Admin: approve companies, verify referrers, handle reports, suspend users — all actions audit-logged.
+7. Monetization: see section 9 and `docs/PRICING.md`, `UPGRADE_NUDGES.md`. No referral fee, paid seeker visibility or bought queue order (D-006, D-040). The only priority exception is the opt-in referrer plan (D-196, D-219 (7)), not built or charging; its routing design must preserve the poster's 24 h first look and be reviewed and tested before any activation.
+8. Growth: invite links, private referrer impact (no public per-referrer metrics, D-055, D-057), shareable company pages with SEO metadata per route.
+
+## 6. PWA (web + mobile)
+- Add `manifest.webmanifest` (name SkipWait, display standalone, theme #0000FF, background #FFFFFF, 192/512 + maskable icons) and apple-touch-icon.
+- Offline: use `vite-plugin-pwa` (generateSW), NetworkFirst for HTML, CacheFirst for hashed assets; never register the service worker in dev/preview iframes.
+- Mobile feel: bottom tabs, no horizontal scroll, `viewport-fit=cover`, `env(safe-area-inset-*)`, sheets instead of modals on phones.
+- Native stores later: wrap with Capacitor if App Store / Play Store needed.
+
+## 7. Run locally
+```
+cd app
+npm install   # or bun install
+npm run dev
+```
+Create `app/.env` with your own backend keys (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY) when connecting a backend.
+
+## 8. Prompt to paste into your LLM
+> You are updating SkipWait, a global job-referral PWA that is already live. Read AGENTS.md and docs/DECISIONS.md first (the decision register wins), then LLM_HANDOFF.md and everything in reference/. The attached `app/` folder is the kit v4 design reference, retired (D-120): the goal-focused UI (`DESIGN.md` + `design/goal-ui/DOCTRINE.md`) is binding, landing to platform; surfaces migrate one at a time through the gate (`docs/plans/GOAL_UI_MIGRATION.md`). Pick work only from the priority queue in docs/KIT_V4_BUILD_PLAN.md §3b: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. Never fabricate activity or counts. Money follows the register and `docs/PRICING.md`: users see referrals and referral requests, not credits or asks (D-173, D-180). Free is 3 referrals a month at any level with a verified card once the D-079 switch is enabled; it remains off today. Referrers are never paid. Banded pricing is frozen, not live; no activation or referrer charge is authorized by this prompt (D-219, D-123). Keep mobile and desktop both excellent.
+
+## 9. Monetization (current — `docs/DECISIONS.md`; prices in `docs/PRICING.md`, the one source (D-146); code in `shared/planCatalog.ts` and `shared/planFamily.ts`)
+- Nothing new is on sale (D-219 (6)): the legacy credit packs and passes are paused (provider items archived Oct 25, D-214 (3)); runtime serving caveat: `CREDIT_PACKS_ON_SALE` stays true and Add credits entry points remain until PR #666 (`PRICING-banded-oct25`) is live; the owner/provider pause is not a completed runtime pause (`docs/PRICING.md`). No checkout or payment was tested here. The frozen banded seeker plans (D-219; prices only in `docs/PRICING.md`) are not live, and each activation needs the owner's word (D-123). The D-132 plan family is superseded (D-219); its code stays on `main` behind off flags (D-221). Human review and sessions stay off until staffed (D-041). Free is not shown as a card.
+- Credits (internal billing; users see referrals, D-173/D-180): Free gets 3 referrals a month at any level (with a verified card once the D-079 switch is on) and 3 open asks, with no carry-forward and no welcome credits (D-039 as amended by D-219 (3)); the reverse trial stays off the public catalog until its trigger is built (D-051; off the catalog since `1376dfa3`). The legacy pack prices (D-036) are paused history, never quoted as current (D-219 (6)); purchased credits never expire (`PAID_CREDITS_NEVER_EXPIRE`, D-219 (8)). Checkout runs through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069). Basic referring is free with no referral payout (D-055). D-196 permits an opt-in paid referrer priority plan and D-219 (7) records its prices; it is unimplemented and charges nothing until meaningful matching activity exists and a routing design that protects the poster's 24 h first look (D-220) is reviewed and tested. Current runtime refuses referrer-role checkout before any provider call (`REFERRER_PURCHASES_ENABLED = false`; live since `08d193a0`).
+- Usage panel + upgrade moments: `UPGRADE_NUDGES.md`.
+
+## 10. Doc index
+`SCREENS.md` (every route), `CHECKLIST.md` (build order), `docs/PRICING.md`, `UPGRADE_NUDGES.md`, `CHANGELOG.md` (latest design changes).

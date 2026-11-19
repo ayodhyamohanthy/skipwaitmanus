@@ -1,0 +1,18 @@
+{
+  "signedIn": false,
+  "routes": [],
+  "localStorage": {
+    "skipwait-onboarding-v1": {
+      "goal": "Actively looking",
+      "roles": ["Product Designer"],
+      "level": "Senior",
+      "links": [],
+      "city": "Bengaluru, India",
+      "countries": "India, United Arab Emirates",
+      "remote": true,
+      "visa": "Need sponsorship for some countries",
+      "resume": null
+    }
+  },
+  "actions": [{ "click": "text=Skip for now" }, { "waitFor": "text=You're ready to ask." }]
+}

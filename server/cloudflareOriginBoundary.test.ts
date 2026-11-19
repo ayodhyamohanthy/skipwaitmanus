@@ -16,7 +16,7 @@ describe("Cloudflare API origin boundary", () => {
     const guard = worker.slice(worker.indexOf("const url = new URL"), worker.indexOf("const release ="));
     expect(guard).toContain('url.protocol !== "https:"');
     expect(guard).toContain('url.hostname !== "skipwait.me"');
-    expect(guard).toContain('!url.pathname.startsWith("/api/")');
+    expect(guard).toContain('!(url.pathname.startsWith("/api/") || url.pathname === "/sitemap.xml")');
     expect(guard).not.toMatch(/forwarded-host|req\.headers/i);
     expect(guard).toContain('status: 404');
   });

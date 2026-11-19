@@ -1,0 +1,80 @@
+# Hardening plan (D-100, PR #283 / PR #297)
+
+Owner direction, Oct 16: "make sure no security issues are there, no vulnerabilities are there, and basic works well, and also load testing is done."
+Pricing and monetization doctrine (AGENTS.md): "Never choose money-spending options" (D-031). Always prefer built-in / free services.
+
+## Scope
+1. **CSP**: enforce Content-Security-Policy on web and API.
+2. **HSTS**: `max-age=63072000; includeSubDomains; preload`.
+3. **Cookie security**: `Secure; HttpOnly; SameSite=Lax`.
+4. **Rate limiting**: API-wide, strict on `/api/trpc/auth.*`, `/api/chargebee/*`, `/api/stripe/*`, `/api/webhooks/*`.
+5. **Secrets & env hygiene**: zero plaintext keys in code or repo history.
+6. **SQL injection**: all queries via Drizzle / parameterized SQL.
+7. **SSRF**: already hardened (`shared/urlValidation.ts`); verify coverage on all user-supplied URL inputs.
+8. **Dependency audit**: `pnpm audit` clean, dependabot enabled.
+9. **Load & sanity testing**: synthetic traffic run against staging / preview.
+10. **Automated recovery / watchdog**: Cloudflare Worker external watchdog (D-212).
+
+## Non-goals (keep it free)
+- No paid security scanners, no Snyk paid tier, no Cloudflare Enterprise WAF.
+- Use free GitHub CodeQL, `pnpm audit`, Cloudflare free-tier WAF rules, and in-app middleware.
+
+## The rules
+1. **Security findings are confidential until fixed.** An exploitable vulnerability found during this plan is reported to the CEO immediately and is NOT published in a commit message, PR title, or public doc until a fix is deployed to `main`.
+2. **Subtasks, not whole priorities (D-223).** Each row has its own branch, lane, and `owns`. Land behaviour-preserving or behind a switch that starts `false`.
+3. **No money-spending tools (D-031).** Use built-in or free platforms only.
+4. **Basics always work (D-019).** Hardening must never break valid sign-in, payments, webhooks, or the referral state machine.
+
+## Subtasks
+| ID | Title | Tier | Lane | Owns | Depends on | Switch |
+|---|---|---|---|---|---|---|
+| D-100-security-audit | Read-only security audit of auth, money, session, cookies, CSP, rate limits | 3 | security | `docs/plans/D-100-security-audit.md`, `docs/reviews/D-100-security-audit.md` | none | n/a |
+| D-100.csp-report | Add `report-uri /api/csp-report` to `CSP_REPORT_ONLY`; scrubbed violation logger | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts`, `server/cspReport.ts`, `server/cspReport.test.ts` | FND-4 | n/a |
+| D-100.csp-enforce | Build enforcing CSP behind an off switch; release acceptance follows D-350 | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts` | D-100.csp-report | `CSP_ENFORCED = false` |
+| D-100.csp-release | Add page reporting, collect 48 hours, then enforce (D-350) | 2 | security-csp-release | `server/securityHeaders.ts`, `server/securityHeaders.test.ts`, `functions/_middleware.ts` (switch only), `server/pagesCspReporting.test.ts` | D-100.csp-enforce, D-090-BYOR | off during collection |
+| D-100.hsts-preload | Add `preload` to `Strict-Transport-Security` header | 2 | security-headers | `server/securityHeaders.ts`, `server/securityHeaders.test.ts` | none | `HSTS_PRELOAD = false` |
+| D-100.otp-hmac | HMAC-SHA256 hash work-email OTP codes; delete plaintext fallback | 1 | security-auth | `server/_core/workosAuth.ts`, `server/_core/workosAuth.test.ts` | none | `OTP_HMAC_SINCE` |
+| D-100.provider-recon | Daily Chargebee payment reconciliation (read-only daily check) | 1 | payments-ops | `server/dailyMoneyCheck.ts`, `server/dailyMoneyCheck.test.ts` | D-065-C | `PROVIDER_RECON_ENABLED = false` |
+| D-100.secrets-sweep | Read-only secrets sweep: logs, Sentry, alerts, analytics, error bodies | 3 | security-audit-secrets | `docs/reviews/D-100-secrets-sweep.md` | none | n/a |
+| D-100.authz-referral | Read-only referral route authorization audit | 3 | security-audit-referral | `docs/reviews/D-100-authz-referral.md` | none | n/a |
+| D-100.authz-account | Read-only account route authorization audit | 3 | security-audit-account | `docs/reviews/D-100-authz-account.md` | none | n/a |
+| D-100.authz-admin-money | Read-only admin and money route authorization audit | 3 | security-audit-admin | `docs/reviews/D-100-authz-admin-money.md` | none | n/a |
+
+## CSP release acceptance (D-350, November 16)
+
+1. Land the scope/packet synchronization first: the scope gate reads ownership from `origin/main`. D-350 explicitly authorizes appending `report-uri /api/csp-report` to the existing Pages report-only policy. Preserve D-099-bonus-pages' unrelated route-list addition in the shared middleware (D-314).
+2. Add the reporting directive with a deterministic middleware-response regression covering HTML, assets and error responses. Keep `CSP_ENFORCED = false`; preserve existing policy sources and all response behavior.
+3. Deploy reporting through required CI and verify the canonical page header and report endpoint. Record the exact deployed SHA and UTC collection start only after live readback confirms reporting. A successful merge or elapsed time since the old API-only logger is not the start.
+4. Collect and inspect 48 hours of scrubbed reports. Record the interval and legitimate-source findings; no evidence means collection is unverified. Fix legitimate-source violations before enforcement.
+5. Enable enforcement only after the collection passes and 1280/390 captures verify the affected flows. Required CI and any review required by the changed paths remain (D-352/D-353). No separate CEO sign-off is required (D-347). Verify the exact deployed enforcement release before marking this row done.
+
+Reporting and enforcement may land separately on this row's registered branch. A reporting or docs-only PR must leave the row `todo`, with a handoff for the remaining collection/enforcement work. No schema, dependency, environment variable or payment operation is needed. Rollback of a reporting regression removes the added directive through a tested PR; rollback of enforcement returns the switch to false.
+
+## The four read-only audits (Tier 3, rule 1 binds)
+Each audit writes one report: a findings table with ID, file:line, what can go wrong, who could do it, severity P0-P3, and the suggested fix. For each route it reads: who may call it, the ownership or company-scope predicate, the personal data in its response, its rate limit, and the input checks at its edge. P0 and P1 go privately (rule 1). The report's pull request names the `main` SHA it read.
+- **D-100.secrets-sweep** (lane `security-audit-secrets`). Every log line, Sentry capture, alert email (`server/errorAlerting.ts`), analytics event and error body: does any carry a secret, token, code, cookie, auth header, email body or resume content? FND-4 already fixes single-use tokens in API paths, so do not re-report those. Owns `docs/reviews/D-100-secrets-sweep.md`.
+- **D-100.authz-referral** (lane `security-audit-referral`). Covers `server/privateReferralRoutes.ts`, `server/askDraftRoutes.ts`, `server/blocksRoutes.ts`, `server/safetyRoutes.ts` and `server/referrerDocumentAccess.ts`. Owns `docs/reviews/D-100-authz-referral.md`.
+- **D-100.authz-account** (lane `security-audit-account`). Covers `server/profileRoutes.ts`, `dmRoutes.ts`, `followRoutes.ts`, `employerRoutes.ts`, `companyClaimRoutes.ts`, `companyDirectoryRoutes.ts`, `jobLinkPreviewRoutes.ts` (outbound fetches), `jobCatalogRoutes.ts`, `impactCardRoutes.ts`, `passwordResetRoutes.ts`, `oauthRoutes.ts`, `seekerAgentRoutes.ts`, `skippieSeekerRoutes.ts`, `assistantRoutes.ts`, `mcpRoutes.ts`, `sitemapRoutes.ts` and `plansCatalogRoutes.ts`. Owns `docs/reviews/D-100-authz-account.md`.
+- **D-100.authz-admin-money** (lane `security-audit-admin`). Covers `server/chargebeeRoutes.ts` and the payment webhooks, `server/adminCatalogSyncRoutes.ts`, `server/scheduledJobsRoutes.ts`, `server/healthRoutes.ts`, the admin procedures in `server/routers.ts`, and the admin sign-in in `server/_core/workosAuth.ts`. Owns `docs/reviews/D-100-authz-admin-money.md`.
+
+## Owner items (not rows; asked one at a time in the weekly owner review, D-064)
+- The production database backup setting.
+- Confirm that the Razorpay and PayPal webhooks reach Chargebee.
+- Approve saving a production schema dump for the baseline migration.
+- Turn HSTS preload on and submit the domain.
+- Choose an iMessage alert channel, for example a Shortcut on the owner's phone; GitHub's issue email already covers email.
+- Approve any real test payment.
+
+## Status
+One line per row, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
+- D-100.otp-hmac: review — agent/queue/d100-otp-hmac — 744d351b (draft PR #884; D-297 fix unchanged: OTP_HMAC_SINCE 2026-12-01, test file byte-identical to fbec7ab5; main a2012d61 merged; local gate clean, ready for independent Tier 1 review by a model other than builder Hark and fixers)
+- D-100.csp-report: done — ea9fb526 — Hark · d3f2 / Gemini 2.5 · 8b1c — 2026-11-01 — report-only CSP with report-uri /api/csp-report and scrubbed violation endpoint; scope check clean; CI green.
+- D-100.csp-release: in progress — GPT-6.1 Sol · ca98 — 2026-11-16 — branch `agent/queue/d100-csp-release`. Scope/acceptance PR #924 merged at `77a871d0` with all four CI jobs green (run `43880122764`); the row remains `todo`. D-350 supersedes the November 10 owner park and seven-day requirement: page reporting, 48 hours of reports, then enforcement. Read receipt: main `77a871d0`, `AGENTS.md`, `docs/BRIEF.md`, `docs/BUILD_CONTINUITY.md`, `docs/PRD.md`, `docs/DECISIONS.md` through D-353, this packet and PR #924's prior findings. Reporting implementation appends only `report-uri /api/csp-report` to the Pages policy; `server/pagesCspReporting.test.ts` exercises real middleware responses and enforcement stays false. Before the fix, 9 of 11 tests failed solely on the absent directive; canonical redirect and off-switch controls passed. The server switch comment now follows D-350. Goal: protect referral-flow trust without breaking legitimate sign-in or provider resources. Reporting deployment, collection start/interval, captures and enforcement remain unverified; record live reporting proof before starting the 48-hour clock.
+- Reporting validation (2026-11-16): implementation `f2fb58ad`, integrated main `276c0fea` at `98eda887`, reporting-only PR [#1225](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1225). 83/83 focused tests passed across `server/pagesCspReporting.test.ts`, `server/securityHeaders.test.ts`, `server/cspReport.test.ts` and `scripts/seoRouteCoverage.test.ts`, including after integration; TypeScript, integrated production build, scope check, whitespace, design-token audit, migration lint and deploy-trigger checks passed. Changed paths compute Tier 2 under D-352. The first typecheck exceeded the command's 120-second timeout without compiler diagnostics; the background rerun completed successfully. The complete single-worker suite is still pending. Main `276c0fea` passed [CI 43882856028](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/43882856028); required PR CI and production acceptance remain unverified. Enforcement is false; no collection start is claimed.
+- D-100.csp-enforce: done — 234bbdd0 — Hark · 6d81 — 2026-11-01 — enforcing CSP header built behind CSP_ENFORCED = false (off; response unchanged); release stays D-100.csp-release; scope check clean; CI green.
+- D-100.authz-admin-money: done — 7919a95d — Hark · 7580 — 2026-10-31 — read-only audit of the admin, payment, webhook, job and health routes (landed by Hark · 0226); scope check clean; CI green.
+- D-100.authz-account: done on PR #889 — 13 non-exploitable audit findings are documented here; a separate exploitable finding is recorded in a private draft security advisory and its details remain withheld from this public repository. Remediation is separate follow-up; no runtime fix or release is claimed.
+- D-100.secrets-sweep: done — ac8d6986 — Antigravity · 6171 — 2026-10-31 — read-only audit report of secrets/tokens in logs/Sentry (no P0/P1; 4 P2, 8 P3); scope check clean; CI green.
+- D-100.authz-referral: done — 28e1b40a — Antigravity · 6171 — 2026-10-31 — read-only audit of referral, document, block and safety routes (8 P3 findings published; H-1 withheld per rule 1); scope check clean; CI green.
+
+- D-100.authz-account handoff (GPT-6.1 Sol · 5998, 2026-11-18): current `main` `ac2eb04b`; read current entry docs, D-100 packet, the delivered audit, PR #889 and the relevant authorization/credential verification paths. The withheld finding was independently checked against the account suspension/session invalidation flow and assistant credential authorization. GitHub private vulnerability reporting is disabled for this public repository, so a private draft repository advisory was created through GitHub's advisory endpoint instead; no finding details or advisory identifier are copied into this public status line, commit, or PR body. The public audit remains read-only and contains only its 13 previously published findings. The advisory is a draft; no remediation, fix row, runtime change, or release is claimed. Verification: `pnpm check`, token audit, migration lint, deploy-trigger audit, assignment JSON parse, `git diff --check` on owned paths and `node scripts/scope-check.mjs D-100.authz-account` pass. Local full Vitest on the preceding integrated candidate reported 7,793 passed / 18 skipped / 6 failed across 746 files: two 20-second timeouts (`passkeyLogin.test.ts`, 400-commit `classifyCiChange.test.ts`), two local timing assertions, and two release-capture planner assertions; these failures are outside the task's docs-only changes. Exact-head PR CI after latest-main integration remains pending. PR #889 stays draft until required checks complete.

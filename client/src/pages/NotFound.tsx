@@ -1,4 +1,30 @@
-import { ArrowLeft, SearchX } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { Link } from "wouter";
-import { Brand } from "@/components/Brand";
-export default function NotFound() { return <main className="grid min-h-screen place-items-center bg-white p-5 text-black"><div className="text-center"><Brand /><span className="mx-auto mt-12 grid h-14 w-14 place-items-center rounded-full bg-[#ededff] text-black"><SearchX className="h-6 w-6" /></span><h1 className="mt-5 text-3xl font-semibold tracking-[-0.05em]">This page isn’t on skipwait.me.</h1><p className="mt-3 text-sm text-[#505050]">Return home to start a private referral request or explore an internal opening.</p><Link href="/" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#0000ff] px-4 py-3 text-sm font-semibold text-white"><ArrowLeft className="h-4 w-4" />Return home</Link><p className="mt-6 text-xs text-[#505050]">Looking for something specific? <Link href="/support" className="font-semibold text-black">Contact support</Link></p></div></main>; }
+import { AppShell } from "@/components/AppShell";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+const GoalNotFound = lazy(() => import("./goal/system/GoalNotFound"));
+
+// Kit v4 not-found (app/src/routes/__root.tsx NotFoundComponent). The kit
+// renders it inside its shell for any unmatched path, so the catch-all route
+// keeps the sidebar and tab bar. Wordmark, title, body and the two actions,
+// nothing else.
+export default function NotFound() {
+  if (goalSurfaceOn("system")) return <Suspense fallback={null}><GoalNotFound /></Suspense>;
+  return <AppShell><NotFoundContent /></AppShell>;
+}
+
+export function NotFoundContent() {
+  return (
+    <main data-skipwait-screen="not-found" className="flex min-h-screen items-center justify-center bg-background px-5">
+      <div className="max-w-md text-center">
+        <p className="wordmark text-2xl"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></p>
+        <h1 className="mt-8 text-4xl font-semibold text-foreground">This door doesn't lead anywhere.</h1>
+        <p className="mt-3 text-muted-foreground">The page may have moved, or the link was mistyped.</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
+          <Link href="/explore" className="inline-flex min-h-11 items-center rounded-full bg-primary px-6 font-semibold text-primary-foreground">Explore companies</Link>
+          <Link href="/" className="inline-flex min-h-11 items-center rounded-full border border-border px-6 font-semibold text-foreground">Go home</Link>
+        </div>
+      </div>
+    </main>
+  );
+}

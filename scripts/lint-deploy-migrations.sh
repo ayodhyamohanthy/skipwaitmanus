@@ -12,4 +12,13 @@ for file in "$dir"/*.sql; do
   if grep -Eo 'CREATE[[:space:]]+TABLE[[:space:]]+[^[:space:](]+([[:space:]]+[^[:space:](]+){0,2}' <<<"$body" | grep -Evq 'CREATE[[:space:]]+TABLE[[:space:]]+IF[[:space:]]+NOT[[:space:]]+EXISTS'; then echo "::error::$name: CREATE TABLE must use IF NOT EXISTS"; status=1; fi
   if grep -Eq '^[[:space:]]*(ALTER[[:space:]]+TABLE|CREATE[[:space:]]+(UNIQUE[[:space:]]+)?INDEX)' <<<"$body"; then echo "::error::$name: ALTER TABLE / CREATE INDEX must be guarded by information_schema (run via PREPARE), not bare"; status=1; fi
 done
+# numeric prefixes must be unique: the runner keys on full filename + sha256,
+# but duplicate numbers collide in human review and ordering. Fail loudly.
+declare -A seen
+for file in "$dir"/*.sql; do
+  name=$(basename "$file")
+  prefix=${name%%_*}
+  if [[ -n "${seen[$prefix]:-}" ]]; then echo "::error::duplicate migration number $prefix: $name conflicts with ${seen[$prefix]}"; status=1; fi
+  seen[$prefix]=$name
+done
 exit $status

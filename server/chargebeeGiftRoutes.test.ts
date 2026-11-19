@@ -1,3 +1,4 @@
+// D-067 recovery: transport belongs exclusively to the durable scheduled consumer.
 import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,37 +38,21 @@ const giftClaimedPayload = (gift: Record<string, unknown>) => ({
 });
 
 describe("gift checkout endpoint", () => {
-  it("refuses every gift checkout while GIFT_CHECKOUT_ENABLED is not true", async () => {
-    vi.stubEnv("GIFT_CHECKOUT_ENABLED", "");
-    const createGiftCheckout = vi.fn();
-    const response = await request(appFor({ createGiftCheckout })).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
-    expect(response.status).toBe(503);
-    expect(createGiftCheckout).not.toHaveBeenCalled();
-  });
-
-  it("requires sign-in and a valid plan on a supported route", async () => {
-    const app = appFor({ resolveIdentity: async () => undefined });
-    expect((await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" })).status).toBe(401);
-    const authed = appFor();
-    expect((await request(authed).post("/api/chargebee/gift-checkout").send({ plan: "free", currency: "USD", billingCountry: "INTL" })).status).toBe(400);
-    expect((await request(authed).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "IN" })).status).toBe(400);
-  });
-
-  it("starts a gift checkout bound to the buyer and never to a receiver", async () => {
+  // D-067: gifts only ever sold Pro or Max, which are removed completely, so the
+  // route stays off whatever the environment says, before identity or any provider call.
+  it.each(["", "true"])("refuses every gift checkout with 503 when GIFT_CHECKOUT_ENABLED is %j", async flag => {
+    vi.stubEnv("GIFT_CHECKOUT_ENABLED", flag);
     const createGiftCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_gift_7" }));
-    const app = appFor({ createGiftCheckout });
-    const response = await request(app).post("/api/chargebee/gift-checkout").send({ plan: "max", currency: "INR", billingCountry: "IN" });
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_gift_7" });
-    expect(createGiftCheckout).toHaveBeenCalledWith(expect.objectContaining({ plan: "max", currency: "INR", buyerUserId: 7 }));
-    const form = createGiftCheckout.mock.calls[0][0] as Record<string, unknown>;
-    expect(form).not.toHaveProperty("receiverEmail");
-  });
-
-  it("fails closed when the provider is not configured", async () => {
-    const app = appFor({ createGiftCheckout: async () => { throw new Error("Chargebee API key is not configured"); } });
-    const response = await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
-    expect(response.status).toBe(503);
+    const resolveIdentity = vi.fn(async () => ({ account: { id: 7 } }));
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    for (const body of [{ plan: "pro", currency: "USD", billingCountry: "INTL" }, { plan: "max", currency: "INR", billingCountry: "IN" }, {}]) {
+      const response = await request(appFor({ createGiftCheckout, resolveIdentity } as never)).post("/api/chargebee/gift-checkout").send(body);
+      expect(response.status).toBe(503);
+      expect(response.body).toEqual({ error: "Gifting is not available. Nothing has been charged." });
+    }
+    expect(createGiftCheckout).not.toHaveBeenCalled();
+    expect(resolveIdentity).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
   });
 });
 
@@ -82,13 +67,45 @@ describe("gift mine and claim endpoints", () => {
     expect(response.body.claimable).toHaveLength(1);
   });
 
-  it("claims a ready gift for its verified recipient", async () => {
-    const claimGift = vi.fn(async () => ({ status: "credited" }));
-    const app = appFor({ claimGift });
+  // D-067: every gift was a Pro or Max gift, so a claim is refused, never credited.
+  it("refuses a retired-plan gift claim with 409 plan_retired, alerts, and writes no wallet", async () => {
+    const claimGift = vi.fn(async () => ({ status: "retired" as const, giftId: "gift_ready", parked: true }));
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const recordActivity = vi.fn(async () => undefined);
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    const app = appFor({ claimGift, alertRetiredPlanEvent, recordActivity } as never);
     const response = await request(app).post("/api/chargebee/gifts/claim").send({ giftId: "gift_ready" });
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: "credited" });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: "This gift was for a plan skipwait.me no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.", code: "plan_retired" });
     expect(claimGift).toHaveBeenCalledWith(7, "gift_ready");
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 7, action: "billing.gift_claim_refused", outcome: "denied", resourceType: "gift", resourceId: "gift_ready" }));
+    expect(recordActivity).not.toHaveBeenCalledWith(expect.objectContaining({ action: "billing.gift_claimed" }));
+    expect(provider).not.toHaveBeenCalled();
+  });
+
+  // Review round: the admin is told once per gift, when a call parks it. A repeat claim of a
+  // gift already parked (by an earlier claim or by the provider receipt) gets the same answer
+  // and is still recorded, but sends no further email.
+  it("refuses a repeat claim the same way without alerting again", async () => {
+    const claimGift = vi.fn().mockResolvedValueOnce({ status: "retired", giftId: "gift_ready", parked: true }).mockResolvedValue({ status: "retired", giftId: "gift_ready", parked: false });
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const recordActivity = vi.fn(async () => undefined);
+    const app = appFor({ claimGift, alertRetiredPlanEvent, recordActivity } as never);
+    for (let i = 0; i < 3; i += 1) {
+      const response = await request(app).post("/api/chargebee/gifts/claim").send({ giftId: "gift_ready" });
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe("plan_retired");
+    }
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(recordActivity.mock.calls.filter(([entry]) => (entry as { action: string }).action === "billing.gift_claim_refused")).toHaveLength(3);
+  });
+
+  it("answers a gift credited before D-067 as a duplicate, without crediting again", async () => {
+    const claimGift = vi.fn(async () => ({ status: "duplicate" as const }));
+    const response = await request(appFor({ claimGift } as never)).post("/api/chargebee/gifts/claim").send({ giftId: "gift_old" });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: "duplicate" });
   });
 
   it("maps claim failures to honest statuses", async () => {
@@ -98,23 +115,20 @@ describe("gift mine and claim endpoints", () => {
     expect((await request(wrongEmail).post("/api/chargebee/gifts/claim").send({ giftId: "g1" })).status).toBe(403);
     const badBody = appFor({ claimGift: vi.fn() });
     expect((await request(badBody).post("/api/chargebee/gifts/claim").send({})).status).toBe(400);
+    const notReady = appFor({ claimGift: async () => { throw new Error("This gift is not ready to claim yet"); } } as never);
+    expect((await request(notReady).post("/api/chargebee/gifts/claim").send({ giftId: "g2" })).status).toBe(400);
   });
 
-  it("enriches a plan-less gift from the provider before claiming", async () => {
-    let attempts = 0;
-    const claimGift = vi.fn(async () => {
-      attempts += 1;
-      if (attempts === 1) throw new Error("This gift is not ready to claim yet");
-      return { status: "credited" };
-    });
-    const listClaimableGifts = vi.fn(async () => [{ giftId: "gift_enrich", plan: null, subscriptionId: "sub_enrich" }]);
+  it("never asks the provider for a gift's plan any more", async () => {
     const retrieveGiftPlan = vi.fn(async () => ({ subscriptionId: "sub_enrich", plan: "pro" as const, currency: "USD" as const }));
     const updateGiftPlan = vi.fn(async () => ({}));
-    const app = appFor({ claimGift, listClaimableGifts, retrieveGiftPlan, updateGiftPlan });
-    const response = await request(app).post("/api/chargebee/gifts/claim").send({ giftId: "gift_enrich" });
-    expect(response.status).toBe(200);
-    expect(updateGiftPlan).toHaveBeenCalledWith("gift_enrich", expect.objectContaining({ plan: "pro" }));
-    expect(attempts).toBe(2);
+    const claimGift = vi.fn(async () => { throw new Error("This gift is not ready to claim yet"); });
+    const listClaimableGifts = vi.fn(async () => [{ giftId: "gift_enrich", plan: null, subscriptionId: "sub_enrich" }]);
+    const response = await request(appFor({ claimGift, listClaimableGifts, retrieveGiftPlan, updateGiftPlan } as never)).post("/api/chargebee/gifts/claim").send({ giftId: "gift_enrich" });
+    expect(response.status).toBe(400);
+    expect(retrieveGiftPlan).not.toHaveBeenCalled();
+    expect(updateGiftPlan).not.toHaveBeenCalled();
+    expect(claimGift).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -132,27 +146,76 @@ describe("gift webhook branch", () => {
     expect(fulfillGift).not.toHaveBeenCalled();
   });
 
-  it("credits a claimed gift to its resolved recipient", async () => {
-    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "pending", plan: null, currency: null }));
+  // D-067: a claimed gift used to credit the recipient's wallet with Pro or Max. It is now a
+  // durable receipt only (parked as plan_retired by recordGiftEvent), answered 2xx so Chargebee
+  // stops retrying, and alerted so a human cancels and refunds it in the Chargebee dashboard.
+  it("records a claimed gift as a receipt, never fulfils it, and alerts the admin", async () => {
+    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "conflict", parked: true, plan: "pro" as const, currency: "USD" }));
     const retrieveGiftPlan = vi.fn(async () => ({ subscriptionId: "sub_g1", plan: "pro" as const, currency: "USD" as const }));
     const updateGiftPlan = vi.fn(async () => ({}));
     const resolveGiftRecipient = vi.fn(async () => ({ status: "resolved", userId: 7 }));
     const fulfillGift = vi.fn(async () => ({ status: "credited" }));
-    const app = appFor({ recordGiftEvent, retrieveGiftPlan, updateGiftPlan, resolveGiftRecipient, fulfillGift });
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const recordActivity = vi.fn(async () => undefined);
+    const fulfillPayment = vi.fn();
+    const applySubscriptionEvent = vi.fn();
+    const app = appFor({ recordGiftEvent, retrieveGiftPlan, updateGiftPlan, resolveGiftRecipient, fulfillGift, alertRetiredPlanEvent, recordActivity, fulfillPayment, applySubscriptionEvent } as never);
     const response = await authed(app, giftClaimedPayload({ id: "gift_1", status: "claimed", gifter: { customer_id: "skipwait-u9" }, gift_receiver: { email: "james@user.com", subscription_id: "sub_g1" } }));
     expect(response.status).toBe(200);
-    expect(fulfillGift).toHaveBeenCalledWith(expect.objectContaining({ giftId: "gift_1", subscriptionId: "sub_g1", plan: "pro", recipientUserId: 7, role: "job_seeker" }));
+    expect(response.body.obligations.gift).toEqual({ status: "parked", reason: "plan_retired" });
+    expect(recordGiftEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_gift_claimed_9", giftId: "gift_1", status: "claimed", subscriptionId: "sub_g1", receiverEmail: "james@user.com", buyerUserId: 9 }));
+    for (const untouched of [retrieveGiftPlan, updateGiftPlan, resolveGiftRecipient, fulfillGift, fulfillPayment, applySubscriptionEvent]) expect(untouched).not.toHaveBeenCalled();
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.retired_plan_event", outcome: "failure", resourceType: "gift", resourceId: "gift_1" }));
   });
 
-  it("holds an unresolvable claim as pending without crediting", async () => {
-    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "pending", plan: "pro", currency: "USD" }));
-    const resolveGiftRecipient = vi.fn(async () => ({ status: "unresolved" }));
-    const fulfillGift = vi.fn();
-    const app = appFor({ recordGiftEvent, resolveGiftRecipient, fulfillGift });
-    const response = await authed(app, giftClaimedPayload({ id: "gift_1", status: "claimed", gift_receiver: { email: "stranger@example.com", subscription_id: "sub_g1" } }));
+  // Review round: a redelivery of the same claimed event, or a claimed event for a gift
+  // credited before D-067, is acknowledged without a second "cancel and refund" email.
+  it("alerts a claimed gift once: a redelivery is acknowledged the same way without a second email", async () => {
+    const recordGiftEvent = vi.fn().mockResolvedValueOnce({ giftId: "gift_1", fulfillmentStatus: "conflict", parked: true }).mockResolvedValue({ giftId: "gift_1", fulfillmentStatus: "conflict", parked: false });
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const recordActivity = vi.fn(async () => undefined);
+    const app = appFor({ recordGiftEvent, alertRetiredPlanEvent, recordActivity } as never);
+    const payload = giftClaimedPayload({ id: "gift_1", status: "claimed", gift_receiver: { email: "james@user.com", subscription_id: "sub_g1" } });
+    for (let i = 0; i < 2; i += 1) {
+      const response = await authed(app, payload);
+      expect(response.status).toBe(200);
+      expect(response.body.obligations.gift).toEqual({ status: "parked", reason: "plan_retired" });
+    }
+    expect(recordGiftEvent).toHaveBeenCalledTimes(2);
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(recordActivity.mock.calls.filter(([entry]) => (entry as { action: string }).action === "billing.retired_plan_event")).toHaveLength(1);
+  });
+
+  it("never asks for a refund of a gift credited before D-067", async () => {
+    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_old", fulfillmentStatus: "credited", parked: false }));
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const app = appFor({ recordGiftEvent, alertRetiredPlanEvent } as never);
+    const response = await authed(app, giftClaimedPayload({ id: "gift_old", status: "claimed", gift_receiver: { email: "james@user.com", subscription_id: "sub_old" } }));
     expect(response.status).toBe(200);
-    expect(response.body.obligations.gift).toMatchObject({ status: "pending", reason: "recipient_unresolved" });
-    expect(fulfillGift).not.toHaveBeenCalled();
+    expect(response.body.obligations.gift).toEqual({ status: "duplicate" });
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+  });
+
+  it("alerts when any gift event is the one that parks the gift, even without receiver identifiers", async () => {
+    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "conflict", parked: true }));
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const app = appFor({ recordGiftEvent, alertRetiredPlanEvent } as never);
+    const response = await authed(app, { id: "ev_upd", event_type: "gift_updated", content: { gift: { id: "gift_1", status: "claimed" } } });
+    expect(response.status).toBe(200);
+    expect(response.body.obligations.gift).toEqual({ status: "parked", reason: "plan_retired" });
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+  });
+
+  it("asks for a retry when the gift receipt cannot be recorded", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const alertRetiredPlanEvent = vi.fn();
+    const app = appFor({ recordGiftEvent: vi.fn(async () => { throw new Error("db down"); }), alertRetiredPlanEvent } as never);
+    const response = await authed(app, giftClaimedPayload({ id: "gift_1", status: "claimed", gift_receiver: { email: "james@user.com", subscription_id: "sub_g1" } }));
+    expect(response.status).toBe(500);
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
   });
 
   it("leaves a claimed gift without receiver identifiers as a receipt", async () => {

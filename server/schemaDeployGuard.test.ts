@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DESIRED_COLUMNS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
+import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 
 // #90 guard. The runtime schema check only READS production. Anything it
 // requires must be created by a drizzle/deploy/*.sql migration, the only SQL
@@ -66,6 +66,14 @@ const BASELINE = {
     "tokenTransactions.token_transactions_reversal_unique",
     "notifications.notifications_event_key_unique",
     "companyCoverageInvitations.coverage_invite_request_unique"
+  ],
+  // Production satisfies this FK and the app relies on it, but this repository
+  // cannot re-create it: schema.ts declares no .references() on uploadSessionId,
+  // and adding one changes drizzle's relational inference for
+  // getResumeUploadSession, which types the resume-upload path. Recorded rather
+  // than fixed, so a rebuilt database knows to expect it and the reason is not lost.
+  "foreignKeys": [
+    "referralAttachments.uploadSessionId->resumeUploadSessions.id"
   ],
   "rootSql": [
     "0000_bouncy_victor_mancha.sql",
@@ -141,6 +149,29 @@ const deploySql = readdirSync(deployDir).filter(name => name.endsWith(".sql")).m
 const has = (pattern: RegExp) => pattern.test(deploySql);
 const esc = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// drizzle/schema.ts is the only description of the schema anything can generate
+// DDL from, so a requirement it does not describe cannot exist in a rebuilt
+// database. Parse the declarations instead of trusting the "keep in sync" notes.
+const schemaTs = readFileSync(join(__dirname, "..", "drizzle", "schema.ts"), "utf8");
+const tableDeclarations = [...schemaTs.matchAll(/export const (\w+) = mysqlTable\("([^"]+)"/g)];
+const symbolByTable = new Map<string, string>();
+const blockByTable = new Map<string, string>();
+tableDeclarations.forEach((declaration, position) => {
+  const symbol = declaration[1];
+  const table = declaration[2];
+  if (!symbol || !table) return;
+  symbolByTable.set(table, symbol);
+  blockByTable.set(table, schemaTs.slice(declaration.index ?? 0, tableDeclarations[position + 1]?.index ?? schemaTs.length));
+});
+const declaresForeignKey = (fk: { table: string; column: string; referencedTable: string; referencedColumn: string }) => {
+  const symbol = symbolByTable.get(fk.referencedTable);
+  const block = blockByTable.get(fk.table);
+  if (!symbol || !block) return false;
+  const line = block.split("\n").find(candidate => candidate.trimStart().startsWith(`${fk.column}:`));
+  return Boolean(line && new RegExp(`\\.references\\(\\(\\)\\s*=>\\s*${esc(symbol)}\\.${esc(fk.referencedColumn)}\\b`).test(line));
+};
+const fkKey = (fk: { table: string; column: string; referencedTable: string; referencedColumn: string }) => `${fk.table}.${fk.column}->${fk.referencedTable}.${fk.referencedColumn}`;
+
 describe("schema check requirements are created by deploy migrations (#90)", () => {
   it("every new required table has a CREATE TABLE in drizzle/deploy", () => {
     const missing = DESIRED_TABLES.map(item => item.table).filter(table => !BASELINE.tables.includes(table) && !has(new RegExp(`CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+\`?${esc(table)}\`?`, "i")));
@@ -157,5 +188,17 @@ describe("schema check requirements are created by deploy migrations (#90)", () 
   it("no new loose drizzle/*.sql files (prod never applies them)", () => {
     const loose = readdirSync(join(__dirname, "..", "drizzle")).filter(name => name.endsWith(".sql") && !BASELINE.rootSql.includes(name));
     expect(loose, "put new SQL in drizzle/deploy/ (see scripts/apply-deploy-migrations.sh)").toEqual([]);
+  });
+  it("every required foreign key is declared in drizzle/schema.ts or baselined as production-only", () => {
+    const undeclared = DESIRED_FOREIGN_KEYS.filter(fk => !declaresForeignKey(fk) && !BASELINE.foreignKeys.includes(fkKey(fk))).map(fk => `${fk.table}.${fk.column} -> ${fk.referencedTable}.${fk.referencedColumn}`);
+    expect(undeclared, "a FK reconcile requires that nothing in this repository declares can never exist in a rebuilt database").toEqual([]);
+  });
+  it("every new required foreign key is created in drizzle/deploy", () => {
+    const missing = DESIRED_FOREIGN_KEYS.filter(fk => !BASELINE.foreignKeys.includes(fkKey(fk)) && !has(new RegExp(`FOREIGN\\s+KEY\\s*\\(\\s*\`?${esc(fk.column)}\`?\\s*\\)\\s*REFERENCES\\s*\`?${esc(fk.referencedTable)}\`?\\s*\\(\\s*\`?${esc(fk.referencedColumn)}\`?`, "i"))).map(fk => `${fk.table}.${fk.column}->${fk.referencedTable}.${fk.referencedColumn}`);
+    expect(missing, "add a drizzle/deploy migration that creates these foreign keys").toEqual([]);
+  });
+  it("keeps the foreign-key baseline honest", () => {
+    const stale = BASELINE.foreignKeys.filter(key => !DESIRED_FOREIGN_KEYS.some(fk => fkKey(fk) === key));
+    expect(stale, "this FK is no longer required by schemaReconcile; drop the baseline entry").toEqual([]);
   });
 });

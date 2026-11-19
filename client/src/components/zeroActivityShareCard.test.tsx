@@ -18,9 +18,10 @@ describe("ZeroActivityShareCard", () => {
     expect(screen.getByRole("link", { name: "Share on X" }).getAttribute("href")).toContain("x.com/intent/post");
   });
 
-  it("keeps the Referrer sharing handoff concise and channel-specific", () => {
+  it("keeps the Referrer sharing handoff concise and names the colleague they can bring in", () => {
     render(<ZeroActivityShareCard audience="referrer" />);
     expect(screen.getByText("Share this useful next step")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Share by email" }).getAttribute("href")).toContain(encodeURIComponent(`${window.location.origin}/referrer`));
+    expect(screen.getByRole("link", { name: "Share by email" }).getAttribute("href")).toContain(encodeURIComponent("Know a colleague"));
   });
 });

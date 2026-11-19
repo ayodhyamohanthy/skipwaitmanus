@@ -1,0 +1,4 @@
+{
+  "signedIn": false,
+  "actions": [{ "click": "[aria-label=Screen] button:has-text(\"Something went wrong\")" }, { "wait": 300 }]
+}

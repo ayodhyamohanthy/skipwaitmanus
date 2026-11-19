@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { companySlugFromDomain, fastTrackLinkMatchesCompany, isSafeFastTrackAlias, isVerifiedEmployeeOfCompany } from "./db";
 
-describe("Referrer Fast-Track Link contract", () => {
+describe("Referrer personal link contract (D-128: \"Your link\")", () => {
   it("routes only to the exact normalized verified company domain", () => {
     expect(fastTrackLinkMatchesCompany("acme-corp.com", "acme-corp.com")).toBe(true);
     expect(fastTrackLinkMatchesCompany("Acme-Corp.com", "acme-corp.com")).toBe(true);

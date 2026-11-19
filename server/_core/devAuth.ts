@@ -4,7 +4,7 @@ import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 
 /**
  * Local development authentication.
@@ -26,6 +26,10 @@ export type DevIdentity = {
   account: { id: number; openId: string; role?: "user" | "admin"; name: string | null; email: string | null; loginMethod: string | null };
   primaryEmail: DevEmailAddress | null;
   emailAddresses: DevEmailAddress[];
+  /** D-057-session-gate: set only when this request's own session was made by the work-email code login. */
+  sessionAmr?: "work_email_otp";
+  /** D-057-session-gate §0b.2: `workos:<sid>` or `app:<ssid>`, from the verified credential only. */
+  sessionKey?: string;
 };
 
 function readSessionToken(req: Request): string | undefined {
@@ -61,7 +65,7 @@ async function upsertDevUser(input: { openId: string; name: string; email: strin
   const existing = memoryAccounts.get(input.openId);
   const account: MemoryAccount = existing
     ? { ...existing, name: input.name, email: input.email, lastSignedIn: new Date() }
-    : { id: memoryAccounts.size + 1, openId: input.openId, canonicalPersonId: null, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, sessionsValidAfter: new Date(), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
+    : { id: memoryAccounts.size + 1, openId: input.openId, canonicalPersonId: null, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, chargebeeCustomerId: null, sessionsValidAfter: new Date(), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
   memoryAccounts.set(input.openId, account);
   return account;
 }
@@ -80,7 +84,9 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
     // hand. Returning undefined maps to the routes' existing 401 handling.
     if (account.suspended) return undefined;
     const primaryEmail = emailField(account.email);
-    return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+    // D-057: the session's own claim and key, copied from the verified cookie only (never the openId or subject).
+    const sessionKey = session.sid ? `workos:${session.sid}` : session.ssid ? `app:${session.ssid}` : undefined;
+    return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [], ...(session.amr ? { sessionAmr: session.amr } : {}), ...(sessionKey ? { sessionKey } : {}) };
   } catch {
     return undefined;
   }
@@ -117,9 +123,15 @@ export function registerDevAuthRoutes(app: Express) {
       res.status(500).json({ error: "Dev session could not be created" });
       return;
     }
-    const sessionToken = await sdk.createSessionToken(openId, { name });
-    res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-    res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
+    try {
+      const sessionToken = await sdk.createSessionToken(openId, { name });
+      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
+      res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
+    } catch {
+      // Without a database the account lookup inside createSessionToken rejects
+      // (ACCOUNT_NOT_ACTIVE). An unhandled rejection here used to kill the process.
+      res.status(503).json({ error: "Dev session could not be created. Is DATABASE_URL set?" });
+    }
   });
 
   app.post("/api/dev-auth/logout", async (req: Request, res: Response) => {

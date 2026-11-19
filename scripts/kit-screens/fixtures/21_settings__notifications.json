@@ -1,0 +1,35 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "acme.com",
+        "companyName": null,
+        "companyInitials": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer/slack-webhook",
+      "status": 200,
+      "body": {
+        "connected": false,
+        "active": false
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Slack review alerts"
+    }
+  ]
+}

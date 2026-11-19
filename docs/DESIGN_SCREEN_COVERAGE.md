@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048, D-055, D-120 (goal-focused UI is the one design; older design sources are history)).
+
 # Design Screen Coverage — skipwait.me
 
 _Spec: `docs/design/pending-screens-handoff.md` (design source of truth, style preset 17 Takram adapted to brand `#0B57D0`)._

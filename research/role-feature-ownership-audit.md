@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-021, D-058).
+
 # skipwait.me Role and Feature Ownership Audit
 
 ## Product boundary

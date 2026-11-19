@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-034, D-036, D-055, D-067).
+
 # Project TODO
 
 - [x] Define the role-aware data model for Job Seeker, Referrer, job listings, saved roles, Referral Request records, messages, notifications, and application status tracking.

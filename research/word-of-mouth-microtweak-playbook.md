@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-036, D-063).
+
 # skipwait.me: Zero-Friction Growth and Paid-Conversion Micro-Tweaks
 
 **Author:** Manus AI  

@@ -90,6 +90,14 @@ describe("resolveLoginIdentity returning-alias fast path", () => {
     expect(database.transaction).not.toHaveBeenCalled();
   });
 
+  // P0-referrer-exposure: work-email sign-ins now bring no name; existing names are
+  // left exactly as stored (no data migration).
+  it("keeps a returning account's stored name when the sign-in brings none", async () => {
+    const account = await resolveLoginIdentity({ ...input, name: null });
+    expect(account.name).toBe("Canon");
+    expect(userRows[0].name).toBe("Canon");
+  });
+
   it("reports identity review for a frozen person behind a known alias", async () => {
     personRows[0] = { ...personRows[0], suspended: true, reviewReason: "multiple_canonical_users" };
     await expect(resolveLoginIdentity(input)).rejects.toThrow("IDENTITY_REVIEW_REQUIRED");

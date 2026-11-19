@@ -51,7 +51,8 @@ describe("paid invoice that disagrees with the checkout amount", () => {
     });
     const response = await request(app).post("/api/chargebee/credit-recovery").send({ hostedPageId: "hp_tax", role: "job_seeker" });
     expect(response.body.status).toBe("requires_review");
-    expect(markPaymentForReview).toHaveBeenCalledWith(12, "provider_page_mismatch");
+    // The hold keeps the invoice id and what was paid, so a later refund is matched and checked against it.
+    expect(markPaymentForReview).toHaveBeenCalledWith(12, "provider_page_mismatch", { invoiceId: "inv_tax", paidAmount: 116820, paidCurrency: "INR" });
     expect(alertPaymentReview).toHaveBeenCalledWith(expect.objectContaining({ paymentId: 12, expectedAmount: 99000, paidAmount: 116820 }));
   });
 
@@ -64,7 +65,7 @@ describe("paid invoice that disagrees with the checkout amount", () => {
     const input = { paymentId: 41, reason: "checkout_amount_mismatch", expectedAmount: 99000, expectedCurrency: "INR", paidAmount: 116820, paidCurrency: "INR" };
     expect(await alert(input)).toEqual({ alerted: true });
     expect(await alert(input)).toEqual({ alerted: true });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     const body = JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, { body: string }])[1].body);
     expect(body.to).toEqual(["ayodhya@skipwait.me"]);
     expect(body.subject).toContain("#41");

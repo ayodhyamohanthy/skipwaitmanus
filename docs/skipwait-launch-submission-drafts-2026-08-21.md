@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048, D-058, D-063).
+
 # SkipWait.me: Public Launch Submission Drafts
 
 ## Submission stop condition

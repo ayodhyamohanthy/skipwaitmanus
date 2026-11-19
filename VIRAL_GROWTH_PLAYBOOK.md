@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-038, D-043, D-055).
+
 # skipwait.me: Privacy-Preserving Viral Growth Playbook
 
 ## The core idea

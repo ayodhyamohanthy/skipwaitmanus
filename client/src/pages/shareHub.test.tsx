@@ -38,6 +38,24 @@ describe("ShareHub personal invites", () => {
     expect(document.querySelector('[data-skipwait-screen="share-hub"]')?.className).toContain("overflow-hidden");
   });
 
+  it("shows the Unavailable state with the exact unlock line before the first paid invoice (D-155)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ invite: null, locked: true }) })));
+    render(<ShareHub />);
+    await waitFor(() => expect(screen.getByText("Unavailable")).toBeTruthy());
+    expect(screen.getByText("Referrals unlock after your first paid invoice. Once you've made a payment, come back here to get your referral link.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Copy personal invite link" })).toBeNull();
+    expect(screen.queryByLabelText("Friend email")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Share invite on X" })).toBeNull();
+    expect(document.querySelector('[data-skipwait-share-locked="true"]')).toBeTruthy();
+  });
+
+  it("treats a legacy response without the locked flag as unlocked", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ invite: { inviteCode: "r9-legacy99" } }) })));
+    render(<ShareHub />);
+    await waitFor(() => expect(screen.getByText(/start\?invite=r9-legacy99/i)).toBeTruthy());
+    expect(screen.queryByText("Unavailable")).toBeNull();
+  });
+
   it("opens a native prefilled mailto invite only after a valid recipient email is entered", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ invite: { inviteCode: "r7-abcdef12" } }) })));
     render(<ShareHub />);

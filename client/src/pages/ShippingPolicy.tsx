@@ -20,7 +20,7 @@ export default function ShippingPolicy() {
   >
     <PolicySection number="01" title="What you receive">
       <ul>
-        <li>Credits and Pro or Max plans are <strong>digital services</strong>. <strong>No physical goods are shipped</strong>, so there are no shipping charges, carriers, or delivery addresses.</li>
+        <li>Credits and paid plans are <strong>digital services</strong>. <strong>No physical goods are shipped</strong>, so there are no shipping charges, carriers, or delivery addresses.</li>
         <li>Delivery works the same for buyers in every country.</li>
       </ul>
     </PolicySection>
