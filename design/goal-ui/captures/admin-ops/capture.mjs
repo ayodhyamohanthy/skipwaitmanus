@@ -12,6 +12,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import assert from "node:assert/strict";
 
 const require = createRequire(new URL("../../../../package.json", import.meta.url));
 const { chromium } = require("playwright");
@@ -181,12 +182,8 @@ try {
         await page.waitForTimeout(200);
       }
       await page.waitForTimeout(300);
-      for (let pass = 0; pass < 3; pass += 1) {
-        const full = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
-        if (full <= height) break;
-        await page.setViewportSize({ width, height: full });
-        await page.waitForTimeout(250);
-      }
+      // fullPage captures the document without changing dvh or the reported viewport.
+      assert.deepEqual(page.viewportSize(), { width, height }, "capture viewport must match its manifest");
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
         innerWidth: window.innerWidth,
