@@ -6319,11 +6319,11 @@
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-366",
       "dependsOn": [
         "REL-webhook-auth-alarm"
       ],
-      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts.",
+      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts. Nov 19 D-200/D-344/D-353 execution ruling: current head40595a6c is gate-only red because landing documentation and its revert followed Fixed headfeab2fba; quiet Land claim4bdf3667 blocks the ordinary fix-stage refresh. PICKER-stale-fixed-landing is registered for positive shared-gate/quiet-lease recovery. No unconditional dependency is added: normally authorized current-head acceptance may still clear the gate. Preserve the H1 repair and its limitations; no manual marker, product verdict, consumer landing or reconciliation enablement is supplied by the ruling. PROVIDER_RECON_ENABLED remains false.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
@@ -7996,6 +7996,27 @@
       "syncedTo": "D-360",
       "dependsOn": [],
       "note": "Docs-only registration by Instinct · 2cc6 on Nov 18 2026: records the owner's WhatsApp direction (21:42-22:07 IST) as D-360 with message-id evidence, separating owner direction from the proposed sourcing architecture and unverified vendor candidates. No product code, no vendor selection, no coverage claim. Mark done only after the pull request lands on main."
+    },
+    {
+      "id": "PICKER-stale-fixed-landing",
+      "title": "Recover a quiet ordinary landing whose current gate rejects a stale Fixed head",
+      "row": "D-200",
+      "packet": "docs/plans/PICKER-stale-fixed-landing.md",
+      "tier": 2,
+      "lane": "picker-stale-fixed",
+      "branch": "agent/queue/picker-stale-fixed-landing",
+      "status": "todo",
+      "syncedTo": "D-366",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/next-task.mjs",
+        "scripts/review-gate.mjs",
+        "scripts/nextTaskStaleFixedLanding.test.ts",
+        "scripts/reviewGateStaleFixedFacts.test.ts"
+      ],
+      "note": "Registered FIFO at the tail by the Nov19 D-200 execution ruling for D-100.provider-recon. Implement only docs/plans/PICKER-stale-fixed-landing.md: positive shared-gate stale-Fixed diagnosis on the same tip plus exact gate-only red and a quiet ordinary landing may reach the existing qualified FIX flow. Current gateClear:false conflates errors and conservative status recognition; unknown/malformed/off-tip facts cannot grant recovery. No acceptance/independence/provenance/status-only semantics or completion permissions change. Existing active leases, packet rows, currently clear gates and other failures retain their routes. Red-first new tests and actual read-only picker proof required; no demonstration marker on the consumer. No runtime application, provider/key, payment, schema, flag or settings change. The earlier ordinary-recovery implementation #1093 is preserved, not reopened.",
+      "epic": "D-200"
     }
   ]
 }
