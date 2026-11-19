@@ -80,8 +80,9 @@ const putCalls = () => server.calls.filter(call => call.method !== "GET");
 
 describe("profile retirement", () => {
   it("keeps both route wrappers goal-only, with no flag or Kit dependency", () => {
-    const profile = readFileSync("client/src/pages/Profile.tsx", "utf8");
-    const work = readFileSync("client/src/pages/Work.tsx", "utf8");
+    const root = process.cwd();
+    const profile = readFileSync(`${root}/client/src/pages/Profile.tsx`, "utf8");
+    const work = readFileSync(`${root}/client/src/pages/Work.tsx`, "utf8");
     expect(profile).toMatch(/<GoalProfile\s*\/>/);
     expect(work).toMatch(/<GoalWork\s*\/>/);
     for (const source of [profile, work]) expect(source).not.toMatch(/goalSurfaceOn|components\/kit|from ["'][^"']*components\/profile\//);
