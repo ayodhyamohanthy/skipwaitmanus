@@ -763,11 +763,21 @@ required by D-344 (7)/D-352. This UNBLOCK is not a Fixed/Pass, cannot impersonat
 the fixer, and changes neither gate code nor status-only allowances. A fresh
 marker alone is not authority to land the unchanged `7e1d3649` source.
 
+The review-lock readback `1660edc6` still has Land claim `5efd662c` by
+session 6c22 as its latest non-heartbeat stage, not FIX. The official
+`--fixed` authorization is stage/holder-bound. After this re-sync, take only
+the picker stage actually offered; if no eligible FIX is offered, report
+that exact route/refusal. Never synthesize a claim, failure or marker to
+create a stage. This UNBLOCK is not source-fix authorization.
+
 CI 44566540332 passed compiler, review/id/integrity gates, all test shards,
-build and E2E, but correctly refused `docs/DECISIONS.md` outside this task's
-owns. Declare that one path for this bounded D-200 ruling. An UNBLOCK marker
-does not qualify for the GPT Claim/Takeover/Fix scope exemption; no fake
-participation marker, alternate-branch escape or gate change is used.
+build and E2E, but correctly refused the undeclared decision-register path.
+The branch-only declaration at `74b56939` was still refused because scope
+reads origin/main. Scope-only PR #1337 then merged `ad928481` with green CI,
+declaring this single ruling path while keeping the D-366 hold. After normal
+main integration, the unchanged scope check passes at `3df9171f`: 14 owned
+paths, every change inside. No fake participation marker, alternate-branch
+escape or gate change is used; the actual ruling stays on its original lock.
 
 Only this row's contract advances `syncedTo` to D-366, with status still todo
 for that fix stage. Dependencies, other holders/holds and every owner-reserved
