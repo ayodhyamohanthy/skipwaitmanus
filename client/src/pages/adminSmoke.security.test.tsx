@@ -1,3 +1,34 @@
 // @vitest-environment jsdom
-import React from"react";import{cleanup,render,screen,waitFor}from"@testing-library/react";import{afterEach,describe,expect,it,vi}from"vitest";import AdminSmoke from"./AdminSmoke";
-describe("admin smoke page authorization",()=>{afterEach(()=>{cleanup();vi.unstubAllGlobals()});it("renders only Not found when status is hidden from signed-out users",async()=>{const fetcher=vi.fn(async()=>new Response(JSON.stringify({error:"Not found"}),{status:404,headers:{"Content-Type":"application/json"}}));vi.stubGlobal("fetch",fetcher);render(<AdminSmoke/>);expect(screen.getByText("Not found")).toBeTruthy();expect(screen.queryByText(/Enter as/)).toBeNull();await waitFor(()=>expect(fetcher).toHaveBeenCalledTimes(1));expect(screen.queryByText(/SMOKE TEST/)).toBeNull()});it("renders controls only after an authorized enabled response",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({enabled:true,active:false,csrf:"synthetic-csrf"}),{status:200,headers:{"Content-Type":"application/json"}})));render(<AdminSmoke/>);await screen.findByText("Enter as seeker");expect(screen.getByText("SMOKE TEST · SYNTHETIC DATA")).toBeTruthy()})});
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import AdminSmoke from "./AdminSmoke";
+import "./goal/admin-ops/GoalAdminSmoke";
+
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminSmoke /></QueryClientProvider>);
+
+describe("admin smoke page authorization", () => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it("renders only Not found when status is hidden from signed-out users", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ error: "Not found" }), {
+      status: 404, headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetcher);
+    renderPage();
+    expect(await screen.findByText("Not found")).toBeTruthy();
+    expect(screen.queryByText(/Enter as/)).toBeNull();
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/Smoke test/i)).toBeNull();
+  });
+
+  it("renders controls only after an authorized enabled response", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ enabled: true, active: false, csrf: "synthetic-csrf" }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    })));
+    renderPage();
+    await screen.findByText("Enter as seeker");
+    expect(screen.getByText("Smoke test · synthetic data")).toBeTruthy();
+  });
+});
