@@ -1,5 +1,7 @@
 # Packet D-132-item3 (re-scoped): the atomic accepted-price precondition
 
+> **November 19, 2026 supersession (D-366, D-219/D-221; engineering ruling under D-200):** §13 governs the older flag-dependent test requirements, model-level review wording and production-verification waiver below. The accepted-price guard remains valid; PR #1269 needs a real model-independent fixture correction before a current-head `Fixed` marker or landing. This documentation re-sync is not approval, source completion or a pricing decision.
+
 > Read [`docs/BRIEF.md`](../BRIEF.md) and complete [`docs/BUILD_CONTINUITY.md`](../BUILD_CONTINUITY.md) first. Written by Claude Opus 5.5 · 4ef3 as architect (D-109, D-221, D-225) on Oct 28 2026 against `origin/main` `6cbee199`. Revision 2 (same day) answers the coordinator's review of `1997d1e0` (findings F1-F5); revision 3 answers the round-2 review of `6f7bd77e` (GAP 1 production wiring, GAP 2 rollback harness, GAP 3 the SKIPPY-fix object contract). Earlier commits stay in history. Docs and registry only: this packet authorizes no code until a builder claims the row through the picker. Line anchors are from `6cbee199`. Re-check them with `grep -n` before you edit, and stop if a cited function has changed (§10). The register wins any conflict.
 
 ## 1. Goal
@@ -13,7 +15,7 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 - **D-219 (4):** "Balance and charge show before sending, and a referral is spent only when a verified employee can see the request (D-034/D-047 unchanged)." **D-219 (8):** "the job-level (L1-L10) to band classification" is **not decided**. This packet adds no mapping, rate, price, spend order or refund choice.
 - **D-221 (2):** the re-scope keeps "the valid invariant (an ask is charged exactly the quote the seeker accepted, or answers 409 with nothing charged) and restate[s] the quote as the request's level band plus its spend source. First deliverable of the re-scope: the accepted-price precondition (expectedCost, 409 before any debit), which SKIPPY-fix S-3 needs; the D-132 per-level credit quote is not rebuilt."
 - **D-140:** a money confirmation binds to the exact amount. **D-034/D-047:** a waiting (uncovered) request costs nothing until first visibility. **D-147:** every employee decline keeps the charge spent. **D-042:** existing money paths keep their recovery.
-- **Flags:** `ASK_LEVEL_COST`, `PLAN_FAMILY_V2` and their `VITE_*` twins stay off and are not extended. The guard needs no flag. It acts only when a caller sends `expectedCost`, and no caller sends it before this row lands, so landing does not change behaviour (D-223 (2)).
+- **Flags and activation:** keep the current `ASK_LEVEL_COST`/client level-cost and server billing activation rules unchanged and off; do not extend them. The read-only banded pricing display already defaults on in `client/src/lib/planFamilyFlag.ts` and is not checkout activation. No flag default, sales state or consumer activation changes here. The optional confirmation guard needs no flag, but the additive production quote preview reconciles the wallet even without an `expectedCost` caller; it is not a no-behavior-change exception to release verification.
 - **Never:** change a price, plan content, legal text, refund rule or flag default, add a migration or env key, or touch the referrer side or privacy surfaces.
 
 ## 3. Current behaviour (verified on `6cbee199`)
@@ -86,7 +88,7 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 - `server/db.askPriceGuard.test.ts` (new): uses `askCreateFixtureDb` only, never a permissive fixture
 - `server/askQuoteRoute.test.ts`
 - `server/privateReferralRoutes.integration.test.ts`
-- this packet (Status line only)
+- this packet: Status plus the bounded D-366 qualification in §13 and the conflicting requirements it supersedes (D-200).
 - `docs/DECISIONS.md`: only this task's dated D-200/D-366 engineering ruling, declared after CI 44566540332's scope-only refusal. An UNBLOCK marker does not claim the GPT build/takeover/fix exemption; no marker, branch-routing or gate bypass is used.
 
 **Out of scope:**
@@ -129,14 +131,14 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
    - The call rejects with `AskPriceChangedError`, and its `acceptedCost.source` is `[{purchased,1}]`.
    - Afterwards there are zero new rows in `jobs`, `referralRequests`, `askWorkItems`, `askCosts`, `notifications`, `referrerReviewEmailLinks`, `referralReviewDeliveries`, `companyCoverageInvitations` and `tokenTransactions`.
    - No `referralAttachments.referralRequestId` is bound, and the `tokenBalances` and `planCreditGrants` rows are byte-equal to their state before the call (any reconcile write in that transaction is rolled back too).
-7. **Split drift:** units 3, expected `[{cycle,1},{purchased,2}]`, while the wallet now allocates `[{cycle,2},{purchased,1}]`. The call returns 409 with the same zero-write assertions. This is the F2 regression.
-8. **Units drift** (`ASK_LEVEL_COST=true` set only inside this test and restored after; no product enable): the expected units are 1 and the level cost is 3. The call returns 409 with the same zero-write assertions.
+7. **Split drift:** use an explicitly synthetic authoritative total of 3, expected `[{cycle,1},{purchased,2}]`, while the real allocator now produces `[{cycle,2},{purchased,1}]`. The real create path returns 409 with the same zero-write assertions. Supply the synthetic current count through a deterministic internal test boundary, never a job-level price or an activated legacy pricing flag (§13). Keep the multi-unit integration case; one-unit-only or helper-only coverage is not a substitute.
+8. **Units drift:** with the production-policy pricing flags off, an explicitly synthetic stale confirmation of 2 units against the unchanged current flat cost of 1 returns 409 with the same zero-write assertions. This asserts cost mismatch, not a price approved for any job level. No classifier-dependent URL or `ASK_LEVEL_COST=true` generates a new guard-policy case.
 9. **Reconfirm:** re-send with the same idempotency key and `expectedCost = error.acceptedCost`. It succeeds, the allocations are spent exactly once, and `chargedCost` equals the reconfirmed cost.
 10. **Replay:** a third call with the same key and any `expectedCost` returns `replayed: true` with no new rows. Its `chargedCost`, rebuilt from the ledger rows, equals test 9's.
 11. **Legacy:** with no `expectedCost`, results and rows are unchanged. These suites run unmodified and pass: `db.askOutOfCredits`, `db.askLevelCost`, `db.askCostStored`, `db.openAskSlots`, `db.companyCap`, `db.blockDelivery`, `db.opportunityFirstLook`, `db.askPinnedWork` and `db.askCreditRefund`.
 12. **Waiting:** an uncovered company with `expectedCost` present is created waiting with no spend, no 409 and `chargedCost: null`.
 13. **Shortfall:** with `expectedCost` present and the balance now short, the call keeps today's insufficient refusal text, with no rows and no 409.
-14. **Coverage precedence:** with `ASK_LEVEL_COST=true`, `expectedCoverage` waiting and the company now covered, the call still throws `CoverageOpenedUpError`.
+14. **Dormant compatibility precedence only:** retain the existing `ASK_LEVEL_COST=true`/`expectedCoverage` waiting case that throws `CoverageOpenedUpError` before a mismatched expected cost, with zero writes. This tests the unchanged dormant branch, not an approved level price or a production enable. Keep it separate from the flag-off accepted-price policy cases; do not remove the production flag condition merely to make a test pass.
 15. **Preview parity:**
     - With `PROMO_GRANTS_ENABLED` both off and on, and with an expiring carryover grant, `previewAskCost(...).acceptedCost` deep-equals the `chargedCost` of an immediate send.
     - With the promo flag off, a live promo grant is not counted.
@@ -189,10 +191,10 @@ All of:
 - the full gate on the branch merged with the latest `origin/main`;
 - required CI green on the exact head;
 - the DELEGATION §5 evidence block;
-- an independent Tier 1 review by a model that neither built nor fixed the work (D-151);
-- landing by fast-forward or merge-commit only, never squash (D-134 (6)).
+- one independent **session** review where changed paths compute Tier 1 (D-352/D-344): the original findings review remains required; after actual repairs, an eligible fixer other than that reviewer records its own current-head `Fixed` marker addressing every finding. No second review is required, and no session approves or lands work it built, took over or fixed;
+- protected auto-merge with a merge commit only (D-347 (2), D-134 (6)); update a behind branch and require fresh exact-head CI, never bypass protection or wait on the retired landing slot.
 
-No production verification is due, because no caller sends `expectedCost` until `SKIPPY-fix` S-3 lands. Say so in the report. Do not call SKIPPY-fix or anything else "unblocked" beyond what the picker shows.
+No application caller currently supplies this company-referral `AcceptedAskCost`; the assistant approval's separate `{ level, cost }` contract is not this feature and is not migrated here. That does **not** waive production verification: the PR wires an ungated quote preview that reconciles wallets. After protected landing, verify canonical release/API readiness, the deployed identity and release-scoped Sentry under `AGENTS.md`; keep no-real-money limits and do not activate a new consumer, pricing model or checkout. Re-check current consumers before landing. Report only actual proof, and do not claim SKIPPY-fix or another row unblocked beyond the picker.
 
 ## 9. Review checklist
 
@@ -245,6 +247,24 @@ Revision 1 bound four client files in a composer row with no implementation cont
 
 Until then the composer keeps today's behaviour, and nothing in this packet claims it is ready to build.
 
+## 13. November 19 D-366 fixture and gate re-sync
+
+Decided under D-200 by the officially assigned UNBLOCK session GPT-6.1 Sol · 814e against main `6f7f6811` and product head `7e1d3649` on [PR #1269](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1269). D-219/D-221/D-366 preserve the model-independent accepted-price invariant and forbid rebuilding the superseded level-to-credit price. This section supersedes conflicting older test, process and verification wording; it changes no owner-reserved price, band mapping, spending order, flag, refund, login or sales decision.
+
+The prior repo-only blocks `26394cc2`/`bc15a3dc` diagnosed a stale marker: `Fixed d1300293` is followed by `7b896177` and `7e1d3649`, neither accepted by the gate's status-only predicate. Current [CI 44404781525](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44404781525) still refuses that head for this reason. D-366 adds a substantive source-test correction, so merely re-recording a marker on the unchanged head is no longer sufficient.
+
+Required fix-stage scope, on the existing carrier after normal picker assignment:
+- Replace `server/db.askPriceGuard.test.ts`'s `LEVEL3_URL` and the two new policy cases at head `7e1d3649` lines 142–156: they currently generate a three-unit charge through `ASK_LEVEL_COST=true`. Preserve §7 cases 7/8 with model-independent counts instead. Use the smallest deterministic internal test-count boundary if needed; production keeps its current cost resolver, and no request field, env key, flag or public pricing API is added. The guard, allocator, wallet reconcile, real create transaction/rollback and returned refusal remain real, not mocks. Compute the production price once and compare the allocation actually spent.
+- Keep the real-create three-unit equal-total/different-split refusal and the complete rollback snapshots, attachment binding and sequence assertions. Keep the flag-off one-unit baseline deterministic in the fixture suites. Synthetic counts and canonical per-bucket identity are allowed; deriving a count or band from a new level mapping is not.
+- Preserve the original reviewer 630a's F1 cycle-rollover rollback/same-key reconfirm regression and F2 request-bound replay-debit regression repaired by b53c at `d1300293`. No reconciliation outside the protected transaction, second allocation or client-key-only replay lookup is restored. Keep legacy debit/refusal/waiting behavior, strict 400 parsing, 409/current-cost audit behavior, successful `chargedCost`, and `band: null` for every production level.
+- Keep §7 case 14 as explicitly dormant compatibility, and retain the unchanged flag-on quote/error compatibility cases in `server/askQuoteRoute.test.ts`. Do not delete those tests, reduce the split case to one unit, mock the allocator/transaction, or enable the old model to obtain green tests.
+- The original independent findings chain remains evidence, not a new pass. After the real correction and current-main integration, the eligible official FIX holder records **its own** current-head `Fixed` receipt and actual verification. Honor the existing fix lock; take it only through the picker when eligible. Never impersonate b53c, turn this UNBLOCK marker into a fix/review marker, change the gate predicate or broaden the status-only allowance. Fresh required CI, protected auto-merge and canonical proof remain mandatory.
+- At this ruling's readback, review lock `1660edc6` has latest non-heartbeat `Land claim 5efd662c` by session 6c22, not a FIX stage. The official `--fixed` path accepts only the actual fixing holder (or the existing fixer's limited refresh while its Fixed stage remains current), never this UNBLOCK holder. After re-sync, use the stage the picker actually offers; if no eligible FIX is offered, report that exact route/refusal without manufacturing a claim, a test/CI failure or a marker. This ruling does not promise that FIX is already selectable.
+
+This docs-only ruling re-syncs the contract so the authorized fix stage can proceed. It does not say the source correction happened, clear CI on `7e1d3649`, mark the task done, approve the PR, request new prices or waive the D-366 landing hold. Investigation used head-bound source/CI readback; no failed tests or CI jobs were rerun.
+
 ## Status
 These rows share the §3b row D-132, so their status lines go here (D-134).
 - D-132-item3: todo — re-scoped Oct 28 by Claude Opus 5.5 · 4ef3 (architect), revision 2 after the coordinator's review; not built.
+- D-132-item3: contract re-synced for required source-fixture correction — GPT-6.1 Sol · 814e — 2026-11-19 — official UNBLOCK on `agent/architect/d132-item3`, main `6f7f6811`, carrier #1269/`7e1d3649`. Read current instructions, D-132/D-219/D-221/D-344/D-347/D-352/D-356/D-359/D-366, this packet, prior reports `26394cc2`/`bc15a3dc` and exact failed gate. §13 is the bounded ruling: preserve the invariant and findings/fix chain; replace the obsolete guard-policy fixtures before a fresh eligible Fixed marker. No source change, new verdict, test/CI rerun, pricing decision or landing claim.
+- Scope prerequisite [PR #1337](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1337) merged `ad928481` after [CI 44568707573](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44568707573) passed. It changed only the ruling path declaration/packet scope, preserving the D-366 hold. This original architect carrier then merged main; the one conflict kept the new D-366 packet qualification and the already-published scope bullet. `GITHUB_HEAD_REF=agent/architect/d132-item3 node scripts/scope-check.mjs --branch` now passes at composition `3df9171f`: 14 owned paths, every change inside. Main-first scope publication—not a changed gate or identity—resolved the scope failure. Final exact-head CI and the pre-landing report remain required; product #1269/`7e1d3649` is still unchanged/unfixed.
