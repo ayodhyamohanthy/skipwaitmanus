@@ -1,0 +1,17 @@
+{
+  "task": "D-048-K-developers",
+  "session": "GPT-6.1 Sol · 814e",
+  "runtimeSource": "8a2c846bf5",
+  "redFirst": {"selectedFailed": 2, "notSelected": 18, "reason": "Unforced goal entrypoints still rendered the old Kit headings before cutover"},
+  "focused": {"files": 5, "passed": 33, "failed": 0},
+  "completedChecks": ["TypeScript", "production build and postbuild", "design-token audit", "bash scripts/lint-deploy-migrations.sh", "deploy-trigger coverage", "committed scope check with D-359 notices"],
+  "commandFailure": {"command": "node scripts/lint-migrations.mjs", "result": "MODULE_NOT_FOUND: that script does not exist", "resolution": "Resolved the repository command by listing scripts; the actual lint-deploy-migrations.sh passed separately. Compiler, build and token audit had already passed and were not rerun."},
+  "browser": {"pairs": 30, "pngBytesIdentical": 30, "differentPixels": 0, "requestPayloadsEqual": true, "metricsEqual": true, "synthetic": true, "productionRequests": 0, "nativeInspected": ["after/public-1280.png", "after/details-390.png", "after/register-390.png", "after/submitted-1280.png"], "parity": "parity.json"},
+  "fullLocalSuite": {"command": "LANG=en_US.UTF-8 pnpm exec vitest run --maxWorkers=1", "state": "pending", "completed": false, "green": false, "rerun": false, "limits": "One owned heartbeat-plus-Vitest full-gate command was launched; no nested-step completion or totals inferred while pending. Complete exact-head and main CI are separate observed passes."},
+  "review": {"registeredTier": 1, "computedTier": 2, "reasonPaths": [], "policy": "D-352 path-computed gate; no independent verdict fabricated or risky-path review waived"},
+  "initialCI": {"run": 44586764481, "head": "36210931077704cc3bc70c4a52193cd186573dfc", "state": "failed", "typecheckJob": "Integrity refused link-only PR-body Ported assertions instead of inline rows", "shard2": "The scope fail-open fixture inherited the same PR payload and stopped at that integrity refusal", "otherCompleted": ["production build", "E2E", "unit shard 1", "unit shard 3"], "failedJobsRerun": false},
+  "metadataCorrection": {"change": "Added explicit inline Ported assertions rows to the actual PR body", "realIntegrityGate": "pass against freshly read corrected PR payload", "realScopeFixtureContext": "exit 0 with expected could-not-run/not-failing output", "testsOrGateCodeChanged": false, "runtimeChanged": false, "freshHeadCIRequired": true},
+  "liveStatus": "Protected merge 5519d1f8 deployed; signed-out canonical route proof recorded with explicit pre-existing auth DOM limitation",
+  "canonicalRelease": {"mergeSha": "5519d1f80874b50d3677003637ed424cbe03a369", "finalCI": 44589186613, "mainCI": 44590222165, "pages": 44590222324, "releaseVerify": 44591404902, "receipt": "live/receipt.json", "summary": "release.json", "authFlowTested": false, "preExistingSignInRoles": 2, "preExistingNestedButtons": 1},
+  "limits": "Synthetic browser proof, local production build, complete exact-head/main CI and signed-out canonical proof are separate observations. The one full-local command remains pending with no local-pass claim. No clean-tree, real-account or blanket auth-flow QA is asserted. Existing shared-auth duplicate/nested roles are recorded, not fixed. No permissions, secret issuance, API, pricing or sales behavior changed."
+}

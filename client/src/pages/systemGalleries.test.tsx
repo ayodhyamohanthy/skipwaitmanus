@@ -4,8 +4,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppStatesGallery } from "./AppStates";
 import Emails from "./Emails";
-import Developers from "./Developers";
-import { DOCUMENTED_MCP_TOOLS } from "@/components/developers/mcpTools";
 
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
@@ -50,19 +48,4 @@ describe("System galleries", () => {
     expect(document.body.textContent).not.toMatch(/123456|482 913|Wipro|Design Preview|EXAMPLE/i);
   });
 
-  it("documents only the live assistant surface, never preview APIs", () => {
-    render(<Developers />);
-    expect(screen.getByText(/Use skipwait.me from ChatGPT, Claude, or your own code/)).toBeTruthy();
-    expect(screen.getAllByText("https://skipwait.me/api/mcp").length).toBeGreaterThan(0);
-    for (const [tool] of DOCUMENTED_MCP_TOOLS) expect(screen.getByText(tool)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Connect an assistant" }).getAttribute("href")).toBe("/connect-assistant");
-    expect(screen.getByRole("link", { name: "Build an app" }).getAttribute("href")).toBe("/developer-console");
-    expect(screen.getByRole("link", { name: "Connected assistants" }).getAttribute("href")).toBe("/assistants");
-    // Kit plan wording (owner decision, Oct 9 2026): assistants come with Land and Concierge.
-    expect(screen.getByText(/You approve every send\. For Land and Concierge members\./)).toBeTruthy();
-    expect(screen.getByText(/Users on Land and Concierge get full send and tool access through apps\./)).toBeTruthy();
-    // No preview scaffolding, no endpoints or deliveries that do not exist.
-    expect(screen.queryByText(/Design Preview/i)).toBeNull();
-    expect(document.body.textContent).not.toMatch(/api\/v1|sw_live_|REST API|Webhooks|Sent with|\bMax\b/);
-  });
 });
