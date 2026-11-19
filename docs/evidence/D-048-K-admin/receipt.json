@@ -1,0 +1,78 @@
+{
+  "task": "D-048-K-admin",
+  "webSha": "aa0ea748305cd31052ef3480696b2bb088ff685a",
+  "authenticated": false,
+  "productionAdminIdentity": false,
+  "productionBusinessMutations": false,
+  "api": {
+    "status": 200,
+    "state": "ready",
+    "commitSha": "6c3de75ea4c0746bc531695ca55889d04ea32eca"
+  },
+  "results": [
+    {
+      "route": "/admin",
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "expectedWebSha": "aa0ea748305cd31052ef3480696b2bb088ff685a",
+      "goalRootCount": 1,
+      "signInAvailable": true,
+      "overflow": 0,
+      "pageErrors": [],
+      "adminReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "admin-signed-out-1280.png",
+      "sha256": "b726280c473aa074d22477c32c82d98a94c1c8dd7a3bf40ef0e597eed6e27eb3"
+    },
+    {
+      "route": "/admin",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "expectedWebSha": "aa0ea748305cd31052ef3480696b2bb088ff685a",
+      "goalRootCount": 1,
+      "signInAvailable": true,
+      "overflow": 0,
+      "pageErrors": [],
+      "adminReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "admin-signed-out-390.png",
+      "sha256": "deac28c453eb777e1e666193d855637b90262368d8e219e5acf55505c4d97edb"
+    },
+    {
+      "route": "/admin-review",
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "expectedWebSha": "aa0ea748305cd31052ef3480696b2bb088ff685a",
+      "goalRootCount": 1,
+      "signInAvailable": true,
+      "overflow": 0,
+      "pageErrors": [],
+      "adminReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "admin-review-signed-out-1280.png",
+      "sha256": "2f431457e427f01b9824457360ddc21fc171df36ad32ddbd7f5e88db12e7a0b2"
+    },
+    {
+      "route": "/admin-review",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "expectedWebSha": "aa0ea748305cd31052ef3480696b2bb088ff685a",
+      "goalRootCount": 1,
+      "signInAvailable": true,
+      "overflow": 0,
+      "pageErrors": [],
+      "adminReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "admin-review-signed-out-390.png",
+      "sha256": "cd2798f8d1350ee3a7cb0a2a85f9556615fd4fc03ca22991153025e20cc13d7d"
+    }
+  ]
+}
