@@ -2715,11 +2715,11 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-356",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. D-336 (2026-11-15): parked at owner pending the five production WorkOS dashboard steps (enable Email+Password, reset URL, default mailer, no seeker MFA/Radar, Google connection confirmed); returns to todo to land once confirmed. D-350 (Nov 16): the owner confirmed the WorkOS production setup is complete (\"workos is fully configured\"), so D-336's condition is met. Land through the normal path."
+      "note": "D-163/D-080 prerequisite met: D-057-session-gate is done. D-350 confirmed the five production WorkOS dashboard steps, satisfying D-336; no repeated owner confirmation is pending. Existing carrier is draft PR #324, agent/claude/seeker-signin-finish at f50db639. The GitHub review on bcff1742 is historical; picker PASS 09b0a667 by Gemini · b7c1 names f50db639 exactly and must not be omitted from provenance. Neither review nor historical green CI certifies a future current-main integration. The code still has the Oct 22 SEEKER_CODE_VERIFY_UNTIL placeholder. A legitimately assigned implementation/fix session must merge current main without rewriting history, preserve the released goal sign-in (D-354), integrate password fields and contracts there, set the actual release-plus-24-hours cutoff, and complete auth/identity/privacy tests, independent review of the changed Tier 1 composition, required exact-head CI and exact-release/browser proof. No implementation, cutoff, setting or review marker is changed by this docs-only unblock. Existing dirty worktrees stay untouched; inspect ownership and use an isolated checkout. Status, branch, order and dependencies remain unchanged."
     },
     {
       "id": "D-048-doctrine-benefit-copy",
