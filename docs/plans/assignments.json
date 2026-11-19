@@ -2135,14 +2135,14 @@
     },
     {
       "id": "D-048-R-admin-money",
-      "title": "Release the goal admin-money page to production: add \"admin-money\" to RELEASED (built and landed in D-048-p3-admin-money) (D-317)",
+      "title": "Complete released admin-money parity, money-check goal coverage and canonical acceptance (PR #1204 lineage)",
       "row": "D-048",
       "packet": "docs/plans/D-048-phase-3-split.md",
       "tier": 1,
       "lane": "d048-release-admin-money",
-      "branch": "agent/queue/d048-r-admin-money",
+      "branch": "agent/queue/d048-r-admin-money-acceptance",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-p3-admin-money"
       ],
@@ -2152,11 +2152,13 @@
         "client/src/pages/AdminPaymentsReview.tsx",
         "client/src/pages/AdminCatalogSync.tsx",
         "client/src/pages/AdminTokenRecovery.tsx",
+        "client/src/pages/AdminMoneyCheck.tsx",
+        "client/src/pages/adminMoneyCheck.test.tsx",
         "client/src/pages/goal/admin-money/**",
         "design/goal-ui/captures/admin-money/**",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"admin-money\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=admin-money); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-admin-money's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Admin-only; payment review and catalog-sync actions behave exactly as on the kit page (no real-money QA, D-065). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-admin-money, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
+      "note": "Registered successor for unfinished acceptance, not another RELEASED switch change: original release branch agent/queue/d048-r-admin-money/PR1204 mergeddf6559ce Nov17; admin-money is enabled. Picker considers that old branch landed despite todo, so fresh unoccupied branch agent/queue/d048-r-admin-money-acceptance now carries this SAME row/priority/lane, with old PR/refs/history untouched. No inherited Fixed/pass or source claim. Nov19 K-admin-money UNBLOCK814e/D-200 ruling: docs/plans/D-048-retire.md section3b. PR1315/a73fb6ba proves2original catalog omissions; restore extras/excluded IDs/explanations and truthful created/failed/notAttempted detail plus one deliberate fresh dry-run GET,never autoapply. Preserve exact reviewed planHash/site confirmation, APIs/auth/audit/provider create-only and money/sales behavior. Explicitly reconcile previously assigned /admin/money-check: owns gains AdminMoneyCheck.tsx and its existing test; implement its goal presentation under already-owned goal/admin-money, preserving status/findings,run/alerts429/auth/owner-delivery facts and close-abandoned preview/apply calls, not money behavior. Keep K wrapper reds separate from catalog repair. Require actual eligible targeted picker claim, current-main source/behavior/synthetic1280+390proof,all requiredCI,path-computedD352 review/fix chain,protected auto-merge and canonical deployed identity/readiness/admin-route coverage/24hSentry release acceptance. No live catalog apply,alert send,abandoned close or real-money QA in synthetic/canonical proof without separate existing authority. R stays todo; K depends on its completed acceptance,not original merge. D349 suspends7day retirement soak only. Preserve every RELEASED id/old lock and other holders; no new task or owner price/flag/refund/API decision.",
       "epic": "D-048-p3"
     },
     {
@@ -4617,7 +4619,7 @@
       "lane": "d048-retire-admin-money",
       "branch": "agent/queue/d048-k-admin-money",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-admin-money"
       ],
@@ -4626,12 +4628,14 @@
         "client/src/pages/AdminPaymentsReview.tsx",
         "client/src/pages/AdminCatalogSync.tsx",
         "client/src/pages/AdminTokenRecovery.tsx",
+        "client/src/pages/AdminMoneyCheck.tsx",
+        "client/src/pages/adminMoneyCheck.test.tsx",
         "client/src/pages/goal/admin-money/**",
         "client/src/pages/adminPaymentsReview.test.tsx",
         "client/src/pages/adminCatalogSync.test.tsx",
         "client/src/components/admin/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin-money. Built by D-048-p3-admin-money; released by D-048-R-admin-money (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement remains todo,depends on SAME D-048-R-admin-money row now registered on fresh acceptance successor agent/queue/d048-r-admin-money-acceptance; original1204/df6559ce merge alone is not acceptance. Nov19 UNBLOCK814e D-200 ruling in docs/plans/D-048-retire.md section3b preserves PR1315/a73fb6ba:2goal catalog failures/2legacy controls,4separate expected-red wrapper checks.3source hashes match main; no failed-test rerun. Catalog goal parity and unfinished /admin/money-check presentation belong to release lineage through actual picker assignment,not this deletion/UNBLOCK. Money-check was already assigned by admin packet§10/split; its page+existing test are now explicitly owned here only for post-release retirement,never deleted before its goal body is repaired/released and assertions ported. Preserve all run/status/alert/preview-close/money/API/auth/audit behavior. Do not suppress tests or mark R done from ancestry; no fabricated FIX/Pass/held-lock bypass. After genuine4route acceptance,cut only Kit bodies/switches,retain lazy exports/routes/shared models,prove Ported assertions,unconditional wrappers/parity1280/390,currentCI and canonical release. K branch/evidence/priority/dependency stay; D349 suspends7day soak,not parity/readiness or release24hSentry watch. Scope-only1339 declares DECISIONS for this bounded ruling. No source fix,money/provider operation,prices/sales/flag/refund/login change or product-completion claim.",
       "epic": "D-048-p3"
     },
     {
