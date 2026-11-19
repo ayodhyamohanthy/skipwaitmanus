@@ -102,3 +102,12 @@ not this retirement's scope. All 386 queue rows, their order, both original
 tail additions and every other row/hold are preserved. Premium #1254 and
 seeker-passwords #324 remain outside this acceptance. No new decision or
 runtime work is introduced.
+
+Before protected landing, main advanced to
+`a61d38ed046562cde723925e8c91317a2fe0d0e8`. A normal two-parent merge
+preserves its D-368 Post Opportunity routing entry, parity dependency and new
+FIFO-tail repair row. D-368 was read; it changes no admin-ops scope. All 387
+current rows/order, both original tail additions and every other field/hold
+survive. The only queue difference from that main is this task's `done` status;
+its D-366 sync stamp and main's complete `DECISIONS.md` bytes remain unchanged.
+Historical evidence files and runtime receipts are not regenerated.
