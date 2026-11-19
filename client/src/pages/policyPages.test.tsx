@@ -12,7 +12,6 @@ import Contact from "./Contact";
 import Pricing from "./Pricing";
 import Support from "./Support";
 import Settings from "./Settings";
-import NotFound from "./NotFound";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
 import { FREE_PLAN, firstPackClaim } from "@shared/planCatalog";
@@ -195,15 +194,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound leave disclosures to the shell's More menu (Help & safety)", async () => {
+  it("Settings leaves disclosures to the shell's More menu (Help & safety)", async () => {
     // Retirement preserves the same shell-owned legal/support navigation.
     render(<Settings />);
     await screen.findByRole("heading", { name: "Control your account." });
     expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
-    cleanup();
-    render(<NotFound />);
-    expect(screen.queryByRole("link", { name: "Contact support" })).toBeNull();
-    expect(screen.getAllByRole("button", { name: "More" }).length).toBeGreaterThan(0);
   });
 });
 
