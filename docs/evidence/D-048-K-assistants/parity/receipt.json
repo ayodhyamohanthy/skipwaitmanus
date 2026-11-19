@@ -1,0 +1,34 @@
+{
+  "runtimePullRequest": 1308,
+  "routeFamily": ["/assistants", "/approve", "/connect-assistant", "/agents"],
+  "productionRelease": {
+    "releasePullRequest": 1191,
+    "webSha": "34ea89c29ac933da656f9286fa5c538ac7518029",
+    "landedAt": "2026-11-14",
+    "sentryFirstSeenSince": "2026-11-14",
+    "sentryProjects": ["skipwait-webapp", "skipwait-backend"],
+    "sentryQueriesReturnedZero": true
+  },
+  "parity": {
+    "baselineSource": "5ce91fd190db905cabe6649652ccd64062d21e78",
+    "goalOnlySource": "bf6230a4862ef5066c4213c2b5daf4ee7b0ffa96",
+    "runtimeSourceChangedAfterComparison": false,
+    "browser": "Clean Chromium; service workers blocked; fixed UTC clock",
+    "data": "Synthetic fixture responses only; signed-in identity/example domains are fictional",
+    "productionReadsOrMutations": false,
+    "routes": ["/assistants", "/approve", "/connect-assistant", "/agents"],
+    "states": ["signed out", "fixture signed in"],
+    "viewports": ["1280x900", "390x844 CSS px at device scale factor 2"],
+    "pairs": 16,
+    "pixelIdenticalPairs": 16,
+    "differentPixelsAcrossAllPairs": 0,
+    "horizontalOverflowPx": 0,
+    "unmatchedApiCalls": 0,
+    "browserErrors": 0,
+    "apiRequestPathsAndMethodsMatch": true,
+    "screenshotsAndHashes": "parity.json",
+    "reproduction": "Prepare the baseline and candidate Vite production outputs as <scratch-dir>/before and <scratch-dir>/after, baking the corresponding full SHA with commit-sha.txt and building with VITE_GOAL_SURFACES, VITE_WORKOS_CLIENT_ID, VITE_SENTRY_DSN and VITE_CLARITY_PROJECT_ID empty. Then run node docs/evidence/D-048-K-assistants/parity/capture.mjs <scratch-dir> <baseline-sha> <candidate-sha> from the repository root. The harness serves those existing builds, replays the synthetic API fixtures, and writes 32 captures and the exact pixel comparison to <scratch-dir>/captures."
+  },
+  "requiredPullRequestRun": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44461671872",
+  "releaseDeploymentVerification": "pending protected merge"
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Messages from "./Messages";
 import { IDEMPOTENCY_KEY_PATTERN, createIdempotencyKey } from "@/lib/idempotentSend";
@@ -61,7 +61,8 @@ function setupFetch(options: { threadIds?: number[]; threads?: Record<number, Th
 }
 
 async function openThread(counterpartUserId: number) {
-  fireEvent.click(await screen.findByRole("button", { name: new RegExp(`Referrer · user${counterpartUserId}\\.com`) }));
+  const chats = within(await screen.findByRole("list", { name: "Chats" }));
+  fireEvent.click(chats.getByRole("button", { name: new RegExp(`Referrer · user${counterpartUserId}\\.com`) }));
   await screen.findByPlaceholderText("Write a message");
 }
 
@@ -82,6 +83,7 @@ function readPendingBody(): string | null {
 
 beforeEach(() => {
   sessionStorage.clear();
+  Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
 });
 
 afterEach(() => {
@@ -113,7 +115,7 @@ describe("Messages idempotent send", () => {
     render(<Messages />);
     await openThread(22);
     await typeAndSend("Hello there");
-    await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("NetworkError"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("could not reach skipwait.me"));
     expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Hello there");
     const firstKey = posts[0].key;
     expect(IDEMPOTENCY_KEY_PATTERN.test(firstKey)).toBe(true);
@@ -216,7 +218,7 @@ describe("Messages idempotent send", () => {
     render(<Messages />);
     await openThread(22);
     await typeAndSend("Unfinished business");
-    await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("NetworkError"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("could not reach skipwait.me"));
     const pendingKey = first.posts[0].key;
     cleanup();
 
