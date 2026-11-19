@@ -2715,11 +2715,11 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-356",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. D-336 (2026-11-15): parked at owner pending the five production WorkOS dashboard steps (enable Email+Password, reset URL, default mailer, no seeker MFA/Radar, Google connection confirmed); returns to todo to land once confirmed. D-350 (Nov 16): the owner confirmed the WorkOS production setup is complete (\"workos is fully configured\"), so D-336's condition is met. Land through the normal path."
+      "note": "D-163/D-080 prerequisite met: D-057-session-gate is done. D-350 confirmed the five production WorkOS dashboard steps, satisfying D-336; no repeated owner confirmation is pending. Existing carrier is draft PR #324, agent/claude/seeker-signin-finish at f50db639. The GitHub review on bcff1742 is historical; picker PASS 09b0a667 by Gemini · b7c1 names f50db639 exactly and must not be omitted from provenance. Neither review nor historical green CI certifies a future current-main integration. The code still has the Oct 22 SEEKER_CODE_VERIFY_UNTIL placeholder. A legitimately assigned implementation/fix session must merge current main without rewriting history, preserve the released goal sign-in (D-354), integrate password fields and contracts there, set the actual release-plus-24-hours cutoff, and complete auth/identity/privacy tests, independent review of the changed Tier 1 composition, required exact-head CI and exact-release/browser proof. No implementation, cutoff, setting or review marker is changed by this docs-only unblock. Existing dirty worktrees stay untouched; inspect ownership and use an isolated checkout. Status, branch, order and dependencies remain unchanged."
     },
     {
       "id": "D-048-doctrine-benefit-copy",
@@ -3017,7 +3017,7 @@
       "lane": "d048-retire-sign-in",
       "branch": "agent/queue/d048-k-sign-in",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-sign-in"
       ],
@@ -3028,10 +3028,11 @@
         "client/src/pages/ReviewerSignIn.tsx",
         "client/src/pages/goal/sign-in/**",
         "client/src/pages/signInGoal.test.tsx",
+        "client/src/pages/signIn.test.tsx",
         "client/src/pages/trustCluster.test.tsx",
         "client/src/pages/ReviewerSignIn.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: sign-in. Built by D-048-p3-signin; released by D-048-R-sign-in (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: sign-in. Built and released by PR #1245 (60af3262, November 17); D-048-R-sign-in is done. November 19 execution ruling under D-332/D-200: packet section 3a permits only the seven listed legacy-presentation expectation replacements in signIn.test.tsx and the two obsolete flag-off assertions in signInGoal.test.tsx. Preserve every loginRule.test.tsx assertion and all auth behavior/legal destinations; use the recorded test-integrity trailer naming D-332, the per-assertion map, red/green proof, independent Tier 1 review and exact CI. This owns amendment names signIn.test.tsx for that bounded replacement, not a login-rule change. Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
     },
     {
@@ -3724,8 +3725,8 @@
       "tier": 1,
       "lane": "d048-retire-referrer",
       "branch": "agent/queue/d048-k-referrer",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
@@ -3898,8 +3899,8 @@
       "tier": 2,
       "lane": "d048-retire-invite",
       "branch": "agent/queue/d048-k-invite",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
@@ -3908,7 +3909,7 @@
         "client/src/pages/goal/invite/**",
         "client/src/pages/referrerHome.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: invite. Built by D-048-p3-invite; released by D-048-R4 (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1298. Original goal-only source a1073d49 and current-main integration 55dfb0dd preserve the lazy route export, GoalInvite and all API/auth/money/release behavior while removing the Kit fallback and its two exclusive panels. Current-main referrer-home retirement and rendered re-verification coverage remain; Invite cases live in goal/invite/goalInvite.test.tsx. 128 focused tests, TypeScript/build/audits pass; 16 desktop/mobile parity pairs preserve requests/payloads. Full local suite: 7,783 passed, two unchanged-suite failures, 18 skipped; not a full local pass. Exact-source CI44514040035 passed; final exact-head CI and canonical verification remain required. D-349 suspends soak, R4 release is done. Full receipts and assertion map: docs/plans/D-048-retire.md and design/goal-ui/captures/invite/retire-814e. Rollback is a revert of this PR.",
       "epic": "D-048-p3"
     },
     {
@@ -4143,8 +4144,8 @@
       "tier": 1,
       "lane": "d048-retire-email-review",
       "branch": "agent/queue/d048-k-email-review",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-email-review"
       ],
@@ -4307,8 +4308,8 @@
       "tier": 2,
       "lane": "d048-retire-alerts",
       "branch": "agent/queue/d048-k-alerts",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4319,7 +4320,9 @@
         "client/src/pages/alerts.referrerRouting.test.tsx",
         "client/src/pages/alerts.stepUp.test.tsx",
         "client/src/pages/alerts.test.tsx",
-        "client/src/components/alerts/**"
+        "client/src/components/alerts/**",
+        "server/notificationCenterUi.test.ts",
+        "design/goal-ui/captures/alerts/retirement/**"
       ],
       "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: alerts. Built by D-048-p3-alerts; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
@@ -4584,8 +4587,8 @@
       "tier": 2,
       "lane": "d048-retire-admin",
       "branch": "agent/queue/d048-k-admin",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4600,7 +4603,7 @@
         "client/src/pages/adminReview.test.tsx",
         "client/src/components/admin/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin. Built by D-048-p3-admin; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1322. Source 094c532d removes the two inline Kit admin bodies and four exclusive presentation modules; lazy exports/fallbacks, goal implementations, shared APIs/models, required notes, exact decision payloads and access/privacy behavior are preserved. Baseline release d6dd9c66 is done; D-349 suspends soak. Focused admin coverage, TypeScript/build/audits pass; 24/24 desktop/mobile pairs are pixel-identical with equal requests/payloads. Full local suite: 7,773 passed, 6 unchanged-suite failures, 18 skipped; preserved, not green or rerun. Exact-source CI 44526234882 passed; final current-main CI and canonical verification remain required. Main e7783e10 integrated with both task histories preserved. Full assertion map, gate/browser receipts and prior writer preservation: docs/plans/D-048-retire.md and design/goal-ui/captures/admin/retire-814e. Rollback is a protected revert of this PR.",
       "epic": "D-048-p3"
     },
     {

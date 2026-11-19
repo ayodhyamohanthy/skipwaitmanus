@@ -3,8 +3,8 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import AdminOverview from "./AdminOverview";
+import "./goal/admin/GoalAdminOverview";
 
 const { authState, getToken } = vi.hoisted(() => ({ authState: { isSignedIn: true }, getToken: vi.fn().mockResolvedValue("test-token") }));
 
@@ -28,17 +28,10 @@ const REPORTS = { reports: [
   { id: 2, reason: "Something else", details: null, referralRequestId: null, reportedUserId: null, urgent: false, status: "resolved", createdAt: "2026-10-01T03:00:00Z" },
 ] };
 
-// GET /api/admin/companies: the seeded directory, every company open.
-const adminCompany = (index: number, patch: Record<string, unknown> = {}) => {
-  const seed = LAUNCH_COMPANY_SEED[index];
-  if (!seed) throw new Error("no seed");
-  return { id: index + 1, slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], primaryDomain: seed.domains[0], openToReferrals: true, status: "listed", sortOrder: seed.sortOrder, updatedAt: "2026-10-13T00:00:00.000Z", ...patch };
-};
-const COMPANIES = { companies: LAUNCH_COMPANY_SEED.map((_seed, index) => adminCompany(index)) };
-
-function stub(overrides: Partial<Record<"health" | "queue" | "reports" | "companies", Reply>> = {}) {
+function stub(overrides: Partial<Record<"health" | "queue" | "reports", Reply>> = {}) {
   const fetchMock = vi.fn(async (url: string) => {
-    if (url.includes("/api/admin/companies")) return overrides.companies ?? reply(COMPANIES);
+    if (url.includes("company-suggestions")) return reply({ suggestions: [] });
+    if (url.includes("company-demand/unlisted")) return reply({ domains: [] });
     if (url.includes("flow-health")) return overrides.health ?? reply(HEALTH);
     if (url.includes("approval-queue")) return overrides.queue ?? reply(QUEUE);
     if (url.includes("safety-reports")) return overrides.reports ?? reply(REPORTS);
@@ -54,100 +47,39 @@ function renderPage() {
 }
 
 describe("AdminOverview", () => {
-  it("gates the console behind admin sign-in", () => {
+  it("gates the console behind admin sign-in", async () => {
     authState.isSignedIn = false;
     const fetchMock = stub();
     renderPage();
-    expect(screen.getByText("Operations console")).toBeTruthy();
-    expect(screen.queryByText("Operate for trust, not vanity.")).toBeNull();
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByText(/requests created ·/)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("renders live funnel aggregates and queue counts in the kit layout, never fabricated people", async () => {
+  it("renders live funnel aggregates and queue counts without fabricated people", async () => {
     stub();
     renderPage();
-    expect(await screen.findByText("Operate for trust, not vanity.")).toBeTruthy();
-    const funnel = await screen.findByRole("list", { name: "Referral funnel, all time" });
-    expect(within(funnel).getAllByRole("listitem").map(item => item.getAttribute("aria-label"))).toEqual(["Requests created: 12", "Requests claimed: 5", "Decisions recorded: 4", "Waiting for coverage: 3"]);
-    // Kit chart: one-line stage labels, no value labels drawn over the bars.
-    expect(within(funnel).getByText("Created")).toBeTruthy();
-    expect(within(funnel).queryByText("12")).toBeNull();
-    expect(screen.getByRole("link", { name: /Flow health/ }).getAttribute("href")).toBe("/admin/flow-health");
-    const snapshot = screen.getByLabelText("Operations snapshot");
-    expect(await within(snapshot).findByText("Referrer enrollments awaiting review")).toBeTruthy();
-    expect(within(snapshot).getByText("1 urgent")).toBeTruthy();
-    expect(within(snapshot).getByText("No fabricated count")).toBeTruthy();
-    expect(await within(snapshot).findByText("Confirmed launch companies")).toBeTruthy();
-    expect(within(snapshot).getByText("Company coverage").parentElement?.querySelector("strong")?.textContent).toBe("5");
-    expect(screen.getByText("Employer subscriptions")).toBeTruthy();
-    expect(screen.getByText("Promoted employer profiles")).toBeTruthy();
-    expect(screen.getByText("Referrers are never paid")).toBeTruthy();
-    // The kit overview ends after the chart: no coverage-gap or tools panels.
-    expect(screen.queryByLabelText("Coverage gaps")).toBeNull();
-    expect(screen.queryByLabelText("Operations tools")).toBeNull();
+    expect(await screen.findByText("12 requests created · 5 claimed · 4 decisions recorded · 3 waiting for coverage")).toBeTruthy();
+    expect(screen.getByText("1 enrollment waiting")).toBeTruthy();
+    expect(screen.getByText("1 open report · 1 urgent")).toBeTruthy();
     expect(screen.queryByText("acme.com")).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW|ILLUSTRATIVE|NO LIVE DATA/)).toBeNull();
     expect(screen.queryByText(/Avery|Rahul/)).toBeNull();
   });
 
-  it("keeps the admin tools reachable through the users directory", async () => {
-    stub();
-    renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: /Users/ }));
-    expect(screen.getByRole("link", { name: "Open users directory" }).getAttribute("href")).toBe("/admin/users");
-  });
-
-  it("opens the company directory from the priority queue and filters it", async () => {
-    stub();
-    renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: /Review company submissions/ }));
-    expect(screen.getByText("Launch directory.")).toBeTruthy();
-    expect(await screen.findByText("Five confirmed companies are visible. New submissions require domain and duplicate review.")).toBeTruthy();
-    expect(screen.getAllByText("Open door")).toHaveLength(5);
-    expect(screen.getByRole("link", { name: "Submissions" }).getAttribute("href")).toBe("/admin-review?tab=companies");
-    expect(screen.getByRole("link", { name: "Review Wipro" }).getAttribute("href")).toBe("/explore/wipro");
-    fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "merkle" } });
-    expect(screen.queryByText("Wipro")).toBeNull();
-    expect(screen.getByText("Merkle")).toBeTruthy();
-  });
-
-  it("shows directory status and live coverage: joining until a referrer is open, hidden without a public link", async () => {
-    stub({ companies: reply({ companies: [adminCompany(0), adminCompany(1, { openToReferrals: false }), adminCompany(2, { status: "hidden", openToReferrals: false })] }) });
-    renderPage();
-    const snapshot = await screen.findByLabelText("Operations snapshot");
-    expect(await within(snapshot).findByText("1 of 2 listed companies open")).toBeTruthy();
-    fireEvent.click(await screen.findByRole("button", { name: /Review company submissions/ }));
-    expect(screen.getByText("Two confirmed companies are visible. New submissions require domain and duplicate review.")).toBeTruthy();
-    const table = screen.getByLabelText("Companies");
-    expect(within(table).getByText("Open door")).toBeTruthy();
-    expect(within(table).getByText("Joining")).toBeTruthy();
-    expect(within(table).getByText("Hidden")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Review Go Neutrinos" })).toBeNull();
-  });
-
-  it("routes the verification and safety sections to the matching review queue tab", async () => {
-    stub();
-    renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: /Review work-email exceptions/ }));
-    expect(await screen.findByText("1 enrollment waiting for review.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open review queue" }).getAttribute("href")).toBe("/admin-review?tab=verifications");
-    fireEvent.click(screen.getByRole("button", { name: /Safety reports/ }));
-    expect(screen.getByText("1 open report.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open review queue" }).getAttribute("href")).toBe("/admin-review?tab=reports");
-  });
 
   it("hides the funnel when flow health fails instead of drawing empty bars", async () => {
     stub({ health: reply({ error: "We could not load referral flow health" }, 500) });
     renderPage();
     await screen.findByRole("alert", {}, { timeout: 4000 });
-    expect(screen.queryByLabelText("Live funnel")).toBeNull();
+    expect(screen.queryByText(/requests created ·/)).toBeNull();
   });
 
   it("shows the server-enforced admin gate without operations data", async () => {
-    stub({ health: reply({ error: "Administrator access is required" }, 403), queue: reply({ error: "Administrator access is required" }, 403), reports: reply({ error: "Administrator access is required" }, 403), companies: reply({ error: "Administrator access is required" }, 403) });
+    stub({ health: reply({ error: "Administrator access is required" }, 403), queue: reply({ error: "Administrator access is required" }, 403), reports: reply({ error: "Administrator access is required" }, 403) });
     renderPage();
     expect(await screen.findByText("Administrator access is required.")).toBeTruthy();
-    expect(screen.queryByText("Operate for trust, not vanity.")).toBeNull();
+    expect(screen.queryByText(/requests created ·|enrollment waiting/)).toBeNull();
   });
 
   it("shows a load failure with a working retry", async () => {
