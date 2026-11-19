@@ -3,7 +3,8 @@
 // Visibility controls are privacy (Tier 1): the "What a referrer sees" view
 // never shows a piece marked "Only me", the privacy summary follows the saved
 // page visibility, and a failed load renders its error, never a fake empty.
-// Flag off, both routes keep the kit page exactly.
+// The retired kit routes are not reachable, even without a surface override.
+import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,11 +16,6 @@ vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ ...authState, userId: "u1", getToken }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
 }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "profile" };
-});
 vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 
 const ITEMS = [
@@ -30,7 +26,7 @@ type Call = { url: string; method: string; body: unknown; auth: string | undefin
 type Reply = { status: number; body: unknown } | "network" | (() => Promise<{ status: number; body: unknown }>);
 const server = {
   calls: [] as Call[],
-  profile: { displayName: "Meera Iyer", profile: { headline: "Product designer", company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: "meera", profileVisibility: "private" } } as unknown,
+  profile: { displayName: "Meera Iyer", profile: { headline: "Product designer", currentTitle: "Product Designer", location: "Bengaluru", bio: "Private bio", skills: "Figma", company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: "meera", profileVisibility: "private" } } as unknown,
   profileReply: null as Reply | null,
   items: [] as unknown[],
   itemsReply: null as Reply | null,
@@ -82,6 +78,17 @@ import { assertGoalPage } from "@/test/goalPageContract";
 const primaries = () => document.querySelectorAll("[data-g-primary]");
 const putCalls = () => server.calls.filter(call => call.method !== "GET");
 
+describe("profile retirement", () => {
+  it("keeps both route wrappers goal-only, with no flag or Kit dependency", () => {
+    const root = process.cwd();
+    const profile = readFileSync(`${root}/client/src/pages/Profile.tsx`, "utf8");
+    const work = readFileSync(`${root}/client/src/pages/Work.tsx`, "utf8");
+    expect(profile).toMatch(/<GoalProfile\s*\/>/);
+    expect(work).toMatch(/<GoalWork\s*\/>/);
+    for (const source of [profile, work]) expect(source).not.toMatch(/goalSurfaceOn|components\/kit|from ["'][^"']*components\/profile\//);
+  });
+});
+
 // Warm the lazily loaded goal chunks so a cold transform on a busy runner
 // never outlasts findBy's timeout.
 beforeAll(async () => {
@@ -90,20 +97,21 @@ beforeAll(async () => {
 }, 60_000);
 
 beforeEach(() => {
-  authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true;
+  authState.isLoaded = true; authState.isSignedIn = true;
+  vi.stubEnv("VITE_GOAL_SURFACES", "");
   server.calls = []; server.items = [...ITEMS]; server.profileReply = null; server.itemsReply = null; server.mutationReply = null;
-  server.profile = { displayName: "Meera Iyer", profile: { headline: "Product designer", company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: "meera", profileVisibility: "private" } };
+  server.profile = { displayName: "Meera Iyer", profile: { headline: "Product designer", currentTitle: "Product Designer", location: "Bengaluru", bio: "Private bio", skills: "Figma", company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: "meera", profileVisibility: "private" } };
   window.history.replaceState({}, "", "/profile");
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
 });
-afterEach(() => { cleanup(); });
+afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
 
 describe("goal /profile", () => {
-  it("flag off keeps the kit page", async () => {
-    flagState.on = false;
+  it("renders the goal page without a surface override", async () => {
     render(<Profile />);
-    expect(await screen.findByRole("heading", { level: 1, name: /Profile & privacy/ })).toBeTruthy();
-    expect(document.querySelector('[data-goal-page="profile"]')).toBeNull();
+    expect(await screen.findByRole("heading", { level: 1, name: PROFILE_GOAL_PAGE.goalLine })).toBeTruthy();
+    expect(document.querySelector('[data-goal-page="profile"]')).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1, name: /Profile & privacy/ })).toBeNull();
   });
 
   it("opens on the goal with one black commit and the saved headline", async () => {
@@ -112,6 +120,7 @@ describe("goal /profile", () => {
     const headline = await screen.findByLabelText("Headline") as HTMLInputElement;
     expect(headline.value).toBe("Product designer");
     expect((screen.getByLabelText("Display name") as HTMLInputElement).readOnly).toBe(true);
+    for (const retiredField of ["Bengaluru", "Private bio", "Figma", "Product Designer"]) expect(screen.queryByText(retiredField)).toBeNull();
     expect(primaries()).toHaveLength(1);
     expect(primaries()[0]?.textContent).toMatch(/Save profile/);
     expect(document.querySelector('[data-goal-page="profile"]')).toBeTruthy();
@@ -131,6 +140,17 @@ describe("goal /profile", () => {
     const publicPreview = await screen.findByRole("region", { name: "What a referrer sees" });
     expect(within(publicPreview).getByText("Publicly discoverable")).toBeTruthy();
     expect(within(publicPreview).queryByText("Not publicly discoverable")).toBeNull();
+  });
+
+  it("shows a verified referrer's company only in the referrer view", async () => {
+    server.profile = { displayName: "Meera Iyer", profile: { headline: "Product designer", company: "Wipro", workEmailDomain: "wipro.com", workEmailVerifiedAt: "2026-01-01", handle: "meera", profileVisibility: "private" } };
+    render(<Profile />);
+    await screen.findByLabelText("Headline");
+    expect(screen.queryByText("Wipro · verified by work email")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Referrer profile" }));
+    expect(screen.getByText("Wipro · verified by work email")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Verify your work email" })).toBeNull();
+    expect(screen.queryByText("Resume")).toBeNull();
   });
 
   it("shows loading while the profile is on its way (contract-exempt: no next-step block before data loads)", async () => {
@@ -219,11 +239,11 @@ describe("goal /profile", () => {
 describe("goal /work", () => {
   beforeEach(() => { window.history.replaceState({}, "", "/work"); });
 
-  it("flag off keeps the kit page", async () => {
-    flagState.on = false;
+  it("renders the goal page without a surface override", async () => {
     render(<Work />);
-    expect(await screen.findByRole("heading", { level: 1, name: /Your work, in one quiet place/ })).toBeTruthy();
-    expect(document.querySelector('[data-goal-page="work"]')).toBeNull();
+    expect(await screen.findByRole("heading", { level: 1, name: WORK_GOAL_PAGE.goalLine })).toBeTruthy();
+    expect(document.querySelector('[data-goal-page="work"]')).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1, name: /Your work, in one quiet place/ })).toBeNull();
   });
 
   it("opens on the goal with every piece, its visibility in words, and one black commit", async () => {

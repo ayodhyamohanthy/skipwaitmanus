@@ -1,0 +1,22 @@
+{
+  "task": "D-048-K-invite",
+  "session": "GPT-6.1 Sol · 814e",
+  "testedIntegrationHead": "55dfb0ddd9c6fa1681eefaee1b1bd92eadaa3341",
+  "command": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=3",
+  "exitCode": 1,
+  "durationSeconds": 904.23,
+  "files": {"passed":739,"failed":2,"skipped":5,"total":746},
+  "tests": {"passed":7783,"failed":2,"skipped":18,"total":7803},
+  "failures": [
+    {"file":"scripts/classifyCiChange.test.ts","line":655,"case":"a marker branch forked 400 commits behind main still reads empty from a merge base","reason":"Test timed out in 20000ms","changedByTask":false},
+    {"file":"server/chargebeeGiftRoutes.test.ts","line":97,"case":"refuses a repeat claim the same way without alerting again","reason":"Expected HTTP 409, received HTTP 407","changedByTask":false}
+  ],
+  "focused": {"files":6,"passed":128,"failed":0},
+  "runtimeChangedWhileRunning":false,
+  "failedTestsRerun":false,
+  "testsOrTimeoutsWeakened":false,
+  "localFullSuiteGreen":false,
+  "separateExactHeadCI":"https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44514040035",
+  "separateCIGreen":true,
+  "releaseStatus":"Not landed; final handoff exact-head CI and post-deploy canonical verification pending"
+}

@@ -1,6 +1,6 @@
 # Packet seeker passwords (queue task 2 + Drift-D030): seekers sign in on skipwait.me with a social provider or email and password, the paid six-digit seeker code is retired, and referrers can never get a password
 
-> Read `docs/BRIEF.md` first, then this packet. The work is mostly done on `origin/agent/claude/seeker-signin` (5 commits, tip `5653b3b`). Continue it on a new branch made by merging `origin/main` into it. Never rebase and force-push the pushed branch.
+> Read `docs/BRIEF.md` first, then this packet and the current Status below. The existing carrier is draft PR #324 on `agent/claude/seeker-signin-finish`; `5653b3b` and the earlier branch notes are historical implementation context. Continue only through legitimate picker ownership in an isolated worktree, preserving unpublished work. Never rebase or force-push the pushed branch.
 
 | Field | Value |
 |---|---|
@@ -9,12 +9,16 @@
 | Risk tier | 1 (sign-in, sessions, identity linking) |
 | Size | M–L |
 | Implementer | any model; independent auth review required |
-| Branch | new `agent/<model>/seeker-signin-finish` = `origin/agent/claude/seeker-signin` + `git merge origin/main` |
-| Depends on | nothing; parallel-safe with P0, D-067 and D-048 phase 2 |
-| Do not run at the same time as | FND-4 (same Sentry files), D-057-session-gate (next) |
-| Verified against | `main` `e6b87f8`/`681ea79` (merge trial: tsc 0, 259/259 focused tests) and the branch tip `5653b3b` (217/217) |
+| Branch | existing `agent/claude/seeker-signin-finish`, draft PR #324; merge current `origin/main` without history rewriting |
+| Depends on | `D-057-session-gate`, done (D-163/D-080); WorkOS dashboard confirmation satisfied by D-350 |
+| Coordination | Inspect current claims and unpublished work before touching auth, identity or shared telemetry files; do not use another session's dirty checkout |
+| Verification baseline | Historical `e6b87f8`/`681ea79` and `5653b3b` checks are retained below; a current-main candidate needs new exact-head acceptance |
 
 ## Status
+
+- **November 19 unblock qualification — GPT-6.1 Sol · 830b:** the latest block correctly says the current carrier is not landable, but its review provenance is incomplete. The GitHub PASS comment names `bcff1742` (October 19); picker verdict `09b0a667` by Gemini · b7c1, dated November 15, explicitly names the actual carrier `f50db639`. Preserve both; do not erase or replace the newer verdict or claim no exact-head marker exists. The older review's later combined-diff merges (`2013d40b`, `f50db639`) are real source changes, but that fact alone does not invalidate a subsequent verdict naming `f50db639`.
+- **Ordinary technical continuation, not an owner decision:** at main `721cbd93`, the carrier is 5,244 main commits behind and still declares `SEEKER_CODE_VERIFY_UNTIL = 2026-10-22T00:00:00Z`. It cannot deploy as-is. The legitimate implementation/fix session must integrate current main while retaining the released goal auth routes (D-354), complete the existing password/reset contracts and actual release-plus-24-hours cutoff, run auth/identity/privacy and code-retirement tests, obtain independent Tier 1 acceptance of the new composition and green exact-head CI, and verify the deployed flow. Historical October 21 CI does not certify that future candidate. No runtime, cutoff, settings, price, login rule, claim, verdict or Fixed marker is changed by this documentation ruling. No no-code Fixed or manual forced claim is authorized.
+- **Read receipt for this qualification:** unblock `200a2a8d`; current main `721cbd93`; BRIEF, AGENTS, PRD, BUILD_CONTINUITY, COLLABORATION, DELEGATION, this packet, register through D-363, actual PR #324 body/comments/reviews, source cutoff, current sign-in route and review-lock history inspected. The existing runtime checkout is dirty and belongs to another session; it remains untouched. Documentation validation and PR evidence accompany this ruling. Product implementation and production acceptance remain UNVERIFIED.
 
 - **Nov 17, D-350 continuation:** the owner confirmed the production WorkOS setup on Nov 16 ("workos is fully configured"), satisfying D-336's five-dashboard-step condition and returning this row to `todo`. `D-057-session-gate` is done, meeting the D-163/D-080 prerequisite. Do not repeat the superseded dashboard-confirmation block or ask the owner to confirm it again.
 - **Current carrier and remaining acceptance:** PR #324, `agent/claude/seeker-signin-finish` at `f50db639`, is still draft and far behind current main. Its historical green checks do not certify a new integration. The legitimate implementation session merges current main without rewriting history, preserves the released goal sign-in and adds its password fields there (D-354), sets `SEEKER_CODE_VERIFY_UNTIL` to the actual release plus 24 hours, and satisfies focused auth/privacy/identity tests, required exact-head CI, the applicable independent-review gate and exact-release/browser proof. This unblock makes no code, setting, login-rule, cutoff or release change.
