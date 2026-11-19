@@ -4477,8 +4477,8 @@
       "tier": 2,
       "lane": "d048-retire-seeker-small",
       "branch": "agent/queue/d048-k-seeker-small",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4496,7 +4496,7 @@
         "client/src/pages/shareHub.test.tsx",
         "client/src/components/landed/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface ids: landed, suggest-company, share. Built by D-048-p3-seeker-small; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion takes effect only on protected merge of PR #1312. Goal-only source ffe0ae50 removes the three inline Kit bodies and switches, retaining export names, lazy chunks, null Suspense fallbacks and unchanged goal implementations/data/API/auth/money behavior. Release d6dd9c66 is on main; launch-mode D-349 suspends the soak. Fifty focused tests, TypeScript/build and token/migration/deploy/scope checks pass; all 30 synthetic desktop/mobile pairs preserve requests and mutation payloads. Full local suite: 7,789 pass, 2 unchanged-suite 20-second timeouts, 18 skipped; not a full local pass. Exact-head required CI must pass before merge. Assertion map, Sentry readback and browser/gate receipts are in docs/plans/D-048-retire.md and design/goal-ui/captures/seeker-small/retire-814e. Rollback is a revert of this PR.",
       "epic": "D-048-p3"
     },
     {

@@ -1,17 +1,11 @@
 // @vitest-environment jsdom
-// Goal /suggest-company (D-048-p3-seeker-small, dark): goal line, duplicate
-// hint, validation gating, submit, sent state, flags-off kit control.
+// Goal company suggestions: validation, duplicate detection, and submit recovery.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isSignedIn: true };
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken: async () => "tok" }), SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "suggest-company" };
-});
 vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 vi.mock("@/lib/companyDirectory", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/companyDirectory")>();
@@ -20,13 +14,15 @@ vi.mock("@/lib/companyDirectory", async (importOriginal) => {
 
 import SuggestCompany from "@/pages/SuggestCompany";
 
+import "./GoalSuggestCompany";
+
 function fill() {
   fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Quillmint" } });
   fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "quillmint.ai" } });
 }
 
 describe("goal suggest company", () => {
-  beforeEach(() => { authState.isSignedIn = true; flagState.on = true; });
+  beforeEach(() => { authState.isSignedIn = true; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("opens on the goal with one gated commit", async () => {
@@ -104,10 +100,9 @@ describe("goal suggest company", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
   });
 
-  it("flags off keeps the kit form", async () => {
-    flagState.on = false;
+  it("renders the goal form without a surface override", async () => {
     render(<SuggestCompany />);
-    expect(await screen.findByText(/GROW THE MAP/)).toBeTruthy();
-    expect(screen.queryByTestId("goal-suggest-company")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Bring a company onto skipwait." })).toBeTruthy();
+    expect(screen.queryByText(/GROW THE MAP/)).toBeNull();
   });
 });
