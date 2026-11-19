@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
-// D-048-p3-links (packet docs/plans/D-048-public.md): flag-off parity and the
-// flag-on goal rebuild of the three signed-out link landings:
-// /fast/:linkCode, /refer/:companySlug/:vanityAlias and /share-card/:token.
-// Pins: kit untouched with the flag off; goal page contract with it on; the
-// sign-in handoff keeps the link's intent exactly (D-153); expired, invalid and
-// malformed links render an honest state with one way forward.
+// The three public link routes keep the released goal design without a switch.
+// The /start handoff keeps the intent, and unavailable links offer recovery.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,14 +9,12 @@ import FastTrackLink from "../../FastTrackLink";
 import VanityFastTrackLink from "../../VanityFastTrackLink";
 import ShareCard from "../../ShareCard";
 
-const { go, surfaces, route } = vi.hoisted(() => ({
+const { go, route } = vi.hoisted(() => ({
   go: vi.fn(),
-  surfaces: { on: new Set<string>() },
   route: { params: {} as Record<string, string> | undefined },
 }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: vi.fn() }) }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/", go],
@@ -36,20 +30,19 @@ const setOnline = (value: boolean) => Object.defineProperty(window.navigator, "o
 
 // Warm the lazily imported goal modules so the first render does not race findBy's timeout.
 beforeAll(async () => { await import("./GoalPrivateLinkLanding"); await import("./GoalShareCard"); }, 30_000);
-beforeEach(() => { surfaces.on = new Set(["links"]); setOnline(true); });
+beforeEach(() => setOnline(true));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); go.mockClear(); setOnline(true); });
 
 describe("/fast/:linkCode", () => {
   beforeEach(() => { route.params = { linkCode: "abc123" }; });
 
-  it("renders the kit landing untouched when the links flag is off", async () => {
-    surfaces.on = new Set();
+  it("keeps the links page goal-only without a surface override", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok(ACTIVE_LINK)));
-    render(<FastTrackLink />);
-    expect(await screen.findByText("Request a referral at acme.example.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Start private request/ })).toBeTruthy();
-    expect(screen.queryByText("Get referred at acme.example.")).toBeNull();
-    expect(document.querySelector("[data-g-primary]")).toBeNull();
+    const { container } = render(<FastTrackLink />);
+    await screen.findByRole("heading", { level: 1, name: "Get referred at acme.example." });
+    assertGoalPage(container, { goalLine: "Get referred at acme.example." });
+    expect(screen.queryByRole("heading", { name: "Request a referral at acme.example." })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Start private request/ })).toBeNull();
   });
 
   it("opens with the goal and one commit that keeps the link through /start", async () => {
@@ -125,13 +118,12 @@ describe("/fast/:linkCode", () => {
 describe("/refer/:companySlug/:vanityAlias", () => {
   beforeEach(() => { route.params = { companySlug: "acme", vanityAlias: "jordan" }; });
 
-  it("renders the kit landing untouched when the links flag is off", async () => {
-    surfaces.on = new Set();
+  it("keeps the vanity landing goal-only without a surface override", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok(ACTIVE_LINK)));
-    render(<VanityFastTrackLink />);
-    expect(await screen.findByText("Request a referral at acme.example.")).toBeTruthy();
-    expect(screen.queryByText("Get referred at acme.example.")).toBeNull();
-    expect(document.querySelector("[data-g-primary]")).toBeNull();
+    const { container } = render(<VanityFastTrackLink />);
+    await screen.findByRole("heading", { level: 1, name: "Get referred at acme.example." });
+    assertGoalPage(container, { goalLine: "Get referred at acme.example." });
+    expect(screen.queryByRole("heading", { name: "Request a referral at acme.example." })).toBeNull();
   });
 
   it("opens with the goal and keeps company and alias through /start", async () => {
@@ -164,13 +156,13 @@ describe("/share-card/:token", () => {
   const TOKEN = "c".repeat(32);
   beforeEach(() => { route.params = { token: TOKEN }; });
 
-  it("renders the kit card untouched when the links flag is off", async () => {
-    surfaces.on = new Set();
+  it("keeps the share card goal-only without a surface override", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok(ACCEPTED_CARD)));
-    render(<ShareCard />);
-    expect(await screen.findByText("Accepted at acme.example")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Get your own referral" }).getAttribute("href")).toBe("/start?invite=r1-deadbeef");
-    expect(document.querySelector("[data-g-primary]")).toBeNull();
+    const { container } = render(<ShareCard />);
+    await screen.findByRole("heading", { level: 1, name: "Get your own referral." });
+    assertGoalPage(container, { goalLine: "Get your own referral." });
+    expect(screen.getByRole("link", { name: "Start your referral request" }).getAttribute("href")).toBe("/start?invite=r1-deadbeef");
+    expect(screen.queryByRole("heading", { name: "Accepted at acme.example" })).toBeNull();
   });
 
   it("opens with the visitor's goal, states only the fact, and keeps the sharer's invite", async () => {

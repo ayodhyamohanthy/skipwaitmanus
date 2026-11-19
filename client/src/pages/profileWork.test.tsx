@@ -325,7 +325,7 @@ describe("PublicProfile page", () => {
   it("renders a link-only profile with work and noindex behavior, never fabricated people", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "link", isOwner: false, displayName: "Asha R.", headline: "Senior Product Designer", currentTitle: null, location: "Bengaluru", bio: null, skills: null, verifiedWork: { domain: "wipro.com", verifiedAt: "2026-01-01" }, handle: "asha-r", workItems: [{ id: 3, title: "Redesign", kind: "case_study", source: "Behance", url: null, pinned: true, visibleOnProfile: true }] } })));
     render(<PublicProfile />);
-    expect(await screen.findByText("Asha R.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "See Asha R.'s work." })).toBeTruthy();
     expect(screen.getByText("Verified at wipro.com via work email")).toBeTruthy();
     expect(screen.getByText("Redesign")).toBeTruthy();
     // The robots tag is written by an effect after the profile paints; under CI load findByText can resolve first.
@@ -356,7 +356,7 @@ describe("PublicProfile page", () => {
       return ok({ profile: { visible: true, visibility: visibility.value, isOwner: true, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, verifiedWork: null, handle: "asha-r", workItems: [] } });
     }));
     render(<PublicProfile />);
-    expect(await screen.findByText("WHO CAN SEE THIS")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Who can see this page" })).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Link only" })).toHaveProperty("ariaChecked", "true");
     fireEvent.click(screen.getByRole("radio", { name: "Private" }));
     await waitFor(() => expect(visibility.value).toBe("private"));
@@ -371,20 +371,20 @@ describe("PublicProfile page", () => {
     vi.stubGlobal("fetch", vi.fn(async () => owned(visibility.value)));
     render(<PublicProfile />);
     expect(await screen.findByText("Prototype kit")).toBeTruthy();
-    expect(screen.getByText("Only visible to you")).toBeTruthy();
+    expect(screen.getByText("Only you can see this")).toBeTruthy();
     expect(screen.queryByText("Shown only in requests")).toBeNull();
     expect(screen.queryByText(/EXAMPLE PROFILE/)).toBeNull();
     expect(screen.queryByRole("link", { name: "Manage profile" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Share" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy your link" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "You" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "Visitor" }));
-    expect(screen.queryByText("WHO CAN SEE THIS")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Who can see this page" })).toBeNull();
     expect(screen.queryByText("Prototype kit")).toBeNull();
-    expect(screen.queryByText("Only visible to you")).toBeNull();
-    expect(screen.queryByRole("link", { name: /Manage work/ })).toBeNull();
+    expect(screen.queryByText("Only you can see this")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Manage your work" })).toBeNull();
     expect(screen.getByText("Redesign")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "You" }));
-    expect(screen.getByText("WHO CAN SEE THIS")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Who can see this page" })).toBeTruthy();
   });
 
   it("shows the owner the private gate when previewing a private page as a visitor", async () => {
@@ -392,10 +392,10 @@ describe("PublicProfile page", () => {
     render(<PublicProfile />);
     fireEvent.click(await screen.findByRole("tab", { name: "Visitor" }));
     expect(screen.getByText("This profile is private.")).toBeTruthy();
-    expect(screen.queryByText("Asha R.")).toBeNull();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
   });
 
-  it("renders the headline only, links work titles out, and offers verified referrers an ask", async () => {
+  it("renders the headline only, links work titles out, and routes visitors to company search", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "public", isOwner: false, displayName: "Asha R.", headline: "Design Lead", currentTitle: "Lead", location: null, bio: "Long bio", skills: "Figma", openTo: [], company: "Wipro", verifiedWork: { domain: "wipro.com", verifiedAt: "2026-01-01" }, handle: "asha-r", workItems: [{ id: 5, title: "Case", kind: "case_study", source: null, url: "https://example.com/case", pinned: false, visibleOnProfile: true }] } })));
     render(<PublicProfile />);
     expect(await screen.findByText("Design Lead")).toBeTruthy();
@@ -404,7 +404,8 @@ describe("PublicProfile page", () => {
     expect(screen.queryByText("Figma")).toBeNull();
     expect(screen.getByRole("link", { name: "Case" }).getAttribute("href")).toBe("https://example.com/case");
     expect(screen.queryByText(/Open link/)).toBeNull();
-    expect(screen.getByRole("link", { name: /Ask for a referral at Wipro/ }).getAttribute("href")).toBe("/explore");
+    expect(screen.getByText(/Find a role at Wipro/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
     expect(screen.queryByRole("tab", { name: "Visitor" })).toBeNull();
   });
 });
