@@ -952,7 +952,7 @@
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -960,7 +960,7 @@
         "D-048-F-goal-check",
         "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for PRICING-banded-oct25 (PR #666), which also owns Premium.tsx: the goal page is built on the paused-pack state the Oct 25 freeze lands. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-premium done in the same commit, so no separate release PR is needed.",
+      "note": "D-134 money cluster. goalSurfaceOn('premium'); no pricing/cost/sale flag enable. Existing API/data/payment contracts remain read-only and original assertions stay. The PRICING-banded-oct25 dependency remains: PR #666 merged at 98139298 on Nov 17 and is in current main's ancestry. D-349 (launch mode): this build PR turns its goal page on, adds premium to RELEASED and its exact-list pin, and completes D-048-R-premium; no separate release PR is needed. Nov 19 execution receipt (D-200 (2), D-344 (7), GPT-6.1 Sol · d859): the block demanding another review solely for main merge d56bf410 is not supported by the existing gate. Its combined hunks retain public-profile and premium; no branch-owned non-merge commit follows Fixed-bound 33d3a3b6. Current gate exits 0 and six release-list tests pass on that exact head; CI 44293809941 is green. Keep the existing independent findings and bound Fixed. Ordinary picker landing still integrates current main, preserves every released id, validates the final composition and waits for green exact-head CI/protected auto-merge and live verification. No new verdict, Fixed, future-diff approval or runtime/price/sale/legal/login change is supplied by this receipt. See docs/DECISIONS.md and this packet's Premium status; status/order/owns/dependencies stay unchanged.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
@@ -968,7 +968,8 @@
         "client/src/pages/premiumGoal.test.tsx",
         "design/goal-ui/captures/premium/**",
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "docs/DECISIONS.md"
       ]
     },
     {
@@ -3016,7 +3017,7 @@
       "tier": 1,
       "lane": "d048-retire-sign-in",
       "branch": "agent/queue/d048-k-sign-in",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-sign-in"
