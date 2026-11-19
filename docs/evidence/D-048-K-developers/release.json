@@ -10,7 +10,7 @@
     "pages": {"run": 44590222324, "conclusion": "success"},
     "releaseVerification": {"run": 44591404902, "conclusion": "success"},
     "localFocused": {"files": 5, "passed": 33},
-    "fullLocalCommand": "pending heartbeat-plus-Vitest command; no nested-step completion, totals or green inferred",
+    "fullLocalCommand": "incomplete/not green: heartbeat and Vitest started; 3600-second command-group deadline, no final summary/totals, no rerun; see local-gate.json",
     "failedOldJobsRerun": false
   },
   "reviewPolicy": {"registeredTier": 1, "computedTier": 2, "tier1ReasonPaths": [], "policy": "D-352 path-computed gate and D-366 protected merge on required green; no fabricated independent verdict"},
@@ -21,5 +21,5 @@
   "knownCanonicalLimitation": {"firstProbe": "Console's strict Sign in role locator matched two elements after both public viewport checks passed", "resumption": "Only unfinished console states were resumed, targeting the existing unique data-g-primary button and retaining total/nested role counts", "signInRoleCount": 2, "nestedButtonCount": 1, "source": "client/src/_core/auth.tsx:206-222 adopts native button children only; unchanged released GoalDeveloperConsole passes GoalButton", "introducedByRetirement": false, "fixed": false, "signInClicked": false, "observedLoginFailure": false, "routing": "No current explicit open owner found through actual owns matching; evidence recorded on PR1342 comment7018967228. No invented holder, source change or blanket auth-completion claim."},
   "handoff": {"preMergeReport": "a61413563", "postMergeReport": "CLI refused participation after task-branch deletion", "branchRecreated": false, "roleSpoofed": false},
   "rollback": "Protected revert of PR #1342.",
-  "limits": "Exact-head/main full CI and local focused/browser checks are observed passes. The separate full-local command remains pending, never recast as green. Canonical proof is fresh signed-out read-only evidence, not real-account registration, credential issuance, webhook, submission or sign-in QA. Original script-name failure, failed initial CI, corrected assertion metadata and canonical locator failure remain documented."
+  "limits": "Exact-head/main full CI and local focused/browser checks are observed passes. The separate one-shot full-local command terminated incomplete/not green, without final totals, and observed failure-progress lines are retained in local-gate.json without a cause inference or rerun. Canonical proof is fresh signed-out read-only evidence, not real-account registration, credential issuance, webhook, submission or sign-in QA. Original script-name failure, failed initial CI, corrected assertion metadata and canonical locator failure remain documented."
 }
