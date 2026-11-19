@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-19T07:37:27.372Z",
+  "session": "Signed out; no authentication or business action",
+  "release": {
+    "webSha": "09626b57ac8eafe2f30c76b15c1f13b9f5d4bc3a",
+    "apiSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4",
+    "verification": "EXPECTED_SHA=ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4 bash scripts/verify-live-release.sh -> CONVERGED",
+    "releaseVerifiedStatus": "success"
+  },
+  "results": [
+    {"route":"/assistants","viewport":"1280x900","httpStatus":200,"goalMainCount":1,"heading":"Let your assistant prepare your next referral","signInActionCount":1,"gateCopy":"Sign in to manage assistants","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"assistants-guest-1280.png"},
+    {"route":"/approve","viewport":"1280x900","httpStatus":200,"goalMainCount":1,"heading":"Decide what your assistant can do","signInActionCount":1,"gateCopy":"Sign in to review approvals","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"approve-guest-1280.png"},
+    {"route":"/connect-assistant","viewport":"1280x900","httpStatus":200,"goalMainCount":1,"heading":"Choose what your assistant may do","signInActionCount":1,"gateCopy":"Sign in to connect ChatGPT","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"connect-assistant-guest-1280.png"},
+    {"route":"/agents","viewport":"1280x900","httpStatus":200,"goalMainCount":1,"heading":"Let your agent prepare a better referral","signInActionCount":1,"gateCopy":"Sign in to let your agent prepare referrals. It cannot send or buy referrals.","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"agents-guest-1280.png"},
+    {"route":"/assistants","viewport":"390x844","httpStatus":200,"goalMainCount":1,"heading":"Let your assistant prepare your next referral","signInActionCount":1,"gateCopy":"Sign in to manage assistants","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"assistants-guest-390.png"},
+    {"route":"/approve","viewport":"390x844","httpStatus":200,"goalMainCount":1,"heading":"Decide what your assistant can do","signInActionCount":1,"gateCopy":"Sign in to review approvals","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"approve-guest-390.png"},
+    {"route":"/connect-assistant","viewport":"390x844","httpStatus":200,"goalMainCount":1,"heading":"Choose what your assistant may do","signInActionCount":1,"gateCopy":"Sign in to connect ChatGPT","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"connect-assistant-guest-390.png"},
+    {"route":"/agents","viewport":"390x844","httpStatus":200,"goalMainCount":1,"heading":"Let your agent prepare a better referral","signInActionCount":1,"gateCopy":"Sign in to let your agent prepare referrals. It cannot send or buy referrals.","overflow":0,"privateReads":[],"businessWrites":[],"pageErrors":[],"screenshot":"agents-guest-390.png"}
+  ],
+  "notes": [
+    "All eight route/viewport checks returned HTTP 200 and exact production web SHA 09626b57ac8eafe2f30c76b15c1f13b9f5d4bc3a.",
+    "Each route rendered one goal main, one sign-in action within that main, expected guest gate copy, and zero horizontal overflow, private assistant reads, business writes, or browser errors.",
+    "No live sign-in, send, purchase, or account mutation."
+  ]
+}
