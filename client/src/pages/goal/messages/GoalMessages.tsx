@@ -1,7 +1,6 @@
 // Goal /messages (D-048-p3-messages; packet docs/plans/D-048-account.md).
-// Same calls and send path as the kit page: GET /api/dms/threads, GET and
-// POST /api/dms/threads/:id with the idempotent pending-send record
-// (lib/idempotentSend, read-only). The pre-acceptance lock is the server's:
+// GET /api/dms/threads and GET or POST /api/dms/threads/:id; sends keep an
+// idempotent pending-send record (lib/idempotentSend). The pre-acceptance lock is the server's:
 // a parsed sendBlock (on open, or a 403 on send) replaces the composer with
 // the rule in the server's own words; nothing on the client guesses it. A
 // failed load renders its error with a retry, never an empty inbox.
@@ -61,7 +60,7 @@ function OfflineNotice() {
   );
 }
 
-/** The server's acceptance rule in place of a composer (kit ReferrerRuleCard behaviour). */
+/** The server's acceptance rule in place of a composer. */
 function AcceptanceRule({ block, unsent }: { block: DmSendBlock; unsent: string }) {
   const isReferrer = block.senderRole === "referrer";
   return (

@@ -5,10 +5,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Safety from "./Safety";
 import Help from "./Help";
-import { WaitingAsks } from "@/components/referrer-home/WaitingAsks";
-import type { ReferrerHomeView } from "@/components/referrer-home/referrerData";
 import Landed from "./Landed";
 import SignIn from "./SignIn";
+import "./goal/seeker-small/GoalLanded";
 
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
@@ -73,10 +72,10 @@ describe("Trust cluster", () => {
     expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
   });
 
-  it("holds the landed journey until a signed-in seeker names the real hire", () => {
+  it("holds the landed journey until a signed-in seeker names the real hire", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={client}><Landed /></QueryClientProvider>);
-    expect(screen.getByText("Someone helped you land it.")).toBeTruthy();
+    await screen.findByRole("button", { name: "Secure sign in" });
     expect(screen.queryByText(/Illustrative outcome|EXAMPLE/i)).toBeNull();
     expect(screen.queryByText(/Product Designer at Wipro/)).toBeNull();
     expect(screen.queryByText(/Rahul/)).toBeNull();
@@ -95,22 +94,9 @@ describe("Trust cluster", () => {
   });
 });
 
-// DECISION-COPY-oct26 (D-034, D-147): the referrer surfaces never show a credit
-// effect, and the guides state the spend rule the ledger keeps.
+// DECISION-COPY-oct26: the guides state the spend rule the ledger keeps.
+// The referrer no-credit pin remains on the live route in referrerHomeGoal.test.tsx.
 describe("Decision copy pins (DECISION-COPY-oct26)", () => {
-  it("WaitingAsks never renders the word credit", () => {
-    const view = {
-      company: { id: 1, name: "Acme", slug: "acme" },
-      waiting: [],
-      atCapacity: false,
-      isNew: true,
-      showSamples: true,
-      hasEverReviewed: false,
-    } as unknown as ReferrerHomeView;
-    const { container } = render(<WaitingAsks view={view} nowMs={0} />);
-    expect(container.textContent).not.toMatch(/credit/i);
-  });
-
   it("the guides spend rule matches the ledger (D-034)", async () => {
     const guides = await import("@/content/guides");
     const blob = JSON.stringify(Object.values(guides));
