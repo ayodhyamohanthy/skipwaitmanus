@@ -91,10 +91,9 @@ describe("R7 prep: GoalEmails renders the kit page's verified words", () => {
   });
 });
 
-// R7 prep, second property: switching the `policy` surface changes chrome only. The shell hands the goal page the
-// SAME title, intro, summary, sections and children, so every legal word a reader sees must be identical in both
-// modes; this renders the shell twice against one synthetic policy body and compares the words.
-describe("R7 prep: the policy shell never changes a legal word when the surface is on", () => {
+// Retirement keeps the same supplied words on the released frame even when an
+// old surface override is present. The two renders retain every original word assertion.
+describe("the retired policy switch cannot change the supplied legal words", () => {
   const LEGAL_TITLE = "Synthetic policy heading.";
   const LEGAL_INTRO = "Synthetic intro paragraph for the R7 prep equality check.";
   const LEGAL_BODY = "Synthetic clause one. Synthetic clause two stays identical in both modes.";
@@ -107,10 +106,11 @@ describe("R7 prep: the policy shell never changes a legal word when the surface 
         <p>{LEGAL_BODY}</p>
       </PolicyPageShell>,
     );
+    expect(container.querySelector('[data-testid="goal-policy"]')).not.toBeNull();
     return (container.textContent ?? "").replace(/\s+/g, " ");
   };
 
-  it("renders the same legal words with the surface off and on", async () => {
+  it("renders the same legal words with or without the retired override", async () => {
     const off = await renderShell("");
     cleanup();
     const on = await renderShell("policy");
