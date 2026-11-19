@@ -4722,7 +4722,7 @@
       "tier": 1,
       "lane": "d048-retire-developers",
       "branch": "agent/queue/d048-k-developers",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
@@ -4735,7 +4735,7 @@
         "client/src/pages/developerConsole.test.tsx",
         "client/src/components/developers/**"
       ],
-      "note": "Goal-only developer retirement candidate by takeover814e, preserving44d1 claim/history. Existing release1074/c1f65aaa is on main;developers stays RELEASED and D349 launch-mode soak is suspended. Both stable lazy/null-Suspense exports now render only existing goal pages;2Kit presentation modules removed,shared route/meta/tool data and goal logic unchanged. Ported assertions table in D048-retire covers removed legacy console/gallery checks;unforced goal tests replace dead switch mocks. Redfirst2selected cases;focused5files33tests green;tsc,build/postbuild,token audit,migration lint,deploy triggers and committed scope pass.30synthetic1280/390before-after pairs are byte-identical with equal requests/payloads/metrics,no rendered secret/errors/overflow;4representative after images natively inspected. Sentry2production-route baseline queries0unresolved/no more. Full local suite started once after officialheartbeat and remains pending,not green; wrong migration-script-name command is recorded separately,actualcheckerpassed,no compiler/build/failure rerun. CurrentD352 classifier computes Tier2/noTier1paths for this deletion despite historicalrowtier1;actual CI gate governs,not a claimedreview. No source secrets/auth/API/prices/plan/permissions/sale activation change. Receipts/captures docs/evidence/D-048-K-developers;draft/currentCI,full-local outcome and canonical verification still required. Rollback revert this task PR.",
+      "note": "Done: protected1342 merge5519d1f80874b50d3677003637ed424cbe03a369; final057972b6 CI44589186613,mainCI44590222165,Pages44590222324 and releaseverify44591404902 passed. Goal-only stable lazy exports;2Kit modules removed,shared models/API/auth/permissions unchanged.33focused tests pass;30synthetic1280/390pairs byte-identical with equal payloads,no secrets/errors/overflow. InitialCI44586764481 failed missing inline PR assertiontable and inherited scopefixture; table corrected,gates/newCIpass,no oldjobrerun or test/gatecodechange. Canonical public+guestconsole1280/390 exactwebSHA/HTTP200,1root,0private reads/writes/errors/overflow. APIready53e4db63 matches freshremote runtime,CONVERGED;direct404;2postreleaseSentry0issues. Existing sharedauth wrapper exposes2SignInroles/1nestedbutton around1visibleprimary: originalstrictlocator failure retained,onlyunfinishedconsoleproof resumed,no authclick/fixclaimed; no explicitopenowner found,evidenceon1342. Full-local heartbeat/Vitest chain remains pending,no stage/totals/green inferred; fullCIpasses separately. Premerge reporta6141356 recorded; postmerge reportrefused afterbranch deletion,no recreatedbranch/role spoof. Proof/limits docs/evidence/D-048-K-developers/ and D-048-retire.md. Developers remains RELEASED;rollback protected revert1342.",
       "epic": "D-048-p3"
     },
     {
