@@ -1,0 +1,108 @@
+{
+  "baseline": "2e4b83d250f3fe1ba3ae0447e4f64faf0019b3bf",
+  "candidate": "ceed69015fddfc17729708acf207a63870667187",
+  "pairs": [
+    {
+      "scenario": "seeker",
+      "width": 1280,
+      "before": "dc526d66504af16733b158e0dabe8bb7f9512cf21dc86452aa87a57983078792",
+      "after": "dc526d66504af16733b158e0dabe8bb7f9512cf21dc86452aa87a57983078792",
+      "identical": true
+    },
+    {
+      "scenario": "referrer",
+      "width": 1280,
+      "before": "22d323fa4db8a44ef3e07d40a9de53dda7b41769dc09142ac8c33fe9c9fea08c",
+      "after": "22d323fa4db8a44ef3e07d40a9de53dda7b41769dc09142ac8c33fe9c9fea08c",
+      "identical": true
+    },
+    {
+      "scenario": "manage-passkeys",
+      "width": 1280,
+      "before": "e932adc27061b2c7634a656f36b8c11c26fa9994ebdc5c3ca2e534cad7baaee0",
+      "after": "e932adc27061b2c7634a656f36b8c11c26fa9994ebdc5c3ca2e534cad7baaee0",
+      "identical": true
+    },
+    {
+      "scenario": "forgot-password",
+      "width": 1280,
+      "before": "159d5fbd405b882120e6b5124690a00f839b8bf42b2c61b940f8e9f6d9f948ce",
+      "after": "159d5fbd405b882120e6b5124690a00f839b8bf42b2c61b940f8e9f6d9f948ce",
+      "identical": true
+    },
+    {
+      "scenario": "reset-missing",
+      "width": 1280,
+      "before": "03acc50738aef8f2ed71b12b40c471c7b848b7741baa0e24c7f12a388d395f87",
+      "after": "03acc50738aef8f2ed71b12b40c471c7b848b7741baa0e24c7f12a388d395f87",
+      "identical": true
+    },
+    {
+      "scenario": "reset-valid",
+      "width": 1280,
+      "before": "cf3181a7e2b578fe987245389d35465d4bfd3511bc32727be249869764b81c5c",
+      "after": "cf3181a7e2b578fe987245389d35465d4bfd3511bc32727be249869764b81c5c",
+      "identical": true
+    },
+    {
+      "scenario": "reviewer-sign-in",
+      "width": 1280,
+      "before": "72d424a1a9a2f2e52753dda93a08fbf0891b6534e49345a66ea2d19236ab0a9d",
+      "after": "72d424a1a9a2f2e52753dda93a08fbf0891b6534e49345a66ea2d19236ab0a9d",
+      "identical": true
+    },
+    {
+      "scenario": "seeker",
+      "width": 390,
+      "before": "5a663d68624e95f30c6c2ebd8a3608cf65fd8311168e2a2831b199b38661d161",
+      "after": "5a663d68624e95f30c6c2ebd8a3608cf65fd8311168e2a2831b199b38661d161",
+      "identical": true
+    },
+    {
+      "scenario": "referrer",
+      "width": 390,
+      "before": "f3b00b273fb55135e1e9b9460dd81a2d6050ac1eedd59ad0f3c991519696f372",
+      "after": "f3b00b273fb55135e1e9b9460dd81a2d6050ac1eedd59ad0f3c991519696f372",
+      "identical": true
+    },
+    {
+      "scenario": "manage-passkeys",
+      "width": 390,
+      "before": "f3adca05b40c0f0fa1dd0074f45fe5e92095435b2e97d3f9cd8cccb1e58ee8f5",
+      "after": "f3adca05b40c0f0fa1dd0074f45fe5e92095435b2e97d3f9cd8cccb1e58ee8f5",
+      "identical": true
+    },
+    {
+      "scenario": "forgot-password",
+      "width": 390,
+      "before": "eef03c27b7b66e977fa659e7b6df5eb75e8bc24a2d8c9ddfd52d2d3faa0a2c15",
+      "after": "eef03c27b7b66e977fa659e7b6df5eb75e8bc24a2d8c9ddfd52d2d3faa0a2c15",
+      "identical": true
+    },
+    {
+      "scenario": "reset-missing",
+      "width": 390,
+      "before": "324de998a54e879ad0be19e5ef1e78088d663b302163a96df71d74ea9a38b479",
+      "after": "324de998a54e879ad0be19e5ef1e78088d663b302163a96df71d74ea9a38b479",
+      "identical": true
+    },
+    {
+      "scenario": "reset-valid",
+      "width": 390,
+      "before": "f2cbc3c214bb4760e141f130093013d7a73da3249c3beb53f5e7806de0d0f8d9",
+      "after": "f2cbc3c214bb4760e141f130093013d7a73da3249c3beb53f5e7806de0d0f8d9",
+      "identical": true
+    },
+    {
+      "scenario": "reviewer-sign-in",
+      "width": 390,
+      "before": "e57347e62e4bf7f6a12a9de0b265d0bf8e69fe5e73e7b21b898f0c6a1fa8fae8",
+      "after": "e57347e62e4bf7f6a12a9de0b265d0bf8e69fe5e73e7b21b898f0c6a1fa8fae8",
+      "identical": true
+    }
+  ],
+  "identical": 14,
+  "horizontalOverflow": 0,
+  "pageErrors": 0,
+  "authMutations": 0
+}
