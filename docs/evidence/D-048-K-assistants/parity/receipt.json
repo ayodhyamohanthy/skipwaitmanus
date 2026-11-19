@@ -1,0 +1,34 @@
+{
+  "runtimePullRequest": 1308,
+  "routeFamily": ["/assistants", "/approve", "/connect-assistant", "/agents"],
+  "productionRelease": {
+    "releasePullRequest": 1191,
+    "webSha": "34ea89c29ac933da656f9286fa2f3d19423a0b1",
+    "landedAt": "2026-11-14",
+    "sentryFirstSeenSince": "2026-11-14",
+    "sentryProjects": ["skipwait-webapp", "skipwait-backend"],
+    "sentryQueriesReturnedZero": true
+  },
+  "parity": {
+    "baselineSource": "5ce91fd190db905cabe6649652ccd64062d21e78",
+    "goalOnlySource": "bf6230a4862ef5066c4213c2b5daf4ee7b0ffa96",
+    "runtimeSourceChangedAfterComparison": false,
+    "browser": "Clean Chromium; service workers blocked; fixed UTC clock",
+    "data": "Synthetic fixture responses only; signed-in identity/example domains are fictional",
+    "productionReadsOrMutations": false,
+    "routes": ["/assistants", "/approve", "/connect-assistant", "/agents"],
+    "states": ["signed out", "fixture signed in"],
+    "viewports": ["1280x900", "390x844 CSS px at device scale factor 2"],
+    "pairs": 16,
+    "pixelIdenticalPairs": 16,
+    "differentPixelsAcrossAllPairs": 0,
+    "horizontalOverflowPx": 0,
+    "unmatchedApiCalls": 0,
+    "browserErrors": 0,
+    "apiRequestPathsAndMethodsMatch": true,
+    "screenshotsAndHashes": "parity.json",
+    "reproduction": "Run node docs/evidence/D-048-K-assistants/parity/capture.mjs <scratch-dir> <baseline-sha> <candidate-sha> from repository root with pnpm dependencies and Playwright Chromium available; writes separate builds and 32 captures into scratch-dir/captures."
+  },
+  "requiredPullRequestRun": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44461671872",
+  "releaseDeploymentVerification": "pending protected merge"
+}
