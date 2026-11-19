@@ -3898,8 +3898,8 @@
       "tier": 2,
       "lane": "d048-retire-invite",
       "branch": "agent/queue/d048-k-invite",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
@@ -3908,7 +3908,7 @@
         "client/src/pages/goal/invite/**",
         "client/src/pages/referrerHome.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: invite. Built by D-048-p3-invite; released by D-048-R4 (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1298. Original goal-only source a1073d49 and current-main integration 55dfb0dd preserve the lazy route export, GoalInvite and all API/auth/money/release behavior while removing the Kit fallback and its two exclusive panels. Current-main referrer-home retirement and rendered re-verification coverage remain; Invite cases live in goal/invite/goalInvite.test.tsx. 128 focused tests, TypeScript/build/audits pass; 16 desktop/mobile parity pairs preserve requests/payloads. Full local suite: 7,783 passed, two unchanged-suite failures, 18 skipped; not a full local pass. Exact-source CI44514040035 passed; final exact-head CI and canonical verification remain required. D-349 suspends soak, R4 release is done. Full receipts and assertion map: docs/plans/D-048-retire.md and design/goal-ui/captures/invite/retire-814e. Rollback is a revert of this PR.",
       "epic": "D-048-p3"
     },
     {
