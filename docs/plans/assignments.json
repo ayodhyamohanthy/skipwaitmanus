@@ -4820,7 +4820,7 @@
       "lane": "d048-retire-policy",
       "branch": "agent/queue/d048-k-policy",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4832,7 +4832,7 @@
         "client/src/pages/goal/system/goalEmails.releaseDrift.test.tsx",
         "client/src/pages/support.promises.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: policy. Built by D-048-p3-policy; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "D-366 re-sync (Nov 19, GPT-6.1 Sol · c120): follow docs/plans/D-048-retire.md's Policy retirement current text baseline. Remove only the old layout/switch after preserving current origin/main legal/guide text and the D-365 business identity; never port old proprietor-name or personal-mailbox expectations. Keep current allowed postal/phone facts where already displayed; Support retains its separate support-only contract. Run noPersonalName.test.ts unchanged; preserve negative source/rendered identity assertions, policy article/summary/guide/FAQ/contact/anchor/SEO/prerender checks and the non-policy pricing/support boundary. Port flag-off and synthetic policy assertions without weakening unrelated GoalEmails checks; document every replacement. No legal/copy, behavior, route, price, login, flag or shared data change. Runtime rollback is a protected retirement revert retaining D-365 and later approved content. policy stays RELEASED. D-349 launch mode suspends the soak; otherwise the packet's release/soak/Sentry rules apply. Current path-tier review, required exact-head CI, desktop/phone capture and canonical-release gates remain. This row's status/order/branch/owns/dependencies do not change; this docs re-sync performs no runtime retirement or release.",
       "epic": "D-048-p3"
     },
     {
