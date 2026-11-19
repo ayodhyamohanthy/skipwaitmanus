@@ -788,3 +788,59 @@ readiness/deployed identity and release-scoped Sentry remain required;
 no real-money QA or new consumer activation is authorized. No new decision ID,
 source change, approval or product-completion claim is created here.
 
+
+### November 19 admin-money catalog parity and unfinished acceptance (D-200)
+
+Official UNBLOCK D-048-K-admin-money, GPT-6.1 Sol · 814e, checked main
+`09295de6`, prior block `7a3396d9` and draft #1315 at `a73fb6ba`.
+This applies D-332/D-344 (2), D-349 and D-352 without a new owner decision.
+All three retained catalog source hashes match current source; native
+inspection of existing synthetic captures confirms missing extras/excluded
+IDs/explanations and partial-result failure/unattempted detail/read recovery.
+No reported failing test was rerun. Keep both goal regressions and legacy
+controls; the four separate wrapper reds await retirement, not catalog fix.
+
+Release #1204 merged `df6559ce` and admin-money is enabled, but canonical
+acceptance remains unfinished, with no closing receipt found. The picker
+treats its merged/deleted branch as landed despite todo, so that old branch
+does not expose another FIX. Register fresh, unoccupied
+`agent/queue/d048-r-admin-money-acceptance` under the same still-todo release
+row, priority, lane and build dependency. Preserve old PR/refs/reports/review
+history; inherit no pass, replay no release and fabricate no stage/identity.
+Only an actual eligible picker claim after registration authorizes work.
+K remains todo and depends on genuine successor acceptance, not old ancestry.
+
+Restore existing catalog plan/result truth and one deliberate fresh GET,
+not automatic apply. Preserve the full reviewed plan fingerprint, typed
+exact-site confirmation, create-only provider boundary and all API/schema/
+auth/audit/money/sales rules. Reconcile the already-assigned fourth route
+`/admin/money-check` (admin packet §10/split/route catalog): add its page and
+existing test to release owns and retirement's explicit post-release scope.
+Keep run/status/findings/alerts/auth/429 and abandoned-checkout preview/apply
+behavior; do not call all of those side effects read-only or execute them
+live for proof. Goal implementation stays in the owned goal directory.
+
+The bounded contract is [retirement packet §3b](plans/D-048-retire.md#3b-admin-money-catalog-parity-and-release-acceptance-november-19-d-200).
+Require source/capture proof at 1280/390 for all four routes, current-head
+required CI, path-computed D-352 review/fix chain, protected landing and
+canonical readiness/identity/route acceptance plus the existing 24-hour
+Sentry release watch before closing R. D-349 suspends the seven-day
+retirement soak, not these requirements. Only then may K delete/port with
+no behavior changes. No live catalog apply, test alert, abandoned close,
+real-money QA, source fix or completion/approval is authorized by this ruling.
+
+Both row stamps advance to checked D-366, not done. K's original source
+branch/PR1315 and dependency stay. The release successor is an explicit
+routing amendment, not a takeover or new task; other owners/holds stay.
+Scope prerequisite #1339 merged `6e856444`, declaring the decision-register
+path on main before this architect ruling. Use the unchanged scope gate;
+no forged participation marker or gate exception. No new decision ID.
+
+Actual picker projection with known merged-release evidence confirms old R
+is skipped as done and the registered successor is BUILD, not inherited FIX.
+An initial throwaway assertion wrongly expected targeted K always refused;
+D-315 can offer draft build-ahead with the unfinished R in `ahead` when no
+existing K branch/PR is modeled. This diagnostic is not a live claim and
+does not waive D-134 review/fix/landing dependency gates or current holders.
+
+
