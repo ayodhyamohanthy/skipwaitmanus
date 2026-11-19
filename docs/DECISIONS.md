@@ -737,3 +737,54 @@ step 6 and §12, not only §1/§4.8. The old GoalSignIn path now belongs to
 DEVICE-SIGNIN-passkeys, not nobody; it remains untouched. Preserve D033 role
 choice and locked behavior, not the rejected old role-card layout. All existing
 owns/deps/holds and the separate release boundary remain unchanged.
+
+### November 19 D-132-item3 accepted-price fixture re-sync (D-366)
+
+Engineering ruling under D-200 by the officially assigned UNBLOCK session
+GPT-6.1 Sol · 814e, against main `6f7f6811` and PR #1269 head `7e1d3649`.
+This applies D-219/D-221 and the owner's D-366 (7), not a new owner decision
+or a change to prices, band mapping, spending order, flags, sales or refunds.
+The authoritative bounded fix-stage contract is
+[`D-132-item3-accepted-price.md` §13](plans/D-132-item3-accepted-price.md#13-november-19-d-366-fixture-and-gate-re-sync).
+
+The previous repo-only blocks `26394cc2` and `bc15a3dc` correctly identified
+that `Fixed d1300293` does not carry across the two later non-status-only
+commits. D-366 now also requires a real source-test correction: the new
+split/amount guard cases generate prices through the superseded level-cost
+flag. Replace that policy coupling with deterministic synthetic counts,
+without reducing the real-create multi-unit split and rollback coverage.
+Retain the distinct dormant coverage-precedence and unchanged legacy quote
+compatibility cases; no old pricing is enabled or rebuilt by this ruling.
+
+Keep reviewer 630a's independent findings and b53c's F1/F2 repair history.
+After actual fixture repair and current-main integration, an eligible official
+FIX holder records its own current-head Fixed evidence; no re-review is
+required by D-344 (7)/D-352. This UNBLOCK is not a Fixed/Pass, cannot impersonate
+the fixer, and changes neither gate code nor status-only allowances. A fresh
+marker alone is not authority to land the unchanged `7e1d3649` source.
+
+The review-lock readback `1660edc6` still has Land claim `5efd662c` by
+session 6c22 as its latest non-heartbeat stage, not FIX. The official
+`--fixed` authorization is stage/holder-bound. After this re-sync, take only
+the picker stage actually offered; if no eligible FIX is offered, report
+that exact route/refusal. Never synthesize a claim, failure or marker to
+create a stage. This UNBLOCK is not source-fix authorization.
+
+CI 44566540332 passed compiler, review/id/integrity gates, all test shards,
+build and E2E, but correctly refused the undeclared decision-register path.
+The branch-only declaration at `74b56939` was still refused because scope
+reads origin/main. Scope-only PR #1337 then merged `ad928481` with green CI,
+declaring this single ruling path while keeping the D-366 hold. After normal
+main integration, the unchanged scope check passes at `3df9171f`: 14 owned
+paths, every change inside. No fake participation marker, alternate-branch
+escape or gate change is used; the actual ruling stays on its original lock.
+
+Only this row's contract advances `syncedTo` to D-366, with status still todo
+for that fix stage. Dependencies, other holders/holds and every owner-reserved
+call stay unchanged. The packet also removes its obsolete model-level review
+rule and production-verification waiver: the ungated quote preview reconciles
+wallets even before a caller sends the new confirmation object. Canonical
+readiness/deployed identity and release-scoped Sentry remain required;
+no real-money QA or new consumer activation is authorized. No new decision ID,
+source change, approval or product-completion claim is created here.
+
