@@ -1,6 +1,8 @@
 # Packet D-048-P-auth: sign-in and the work-email verification step move to the goal doctrine
 
 > Read `docs/BRIEF.md` first, then this packet and `docs/plans/D-048-phase-3-split.md`. The split's row table and the register win any conflict with this file, subject to the split's explicit November 11 sign-in supersession below. This is a **packet-only Tier 3 architecture task**: it adds two implementation rows to the queue. It does not implement UI and turns no flag on.
+>
+> **November 19 retirement qualification:** this build packet's byte-identical Kit-test and two-known-failures instructions describe the dual-design build/release stage, not a goal-only retirement. `D-048-K-sign-in` follows `docs/plans/D-048-retire.md` §3a's exact presentation-only replacements under D-332/D-200. Every `loginRule.test.tsx` assertion and all sign-in behavior/legal destinations remain protected; the seven listed `signIn.test.tsx` presentation lines may be replaced only as mapped there, with the existing-decision test-integrity trailer, red/green proof and ordinary review/CI. This qualifies this packet only for that retirement and changes no auth method, reset/session behavior, legal text or other row.
 
 | Field | Value |
 |---|---|

@@ -39,7 +39,7 @@ One row, one surface, one agent. Its `owns` is its build row's files plus the te
 1. Confirm the release row in `dependsOn` is `done`, the id is in `RELEASED` on `origin/main`, and the soak has ended. Record the release commit, the date, and the Sentry check (query and result, no personal data) in the pull request.
 2. **Kit-drift check.** `git log` the kit body since the goal page landed. Any behaviour the kit page gained afterwards must already exist in the goal page. If it does not, stop and report: that is a fix on the build row's lineage, not this row's work.
 3. In each page file, delete the kit body (`KitX`) and the `goalSurfaceOn` switch. The file's default export renders the goal page alone. Keep the file and its export name, so `client/src/App.tsx` and every importer stay untouched.
-4. **Tests.** A kit test is deleted only after each of its assertions is ported to the goal test or listed as dropped with the reason, in the pull request's "Ported assertions" table (GATE-test-integrity rules 1 and 4). Remove the `vi.mock('@/lib/goalSurfaces')` forcing from goal tests that no longer need it. The pinned tests `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx` lose no assertion: if `D-048-K-sign-in` or `D-048-K-verify` cannot keep one, stop and report (rule 5 needs a decision).
+4. **Tests.** A kit test is deleted only after each of its assertions is ported to the goal test or listed as dropped with the reason, in the pull request's "Ported assertions" table (GATE-test-integrity rules 1 and 4). Remove the `vi.mock('@/lib/goalSurfaces')` forcing from goal tests that no longer need it. The pinned tests `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx` lose no assertion, except for the explicitly bounded presentation replacements in §3a for `D-048-K-sign-in`. Any other pinned assertion that cannot be kept is a stop/report under test-integrity rule 5; the login rule itself remains owner-controlled.
 5. Delete a non-goal component only when a repository search shows nothing imports it any more. Data modules, `*Api.ts`, models and shared hooks stay.
 6. Do not edit `client/src/lib/goalSurfaces.ts`, `client/src/App.tsx`, `client/src/test/goalPagesBoundary.test.ts` or any file outside `owns`. The id stays in `RELEASED` until `D-048-K-kit` removes the module.
 7. No behaviour, copy, route, price, legal text or sign-in method changes. A retirement that changes what a user sees is a defect.
@@ -49,6 +49,29 @@ One row, one surface, one agent. Its `owns` is its build row's files plus the te
 If the deletion needs a path outside `owns`, stop and ask for a widening (D-200). The list was generated from the build rows, not hand-audited per file.
 
 Rollback after a retirement is a revert of that one pull request. The one-line switch rollback no longer exists for that surface; this is why the soak is kept.
+
+## 3a. Sign-in pinned presentation assertions (November 19 execution ruling under D-332/D-200)
+
+The owner already requires complete removal of the old design (D-332), and the goal sign-in was released by PR #1245, `60af3262`, on November 17. This bounded ruling resolves the packet's test-preservation conflict; it does not reopen the owner-controlled login rule. On main `7398c71a`, the unchanged goal-on pin run has 12 passes and two failing cases, at `signIn.test.tsx:24` and `:46`; all seven `loginRule.test.tsx` cases pass. An independent assertion map identified the expectations hidden behind those first failures.
+
+Only `D-048-K-sign-in` may replace these seven presentation-only expectation lines in `client/src/pages/signIn.test.tsx` with assertions of the already released goal presentation:
+
+| Existing pinned expectation (baseline line) | Required goal replacement |
+|---|---|
+| `One sign-in` (24), `Welcome to skipwait.me.` (25), `YOUR DOOR STARTS HERE` (26) | Require the existing goal heading `Sign in to find or give a referral.` and absence of the retired Kit story/kicker; keep intent and form behavior in the same case. |
+| Door illustration alt text (27) | Require no retired door illustration on the goal route; do not add a new artwork requirement. |
+| `Choose who you help` after intent change (33) | Require the released referrer explanation and work-email form after the same intent change; preserve the selected state, absent personal/social options and no navigation. |
+| Legal link lacks `underline` (46) and has `hover:underline` (47), for both links | Require the goal links' persistent `underline` and hover decoration while retaining exact Terms `/terms` and Privacy Policy `/privacy` destinations. No legal wording changes. |
+
+Every assertion in `loginRule.test.tsx` stays unchanged. Every other assertion in `signIn.test.tsx` stays: intent choice, supported methods, no password input until `seeker-passwords` lands, work-email-only referrer path, no navigation on selection, all five direct provider paths, email-first access, both D-095 flag states and off-site return rejection, legal destinations and no preview scaffolding. Change case descriptions/selectors only as needed to target the released goal UI; do not weaken the behavior they exercise. The two flag-off legacy-route expectations in `signInGoal.test.tsx` become unconditional goal-route assertions, with its other goal/passkey/failure-path coverage retained.
+
+The implementation PR must include a per-assertion Ported assertions table, the failing baseline and passing candidate, and this existing-decision trailer in the commit that replaces the pinned lines:
+
+```text
+test-integrity: client/src/pages/signIn.test.tsx — D-332
+```
+
+That trailer satisfies test-integrity rule 5's recorded-rule requirement; it is not a blanket gate waiver. The pinned files remain pinned, and no gate or pinned-file list changes. Runtime source, tests, capture generation, independent Tier 1 review, exact-head CI and deployment proof belong to the normal retirement implementation, not this docs-only ruling. Any further changed assertion or login/legal behavior is outside this ruling and must be reported before editing.
 
 ## 4. Rows
 
