@@ -41,6 +41,8 @@ describe("SUPPORT-A block 1 — DO NOT TOUCH (passes on main and after R1-R5)", 
   it("S1: the source names no person and links no personal email (D-365)", () => {
     const source = supportSource();
     for (const needle of PERSONAL) expect(occurrences(source, needle), needle).toBe(0);
+    expect(source.includes("sole proprietor")).toBe(false);
+    expect(source.includes("trading as")).toBe(false);
   });
 
   it("S2: the mailto constant occurs exactly once in the source", () => {
@@ -62,13 +64,18 @@ describe("SUPPORT-A block 1 — DO NOT TOUCH (passes on main and after R1-R5)", 
     for (const needle of ["Ayodhya", "Mohanthy", "Founder"]) expect(occurrences(text, needle), needle).toBe(0);
     // Only the support mailbox is linked.
     const mailtos = Array.from(container.querySelectorAll('a[href^="mailto:"]'));
+    expect(mailtos).toHaveLength(1);
     expect(mailtos.every(link => link.getAttribute("href")!.startsWith("mailto:support@skipwait.me"))).toBe(true);
+    // The contact card ends with the support button; no identity line follows it.
+    const card = container.querySelector('section[aria-label="Contact support"]')!;
+    expect(card.querySelectorAll("p.mt-3")).toHaveLength(0);
   });
 
-  it("D2: no phone number is shown", () => {
+  it("D2: no phone number and no personal mailbox is shown", () => {
     const { container } = renderSupport();
     const phones = Array.from(container.querySelectorAll('a[href^="tel:"]'));
     expect(phones).toHaveLength(0);
+    expect(container.querySelector('a[href^="mailto:ayodh"]')).toBeNull();
   });
 
   it("D3: the home address and phone number never appear", () => {
