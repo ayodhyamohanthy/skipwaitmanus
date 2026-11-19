@@ -6,7 +6,7 @@ import { GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalNum } from "@/components/goal/GoalNum";
 import { GoalStatus } from "@/components/goal/GoalStatus";
-import { adminSignInHref } from "@/components/admin/AdminSignInCta";
+import { safeReturnTo } from "@/lib/referrerSignIn";
 import { moneyCheckAlertStatusSchema, moneyCheckRunSchema, responseError, testAlertResponseSchema, type MoneyCheckAlertStatus, type MoneyCheckRun } from "./adminMoneyCheckContracts";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
 import { GoalAbandonedCheckoutPanel } from "./GoalAbandonedCheckoutPanel";
@@ -19,6 +19,11 @@ class AdminMoneyCheckAccessError extends Error {}
 
 function time(value: string | null): string {
   return value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }) : "Not recorded";
+}
+
+function adminSignInHref(path: string): string {
+  const target = safeReturnTo(path, "/admin");
+  return `/sign-in?${new URLSearchParams({ returnTo: target.startsWith("/admin") ? target : "/admin" })}`;
 }
 
 export default function GoalAdminMoneyCheck() {
