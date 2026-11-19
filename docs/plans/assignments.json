@@ -945,14 +945,14 @@
     },
     {
       "id": "D-048-p3-premium",
-      "title": "W3 /premium: preserve checkout, selected total, retirement and recovery",
+      "title": "W3 /premium: paused legacy sales, no new first-payment bonus, preserved payment recovery (D-366)",
       "row": "D-048",
       "packet": "docs/plans/D-048-money.md",
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
-      "syncedTo": "D-363",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -960,7 +960,7 @@
         "D-048-F-goal-check",
         "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('premium'); no pricing/cost/sale flag enable. Existing API/data/payment contracts remain read-only and original assertions stay. The PRICING-banded-oct25 dependency remains: PR #666 merged at 98139298 on Nov 17 and is in current main's ancestry. D-349 (launch mode): this build PR turns its goal page on, adds premium to RELEASED and its exact-list pin, and completes D-048-R-premium; no separate release PR is needed. Nov 19 execution receipt (D-200 (2), D-344 (7), GPT-6.1 Sol · d859): the block demanding another review solely for main merge d56bf410 is not supported by the existing gate. Its combined hunks retain public-profile and premium; no branch-owned non-merge commit follows Fixed-bound 33d3a3b6. Current gate exits 0 and six release-list tests pass on that exact head; CI 44293809941 is green. Keep the existing independent findings and bound Fixed. Ordinary picker landing still integrates current main, preserves every released id, validates the final composition and waits for green exact-head CI/protected auto-merge and live verification. No new verdict, Fixed, future-diff approval or runtime/price/sale/legal/login change is supplied by this receipt. See docs/DECISIONS.md and this packet's Premium status; status/order/owns/dependencies stay unchanged.",
+      "note": "D-366 re-sync (Nov 19, GPT-6.1 Sol · c120): docs/plans/D-048-money.md's Premium current execution contract supersedes the legacy-checkout/bonus parity instructions. PR #1254 at d56bf410 still needs its legacy canBuy and first-payment-offer branch/tests repaired; historical green CI and the prior Fixed/merge receipt do not prove D-366 acceptance. Offer no new legacy single-request/pack/pass checkout or five-referral first-payment bonus, including under stale flags/catalog/offer fields; preserve server-confirmed historical balances and already-started seeker/referrer recovery, deadlines, sequential retries and account-race protection. Data/API/payment/provider modules and every pricing/cost/sale switch remain read-only. D-366's banded-checkout build and activation require their own implementation, test-site QA and unresolved owner mapping/fee/currency/post-cap decisions; this presentation row enables none. D-364 has no new job-link field here; D-365 forbids restoring the proprietor name/personal mailbox. PRICING-banded-oct25 remains a dependency (#666 is merged). D-349 releases the corrected goal page and completes R-premium with its build once current acceptance and required exact-head CI pass; retain all released ids. Use normal picker stages, D-344/D-352 path-based review and protected auto-merge/live verification. Prior review and bound Fixed remain historical evidence only for their inspected diff, not a new verdict or approval of a future source repair. Status/order/branch/owns/dependencies unchanged.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
