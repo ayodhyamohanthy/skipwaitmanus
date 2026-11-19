@@ -3017,7 +3017,7 @@
       "lane": "d048-retire-sign-in",
       "branch": "agent/queue/d048-k-sign-in",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-sign-in"
       ],
@@ -3028,10 +3028,11 @@
         "client/src/pages/ReviewerSignIn.tsx",
         "client/src/pages/goal/sign-in/**",
         "client/src/pages/signInGoal.test.tsx",
+        "client/src/pages/signIn.test.tsx",
         "client/src/pages/trustCluster.test.tsx",
         "client/src/pages/ReviewerSignIn.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: sign-in. Built by D-048-p3-signin; released by D-048-R-sign-in (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: sign-in. Built and released by PR #1245 (60af3262, November 17); D-048-R-sign-in is done. November 19 execution ruling under D-332/D-200: packet section 3a permits only the seven listed legacy-presentation expectation replacements in signIn.test.tsx and the two obsolete flag-off assertions in signInGoal.test.tsx. Preserve every loginRule.test.tsx assertion and all auth behavior/legal destinations; use the recorded test-integrity trailer naming D-332, the per-assertion map, red/green proof, independent Tier 1 review and exact CI. This owns amendment names signIn.test.tsx for that bounded replacement, not a login-rule change. Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
     },
     {
@@ -3724,8 +3725,8 @@
       "tier": 1,
       "lane": "d048-retire-referrer",
       "branch": "agent/queue/d048-k-referrer",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
