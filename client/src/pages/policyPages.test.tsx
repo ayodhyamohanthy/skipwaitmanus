@@ -174,7 +174,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     // D-219 (6) / D-214 (3): the legacy credit packs are paused, so /pricing
     // states the pause and never lists a pack price. Re-enabling packs on this
     // page therefore fails this guard until the copy is updated on purpose.
-    expect(screen.getByText(/the old credit packs are paused/)).toBeTruthy();
+    expect(screen.getByText(/old referral packs are paused/)).toBeTruthy();
     expect(screen.queryByText(firstPackClaim("INR")!)).toBeNull();
     const text = document.body.textContent ?? "";
     // "₹1,299" was the old Max price and now equals the frozen Senior to Executive INR price - dropped from the retired list.
@@ -192,11 +192,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound keep the kit bodies; the shell's More menu (Help & safety) carries the disclosures", () => {
-    // Owner decision (Oct 9 2026): the kit screens win, so neither body repeats
-    // a legal row or a support line. Both render inside the app shell, whose
-    // More menu opens Help & safety with Terms, Privacy and Support.
+  it("Settings and NotFound leave disclosures to the shell's More menu (Help & safety)", async () => {
+    // Retirement preserves the same shell-owned legal/support navigation.
     render(<Settings />);
+    await screen.findByRole("heading", { name: "Control your account." });
     expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
     cleanup();
     render(<NotFound />);
@@ -301,9 +300,10 @@ describe("paused credit packs copy guard (D-044, D-153, D-219, PR666 F2)", () =>
 describe("/pricing free allowance copy (D-219, D-173, D-180, PR666 F3)", () => {
   it("/pricing states 3 free referrals a month at any level with a verified card and contains no credit/ask in its free line", () => {
     render(<Pricing />);
-    const freeSection = screen.getByRole("heading", { name: "1. Free" }).closest("section")!;
+    const freeSection = screen.getByRole("heading", { name: "Free" }).closest("section")!;
     expect(freeSection.textContent).toContain("3 free referrals a month at any level with a verified card");
-    const freeLine = freeSection.querySelector("strong")?.textContent ?? "";
+    const freeLine = freeSection.querySelector("p")?.textContent ?? "";
+    expect(freeLine).toBe("3 free referrals a month at any level with a verified card; no carry-forward.");
     expect(freeLine).not.toMatch(/\bcredits?\b/i);
     expect(freeLine).not.toMatch(/\basks?\b/i);
     cleanup();

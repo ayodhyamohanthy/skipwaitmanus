@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Settings from "./Settings";
+import "./goal/settings/GoalSettings";
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: vi.fn().mockResolvedValue("token") }),
@@ -28,10 +29,10 @@ describe("Settings new-ask email switch", () => {
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Settings /></QueryClientProvider>);
-    const toggle = await screen.findByRole("switch", { name: /Email when a new ask arrives/ });
+    const toggle = await screen.findByRole("switch", { name: "Email when a new referral request arrives" });
     expect(toggle.getAttribute("aria-checked")).toBe("true");
     await user.click(toggle);
-    await waitFor(() => expect(screen.getByRole("switch", { name: /Email when a new ask arrives/ }).getAttribute("aria-checked")).toBe("false"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Email when a new referral request arrives" }).getAttribute("aria-checked")).toBe("false"));
     const put = fetch.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === "PUT");
     expect(JSON.parse((put?.[1] as RequestInit).body as string)).toEqual({ notifyNewAsk: false });
   });
@@ -40,6 +41,6 @@ describe("Settings new-ask email switch", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: unknown) => String(url).includes("/api/company-referrals/access") ? { ok: true, json: async () => ({ verifiedCompanyAccess: false, workEmailDomain: null }) } : { ok: true, json: async () => ({}) }));
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Settings /></QueryClientProvider>);
     await new Promise(resolve => setTimeout(resolve, 50));
-    expect(screen.queryByRole("switch", { name: /Email when a new ask arrives/ })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "Email when a new referral request arrives" })).toBeNull();
   });
 });
