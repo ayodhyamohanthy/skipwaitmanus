@@ -36,6 +36,8 @@ An old page is never deleted before its goal page is live: that would break a ba
 
 One row, one surface, one agent. Its `owns` is its build row's files plus the tests that import its pages.
 
+For `D-048-K-admin-money` only, `docs/DECISIONS.md` is also declared for the bounded D-200 ruling on the catalog parity/release-acceptance block reported in PR #1315. This scope registration changes no retirement/source contract, status, decision-sync stamp or dependency; the UNBLOCK holder is not a builder/fixer and does not use a fabricated participation marker. Scope is published on main before the architect ruling because the checker reads main's declarations.
+
 1. Confirm the release row in `dependsOn` is `done`, the id is in `RELEASED` on `origin/main`, and the soak has ended. Record the release commit, the date, and the Sentry check (query and result, no personal data) in the pull request.
 2. **Kit-drift check.** `git log` the kit body since the goal page landed. Any behaviour the kit page gained afterwards must already exist in the goal page. If it does not, stop and report: that is a fix on the build row's lineage, not this row's work.
 3. In each page file, delete the kit body (`KitX`) and the `goalSurfaceOn` switch. The file's default export renders the goal page alone. Keep the file and its export name, so `client/src/App.tsx` and every importer stay untouched.
