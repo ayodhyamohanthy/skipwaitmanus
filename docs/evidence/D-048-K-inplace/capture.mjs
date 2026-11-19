@@ -41,15 +41,15 @@ async function serve(root) {
 }
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch();
-const previous = await readFile(resolve(out, "capture.json"), "utf8").catch(() => null);
-const results = previous ? JSON.parse(previous).results : [];
+// A reproduction always takes fresh captures; never accept receipts from an
+// earlier build merely because their scenario names happen to match.
+const results = [];
 try {
   for (const [phase, root] of [["before", beforeRoot], ["after", afterRoot]]) {
     const { server, base } = await serve(resolve(root));
     await mkdir(resolve(out, phase), { recursive: true });
     try {
       for (const width of [1280, 390]) for (const sample of cases) {
-        if (results.some(row => row.phase === phase && row.name === sample.name && row.width === width)) continue;
         const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 }, deviceScaleFactor: width === 390 ? 2 : 1, locale: "en-US", timezoneId: "UTC", colorScheme: "light", reducedMotion: "reduce", serviceWorkers: "block" });
         try {
           const errors = [], unmatched = [], calls = [];
