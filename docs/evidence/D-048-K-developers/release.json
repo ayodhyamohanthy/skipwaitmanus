@@ -1,0 +1,25 @@
+{
+  "task": "D-048-K-developers",
+  "pullRequest": 1342,
+  "mergeSha": "5519d1f80874b50d3677003637ed424cbe03a369",
+  "finalHead": "057972b6e8de257c558ca69b2de414f7560a6e11",
+  "decisionsReadThrough": "D-366",
+  "checks": {
+    "finalCI": {"run": 44589186613, "conclusion": "success", "allThreeTestShardsAndAggregate": true, "e2e": true},
+    "mainCI": {"run": 44590222165, "conclusion": "success"},
+    "pages": {"run": 44590222324, "conclusion": "success"},
+    "releaseVerification": {"run": 44591404902, "conclusion": "success"},
+    "localFocused": {"files": 5, "passed": 33},
+    "fullLocalCommand": "pending heartbeat-plus-Vitest command; no nested-step completion, totals or green inferred",
+    "failedOldJobsRerun": false
+  },
+  "reviewPolicy": {"registeredTier": 1, "computedTier": 2, "tier1ReasonPaths": [], "policy": "D-352 path-computed gate and D-366 protected merge on required green; no fabricated independent verdict"},
+  "syntheticProof": {"pairs": 30, "pngBytesIdentical": 30, "requestPayloadsEqual": true, "metricsEqual": true, "comparison": "parity.json", "nativeInspection": true},
+  "canonical": {"webSha": "5519d1f80874b50d3677003637ed424cbe03a369", "routes": ["/developers", "/developer-console"], "viewportWidths": [1280, 390], "captures": 4, "nativeInspection": true, "receipt": "live/receipt.json", "businessWrites": false, "privateDeveloperReads": false, "authFlowTested": false},
+  "api": {"state": "ready", "sha": "53e4db638e9c40d87972baa4e22515be5d4dffd9", "expectedSource": "fresh git ls-remote origin refs/tags/api-runtime", "verifier": "CONVERGED", "directWorkersDevHttpStatus": 404},
+  "postReleaseSentry": {"project": "skipwait/skipwait-webapp", "results": [{"query": "is:unresolved environment:production transaction:/developers lastSeen:-30d", "issues": 0, "hasMore": false}, {"query": "is:unresolved environment:production transaction:/developer-console lastSeen:-30d", "issues": 0, "hasMore": false}]},
+  "knownCanonicalLimitation": {"firstProbe": "Console's strict Sign in role locator matched two elements after both public viewport checks passed", "resumption": "Only unfinished console states were resumed, targeting the existing unique data-g-primary button and retaining total/nested role counts", "signInRoleCount": 2, "nestedButtonCount": 1, "source": "client/src/_core/auth.tsx:206-222 adopts native button children only; unchanged released GoalDeveloperConsole passes GoalButton", "introducedByRetirement": false, "fixed": false, "signInClicked": false, "observedLoginFailure": false, "routing": "No current explicit open owner found through actual owns matching; evidence recorded on PR1342 comment7018967228. No invented holder, source change or blanket auth-completion claim."},
+  "handoff": {"preMergeReport": "a61413563", "postMergeReport": "CLI refused participation after task-branch deletion", "branchRecreated": false, "roleSpoofed": false},
+  "rollback": "Protected revert of PR #1342.",
+  "limits": "Exact-head/main full CI and local focused/browser checks are observed passes. The separate full-local command remains pending, never recast as green. Canonical proof is fresh signed-out read-only evidence, not real-account registration, credential issuance, webhook, submission or sign-in QA. Original script-name failure, failed initial CI, corrected assertion metadata and canonical locator failure remain documented."
+}
