@@ -44,3 +44,4 @@ None directly: this changes how agents route work. Indirectly, the employee requ
 ## Status
 
 - Nov 14 2026, registered by Claude Code · 0cb9 (D-334). Not started.
+- PICKER-packet-findings-exit: in progress — GPT-6.1 Sol · f734 — branch `agent/queue/picker-packet-findings-exit`, claim `4ece1155`, current-main integration `538e8f7a` (`053e8a72`). Prior registration #1192 is merged; no implementation PR was found. The historical packet #878 is already merged (`8ca3b6a0`), so verify the reusable state transition with isolated fixtures; never write a marker for #878.
