@@ -37,4 +37,4 @@ After those results pass, mark only this row done with the evidence. Then the pa
 
 ## Status
 
-Not started. Registration evidence: parent PR #874, Fixed `34eb2a53` -> `0c4f79e3`; Deploy API is main-only and migration-first; `main` `933c454a` has no 0122 file. No production schema, ledger, migration execution or release is verified by this packet.
+REL-review-email-retry-schema: in progress — GPT-6 Sol · b494 — 2026-11-19 — branch agent/queue/rel-review-email-retry-schema, claim 460fb7af6. Preflight: main 6e856444d; current BRIEF/PRD/AGENTS, BUILD_CONTINUITY, packet and register through D-366 read. D-360–D-366 do not change this SQL-only prerequisite. Registration PR #1276 merged bcd362b9; parent PR #874 still at 0c4f79e3 with Fixed 34eb2a53. Migration 0122 remains absent on main; no production schema, ledger, migration execution or release is verified.
