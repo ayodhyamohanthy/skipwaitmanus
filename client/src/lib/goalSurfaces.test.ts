@@ -65,13 +65,15 @@ describe("goalSurfaces flag module", () => {
     const workflow = readFileSync(join(__dirname, "..", "..", "..", ".github", "workflows", "deploy-pages.yml"), "utf8");
     expect(workflow).not.toMatch(/VITE_GOAL_UI_LANDING/);
     expect(workflow).not.toMatch(/VITE_GOAL_SURFACES/);
-    // The folded flag consumers read goalSurfaces, never goalFlags.
+    // Home still reads goalSurfaces; retired sign-in keeps only its goal routes.
     const home = readFileSync(join(__dirname, "..", "pages", "Home.tsx"), "utf8");
     const signIn = readFileSync(join(__dirname, "..", "pages", "SignIn.tsx"), "utf8");
     expect(home).not.toMatch(/@\/lib\/goalFlags/);
     expect(signIn).not.toMatch(/@\/lib\/goalFlags/);
     expect(home).toMatch(/goalSurfaceOn\("home"\)/);
-    expect(signIn).toMatch(/goalSurfaceOn\("sign-in"\)/);
+    expect(signIn).not.toMatch(/goalSurfaceOn|@\/components\/kit/);
+    expect(signIn).toContain("<GoalSignInPage />");
+    expect(signIn).toContain("<GoalSignIn />");
   });
 
   it("declares every id the split names, each with its routes", () => {

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-// D-048-p3-signin: the goal /sign-in, /forgot-password, /reset-password and
+// D-048-K-sign-in: the goal /sign-in, /forgot-password, /reset-password and
 // /reviewer-sign-in (packet docs/plans/D-048-auth.md sections 4, 6, 7 and the
-// November 11 correction). Every case renders the real page module through its
-// goalSurfaceOn("sign-in") switch, so the path under test is the one the
-// switch selects. The login rule (D-030 as amended by D-049/D-057) is
+// November 11 correction). Every case renders the real page module after
+// retirement of its legacy body and surface switch.
+// The login rule (D-030 as amended by D-049/D-057) is
 // re-asserted on the goal path: seekers keep the five social providers plus
 // the six-digit email code, referrers get the work-email code only.
 import React from "react";
@@ -24,8 +24,6 @@ import { GOAL_PAGE as RESET_PAGE } from "./goal/sign-in/GoalResetPassword";
 import { GOAL_PAGE as REVIEWER_PAGE } from "./goal/sign-in/GoalReviewerSignIn";
 import { GOAL_SEEKER_SOCIAL, goalSeekerSocialUrl } from "./goal/sign-in/seekerSocial";
 
-const surfaces = vi.hoisted(() => ({ on: true }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on && id === "sign-in" }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/sign-in"],
@@ -64,7 +62,7 @@ function stubLocation(search = "") {
 const read = (path: string) => readFileSync(join(__dirname, path), "utf8");
 const primary = (container: HTMLElement) => container.querySelector<HTMLElement>("[data-g-primary]");
 
-beforeEach(() => { surfaces.on = true; localStorage.clear(); });
+beforeEach(() => { localStorage.clear(); });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -72,18 +70,17 @@ afterEach(() => {
   document.head.querySelectorAll('meta[name="robots"]').forEach(node => node.remove());
 });
 
-describe("goal /sign-in: the switch", () => {
-  it("renders the goal page under goalSurfaceOn('sign-in') and the kit page with it off", () => {
+describe("goal /sign-in: the retired route", () => {
+  it("renders only the goal page on each mount without a surface override", () => {
     stubFetch({ "/api/auth/passkey/availability": { status: 200, body: { enabled: false } } });
     stubLocation();
     const goal = render(<SignIn />);
     expect(goal.container.querySelector('[data-goal-page="sign-in"]')).not.toBeNull();
     expect(screen.queryByText("Welcome to skipwait.me.")).toBeNull();
     goal.unmount();
-    surfaces.on = false;
     render(<SignIn />);
-    expect(screen.getByText("Welcome to skipwait.me.")).toBeTruthy();
-    expect(document.querySelector('[data-goal-page="sign-in"]')).toBeNull();
+    expect(screen.queryByText("Welcome to skipwait.me.")).toBeNull();
+    expect(document.querySelector('[data-goal-page="sign-in"]')).not.toBeNull();
   });
 
   it("keeps passkey management (?passkeys=manage) on the device sign-in page that owns it", () => {

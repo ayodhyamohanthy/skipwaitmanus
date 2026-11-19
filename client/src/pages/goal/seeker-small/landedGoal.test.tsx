@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-// Goal /landed (D-048-p3-seeker-small, dark): one-task journey, thank-you
-// send, pay-it-forward, no-hire + signed-out states, flags-off kit control.
+// Goal landed journey: thank-you delivery, pay-it-forward, and access states.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
@@ -8,11 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isLoaded: true, isSignedIn: true };
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ ...authState, userId: "u1", getToken: async () => "tok" }), SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "landed" };
-});
 vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 
 const hire = { id: "r1", status: "closed", referrerId: "ref-1", referrerName: "Asha Rao", title: "Frontend Engineer", companyName: "Quillmint", companyDomain: "quillmint.ai", updatedAt: "2026-10-20T00:00:00Z" };
@@ -32,13 +26,15 @@ vi.mock("@/components/landed/landedModel", async (importOriginal) => {
 
 import Landed from "@/pages/Landed";
 
+import "./GoalLanded";
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><Landed /></QueryClientProvider>);
 }
 
 describe("goal landed", () => {
-  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true; requestsState.requests = [hire]; requestsState.fail = false; sendState.delivered = true; sendState.fail = false; });
+  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; requestsState.requests = [hire]; requestsState.fail = false; sendState.delivered = true; sendState.fail = false; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("opens on the goal with one commit for the hire", async () => {
@@ -101,10 +97,9 @@ describe("goal landed", () => {
     expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
   });
 
-  it("flags off keeps the kit journey", async () => {
-    flagState.on = false;
+  it("renders the goal journey without a surface override", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "You did it." })).toBeTruthy();
-    expect(screen.queryByTestId("goal-landed")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Close the loop on your new role." })).toBeTruthy();
   });
 });

@@ -4,7 +4,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Alerts from "./Alerts";
 
 // The QA account signs in with Google (a personal address) and verified its work email by code.
@@ -72,6 +72,8 @@ async function openFirstReferralAlert(fetchMock: ReturnType<typeof verdictThenLi
   return go.mock.calls[0][0];
 }
 
+// The route now always renders this real lazy chunk, including default-mode tests.
+beforeAll(async () => { await import("./goal/alerts/GoalAlerts"); });
 beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; userState.user = null; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 

@@ -85,7 +85,7 @@ describe("private referral HTTP routes", () => {
     const upload = await request(app).post("/api/documents").set("x-test-user", "seeker").send({ fileName: "resume.pdf", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,cGRm" });
     expect(upload.status).toBe(201); expect(upload.body.url).toBe("/api/documents/77");
     const malformed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "acme product designer", attachmentIds: [77] });
-    expect(malformed.status).toBe(400); expect(malformed.body.error).toMatch(/complete job link/i);
+    expect(malformed.status).toBe(400); expect(malformed.body.error).toMatch(/look like a job link/i);
     const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", compensation: "₹12–18 LPA" });
     expect(created.status).toBe(201); expect(created.body.companyDomain).toBe("acme.com"); expect(created.body.lifetimeRequestCount).toBe(3);
     expect(submittedCandidateMessage).toBe("I led a measurable product design launch.");

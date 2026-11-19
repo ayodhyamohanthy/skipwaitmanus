@@ -1,0 +1,79 @@
+{
+  "baseline": "origin/main 09626b57 (support surface forced on)",
+  "candidate": "goal-only route wrappers",
+  "pairs": [
+    {
+      "file": "help-1280.png",
+      "width": 1280,
+      "height": 1889,
+      "differentPixels": 0
+    },
+    {
+      "file": "help-390.png",
+      "width": 780,
+      "height": 4514,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-details-1280.png",
+      "width": 1280,
+      "height": 900,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-details-390.png",
+      "width": 780,
+      "height": 1834,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-reason-1280.png",
+      "width": 1280,
+      "height": 900,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-reason-390.png",
+      "width": 780,
+      "height": 1966,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-refused-1280.png",
+      "width": 1280,
+      "height": 900,
+      "differentPixels": 6
+    },
+    {
+      "file": "report-refused-390.png",
+      "width": 780,
+      "height": 2058,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-sign-in-1280.png",
+      "width": 1280,
+      "height": 900,
+      "differentPixels": 0
+    },
+    {
+      "file": "report-sign-in-390.png",
+      "width": 780,
+      "height": 1688,
+      "differentPixels": 0
+    },
+    {
+      "file": "safety-1280.png",
+      "width": 1280,
+      "height": 900,
+      "differentPixels": 0
+    },
+    {
+      "file": "safety-390.png",
+      "width": 780,
+      "height": 1850,
+      "differentPixels": 0
+    }
+  ],
+  "identical": 11
+}

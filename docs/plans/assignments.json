@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-18",
+  "updated": "2026-11-19",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -223,12 +223,12 @@
       "lane": "ops-reviewer",
       "branch": "agent/queue/ops-reviewer-qa-passwords",
       "status": "todo",
-      "syncedTo": "D-347",
+      "syncedTo": "D-366",
       "dependsOn": [],
       "owns": [
         ".github/workflows/reviewer-qa-passwords.yml"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 6. Then a Claude session runs it with fresh hashes and gives the passwords to the owner for the agent secrets, never the repository (D-059)."
+      "note": "D-366 (2), owner Nov 19: an agent session may run the reset and keep the plaintext only in its private storage. Build docs/plans/D-344-unblock.md row 6. Then a Claude session runs it with fresh hashes and gives the passwords to the owner for the agent secrets, never the repository (D-059)."
     },
     {
       "id": "D-344-shell-referral-words",
@@ -471,14 +471,14 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
-      "status": "owner",
-      "syncedTo": "D-353",
+      "status": "todo",
+      "syncedTo": "D-366",
       "dependsOn": [],
       "owns": [
         "docs/BUGFREE_GATE.md",
         "docs/qa/"
       ],
-      "note": "Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue. D-346 (4) (Nov 16): agents run this QA, not the owner. They sign in with the reviewer sign-in (server/_core/reviewerLogin.ts), using its demo seeker and referrer accounts, which hold no real data. No money moves. The row stays at owner only until the owner confirms that REVIEWER_LOGIN_ENABLED is on in production and the demo passwords are in the agent environment's secrets. Never put them in the repository (D-059). Then it becomes todo. D-347 (3): reviewer sign-in is already on in production (401, not 404, on Nov 16). The row becomes todo as soon as OPS-reviewer-qa-passwords has run and the owner has stored the new demo passwords in the agent secrets. D-353 (4): the launch checklist includes one full e2e journeys run on the release candidate. The per-PR e2e job keeps running but is not a required check: it adds no waiting time (under 1 minute, in parallel with the unit tests)."
+      "note": "D-366 (2), owner Nov 19: run now with the D-346 (4) reviewer sign-in and demo accounts, no money; an agent session resets the reviewer passwords itself and keeps them only in private session storage. Rule 8 proof before any seeker is invited: BUGFREE_GATE sections 1-4 stay BLOCKED until the signed-in legs are re-run. D-214 (Oct 26): the signed-in route is the authorized alias QA executor - both alias identities (seeker + verified referrer) signed in Oct 26 18:59 IST with codes read by the executor itself (no owner relay; 2 of 4 approved sign-in emails used), and read-only results are landing on issue 709 with account-state-only limits. qa-sweep-1/2 are excluded (no authority; deletion intent recorded, execution unverified) and no owner code forward is needed. Remaining: populated-UI legs at 1280/390 and the runtime checkout refusal (held - no checkout POST without an explicit no-wallet-risk authorization). Never pay or pass the hosted payment form (D-065). The stale packs-stay-on-sale text in docs/PRICING.md reconciles to the Oct 25 frozen banded model alongside PR 666. Defects found become their own rows. D-216 (Oct 27): status moved to owner to hold draft PR #710 from premature automated landing until populated-UI execution under issue #709 completes; unblocks the queue. D-346 (4) (Nov 16): agents run this QA, not the owner. They sign in with the reviewer sign-in (server/_core/reviewerLogin.ts), using its demo seeker and referrer accounts, which hold no real data. No money moves. The row stays at owner only until the owner confirms that REVIEWER_LOGIN_ENABLED is on in production and the demo passwords are in the agent environment's secrets. Never put them in the repository (D-059). Then it becomes todo. D-347 (3): reviewer sign-in is already on in production (401, not 404, on Nov 16). The row becomes todo as soon as OPS-reviewer-qa-passwords has run and the owner has stored the new demo passwords in the agent secrets. D-353 (4): the launch checklist includes one full e2e journeys run on the release candidate. The per-PR e2e job keeps running but is not a required check: it adds no waiting time (under 1 minute, in parallel with the unit tests)."
     },
     {
       "id": "SHELL-focus-clearance",
@@ -640,8 +640,8 @@
       "tier": 1,
       "lane": "d048-asks",
       "branch": "agent/queue/d048-inbox",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -658,7 +658,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Owns amendment (2026-11-11): adds client/src/test/goalPagesBoundary.test.ts - D-241 (3) boundary now walks each goal page runtime graph and bans goal pages importing modules that are neither goal code nor on the AUDITED list (the pattern of D-284/D-276/D-322); the goal inbox imports the kit page shared data layer client/src/components/inbox/inboxThreads.ts (buildInboxThreads/fetchAskingRows/fetchReferringRows/splitByOwner, packet-mandated unchanged data contract with the privacy invariants), which needs a behavior-only AUDITED entry. Same registration pattern as D-048-p3-admin (e82cad41), D-048-p3-employer (77346d74) and D-048-p3-discovery (329d72ae), whose rows all carry this file in owns. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-inbox done in the same commit, so no separate release PR is needed."
+      "note": "D-134: added by D-048-P-seeker packet; implement only the split-owned paths, keep the goal surface off in production, and follow the packet for tests/captures. Owns amendment (2026-11-11): adds client/src/test/goalPagesBoundary.test.ts - D-241 (3) boundary now walks each goal page runtime graph and bans goal pages importing modules that are neither goal code nor on the AUDITED list (the pattern of D-284/D-276/D-322); the goal inbox imports the kit page shared data layer client/src/components/inbox/inboxThreads.ts (buildInboxThreads/fetchAskingRows/fetchReferringRows/splitByOwner, packet-mandated unchanged data contract with the privacy invariants), which needs a behavior-only AUDITED entry. Same registration pattern as D-048-p3-admin (e82cad41), D-048-p3-employer (77346d74) and D-048-p3-discovery (329d72ae), whose rows all carry this file in owns. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-inbox done in the same commit, so no separate release PR is needed. D-366 (8): released in RELEASED on main; marked done Nov 19."
     },
     {
       "id": "D-048-R-inbox",
@@ -695,8 +695,8 @@
       "tier": 1,
       "lane": "d048-release-assistants",
       "branch": "agent/queue/d048-r-assistants",
-      "status": "todo",
-      "syncedTo": "D-344",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-p3-assistants"
       ],
@@ -710,7 +710,7 @@
         "design/goal-ui/captures/assistants/**",
         "client/src/components/goal/goalBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"assistants\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=assistants); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-assistants's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy agent switches stay off (D-201); the page renders correctly with them off. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-assistants, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"assistants\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=assistants); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-assistants's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Skippy agent switches stay off (D-201); the page renders correctly with them off. Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-assistants, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-366 (8): released in RELEASED on main; marked done Nov 19.",
       "epic": "D-048-p3"
     },
     {
@@ -952,7 +952,7 @@
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -960,7 +960,7 @@
         "D-048-F-goal-check",
         "PRICING-banded-oct25"
       ],
-      "note": "D-134 money cluster. goalSurfaceOn('premium'); land dark, independent Tier 1 review, no pricing/cost flag enable. Existing API/data/payment contracts read-only; all original assertions stay unchanged. Waits for PRICING-banded-oct25 (PR #666), which also owns Premium.tsx: the goal page is built on the paused-pack state the Oct 25 freeze lands. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-premium done in the same commit, so no separate release PR is needed.",
+      "note": "D-134 money cluster. goalSurfaceOn('premium'); no pricing/cost/sale flag enable. Existing API/data/payment contracts remain read-only and original assertions stay. The PRICING-banded-oct25 dependency remains: PR #666 merged at 98139298 on Nov 17 and is in current main's ancestry. D-349 (launch mode): this build PR turns its goal page on, adds premium to RELEASED and its exact-list pin, and completes D-048-R-premium; no separate release PR is needed. Nov 19 execution receipt (D-200 (2), D-344 (7), GPT-6.1 Sol · d859): the block demanding another review solely for main merge d56bf410 is not supported by the existing gate. Its combined hunks retain public-profile and premium; no branch-owned non-merge commit follows Fixed-bound 33d3a3b6. Current gate exits 0 and six release-list tests pass on that exact head; CI 44293809941 is green. Keep the existing independent findings and bound Fixed. Ordinary picker landing still integrates current main, preserves every released id, validates the final composition and waits for green exact-head CI/protected auto-merge and live verification. No new verdict, Fixed, future-diff approval or runtime/price/sale/legal/login change is supplied by this receipt. See docs/DECISIONS.md and this packet's Premium status; status/order/owns/dependencies stay unchanged.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
@@ -968,7 +968,8 @@
         "client/src/pages/premiumGoal.test.tsx",
         "design/goal-ui/captures/premium/**",
         "client/src/lib/goalSurfaces.ts (switch only)",
-        "client/src/lib/goalSurfaces.test.ts (switch only)"
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "docs/DECISIONS.md"
       ]
     },
     {
@@ -2715,11 +2716,11 @@
       "lane": "sign-in",
       "branch": "agent/claude/seeker-signin-finish",
       "status": "todo",
-      "syncedTo": "D-356",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-163: waits for D-057-session-gate, which meets D-080 (b), so the owner's staging takeover test is no longer required. Review passed on PR #324; after the gate is live it lands once main is merged in (fix stage; the branch is far behind), the owner does the plan §6 WorkOS dashboard steps and SEEKER_CODE_VERIFY_UNTIL is set. D-333 (6), owner in session Nov 13: unparked. Its D-163 condition is met (D-057-session-gate is done). Landing gate kept from packet §5 step 5: the owner's WorkOS dashboard steps in production come BEFORE the deploy. D-336 (2026-11-15): parked at owner pending the five production WorkOS dashboard steps (enable Email+Password, reset URL, default mailer, no seeker MFA/Radar, Google connection confirmed); returns to todo to land once confirmed. D-350 (Nov 16): the owner confirmed the WorkOS production setup is complete (\"workos is fully configured\"), so D-336's condition is met. Land through the normal path."
+      "note": "D-163/D-080 prerequisite met: D-057-session-gate is done. D-350 confirmed the five production WorkOS dashboard steps, satisfying D-336; no repeated owner confirmation is pending. Existing carrier is draft PR #324, agent/claude/seeker-signin-finish at f50db639. The GitHub review on bcff1742 is historical; picker PASS 09b0a667 by Gemini · b7c1 names f50db639 exactly and must not be omitted from provenance. Neither review nor historical green CI certifies a future current-main integration. The code still has the Oct 22 SEEKER_CODE_VERIFY_UNTIL placeholder. A legitimately assigned implementation/fix session must merge current main without rewriting history, preserve the released goal sign-in (D-354), integrate password fields and contracts there, set the actual release-plus-24-hours cutoff, and complete auth/identity/privacy tests, independent review of the changed Tier 1 composition, required exact-head CI and exact-release/browser proof. No implementation, cutoff, setting or review marker is changed by this docs-only unblock. Existing dirty worktrees stay untouched; inspect ownership and use an isolated checkout. Status, branch, order and dependencies remain unchanged."
     },
     {
       "id": "D-048-doctrine-benefit-copy",
@@ -3016,8 +3017,8 @@
       "tier": 1,
       "lane": "d048-retire-sign-in",
       "branch": "agent/queue/d048-k-sign-in",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-sign-in"
       ],
@@ -3028,10 +3029,11 @@
         "client/src/pages/ReviewerSignIn.tsx",
         "client/src/pages/goal/sign-in/**",
         "client/src/pages/signInGoal.test.tsx",
+        "client/src/pages/signIn.test.tsx",
         "client/src/pages/trustCluster.test.tsx",
         "client/src/pages/ReviewerSignIn.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: sign-in. Built by D-048-p3-signin; released by D-048-R-sign-in (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: sign-in. Built and released by PR #1245 (60af3262, November 17); D-048-R-sign-in is done. November 19 execution ruling under D-332/D-200: packet section 3a permits only the seven listed legacy-presentation expectation replacements in signIn.test.tsx and the two obsolete flag-off assertions in signInGoal.test.tsx. Preserve every loginRule.test.tsx assertion and all auth behavior/legal destinations; use the recorded test-integrity trailer naming D-332, the per-assertion map, red/green proof, independent Tier 1 review and exact CI. This owns amendment names signIn.test.tsx for that bounded replacement, not a login-rule change. Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
     },
     {
@@ -3230,8 +3232,8 @@
       "tier": 2,
       "lane": "d048-retire-onboarding",
       "branch": "agent/queue/d048-k-onboarding",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -3415,7 +3417,7 @@
       "tier": 1,
       "lane": "d048-retire-plans",
       "branch": "agent/queue/d048-k-plans",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-349",
       "dependsOn": [
         "D-048-R-plans"
@@ -3724,8 +3726,8 @@
       "tier": 1,
       "lane": "d048-retire-referrer",
       "branch": "agent/queue/d048-k-referrer",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
@@ -3898,8 +3900,8 @@
       "tier": 2,
       "lane": "d048-retire-invite",
       "branch": "agent/queue/d048-k-invite",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
@@ -3908,7 +3910,7 @@
         "client/src/pages/goal/invite/**",
         "client/src/pages/referrerHome.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: invite. Built by D-048-p3-invite; released by D-048-R4 (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1298. Original goal-only source a1073d49 and current-main integration 55dfb0dd preserve the lazy route export, GoalInvite and all API/auth/money/release behavior while removing the Kit fallback and its two exclusive panels. Current-main referrer-home retirement and rendered re-verification coverage remain; Invite cases live in goal/invite/goalInvite.test.tsx. 128 focused tests, TypeScript/build/audits pass; 16 desktop/mobile parity pairs preserve requests/payloads. Full local suite: 7,783 passed, two unchanged-suite failures, 18 skipped; not a full local pass. Exact-source CI44514040035 passed; final exact-head CI and canonical verification remain required. D-349 suspends soak, R4 release is done. Full receipts and assertion map: docs/plans/D-048-retire.md and design/goal-ui/captures/invite/retire-814e. Rollback is a revert of this PR.",
       "epic": "D-048-p3"
     },
     {
@@ -4143,8 +4145,8 @@
       "tier": 1,
       "lane": "d048-retire-email-review",
       "branch": "agent/queue/d048-k-email-review",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-email-review"
       ],
@@ -4232,8 +4234,8 @@
       "tier": 1,
       "lane": "d048-retire-settings",
       "branch": "agent/queue/d048-k-settings",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4261,8 +4263,8 @@
       "tier": 1,
       "lane": "d048-retire-profile",
       "branch": "agent/queue/d048-k-profile",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-profile"
       ],
@@ -4307,8 +4309,8 @@
       "tier": 2,
       "lane": "d048-retire-alerts",
       "branch": "agent/queue/d048-k-alerts",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4319,7 +4321,9 @@
         "client/src/pages/alerts.referrerRouting.test.tsx",
         "client/src/pages/alerts.stepUp.test.tsx",
         "client/src/pages/alerts.test.tsx",
-        "client/src/components/alerts/**"
+        "client/src/components/alerts/**",
+        "server/notificationCenterUi.test.ts",
+        "design/goal-ui/captures/alerts/retirement/**"
       ],
       "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: alerts. Built by D-048-p3-alerts; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
@@ -4383,8 +4387,8 @@
       "tier": 1,
       "lane": "d048-retire-messages",
       "branch": "agent/queue/d048-k-messages",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4452,8 +4456,8 @@
       "tier": 2,
       "lane": "d048-retire-support",
       "branch": "agent/queue/d048-k-support",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-support"
       ],
@@ -4466,7 +4470,7 @@
         "client/src/pages/reportBlock.test.tsx",
         "client/src/pages/safetyIntake.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: support. Built by D-048-p3-support; released by D-048-R-support (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Done: protected PR1314 merge c27ce712393d04aae2b6ce493c7a6c89ca832486. Final8c8aee69 passed all required checks,3full test shards/aggregate and E2E in CI44557745557; mainCI44558430242,Pages44558430125 and release-verification44558535633 passed. D-366 read/re-synced: current D-364 URL completion and D-365 support/legal identity changes preserved; no owner-name expectations restored. Goal-only Help/Report/Safety keep lazy exports, report/block/privacy rules and shared content. Fresh signed-out canonical proof at1280/390:6screenshots,exact webSHA,corrrect guest controls,no overflow/page errors/private content/business writes. API ready53e4db63 matches fresh remote api-runtime; verifier CONVERGED. Initial stale-local-tag9365 comparison was DRIFT and stays recorded. Direct workers.dev404;3post-release Sentry route queries0issues/no more pages.73focused local tests pass; original full-local3600s stays incomplete without totals/rerun/weakening.12retained synthetic before/after pairs remain separate. Receipts/captures: docs/evidence/D-048-K-support/; full history: docs/plans/D-048-retire.md. Support remains RELEASED. Rollback: protected revert of1314.",
       "epic": "D-048-p3"
     },
     {
@@ -4477,8 +4481,8 @@
       "tier": 2,
       "lane": "d048-retire-seeker-small",
       "branch": "agent/queue/d048-k-seeker-small",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4496,7 +4500,7 @@
         "client/src/pages/shareHub.test.tsx",
         "client/src/components/landed/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface ids: landed, suggest-company, share. Built by D-048-p3-seeker-small; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion takes effect only on protected merge of PR #1312. Goal-only source ffe0ae50 removes the three inline Kit bodies and switches, retaining export names, lazy chunks, null Suspense fallbacks and unchanged goal implementations/data/API/auth/money behavior. Release d6dd9c66 is on main; launch-mode D-349 suspends the soak. Fifty focused tests, TypeScript/build and token/migration/deploy/scope checks pass; all 30 synthetic desktop/mobile pairs preserve requests and mutation payloads. Full local suite: 7,789 pass, 2 unchanged-suite 20-second timeouts, 18 skipped; not a full local pass. Exact-head required CI must pass before merge. Assertion map, Sentry readback and browser/gate receipts are in docs/plans/D-048-retire.md and design/goal-ui/captures/seeker-small/retire-814e. Rollback is a revert of this PR.",
       "epic": "D-048-p3"
     },
     {
@@ -4584,8 +4588,8 @@
       "tier": 2,
       "lane": "d048-retire-admin",
       "branch": "agent/queue/d048-k-admin",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4600,7 +4604,7 @@
         "client/src/pages/adminReview.test.tsx",
         "client/src/components/admin/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin. Built by D-048-p3-admin; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1322. Source 094c532d removes the two inline Kit admin bodies and four exclusive presentation modules; lazy exports/fallbacks, goal implementations, shared APIs/models, required notes, exact decision payloads and access/privacy behavior are preserved. Baseline release d6dd9c66 is done; D-349 suspends soak. Focused admin coverage, TypeScript/build/audits pass; 24/24 desktop/mobile pairs are pixel-identical with equal requests/payloads. Full local suite: 7,773 passed, 6 unchanged-suite failures, 18 skipped; preserved, not green or rerun. Exact-source CI 44526234882 passed; final current-main CI and canonical verification remain required. Main e7783e10 integrated with both task histories preserved. Full assertion map, gate/browser receipts and prior writer preservation: docs/plans/D-048-retire.md and design/goal-ui/captures/admin/retire-814e. Rollback is a protected revert of this PR.",
       "epic": "D-048-p3"
     },
     {
@@ -5305,8 +5309,8 @@
       "tier": 1,
       "lane": "d048-employer",
       "branch": "agent/queue/d048-p3-for-companies",
-      "status": "todo",
-      "syncedTo": "D-346",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-p3-employer",
         "D-107-claim-company",
@@ -5320,7 +5324,7 @@
         "design/goal-ui/captures/for-companies/**",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file). D-296 clears its boundary block: goalPagesBoundary.test.ts is added to owns, so components/employer/employerPlans.ts can be admitted as behavior-only on the row's branch. D-302 records ordering: the scripts/nextTask.test.ts:175 oracle repair lands green on main before this row lands (no owns change). D-346 (2) (Nov 16): the employer surfaces follow the launch set (owner: \"employers model can pushed a bit later\"). Work already in progress, such as PR #1210, continues; new employer builds come after the launch set.",
+      "note": "Implementation row from the D-048-employer.md packet (AYO-11 design lane). flag: goalSurfaceOn('for-companies'); read-only: components/employer/employerPlans.ts. Coverage D-167 also assigns /company/claim and /company/dashboard/:slug to this row; they are already goal-built under D-107 (done), so this row owns no paths for them - the builder verifies that at build and stops and reports if wrong. Oct 27 (D-221 copy sync): waits for DECISION-COPY-oct26, which fixes the ForCompanies.tsx availability label first (shared file). D-296 clears its boundary block: goalPagesBoundary.test.ts is added to owns, so components/employer/employerPlans.ts can be admitted as behavior-only on the row's branch. D-302 records ordering: the scripts/nextTask.test.ts:175 oracle repair lands green on main before this row lands (no owns change). D-346 (2) (Nov 16): the employer surfaces follow the launch set (owner: \"employers model can pushed a bit later\"). Work already in progress, such as PR #1210, continues; new employer builds come after the launch set. D-366 (8): released in RELEASED on main; marked done Nov 19.",
       "epic": "D-048-p3"
     },
     {

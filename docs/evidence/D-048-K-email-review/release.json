@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-11-19T13:34:21.100201+00:00",
+  "merge": "e7783e101ed329d9949989c739c8f12f8c06a649",
+  "apiSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4",
+  "apiReadiness": "CONVERGED by scripts/verify-live-release.sh",
+  "releaseStatus": {
+    "context": "release/verified",
+    "state": "success",
+    "description": "Live release verified (web e7783e10, API ac2eb04b)",
+    "target_url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44534126839"
+  },
+  "runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 44532477895,
+      "headSha": "751a7250e44a0b80c91b3b0d374c1a314981eef9",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44532477895",
+      "workflowName": "CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44533183569,
+      "headSha": "e7783e101ed329d9949989c739c8f12f8c06a649",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44533183569",
+      "workflowName": "CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44533183952,
+      "headSha": "e7783e101ed329d9949989c739c8f12f8c06a649",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44533183952",
+      "workflowName": "Deploy Web (Cloudflare Pages)"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44534126839,
+      "headSha": "e7783e101ed329d9949989c739c8f12f8c06a649",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44534126839",
+      "workflowName": "Release verify"
+    }
+  ]
+}

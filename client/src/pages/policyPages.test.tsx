@@ -156,12 +156,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(policyLinks(container)).toContain("/shipping");
   });
 
-  it("About, Contact, Pricing and Privacy policy name the operator and real prices for payment-provider review", () => {
-    render(<About />);
-    expect(screen.getAllByText(/Ayodhya Ram Mohanthy/).length).toBeGreaterThan(0);
+  it("About, Contact, Pricing and Privacy policy describe the operator without naming a person, and show real prices for payment-provider review", () => {
+    // Owner, Nov 19 2026 (D-365): no person's name anywhere on the site.
+    const { container: about } = render(<About />);
+    expect(about.textContent).toContain("owned and operated by a sole proprietorship based in India");
+    expect(about.textContent).not.toMatch(/Ayodhya|Mohanthy/);
     cleanup();
-    render(<Contact />);
-    expect(screen.getByText(/Operated by:/).parentElement?.textContent).toContain("Ayodhya Ram Mohanthy");
+    const { container: contact } = render(<Contact />);
+    expect(screen.getByText(/Operated by:/).parentElement?.textContent).toBe("Operated by: A sole proprietorship based in India");
+    expect(contact.textContent).not.toMatch(/Ayodhya|Mohanthy/);
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
     cleanup();
     render(<Pricing />);
@@ -192,11 +195,10 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound keep the kit bodies; the shell's More menu (Help & safety) carries the disclosures", () => {
-    // Owner decision (Oct 9 2026): the kit screens win, so neither body repeats
-    // a legal row or a support line. Both render inside the app shell, whose
-    // More menu opens Help & safety with Terms, Privacy and Support.
+  it("Settings and NotFound leave disclosures to the shell's More menu (Help & safety)", async () => {
+    // Retirement preserves the same shell-owned legal/support navigation.
     render(<Settings />);
+    await screen.findByRole("heading", { name: "Control your account." });
     expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
     cleanup();
     render(<NotFound />);

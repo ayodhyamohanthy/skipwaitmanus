@@ -1,0 +1,199 @@
+{
+  "expectedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+  "capturedAt": "2026-11-19T15:14:03.745Z",
+  "receipts": [
+    {
+      "route": "/sign-in",
+      "file": "seeker-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/",
+        "/api/csp-report",
+        "/api/csp-report"
+      ]
+    },
+    {
+      "route": "/sign-in?intent=referrer",
+      "file": "referrer-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/"
+      ]
+    },
+    {
+      "route": "/forgot-password",
+      "file": "forgot-password-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/",
+        "/api/csp-report"
+      ]
+    },
+    {
+      "route": "/reset-password",
+      "file": "reset-password-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/"
+      ]
+    },
+    {
+      "route": "/reviewer-sign-in",
+      "file": "reviewer-sign-in-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/",
+        "/api/csp-report"
+      ]
+    },
+    {
+      "route": "/sign-in",
+      "file": "seeker-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/"
+      ]
+    },
+    {
+      "route": "/sign-in?intent=referrer",
+      "file": "referrer-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/",
+        "/api/csp-report"
+      ]
+    },
+    {
+      "route": "/forgot-password",
+      "file": "forgot-password-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/"
+      ]
+    },
+    {
+      "route": "/reset-password",
+      "file": "reset-password-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/",
+        "/api/csp-report"
+      ]
+    },
+    {
+      "route": "/reviewer-sign-in",
+      "file": "reviewer-sign-in-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "status": 200,
+      "deployedSha": "28a2d7d13b0c3c9336602597280130d36eafc972",
+      "overflow": false,
+      "pageErrors": 0,
+      "interceptedPosts": [
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/csp-report",
+        "/api/4511451074723920/envelope/"
+      ]
+    }
+  ],
+  "authenticatedActions": 0,
+  "realPosts": 0
+}

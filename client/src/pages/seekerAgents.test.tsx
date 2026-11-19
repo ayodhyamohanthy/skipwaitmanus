@@ -1,19 +1,15 @@
 // @vitest-environment jsdom
-// D-048-p3-agents: /agents switches between the kit page and the goal body on
-// the shared "assistants" surface id (D-134). The goal page keeps every D-141
-// control visible: scopes, four limits, expiry, key shown once, pause-all,
-// revoke and the audit trail; the kit page stays untouched when the flag is off.
+// /agents was built in the D-048-p3-agents row; these tests pin its released
+// goal behavior, grant boundaries, retry path and referrer-safe promises.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SeekerAgents from "./SeekerAgents";
 
-const { authState, surfaces } = vi.hoisted(() => ({
+const { authState } = vi.hoisted(() => ({
   authState: { isSignedIn: true, isLoaded: true, getToken: vi.fn().mockResolvedValue("fixture-token"), openSignIn: vi.fn() },
-  surfaces: { on: new Set<string>() },
 }));
-vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children?: React.ReactNode }) => <button type="button">{children ?? "Sign in"}</button> }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => authState }));
 
 const response = (body: object, status = 200) => ({ ok: status < 400, status, json: async () => body });
 const DAY = 86400000;
@@ -37,7 +33,7 @@ function stubServer(options: { agents?: unknown[]; firstRead?: "fail" | "not-ena
   return fetchMock;
 }
 
-beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; authState.openSignIn.mockClear(); surfaces.on = new Set(["assistants"]); });
+beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; authState.openSignIn.mockClear(); });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -45,21 +41,19 @@ afterEach(() => {
   else Reflect.deleteProperty(window.navigator, "onLine");
 });
 
-describe("/agents flag gate", () => {
-  it("renders the kit page untouched when the assistants surface is off", async () => {
-    surfaces.on = new Set();
+describe("released /agents goal route", () => {
+  it("always renders the released goal route without a surface override", async () => {
     stubServer();
-    render(<SeekerAgents />);
-    expect(await screen.findByRole("heading", { name: "Your AI agents" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Let your agent prepare a better referral" })).toBeNull();
-    expect(document.querySelector("[data-g-primary]")).toBeNull();
+    const { container } = render(<SeekerAgents />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Let your agent prepare a better referral" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Your AI agents" })).toBeNull();
+    expect(container.querySelector('[data-skipwait-screen="agents"]')).toBeTruthy();
   });
 
-  it("uses the shared assistants surface id, never a separate agents id", async () => {
-    surfaces.on = new Set(["agents"]);
+  it("keeps agent keys in the shared assistants route family", async () => {
     stubServer();
     render(<SeekerAgents />);
-    expect(await screen.findByRole("heading", { name: "Your AI agents" })).toBeTruthy();
+    expect((await screen.findByRole("link", { name: "Approvals" })).getAttribute("href")).toBe("/approve");
   });
 });
 
@@ -80,11 +74,6 @@ describe("goal /agents", () => {
     stubServer({ agents: [agent] });
     const { container } = render(<SeekerAgents />);
     await screen.findByText("Granted agents");
-    // The four limits are pinned by control id, never by their label text: the
-    // shipped labels say "sends", which the product never does (review finding
-    // 2, routed to D-048-p3-assistants, which owns the goal body). Pinning the
-    // ids keeps the D-141 parity - every limit control stays visible - without
-    // certifying wording this row knows to be wrong.
     expect(screen.getByLabelText("Agent name")).toBeTruthy();
     expect(screen.getByLabelText("Access expires after (days, max 30)")).toBeTruthy();
     for (const id of ["limit-creditsPerAsk", "limit-creditsPerDay", "limit-creditsPerWeek", "limit-asksPerDay"]) {
@@ -92,8 +81,6 @@ describe("goal /agents", () => {
     }
     expect(screen.getByLabelText("Look up companies and prices")).toBeTruthy();
     expect(screen.getByLabelText("Draft referrals (never sends)")).toBeTruthy();
-    // The promise the copy must keep, and the one this row can vouch for: the
-    // agent prepares drafts and never sends, buys or applies.
     expect(container.textContent).toContain("No sends, purchases or automatic applications.");
     expect(screen.getByRole("button", { name: "Pause all agents" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke" })).toBeTruthy();
@@ -101,9 +88,6 @@ describe("goal /agents", () => {
     expect(screen.getByText("Fictional draft helper")).toBeTruthy();
     expect(screen.getByText("active")).toBeTruthy();
     expect(container.textContent).toContain("May: lookup, draft");
-    // The granted limits are summarised on the agent row. Only the day and week
-    // figures are pinned here; the per-send and per-day wording is the routed
-    // copy defect above, so this test does not repeat it.
     expect(container.textContent).toContain("20/day");
     expect(container.textContent).toContain("50/week");
     expect(container.textContent).toContain("Expires");
