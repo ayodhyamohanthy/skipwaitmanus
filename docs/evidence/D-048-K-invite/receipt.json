@@ -1,0 +1,74 @@
+{
+  "task": "D-048-K-invite",
+  "pullRequest": 1298,
+  "webSha": "7398c71ae5afd32b83f1d1dc82e034691789381f",
+  "authenticated": false,
+  "productionBusinessMutations": false,
+  "api": {
+    "status": 200,
+    "state": "ready",
+    "commitSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4"
+  },
+  "results": [
+    {
+      "path": "/invite",
+      "mode": "request",
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "expectedWebSha": "7398c71ae5afd32b83f1d1dc82e034691789381f",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "invite-request-signed-out-1280.png",
+      "sha256": "99e26dc2a040a44c232e93c6489d4b774bbaec20df7826cd53f701197519b3ca"
+    },
+    {
+      "path": "/invite",
+      "mode": "request",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "expectedWebSha": "7398c71ae5afd32b83f1d1dc82e034691789381f",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "invite-request-signed-out-390.png",
+      "sha256": "682f333739b3537323548f647eb709e3c43b08ba455d86c2f0da18d581805533"
+    },
+    {
+      "path": "/invite?mode=invite",
+      "mode": "invite",
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "expectedWebSha": "7398c71ae5afd32b83f1d1dc82e034691789381f",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "invite-invite-signed-out-1280.png",
+      "sha256": "6a896e431502861753d9bff555cbaae6c6af98416b98b93c038fdc5b3bfd2f80"
+    },
+    {
+      "path": "/invite?mode=invite",
+      "mode": "invite",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "expectedWebSha": "7398c71ae5afd32b83f1d1dc82e034691789381f",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "invite-invite-signed-out-390.png",
+      "sha256": "7e47170a6d02a1a8c2a7c50451a6ebe61c965892460e1d5a361ad540b9adcb56"
+    }
+  ]
+}

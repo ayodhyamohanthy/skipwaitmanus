@@ -7,6 +7,7 @@ import Safety from "./Safety";
 import Help from "./Help";
 import Landed from "./Landed";
 import SignIn from "./SignIn";
+import "./goal/seeker-small/GoalLanded";
 
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
@@ -71,10 +72,10 @@ describe("Trust cluster", () => {
     expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
   });
 
-  it("holds the landed journey until a signed-in seeker names the real hire", () => {
+  it("holds the landed journey until a signed-in seeker names the real hire", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={client}><Landed /></QueryClientProvider>);
-    expect(screen.getByText("Someone helped you land it.")).toBeTruthy();
+    await screen.findByRole("button", { name: "Secure sign in" });
     expect(screen.queryByText(/Illustrative outcome|EXAMPLE/i)).toBeNull();
     expect(screen.queryByText(/Product Designer at Wipro/)).toBeNull();
     expect(screen.queryByText(/Rahul/)).toBeNull();
