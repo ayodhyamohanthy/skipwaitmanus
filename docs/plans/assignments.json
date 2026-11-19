@@ -3724,8 +3724,8 @@
       "tier": 1,
       "lane": "d048-retire-referrer",
       "branch": "agent/queue/d048-k-referrer",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R4"
       ],
@@ -4143,7 +4143,7 @@
       "tier": 1,
       "lane": "d048-retire-email-review",
       "branch": "agent/queue/d048-k-email-review",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-email-review"
