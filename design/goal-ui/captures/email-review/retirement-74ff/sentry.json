@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-19T12:40:54.019893+00:00",
+  "readOnly": true,
+  "source": "sentry issue list <project> --query <query> --limit 100 --json --fields shortId,status,count",
+  "checks": [
+    {
+      "project": "skipwait/skipwait-webapp",
+      "query": "firstSeen:>=2026-11-13 environment:production url:*/email-review*",
+      "count": 0,
+      "hasMore": false,
+      "exitCode": 0
+    },
+    {
+      "project": "skipwait/skipwait-backend",
+      "query": "firstSeen:>=2026-11-13 environment:production url:*/api/referrer-review-links*",
+      "count": 0,
+      "hasMore": false,
+      "exitCode": 0
+    }
+  ]
+}
