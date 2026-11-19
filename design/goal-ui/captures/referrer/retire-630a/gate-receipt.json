@@ -1,0 +1,49 @@
+{
+  "task": "D-048-K-referrer",
+  "featureCommit": "76d8f09e62456a4af905a1c0d83e79ed36b651ac",
+  "localGate": {
+    "head": "0b5bd610f63844b4686d09aa67038c007a09445b",
+    "main": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4",
+    "productionBuild": "passed",
+    "suiteCommand": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=1",
+    "exitCode": 1,
+    "durationSeconds": 1834.43,
+    "files": { "passed": 740, "failed": 1, "skipped": 5, "total": 746 },
+    "tests": { "passed": 7799, "failed": 1, "skipped": 18, "total": 7818 },
+    "failure": {
+      "file": "server/askDraftRoutes.test.ts",
+      "line": 44,
+      "case": "/api/ask-drafts rejects a body naming a user, a bad slug, a non-job link or an oversize note",
+      "invalidTargetRoleUrl": "not a link",
+      "expectedStatus": 400,
+      "actualStatus": 404,
+      "sourceFileEditedByRetirement": false,
+      "cause": "not established"
+    },
+    "referrerFailuresReported": 0,
+    "failedCheckReruns": 0,
+    "timeoutsRaisedToClearFailure": false,
+    "assertionsChangedToClearFailure": false
+  },
+  "integratedCi": {
+    "head": "6d9433cb1960d715761f53eb5155f87b9c0c04c6",
+    "main": "56fd5f9f32a9899d4ce959a453307a5b94439ae8",
+    "runId": "44334668491",
+    "conclusion": "success",
+    "requiredChecks": "passed",
+    "e2eJourneys": "passed",
+    "optionalReleaseCaptureMatrix": "skipped; no matrix requested by successful planner",
+    "localFullPassOnThisNewerHeadClaimed": false
+  },
+  "preliminaryLauncher": {
+    "result": "heartbeat fetch failed before build or tests",
+    "leasesRenewed": false,
+    "buildStarted": false,
+    "suiteStarted": false
+  },
+  "focusedTestsPassed": 63,
+  "typescriptOnFeature": "passed",
+  "failedLocalGateWaived": false,
+  "draftRemainsUnmerged": true,
+  "productionReleaseClaimed": false
+}
