@@ -68,8 +68,20 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     for (const ref of [REF_A, REF_B]) expect(within(card(ref)).getByText(/No name or contact fields are listed/)).toBeTruthy();
     expect(within(card(REF_A)).getByText("Locked")).toBeTruthy();
     expect(within(card(REF_B)).getByText("Unlocked")).toBeTruthy();
+    expect(within(card(REF_A)).getByText("Go")).toBeTruthy();
+    expect(within(card(REF_A)).getByText("Postgres")).toBeTruthy();
+    expect(within(card(REF_B)).getByText("Figma")).toBeTruthy();
     expect(within(card(REF_A)).queryByRole("button", { name: /View profile/ })).toBeNull();
     expect(within(card(REF_A)).getByRole("button", { name: `Unlock profile · costs ${TALENT_UNLOCK_COST}` })).toBeTruthy();
+  });
+
+  it("never renders identity fields even if the list payload carries them", async () => {
+    stub({ talent: () => reply({ talent: [{ ...LOCKED, name: "Avery Nair", email: "avery@example.com", resumeUrl: "https://private.example/resume.pdf" }] }) });
+    const { container } = render(<GoalEmployerTalent />);
+    expect(await screen.findByRole("listitem", { name: REF_A })).toBeTruthy();
+    expect(container.textContent ?? "").not.toContain("Avery Nair");
+    expect(container.textContent ?? "").not.toContain("avery@example.com");
+    expect(container.querySelector('a[href="https://private.example/resume.pdf"]')).toBeNull();
   });
 
   it("never says credit or credits to an employer (rule 1a)", async () => {
@@ -79,9 +91,9 @@ describe("goal /employer/talent (D-048-p3-employer-talent)", () => {
     expect(container.textContent ?? "").not.toMatch(/\bcredits?\b/i);
   });
 
-  it("keeps the kit page's unlock cost (no retyped money line)", () => {
-    const kit = readFileSync(join(process.cwd(), "client/src/pages/TalentDiscovery.tsx"), "utf8");
-    expect(kit).toMatch(new RegExp(`const UNLOCK_CREDIT_COST = ${TALENT_UNLOCK_COST};`));
+  it("keeps the server's unlock cost without relying on the retired page body", () => {
+    const server = readFileSync(join(process.cwd(), "server/db.ts"), "utf8");
+    expect(server).toMatch(new RegExp(`export const EMPLOYER_UNLOCK_CREDIT_COST = ${TALENT_UNLOCK_COST};`));
   });
 
   it("unlocks through the same server call and updates the balance from the server", async () => {

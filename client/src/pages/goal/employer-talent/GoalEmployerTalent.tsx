@@ -16,9 +16,7 @@ import { applySeo } from "@/lib/seo";
 import { EmployerGoalFrame } from "../employer/EmployerGoalFrame";
 
 export const GOAL_PAGE = { goalLine: "Meet opt-in talent." } as const;
-// The kit page's own unlock cost (TalentDiscovery.tsx UNLOCK_CREDIT_COST, the
-// server's EMPLOYER_UNLOCK_CREDIT_COST). Never retyped: talent.goal.test.tsx
-// reads the kit source so a price change there fails here instead of drifting.
+// Employer unlock price is pinned to the server constant in talent.goal.test.tsx.
 export const TALENT_UNLOCK_COST = 5;
 // Narrowed to what the structured fields omit: the list and the unlocked
 // snapshot carry no name or contact field, but the headline is free text the

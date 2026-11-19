@@ -36,7 +36,7 @@ describe("employer-talent retirement (D-048-K-employer-talent)", () => {
     expect(source).toContain("export default function TalentDiscovery()");
     expect(source).toContain('lazy(() => import("./goal/employer-talent/GoalEmployerTalent"))');
     expect(source).toContain("<Suspense fallback={null}>");
-    expect(source).not.toMatch(/if\s*\(goalSurfaceOn/);
+    expect(source).not.toMatch(/if\s*\(\s*goalSurfaceOn\s*\(/);
     expect(source).not.toContain("useState");
   });
 });
