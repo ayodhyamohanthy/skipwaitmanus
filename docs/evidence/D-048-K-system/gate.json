@@ -1,0 +1,18 @@
+{
+  "task": "D-048-K-system",
+  "session": "GPT-6.1 Sol · 814e",
+  "runtimeSource": "f5fc5da727",
+  "currentMainIntegration": "2a4ace617c7b67da812deae20ef139083e89ee8b",
+  "redFirst": {"selectedFailed": 4, "notSelected": 12, "reason": "Unforced public entrypoints still rendered Kit rather than the goal heading"},
+  "focused": {"firstInvocation": {"files": 11, "passed": 65, "failed": 5}, "failureEvidence": "Five first public lazy renders showed empty fallbacks: AppStates, Emails, NotFound, Offline and unchanged Settings case", "genuineHarnessCorrection": "Await real named goal modules before timed consumer assertions, matching existing lazy-readiness convention", "changedFilesVerification": {"files": 5, "passed": 30, "failed": 0}, "previouslyPassingFiles": 6, "timeoutsAssertionsOrMocksLoosened": false, "unchangedFailureRerun": false, "limits": "The 30-test pass is for the corrected five files; the six prior passes are separate, not a claim of a second full 11-file run or an environment-cause diagnosis."},
+  "completedChecks": ["TypeScript", "all-goal production build/prerender/postbuild", "design-token audit", "migration lint", "deploy-trigger coverage", "committed scope with D-359 notices"],
+  "browser": {"pairs": 78, "pngBytesIdentical": 78, "visibleTextRequestsAndBrowserCallsEqual": true, "allFourGoalSourceHashesUnchanged": true, "synthetic": true, "productionRequests": 0, "comparison": "parity.json", "nativeSamples": ["after/gallery-loading-390.png", "after/push-denied-1280.png", "after/email-password-reset-390.png", "after/offline-draft-390.png", "after/not-found-1280.png"]},
+  "emailReferenceBaseline": "email-content-baseline.json",
+  "fullLocalSuite": {"command": "LANG=en_US.UTF-8 pnpm exec vitest run --maxWorkers=1", "startedOnceAfterRecordedHeartbeat": true, "state": "pending", "completed": false, "green": false, "rerun": false},
+  "ownership": {"obsoleteSourceTest": "scripts/r7ReleaseAcceptance.test.ts", "mainFirstRegistrationPR": 1348, "mainFirstRegistrationMerge": "368b4a07e148efd6387db9720e2f3911cebe9844", "gateExceptionAdded": false, "portedAssertionsRequiredInActualPRBody": true},
+  "policyOverlap": {"branchSnapshot": "148113b38878094b15914589e95c7de6f49fdc38", "unmerged": true, "previewConflicts": ["client/src/pages/goal/system/goalEmails.releaseDrift.test.tsx", "docs/plans/D-048-retire.md"], "rule": "Retain policy's synthetic assertions/current-goal changes and both histories during normal second-lander integration; no unmerged code adoption or restored dead email-source pins."},
+  "delegationRecovery": "Edge worker edited the main checkout in error. Parent verified exact source/destination hashes, transferred only those edits via anchored patches into the claimed worktree, and restored only its accidental changes to shared main. No tests ran there, no unrelated user changes discarded.",
+  "review": {"computedTier": 2, "tier1Reasons": [], "policy": "D-352 actual changed paths govern; no fabricated verdict"},
+  "liveStatus": "Not landed or canonically verified",
+  "limits": "Browser proof uses a real owned local Vite preview with intercepted API/telemetry and synthetic install/notification APIs; no real install, push permission, account, payment or external mutation. It is not clean-tree, production-build-browser or canonical-live evidence. Current public email references are preserved, not newly certified as exact current sender text; an inherited branding-ending difference remains recorded. Full-local outcome and fresh required CI remain separate obligations."
+}

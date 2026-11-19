@@ -4849,7 +4849,7 @@
       "lane": "d048-retire-system",
       "branch": "agent/queue/d048-k-system",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4868,7 +4868,7 @@
         "client/src/pages/appStates.test.tsx",
         "client/src/components/app-states/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: system. Built by D-048-p3-system; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Goal-only system retirement candidate814e:4stable lazy/null-Suspense exports now render existing goal pages;orphan KitDeviceStates/gallery removed,shared SystemStates kept;onlyunused ExploreCompany import removed. Release1074/c1f65aaa ismain,system stays RELEASED,D349 launchsoak suspended.4unforced tests redfirst;initial11filefocus5failed65pass on empty lazyfallbacks;realimport readiness added without timeout/mock/assertion/runtime changes,5changedfiles30tests pass,sixpreviousfiles separatelypassed.78synthetic1280/390pairs byte-identical with equal visibletext/requests/browsercallcounts and unchanged4goalhashes;5samples nativeinspected. Tsc,allgoalbuild/postbuild,tokens,migration/deploy audits pass;committed scope D359notices. Full-local runstartedonce afterofficialheartbeat,pending/notgreen;exactCI/canonicalowed. Obsolete r7source/wordingtest deletion owns declaredonmain1348/368b4a07,notGPTgateexception;inline Ported assertions required. Policy synthetic property preserved;unmergedpolicybranch148113 has sharedtest+packet mergeconflicts toresolvekeepingboth,notauthorizationtoadoptitscode. Currentmain368b integrated2a4ace61 retains publicprofilehistory. Edgeworkerwrongcheckout edits hash-transferredtoclaimedtree andonlyitsaccidentalmainchangesrestored,no userworklost. Archive13email referencebaseline retains inheritedsenderbrandingdifference,notlive-sendercertification;no goalcontent/API/auth/money/browserbehaviorchange. Proof docs/evidence/D-048-K-system and D-048-retire;status todo until protectedlanding/canonicalacceptance.",
       "epic": "D-048-p3"
     },
     {
