@@ -73,6 +73,14 @@ test-integrity: client/src/pages/signIn.test.tsx — D-332
 
 That trailer satisfies test-integrity rule 5's recorded-rule requirement; it is not a blanket gate waiver. The pinned files remain pinned, and no gate or pinned-file list changes. Runtime source, tests, capture generation, independent Tier 1 review, exact-head CI and deployment proof belong to the normal retirement implementation, not this docs-only ruling. Any further changed assertion or login/legal behavior is outside this ruling and must be reported before editing.
 
+### D-048-K-sign-in: validation checkpoint (November 19)
+
+Draft [PR #1326](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1326), runtime `7929529e`, source-pin repair `ceed6901`, GPT-6.1 Sol · 44d1. CI [44539371831](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44539371831) passes all three full-suite shards and aggregate, E2E, production build and capture planning. The typecheck job's compiler/token/trigger steps pass; it fails only at the required independent Tier 1 review gate because no session has reviewed this head. No review or landing is claimed. The initial CI run caught `client/src/lib/goalSurfaces.test.ts:74` requiring the removed sign-in switch; `ceed6901` replaces that obsolete source check with no-switch/no-kit and both existing goal-route checks, with no change to the RELEASED list or flag module. The focused repair run passes 4 files / 51 tests. The full local `--maxWorkers=1` run was stopped after over an hour and 580 completed passing-file lines without final totals: incomplete, not green. No test, timeout or failure was suppressed or weakened.
+
+[Eight browser captures and exact receipt](../../design/goal-ui/captures/sign-in/retire-44d1/receipt.json) use preserved baseline build `87934fa3` and candidate runtime `7929529e`, synthetic local APIs only. Both desktop seeker/referrer pairs have zero changed decoded pixels. Candidate phone viewport/client width is 390 with no overflow. Phone before/after images are not valid pixel pairs: the baseline capture includes a 10px scrollbar-width discrepancy. Normalized recapture encountered repeated browser surface timeouts. Visual inspection is UNVERIFIED: this session and the delegated read-only checker both received omitted image media because their provider lacks image input. Forgot/reset/reviewer and passkey behavior is component-tested, but their browser captures remain incomplete. Sentry and production acceptance remain UNVERIFIED; no Sentry credentials are configured here. These gaps prevent calling this retirement ready or live. Existing source hashes verify goal/auth implementations and loginRule pins unchanged.
+
+The remaining bounded handoff is independent Tier 1 review, complete 1280/390 visual/parity evidence for all four routes, current-main integration with final required CI, and the packet's canonical deployment/Sentry acceptance. The row remains `todo`; no production action or owner-only change is requested. This is a session capability/evidence limit, not a new global owner hold.
+
 ### D-048-K-sign-in: Ported assertions
 
 No test file or case is deleted. `loginRule.test.tsx` remains byte-identical. The seven pinned presentation expectation lines below are the exact §3a replacements; all other pinned assertions remain unchanged.
@@ -88,6 +96,7 @@ No test file or case is deleted. `loginRule.test.tsx` remains byte-identical. Th
 | `client/src/pages/signIn.test.tsx`: `hover:underline` | Require the released `hover:decoration-g-ink` for each link. |
 | `client/src/pages/signInGoal.test.tsx`: two legacy flag-off expectations | Require the goal main and absence of the Kit welcome on the second mount, without a surface mock. All remaining auth, passkey, failure, reset and reviewer cases stay. |
 | `client/src/pages/trustCluster.test.tsx`: two legacy heading/explanation checks | Same case and intent click require the released goal heading and company-email explanation; no-password and no-forgot checks stay. |
+| `client/src/lib/goalSurfaces.test.ts`: source requires `goalSurfaceOn("sign-in")` | Retired wrapper must contain no surface switch or Kit import and retain both `GoalSignInPage` and passkey-management `GoalSignIn` paths; RELEASED and all flag semantics stay. |
 
 ## 4. Rows
 
