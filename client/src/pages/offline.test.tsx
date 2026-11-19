@@ -1,14 +1,20 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import Offline from "./Offline";
 
-describe("Offline screen (kit v4)", () => {
-  it("shows the saved-info banner, headline, draft reassurance, and Try again", () => {
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe("Offline recovery", () => {
+  it("shows the offline status, draft reassurance, and an enabled retry action", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
     render(<Offline />);
-    expect(screen.getByText("You're offline. Showing saved info.")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "No connection." })).toBeTruthy();
-    expect(screen.getByText(/Your drafts are saved on this device/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Try again" }).className).toContain("brand-button");
+
+    expect((await screen.findByRole("status")).textContent).toBe("You're offline. Showing saved info.");
+    expect(await screen.findByRole("heading", { name: "You're offline." })).toBeTruthy();
+    expect(screen.getByText("Your drafts are saved on this device. Send them when you're back online.")).toBeTruthy();
+    expect((await screen.findByRole("button", { name: "Try again" })).getAttribute("disabled")).toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

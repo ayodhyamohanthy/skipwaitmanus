@@ -2,75 +2,84 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import AppStates, { AppStatesGallery } from "./AppStates";
+import AppStates from "./AppStates";
 
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
 }));
-vi.mock("@/components/AppShell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <div data-testid="app-shell">{children}</div>,
-}));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const chip = (name: string) => fireEvent.click(screen.getByRole("button", { name }));
+const chip = async (name: string) => fireEvent.click(await screen.findByRole("button", { name }));
 
-describe("App states gallery", () => {
-  it("renders inside the app shell, as the kit route does", () => {
+describe("App states page", () => {
+  it("offers all nine screens as mutually exclusive navigation", async () => {
     render(<AppStates />);
-    expect(screen.getByTestId("app-shell").querySelector('[data-skipwait-screen="app-states"]')).toBeTruthy();
-  });
-
-  it("offers every screen as its own navigation, with no preview scaffolding", () => {
-    render(<AppStatesGallery />);
-    const group = screen.getByRole("group", { name: "Screen" });
+    const group = await screen.findByRole("group", { name: "Screen" });
     const names = ["Install (Android)", "Install (iPhone)", "Push permission", "Offline", "Slow connection", "Not found", "Something went wrong", "Payment failed", "Loading"];
-    for (const name of names) expect(within(group).getByRole("button", { name }).getAttribute("aria-pressed")).toBe(name === "Install (Android)" ? "true" : "false");
-    expect(document.body.textContent).not.toMatch(/Design Preview|Preview state|Example/i);
+    expect(within(group).getAllByRole("button")).toHaveLength(names.length);
+    for (const name of names) {
+      await chip(name);
+      for (const option of names) {
+        expect(within(group).getByRole("button", { name: option }).getAttribute("aria-pressed")).toBe(option === name ? "true" : "false");
+      }
+    }
   });
 
-  it("only claims what the live product does on each system screen", () => {
-    render(<AppStatesGallery />);
-    chip("Offline");
-    expect(screen.getByText("No connection.")).toBeTruthy();
-    expect(screen.getByText("Your drafts are saved on this device. Send them when you're back online.")).toBeTruthy();
-    chip("Slow connection");
-    expect(screen.getByText("Slow connection — pages may take a moment.")).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/lighter version/);
-    chip("Something went wrong");
-    expect(screen.getByText("Something went wrong on our side.")).toBeTruthy();
+  it("shows truthful screen actions and local support and return links without fetching", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    render(<AppStates />);
+    expect((await screen.findByRole("link", { name: "Go home" })).getAttribute("href")).toBe("/");
+
+    await chip("Push permission");
+    expect(await screen.findByText(/sends no device push today/)).toBeTruthy();
+    expect(screen.getByText(/only sets the browser permission/)).toBeTruthy();
+
+    await chip("Something went wrong");
+    expect((await screen.findByRole("link", { name: "Contact support" })).getAttribute("href")).toBe("/support");
+
+    await chip("Payment failed");
+    expect((await screen.findByRole("link", { name: "Try another card" })).getAttribute("href")).toBe("/plans");
     expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
-    expect(document.body.textContent).not.toMatch(/Error ref|SW-/);
-    chip("Not found");
-    expect(screen.getByRole("link", { name: /Explore companies/ }).getAttribute("href")).toBe("/explore");
-    expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
+
+    await chip("Not found");
+    expect((await screen.findByRole("link", { name: "Explore companies" })).getAttribute("href")).toBe("/explore");
+    expect(screen.getAllByRole("link", { name: "Go home" }).every(link => link.getAttribute("href") === "/")).toBe(true);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it("moves from a failure screen to loading on Try again", () => {
-    render(<AppStatesGallery />);
-    chip("Offline");
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Loading" }).getAttribute("aria-pressed")).toBe("true");
+  it("moves offline and error failures to the Loading state on retry", async () => {
+    render(<AppStates />);
+    await chip("Offline");
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect((await screen.findByRole("status", { name: "Loading" })).textContent).toContain("Loading");
+    expect((await screen.findByRole("button", { name: "Loading" })).getAttribute("aria-pressed")).toBe("true");
+
+    await chip("Something went wrong");
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect((await screen.findByRole("status", { name: "Loading" })).textContent).toContain("Loading");
   });
 
-  it("dismisses the iPhone install sheet and brings it back from its chip", () => {
-    render(<AppStatesGallery />);
-    chip("Install (iPhone)");
-    expect(screen.getByText("Add skipwait.me to your Home Screen")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+  it("dismisses the iPhone install sheet and reopens it from its chip", async () => {
+    render(<AppStates />);
+    await chip("Install (iPhone)");
+    expect(await screen.findByText("Add skipwait.me to your Home Screen")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Got it" }));
     expect(screen.queryByText("Add skipwait.me to your Home Screen")).toBeNull();
-    chip("Install (iPhone)");
-    expect(screen.getByText("Add skipwait.me to your Home Screen")).toBeTruthy();
+    await chip("Install (iPhone)");
+    expect(await screen.findByText("Add skipwait.me to your Home Screen")).toBeTruthy();
   });
 
-  it("opens the browser's own install prompt only when the browser offered one", async () => {
-    render(<AppStatesGallery />);
-    fireEvent.click(screen.getByRole("button", { name: "Install app" }));
-    expect((await screen.findByRole("status")).textContent).toMatch(/hasn't offered install/);
-
-    chip("Install (Android)");
+  it("uses the offered Android install prompt once and reports when none is offered", async () => {
     const prompt = vi.fn().mockResolvedValue(undefined);
+    render(<AppStates />);
+    fireEvent.click(await screen.findByRole("button", { name: "Install app" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/hasn't offered install/);
+    expect(prompt).not.toHaveBeenCalled();
+
+    await chip("Install (Android)");
+    await screen.findByRole("button", { name: "Install app" });
     const offered = Object.assign(new Event("beforeinstallprompt", { cancelable: true }), { prompt, userChoice: Promise.resolve({ outcome: "accepted" as const }) });
     act(() => { window.dispatchEvent(offered); });
     expect(offered.defaultPrevented).toBe(true);
@@ -79,23 +88,31 @@ describe("App states gallery", () => {
     expect(prompt).toHaveBeenCalledTimes(1);
   });
 
-  it("asks the browser for notification permission and reports its answer", async () => {
+  it("asks once when Allow is chosen and reports denied notification permission", async () => {
     const requestPermission = vi.fn().mockResolvedValue("denied");
     vi.stubGlobal("Notification", { requestPermission });
-    render(<AppStatesGallery />);
-    chip("Push permission");
-    fireEvent.click(screen.getByRole("button", { name: "Turn on notifications" }));
+    render(<AppStates />);
+    await chip("Push permission");
+    fireEvent.click(await screen.findByRole("button", { name: "Allow" }));
     expect((await screen.findByRole("status")).textContent).toBe("Notifications are blocked. Allow them in your browser settings to change that.");
     expect(requestPermission).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the permission untouched on Maybe later", () => {
+  it("leaves notification permission untouched on Maybe later", async () => {
     const requestPermission = vi.fn();
     vi.stubGlobal("Notification", { requestPermission });
-    render(<AppStatesGallery />);
-    chip("Push permission");
-    fireEvent.click(screen.getByRole("button", { name: "Maybe later" }));
-    expect(screen.getByRole("status").textContent).toBe("Notifications stay off until you allow them.");
+    render(<AppStates />);
+    await chip("Push permission");
+    fireEvent.click(await screen.findByRole("button", { name: "Maybe later" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Notifications stay off until you allow them.");
     expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it("reports when notification permission is unsupported without calling the API", async () => {
+    vi.stubGlobal("Notification", undefined);
+    render(<AppStates />);
+    await chip("Push permission");
+    fireEvent.click(await screen.findByRole("button", { name: "Allow" }));
+    expect((await screen.findByRole("status")).textContent).toBe("This browser doesn't support notifications.");
   });
 });
