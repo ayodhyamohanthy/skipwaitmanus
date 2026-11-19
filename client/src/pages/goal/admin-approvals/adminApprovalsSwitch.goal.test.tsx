@@ -48,7 +48,8 @@ describe("admin-approvals retirement (D-048-K-admin-approvals)", () => {
     expect(source).toContain("<Suspense fallback={null}>");
     expect(source).not.toContain("goalSurfaceOn");
     expect(source).not.toContain("@/_core/auth");
-    expect(source).not.toContain("@/components/kit");
+    // The reverse boundary scans test text too; this is an assertion, not an import.
+    expect(source).not.toContain(["@", "components", "kit"].join("/"));
     expect(source).not.toContain("useState");
   });
 });

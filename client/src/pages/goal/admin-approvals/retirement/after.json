@@ -1,0 +1,565 @@
+{
+  "completed": true,
+  "phase": "after",
+  "baseline": "93ec61e6a04a3497afc36eb27e48e06c0ea082a2",
+  "head": "a5c3d21b3203146f74f3d9ab2598f77da54d058c",
+  "synthetic": true,
+  "productionRequests": 0,
+  "sourceHashes": {
+    "client/src/pages/AdminApprovalQueue.tsx": "331b53b0cb3f2d49dacd111ae44f8716c5fa0f5823b3e382ec7edaa0fc87c3a8",
+    "client/src/pages/AdminApprovalRecord.tsx": "56a51a5dc9fa9ea24a036690b37a60393496aad2a8cd87e51c2551601c5da720",
+    "client/src/pages/goal/admin-approvals/GoalAdminApprovalQueue.tsx": "6db91d29b40b8dbd603bb89e1d4698d4f71107ce34ef5dc57ee3584bbe976c98",
+    "client/src/pages/goal/admin-approvals/GoalAdminApprovalRecord.tsx": "ff8d327f619a24eb36f7c9e05864d045c28dd4adb53df0c1df8727dbc4d5533a",
+    "client/src/pages/goal/admin-approvals/approvalsData.ts": "24cdd008f5a478b958db417dd745e8627999eeda2ca04ff316f3993a356c0cd5"
+  },
+  "results": [
+    {
+      "state": "queue-default",
+      "width": 1280,
+      "route": "/admin/approvals",
+      "file": "queue-default-1280.png",
+      "pngSha256": "59e1c2fd8bae287d12ec25c4c66959f12806e8dea945ea08e68a19717ec93f00",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-default",
+      "width": 390,
+      "route": "/admin/approvals",
+      "file": "queue-default-390.png",
+      "pngSha256": "77f636961844d050feac616bf6495861c99ac08986fb644fa62ce8832c61f171",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-denied",
+      "width": 1280,
+      "route": "/admin/approvals",
+      "file": "queue-denied-1280.png",
+      "pngSha256": "4e1d8b579633137df1a35fcf034825d02daac3a06b78049a7fe85951c7b4b587",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-denied",
+      "width": 390,
+      "route": "/admin/approvals",
+      "file": "queue-denied-390.png",
+      "pngSha256": "189835671194dc87c3c2a9baacf04d0d0507a689266e34d36051b2cfe8d58a39",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-empty",
+      "width": 1280,
+      "route": "/admin/approvals",
+      "file": "queue-empty-1280.png",
+      "pngSha256": "4d8c90ecc22786c64b8bbece4974c3e5b14b1718d886ff200f2bcd295449d47f",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-empty",
+      "width": 390,
+      "route": "/admin/approvals",
+      "file": "queue-empty-390.png",
+      "pngSha256": "b57ec9f365f43601f272a699e4fce01efc0dbac05344291ce4aa07f4931b5a87",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-error",
+      "width": 1280,
+      "route": "/admin/approvals",
+      "file": "queue-error-1280.png",
+      "pngSha256": "72c725e49c256fc5a37ea78c39c8476d1e2098689c078ef6cc449b2f3b4ff318",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-error",
+      "width": 390,
+      "route": "/admin/approvals",
+      "file": "queue-error-390.png",
+      "pngSha256": "7211acebb211952ad3f40f083dc9ceb169930369520322880fbdce5e736c0a7a",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-signed-out",
+      "width": 1280,
+      "route": "/admin/approvals",
+      "file": "queue-signed-out-1280.png",
+      "pngSha256": "ed9341c3ac5fbcb565eb6bac787e0d7ff49417525b9702d477e9098eca722f58",
+      "calls": [],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-signed-out",
+      "width": 390,
+      "route": "/admin/approvals",
+      "file": "queue-signed-out-390.png",
+      "pngSha256": "0bf83c46d0fc475a8cdac5babb3f45992c5baeaa368ca0bc1f65d8cc304d3d53",
+      "calls": [],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-with-employer",
+      "width": 1280,
+      "route": "/admin/approvals",
+      "file": "queue-with-employer-1280.png",
+      "pngSha256": "23fe8fc02cf02fc9f64f7f13df0c9046f532cba353f31cbed08c0f67d8d01638",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "queue-with-employer",
+      "width": 390,
+      "route": "/admin/approvals",
+      "file": "queue-with-employer-390.png",
+      "pngSha256": "3514443706d2789c74a6056333c8b4069d8b84ab5f235fb93046325c6a499795",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-claimed-refusal",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-claimed-refusal-1280.png",
+      "pngSha256": "ed7cd4f856481b3642e8883780f050eaa035703a50063d76991108f2f9687bbf",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-claimed-refusal",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-claimed-refusal-390.png",
+      "pngSha256": "ac4bc3934a232d4c449a9e5f061e1bf45154c79be1733bb7fa3d3cab4837ff40",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-decision-failed",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-decision-failed-1280.png",
+      "pngSha256": "3195c4bb024de0b67b815b8fbd84970302e9fb176fe9762fef33cc7c7790bf6e",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-decision-failed",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-decision-failed-390.png",
+      "pngSha256": "ff508eab2f4be9011ba4dddfd14bdce65ecd4768cc524f54474d22ebad8332a4",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-decision-uncertain",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-decision-uncertain-1280.png",
+      "pngSha256": "c01a7eb5fc285e60905f3b5595a51d0e03853dc58f1d9bcba219114edfd289cf",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-decision-uncertain",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-decision-uncertain-390.png",
+      "pngSha256": "2e08a1afa844d100e88bf9efa08c4309f3358ce4e9f3226993b54f41f1122297",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-employer-history",
+      "width": 1280,
+      "route": "/admin/approvals/employer_application/901",
+      "file": "record-employer-history-1280.png",
+      "pngSha256": "9008e0a9eed5212700bd730b3d14996a8e90193bc8f873dcd5df89ab3eb4a5cc",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-employer-history",
+      "width": 390,
+      "route": "/admin/approvals/employer_application/901",
+      "file": "record-employer-history-390.png",
+      "pngSha256": "a50f0233606f6f6c532a89457813d4d642f085639161c358a9319be103073fc6",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-employer",
+      "width": 1280,
+      "route": "/admin/approvals/employer_application/901",
+      "file": "record-employer-1280.png",
+      "pngSha256": "233de0f7d9c0aa7919401935548cb6a852cdfc8a20f33d5f88818b80f5d90893",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-employer",
+      "width": 390,
+      "route": "/admin/approvals/employer_application/901",
+      "file": "record-employer-390.png",
+      "pngSha256": "02e35796272ceb90f081d3837afc286f1793b8b24f859e9b3791c79aa63cdf6b",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-enrollment",
+      "width": 1280,
+      "route": "/admin/approvals/referrer_enrollment/77",
+      "file": "record-enrollment-1280.png",
+      "pngSha256": "925f9f2868ff2f93373d20a06c4ed9039e322d7d9ae2950c27d906b7d2b1cfc1",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-enrollment",
+      "width": 390,
+      "route": "/admin/approvals/referrer_enrollment/77",
+      "file": "record-enrollment-390.png",
+      "pngSha256": "0978c7fcb8a1f6f30c37250697189eb64cbbaff30e3905df9db697faad4b14c1",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-error",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-error-1280.png",
+      "pngSha256": "d0d615d6bf9e4231f297593c82d76043b348b2a1b7fa7310346bc4c328da1faa",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-error",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-error-390.png",
+      "pngSha256": "afcbf1c015d208aa1d4c3699248fb41c1be3377e55c5327059e3f45703e86665",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-payment-full",
+      "width": 1280,
+      "route": "/admin/approvals/payment/33",
+      "file": "record-payment-full-1280.png",
+      "pngSha256": "7b3838f2220f719314ca2b40e75d31feed4eba5071474985c03f4dc38e12fd32",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-payment-full",
+      "width": 390,
+      "route": "/admin/approvals/payment/33",
+      "file": "record-payment-full-390.png",
+      "pngSha256": "77afcb1a0c964fd907d9c291f61ffa54113cd35936fb0db5303a5c3d83ee31c7",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-payment",
+      "width": 1280,
+      "route": "/admin/approvals/payment/33",
+      "file": "record-payment-1280.png",
+      "pngSha256": "7b3838f2220f719314ca2b40e75d31feed4eba5071474985c03f4dc38e12fd32",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-payment",
+      "width": 390,
+      "route": "/admin/approvals/payment/33",
+      "file": "record-payment-390.png",
+      "pngSha256": "9bce7650f82eff1a259e68898693b7bf7e36e8d86262768e0bbcb22919177f49",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-request",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-request-1280.png",
+      "pngSha256": "cc202e337d936981cd70efff3960a02783bf663fdc64105193be0681123017a5",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-request",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-request-390.png",
+      "pngSha256": "2bc3610ddd53b2732395142144fec59a2414e065bd95b9c6e57366368927b2a6",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-signed-out",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-signed-out-1280.png",
+      "pngSha256": "3a2428ba1fde2536793b23b8860b756ae39854a6a29e881f89795e65c7387db8",
+      "calls": [],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-signed-out",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/501",
+      "file": "record-signed-out-390.png",
+      "pngSha256": "15134ab9ae06efefb778fca45049b99d148b969645b18019c42479102ff0a617",
+      "calls": [],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-uncovered",
+      "width": 1280,
+      "route": "/admin/approvals/referral_request/514",
+      "file": "record-uncovered-1280.png",
+      "pngSha256": "2caaf100c9fd8d2a50e2ab3c1431984537147c9b9d762d06a7abfbfc03789f70",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    },
+    {
+      "state": "record-uncovered",
+      "width": 390,
+      "route": "/admin/approvals/referral_request/514",
+      "file": "record-uncovered-390.png",
+      "pngSha256": "6dab980a45b654a734621ab62ae18a190de6833efd7ccd86d23c1c5260c7ecbe",
+      "calls": [
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "unmatched": [],
+      "overflow": 0
+    }
+  ]
+}

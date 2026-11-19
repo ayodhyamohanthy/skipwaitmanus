@@ -4661,7 +4661,7 @@
       "lane": "d048-retire-admin-approvals",
       "branch": "agent/queue/d048-k-admin-approvals",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-R-admin-approvals"
       ],
