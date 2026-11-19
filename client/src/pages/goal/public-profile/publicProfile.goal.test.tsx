@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // D-048-p3-public-profile (packet docs/plans/D-048-marketing.md §3-§5): /p/:handle
-// on the goal design behind goalSurfaceOn("public-profile"). This surface is
+// through the unforced route entrypoint (D-332). This surface is
 // privacy (Tier 1), so the tests pin the visibility contract hard: a private
 // page says only that it is private (never a name, headline or piece), a
 // missing handle is not called private, a failed read says so and retries, and
@@ -15,11 +15,6 @@ vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ ...authState, getToken }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
 }));
-const flagState = { on: true, asked: [] as string[] };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => { flagState.asked.push(id); return flagState.on && id === "public-profile"; } };
-});
 const routeState = { handle: "asha-r" };
 vi.mock("wouter", () => ({
   useRoute: () => [true, { handle: routeState.handle }],
@@ -73,7 +68,6 @@ const VISITOR = { visible: true, visibility: "public", isOwner: false, displayNa
 beforeAll(async () => { await import("@/pages/goal/public-profile/GoalPublicProfile"); }, 60_000);
 
 beforeEach(() => {
-  flagState.on = true; flagState.asked = [];
   routeState.handle = "asha-r";
   server.calls = []; server.profile = VISITOR; server.profileReply = null; server.putReply = null;
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
@@ -81,13 +75,10 @@ beforeEach(() => {
 afterEach(() => { cleanup(); document.head.querySelectorAll('meta[name="robots"]').forEach(tag => tag.remove()); });
 
 describe("goal /p/:handle", () => {
-  it("flag off keeps the kit page", async () => {
-    flagState.on = false;
+  it("renders the released page without a surface override", async () => {
     const { container } = render(<PublicProfile />);
-    expect(await screen.findByText("No feed. No followers. No likes. Just work.", { exact: false })).toBeTruthy();
-    expect(container.querySelector('[data-goal-page="public-profile"]')).toBeNull();
-    expect(container.querySelector('[data-skipwait-screen="public-profile"]')).toBeTruthy();
-    expect(flagState.asked).toContain("public-profile");
+    expect(await screen.findByRole("heading", { level: 1, name: "See Asha R.'s work." })).toBeTruthy();
+    expect(container.querySelectorAll('[data-goal-page="public-profile"]')).toHaveLength(1);
   });
 
   it("opens with the person's goal line, their verified work and one black commit", async () => {
@@ -191,6 +182,23 @@ describe("goal /p/:handle", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Visitor" }));
     expect(await screen.findByText("Checkout redesign")).toBeTruthy();
     expect(screen.queryByText("Private sketchbook")).toBeNull();
+  });
+
+  it("offers native sharing only in the owner view when the browser supports it", async () => {
+    const share = vi.fn(async () => undefined);
+    const previous = Object.getOwnPropertyDescriptor(navigator, "share");
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    try {
+      server.profile = { ...VISITOR, isOwner: true, visibility: "link" };
+      render(<PublicProfile />);
+      fireEvent.click(await screen.findByRole("button", { name: "Share…" }));
+      expect(share).toHaveBeenCalledExactlyOnceWith({ title: "Asha R. on skipwait.me", url: "https://skipwait.me/p/asha-r" });
+      fireEvent.click(screen.getByRole("tab", { name: "Visitor" }));
+      expect(screen.queryByRole("button", { name: "Share…" })).toBeNull();
+    } finally {
+      if (previous) Object.defineProperty(navigator, "share", previous);
+      else Reflect.deleteProperty(navigator, "share");
+    }
   });
 
   it("offline: says edits are held and sends no visibility change", async () => {
