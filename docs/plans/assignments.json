@@ -4585,8 +4585,8 @@
       "tier": 2,
       "lane": "d048-retire-admin",
       "branch": "agent/queue/d048-k-admin",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-363",
       "dependsOn": [
         "D-048-release-platform"
       ],
@@ -4601,7 +4601,7 @@
         "client/src/pages/adminReview.test.tsx",
         "client/src/components/admin/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin. Built by D-048-p3-admin; released by D-048-release-platform (live since Nov 9 or earlier: the 7-day soak ends Nov 16). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Completion effective only on protected merge of PR #1322. Source 094c532d removes the two inline Kit admin bodies and four exclusive presentation modules; lazy exports/fallbacks, goal implementations, shared APIs/models, required notes, exact decision payloads and access/privacy behavior are preserved. Baseline release d6dd9c66 is done; D-349 suspends soak. Focused admin coverage, TypeScript/build/audits pass; 24/24 desktop/mobile pairs are pixel-identical with equal requests/payloads. Full local suite: 7,773 passed, 6 unchanged-suite failures, 18 skipped; preserved, not green or rerun. Exact-source CI 44526234882 passed; final current-main CI and canonical verification remain required. Main e7783e10 integrated with both task histories preserved. Full assertion map, gate/browser receipts and prior writer preservation: docs/plans/D-048-retire.md and design/goal-ui/captures/admin/retire-814e. Rollback is a protected revert of this PR.",
       "epic": "D-048-p3"
     },
     {
