@@ -1,0 +1,80 @@
+[
+  {
+    "surface": "users",
+    "viewportWidth": 1280,
+    "imageWidth": 1280,
+    "imageHeight": 900,
+    "before": "users-before-1280.png",
+    "after": "users-after-1280.png",
+    "changedPixels": 0,
+    "maximumChannelDelta": 0,
+    "meanMaximumChannelDelta": 0,
+    "beforeSha256": "43f170d4647554f66d64bea06c9def35b9b01059fcb0dc9284c6661266f4a0e1",
+    "afterSha256": "43f170d4647554f66d64bea06c9def35b9b01059fcb0dc9284c6661266f4a0e1"
+  },
+  {
+    "surface": "users",
+    "viewportWidth": 390,
+    "imageWidth": 380,
+    "imageHeight": 1237,
+    "before": "users-before-390.png",
+    "after": "users-after-390.png",
+    "changedPixels": 0,
+    "maximumChannelDelta": 0,
+    "meanMaximumChannelDelta": 0,
+    "beforeSha256": "61fb2ce3bc9e66fe39c7a26305c5f7c5ed35fd4c2d8d1245f64a037fee2e8d06",
+    "afterSha256": "61fb2ce3bc9e66fe39c7a26305c5f7c5ed35fd4c2d8d1245f64a037fee2e8d06"
+  },
+  {
+    "surface": "privacy",
+    "viewportWidth": 1280,
+    "imageWidth": 1280,
+    "imageHeight": 900,
+    "before": "privacy-before-1280.png",
+    "after": "privacy-after-1280.png",
+    "changedPixels": 5288,
+    "maximumChannelDelta": 25,
+    "meanMaximumChannelDelta": 1.217284417549168,
+    "beforeSha256": "ff788eef1d7a10e3264dfceda1ba63698fa1c5abaf094cccbd93045c74aa38fe",
+    "afterSha256": "0daff4b2981a33f687d62952a20b467425e86a9991b2c884bf01bfffc003b713"
+  },
+  {
+    "surface": "privacy",
+    "viewportWidth": 390,
+    "imageWidth": 390,
+    "imageHeight": 844,
+    "before": "privacy-before-390.png",
+    "after": "privacy-after-390.png",
+    "changedPixels": 2074,
+    "maximumChannelDelta": 3,
+    "meanMaximumChannelDelta": 1.0694310511089682,
+    "beforeSha256": "4ff72476360b922389f5f1cc6247125f35bebf3c6805b98d0d9df46b423ef87f",
+    "afterSha256": "f60f141255e83491a95f30becf3851cf1258dbc6dcae164b948ba3443d4c4669"
+  },
+  {
+    "surface": "privacy-ready",
+    "viewportWidth": 1280,
+    "imageWidth": 1280,
+    "imageHeight": 900,
+    "before": "privacy-ready-before-1280.png",
+    "after": "privacy-ready-after-1280.png",
+    "changedPixels": 5288,
+    "maximumChannelDelta": 25,
+    "meanMaximumChannelDelta": 1.217284417549168,
+    "beforeSha256": "0daff4b2981a33f687d62952a20b467425e86a9991b2c884bf01bfffc003b713",
+    "afterSha256": "ff788eef1d7a10e3264dfceda1ba63698fa1c5abaf094cccbd93045c74aa38fe"
+  },
+  {
+    "surface": "privacy-ready",
+    "viewportWidth": 390,
+    "imageWidth": 390,
+    "imageHeight": 844,
+    "before": "privacy-ready-before-390.png",
+    "after": "privacy-ready-after-390.png",
+    "changedPixels": 2108,
+    "maximumChannelDelta": 3,
+    "meanMaximumChannelDelta": 1.0697343453510437,
+    "beforeSha256": "f60f141255e83491a95f30becf3851cf1258dbc6dcae164b948ba3443d4c4669",
+    "afterSha256": "ea0383b9bfbf47a329e56efb9a66ad1f71ab25dd68bb28d01a74d66ecf85b904"
+  }
+]

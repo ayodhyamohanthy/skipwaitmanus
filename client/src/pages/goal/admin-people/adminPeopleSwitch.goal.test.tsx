@@ -1,19 +1,14 @@
 // @vitest-environment jsdom
-// D-048-p3-admin-people switches (D-048-admin.md §3): /admin/users and
-// /admin/privacy-requests render the goal page only when
-// goalSurfaceOn("admin-people") is true; with the flag off both kit pages stay
-// untouched (adminUsers.test.tsx pins the kit behaviour). One switch per page
-// file, the goal implementation under pages/goal/admin-people.
+// D-048-K-admin-people: both route exports keep the released goal pages without
+// a surface override. The old kit headings and switch are retired together.
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import AdminUsers from "../../AdminUsers";
 import AdminPrivacyRequests from "../../AdminPrivacyRequests";
-const { flag } = vi.hoisted(() => ({ flag: { on: false, asked: [] as string[] } }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: false, getToken: async () => null }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -26,28 +21,27 @@ vi.mock("wouter", () => ({
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 
-afterEach(() => { cleanup(); flag.on = false; flag.asked = []; });
+afterEach(cleanup);
 
-describe("admin-people switches (D-048-p3-admin-people)", () => {
+describe("admin-people route retirement (D-048-K-admin-people)", () => {
   it.each([
     ["/admin/users", AdminUsers] as const,
     ["/admin/privacy-requests", AdminPrivacyRequests] as const,
-  ])("%s renders the goal page when the goal flag is on", async (_route, Page) => {
-    flag.on = true;
+  ])("%s renders the goal page without a surface override", async (_route, Page) => {
     const { container } = renderPage(<Page />);
     expect(await screen.findByRole("heading", { level: 1, name: "Act on people requests." })).toBeTruthy();
     expect(container.querySelector("[data-goal-page]")).toBeTruthy();
-    expect(flag.asked).toContain("admin-people");
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
   });
 
   it.each([
     ["/admin/users", AdminUsers, "Administrator users directory"] as const,
     ["/admin/privacy-requests", AdminPrivacyRequests, "Privacy request review"] as const,
-  ])("%s keeps the kit page when the goal flag is off", async (_route, Page, kitHeading) => {
+  ])("%s never returns to its retired kit page", async (_route, Page, kitHeading) => {
     const { container } = renderPage(<Page />);
-    expect(await screen.findByRole("heading", { level: 1, name: kitHeading })).toBeTruthy();
-    await waitFor(() => expect(container.querySelector("[data-goal-page]")).toBeNull());
-    expect(flag.asked).toContain("admin-people");
+    await screen.findByRole("heading", { level: 1, name: "Act on people requests." });
+    expect(screen.queryByRole("heading", { level: 1, name: kitHeading })).toBeNull();
+    expect(container.querySelector("[data-goal-page]")).toBeTruthy();
   });
 });
 
