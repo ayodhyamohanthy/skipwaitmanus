@@ -290,7 +290,7 @@ describe("released goal assistants", () => {
 
 
   it("grants only the selected lookup/draft limits and reveals the returned agent key once", async () => {
-    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/seeker/agents" && init?.method === "POST") return reply({ key: "fixture-agent-key" });
       return reply({ agents: [], paused: false });
     });
@@ -308,7 +308,7 @@ describe("released goal assistants", () => {
 
   it("keeps 404 agent access closed and retries read-only after a temporary failure", async () => {
     let reads = 0;
-    const fetchMock = vi.fn(async () => ++reads === 1 ? reply({ error: "not ready" }, 404) : reply({ agents: [], paused: false }));
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => ++reads === 1 ? reply({ error: "not ready" }, 404) : reply({ agents: [], paused: false }));
     vi.stubGlobal("fetch", fetchMock);
     render(<GoalSeekerAgents />);
     expect(await screen.findByText("Agent access is not turned on yet.")).toBeTruthy();
