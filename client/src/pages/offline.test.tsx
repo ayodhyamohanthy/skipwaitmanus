@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import Offline from "./Offline";
+
+beforeAll(async () => { await import("./goal/system/GoalOffline"); });
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 

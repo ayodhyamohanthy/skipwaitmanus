@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import NotFound from "./NotFound";
 
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
 }));
+
+beforeAll(async () => { await import("./goal/system/GoalNotFound"); });
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 

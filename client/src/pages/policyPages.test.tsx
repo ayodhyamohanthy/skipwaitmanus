@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
 import CancellationPolicy from "./CancellationPolicy";
 import Guidelines from "./Guidelines";
@@ -15,6 +15,8 @@ import Settings from "./Settings";
 import { PLAN_FAMILY, planFeeMinor } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
 import { FREE_PLAN, firstPackClaim } from "@shared/planCatalog";
+
+beforeAll(async () => { await import("./goal/settings/GoalSettings"); });
 
 
 // Independent literal, not MONEY_SENTENCE imported as its own oracle.
