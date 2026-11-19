@@ -39,7 +39,7 @@ export type AskDrawerProps = {
   context: string | null;
   signedIn: boolean;
   url: string;
-  onUrlChange(value: string): void;
+  onUrlChange(value: string, pasted?: boolean): void;
   onUrlBlur(): void;
   hint: LinkHint;
   resume: AskResume;
@@ -173,7 +173,7 @@ export function AskDrawer(props: AskDrawerProps) {
                 placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
                 value={props.url}
                 invalid={props.hint?.tone === "error"}
-                onChange={event => props.onUrlChange(event.target.value)}
+                onChange={event => props.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
                 onBlur={props.onUrlBlur}
               />
             )}
