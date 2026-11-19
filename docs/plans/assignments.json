@@ -4456,8 +4456,8 @@
       "tier": 2,
       "lane": "d048-retire-support",
       "branch": "agent/queue/d048-k-support",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-support"
       ],
@@ -4470,7 +4470,7 @@
         "client/src/pages/reportBlock.test.tsx",
         "client/src/pages/safetyIntake.test.tsx"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: support. Built by D-048-p3-support; released by D-048-R-support (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Done: protected PR1314 merge c27ce712393d04aae2b6ce493c7a6c89ca832486. Final8c8aee69 passed all required checks,3full test shards/aggregate and E2E in CI44557745557; mainCI44558430242,Pages44558430125 and release-verification44558535633 passed. D-366 read/re-synced: current D-364 URL completion and D-365 support/legal identity changes preserved; no owner-name expectations restored. Goal-only Help/Report/Safety keep lazy exports, report/block/privacy rules and shared content. Fresh signed-out canonical proof at1280/390:6screenshots,exact webSHA,corrrect guest controls,no overflow/page errors/private content/business writes. API ready53e4db63 matches fresh remote api-runtime; verifier CONVERGED. Initial stale-local-tag9365 comparison was DRIFT and stays recorded. Direct workers.dev404;3post-release Sentry route queries0issues/no more pages.73focused local tests pass; original full-local3600s stays incomplete without totals/rerun/weakening.12retained synthetic before/after pairs remain separate. Receipts/captures: docs/evidence/D-048-K-support/; full history: docs/plans/D-048-retire.md. Support remains RELEASED. Rollback: protected revert of1314.",
       "epic": "D-048-p3"
     },
     {
