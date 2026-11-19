@@ -4848,7 +4848,7 @@
       "tier": 2,
       "lane": "d048-retire-system",
       "branch": "agent/queue/d048-k-system",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
@@ -4868,7 +4868,7 @@
         "client/src/pages/appStates.test.tsx",
         "client/src/components/app-states/**"
       ],
-      "note": "Goal-only system retirement candidate814e:4stable lazy/null-Suspense exports now render existing goal pages;orphan KitDeviceStates/gallery removed,shared SystemStates kept;onlyunused ExploreCompany import removed. Release1074/c1f65aaa ismain,system stays RELEASED,D349 launchsoak suspended.4unforced tests redfirst;initial11filefocus5failed65pass on empty lazyfallbacks;realimport readiness added without timeout/mock/assertion/runtime changes,5changedfiles30tests pass,sixpreviousfiles separatelypassed.78synthetic1280/390pairs byte-identical with equal visibletext/requests/browsercallcounts and unchanged4goalhashes;5samples nativeinspected. Tsc,allgoalbuild/postbuild,tokens,migration/deploy audits pass;committed scope D359notices. Full-local runstartedonce afterofficialheartbeat,pending/notgreen;exactCI/canonicalowed. Obsolete r7source/wordingtest deletion owns declaredonmain1348/368b4a07,notGPTgateexception;inline Ported assertions required. Policy synthetic property preserved;unmergedpolicybranch148113 has sharedtest+packet mergeconflicts toresolvekeepingboth,notauthorizationtoadoptitscode. Currentmain368b integrated2a4ace61 retains publicprofilehistory. Edgeworkerwrongcheckout edits hash-transferredtoclaimedtree andonlyitsaccidentalmainchangesrestored,no userworklost. Archive13email referencebaseline retains inheritedsenderbrandingdifference,notlive-sendercertification;no goalcontent/API/auth/money/browserbehaviorchange. Proof docs/evidence/D-048-K-system and D-048-retire;status todo until protectedlanding/canonicalacceptance.",
+      "note": "Done: protected1349 mergec0a16f818a6795f3d0a21d74bb90ab939e707c13. Final4c8ea73a CI44607779508,mainCI44608281423,Pages44608281490 and releaseverify44609299599 passed.4stable lazy wrappers goal-only;goalbodies/content/browser/API unchanged,sharedSystemStateskept.78synthetic1280/390pairs byte-identical with equal text/requests/browsercalls/4goalhashes;nativeinspected. Initialfocus5fail65pass retained,realmodule readiness5changedfiles30pass;8independent moneycontracts pass after obsolete3Kitwordingcases removed,not repinned. InitialCI44603219666 retainedfailed,no oldjobrerun/timeouts/assertion/gatechange. Main-first1348 names obsolete r7test;inlineassertionmap/actualintegrity pass. Canonical8cases exactwebSHA,1root,0overflow/errors/privateReads/writes;404links,offline retry affordance,masked13-template selector/report outcome and9statechips/Loading verified through page;no install/permission/email/auth interaction. API411067f8 freshremote matchCONVERGED,direct404,4postreleaseSentryqueries0. Full-localonce pending/notgreen;test/docs/mainintegration occurred during it,not exact-final-head proof. Existing senderbranding difference preserved,not live-sendercertification. Policy syntheticproperty intact;futurepolicymerge mustkeep itschanges+bothhistories. Premerge report e7c16c40 recorded. Evidence/limits docs/evidence/D-048-K-system and D-048-retire;systemstaysRELEASED,rollbackprotectedrevert1349.",
       "epic": "D-048-p3"
     },
     {
