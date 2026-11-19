@@ -4036,6 +4036,7 @@
         "D-048-R4"
       ],
       "owns": [
+        "docs/DECISIONS.md",
         "client/src/pages/PostOpportunity.tsx",
         "client/src/pages/goal/post-opportunity/**",
         "client/src/pages/postOpportunity.stepUp.test.tsx",
