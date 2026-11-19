@@ -4987,8 +4987,8 @@
       "tier": 2,
       "lane": "d048-retire-discovery",
       "branch": "agent/queue/d048-k-discovery",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
       ],
