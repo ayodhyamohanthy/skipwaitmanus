@@ -72,7 +72,9 @@
         "scripts/nextTaskText.mjs",
         "scripts/scope-check.mjs",
         "scripts/*.test.ts",
-        "docs/plans/PROCESS-no-review-no-model.md"
+        "docs/plans/PROCESS-no-review-no-model.md",
+        ".env.example",
+        "vitest.config.ts"
       ],
       "note": "D-370. Build docs/plans/PROCESS-no-review-no-model.md §1. Lands on green required CI.",
       "epic": "D-212"
