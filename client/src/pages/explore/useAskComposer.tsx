@@ -30,13 +30,14 @@ import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
 import { ADD_CREDITS_HREF, askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, topUpHref, type AskCostLine } from "@shared/moneyCopy";
 import { usePlansCatalog } from "@/components/plans/plansCatalogApi";
+import { trackClarityEvent } from "@/lib/clarity";
 import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
-import { isValidTargetRoleUrl, jobLinkFitsCompany } from "@shared/referralUrl";
+import { completeTargetRoleUrl, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 import { composeWhyMe, overLimitReasons, splitWhyMe, WHY_ME_MAX, type WhyMeReasons } from "@shared/whyMe";
 import type { AskResume, AskSentView } from "./AskDrawer";
 import { askIdempotencyKey, ASK_IDEMPOTENCY_KEY, buildAskBody } from "./askSend";
@@ -216,7 +217,9 @@ function clearStartHandoff(): void {
 export type AskComposer = {
   signedIn: boolean;
   url: string;
-  onUrlChange(value: string): void;
+  /** `pasted`: the change came from a paste, so a link missing "https://" is completed at once. */
+  onUrlChange(value: string, pasted?: boolean): void;
+  /** Leaving the field completes a link typed without "https://" (owner, Nov 19 2026). */
   onUrlBlur(): void;
   hint: LinkHint;
   resumeView: AskResume;
@@ -280,7 +283,6 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   const [sendError, setSendError] = useState<ReactNode>(null);
   const [sent, setSent] = useState<AskSentView | null>(null);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
-  const [watch, setWatch] = useState<{ state: "idle" | "busy" | "done" | "error"; message: string }>({ state: "idle", message: "" });
   // Task 13: the seeker's own showcase, the pieces they pick, and the plan cap
   // the server quotes back if they pick more than it puts in front of a
   // referrer. The picker owns none of this; both surfaces read it here so the
@@ -391,6 +393,8 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   // a prefill; the seeker still pastes a real job link. Consumed on use, cleared on sign-out.
   const [discoveryPick] = useState(() => readDiscoveryHandoff());
   useEffect(() => { if (discoveryPick) clearDiscoveryHandoff(); }, [discoveryPick]);
+  // What is sent and saved: the link with "https://" added when the seeker left it off.
+  const jobUrl = completeTargetRoleUrl(url).trim();
   const hint = !company && discoveryPick && !url.trim() ? { tone: "muted" as const, text: `You picked ${discoveryPick.name} (${discoveryPick.domain}) - paste its job link below` } : linkHint(url, company, linkTouched || attempted);
   // D-094 item 2 (D-264 (2), packet §4.2–4.4): the switch ships false, so this
   // makes no request and changes no check until the release row flips it. On a
@@ -404,46 +408,25 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   const linkOk = isValidTargetRoleUrl(url.trim()) && (!company || jobLinkFitsCompany(url, company.domains)) && !jobLinkBlocked;
   const words = countWords(composeWhyMe(reasons));
   const tooLong = overLimitReasons(reasons).length > 0;
-  // D-132 item 3 (flag VITE_ASK_LEVEL_COST): the single shared by-level quote
-  // for /ask, the drawer and the door — one fetch per validated link, and only
-  // for a signed-in seeker. Pending or failed keeps the flat one-credit line,
-  // exactly like flag-off. With a quote the server's numbers win: its
-  // totalAvailable and shortfall are the true wallet position, so the cost
-  // line and the top-up can never disagree.
+  // The retired level-price flag stays off. Its compatibility path still
+  // requires a current quote; directory availability never bypasses pricing.
   const askLevelCostOn = ASK_LEVEL_COST_CLIENT;
   const quoteState = useAskQuote(url, askLevelCostOn && linkOk);
   const quote = quoteState.status === "ready" ? quoteState.quote : null;
-  // Flag on with a valid link at a COVERED company (or coverage not yet
-  // resolved): Send waits for the price, because the server charges the level
-  // cost at submit there. A pending or failed quote can never fall back to
-  // the flat one-credit line or leave Send enabled. A company known NOT open
-  // is different by contract (QA-verified): the server accepts the ask into
-  // coverage-wait with NO debit even when the wallet is short, so the flat
-  // "no credit used until…" line is the truth and Send never waits on pricing.
-  const covered = company?.openToReferrals === true;
-  const uncovered = company?.openToReferrals === false;
-  const gated = quoteState.status === "pending" || quoteState.status === "error";
-  const cost: AskCostLine = gated && uncovered
-    ? askCostLine({ open: false, balance: null, cost: null })
-    : quoteState.status === "pending"
-      ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
-      : quoteState.status === "error"
-        ? { line: "We could not price this ask", detail: "Edit the job link to try again.", blockedReason: "We could not price this ask" }
-        : askCostLine({ open: company ? company.openToReferrals : null, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost ?? (askLevelCostOn ? undefined : 1) });
-  // The shortfall top-up swap applies only at a covered company: an uncovered
-  // ask waits for free by contract, so a short wallet must never be pushed to
-  // top-up for it. Coverage unknown (no directory match) keeps Send on the
-  // line's wording; the server refuses covered-and-short submits with the
-  // exact wording shown in the send error, and the composer re-prices then.
-  // Only the by-level quote ever needs the pack catalog (top-up destination);
-  // with the flag off there is no quote and no top-up, so the composer makes
-  // no billing read at all - flags off stays byte-for-byte today's network
-  // behaviour (review F3, 55e5aa3a).
+  // D-176: the same charge condition applies before every send. The server
+  // decides delivery and any shortfall at commit, preserving the draft on refusal.
+  const cost: AskCostLine = quoteState.status === "pending"
+    ? { line: "Pricing this ask…", detail: "Send unlocks when the price is in.", blockedReason: "Pricing this ask…" }
+    : quoteState.status === "error"
+      ? { line: "We could not price this ask", detail: "Edit the job link to try again.", blockedReason: "We could not price this ask" }
+      : askCostLine({ open: null, balance: quote ? quote.totalAvailable : isSignedIn && balance?.state === "ready" ? balance.count : null, cost: quote?.cost ?? (askLevelCostOn ? undefined : 1) });
+  // Retain the dormant recovery callback and its destination for saved returns.
+  // With the flag off the composer still makes no billing-catalog request.
   const catalogQuery = usePlansCatalog(Boolean(isSignedIn) && askLevelCostOn);
   const catalog = catalogQuery.data ?? null;
   const packsOnSale = catalog !== null ? catalog.packs.some(pack => pack.available) : true;
   const resolvedTopUpHref = topUpHref(packsOnSale);
-  const topUp = quote && covered && quote.shortfall > 0 ? { shortfall: quote.shortfall, href: resolvedTopUpHref } : null;
+  const topUp = null;
   const context = company ? [company.name, roleTitleFromUrl(url)].filter(Boolean).join(" · ") : roleTitleFromUrl(url);
 
   const missing = !linkOk
@@ -462,7 +445,6 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     setResumeError("");
     setSendError(null);
     setSent(null);
-    setWatch({ state: "idle", message: "" });
     setDraftState("idle");
     setPostSelection(null);
     setPickedWork(null);
@@ -503,7 +485,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       // Save the seeker's work even when the directory cannot resolve the company.
       saveAskPrefill({
         companySlug: company?.slug ?? null,
-        targetRoleUrl: url,
+        targetRoleUrl: jobUrl,
         note: composeWhyMe(reasons),
         opportunityId: postSelection?.opportunityId,
       });
@@ -514,20 +496,14 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       const doc = await ensureResume();
       setSendStage("ask");
       const body = buildAskBody({
-        targetRoleUrl: url,
+        targetRoleUrl: jobUrl,
         reasons,
         resumeId: doc.id,
         companySlug: company?.slug ?? null,
         fastTrack: fastTrackAskFields(window.location.search),
-        confirmedCompanyDomain: confirmedDomain(url.trim()),
+        confirmedCompanyDomain: confirmedDomain(jobUrl),
         opportunityId: postSelection?.opportunityId,
         workItemIds: selectedWork,
-        // Review F2 (55e5aa3a): expectedCoverage exists only for the by-level
-        // quote's free-waiting promise. With VITE_ASK_LEVEL_COST off the
-        // composer shows today's flat line and sends today's body, so a
-        // coverage flip at commit keeps today's behaviour (created, 1 credit
-        // spent) instead of a 409 the live path never promised.
-        expectedCoverage: askLevelCostOn && uncovered ? "waiting_for_company_coverage" : undefined,
       });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", {
@@ -597,13 +573,14 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
         detail: created.fastTrack
           ? `Only the ${where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
           : created.waitingForCoverage
-            ? `No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
+            ? `It's waiting in ${name}'s pool for verified employees who join, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
             : created.firstLook
               ? `The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified ${where}employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`
-              : `Verified ${where}employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
-        slots: created.slots ? (created.slots.cap === null ? `Open asks ${created.slots.open}` : `Open asks ${created.slots.open} of ${created.slots.cap}`) : null,
+              : `It reached verified ${where}employees. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
+        slots: created.slots ? (created.slots.cap === null ? `Open referral requests ${created.slots.open}` : `Open referral requests ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,
       });
+      trackClarityEvent(created.waitingForCoverage ? "journey_request_sent_pool" : "journey_request_sent_delivered");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["credit-balance"] }),
         queryClient.invalidateQueries({ queryKey: ["requests", "mine"] }),
@@ -620,10 +597,10 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
 
   const saveDraft = async () => {
     if (!company) return;
-    if (!isValidTargetRoleUrl(url.trim())) { setLinkTouched(true); setSendError("Add a valid job link to save a draft."); return; }
+    if (!isValidTargetRoleUrl(url.trim())) { setLinkTouched(true); setSendError(TARGET_ROLE_URL_ERROR); return; }
     setDraftState("saving");
     try {
-      await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note: composeWhyMe(reasons) }, fetchToken);
+      await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: jobUrl, note: composeWhyMe(reasons) }, fetchToken);
       setDraftState("saved");
     } catch (reason) {
       setDraftState("idle");
@@ -640,47 +617,27 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       setSendError("We could not save your selected resume or work. Your ask is still here. Try again.");
       return;
     }
-    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: url, note: composeWhyMe(reasons), opportunityId: postSelection?.opportunityId }, store)) {
+    if (!saveAskPrefill({ companySlug: company?.slug ?? null, targetRoleUrl: jobUrl, note: composeWhyMe(reasons), opportunityId: postSelection?.opportunityId }, store)) {
       clearAskTopUpSelection(store);
       setSendError("We could not save your ask before opening credits. Your ask is still here. Try again.");
       return;
     }
     if (isSignedIn && company && isValidTargetRoleUrl(url.trim())) {
       try {
-        await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: url.trim(), note: composeWhyMe(reasons) }, fetchToken);
+        await saveAskDraftRemote({ companySlug: company.slug, targetRoleUrl: jobUrl, note: composeWhyMe(reasons) }, fetchToken);
       } catch (reason) {
         setSendError(reason instanceof Error ? reason.message : "We could not save your draft. Try again.");
         return;
       }
     }
-    navigate(topUp?.href ?? resolvedTopUpHref);
-  };
-
-  const watchCompany = async () => {
-    if (!company) return;
-    if (!isSignedIn) { goToSeekerSignIn(`/explore?company=${company.slug}`); return; }
-    setWatch({ state: "busy", message: "" });
-    try {
-      const token = await fetchToken();
-      const response = await fetch("/api/seeker-alerts", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ companyDomain: company.domains[0] }),
-      });
-      const payload = await readApiJson<Record<string, unknown>>(response, "We could not save your alert");
-      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "We could not save your alert");
-      setWatch({ state: "done", message: `We’ll tell you when a verified employee at ${company.name} joins.` });
-    } catch (reason) {
-      setWatch({ state: "error", message: reason instanceof Error ? reason.message : "We could not save your alert" });
-    }
+    navigate(resolvedTopUpHref);
   };
 
   return {
     signedIn: Boolean(isSignedIn),
     url,
-    onUrlChange: value => { setUrl(value); setDraftState("idle"); },
-    onUrlBlur: () => setLinkTouched(true),
+    onUrlChange: (value, pasted) => { setUrl(pasted ? completeTargetRoleUrl(value) : value); setDraftState("idle"); },
+    onUrlBlur: () => { setUrl(current => completeTargetRoleUrl(current)); setLinkTouched(true); },
     hint,
     resumeView,
     pickResume,
@@ -691,14 +648,14 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       setDraftState("idle");
     },
     reasonsError: attempted && words < MIN_WORDS ? "Write your reasons first: one specific result beats a list of skills." : "",
-    watch: company && !company.openToReferrals ? { ...watch, onWatch: () => { void watchCompany(); } } : null,
+    watch: null,
     cost,
     costQuote: quote,
     topUp,
     onTopUp: (event?: React.MouseEvent) => { void onTopUp(event); },
     context,
-    sendLabel: isSignedIn ? "Send ask" : "Sign in and send",
-    sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your ask…",
+    sendLabel: isSignedIn ? "Send referral request" : "Sign in and send",
+    sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your referral request…",
     sending: sendStage !== "idle",
     sendBlocked: blocked,
     sendGuidance: !online ? blocked ?? null : cost.blockedReason && isSignedIn ? "Your balance is too low to send this referral request." : url.trim() && linkOk ? missing : null,

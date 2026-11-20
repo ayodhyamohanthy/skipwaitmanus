@@ -17,6 +17,10 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { ownsEntry, ownsMatches, slugOf } from "./nextTaskCore.mjs";
 import { runQueueGate } from "./queue-gate.mjs";
+// D-370 switch; a standalone copy without scripts/sessionPolicy.mjs reads the same test-only variable.
+let MODEL_ROUTES_ENFORCED = globalThis.process?.env?.SKIPWAIT_LEGACY_REVIEW_RULES === "on";
+try { ({ MODEL_ROUTES_ENFORCED } = await import("./sessionPolicy.mjs")); }
+catch (error) { if (error.code !== "ERR_MODULE_NOT_FOUND") throw error; }
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
 const SWITCH_ONLY_LINE_LIMIT = 12;
@@ -27,7 +31,8 @@ const git = args => execFileSync("git", args, { encoding: "utf8" }).trim();
 
 // D-356 named GPT-6.1 Sol, D-357 added GPT-6 Sol, and D-359 (owner, Nov 18 2026) widened it to every model name that
 // contains GPT or Claude, in any case. A session name is "<model>" or "<model> · <tag>"; the model part never holds "·".
-const FULL_EDIT_MODEL = /gpt|claude/i;
+// D-370 (owner, Nov 20 2026): "remove model dependency" - every session's model gets the same rights.
+const FULL_EDIT_MODEL = MODEL_ROUTES_ENFORCED ? /gpt|claude/i : /\S/;
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
