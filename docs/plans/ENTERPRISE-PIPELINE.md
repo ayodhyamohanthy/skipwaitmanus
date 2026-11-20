@@ -46,10 +46,12 @@ All work is done by AI agents and machine checks. A role is either a picker stag
 | Security | Threats, secrets, dependencies | D-100 audit waits for a packet; D-191 patched four advisories | Owner settings: secret scanning, push protection, CodeQL (free on a public repo). `GATE-tier-floor` sends every sign-in, identity and privacy path to review |
 
 ## 4. The seven lights
+**Current policy (D-370, November 20):** required CI is the pre-landing check for every tier. Independent-review/model restrictions elsewhere in this historical plan are superseded; this board introduces no review dependency.
+
 "All lights green" means all seven, for the release that is live. `node scripts/next-task.mjs --status` prints them (`PICKER-fullstack-lights`); `PROCESS-scorecard` adds the weekly numbers.
 
 1. **Built right.** Required checks on the exact head, with the branch up to date: typecheck (with design tokens, deploy triggers, scope, the D-166 gates and test integrity), unit + component + route tests (three parallel shards under one always-run aggregate, D-351), production build, and e2e journeys.
-2. **Checked by someone else.** Tier 1 (the computed tier): one independent pass on the exact head, which includes the QA checklist for a UI change. Tier 2 and 3: CI is enough to land (D-200 (4)); a UI change among them gets its QA pass within 24 hours after landing, and its findings become fix rows.
+2. **Required CI.** The CI workflow on the exact head of the released pull request succeeded. A passing review step alone is not proof that CI succeeded. Failed CI is red; missing, unreadable or pending CI is unknown. No independent review is required (D-370).
 3. **Landed cleanly.** Through the landing slot and the merge-commit button, never an admin bypass (D-200), with `main`'s CI green on the landed SHA and the task's branch and markers deleted.
 4. **Deployed.** Deploy API (with `migrate-db`) and Deploy Web are green.
 5. **Verified live.** `release/verified` is green: the web serves its newest deployed SHA, the API serves the `api-runtime` SHA, and the smoke battery passes on `https://skipwait.me`.
