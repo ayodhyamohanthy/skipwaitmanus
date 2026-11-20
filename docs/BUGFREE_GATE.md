@@ -24,6 +24,8 @@ Current overall gate state, how each item is tested, and its latest result follo
 
 Legacy referral packs are intentionally paused and archived (D-219 (6), D-214 (3)). Their unavailable state is not a launch defect. D-366/D-367/D-370 authorize the separate BANDED-* build and release, with TEST-site QA before activation; no banded checkout or sale activation is exercised by this QA row. WorkOS seeker sign-in and work-email-only referrer sign-in remain the product methods; the reviewer route is a bounded QA exception, not a replacement for testing either real method.
 
+**Latest execution: PARTIAL, November 20.** Web `a4e93b7965fcd684b6f57e4924fd3c3ce92245ab`, API `84614d5ad59421a4840b6ad6c6cf66b44f788e13` (`ready`), read back at 17:27 UTC. Both fixed demo reviewer sign-ins returned 200 with the expected role. Sixteen authenticated GETs returned the expected role restrictions and empty-account results; no business transition was tested. The browser repeatedly timed out, failed screenshot capture and could not attach a fresh tab. No current signed-in capture or visual pass is claimed. [Sanitized execution receipt](qa/launch-live-qa-nov20-7631.md). Keep `LAUNCH-live-qa` todo and PR #710 draft. Future resets must use the protected credential route recorded in the November 20 packet update.
+
 ### October 26, 2026 historical public pass
 
 The following is dated evidence, not the current release verdict. Fresh results and their exact web/API identities must be recorded separately.
@@ -55,6 +57,8 @@ attempted. Items 4.9 and 4.10 were not re-probed in that run; their October 14 e
 
 ## 1. Login / OTP session
 
+**November 20:** both fixed reviewer demo accounts authenticated successfully on API `84614d5a`. This is a partial login-boundary pass only. WorkOS OAuth, work-email OTP delivery and current sign-in UI captures were not completed; the dated rows below remain history for those methods.
+
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
 | 1.1 | WorkOS SSO sign-in produces a valid session | Signed-in suite: silent SSO via `/api/auth/workos/sign-in`, then `GET /api/credits/summary` must return 200 with the expected wallet. Every 2 h. | GREEN (latest 5:16-5:31 PM IST Oct 14, API `2264a9f0`); PARTIAL Oct 26 via the approved alias QA route (issue #709): email-code sign-in produced a verified seeker session and the wallet read (free, 3 monthly, 2 remaining); the silent-SSO leg was not run |
@@ -64,6 +68,8 @@ attempted. Items 4.9 and 4.10 were not re-probed in that run; their October 14 e
 | 1.5 | Social sign-in providers (PR #197) | Live Oct 14: sign-in page shows Continue with Google / Microsoft / GitHub / email at 1280 + 390 (Apple intentionally absent - not enabled in the WorkOS dashboard). `?provider=google|microsoft|github` on `/api/auth/workos/sign-in` 302 to WorkOS with the matching provider; `?provider=apple` falls back to `authkit` without error. The Oct 14 run predates the login rule (D-030 as amended by D-049): seekers sign in with Google, Microsoft, GitHub, LinkedIn or Slack, or personal email (a password instead of the code once queue task 2 ships); referrer surfaces offer only the work-email code. Re-run against that rule. D-030 presentation re-verified Oct 26 at 1280 + 390 (`sign-in-1280.png`, `sign-in-390.png`, `sign-in-referrer-1280.png`, `sign-in-referrer-390.png`): seeker mode shows 5 social buttons, referrer mode shows 0 social buttons and the work-email code only. | GREEN (5:12 PM IST Oct 14, API `2264a9f0`; presentation re-verified Oct 26) |
 
 ## 2. Referral request flow
+
+**November 20:** both demo accounts' own-request reads returned 200 with zero requests. The seeker received 403 for referrer inbox/home and admin access; the verified referrer received 200 for its empty inbox/home and 403 for admin access. These role checks do not prove cross-user document isolation or populated request behavior. Upload, creation, company-link rejection, withdrawal and their wallet effects remain unexecuted and unverified on this release.
 
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
@@ -76,6 +82,8 @@ attempted. Items 4.9 and 4.10 were not re-probed in that run; their October 14 e
 
 ## 3. Approval flow
 
+**November 20:** the demo referrer's access verdict is verified with `codeRequired: false`; the demo seeker is unverified. The referrer inbox contains zero requests. Both block-list reads returned 200 with zero blocks. Claim, acceptance, decline/reopen, block/unblock and OTP-send transitions remain untested; no current UI pass is inferred from these API results.
+
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
 | 3.1 | Approve/decline actions on a referral thread | Full cycle live Oct 14 9:09-9:17 PM IST (API `a9f01bc`): qa-sweep-2 verified as a SkipWait referrer (gate 1.4) and qa-sweep-1 posted two synthetic QA-marked asks via the full UI flow (job-link domain check held; resume required to send). Request 13: inbox (state "new") -> claim 200 -> approve 200 `{"status":"approved"}` -> seeker `mine` shows approved + referrer message; idempotent re-approve 200 `replayed:true` (revision unchanged); decline-after-approve 409 with `currentState` (state machine correct). Request 14: claim 200 -> decline 200 `{"status":"declined"}` -> seeker sees declined + the referrer's message. Every employee decline keeps the credit spent regardless of reason (D-147). **Changed in code by `d3bd4d70` (Oct 15, D-021):** the claimed decline now genuinely reopens the ask - it previously threw "An allocated referral must be released through the queue workflow" on the one-click surface (a 500) and wrote terminal `declined` on the older `/review` surface. The request-14 leg must be re-run to see `{"status":"passed"}` and the ask back in the company queue. | GREEN for the Oct 14 behavior - RE-RUN PENDING on the next signed-in suite (API `d3bd4d70`; signed-out probes re-verified); BLOCKED Oct 26 - the pass-reopen re-run needs the approved signed-in QA access (issue #709) |
@@ -85,9 +93,9 @@ attempted. Items 4.9 and 4.10 were not re-probed in that run; their October 14 e
 
 ## 4. Credits / payments
 
-Every handoff is driven in a real browser from the product UI to the Chargebee hosted page and
-**stops at the payment form** - no card data is ever entered and no payment is ever completed.
-Each leg asserts the correct plan, currency, and amount on the Chargebee page. Every 2 h.
+**November 20:** both demo receipt reads returned 200 with zero receipts. No credit-summary read, wallet change, checkout, hosted payment page, provider event or refund was exercised. Wallet stability, runtime checkout refusal and payment/recovery legs remain unverified. Legacy packs stay paused by D-219; new banded sales follow their separate TEST-site/release gate. No real payment is permitted in agent QA.
+
+The dated table below records historical checkout tests only. It is not a current instruction to open checkout or evidence of an active recurring battery; the current QA packet does not authorize a checkout POST merely because sales are paused.
 
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
