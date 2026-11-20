@@ -173,7 +173,7 @@
       "tier": 1,
       "lane": "banded-schema-migration",
       "branch": "agent/queue/banded-schema-migration",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [],
       "owns": [
@@ -182,7 +182,7 @@
         "docs/plans/BANDED-schema-migration.md"
       ],
       "epic": "BANDED-release",
-      "note": "Migration-first prerequisite split from BANDED-schema under D-200/D-223, following REL-review-email-retry-schema. Copy the exact 0123 SQL from PR #1371; no readiness/schema runtime code. Protected main migration run and checksum/readiness acceptance precede completion; D-370 removes review, not migration-first."
+      "note": "Completed PR #1395 at 50b06d14b: exact 0123 SQL from #1371, unchanged checksum. PR CI44789656269 and main CI44790210736 passed; Deploy API44790210931 applied 0123 (migration gate passed:1 applied) and converged canonical readiness on 50b06d14b with workers.dev closed. Release verify44792600283 and eight read-only HTTP probes passed. Parent BANDED-schema must merge current main, retain the same SQL/checksum and pass fresh CI; this completes only the migration prerequisite and enables no sale."
     },
     {
       "id": "BANDED-schema",
