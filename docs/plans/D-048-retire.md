@@ -447,6 +447,8 @@ The runtime goal modules, route table and release list stay unchanged; `/explore
 
 - Integration with main `958ec17dc` passes TypeScript, all 160 focused tests across eight files (73 approval checks plus 87 daily-money-check checks) and the production build. The approval runtime and capture inputs are unchanged. [CI 44780156353](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44780156353) passed on published checkpoint `e51aa5b7f`, including all three unit shards, the required aggregate, typecheck, build and E2E. Read-only production Sentry queries since November 16 for web `url:*/admin/approvals*` and backend `url:*/api/admin/approval-queue*` each returned no matching issues with `hasMore:false`. These checks precede retirement deployment; post-deploy acceptance remains outstanding.
 
+- Final conflict-free integration includes main `dc1ce93f7`. The intervening job-health changes pass 70/70 focused tests in five files; scope/test-integrity, token audit, migration lint, deploy-trigger coverage and `git diff --check origin/main` pass on the composed worktree. Approval implementation, test assertions and capture source hashes remain unchanged. Fresh required CI on the published integration still gates protected auto-merge; live acceptance is pending.
+
 ### D-048-K-admin-approvals: ported assertions
 
 | Legacy check | Released goal contract retained at retirement |

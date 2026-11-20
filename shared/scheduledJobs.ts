@@ -85,6 +85,18 @@ export const adminScheduledJobsResponseSchema = z.strictObject({
 });
 export type AdminScheduledJobsResponse = z.infer<typeof adminScheduledJobsResponseSchema>;
 
+export const healthScheduledJobSchema = z.strictObject({
+  name: scheduledJobNameSchema,
+  overdue: z.boolean(),
+});
+export type HealthScheduledJob = z.infer<typeof healthScheduledJobSchema>;
+
+export const healthJobsResponseSchema = z.strictObject({
+  ok: z.boolean(),
+  jobs: z.array(healthScheduledJobSchema),
+});
+export type HealthJobsResponse = z.infer<typeof healthJobsResponseSchema>;
+
 /** Windows are aligned to the epoch, so every runner derives the same key for the same instant. */
 export function jobWindowKey(nowMs: number, windowMs: number): string {
   if (!Number.isSafeInteger(windowMs) || windowMs < 60_000 || windowMs % 60_000 !== 0) throw new Error("A job window is a whole number of minutes");
