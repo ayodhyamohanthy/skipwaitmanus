@@ -146,6 +146,12 @@ Routing verification uses the actual picker APIs with the known merged-release e
 
 ## 4. Rows
 
+### D-048-K-policy: current repair (November 20)
+
+In progress — GPT-6.1 Sol · a25f — `agent/queue/d048-k-policy`, takeover `49d32d0da`, integrated main `f302a49f4` in `1e808bf29`. Read entry/continuity/collaboration instructions, this packet's D-365/D-366 preservation contract and decisions through D-368. Prior draft [#1354](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1354) retains the runtime retirement and baseline captures; its missing after-captures and canonical/Sentry acceptance are not claimed complete.
+
+Red-first local reproduction: `LANG=en_US.UTF-8 pnpm vitest run client/src/pages/trustPrivacy.test.tsx` fails one of three tests because the retired Kit H1 `Privacy.` is now the already released `Know your rights.`. Port that presentation expectation to the goal H1 plus the retained `Privacy` page label; all processor, privacy, account-control, disclosure and anchor assertions remain unchanged. No legal/source text, API, auth, schema, dependency or sales behavior changes. Complete current-head focused checks and 1280/390 parity before requesting landing.
+
 Each `D-048-K-<surface>` depends on the row that released (or will release) the surface. Soak start is that row's landing.
 
 | Row | Surface ids | Built by | Released by | Tier |
