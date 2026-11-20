@@ -18,7 +18,15 @@ decides whether distribution may start with gaps open.
 
 Current overall gate state, how each item is tested, and its latest result follow.
 
-### Oct 26, 2026 live pass - public/signed-out only; signed-in items BLOCKED
+### November 20, 2026 current QA status
+
+**Current release acceptance is incomplete.** D-346/D-366 authorize the fixed reviewer demo accounts for no-money QA; the old `qa-sweep-1` and `qa-sweep-2` accounts are excluded (D-214). The current packet is `docs/plans/LAUNCH-oct25.md`. Historical results below do not establish a pass for the current release, a running recurring battery, or permission to open checkout.
+
+Legacy referral packs are intentionally paused and archived (D-219 (6), D-214 (3)). Their unavailable state is not a launch defect. D-366/D-367/D-370 authorize the separate BANDED-* build and release, with TEST-site QA before activation; no banded checkout or sale activation is exercised by this QA row. WorkOS seeker sign-in and work-email-only referrer sign-in remain the product methods; the reviewer route is a bounded QA exception, not a replacement for testing either real method.
+
+### October 26, 2026 historical public pass
+
+The following is dated evidence, not the current release verdict. Fresh results and their exact web/API identities must be recorded separately.
 
 Release `web fb420761` / `API 40e160e2` (ready, schema reconciled), run 13:28-13:34Z. Thirteen
 signed-out routes at 1280 and 390 (26 views): every view HTTP 200, zero console/page/network errors,
@@ -35,14 +43,13 @@ on Oct 26 18:59 IST (issue #709) and ran read-only checks: seeker session verifi
 Those screens were empty states, so **no transactional flow is proven**. Every item whose test needs a
 signed-in flow is marked BLOCKED below - blocked is not a failure, and it is not GREEN.
 
-**Finding (launch blocker): every INR credit pack reports `available:false`** on
-`/api/plans/catalog` (six polls, 13:28-14:48Z), so `/plans` shows "Not on sale yet" on all four packs
-while `docs/PRICING.md` says packs are live. Root cause established on the LIVE Chargebee site (issue
-#709, read-only): the `pack_2/5/25/60/150` items were archived on Oct 25 20:06-20:08 IST, and the app
-resolves only `skipwait_<pack>-<currency>`, so the response is the true provider state. Open: the
-archival's intent (owner call), an item-price-level read, and runtime checkout refusal (no checkout POST
-without separate authority). Filed as row `LAUNCH-packs-unavailable`. No payment was attempted. 4.9 and
-4.10 (gift gate, webhook signature gates) were not re-probed this run; they keep their Oct 14 result.
+**Historical finding, superseded by the current D-219 sales truth:** every INR credit pack reported
+`available:false` on `/api/plans/catalog` (six polls, 13:28-14:48Z), and `/plans` showed "Not on sale yet"
+while the old pricing documentation said packs were live. The read-only provider investigation in issue
+#709 found the pack items archived on October 25. D-219 (6) and D-214 (3) establish that this pause is
+intended; no restore/recreate decision or provider write is pending from this observation. The obsolete
+branch-only `LAUNCH-packs-unavailable` row is not carried into the current queue. No payment was
+attempted. Items 4.9 and 4.10 were not re-probed in that run; their October 14 evidence remains history.
 
 ---
 
@@ -145,10 +152,10 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
   path) have Oct 26 evidence, from the coordinator's approved alias route (issue #709); 2.2-2.6,
   3.1-3.4, 4.1-4.4 and 4.11 stay BLOCKED/unverified, and 4.17's runtime refusal leg is unverified.
   Nothing transactional is proven for this release.
-- **Open launch blocker:** every INR credit pack reports `available:false` on the live catalog while
-  `docs/PRICING.md` says packs are live and `/plans` shows "Not on sale yet". Root cause established:
-  the pack items were archived on the LIVE Chargebee site on Oct 25 (issue #709); whether to restore
-  them for launch or correct PRICING.md is the owner's call. Row `LAUNCH-packs-unavailable`.
+- **The October pack-availability finding is superseded.** The archived legacy packs are intentionally
+  paused under D-219 (6)/D-214 (3); no restore/recreate action is implied. New banded sales belong to
+  BANDED-* and its test-site/release gates (D-366/D-367/D-370). The historical observation stays in
+  the October evidence, while the branch-only obsolete queue row is removed.
 - The remaining money-lane item is runtime checkout refusal, which needs an explicitly authorized
   no-wallet-risk path, not a live checkout POST.
 - 4.12 (real payment completion) stays PARTIAL: verified to the payment form on the old build; agents
