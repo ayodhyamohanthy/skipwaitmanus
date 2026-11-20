@@ -7,6 +7,10 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  // BANDED-schema: validation metadata only; deploy 0123 before readiness lands.
+  { table: "bandedReferralBalances", createSql: `CREATE TABLE IF NOT EXISTS \`bandedReferralBalances\` (\`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY, \`userId\` int NOT NULL, \`level\` enum('early','mid','senior','executive') NOT NULL, \`includedRemaining\` int unsigned NOT NULL DEFAULT 0, \`includedCycleKey\` varchar(128) NULL, \`includedExpiresAt\` timestamp NULL, \`purchasedRemaining\` int unsigned NOT NULL DEFAULT 0, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`banded_balances_user_level_unique\` (\`userId\`,\`level\`), CONSTRAINT \`banded_balances_included_cycle\` CHECK (\`includedRemaining\` = 0 OR (\`includedCycleKey\` IS NOT NULL AND \`includedExpiresAt\` IS NOT NULL))) ENGINE=InnoDB` },
+  { table: "bandedFoundingCounters", createSql: `CREATE TABLE IF NOT EXISTS \`bandedFoundingCounters\` (\`site\` enum('test','live') NOT NULL, \`planId\` enum('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL, \`issuedCount\` int unsigned NOT NULL DEFAULT 0, \`reservedCount\` int unsigned NOT NULL DEFAULT 0, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (\`site\`,\`planId\`), CONSTRAINT \`banded_founding_counter_cap\` CHECK (\`issuedCount\` + \`reservedCount\` <= CASE \`planId\` WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END)) ENGINE=InnoDB` },
+  { table: "bandedFoundingMemberships", createSql: `CREATE TABLE IF NOT EXISTS \`bandedFoundingMemberships\` (\`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY, \`site\` enum('test','live') NOT NULL, \`planId\` enum('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL, \`userId\` int NULL, \`checkoutIntentId\` varchar(96) NOT NULL, \`subscriptionId\` varchar(80) NULL, \`status\` enum('reserved','issued','released') NOT NULL DEFAULT 'reserved', \`issuedSequence\` int unsigned NULL, \`expiresAt\` timestamp NOT NULL, \`issuedAt\` timestamp NULL, \`releasedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE SET NULL, FOREIGN KEY (\`site\`,\`planId\`) REFERENCES \`bandedFoundingCounters\` (\`site\`,\`planId\`), UNIQUE INDEX \`banded_founding_checkout_unique\` (\`site\`,\`checkoutIntentId\`), UNIQUE INDEX \`banded_founding_subscription_unique\` (\`site\`,\`subscriptionId\`), UNIQUE INDEX \`banded_founding_sequence_unique\` (\`site\`,\`planId\`,\`issuedSequence\`), INDEX \`banded_founding_expiry_idx\` (\`status\`,\`expiresAt\`), CONSTRAINT \`banded_founding_sequence_cap\` CHECK (\`issuedSequence\` IS NULL OR \`issuedSequence\` BETWEEN 1 AND CASE \`planId\` WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END), CONSTRAINT \`banded_founding_state\` CHECK ((\`status\` = 'reserved' AND \`issuedSequence\` IS NULL AND \`issuedAt\` IS NULL AND \`releasedAt\` IS NULL) OR (\`status\` = 'issued' AND \`issuedSequence\` IS NOT NULL AND \`issuedAt\` IS NOT NULL AND \`releasedAt\` IS NULL) OR (\`status\` = 'released' AND \`issuedSequence\` IS NULL AND \`issuedAt\` IS NULL AND \`releasedAt\` IS NOT NULL))) ENGINE=InnoDB` },
   { table: "seekerAgentGrants", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`name\` varchar(120) NOT NULL, \`keyPrefix\` varchar(16) NOT NULL, \`keyHash\` varchar(64) NOT NULL, \`canLookup\` boolean NOT NULL DEFAULT true, \`canDraft\` boolean NOT NULL DEFAULT true, \`maxCreditsPerAsk\` int NOT NULL, \`maxCreditsPerDay\` int NOT NULL, \`maxCreditsPerWeek\` int NOT NULL, \`maxAsksPerDay\` int NOT NULL, \`expiresAt\` timestamp NOT NULL, \`revokedAt\` timestamp NULL, \`lastUsedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentGrants_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_grants_key_hash_unique\`(\`keyHash\`), INDEX \`seeker_agent_grants_user_idx\`(\`userId\`))` },
   { table: "seekerAgentControls", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentControls\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`pausedAt\` timestamp NULL, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentControls_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_controls_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_controls_user_unique\`(\`userId\`))` },
   { table: "seekerAgentDrafts", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentDrafts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`grantId\` int NOT NULL, \`userId\` int NOT NULL, \`companySlug\` varchar(48) NOT NULL, \`targetRoleUrl\` varchar(2048) NOT NULL, \`note\` varchar(2000) NOT NULL DEFAULT '', \`jobLevel\` int NOT NULL, \`creditCost\` int NOT NULL, \`status\` ENUM('draft','discarded') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentDrafts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_drafts_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`seeker_agent_drafts_grant_idx\`(\`grantId\`,\`createdAt\`), INDEX \`seeker_agent_drafts_user_idx\`(\`userId\`,\`createdAt\`))` },
@@ -202,6 +206,26 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // subtag. Both nullable; null means behaviour exactly as before.
   { table: "accountPreferences", column: "language", definition: "VARCHAR(16) NULL" },
   { table: "accountPreferences", column: "signupLanguage", definition: "VARCHAR(16) NULL" },
+  { table: "bandedReferralBalances", column: "userId", definition: "INT NOT NULL" },
+  { table: "bandedReferralBalances", column: "level", definition: "ENUM('early','mid','senior','executive') NOT NULL" },
+  { table: "bandedReferralBalances", column: "includedRemaining", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedReferralBalances", column: "includedCycleKey", definition: "VARCHAR(128) NULL" },
+  { table: "bandedReferralBalances", column: "includedExpiresAt", definition: "TIMESTAMP NULL" },
+  { table: "bandedReferralBalances", column: "purchasedRemaining", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedFoundingCounters", column: "site", definition: "ENUM('test','live') NOT NULL" },
+  { table: "bandedFoundingCounters", column: "planId", definition: "ENUM('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL" },
+  { table: "bandedFoundingCounters", column: "issuedCount", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedFoundingCounters", column: "reservedCount", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedFoundingMemberships", column: "site", definition: "ENUM('test','live') NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "planId", definition: "ENUM('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "userId", definition: "INT NULL" },
+  { table: "bandedFoundingMemberships", column: "checkoutIntentId", definition: "VARCHAR(96) NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "subscriptionId", definition: "VARCHAR(80) NULL" },
+  { table: "bandedFoundingMemberships", column: "status", definition: "ENUM('reserved','issued','released') NOT NULL DEFAULT 'reserved'" },
+  { table: "bandedFoundingMemberships", column: "issuedSequence", definition: "INT UNSIGNED NULL" },
+  { table: "bandedFoundingMemberships", column: "expiresAt", definition: "TIMESTAMP NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "issuedAt", definition: "TIMESTAMP NULL" },
+  { table: "bandedFoundingMemberships", column: "releasedAt", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -297,6 +321,12 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "askInviteLinks", name: "ask_invites_status_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
   { table: "askInviteLinks", name: "ask_invites_creator_created_idx", columns: "`createdByUserId`,`createdAt`", nonUnique: true },
   { table: "askWorkItems", name: "ask_work_items_request_idx", columns: "`referralRequestId`,`position`", nonUnique: true },
+  { table: "bandedReferralBalances", name: "banded_balances_user_level_unique", columns: "`userId`,`level`" },
+  { table: "bandedFoundingCounters", name: "PRIMARY", columns: "`site`,`planId`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_checkout_unique", columns: "`site`,`checkoutIntentId`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_subscription_unique", columns: "`site`,`subscriptionId`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_sequence_unique", columns: "`site`,`planId`,`issuedSequence`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -358,6 +388,8 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "landedJourney", column: "referrerUserId", referencedTable: "users", referencedColumn: "id" },
   // D-057-session-gate (0116): a proof goes when its account goes.
   { table: "referrerStepUps", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "bandedReferralBalances", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "bandedFoundingMemberships", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

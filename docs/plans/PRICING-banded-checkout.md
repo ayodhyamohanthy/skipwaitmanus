@@ -46,10 +46,20 @@ Each row lands on green required CI with its Tier 1 review (D-352), behaviour un
 
 ## 7. BANDED-schema storage and rollout contract
 
-- Stored `tokenBalances.plan` and `subscriptionCheckoutIntents.plan` append the three `PLAN_FAMILY_IDS`, preserving every legacy ENUM position. `WALLET_PLAN_IDS` and `INTENT_PLAN_IDS` follow those storage values; billable plan ids, prices and checkout request schemas do not change. The immutable 0091 migration pin remains bound to its original prefix, not future append-only values.
+- Stored `tokenBalances.plan` and `subscriptionCheckoutIntents.plan` append the three `PLAN_FAMILY_IDS`, preserving every legacy ENUM position. `WALLET_PLAN_IDS` and `INTENT_PLAN_IDS` follow those storage values; billable plan ids, prices and checkout request schemas do not change. Historical 0091 SQL stays unchanged; actual legacy ordinals are tested by applying the new migration.
 - `bandedReferralBalances` has one row per user and referral level, with separate non-negative included-cycle and purchased balances. Included balance carries a cycle key and end date; purchased balance has no expiry. These are new empty tables, not grants or a conversion of existing money.
 - `bandedFoundingCounters` stores issued and reserved counts per plan, bounded together by its frozen cap. `bandedFoundingMemberships` retains checkout-idempotency, reservation expiry and a unique bounded sequence on issuance. Only reserved places can release; an issued membership remains issued through lapse/cancellation, so account deletion must not cascade away its place. BANDED-checkout/grants must lock the counter row and mutate the reservation/issuance in one transaction. This row supplies constraints, no checkout or payment reader.
 - Production order follows `docs/BRIEF.md`: a migration-only prerequisite must be reviewed, deployed and verified before schema-dependent readiness code lands, as in `REL-review-email-retry-schema` / PR #1341. The draft implementation does not waive that order. Runtime reconciliation stays SELECT-only; startup never applies DDL.
+- TEST and LIVE use independent counter keys and uniqueness domains. Frozen caps are repeated only in database CHECK expressions, tested against `PLAN_FAMILY`; a test-site checkout cannot reserve a live founding place. User deletion nulls the issued membership's user link instead of deleting its counted sequence.
+- Deploy migration `0123_banded_plans.sql` is under `drizzle/deploy/`, not the legacy root SQL journal: only deploy migrations reach production (`schemaDeployGuard`, GATE-migration-apply).
+
+### Ported assertions
+
+| Historical assertion | Preserved guarantee |
+|---|---|
+| 0091 source-text comparisons of the complete wallet/intent enum lists in `server/pricingModelContract.test.ts` | Removed these two stale implementation pins. `e2e/banded-schema.e2e.ts` inserts every legacy plan before applying the real migration, checks unchanged numeric ENUM ordinals afterward, inserts each banded plan, and replays against live scratch data. The existing schema/shared-union comparisons remain. No applied migration is edited. |
+| New dormant-plan boundary | All three new ids are storable but remain refused by both legacy checkout/change schemas and unresolved by the billable catalog. |
+| Founding/balance safety | Isolated real-MySQL cases exercise all frozen caps, an eight-writer last-place race, duplicate and out-of-range sequences, TEST/LIVE isolation, account erasure, non-negative per-level balances, included-cycle provenance and replay without resetting money/counts. |
 
 ## Status
 
