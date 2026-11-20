@@ -5273,7 +5273,8 @@
         "client/src/components/requests/RequestStates.tsx",
         "client/src/components/requests/RequestSummary.tsx",
         "client/src/components/explore/CompanyResponseSignal.tsx",
-        "client/src/components/explore/companyResponseSignal.test.tsx"
+        "client/src/components/explore/companyResponseSignal.test.tsx",
+        "docs/evidence/D-048-K-inplace/release.json"
       ],
       "note": "Retirement row (D-332) for the surfaces that went live in place with no switch (D-149): the leftovers the split's K1 row named. Delete each file only when nothing imports it any more, with its test and the assertions ported or listed (docs/plans/D-048-retire.md). The seeker part of client/src/components/thread/ThreadDecisionPanels.tsx belongs to D-048-K-conversation. Measure the explore test file's real name before deleting; if it differs from this owns list, ask for a widening (D-200). D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
@@ -6929,8 +6930,8 @@
       "tier": 2,
       "lane": "i18n-menu",
       "branch": "agent/queue/d093-menu",
-      "status": "todo",
-      "syncedTo": "D-333",
+      "status": "done",
+      "syncedTo": "D-368",
       "epic": "D-093-language",
       "dependsOn": [
         "D-093.picker",
@@ -8237,6 +8238,29 @@
       ],
       "note": "D-368 routing, D-048-retire.md §3c. Repair only the released Goal form's native hiring-now required-link parity; walk-ins stay optional, D-364 paste/blur completion and existing server/work-email gates stay unchanged. Carry forward #1297's missing-link regression, keep the legacy controls and prove blank blocks and valid link publishes in intercepted browser tests at 1280/390. No Kit deletion, route/release toggle, API, sign-in or payment change. Protected current-head CI and canonical web acceptance are required before retirement. This is the goal-build follow-up, not a reopening of the original build/release.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "OPS-deploy-secrets-file",
+      "title": "Production secrets ride the release: wrangler deploy --secrets-file carries DATABASE_URL and the reviewer password hashes, so Cloudflare's 10215 refusal stops blocking live QA and DB rotation (D-369)",
+      "row": "D-212",
+      "packet": "docs/plans/OPS-deploy-secrets-file.md",
+      "tier": 1,
+      "lane": "ops-deploy-secrets",
+      "branch": "agent/queue/ops-deploy-secrets-file",
+      "status": "todo",
+      "syncedTo": "D-369",
+      "dependsOn": [],
+      "owns": [
+        "scripts/deploy-cloudflare-two-phase.sh",
+        "scripts/build-deploy-secrets.mjs",
+        "scripts/buildDeploySecrets.test.ts",
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/reviewer-qa-passwords.yml",
+        "server/cloudflareContainerRelease.test.ts",
+        "docs/plans/OPS-deploy-secrets-file.md"
+      ],
+      "note": "D-369. Build docs/plans/OPS-deploy-secrets-file.md §2. Unblocks LAUNCH-live-qa: after landing, a manual Deploy API dispatch with fresh reviewer hashes releases current main with the secrets attached. Tier 1 review by another session (D-352).",
+      "epic": "D-212"
     }
   ]
 }
