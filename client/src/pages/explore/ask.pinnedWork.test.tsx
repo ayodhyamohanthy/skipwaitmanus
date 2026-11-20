@@ -122,7 +122,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(screen.getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(screen.getByLabelText("Job link"));
     fillReasons(document.body);
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
 
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(bodyOf(posts(fetchMock)[0])).toMatchObject({
@@ -145,7 +145,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(screen.getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(screen.getByLabelText("Job link"));
     fillReasons(document.body);
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
 
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(bodyOf(posts(fetchMock)[0]).workItemIds).toEqual([12]);
@@ -161,7 +161,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(screen.getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(screen.getByLabelText("Job link"));
     fillReasons(document.body);
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
 
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(bodyOf(posts(fetchMock)[0])).not.toHaveProperty("workItemIds");
@@ -185,7 +185,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(screen.getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(screen.getByLabelText("Job link"));
     fillReasons(document.body);
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
 
     // The refusal is shown, the picker is trimmed to the plan's cap, and it says so.
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("puts 1 piece of work"));
@@ -193,7 +193,7 @@ describe("pinned work on the ask (task 13)", () => {
     expect(screen.getByText(/Kept the first piece/)).toBeTruthy();
 
     // Nothing was created; the corrected send goes through with one piece.
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(2));
     expect(bodyOf(posts(fetchMock)[1]).workItemIds).toEqual([11]);
     expect(await screen.findByText("Ask sent to Wipro.")).toBeTruthy();
@@ -208,7 +208,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(screen.getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(screen.getByLabelText("Job link"));
     fillReasons(document.body);
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(bodyOf(posts(fetchMock)[0])).not.toHaveProperty("workItemIds");
   });
@@ -230,7 +230,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(screen.getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(screen.getByLabelText("Job link"));
     fillReasons(document.body);
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(pageFetch)).toHaveLength(1));
     const pageBody = bodyOf(posts(pageFetch)[0]);
     cleanup();
@@ -245,7 +245,7 @@ describe("pinned work on the ask (task 13)", () => {
     fireEvent.change(within(drawer).getByLabelText("Job link"), { target: { value: LINK } });
     fireEvent.blur(within(drawer).getByLabelText("Job link"));
     fillReasons(drawer);
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(drawerFetch)).toHaveLength(1));
 
     // One body: the drawer adds nothing /ask does not, and drops nothing it does.
