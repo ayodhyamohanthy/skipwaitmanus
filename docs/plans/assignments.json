@@ -117,9 +117,11 @@
       ],
       "owns": [
         "docs/BUGFREE_GATE.md",
-        "docs/qa/"
+        "docs/qa/",
+        "docs/DECISIONS.md",
+        "docs/plans/OPS-deploy-secrets-file.md"
       ],
-      "note": "D-369 prerequisite re-sync (Nov 20): reset run 44696345516 failed at main f302a49f4; the release-time secret route in OPS-deploy-secrets-file must be accepted, including successful sign-in of both reviewer demo accounts, before this row runs. No repeated reset or direct secret-write workaround. This is an engineering dependency, not an owner policy question; status remains todo. D-366 (2) authorizes agent-run reviewer QA and reset with plaintext only in private session storage. D-346 (4) selects reviewer demo accounts, no real data or money; qa-sweep-1/2 are excluded (D-214), and no owner-forwarded OTP is needed. Keep #710 draft and BUGFREE_GATE signed-in legs unverified until real execution at 1280/390 with exact release identity. No checkout POST without its established no-wallet-risk scope; never pay, open archived legacy-pack checkout or activate banded sales. Missing transition proof remains a gap. Include a full e2e journeys run on the release candidate (D-353 (4)). Defects found become separate rows. No sign-in method, sales, settings, secret or spending change is authorized by this re-sync."
+      "note": "D-059/D-369/D-370: use the approved reviewer demo accounts for no-money QA. The LAUNCH packet records the successful reset, the verified API release and the separate signed-in report. Finish the documented acceptance on the current release with sanitized 1280/390 evidence and E2E. A future reviewer reset uses OPS-reviewer-credential-transport. Keep #710 draft and the row todo until acceptance. Preserve the D-214 account exclusions, payment restrictions and untested transition gaps."
     },
     {
       "id": "BANDED-levels",
@@ -7093,10 +7095,8 @@
       "branch": "agent/queue/d094-coach",
       "status": "todo",
       "syncedTo": "D-370",
-      "dependsOn": [
-        "D-094-ai-in-ui.job-link"
-      ],
-      "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route. Shared AGENTS.md and switch-only server/_core/index.ts edits are integrated by merging current main and preserving both changes; only D-094-ai-in-ui.job-link is a dependency. No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
+      "dependsOn": [],
+      "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route. No task output dependency; shared-file overlap follows D-314 and is integrated by merging current main. No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
       "epic": "D-094-ai-in-ui",
       "owns": [
         "shared/reasonsCoach.ts",

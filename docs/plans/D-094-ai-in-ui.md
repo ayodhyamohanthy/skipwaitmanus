@@ -6,11 +6,11 @@
 |---|---|
 | Queue rows | `docs/plans/assignments.json`: the release row `D-094-ai-in-ui` (modified: `packet`, `tier` 2→1, `status` architect→todo, `syncedTo`, `dependsOn`, `owns`, `note`, `epic`, new title; lane `ai` and branch unchanged, so the computed role stays CTO) and three added piece rows `D-094-ai-in-ui.job-link`, `D-094-ai-in-ui.status-help` and `D-094-ai-in-ui.coach` (§14) |
 | Decisions | D-264 (this packet's rulings, adopted at publication; changeable), D-094 (binding text quoted in §2), D-091, D-138, D-139, D-204 (3), D-223; also D-022, D-147, D-200, D-109 |
-| Risk tier | **1 for every row.** `.job-link` and `.coach` own `client/src/pages/Ask.tsx`, which is on the `TIER1_CLIENT` floor (`scripts/tierClassifyCore.mjs:73`), and `.coach` sends seeker text to a provider once it is on. `.status-help` has a machine floor of 2 and is declared 1 under the coordinator's Nov 1 ruling (§12). The release row is declared 1, above its floor of 2. Every runtime pull request gets an independent review (D-151). |
+| Risk tier | **1 for every row.** `.job-link` and `.coach` own `client/src/pages/Ask.tsx`, which is on the `TIER1_CLIENT` floor (`scripts/tierClassifyCore.mjs:73`), and `.coach` sends seeker text to a provider once it is on. `.status-help` has a machine floor of 2 and is declared 1 under the coordinator's Nov 1 ruling (§12). The release row is declared 1, above its floor of 2. D-370 makes green required CI alone sufficient for landing; the declared Tier 1 risk metadata remains. |
 | Size | three S/M piece rows and one S release row (D-223: split by owned files, never by step) |
 | Implementer | any model (D-109) |
 | Branches | `agent/queue/d094-job-link`, `agent/queue/d094-status-help` and `agent/queue/d094-coach`; the release keeps the row's `agent/claude/d094-ai-in-ui` |
-| Depends on | per row in §14. `.job-link` waits for the rows that own its explore and `/ask` files; `.status-help` for the two that own `MyRequests.tsx`; `.coach` for `.job-link` and `DEPLOY-gate-docs-sync`; the release for all three |
+| Depends on | per row in §14. `.job-link` waits for the rows that own its explore and `/ask` files; `.status-help` for the rows that own `MyRequests.tsx`; `.coach` has no output dependency; the release for all three |
 | Do not run at the same time as | any row whose `owns` names a file of the same row in §5 (`validateAssignments` serialises them) |
 | Verified against | `origin/main` `05d0f7de`, re-checked on `65bb2986` and merged with `e36c3d62` on Nov 1 2026 (Hark · 4fb4). Independently re-verified on `f5b9afb9` (Claude Opus 5.5 · 1134, Nov 1 2026; §15) and `f6191784` (Claude Opus 5.5 · f5fd; §16). Delta-checked on `3dc001b9` (Hark · 5de4, Nov 2 2026): `git diff f6191784 3dc001b9` is empty for every file named in §3, §5 and §15, and the publication merge is `8d8b5736`. Line numbers drift: find each function by name |
 
@@ -124,7 +124,7 @@ Run `pnpm install --frozen-lockfile` in a fresh worktree before the first `pnpm 
 - [ ] Your row's tests (§7) were red first and are green; every control is green.
 - [ ] Gate on your commit merged with the latest `origin/main` (`docs/BRIEF.md`, "How to ship") and every required CI check green on that exact commit through a pull request. Feature, test-integrity, release and activation conditions remain separate acceptance requirements.
 - [ ] One new route only, `POST /api/ask/reasons-coach` (404 while off); `POST /api/job-link/preview` keeps its path and adds only the optional `roleTitle` and `fetched`. No env key, dependency, migration, provider or account change, or change to `askSend.ts` (§5); `REASONS_COACH_ENABLED` is `false` on the landed commit.
-- [ ] `.coach`'s commit that adds `POST /api/ask/reasons-coach` also adds its one row to the `AGENTS.md` living system map, and changes nothing else in `AGENTS.md` (§5; `.coach` owns `AGENTS.md` and waits for `DEPLOY-gate-docs-sync`, §14).
+- [ ] `.coach`'s commit that adds `POST /api/ask/reasons-coach` also adds its one row to the `AGENTS.md` living system map, and changes nothing else in `AGENTS.md` (§5).
 - [ ] Screens at 1280 and 390 (the release row; §6.4).
 - [ ] Your Status line `<row id>: done — <sha>`; your row's `status` set to `done` in its landing pull request. `JOB_LINK_PREFILL_ENABLED` and `STATUS_HELP_ENABLED` are `false` on every piece's landed commit; only the release row flips them.
 
@@ -150,9 +150,9 @@ Run `pnpm install --frozen-lockfile` in a fresh worktree before the first `pnpm 
 Write the question in your Status line, push, report, end the session. Questions go to Instinct first (`docs/BUILD_CONTINUITY.md`).
 
 ## 12. Tier and gates (coordinator ruling, Nov 1 07:48 IST; applied per row at publication)
-- **Risk classification.** `client/src/pages/Ask.tsx` is on the Tier 1 floor (`TIER1_CLIENT`, `scripts/tierClassifyCore.mjs:73`), and both `.job-link` and `.coach` own it; `.coach` also sends seeker text to a provider once on. The coordinator declared `.status-help` and the release row Tier 1, above their machine floor of 2. The declared tiers in `assignments.json` remain accurate risk metadata (§14); every required test and check remains mandatory.
+- **Risk classification.** `client/src/pages/Ask.tsx` is on the Tier 1 floor (`TIER1_CLIENT`, `scripts/tierClassifyCore.mjs:73`), and both `.job-link` and `.coach` own it; `.coach` also sends seeker text to a provider once on. The coordinator declared `.status-help` and the release row Tier 1, above their machine floor of 2. D-370 removes review eligibility gates; the risk metadata remains and all required tests/checks stay mandatory.
 - **Packet publication is docs and registry only.** Publishing releases the pieces to FIFO and to the gates below. It is not a review pass, a landing, or an activation.
-- **Open gates before each build:** that row's dependencies in §14 and current queue eligibility. `.status-help` does not land until §4.9–4.10 are accepted.
+- **Open gates before each build:** that row's output dependencies in §14 and current queue eligibility. `.status-help` does not land until §4.9–4.10 are accepted. Shared-file overlap alone adds no dependency under D-314.
 - **Open gates before the coach is switched on (no row here):** a proven budget guard (§4.13), sole-provider proof against the Forge fall-through (§4.14), confirmed data terms (D-139), zero cash spend (D-204 (2), D-091), and the owner's word.
 
 ### D-370 re-sync (November 20, 2026)
@@ -170,10 +170,10 @@ Three piece rows are added directly after the release row, so FIFO keeps the par
 | `D-094-ai-in-ui` | 1 | 2 | `D-094-ai-in-ui.job-link`, `D-094-ai-in-ui.status-help`, `D-094-ai-in-ui.coach` |
 | `D-094-ai-in-ui.job-link` | 1 | 9 | `D-174-fix-post-binding`, `D-048-p3-live-review-find`, `D-099-bonus-line` |
 | `D-094-ai-in-ui.status-help` | 1 | 4 | `D-090-BYOR`, `D-174-held-ask-reconfirm` |
-| `D-094-ai-in-ui.coach` | 1 | 10 | `D-094-ai-in-ui.job-link` |
+| `D-094-ai-in-ui.coach` | 1 | 10 | — |
 
 - **The release row's change, named honestly.** `packet` null → this file; `tier` 2 → 1; `status` architect → todo; `syncedTo` D-227 → the newest register entry at publication; `dependsOn` [] → the three pieces; a new title, `note`, `epic: "D-094"` and `owns` (the two switch-only constants). Lane `ai` and branch `agent/claude/d094-ai-in-ui` are unchanged, so its computed role stays CTO.
-- **Why these waits.** `.job-link`'s three dependencies own `useAskComposer.tsx`, `AskDrawer.tsx`, `Ask.tsx` or `client/src/pages/explore/`. `D-048-p3-live-review-find` also waits for `D-174-seeker-journey-build`, so `.job-link` waits for that packet's pieces too, which own the same three files (§16). `.status-help`'s dependency owns `client/src/pages/MyRequests.tsx`. `.coach` shares `AskDrawer.tsx` and `Ask.tsx` with `.job-link`, so that output remains a real prerequisite. `AGENTS.md` and switch-only `server/_core/index.ts` may be edited by other rows; merge current `origin/main` and preserve both changes when integrating. No additional task dependency is needed for that overlap. No dependency comes from the previously recorded pause, and no owner gate is added.
+- **Why these waits.** `.job-link`'s three dependencies own `useAskComposer.tsx`, `AskDrawer.tsx`, `Ask.tsx` or `client/src/pages/explore/`. `D-048-p3-live-review-find` also waits for `D-174-seeker-journey-build`, so `.job-link` waits for that packet's pieces too, which own the same three files (§16). `.status-help` depends on its actual `MyRequests.tsx` output. `.coach` shares composer files with `.job-link` and `AGENTS.md`/switch-only `server/_core/index.ts` with other rows, but requires none of their output. Under D-314 these changes compose by merging current `origin/main` and preserving both sides; shared filenames alone are not dependencies.
 - **Not registered here.** No row for a durable coach budget guard, sole-provider proof or coach activation (all owner-gated, §12–§13). No separate F4 fix row: F4 is absorbed into `.job-link` behind its switch.
 
 ## 15. Takeover verification on `f5b9afb9` (Claude Opus 5.5 · 1134, Nov 1 2026; kept as the record; F1–F5 are carried into §3–§7 and D-264 at publication)
