@@ -9,7 +9,7 @@ context_hash=$(git ls-files -s Dockerfile .dockerignore package.json pnpm-lock.y
 deploy(){
   local phase="$1" log="/tmp/wrangler-deploy-$1.log" status
   set +e
-  npx wrangler deploy 2>&1 | tee "$log"
+  npx wrangler deploy --secrets-file "$secrets_file" 2>&1 | tee "$log"
   status=${PIPESTATUS[0]}
   set -e
   if [[ $status -eq 0 ]]; then return 0; fi
@@ -31,37 +31,15 @@ deploy(){
   return "$status"
 }
 app_id="a0320ae6-5d50-43d5-9515-1f89bd74d069"
+# OPS-deploy-secrets-file (D-369): secrets ride the release. Cloudflare refuses a separate secret edit
+# (API 10215) while a Workers Builds branch preview is the newest version, which on Nov 19 left
+# DATABASE_URL unrefreshed after 12 tries. `--secrets-file` uploads them with this version instead;
+# it is additive, so a secret not in the file is kept. Values never reach the log.
+secrets_dir=$(mktemp -d)
+trap 'rm -rf "$secrets_dir"' EXIT
+secrets_file="$secrets_dir/secrets.json"
+node "$(dirname "$0")/build-deploy-secrets.mjs" "$secrets_file"
 deploy 1
-# Production DB cutover: after phase 1 the latest Worker version is the deployed one, so Cloudflare
-# accepts a secret edit (it refuses while a PR preview version is latest). Fails the deploy loudly.
-if [[ -n "${NEWDB_PASSWORD:-}" ]]; then
-  : "${NEWDB_HOST:?}" "${NEWDB_USER:?}"
-  enc=$(NEWDB_PASSWORD="$NEWDB_PASSWORD" node -e 'process.stdout.write(encodeURIComponent(process.env.NEWDB_PASSWORD))')
-  # Cloudflare briefly refuses secret edits right after a version deploy
-  # ("latest version isn't currently deployed"); retry until the version settles.
-  secret_set=0
-  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    if printf '%s' "mysql://${NEWDB_USER}:${enc}@${NEWDB_HOST}:3306/skipwait" | npx wrangler secret put DATABASE_URL >/dev/null 2>&1; then
-      secret_set=1
-      break
-    fi
-    echo "DATABASE_URL secret put attempt ${attempt} failed; retrying in 20s"
-    sleep 20
-  done
-  if [[ "$secret_set" != "1" ]]; then
-    # Cloudflare refuses secret edits while the newest Worker version is another branch's PR preview
-    # upload (error 10215). The code already shipped in phase 1. If the secret already exists on the
-    # Worker, the production database is already wired, so warn loudly and let the exact-SHA readiness
-    # gate below decide. If it does not exist, fail: the Worker would have no database.
-    if npx wrangler secret list 2>/dev/null | grep -q '"name": "DATABASE_URL"'; then
-      echo "::warning::DATABASE_URL secret put was refused after 12 attempts (a PR preview upload was the newest Worker version). The secret already exists, so it was NOT refreshed this run. If the database password was rotated, re-run this workflow."
-    else
-      echo '::error::Could not set DATABASE_URL to the new database'; exit 5
-    fi
-  else
-    echo "DATABASE_URL set to ${NEWDB_HOST}/skipwait (value not printed)"
-  fi
-fi
 # Worker-version activation plus container cold start (edge image pull + node
 # boot + first schema pass) takes 15-40 minutes to converge on live traffic;
 # every recent release flipped late, after its gate had already timed out.
