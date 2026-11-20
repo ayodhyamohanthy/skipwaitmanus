@@ -7559,12 +7559,12 @@
       "lane": "d174-journey-jobs",
       "branch": "agent/queue/d174-journey-jobs",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-174-job-catalog",
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "Packet section 6.5, rulings 6 and 7: reads GET /api/companies/:slug/jobs; levels are JOB_LEVEL_LABELS (no band grouping until D-219's mapping is decided); employee posts first; COMPANY_JOBS_ENABLED = false until the release row.",
+      "note": "Current packet section 6.5, re-synced through D-370: browse permitted catalog jobs with or without referrers; use authoritative presence for each job's label and share invite, never infer absence from openToReferrals. Keep goal placement, filters, honest completeness and the open-request handoff. Banded pricing is separate. COMPANY_JOBS_ENABLED stays false until the parent release proves the real presence input from the separately re-synced payload row and the wired request path. No API or scope change in this docs re-sync.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/companyJobsApi.ts",
