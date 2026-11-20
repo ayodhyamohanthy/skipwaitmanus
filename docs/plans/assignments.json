@@ -706,21 +706,6 @@
       "note": "Launch audit Oct 25: Terms.tsx:23 says 'Referrals are always free' and CancellationPolicy.tsx:25 omits the ended-month exception, while packs sell for money; the privacy page names no sign-in, email, error or hosting processor. Agents draft; the owner's approval comment on the pull request comes before landing (legal text is the owner's). Unblock ruling Oct 25 (Qoder · bbc5, D-200 (2)): the checks half of Cue GPT · 5588's block is stale - typecheck, tests, build and Workers Builds are all green on c8ecc53a. The owner-approval half stands and only the owner can clear it (D-200 (6)). Before approving, CancellationPolicy bullet 3 needs one correction: 'the referral comes back if you withdraw it then' is false - a claimed-then-passed request withdraws with no refund (withdrawCompanyReferralRequest sets creditRefunded false; D-147), so the packet's own wording applies: 'After a verified employee claims or declines the request, the referral stays used.' The owner approves or amends the exact wording in a comment on PR #659; after that a session applies it, runs the gate, adds 1280/390 captures and lands. D-221 (Oct 26): the wording must match D-219 (legacy packs paused; 3 free referrals a month with a verified card) and must not promise a referral back after any decline. Whether D-147 also covers a pass made without a claim is an open owner question (D-221 (3)), so the cancellation bullet states only what runtime does when this lands. Oct 27 (D-219 queue sync): waits for PRICING-banded-oct25, which owns a shared file and should land first (see that row's note). D-345 (1) (Nov 16): the owner approved market-standard wording in advance within D-345 (1)'s limits: runtime-true, no new promise, processors named, Indian sole proprietorship not GST-registered, standard clauses. No approval comment is needed. The dependsOn on PRICING-banded-oct25 is removed (D-314: the second lander merges main). Merge main into PR #659 (about 2,260 commits behind), redraft to that standard, keep the CancellationPolicy bullet-3 correction above, then land on green CI with 1280/390 captures."
     },
     {
-      "id": "LAUNCH-packs-unavailable",
-      "title": "Every INR credit pack reports available:false while PRICING.md says packs are live",
-      "row": "LAUNCH",
-      "packet": "docs/plans/LAUNCH-oct25.md",
-      "tier": 1,
-      "lane": "payments",
-      "branch": "agent/queue/launch-packs-unavailable",
-      "status": "owner",
-      "dependsOn": [],
-      "owns": [
-        "docs/PRICING.md"
-      ],
-      "note": "Found by LAUNCH-live-qa (Qoder · 6e99, Oct 26) on API 40e160e2 / web fb420761: live GET /api/plans/catalog answers 200 with every INR credit pack available:false on six polls 13:28-14:48Z (pack_2 Rs99, pack_25 Rs1199, pack_60 Rs2599, pack_150 Rs5999), and /plans shows 'Not on sale yet' at 1280 and 390, while docs/PRICING.md line 37 says credit packs are LIVE in INR and USD. Root cause established at the provider catalog level (issue #709, read-only Chargebee LIVE console read): the LIVE site skipwait.chargebee.com is the only site on the account, and the pack_2/5/25/60/150 items (with token_1/5/10 and live_session) were ARCHIVED on Oct 25 20:06-20:08 IST; the app resolves only skipwait_<pack>-<currency> (shared/planCatalog.ts:269), so available:false is the true provider state, not a missing-config fallback. Container billing env and the worker passthrough are settled (BILLING_ENV=live, CHARGEBEE_LIVE_SITE=skipwait, live key/secret present; src/worker.ts, Dockerfile and wrangler.jsonc are identical between 40e160e2 and origin/main). Still open: whether the archival was intended - restore or recreate the pack prices for launch, or correct PRICING.md, an owner decision; an item-price-level read of the four INR pack ids and pack_5 (USD); and runtime checkout refusal (no checkout POST without separate authority, D-065). No payment was attempted. Evidence: docs/qa/launch-live-qa-oct26.md, issue #709."
-    },
-    {
       "id": "SHELL-focus-clearance",
       "title": "On a phone, a focused field is never hidden behind the goal shell's bottom bar (#642)",
       "row": "D-048",
