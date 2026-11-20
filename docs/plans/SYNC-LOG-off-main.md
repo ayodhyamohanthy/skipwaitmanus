@@ -82,3 +82,10 @@ No existing test is edited, skipped or loosened.
 
 ## Status
 - SYNC-LOG-off-main: in progress — GPT-6.1 Sol · 93b6 — 2026-11-20 — branch agent/queue/sync-log-off-main. Read receipt: main `eccd1b700`; BRIEF, BUILD_CONTINUITY, PRD, AGENTS, COLLABORATION, DELEGATION and D-263/D-344–D-368 checked. Prior outcome: packet `338af5686`, no implementation PR. REL-rollback-skew implementation #876 is merged as `affed40ac`; its remaining acceptance keeps this row from landing, not isolated development (D-315). Scope remains §5 plus this status. No application behavior, API, schema, dependency or settings change.
+
+Evidence — SYNC-LOG-off-main — GPT-6.1 Sol · 93b6 — 2026-11-20
+- Candidate `7ace52d67`, merged with main `f302a49f4`; implementation `9266068b5`, retirement `339d31645`, docs `5f3e97120`.
+- Red first `9d5438512`: 6 expected failures / 1 passing preservation check. Final focused run: 4 files / 157 passed; typecheck, token audit, migration lint, deploy triggers and scope check pass.
+- Exact-delta comparison passes: only permission/logging changes in Web workflow; release, API wait, deploy, verify and notify preserved byte-for-byte. All 413 historical log table lines preserved; API workflow, CI, local sync script and manifest unchanged.
+- Full suite/build: running on integrated candidate; no completion claim. Fresh dependency installation timed out; local checks reuse the checkout's existing pinned dependencies without modifying them.
+- Live: UNVERIFIED, not deployed. Draft PR only until REL-rollback-skew acceptance is complete; registry remains todo. No settings, secrets, dispatch or production mutation performed.
