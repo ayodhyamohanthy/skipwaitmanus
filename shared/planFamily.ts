@@ -208,6 +208,40 @@ export function volumeDiscountPct(quantity: number): number {
   return pct;
 }
 
+/** A job's L1-L10 level (shared/jobLevel.ts JobLevel), as a plain number here so this module stays dependency-free. */
+export type JobLevelNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+/**
+ * Job level to referral band (owner, Nov 19 2026, D-367): L1-L3 (intern, entry,
+ * early mid-level) are Early, L4 (mid-level) is Mid, L5-L8 (senior, senior II,
+ * staff/lead, principal) are Senior and L9-L10 (director/head, VP/C-level) are
+ * Executive. Every level maps to exactly one band level.
+ */
+export const JOB_LEVEL_REFERRAL_LEVEL: Readonly<Record<JobLevelNumber, ReferralLevel>> = {
+  1: "early", 2: "early", 3: "early",
+  4: "mid",
+  5: "senior", 6: "senior", 7: "senior", 8: "senior",
+  9: "executive", 10: "executive",
+} as const;
+
+/** The referral level a request for a job at this L1-L10 level spends (D-367). */
+export function referralLevelForJobLevel(level: JobLevelNumber): ReferralLevel {
+  if (!Number.isInteger(level) || level < 1 || level > 10) throw new Error(`unknown job level: ${String(level)}`);
+  return JOB_LEVEL_REFERRAL_LEVEL[level];
+}
+
+/** Whether a plan's member can spend an included or purchased referral on a job at this level. */
+export function planCoversJobLevel(id: PlanFamilyId, level: JobLevelNumber): boolean {
+  return bandIncludes(id, referralLevelForJobLevel(level));
+}
+
+/** Ordered L1-L10 levels covered by a plan's referral band (D-367). */
+export function jobLevelsInBand(id: PlanFamilyId): JobLevelNumber[] {
+  return (Object.keys(JOB_LEVEL_REFERRAL_LEVEL) as Array<`${JobLevelNumber}`>)
+    .map(key => Number(key) as JobLevelNumber)
+    .filter(level => bandIncludes(id, referralLevelForJobLevel(level)));
+}
+
 /** Included referrals for a plan as an ordered, display-ready list. */
 export function includedReferralList(id: PlanFamilyId): { level: ReferralLevel; count: number }[] {
   const entry = planFamilyEntry(id);
