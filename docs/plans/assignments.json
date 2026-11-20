@@ -117,7 +117,9 @@
       ],
       "owns": [
         "docs/BUGFREE_GATE.md",
-        "docs/qa/"
+        "docs/qa/",
+        "docs/DECISIONS.md",
+        "docs/plans/OPS-deploy-secrets-file.md"
       ],
       "note": "D-369 prerequisite re-sync (Nov 20): reset run 44696345516 failed at main f302a49f4; the release-time secret route in OPS-deploy-secrets-file must be accepted, including successful sign-in of both reviewer demo accounts, before this row runs. No repeated reset or direct secret-write workaround. This is an engineering dependency, not an owner policy question; status remains todo. D-366 (2) authorizes agent-run reviewer QA and reset with plaintext only in private session storage. D-346 (4) selects reviewer demo accounts, no real data or money; qa-sweep-1/2 are excluded (D-214), and no owner-forwarded OTP is needed. Keep #710 draft and BUGFREE_GATE signed-in legs unverified until real execution at 1280/390 with exact release identity. No checkout POST without its established no-wallet-risk scope; never pay, open archived legacy-pack checkout or activate banded sales. Missing transition proof remains a gap. Include a full e2e journeys run on the release candidate (D-353 (4)). Defects found become separate rows. No sign-in method, sales, settings, secret or spending change is authorized by this re-sync."
     },
