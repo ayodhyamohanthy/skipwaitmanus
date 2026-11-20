@@ -176,7 +176,7 @@ describe("posted-role Close binding regression",()=>{
     fillLink(drawer, "https://careers.wipro.com/jobs/custom-hero");
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
 
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     const sentBody = JSON.parse(String(posts(fetchMock)[0][1]?.body));

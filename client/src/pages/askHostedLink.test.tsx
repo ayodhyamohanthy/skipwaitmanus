@@ -101,7 +101,7 @@ const fillReasons = () => {
 const posts = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url, init]) => String(url) === "/api/company-referrals" && (init as RequestInit | undefined)?.method === "POST");
 const send = async (fetchMock: ReturnType<typeof vi.fn>) => {
   await screen.findByText("ada-resume.pdf");
-  fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+  fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
   await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
   return JSON.parse(String((posts(fetchMock)[0][1] as RequestInit).body)) as Record<string, unknown>;
 };

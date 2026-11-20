@@ -24,16 +24,11 @@ on:
       - "scripts/assert-api-workflow-selection.sh"
   workflow_dispatch:
     inputs:
-      # OPS-deploy-secrets-file (D-369): optional reviewer password hashes (scrypt$<salt>$<hash>, never a
-      # password) uploaded with this release; scripts/build-deploy-secrets.mjs validates them.
-      reviewer_seeker_hash:
-        description: "optional scrypt hash for the reviewer seeker password (uploaded with this release)"
+      reset_reviewer_passwords:
+        description: "Reset the two demo reviewer passwords from protected repository secrets"
         required: false
-        type: string
-      reviewer_referrer_hash:
-        description: "optional scrypt hash for the reviewer referrer password (uploaded with this release)"
-        required: false
-        type: string
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-api
@@ -71,6 +66,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/require-green-release.mjs --target api
 
+  reviewer-reset-preflight:
+    needs: release-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate optional reviewer reset before production writes
+        env:
+          REVIEWER_RESET: ${{ inputs.reset_reviewer_passwords == true }}
+          REVIEWER_SEEKER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_SEEKER_PASSWORD_HASH || '' }}
+          REVIEWER_REFERRER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_REFERRER_PASSWORD_HASH || '' }}
+        run: node scripts/build-deploy-secrets.mjs --validate-reviewer-reset
+
   # Source retirement: read-only, after unchanged exact-head CI gate.
   source-retirement:
     needs: release-gate
@@ -94,7 +106,7 @@ jobs:
   # MySQL before any API image ships, so code can never run ahead of its tables.
   # A failure here fails the run and the deploy job never starts.
   migrate-db:
-    needs: [release-gate, source-retirement]
+    needs: [release-gate, source-retirement, reviewer-reset-preflight]
     if: needs.source-retirement.outputs.mode == 'normal'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -105,6 +117,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/require-green-release.mjs --target api --once
+      - name: Re-check reviewer reset before migrating
+        env:
+          REVIEWER_RESET: ${{ inputs.reset_reviewer_passwords == true }}
+          REVIEWER_SEEKER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_SEEKER_PASSWORD_HASH || '' }}
+          REVIEWER_REFERRER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_REFERRER_PASSWORD_HASH || '' }}
+        run: node scripts/build-deploy-secrets.mjs --validate-reviewer-reset
       - name: Apply pending production migrations
         env:
           DB_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
@@ -174,6 +192,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/require-green-release.mjs --target api --once
 
+      - name: Re-check reviewer reset before deploying
+        if: steps.changes.outputs.classification == 'runtime'
+        env:
+          REVIEWER_RESET: ${{ inputs.reset_reviewer_passwords == true }}
+          REVIEWER_SEEKER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_SEEKER_PASSWORD_HASH || '' }}
+          REVIEWER_REFERRER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_REFERRER_PASSWORD_HASH || '' }}
+        run: node scripts/build-deploy-secrets.mjs --validate-reviewer-reset
+
       - name: Ensure admin smoke signing secret exists
         if: steps.changes.outputs.classification == 'runtime'
         shell: bash
@@ -213,8 +239,9 @@ jobs:
           NEWDB_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
           NEWDB_USER: ${{ vars.SKIPWAIT_NEWDB_USER }}
           NEWDB_PASSWORD: ${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}
-          REVIEWER_SEEKER_HASH: ${{ github.event.inputs.reviewer_seeker_hash }}
-          REVIEWER_REFERRER_HASH: ${{ github.event.inputs.reviewer_referrer_hash }}
+          REVIEWER_RESET: ${{ inputs.reset_reviewer_passwords == true }}
+          REVIEWER_SEEKER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_SEEKER_PASSWORD_HASH || '' }}
+          REVIEWER_REFERRER_PASSWORD_HASH: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_REFERRER_PASSWORD_HASH || '' }}
           EXPECTED_SHA: ${{ github.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

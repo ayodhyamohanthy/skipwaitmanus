@@ -10,6 +10,8 @@ import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { AccountMenu } from "./AccountMenu";
 import { GoalShell } from "@/components/goal/GoalShell";
 import { useGoalShellMeta } from "@/components/goal/useGoalShellMeta";
+import { GoalLanguageConsent } from "@/components/goal/GoalLanguageConsent";
+import { GoalLanguagePicker } from "@/components/goal/GoalLanguagePicker";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { useMemo, type ReactNode } from "react";
@@ -73,10 +75,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       credits={credits}
       referralCountLinked={!onReferrerSurface}
       account={account}
+      languagePicker={isLoaded && !isSignedIn ? <GoalLanguagePicker variant="bar" className="max-w-28" /> : null}
       alertsHref="/alerts"
       showAlerts={isLoaded && isSignedIn === true}
       hideBottomBar={HIDE_BOTTOM_BAR.test(path)}
     >
+      <GoalLanguageConsent />
       {children}
     </GoalShell>
   );
