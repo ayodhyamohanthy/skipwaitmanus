@@ -284,7 +284,7 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   main CI before production effects; missing, pending, red, cancelled, skipped,
   unreadable or superseded evidence never authorizes a release. Each writer
   rechecks immediately before its production step.
-  - `deploy-api.yml`: release gate → source-retirement classification → pending
+  - `deploy-api.yml`: release gate → source-retirement/reset preflights → pending
     migration gate → runtime/pipeline/skip classification. Runtime publication
     follows typecheck/build and a gate recheck, then administrator sign-in and
     canonical exact-SHA/direct-origin checks. A green run may have skipped rollout.
@@ -299,8 +299,10 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   apply. Procedure and limits: `docs/DEPLOY.md`. This is no new rollback authority.
 - Repo credentials: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; keep values
   out of the repository and logs. Production secret changes use the currently
-  approved release-time path. Fresh reviewer resets await the protected route
-  in `OPS-reviewer-credential-transport`; never submit secrets as ordinary inputs.
+  approved release-time path. Reviewer reset uses a default-off boolean and a
+  complete protected repository-secret pair, validated before writes and on
+  job reruns. Provisioning and live reset/sign-in acceptance remain separate;
+  see `OPS-reviewer-credential-transport`. Never submit secrets as ordinary inputs.
 - **Containers do not inherit Worker secrets automatically.** Declare every
   server key in `.env.example` and forward it in `src/worker.ts`; a deployment
   passing without the required binding is not proof the container received it.
