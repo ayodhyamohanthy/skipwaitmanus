@@ -7587,12 +7587,12 @@
       "tier": 1,
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "November 20 composer-only re-sync through D-370: packet section 6.2 replaces this row's older instructions. Preserve no-referrer request creation and honest server-driven pool/delivery status (D-360/D-363), D-364 link completion, current quote/accepted-cost/idempotency controls and all expiry/money clauses. askCostLine open:null; no expectedCoverage or directory availability gate. Legacy D-132 flags stay off; D-367 mapping is settled, BANDED-* owns pricing activation. Required CI, captures and exact-release checks; no review/model/coordinator dependency. Runtime task remains todo; docs re-sync is not implementation or release acceptance.",
+      "note": "Completed PR #1401, merge 0ee387d5f81cdb1a288b509bb145530fd6d87e45. Final PR CI44801592838 and main CI44802248564 pass every required check; Pages44802248475 succeeded and canonical web meta/actual composer were verified on that SHA at 1280/390 with no horizontal overflow. Compatible unchanged API e8e161a06 is ready and direct origin closed. Local affected 146/146 pass; 16 synthetic plus two live captures and full evidence in docs/evidence/D-174-composer-neutral. Cost uses open:null, no expectedCoverage/availability gate, parsed delivered/pool copy/events, typed inert watch/topUp; money amounts, expiry/refund tails, quote guards, idempotency, drafts and post/sign-in handoffs preserved. D-371 checked; flags remain off. Full redundant local gate stopped after two unchanged Git-fixture timeouts; successful full-suite proof is exact CI, not a claimed green local run. No live request, upload, notification or payment was created.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",
