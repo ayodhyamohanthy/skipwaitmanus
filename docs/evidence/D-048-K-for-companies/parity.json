@@ -1,0 +1,133 @@
+{
+  "task": "D-048-K-for-companies",
+  "route": "/for-companies",
+  "baseline": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+  "candidateRuntime": "0e65c56b691e8cb462ab0d42741a1831ea95f2e4",
+  "synthetic": true,
+  "build": "Vite production client bundles with no VITE_GOAL_SURFACES override; candidate built by pnpm build.",
+  "browser": "Headless Chromium, fresh contexts at 1280×900 @1x and 390×844 @2x, reduced motion.",
+  "pairs": 10,
+  "identicalPngPairs": 10,
+  "sameMetrics": true,
+  "unexpectedPageErrors": 0,
+  "requestsSentToProduction": 0,
+  "mailMode": "window.open intercepted; recipient, subject, team size, contact and _self checked. No email opened or sent.",
+  "representativeFrames": [
+    "listed-1280.png",
+    "listed-390.png",
+    "demo-390.png",
+    "error-1280.png"
+  ],
+  "captures": [
+    {
+      "file": "listed-1280.png",
+      "state": "listed",
+      "width": 1280,
+      "height": 900,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 0,
+      "sha256": "e6208ab6f2c0a3e7f944edab96a87ec8d97726a971da2fa4a593479ab563b98e"
+    },
+    {
+      "file": "empty-1280.png",
+      "state": "empty",
+      "width": 1280,
+      "height": 900,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 0,
+      "sha256": "1dac35194d53910fa9baf13661c2b65aa2c15bad14b3b5218a6c6092b4e00b30"
+    },
+    {
+      "file": "loading-1280.png",
+      "state": "loading",
+      "width": 1280,
+      "height": 900,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 0,
+      "sha256": "280be7fd75cbdafcf4cd79d9949d0c69e0a175c7eb004b147681e074b8a834f6"
+    },
+    {
+      "file": "error-1280.png",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 2,
+      "demoOpens": 0,
+      "sha256": "a4adf2fcaf4c13f48e2b76650cf6241ceb065d58fd31277aa6e8ce571ef6c2b0"
+    },
+    {
+      "file": "demo-1280.png",
+      "state": "demo",
+      "width": 1280,
+      "height": 900,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 1,
+      "sha256": "a5c74c5512aaee58bf88e9814e7f47a47102cbccb69e5a54bf640ca198f8fe65"
+    },
+    {
+      "file": "listed-390.png",
+      "state": "listed",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 0,
+      "sha256": "d44e117722a56206bdd2a42399fede922c55d916ee4d56910b0e0603e5cc4922"
+    },
+    {
+      "file": "empty-390.png",
+      "state": "empty",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 0,
+      "sha256": "2a6e2b32d8680f7abdf7a41fc5189d572513f1583209a3ecaaeb7f716c082b5b"
+    },
+    {
+      "file": "loading-390.png",
+      "state": "loading",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 0,
+      "sha256": "6ccc0ee68c33da5c38c96bd2c6ad0f7afdae6a878c051449ce6f8ea42e7c06be"
+    },
+    {
+      "file": "error-390.png",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 2,
+      "demoOpens": 0,
+      "sha256": "aa683403814334bd1302949a37c098afcbadc699b5940f047560746507a8d553"
+    },
+    {
+      "file": "demo-390.png",
+      "state": "demo",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "pageErrors": 0,
+      "directoryReads": 1,
+      "demoOpens": 1,
+      "sha256": "3489bc45e4dacbea35dd1d4d5431998f7dad517502046f6898f59cd7e7827a01"
+    }
+  ]
+}
