@@ -36,6 +36,7 @@ import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from
 import { pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
+import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
 
 // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
@@ -318,7 +319,7 @@ function keepClaim(pick, who, branches, provenanceBody) {
   const all = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
   const external = all.some(m => m.id === pick.task?.id && markerReferences(m.body).external);
   const leasePreview = leaseFor(pick, branches, Date.now());
-  if (external && (leasePreview.verb !== "Heartbeat" || pick.of === "land")) {
+  if (MODEL_ROUTES_ENFORCED && external && (leasePreview.verb !== "Heartbeat" || pick.of === "land")) {
     const refs = markerReferences(provenanceBody);
     const role = ({ review: "review", land: "land", fix: "fix", build: "build" })[pick.of];
     const result = routeIdentity(loadTrustedProvenance(tryGit).registry, refs.route, who, pick.task.id, role);
@@ -459,7 +460,8 @@ async function state({ withRelease = false } = {}) {
 
 function claim(pick, who, branches, provenanceBody) {
   const history = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
-  if (!provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
+  // D-370: no model dependency; a task's external-route history no longer limits who may claim it.
+  if (MODEL_ROUTES_ENFORCED && !provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
   const origin = () => git("rev-parse", "origin/main");
   switch (pick.kind) {
     case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody));
@@ -535,7 +537,7 @@ async function main() {
     const fixedAt = args.fixed ? (packetHead ?? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to mark fixed`))) : null;
     const body = [reviewed ? `reviewed ${reviewed}` : null, fixedAt ? `fixed ${fixedAt}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
     const history = [...(branches.get(reviewedBranch)?.markers ?? []), ...(lock?.markers ?? [])];
-    if (args.provenance || history.some(m => markerReferences(m.body).external)) {
+    if (MODEL_ROUTES_ENFORCED && (args.provenance || history.some(m => markerReferences(m.body).external))) {
       if (!args.provenance || !args.execution) fail("external completion requires qualified route and execution IDs");
       const head = reviewed ?? fixedAt;
       const marker = { id: task.id, who: args.as, verb: args.verdict ? "Verdict" : "Fixed", verdict: args.verdict, reviewed, body };
