@@ -4943,8 +4943,8 @@
       "tier": 1,
       "lane": "d048-retire-admin-approvals",
       "branch": "agent/queue/d048-k-admin-approvals",
-      "status": "todo",
-      "syncedTo": "D-366",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-048-R-admin-approvals"
       ],
@@ -4956,7 +4956,7 @@
         "client/src/pages/adminApprovalRecord.test.tsx",
         "client/src/components/admin/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin-approvals. Built by D-048-p3-admin-approvals; released by D-048-R-admin-approvals, which is done, and the id remains in RELEASED. Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. D-349 suspends the 7-day soak in launch mode; the soak returns when the owner announces launch or the first real user signs up. The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns.",
+      "note": "Done: PR #1347 merged as 612640a7addce30d6d88c2b3b6e28fd6481c4977 on 2026-11-20. Required CI passed on head f68df9998 (44783969161) and merge (44784659638); web deploy 44784659390 passed and canonical web serves the merge SHA. Release smoke 44787928172 verified that web with ready API dc1ce93f7, with release/verified success on the API deployment commit. Both approval routes passed signed-out 1280/390 checks with no overflow, private reads or business mutations. All 36 synthetic before/after pairs are pixel-identical/API-equivalent; post-deploy route-scoped Sentry searches found no new matches. Evidence: docs/evidence/D-048-K-admin-approvals/ and retirement packet. Local full gate was stopped red/incomplete; its exact failures and passing isolated reruns remain documented, not relabelled as a full pass. Only the legacy page bodies/switch were removed; the stable route adapters, released goal code, routes, money and auth are preserved. D-349 waived the launch soak; D-370 governed protected landing.",
       "epic": "D-048-p3"
     },
     {
@@ -7559,12 +7559,12 @@
       "lane": "d174-journey-jobs",
       "branch": "agent/queue/d174-journey-jobs",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-174-job-catalog",
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "Packet section 6.5, rulings 6 and 7: reads GET /api/companies/:slug/jobs; levels are JOB_LEVEL_LABELS (no band grouping until D-219's mapping is decided); employee posts first; COMPANY_JOBS_ENABLED = false until the release row.",
+      "note": "Current packet section 6.5, re-synced through D-370: browse permitted catalog jobs with or without referrers; use authoritative presence for each job's label and share invite, never infer absence from openToReferrals. Keep goal placement, filters, honest completeness and the open-request handoff. Banded pricing is separate. COMPANY_JOBS_ENABLED stays false until the parent release proves the real presence input from the separately re-synced payload row and the wired request path. No API or scope change in this docs re-sync.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/companyJobsApi.ts",
@@ -8046,10 +8046,10 @@
       "tier": 2,
       "lane": "picker-authoritative-refs",
       "branch": "agent/queue/picker-authoritative-ref-refresh",
-      "status": "todo",
-      "syncedTo": "D-345",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [],
-      "note": "Bounded tooling correctness under direct fix-picker/pending-work instructions. Exact manual scope scripts/next-task.mjs ref refresh/retry/revalidation only, NEW nextTaskAuthoritativeRefs.test.ts, own packet Status. No owns because existing shared picker ownership retained; manual exact-diff qualification required. Diagnostic implementation draft unbound/reference-only, never adopted. Independently rerun local bare-origin actual CLI fixtures red-first, preserve holders/deleted refs/reports/landing/FIFO/model/unknowns and no config change. Prewrite check is not atomic protocol; remaining cross-ref race cannot be claimed solved, any required protocol change needs packet amendment before dispatch. Ordinary actual qualified free author/independent reviewer/current-main/full CI/protected merge; D312 exception unavailable. D-345 (3) (Nov 16): no dependency on Instinct. Its claim, quiet for 132 hours, is free under the 2-hour rule, and any session may take it over on the same branch."
+      "note": "PR #1393: explicit main/agent tracking-ref fetch/prune, pre-marker snapshot comparison, bounded full-state retries with stable session identity, fail-closed unavailable/shallow history. Non-force pushes retain the documented recheck-to-push multi-ref race. Independent local bare-origin regressions replace unrecovered diagnostic fixtures under the packet's D-200 technical amendment; no external implementation used. D-370 removes model/review dependencies. Completion is carried in this PR; exact required CI, protected merge and released read-only CLI proof remain the acceptance gates. Evidence and local timeout/incomplete-run limitations are in the packet Status."
     },
     {
       "id": "PICKER-cli-output-drain",
