@@ -86,7 +86,7 @@ export function AskDrawer(props: AskDrawerProps) {
   };
   const footer = sent ? (
     <div className="flex flex-wrap items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
-      <GoalButton variant="ghost" touch="large" onClick={props.onAnother}>Request at another company</GoalButton>
+      <GoalButton variant="ghost" touch="large" onClick={props.onAnother}>New request</GoalButton>
       <GoalButton asChild variant="primary" touch="large"><Link href={sent.trackHref}>Track this request</Link></GoalButton>
     </div>
   ) : (

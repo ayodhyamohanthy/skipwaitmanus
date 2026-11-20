@@ -173,7 +173,7 @@ describe("ask drawer", () => {
     expect(within(active).getByText("Open referral requests 1 of 3")).toBeTruthy();
     expect(within(active).getByRole("link", { name: "Track this request" }).getAttribute("href")).toBe("/conversation/501");
     await waitFor(() => expect(fetchMock.mock.calls.some(([path, init2]) => String(path) === "/api/ask-drafts" && (init2 as RequestInit | undefined)?.method === "DELETE")).toBe(true));
-    fireEvent.click(within(active).getByRole("button", { name: "Request at another company" }));
+    fireEvent.click(within(active).getByRole("button", { name: "New request" }));
     await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
     expect(go).toHaveBeenCalledWith("/explore", { replace: true });
   });
