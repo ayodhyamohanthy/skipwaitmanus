@@ -7482,11 +7482,11 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "Packet section 6.2, rulings 1 to 4: no openToReferrals read, askCostLine open:null, expectedCoverage never sent (server guard untouched), watch removed, post-save first clause only (expiry clauses stay for D-174-expiry-clock-removal). Money display: no amount, spend point, refund or key changes. Coordinator question 1 covers the D-132 flag-on re-pins.",
+      "note": "November 20 composer-only re-sync through D-370: packet section 6.2 replaces this row's older instructions. Preserve no-referrer request creation and honest server-driven pool/delivery status (D-360/D-363), D-364 link completion, current quote/accepted-cost/idempotency controls and all expiry/money clauses. askCostLine open:null; no expectedCoverage or directory availability gate. Legacy D-132 flags stay off; D-367 mapping is settled, BANDED-* owns pricing activation. Required CI, captures and exact-release checks; no review/model/coordinator dependency. Runtime task remains todo; docs re-sync is not implementation or release acceptance.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",
