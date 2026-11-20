@@ -1552,10 +1552,39 @@ function hasExternalHistory(branches, pick) {
   return history.some(m => m.id === pick.task?.id && EXTERNAL_MARKER.test(String(m.body ?? "")));
 }
 
+/** D-212: only confirmed red observations bound to the live web SHA hold landings. */
+export function releaseLandingHold(release) {
+  if (!/^[a-f0-9]{40}$/.test(release?.sha ?? "") || !Array.isArray(release.lights)) return null;
+  const red = release.lights.filter(l => l.number >= 4 && l.number <= 7 && l.state === "red" && l.sha === release.sha);
+  return red.length ? { sha: release.sha, lights: red.map(l => l.number), incidents: release.incidents ?? [] } : null;
+}
+
+// Only an explicit association in the authoritative main registry grants repair priority.
+function releaseFixTasks(tasks, hold) {
+  if (!hold) return [];
+  return tasks.filter(task => {
+    const note = String(task.note ?? "");
+    const release = /^Fixes release: ([a-f0-9]{40})\s*$/m.exec(note)?.[1];
+    const incident = /^Fixes incident: #([1-9][0-9]*)\s*$/m.exec(note)?.[1];
+    return release === hold.sha || (incident && hold.incidents.includes(Number(incident)));
+  }).map(task => task.id);
+}
+
 export function pickNextTask(input) {
   // D-315: a review or landing held by external provenance is passed over for this session (as --avoid would), so the
   // next eligible task is handed out instead of a WAIT; the held stage itself is never handed out or waived.
   const avoid = new Set(input.avoid ?? []);
+  const releaseHold = releaseLandingHold(input.release);
+  const repairIds = releaseFixTasks(input.tasks, releaseHold);
+  const mainRedNow = ["red", "running-after-red"].includes(input.mainCi?.state);
+  if (releaseHold && !input.only && !mainRedNow) {
+    for (const id of repairIds) {
+      if (avoid.has(id)) continue;
+      const repair = pickNextTask({ ...input, only: id });
+      if (repair.task?.id === id && !repair.ahead?.length
+        && ["build", "takeover", "green", "fix", "review", "land", "continue", "resync", "architect", "unblock"].includes(repair.kind)) return repair;
+    }
+  }
   const blocked = buildView({
     ...input, prCi: input.prCi ?? new Map(), mergedHeads: input.mergedHeads ?? new Map(),
     reports: input.reports ?? [], openPrs: input.openPrs ?? new Map(),
@@ -1568,10 +1597,22 @@ export function pickNextTask(input) {
   let firstHeld = null;
   const mainRed = input.mainCi?.state === "red" || input.mainCi?.state === "running-after-red";
   // D-324: every pick handed out while main is red says so, and that nothing lands until main is green.
-  const done = pick => (pick.kind === "none" && firstHeld ? firstHeld : (mainRed && pick.task ? { ...pick, mainRedNote: true } : pick));
-  for (let attempt = 0; attempt < 25; attempt++) {
+  const done = pick => {
+    const result = pick.kind === "none" && firstHeld ? firstHeld : pick;
+    return { ...result, ...(mainRed && result.task ? { mainRedNote: true } : {}),
+      ...(releaseHold ? { releaseHold } : {}),
+      ...(repairIds.includes(result.task?.id) || (releaseHold && (result.kind === "continue" ? result.of : result.kind) === "fix-main") ? { releaseFix: true } : {}) };
+  };
+  for (let attempt = 0; attempt < Math.max(25, input.tasks.length + 1); attempt++) {
     const pick = pickNextTaskLegacy({ ...input, avoid });
     const stage = pick.kind === "continue" ? pick.of : pick.kind;
+    if (releaseHold && stage === "land" && !repairIds.includes(pick.task?.id)) {
+      const reason = `live release ${releaseHold.sha.slice(0, 8)} has red lights ${releaseHold.lights.join(", ")}; landings only are held except its registered fix (D-212)`;
+      if (input.only) return done({ kind: "ineligible", task: pick.task, reason });
+      firstHeld ??= { kind: "wait", reason };
+      avoid.add(pick.task.id);
+      continue;
+    }
     // D-324: a task whose claim or history names an external model route (D-311) can only be claimed with that
     // route: `scripts/next-task.mjs` refuses any other claim. Handing it to a session without one made that session
     // fail at the claim and be handed the same task on every retry, so it is passed over as --avoid would.
