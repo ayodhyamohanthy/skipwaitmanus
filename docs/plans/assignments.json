@@ -117,7 +117,9 @@
       ],
       "owns": [
         "docs/BUGFREE_GATE.md",
-        "docs/qa/"
+        "docs/qa/",
+        "docs/DECISIONS.md",
+        "docs/plans/OPS-deploy-secrets-file.md"
       ],
       "note": "D-369 prerequisite re-sync (Nov 20): reset run 44696345516 failed at main f302a49f4; the release-time secret route in OPS-deploy-secrets-file must be accepted, including successful sign-in of both reviewer demo accounts, before this row runs. No repeated reset or direct secret-write workaround. This is an engineering dependency, not an owner policy question; status remains todo. D-366 (2) authorizes agent-run reviewer QA and reset with plaintext only in private session storage. D-346 (4) selects reviewer demo accounts, no real data or money; qa-sweep-1/2 are excluded (D-214), and no owner-forwarded OTP is needed. Keep #710 draft and BUGFREE_GATE signed-in legs unverified until real execution at 1280/390 with exact release identity. No checkout POST without its established no-wallet-risk scope; never pay, open archived legacy-pack checkout or activate banded sales. Missing transition proof remains a gap. Include a full e2e journeys run on the release candidate (D-353 (4)). Defects found become separate rows. No sign-in method, sales, settings, secret or spending change is authorized by this re-sync."
     },
@@ -6547,11 +6549,11 @@
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
       "status": "todo",
-      "syncedTo": "D-366",
+      "syncedTo": "D-370",
       "dependsOn": [
         "REL-webhook-auth-alarm"
       ],
-      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts. Nov 19 D-200/D-344/D-353 execution ruling: current head40595a6c is gate-only red because landing documentation and its revert followed Fixed headfeab2fba; quiet Land claim4bdf3667 blocks the ordinary fix-stage refresh. PICKER-stale-fixed-landing is registered for positive shared-gate/quiet-lease recovery. No unconditional dependency is added: normally authorized current-head acceptance may still clear the gate. Preserve the H1 repair and its limitations; no manual marker, product verdict, consumer landing or reconciliation enablement is supplied by the ruling. PROVIDER_RECON_ENABLED remains false.",
+      "note": "D-223 subtask of D-100. Read-only provider comparison; never adds a gateway key or changes money. D-370 supersedes the earlier independent-review, Fixed/landing-marker and model-route restrictions; integrate current main and land only through protected green required CI. Preserve the H1 repair: persisted pack fulfillments and actual-paid activity evidence, bounded reads, unknown invoices counted/skipped, employer/gift/subscription invoice coverage absent and billing-site isolation unverified. PROVIDER_RECON_ENABLED remains false. Current checkpoint18de34f38 passed full required CI44770945638; latest-main composition witha4e93b796 passed175 focused tests, check and build. Final-head CI and exact release verification are still required; status stays todo until those complete. Packet status records incomplete/red local full-run evidence and passing isolated reruns. Existing dependency, lane, position and owns are unchanged.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
