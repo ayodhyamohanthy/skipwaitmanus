@@ -27,8 +27,8 @@ const twoLanguages: LanguageRegistry.LanguageEntry[] = [
 ];
 const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
 const openMenu = async () => {
-  fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu", exact: true }), { button: 0, ctrlKey: false });
-  await screen.findByRole("menuitem", { name: "Settings", exact: true });
+  fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
+  await screen.findByRole("menuitem", { name: "Settings" });
 };
 
 beforeEach(() => {
@@ -47,8 +47,8 @@ describe("account-menu language choice", () => {
   it("adds no Language entry for the actual English-only registry", async () => {
     render(<AccountMenu />);
     await openMenu();
-    expect(screen.queryByRole("menuitem", { name: "Language", exact: true })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Language", exact: true })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Language" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -56,16 +56,16 @@ describe("account-menu language choice", () => {
     fixture.languages = twoLanguages;
     Object.assign(fixture, state);
     render(<AccountMenu />);
-    expect(screen.queryByRole("button", { name: "Account menu", exact: true })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Language", exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Account menu" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
   });
 
   it("opens the real endonym picker and persists the choice without navigation", async () => {
     fixture.languages = twoLanguages;
     render(<AccountMenu />);
     await openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Language", exact: true }));
-    const picker = await screen.findByRole("combobox", { name: "Language", exact: true });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Language" }));
+    const picker = await screen.findByRole("combobox", { name: "Language" });
     expect(within(picker).getAllByRole("option").map(option => [option.textContent, option.getAttribute("lang")])).toEqual([["English", "en"], ["हिन्दी", "hi"]]);
     await waitFor(() => expect(document.activeElement).toBe(picker));
     fireEvent.change(picker, { target: { value: "hi" } });
@@ -77,12 +77,12 @@ describe("account-menu language choice", () => {
   it("Escape closes the picker and restores account-trigger focus without saving", async () => {
     fixture.languages = twoLanguages;
     render(<AccountMenu />);
-    const trigger = screen.getByRole("button", { name: "Account menu", exact: true });
+    const trigger = screen.getByRole("button", { name: "Account menu" });
     await openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Language", exact: true }));
-    const picker = await screen.findByRole("combobox", { name: "Language", exact: true });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Language" }));
+    const picker = await screen.findByRole("combobox", { name: "Language" });
     fireEvent.keyDown(picker, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Language", exact: true })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(fixture.go).not.toHaveBeenCalled();
