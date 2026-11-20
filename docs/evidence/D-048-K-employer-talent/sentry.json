@@ -1,0 +1,10 @@
+{
+  "task": "D-048-K-employer-talent",
+  "organization": "skipwait",
+  "project": "skipwait-webapp",
+  "query": "is:unresolved environment:production transaction:/employer/talent",
+  "limit": 20,
+  "data": [],
+  "hasMore": false,
+  "context": "Read-only pre-merge observation during the f734 takeover. No unresolved matches and no further page. Not a soak, canonical deployment proof, or release-row completion."
+}

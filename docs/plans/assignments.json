@@ -5578,7 +5578,7 @@
       "lane": "d048-retire-employer-talent",
       "branch": "agent/queue/d048-k-employer-talent",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-employer-talent"
       ],
@@ -5588,7 +5588,7 @@
         "client/src/pages/talentDiscovery.test.tsx",
         "client/src/components/employer/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: employer-talent. Built by D-048-p3-employer-talent; released by D-048-R-employer-talent (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-346 (2) (Nov 16): the employer surfaces follow the launch set (owner: \"employers model can pushed a bit later\"). Work already in progress, such as PR #1210, continues; new employer builds come after the launch set. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: employer-talent. Built by D-048-p3-employer-talent; released by D-048-R-employer-talent, which remains todo; the surface is RELEASED, so this branch may build ahead only and must not land until the release row is done. Follow docs/plans/D-048-retire.md exactly: delete the kit body and its switch while keeping the stable route export; port legacy assertions to goal behavior or document bounded presentation changes, with the complete Ported assertions map in the packet. Keep the unlock price tied to the server's existing authoritative cost constant. D-349 suspends the seven-day soak during launch mode; it resumes when launch or the first real user is announced. Preserve the concurrent D-048-K-employer lane; shared components stay untouched. Keep API, auth, schema, providers, pricing/balance behavior, privacy and dependencies unchanged. Do not land until the release dependency is done; exact-head CI and canonical acceptance are still required.",
       "epic": "D-048-p3"
     },
     {
