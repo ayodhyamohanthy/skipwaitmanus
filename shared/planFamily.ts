@@ -239,8 +239,8 @@ export function planCoversJobLevel(id: PlanFamilyId, level: JobLevelNumber): boo
 /** Ordered L1-L10 levels covered by a plan's referral band (D-367). */
 export function jobLevelsInBand(id: PlanFamilyId): JobLevelNumber[] {
   return (Object.keys(JOB_LEVEL_REFERRAL_LEVEL) as Array<`${JobLevelNumber}`>)
-    .map(Number)
-    .filter(level => bandIncludes(id, referralLevelForJobLevel(level as JobLevelNumber)));
+    .map(key => Number(key) as JobLevelNumber)
+    .filter(level => bandIncludes(id, referralLevelForJobLevel(level)));
 }
 
 /** Included referrals for a plan as an ordered, display-ready list. */
