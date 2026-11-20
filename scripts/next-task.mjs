@@ -32,7 +32,7 @@ import {
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
-import { renderBoard, renderBoardSummary, renderPick } from "./nextTaskText.mjs";
+import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
 import { pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
@@ -118,11 +118,12 @@ function ghToken() {
   catch { return null; }
 }
 
-async function github(repo, path) {
+async function github(repo, path, { signal } = {}) {
   // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
   const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
-  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers, signal: AbortSignal.timeout(15_000) });
+  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
   return res.json();
 }
@@ -355,7 +356,7 @@ function keepClaim(pick, who, branches, provenanceBody) {
   return true;
 }
 
-async function state() {
+async function state({ withRelease = false } = {}) {
   if (tryGit("fetch", "-q", "--prune", "origin") === null) fail("git fetch origin failed; check your network and GitHub access");
   const raw = tryGit("show", `${LIST_REF}:${LIST}`);
   if (raw === null) fail(`${LIST} is missing on ${LIST_REF}`);
@@ -446,7 +447,14 @@ async function state() {
   const branches = loadBranches(doc.tasks);
   const prFacts = pullRequestFacts(doc.tasks, heads, branches);
   const landedEvidence = await landedEvidenceFor(doc, branches, mergedHeads, closedFirst);
-  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports: loadReports({ tasks: doc.tasks }) };
+  let release;
+  if (withRelease) {
+    try {
+      const { readLiveRelease } = await import("./nextTaskReleaseRead.mjs");
+      release = await readLiveRelease({ repo: doc.repo, github, mainCi, tryGit });
+    } catch { console.error("next-task: release reader unavailable; live release is unknown, no added landing hold"); }
+  }
+  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, release, reports: loadReports({ tasks: doc.tasks }) };
 }
 
 function claim(pick, who, branches, provenanceBody) {
@@ -555,10 +563,11 @@ async function main() {
     return;
   }
   if (args.status) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const newest = register.at(-1);
     console.log(`Register: ${newest.id}, ${newest.date} — ${newest.title}`);
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
+    console.log(release ? renderReleaseLights(release) : "LIVE RELEASE: unknown (reader unavailable; no added landing hold)\n");
     console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register })));
     return;
   }
@@ -614,12 +623,12 @@ async function main() {
   if (args.claim && who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
   // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
   for (let attempt = 1; attempt <= 6; attempt++) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const now = Date.now();
     const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
     // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
-    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, release, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
     if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
