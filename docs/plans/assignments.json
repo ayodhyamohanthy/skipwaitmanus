@@ -7312,7 +7312,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-fullstack-lights",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [
         "PICKER-parallel-eligibility",
