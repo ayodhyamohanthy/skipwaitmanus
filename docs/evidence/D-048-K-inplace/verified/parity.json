@@ -1,0 +1,117 @@
+{
+  "task": "D-048-K-inplace",
+  "pairs": [
+    {
+      "name": "requests-populated",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": false,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "requests-empty",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "requests-error",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "explore",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "company",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "ask",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": false,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "queue-gate",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "landed-error",
+      "width": 1280,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "requests-populated",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "requests-empty",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": false,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "requests-error",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": false,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "explore",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "company",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "ask",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "queue-gate",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": false,
+      "pngByteIdentical": true
+    },
+    {
+      "name": "landed-error",
+      "width": 390,
+      "textAndApiCountsEqual": true,
+      "apiSequenceEqual": true,
+      "pngByteIdentical": true
+    }
+  ]
+}
