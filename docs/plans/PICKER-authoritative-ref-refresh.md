@@ -104,5 +104,20 @@ fixture PASS, then check the complete released CLI in a nonclaim live run.
 
 ## Status
 
-PICKER-authoritative-ref-refresh: registration candidate only; no source
-claim, source dispatch, independently rerun fixture PASS or runtime fix.
+PICKER-authoritative-ref-refresh: in progress — GPT-6.1 Sol · e560 — 2026-11-20 — branch `agent/queue/picker-authoritative-ref-refresh`.
+
+Read receipt: current main `a4e93b796`, instructions `AGENTS.md`,
+`docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`,
+`COLLABORATION.md`, `docs/DELEGATION.md`, plan §§3–6 and bug-free gate read;
+register checked through D-370. Prior branch had only claim/transport
+commits, no source change or PR. Official takeover `f42d30fcc` and main
+integration `ad0a72abc` retain that history. No previous diagnostic PASS is
+claimed. D-370 supersedes this packet's model-binding and independent-review
+requirements; ordinary exact-session ownership and required CI remain.
+
+Planned implementation: explicit main/agent tracking-ref refresh, complete
+history requirement and bounded pre-write snapshot invalidation in
+`scripts/next-task.mjs`; local bare-origin/mock-provider regression tests in
+`scripts/nextTaskAuthoritativeRefs.test.ts`. No dependency, deployed
+application, schema, configuration, eligibility or lease change. All proof
+pending; recheck/push still has the documented multi-ref race window.
