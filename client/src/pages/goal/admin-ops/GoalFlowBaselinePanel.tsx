@@ -1,7 +1,6 @@
-// The D-018 baseline panel in goal UI (D-048-p3-admin-ops). Same payload, same
-// panels, same wording as components/admin/BaselineMetricsPanel.tsx - that
-// module stays untouched and the goal page re-renders it with tokens, because
-// a goal page may only import goal code (client/src/test/goalPagesBoundary).
+// The D-018 baseline panel in goal UI (D-048-p3-admin-ops). The legacy view was
+// removed by D-048-K-admin-ops; this page keeps its payload, panels and wording
+// in the goal tokens (client/src/test/goalPagesBoundary).
 // Aggregate only: every value is a count, a rate or a duration the server
 // derived from timestamps, so nothing personal can leak into this view.
 import { BarChart3, CreditCard, UsersRound } from "lucide-react";

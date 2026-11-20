@@ -1,0 +1,13 @@
+{
+  "runtimeSource": "e4932b36536730cb7aed57da1c7511bb0a122dcb",
+  "builtMetaSha": "e4932b365",
+  "driverSource": "e4932b36536730cb7aed57da1c7511bb0a122dcb",
+  "sourceBlobs": {
+    "client/src/pages/AdminActivity.tsx": "aea96a59eabb345af7ae3967a5ed6713892f12bf",
+    "client/src/pages/AdminFlowHealth.tsx": "9e219fd79764e996c121b9f56921c8a3e9b2f190",
+    "client/src/pages/AdminSchema.tsx": "ba8df21d480d703ca7fb1fbcd336ebd7115aa584",
+    "client/src/pages/AdminSmoke.tsx": "141b92f6f39a4ab5a44fee69d6d75a13cd3f72bd",
+    "client/src/pages/AdminPartners.tsx": "691ea39d3f83d43f728fb082f9cb9523de742241"
+  },
+  "captures": 36
+}
