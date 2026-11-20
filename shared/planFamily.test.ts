@@ -14,6 +14,7 @@ import {
   planFeeMinor,
   topUpMinor,
   volumeDiscountPct,
+  jobLevelsInBand,
 } from "./planFamily";
 
 describe("frozen banded plan family (owner freeze Oct 25)", () => {
@@ -124,5 +125,8 @@ describe("job level to referral band (owner, Nov 19 2026, D-367)", () => {
     expect(covered("early_to_mid")).toEqual([1, 2, 3, 4]);
     expect(covered("mid_to_senior")).toEqual([4, 5, 6, 7, 8]);
     expect(covered("senior_to_executive")).toEqual([5, 6, 7, 8, 9, 10]);
+    expect(jobLevelsInBand("early_to_mid")).toEqual([1, 2, 3, 4]);
+    expect(jobLevelsInBand("mid_to_senior")).toEqual([4, 5, 6, 7, 8]);
+    expect(jobLevelsInBand("senior_to_executive")).toEqual([5, 6, 7, 8, 9, 10]);
   });
 });
