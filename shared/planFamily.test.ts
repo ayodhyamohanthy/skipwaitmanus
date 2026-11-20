@@ -117,6 +117,12 @@ describe("job level to referral band (owner, Nov 19 2026, D-367)", () => {
     for (const bad of [0, 11, -1, 2.5]) expect(() => referralLevelForJobLevel(bad as never)).toThrow("unknown job level");
   });
 
+  it.each(["toString", "constructor", "__proto__", "1", Number.NaN, Infinity])("refuses invalid runtime level %s in mapping and plan coverage", async bad => {
+    const { referralLevelForJobLevel, planCoversJobLevel } = await import("./planFamily");
+    expect(() => referralLevelForJobLevel(bad as never)).toThrow("unknown job level");
+    expect(() => planCoversJobLevel("early_to_mid", bad as never)).toThrow("unknown job level");
+  });
+
   it("covers a job only when its band level is inside the plan's band", async () => {
     const { planCoversJobLevel } = await import("./planFamily");
     // Early to Mid reaches L1-L4; Mid to Senior L4-L8; Senior to Executive L5-L10.

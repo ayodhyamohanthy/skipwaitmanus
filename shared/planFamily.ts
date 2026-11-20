@@ -226,9 +226,8 @@ export const JOB_LEVEL_REFERRAL_LEVEL: Readonly<Record<JobLevelNumber, ReferralL
 
 /** The referral level a request for a job at this L1-L10 level spends (D-367). */
 export function referralLevelForJobLevel(level: JobLevelNumber): ReferralLevel {
-  const mapped = JOB_LEVEL_REFERRAL_LEVEL[level];
-  if (!mapped) throw new Error(`unknown job level: ${String(level)}`);
-  return mapped;
+  if (!Number.isInteger(level) || level < 1 || level > 10) throw new Error(`unknown job level: ${String(level)}`);
+  return JOB_LEVEL_REFERRAL_LEVEL[level];
 }
 
 /** Whether a plan's member can spend an included or purchased referral on a job at this level. */
