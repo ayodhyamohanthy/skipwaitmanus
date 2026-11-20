@@ -5002,7 +5002,7 @@
       "tier": 2,
       "lane": "d048-retire-policy",
       "branch": "agent/queue/d048-k-policy",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
