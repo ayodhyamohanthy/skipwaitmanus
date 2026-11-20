@@ -50,7 +50,7 @@ Money rules in `docs/DECISIONS.md`:
 2. **Money rule (D-031).** Never choose money-spending options. Choose free or money-earning options only. Paid plans and add-ons are dropped, not proposed as defaults. **D-204 (owner, Oct 23):** when a tool or service is needed, use one that is already wired first. Next, use a free, student-pack or startup-credit product (GitHub Student Pack, Microsoft for Startups/Azure, AWS Activate, Cloudflare for Startups and the others listed in D-204), used generously. Credits count as free only behind a hard stop that can never charge a card. Propose a paid tool only after both, to the owner, rated 1 to 10. Never put balances, account ids or keys in the repo (D-059).
 3. **Meritocracy (D-032).** If you see a better approach than a recorded decision, recommend it with evidence. The owner makes the call; never override a decision on your own.
 4. **Where decisions live.** `docs/DECISIONS.md` is the current decision register. Keep every entry and its status; other docs state current rules without carrying superseded guidance.
-5. **Protected landing (D-082/D-200, D-370):** every change uses a PR and exact required CI must be green. **D-370 (owner, Nov 20): green required CI alone lands every pull request, at every tier; no independent review is required or handed out, and no rule reads a session's model name** ("remove review dependency", "remove model dependency"). The D-352 Tier 1 review below is history. Merge with GitHub auto-merge (merge commit) on your own ready pull request, with no landing slot. Conflict-free docs/registry-only changes with no runtime delta use focused checks, not a full gate solely because `main` moved. Runtime changes use the required merge-result CI and applicable exact-release verification. Workers Builds is not a gate. While required CI on `main` is red, push only the fix; never weaken tests or bypass protection. **D-212 (Oct 26):** every enterprise role is a picker stage or a machine check, and a release counts as shipped only when all seven lights are green (`docs/plans/ENTERPRISE-PIPELINE.md` §4); once `PICKER-fullstack-lights` lands, a red live release holds every landing but its fix, while builds and reviews go on.
+5. **Protected landing (D-082/D-200, D-370):** every change uses a PR and exact required CI must be green. **D-370 (owner, Nov 20): green required CI alone lands every pull request, at every tier; no independent review is required or handed out, and no rule reads a session's model name** ("remove review dependency", "remove model dependency"). The D-352 Tier 1 review below is history. **D-371 (owner, Nov 20: "auto land"):** every `--claim` (or `node scripts/next-task.mjs --auto-land`) marks each green, in-sync task pull request ready, merges main into it when behind and turns auto-merge on, with the session's own GitHub credentials; nothing lands while main is red, and a parked, out-of-sync or reported red/blocked row never qualifies (`scripts/autoLand.mjs`). Merge with GitHub auto-merge (merge commit) on your own ready pull request, with no landing slot. Conflict-free docs/registry-only changes with no runtime delta use focused checks, not a full gate solely because `main` moved. Runtime changes use the required merge-result CI and applicable exact-release verification. Workers Builds is not a gate. While required CI on `main` is red, push only the fix; never weaken tests or bypass protection. **D-212 (Oct 26):** every enterprise role is a picker stage or a machine check, and a release counts as shipped only when all seven lights are green (`docs/plans/ENTERPRISE-PIPELINE.md` §4); once `PICKER-fullstack-lights` lands, a red live release holds every landing but its fix, while builds and reviews go on.
    **Instinct routine-merge permission boundary:** Instinct's authenticated October 24 arrangement permits its routine merges only after a separate review passes on the final version, all required tests pass, and the work is checked against current main, with no admin bypass. D-200 (4)'s general Tier 2/3 clause is not evidence that this specific permission was expanded. D-284 and PR #980 cannot waive these conditions. This note does not establish a new global contributor policy or reopen D-200's other rules; recover the relevant owner's actual instruction before claiming a broader permission. Tier 1 retains its independent-review restriction (D-151 as amended by D-344: a session other than the builder or fixer).
 6. **`build`, `resume`, `continue`, `next` (D-083, D-085, owner, Oct 20 2026).** All four mean one thing: run `node scripts/next-task.mjs --claim "<your model name>"` and do only what it prints. If the name has no ` · <session>` part, the picker adds a unique session tag (for example `Qwen 3 · k3f9`) and prints it: use exactly that full name for `--heartbeat`, `--report`, `--fixed`, `--verdict` and when you resume (on resume, read it from the holder column of `--status`; never invent a new one, or your own half-built work sits idle). Two sessions never share a name. Order: red `main` first; then your own unfinished work, except that pending work ranked above your task with nobody on it (a review, findings to fix, a red pull request whose owner is quiet, a landing, a half-built claim quiet for 2 hours, an unblock for the CEO) is handed to you first: you push your own work first (the picker enforces it) and your claim stays yours for 2 hours; then pending work nobody is on, top down; then new work, top down. A red or blocked priority holds its own lane and the tasks that depend on it: nothing there starts, other lanes go on; red `main` holds every landing, and its one fix is handed out first; other sessions keep working on branches (D-324, amending D-109). While a task's dependency is not done, nobody is handed its review, fix or landing, and a waiting task never holds its lane (D-134); when nothing else is eligible it is handed out to build ahead on its own branch, never landing before its dependencies (D-315, owner: "no wait no block"); `--heartbeat` keeps every claim you hold alive, a waiting one included. **Decisions sync the work (D-202, re-sync open to any session under D-200):** every task records `syncedTo` — the newest `docs/DECISIONS.md` entry its packet was checked against — and from D-201 on a decision that changes queued work names those tasks in its "Supersedes · affects" cell as `Affects tasks: <id>, <id>` (or `Affects tasks: none`). Name only tasks whose scope, owns, dependencies or acceptance the decision changes; a process-only ruling names none (D-346 (7)). The picker reads the register from `origin/main`, so a task whose `syncedTo` trails such an entry is *out of sync*: no build, takeover, make-green, fix, review, packet or landing on it, it never holds its lane, and its board row reads `re-sync (D-nnn)`. Any capable session may take that re-sync: read the newer entries, update the packet (or record in the register that the rule is unaffected) and set `syncedTo` to the newest entry in one commit. Every pick the picker prints, of every kind, opens with "Newest decisions (read before you work)" — the 5 newest entries plus every entry newer than that task's `syncedTo` (the 10 newest with a short summary, the rest by ID, D-361); if one changes what your task says, stop and `--report blocked "<task id>: conflicts with D-nnn"`. A newer decision always beats an older packet, note or chat message, and every non-`done` task without the stamp fails validation, so nothing is picked. An agent already holding work below a red priority whose owner is active keeps going on its own work; a red priority with nobody on it is handed out first. A claim is free after 2 hours with no push to its branch or lock and no `--heartbeat` (queue rule 2 said 24 hours); a holder back after 90 minutes or more re-takes its claim on the same branch a takeover would push to, so the first push wins. Report every stop, landing, pull request or block to the CEO with `--report` (one line, no personal data: the repo is public); `--status` prints the board every agent shares; a claim or preview prints only its one-line-per-priority summary and a short decisions list (the 10 newest summarised, every other entry newer than the task's `syncedTo` by ID), so the assignment survives agent output limits (D-358, D-361). New work, `--report` and `--fixed` are refused while your own claimed work has commits or changes not on origin. Push after every commit; commit and push before you stop. **Automatic next task (D-235, owner, Oct 29 2026, 23:56 IST; amends D-074 (2) and D-085 (10)):** After each bounded handoff (a Tier 1 draft pull request, a landing or a reported block), report the actual outcome with `--report`, push your own work, rerun the current-instruction preflight (`docs/BUILD_CONTINUITY.md`) and take the next task the picker hands you that your role may take (D-225), without waiting for another `build`. One packet at a time, not one packet per session. Never take your own review, and never bypass a held lane, missing authentication or approval, a platform session or usage limit, or a free-only limit. Stop only for a real blocker, no eligible work, an explicit stop or a session limit, and report that exact reason instead of asking the owner to choose routine work. The shared order is in `docs/plans/assignments.json`; any capable session may update or reorder rows under D-200, explaining why in its pull request. **D-205 (owner, Oct 23):** GitHub and every clone stay in sync, and a branch that is done and merged into `main` is deleted online and offline. That means its tip is in `main`, or a merged pull request's head equals its tip. Never delete `main`, `agent/reports/log`, the landing slot, unmerged work or any branch of a task that is not done (`docs/plans/BRANCH-HYGIENE.md`).
    **External-model provenance (D-311, November 10):** the owner approved building and testing support that records the actual external coding model and different review model separately from their operator. Until reviewed support lands, a receipt or client label cannot stand in for a qualified claim/verdict. Retain independent review, tests and protected merges. Unknown authorship and held fixes stay blocked; never rename an operator as an external model, hide a real build/fix contribution or publish private internal model metadata. See `docs/plans/PROCESS-model-provenance.md`; its new route cannot authorize its own initial delivery.
@@ -247,17 +247,17 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
 - Coordinate ownership through a shared GitHub issue or draft PR; use one
   isolated branch/worktree per session. Never overwrite or commit another
   session's dirty files, or switch branches in a shared active working tree.
-- Work on feature branches; ship each verified group to `main` only after
-  the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on
-  that exact commit (D-003 as amended by D-082 and D-134 (6): pull request first,
-  then fast-forward `main` to that exact commit with `git push origin <sha>:main`,
-  or GitHub's merge-commit button, which the ruleset allows only for an up-to-date branch;
-  never squash or rebase-merge; while `main` is red, push nothing but the fix), serialized,
-  never as concurrent automatic pushes to main. Follow applicable user/tool
-  authorization before committing, pushing, merging, or deploying.
+- Work on feature branches and land through a protected pull request with
+  exact required CI green, current main integrated and main's CI green (D-082,
+  D-200, D-370). Use GitHub auto-merge with a merge commit; never push directly
+  to `main`, squash, rebase-merge or use an admin bypass. While main is red,
+  only its fix lands. No independent review or landing slot is required by
+  D-370. Follow applicable authorization before publishing or deploying.
 - Validate the integrated result (`pnpm check` + affected Vitest files;
   `pnpm build` for runtime/dependency changes) and leave an explicit handoff.
-- A push to main triggers both Cloudflare deploys; no local Docker needed.
+- A push to main starts each Cloudflare workflow whose path filter matches;
+  docs-only changes may start neither. Deployment and migration jobs wait for
+  exact-target main CI; workflow start is not release proof. See `docs/DEPLOY.md`.
 
 ## Environment
 - Copy `.env.example` → `.env`. Minimum for local dev: `JWT_SECRET` (any random
@@ -278,18 +278,34 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   `.env.example` and required deployment bindings. A build passing with an
   undeclared or unforwarded variable is a failed change, not deployment proof.
 
-## Deploy (fully automated, no local Docker)
-- Push to `main` (only once CI is green on that exact commit, D-082) → GitHub Actions:
-  - `deploy-api.yml`: typecheck → build → `wrangler deploy` (Cloudflare
-    Containers; image built remotely). Secrets live in the Worker secret store
-    (`wrangler secret put`) and are forwarded into the container by the
-    `SkipwaitApi` class in `src/worker.ts`.
-  - `deploy-pages.yml`: build + `wrangler pages deploy` → skipwait.me/www.
-- Repo secrets: `CLOUDFLARE_API_TOKEN` (Workers Scripts + Containers + Pages +
-  KV edit), `CLOUDFLARE_ACCOUNT_ID`.
-- **Containers do NOT inherit Worker secrets automatically** — the env
-  passthrough in `src/worker.ts` is load-bearing. If you add a secret, set it
-  with `wrangler secret put <NAME>`; it reaches the container on next start.
+## Deploy (GitHub Actions)
+- Path-filtered main pushes and deliberate dispatches run the owning workflow.
+  `scripts/require-green-release.mjs` requires the target's own completed green
+  main CI before production effects; missing, pending, red, cancelled, skipped,
+  unreadable or superseded evidence never authorizes a release. Each writer
+  rechecks immediately before its production step.
+  - `deploy-api.yml`: release gate → source-retirement/reset preflights → pending
+    migration gate → runtime/pipeline/skip classification. Runtime publication
+    follows typecheck/build and a gate recheck, then administrator sign-in and
+    canonical exact-SHA/direct-origin checks. A green run may have skipped rollout.
+  - `deploy-pages.yml`: release gate → build/prerender → guarded Pages upload →
+    canonical `git-commit` verification. Web and API have separate path filters
+    and concurrency groups; compare their own expected deployed SHAs.
+- Normal retry: repair failed CI first. If no eligible CI ran, dispatch CI on
+  main, then dispatch the affected deploy on main after it passes. A cancelled
+  CI run or filtered deploy does not automatically resume when later CI turns
+  green. An older-target recovery uses `rollback.yml` from main with the exact
+  commit repeated, target and reason; its schema, CI and identity guards still
+  apply. Procedure and limits: `docs/DEPLOY.md`. This is no new rollback authority.
+- Repo credentials: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; keep values
+  out of the repository and logs. Production secret changes use the currently
+  approved release-time path. Reviewer reset uses a default-off boolean and a
+  complete protected repository-secret pair, validated before writes and on
+  job reruns. Provisioning and live reset/sign-in acceptance remain separate;
+  see `OPS-reviewer-credential-transport`. Never submit secrets as ordinary inputs.
+- **Containers do not inherit Worker secrets automatically.** Declare every
+  server key in `.env.example` and forward it in `src/worker.ts`; a deployment
+  passing without the required binding is not proof the container received it.
 
 ## Living system map
 Keep this section concise and current in the same atomic commit whenever a route
@@ -343,9 +359,10 @@ fixtures beside each feature instead of relying on this list alone.
    prefix match). Unresolvable links are rejected with a clear error.
 5. Azure MySQL clock can skew vs app servers — never compare DB NOW() with JS
    Date.now() for correctness-critical logic; compute timestamps in JS.
-6. The deployed web bundle must be built from the same commit as the API
-   (contract: tRPC + REST shapes). CI deploys both on every push; check
-   `scripts/sync-check.sh` when working locally.
+6. Web and API must use compatible tRPC/REST contracts. Their path filters
+   can leave them on different deployed SHAs; verify each against its own
+   expected release. For API-runtime changes the Pages workflow waits for a
+   ready API on the same SHA or a descendant; see `docs/DEPLOY.md`.
 
 ## Product and identity constraints
 - A **verified referrer** is any canonical person with a verified work email, whatever else they use SkipWait for (definition moved here by D-067; see D-057 for continuity across employers).
@@ -424,10 +441,11 @@ fixtures beside each feature instead of relying on this list alone.
   canonical `https://skipwait.me`, exact baked commit SHA, readiness, and the
   expected active Worker/container revision. Keep `workers.dev` disabled and
   verify it remains unavailable.
-- Serialize production writers so latest `main` wins. Reconcile unexpected
-  remote changes before overwriting. Do not let stale queued workflows activate
-  after a newer release. Never delete the Containers application to recover a
-  rollout.
+- Serialize production writers and reject superseded normal releases. Reconcile
+  unexpected remote changes before publishing; CI cancellation and path filters
+  can require an explicit retry. An authorized older target uses `rollback.yml`
+  with its CI/schema/identity gates and the same concurrency groups, never a
+  normal-deploy bypass. Never delete the Containers application to recover.
 - Cloudflare container capacity changes are control-plane changes: verify the
   live application value and active instances. Container env passthrough in
   `src/worker.ts` must be updated for each new server secret. Return temporary
