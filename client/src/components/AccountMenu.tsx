@@ -8,21 +8,24 @@
 // the profile image inside it. The sign-out failure alert is plain ink: the
 // status hues are audited away outside the goal primitive tree (R3).
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { BarChart3, Bell, Bookmark, BriefcaseBusiness, Building2, FileText, LogOut, MessageSquare, Settings, Share2, UserRound, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import * as Popover from "@radix-ui/react-popover";
+import { BarChart3, Bell, Bookmark, BriefcaseBusiness, Building2, FileText, Languages, LogOut, MessageSquare, Settings, Share2, UserRound, type LucideIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth, useUser } from "@/_core/auth";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { clearPrivateReferralBrowserData } from "@/lib/logoutPrivacy";
+import { GoalLanguagePicker } from "@/components/goal/GoalLanguagePicker";
+import { visibleLanguages } from "@shared/languages";
 
 /** One menu row: the goal label type in ink-2, tinted on hover and on keyboard highlight. */
-function MenuItem({ icon: Icon, label, disabled = false, onSelect }: { icon: LucideIcon; label: string; disabled?: boolean; onSelect: (event: Event) => void }) {
+function MenuItem({ icon: Icon, label, disabled = false, onSelect, className = "" }: { icon: LucideIcon; label: string; disabled?: boolean; onSelect: (event: Event) => void; className?: string }) {
   return (
     <DropdownMenu.Item
       disabled={disabled}
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-2 rounded-g-control px-3 py-2 text-g-label text-g-ink-2 outline-none select-none transition-colors duration-(--g-dur-hover) ease-g-out data-[disabled]:pointer-events-none data-[disabled]:text-g-ink-3 data-[highlighted]:bg-g-surface-hover data-[highlighted]:text-g-ink"
+      className={`flex cursor-pointer items-center gap-2 rounded-g-control px-3 py-2 text-g-label text-g-ink-2 outline-none select-none transition-colors duration-(--g-dur-hover) ease-g-out data-[disabled]:pointer-events-none data-[disabled]:text-g-ink-3 data-[highlighted]:bg-g-surface-hover data-[highlighted]:text-g-ink ${className}`}
     >
       <Icon aria-hidden="true" className="size-4 text-g-ink-3" strokeWidth={1.75} />
       {label}
@@ -54,6 +57,11 @@ export function AccountMenu() {
   const [, setLocation] = useLocation();
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  // Closing the dropdown must not steal focus from the language popover.
+  const openingLanguage = useRef(false);
+  const showLanguage = visibleLanguages().length > 1;
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
@@ -66,46 +74,73 @@ export function AccountMenu() {
   if (!isLoaded || !isSignedIn) return null;
 
   return (
-    <div className="flex items-center gap-2">
-      <NotificationBell />
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <button
-            type="button"
-            aria-label="Account menu"
-            title="Account"
-            className="g-hit grid size-8 overflow-hidden place-items-center rounded-full bg-g-surface-selected text-g-ink-2 ring-1 ring-inset ring-g-hairline transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink max-gdesk:size-11"
-          >
-            {user?.imageUrl
-              ? <img src={user.imageUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-              : <UserRound aria-hidden="true" className="size-4" strokeWidth={1.75} />}
-          </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            align="end"
-            sideOffset={4}
-            className="g-scope z-50 min-w-52 rounded-g-popover border border-g-hairline bg-g-surface p-1.5 text-g-ink shadow-g-popover data-[state=closed]:animate-g-fade-out data-[state=open]:animate-g-fade-in"
-          >
-            <MenuItem icon={Bell} label="Notifications" onSelect={() => setLocation("/notifications")} />
-            <MenuItem icon={MessageSquare} label="Direct messages" onSelect={() => setLocation("/messages")} />
-            <MenuItem icon={FileText} label="My requests" onSelect={() => setLocation("/requests")} />
-            <MenuItem icon={Bookmark} label="Internal openings" onSelect={() => setLocation("/wall")} />
-            <MenuItem icon={Building2} label="Employer dashboard" onSelect={() => setLocation("/employer")} />
-            <MenuItem icon={Share2} label="Share skipwait.me" onSelect={() => setLocation("/share")} />
-            <MenuItem icon={Settings} label="Settings" onSelect={() => setLocation("/settings")} />
-            <ReferrerMenuItems />
-            <DropdownMenu.Separator className="my-1 h-px bg-g-hairline" />
-            {signOutError && <p role="alert" className="px-3 py-2 text-g-label text-g-ink">{signOutError}</p>}
-            <MenuItem
-              icon={LogOut}
-              label={signingOut ? "Signing out..." : "Sign out"}
-              disabled={signingOut}
-              onSelect={event => { event.preventDefault(); void handleSignOut(); }}
-            />
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-    </div>
+    <Popover.Root open={languageOpen} onOpenChange={setLanguageOpen}>
+      <Popover.Anchor asChild>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                ref={menuTrigger}
+                type="button"
+                aria-label="Account menu"
+                title="Account"
+                className="g-hit grid size-8 overflow-hidden place-items-center rounded-full bg-g-surface-selected text-g-ink-2 ring-1 ring-inset ring-g-hairline transition-colors duration-(--g-dur-hover) ease-g-out hover:text-g-ink max-gdesk:size-11"
+              >
+                {user?.imageUrl
+                  ? <img src={user.imageUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                  : <UserRound aria-hidden="true" className="size-4" strokeWidth={1.75} />}
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={4}
+                onCloseAutoFocus={event => {
+                  if (openingLanguage.current) {
+                    event.preventDefault();
+                    openingLanguage.current = false;
+                  }
+                }}
+                className="g-scope z-50 min-w-52 rounded-g-popover border border-g-hairline bg-g-surface p-1.5 text-g-ink shadow-g-popover data-[state=closed]:animate-g-fade-out data-[state=open]:animate-g-fade-in"
+              >
+                <MenuItem icon={Bell} label="Notifications" onSelect={() => setLocation("/notifications")} />
+                <MenuItem icon={MessageSquare} label="Direct messages" onSelect={() => setLocation("/messages")} />
+                <MenuItem icon={FileText} label="My requests" onSelect={() => setLocation("/requests")} />
+                <MenuItem icon={Bookmark} label="Internal openings" onSelect={() => setLocation("/wall")} />
+                <MenuItem icon={Building2} label="Employer dashboard" onSelect={() => setLocation("/employer")} />
+                <MenuItem icon={Share2} label="Share skipwait.me" onSelect={() => setLocation("/share")} />
+                <MenuItem icon={Settings} label="Settings" onSelect={() => setLocation("/settings")} />
+                {showLanguage && <MenuItem icon={Languages} label="Language" className="min-h-11" onSelect={() => { openingLanguage.current = true; setLanguageOpen(true); }} />}
+                <ReferrerMenuItems />
+                <DropdownMenu.Separator className="my-1 h-px bg-g-hairline" />
+                {signOutError && <p role="alert" className="px-3 py-2 text-g-label text-g-ink">{signOutError}</p>}
+                <MenuItem
+                  icon={LogOut}
+                  label={signingOut ? "Signing out..." : "Sign out"}
+                  disabled={signingOut}
+                  onSelect={event => { event.preventDefault(); void handleSignOut(); }}
+                />
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </div>
+      </Popover.Anchor>
+      {showLanguage && <Popover.Portal>
+        <Popover.Content
+          aria-label="Language"
+          align="end"
+          sideOffset={4}
+          collisionPadding={16}
+          onCloseAutoFocus={event => { event.preventDefault(); menuTrigger.current?.focus(); }}
+          className="g-scope z-50 w-72 max-w-[calc(100vw-2rem)] rounded-g-popover border border-g-hairline bg-g-surface p-4 text-g-ink shadow-g-popover"
+        >
+          <GoalLanguagePicker variant="settings" />
+          <Popover.Close asChild>
+            <button type="button" className="mt-3 min-h-11 rounded-g-control border border-g-control-edge px-3 text-g-label text-g-ink">Done</button>
+          </Popover.Close>
+        </Popover.Content>
+      </Popover.Portal>}
+    </Popover.Root>
   );
 }
