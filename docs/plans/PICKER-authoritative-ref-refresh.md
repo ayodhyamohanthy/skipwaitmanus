@@ -104,7 +104,7 @@ fixture PASS, then check the complete released CLI in a nonclaim live run.
 
 ## Status
 
-PICKER-authoritative-ref-refresh: in progress — GPT-6.1 Sol · e560 — 2026-11-20 — branch `agent/queue/picker-authoritative-ref-refresh`.
+PICKER-authoritative-ref-refresh: implementation complete — source `26ba72f3e` plus shared-slot repair `453076afb`; composed `2a06bd952` — GPT-6.1 Sol · e560 — 2026-11-20 — PR #1393. Completion is staged in this PR; required CI, protected merge and released read-only CLI acceptance remain pending.
 
 Read receipt: current main `a4e93b796`, instructions `AGENTS.md`,
 `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`,
@@ -171,3 +171,12 @@ Local production build exits 0. The superseded broader scripts run and
 integrated quality-gate run were stopped incomplete after the concrete CI
 finding; their timeouts remain recorded, not converted to PASS. Fresh
 required CI on the follow-up commit remains the landing gate.
+
+Final integration: main `dc1ce93f7` merged without conflict as `2a06bd952`;
+no newer decision than D-370 and no intervening picker-source change.
+Registry completion/status stamp is the only additional path, required by
+the assignment's final step. Optional read-only source check returned no
+findings and ran no tests; no independent-review dependency is introduced.
+Source-head CI `44783339644` was cancelled when the newer integration was
+pushed, not passed. Final status commit gets fresh required CI. This is a
+tooling-only change, so no new product deployment is requested or claimed.
