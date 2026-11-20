@@ -1,0 +1,185 @@
+{
+  "pairs": 36,
+  "comparison": [
+    {
+      "file": "queue-default-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-default-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-denied-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-denied-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-empty-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-empty-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-error-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-error-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-signed-out-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-signed-out-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-with-employer-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "queue-with-employer-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-claimed-refusal-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-claimed-refusal-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-decision-failed-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-decision-failed-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-decision-uncertain-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-decision-uncertain-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-employer-history-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-employer-history-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-employer-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-employer-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-enrollment-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-enrollment-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-error-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-error-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-payment-full-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-payment-full-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-payment-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-payment-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-request-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-request-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-signed-out-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-signed-out-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-uncovered-1280.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    },
+    {
+      "file": "record-uncovered-390.png",
+      "differingPixels": 0,
+      "sameCalls": true
+    }
+  ]
+}

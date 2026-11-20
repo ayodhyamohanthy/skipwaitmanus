@@ -3,6 +3,8 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import AdminApprovalQueue from "./AdminApprovalQueue";
+// Preload the real module; render the actual lazy route in every case.
+import "./goal/admin-approvals/GoalAdminApprovalQueue";
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
 const go = vi.fn();
@@ -36,9 +38,9 @@ describe("administrator unified approval queue", () => {
     expect(within(enrollmentCard).getByText(/OTP verified/)).toBeTruthy();
     expect(within(paymentCard).getByText("Requires review")).toBeTruthy();
     expect(within(paymentCard).getAllByText(/provider_page_mismatch/).length).toBeGreaterThan(0);
-    expect(within(requestCard).getByText("1 credit reserved")).toBeTruthy();
-    fireEvent.click(within(requestCard).getByRole("button", { name: /Open record/ }));
-    expect(go).toHaveBeenCalledWith("/admin/approvals/referral_request/501");
+    expect(within(requestCard).getByText("Credit stays spent")).toBeTruthy();
+    expect(within(requestCard).queryByText("1 credit reserved")).toBeNull();
+    expect(within(requestCard).getByRole("link", { name: "Open record" }).getAttribute("href")).toBe("/admin/approvals/referral_request/501");
   });
 
   it("applies an Approve inline and updates the row badge without a reload", async () => {
@@ -70,7 +72,7 @@ describe("administrator unified approval queue", () => {
     expect(screen.getByText(/Widen the date range or clear filters/)).toBeTruthy();
   });
 
-  it("offers Retry decision when a decision fails and the record stays in the queue", async () => {
+  it("reconciles a failed decision by reloading before the same pending record can be decided again", async () => {
     let postCount = 0;
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === "POST") {
@@ -88,8 +90,15 @@ describe("administrator unified approval queue", () => {
     expect(screen.queryByText(/The record is unchanged and still in the queue/)).toBeNull();
     expect(screen.queryByText(/No notifications were sent/)).toBeNull();
     expect(screen.getByText("Ref-1501")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Retry decision" }));
+    expect(within(card).getByRole("button", { name: "Approve" }).getAttribute("aria-disabled")).toBe("true");
+    expect(within(card).getByRole("button", { name: "Reject" }).getAttribute("aria-disabled")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Retry decision" })).toBeNull();
+    expect(postCount).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Reload the queue" }));
+    await waitFor(() => expect(within(card).queryByRole("alert")).toBeNull());
+    fireEvent.click(within(card).getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(within(card).getByText("Approved")).toBeTruthy());
+    expect(postCount).toBe(2);
   });
 
   it("shows already-resolved copy when a decision returns 409", async () => {
