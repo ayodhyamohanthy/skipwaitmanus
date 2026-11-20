@@ -389,8 +389,14 @@ function keepClaim(pick, who, branches, provenanceBody) {
     const othersFresh = Boolean(slot.holder) && slot.holder !== who && !slot.quiet;
     if (!othersFresh && (slot.holder !== who || slot.quiet)) {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
-      const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
-      if (!took) return false;
+      try {
+        const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
+        if (!took) return false;
+      } catch (error) {
+        // A contested shared slot never retries on top of its new holder or writes a side lease.
+        if (error instanceof RefSnapshotChanged) return false;
+        throw error;
+      }
     }
   }
   const lease = leaseFor(pick, branches, Date.now());

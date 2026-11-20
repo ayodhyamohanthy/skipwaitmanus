@@ -156,3 +156,18 @@ manual diff contains only the CLI, new test and this packet Status. The
 broader scripts suite is still running and has a separate 400-commit
 classification-fixture timeout; no full-suite PASS or deployment is claimed.
 Required CI, current-main integration and released-CLI live read remain.
+
+PR #1393 at composed `7ee3c821e`, CI run `44780963644`: compiler,
+production build, two test shards and end-to-end journeys pass. Shard 1
+found a real shared-slot compatibility regression: a competing landing-slot
+write during heartbeat reads must stop without writing a side lease. The
+CLI now returns the existing lost-claim result for that shared-slot
+snapshot change; own side-heartbeat retry still rereads state. Unchanged
+heartbeat-slot tests pass 5/5 and requested-task CLI tests pass 8/8 after
+repair. Local rerun totals 27 passed / 3 failed: both dual-invocation clone
+controls and churn case hit the unchanged 20-second test timeout (they had
+passed in the earlier 17/17 run). No assertion or timeout was weakened.
+Local production build exits 0. The superseded broader scripts run and
+integrated quality-gate run were stopped incomplete after the concrete CI
+finding; their timeouts remain recorded, not converted to PASS. Fresh
+required CI on the follow-up commit remains the landing gate.
