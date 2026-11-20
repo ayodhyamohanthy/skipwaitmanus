@@ -34,7 +34,7 @@ function appWith(deps: Partial<ScheduledJobsRouteDeps> = {}) {
   const run = vi.fn(async () => ({ processed: 2, failed: 0 }));
   const jobs: ScheduledJobDefinition[] = [{ name: "ask-expiry-sweep", description: "Closes stale asks", windowMs: 15 * MINUTE, leaseMs: 5 * MINUTE, run }];
   const store = memoryStore();
-  registerScheduledJobsRoutes(app, { resolveIdentity: async req => identities[String(req.header("x-test-user"))], recordActivity: input => { activity.push(`${input.action}:${input.outcome}`); }, tickSecret: () => SECRET, now: () => NOW, store, jobs, capture, ...deps });
+  registerScheduledJobsRoutes(app, { resolveIdentity: async req => identities[String(req.header("x-test-user"))], recordActivity: input => { activity.push(`${input.action}:${input.outcome}`); }, tickSecret: () => SECRET, now: () => NOW, processStartMs: NOW - 48 * 60 * MINUTE, store, jobs, capture, ...deps });
   return { app, activity, capture, run, store };
 }
 
@@ -130,6 +130,16 @@ describe("GET /api/admin/jobs", () => {
     expect(never.body.jobs[0]).toMatchObject({ lastRun: null, lastSucceededAt: null, overdue: true });
     const stale = await request(appWith({ store: memoryStore([succeeded(NOW - 46 * MINUTE)]) }).app).get("/api/admin/jobs").set("x-test-user", "admin");
     expect(stale.body.jobs[0].overdue).toBe(true);
+  });
+
+  it("gives never-run jobs a startup grace and caps daily jobs at 30 hours", async () => {
+    const fresh = await request(appWith({ processStartMs: NOW }).app).get("/api/admin/jobs").set("x-test-user", "admin");
+    expect(fresh.status).toBe(200);
+    expect(fresh.body.jobs[0]).toMatchObject({ lastSucceededAt: null, overdue: false });
+    const daily: ScheduledJobDefinition = { name: "daily-money-check", description: "Daily audit", windowMs: 24 * 60 * MINUTE, leaseMs: MINUTE, run: async () => ({ processed: 0, failed: 0 }) };
+    const row: JobRunRecord = { ...succeeded(NOW - 30 * 60 * MINUTE - 1), jobName: daily.name };
+    const stale = await request(appWith({ jobs: [daily], store: memoryStore([row]) }).app).get("/api/admin/jobs").set("x-test-user", "admin");
+    expect(stale.body.jobs[0]).toMatchObject({ name: daily.name, overdue: true });
   });
 
   it("answers 503 when the run records are unavailable", async () => {
