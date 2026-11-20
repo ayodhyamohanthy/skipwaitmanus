@@ -5273,7 +5273,8 @@
         "client/src/components/requests/RequestStates.tsx",
         "client/src/components/requests/RequestSummary.tsx",
         "client/src/components/explore/CompanyResponseSignal.tsx",
-        "client/src/components/explore/companyResponseSignal.test.tsx"
+        "client/src/components/explore/companyResponseSignal.test.tsx",
+        "docs/evidence/D-048-K-inplace/release.json"
       ],
       "note": "Retirement row (D-332) for the surfaces that went live in place with no switch (D-149): the leftovers the split's K1 row named. Delete each file only when nothing imports it any more, with its test and the assertions ported or listed (docs/plans/D-048-retire.md). The seeker part of client/src/components/thread/ThreadDecisionPanels.tsx belongs to D-048-K-conversation. Measure the explore test file's real name before deleting; if it differs from this owns list, ask for a widening (D-200). D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
       "epic": "D-048-p3"
