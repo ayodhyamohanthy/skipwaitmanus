@@ -121,3 +121,17 @@ history requirement and bounded pre-write snapshot invalidation in
 `scripts/nextTaskAuthoritativeRefs.test.ts`. No dependency, deployed
 application, schema, configuration, eligibility or lease change. All proof
 pending; recheck/push still has the documented multi-ref race window.
+
+2026-11-20 technical execution amendment under D-200 (2): the original
+November 11 diagnostic fixtures could not be recovered in targeted local
+Git history/reflog/worktree and temporary-directory searches. Replace only
+the fixture-recovery prerequisite above with independently authored local
+bare-origin/mock-GitHub CLI reproductions; these are new tests, never the
+original diagnostic or its implementation. All required behavior and
+red-first acceptance remain. The first run on unchanged CLI `def7e4558`
+produced 12 failures and 2 passing controls (14 cases); the report-marker
+fixture syntax is being corrected before final qualification. No runtime
+source was changed before this amendment. D-370 removes the historical
+model-binding/reviewer requirements; unique session claims, all tests,
+required CI and protected merging still apply. Original evidence remains
+unverified. No atomic multi-ref protocol is authorized or claimed.
