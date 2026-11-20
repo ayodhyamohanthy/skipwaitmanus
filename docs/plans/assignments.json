@@ -99,7 +99,31 @@
         "server/cloudflareContainerRelease.test.ts",
         "docs/plans/OPS-deploy-secrets-file.md"
       ],
-      "note": "D-369. Build docs/plans/OPS-deploy-secrets-file.md §2. Unblocks LAUNCH-live-qa: after landing, a manual Deploy API dispatch with fresh reviewer hashes releases current main with the secrets attached. Lands on green required CI (D-370).",
+      "note": "D-369 release-time secret code merged in #1382 at 38b9a44e6. Run 44758926866 passed pipeline validation and skipped rollout. OPS-reviewer-credential-transport tracks the protected path and acceptance for a future demo reset. See the deployment packet and the D-200 QA receipt in the register.",
+      "epic": "D-212"
+    },
+    {
+      "id": "OPS-reviewer-credential-transport",
+      "title": "Protect reviewer credential handling during production deployment (D-059, D-369)",
+      "row": "D-212",
+      "packet": "docs/plans/OPS-deploy-secrets-file.md",
+      "tier": 1,
+      "lane": "ops-deploy-secrets",
+      "branch": "agent/queue/ops-reviewer-credential-transport",
+      "status": "todo",
+      "syncedTo": "D-370",
+      "dependsOn": [
+        "OPS-deploy-secrets-file"
+      ],
+      "owns": [
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/reviewer-qa-passwords.yml",
+        "scripts/build-deploy-secrets.mjs",
+        "scripts/buildDeploySecrets.test.ts",
+        "server/cloudflareContainerRelease.test.ts",
+        "docs/plans/OPS-deploy-secrets-file.md"
+      ],
+      "note": "Packet §6. Implement and prove protected handling with synthetic fixtures. Required CI, deployment gates and both demo sign-in checks remain required. Use the protected handoff for security details and the authorized route for live secret provisioning. Existing approved demo-account QA may continue.",
       "epic": "D-212"
     },
     {
@@ -142,6 +166,25 @@
       "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
     },
     {
+      "id": "BANDED-schema-migration",
+      "title": "Apply and verify the exact banded storage migration before schema-dependent readiness lands",
+      "row": "PRICING",
+      "packet": "docs/plans/BANDED-schema-migration.md",
+      "tier": 1,
+      "lane": "banded-schema-migration",
+      "branch": "agent/queue/banded-schema-migration",
+      "status": "todo",
+      "syncedTo": "D-370",
+      "dependsOn": [],
+      "owns": [
+        "drizzle/deploy/0123_banded_plans.sql",
+        "e2e/banded-migration.e2e.ts",
+        "docs/plans/BANDED-schema-migration.md"
+      ],
+      "epic": "BANDED-release",
+      "note": "Migration-first prerequisite split from BANDED-schema under D-200/D-223, following REL-review-email-retry-schema. Copy the exact 0123 SQL from PR #1371; no readiness/schema runtime code. Protected main migration run and checksum/readiness acceptance precede completion; D-370 removes review, not migration-first."
+    },
+    {
       "id": "BANDED-schema",
       "title": "Banded plan ids, per-level referral balances and an oversell-proof founding-membership counter: contract plus one forward-only migration, no reader yet",
       "row": "PRICING",
@@ -151,7 +194,9 @@
       "branch": "agent/queue/banded-schema",
       "status": "todo",
       "syncedTo": "D-370",
-      "dependsOn": [],
+      "dependsOn": [
+        "BANDED-schema-migration"
+      ],
       "owns": [
         "drizzle/schema.ts",
         "drizzle/",
@@ -6055,8 +6100,8 @@
       "tier": 2,
       "lane": "jobs",
       "branch": "agent/queue/rel-heartbeats",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [
         "REL-watchdog",
         "D-090-BYOR"
@@ -6069,9 +6114,13 @@
         "server/scheduledJobsRoutes*.test.ts",
         "server/_core/index.ts (switch only)",
         "watchdog/src/core.ts",
-        "scripts/watchdogCore.test.ts"
+        "scripts/watchdogCore.test.ts",
+        "shared/scheduledJobs.ts",
+        ".github/workflows/deploy-watchdog.yml",
+        "scripts/waitWatchdogJobs.ts",
+        "scripts/waitWatchdogJobs.test.ts"
       ],
-      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
+      "note": "Landing PR #1377: source 8bfc9622e, current-main integration b183e368e. Packet checked through D-370: public names/booleans only, shared overdue rule, startup grace and existing watchdog two-round alarm. D-309/D-314 remove shared-file serialization; D-370 removes review and model dependencies. Required CI, protected merge and canonical endpoint/watchdog deployment acceptance remain. shared/scheduledJobs.ts adds only the strict public response schema; existing job names and tick/admin contracts stay unchanged. Done status is prepared in the landing PR; its packet and PR distinguish pending production acceptance."
     },
     {
       "id": "REL-rollback-skew",
@@ -6548,12 +6597,12 @@
       "tier": 1,
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [
         "REL-webhook-auth-alarm"
       ],
-      "note": "D-223 subtask of D-100. Read-only provider comparison; never adds a gateway key or changes money. D-370 supersedes the earlier independent-review, Fixed/landing-marker and model-route restrictions; integrate current main and land only through protected green required CI. Preserve the H1 repair: persisted pack fulfillments and actual-paid activity evidence, bounded reads, unknown invoices counted/skipped, employer/gift/subscription invoice coverage absent and billing-site isolation unverified. PROVIDER_RECON_ENABLED remains false. Current checkpoint18de34f38 passed full required CI44770945638; latest-main composition witha4e93b796 passed175 focused tests, check and build. Final-head CI and exact release verification are still required; status stays todo until those complete. Packet status records incomplete/red local full-run evidence and passing isolated reruns. Existing dependency, lane, position and owns are unchanged.",
+      "note": "Done: PR #1171 merged as 84614d5ad59421a4840b6ad6c6cf66b44f788e13 on 2026-11-20. Final-head CI 44773294244, main CI 44773869883 and Deploy API 44773869949 passed. Canonical exact-release script returned RUNTIME CONVERGED, state ready, direct origin closed; signed-out credits/referrals/admin probes returned 401. Dormant implementation only: PROVIDER_RECON_ENABLED remains false, no real-money/provider write or activation. H1 reads persisted pack fulfillments and actual-paid evidence; unknown invoices counted/skipped, employer/gift/subscription invoice coverage absent and billing-site isolation unverified. Local focused 175/check/build pass; packet retains the incomplete/red full-local run and isolated reruns without calling them green. D-370 supersedes the old review/Fixed/model dead end. Existing dependency, lane, position and owns are unchanged.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
@@ -7456,11 +7505,11 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "Packet section 6.2, rulings 1 to 4: no openToReferrals read, askCostLine open:null, expectedCoverage never sent (server guard untouched), watch removed, post-save first clause only (expiry clauses stay for D-174-expiry-clock-removal). Money display: no amount, spend point, refund or key changes. Coordinator question 1 covers the D-132 flag-on re-pins.",
+      "note": "November 20 composer-only re-sync through D-370: packet section 6.2 replaces this row's older instructions. Preserve no-referrer request creation and honest server-driven pool/delivery status (D-360/D-363), D-364 link completion, current quote/accepted-cost/idempotency controls and all expiry/money clauses. askCostLine open:null; no expectedCoverage or directory availability gate. Legacy D-132 flags stay off; D-367 mapping is settled, BANDED-* owns pricing activation. Required CI, captures and exact-release checks; no review/model/coordinator dependency. Runtime task remains todo; docs re-sync is not implementation or release acceptance.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",
