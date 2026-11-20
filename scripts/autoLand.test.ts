@@ -29,7 +29,7 @@ describe("autoLandCandidates", () => {
   ];
 
   it("keeps only green rows of open, unparked tasks with a green CI head", () => {
-    expect(autoLandCandidates({ rows, tasks, prCi })).toEqual([{ id: "A", number: 1, branch: "agent/queue/a", sha: SHA }]);
+    expect(autoLandCandidates({ rows, tasks, prCi })).toEqual([{ id: "A", number: 1, branch: "agent/queue/a", sha: SHA, quietHours: null }]);
   });
 
   it("reads the number from a PR URL and nothing else", () => {
@@ -60,11 +60,12 @@ describe("runAutoLand", () => {
       markReady: async (id: string) => { calls.push(`ready ${id}`); if (fail.ready) throw new Error(fail.ready); },
       updateBranch: async (n: number, sha: string) => { calls.push(`update ${n} ${sha.slice(0, 1)}`); },
       enableAutoMerge: async (id: string) => { calls.push(`auto ${id}`); if (fail.auto) throw new Error(fail.auto); },
+      mergeNow: async (n: number, sha: string) => { calls.push(`merge ${n} ${sha.slice(0, 1)}`); },
       log: (line: string) => lines.push(line),
     };
     return { io, calls, lines };
   }
-  const c = (number: number) => ({ id: `T${number}`, number, branch: `agent/queue/t${number}`, sha: SHA });
+  const c = (number: number, quietHours: number | null = 3) => ({ id: `T${number}`, number, branch: `agent/queue/t${number}`, sha: SHA, quietHours });
   const pr = (number: number, extra: object = {}) => ({ ...base, head: { ref: `agent/queue/t${number}`, sha: SHA }, ...extra });
 
   it("marks a draft ready, updates a behind branch and turns auto-merge on", async () => {
@@ -101,6 +102,28 @@ describe("runAutoLand", () => {
     expect(r[0]).toEqual({ id: "T8", number: 8, outcome: "error", detail: "GraphQL 403" });
     expect(r[1].outcome).toBe("queued");
     expect(h.calls).toContain("auto N");
+  });
+
+  it("leaves a draft alone while its holder was active in the last 2 hours", async () => {
+    const h = harness({ 10: pr(10, { draft: true }), 11: pr(11, { draft: true }) });
+    const r = await runAutoLand([c(10, 1), c(11, null)], h.io);
+    expect(r.map(x => x.outcome)).toEqual(["skipped", "skipped"]);
+    expect(r[0].detail).toContain("draft");
+    expect(h.calls).toEqual(["read 10", "read 11"]);
+  });
+
+  it("merges a clean ready PR over REST when auto-merge cannot be enabled", async () => {
+    const h = harness({ 12: pr(12) }, { auto: "GitHub GraphQL answered 403" });
+    const r = await runAutoLand([c(12)], h.io);
+    expect(r[0]).toEqual({ id: "T12", number: 12, outcome: "queued", detail: "merged" });
+    expect(h.calls).toEqual(["read 12", "auto N", "merge 12 a"]);
+  });
+
+  it("never merges a behind or draft PR over REST", async () => {
+    const h = harness({ 13: pr(13, { mergeable_state: "behind" }) }, { auto: "GitHub GraphQL answered 403" });
+    const r = await runAutoLand([c(13)], h.io);
+    expect(r[0].outcome).toBe("error");
+    expect(h.calls).toEqual(["read 13", "update 13 a", "auto N"]);
   });
 
   it("does nothing with no candidates", async () => {

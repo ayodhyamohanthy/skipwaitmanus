@@ -35,3 +35,17 @@ Tests cover the candidate filter and every runner path: draft, behind, conflict,
 
 - `scripts/autoLand.test.ts`: 8 tests covering the candidate filter (green, red, out-of-sync, parked, CI moved, no sha, unknown task, review-pending), the hold (red, running-after-red, unknown main, unreadable PRs) and every runner path (draft+behind, already queued, conflict, closed, merged, head moved, foreign branch, API failure then next candidate, none).
 - Full `scripts/` suite: 1655/1655 pass; `pnpm check` exits 0.
+
+## 6. Follow-up after the first live run (Nov 20)
+
+The first real `--auto-land` run on main `b8d3c592` produced two results:
+- It merged main into #1404 over REST.
+- Its GraphQL calls returned 403 for four PRs, because some sandboxes cannot reach GraphQL.
+
+It also showed a design gap: a draft can mean the holder isn't finished. #710 is titled "browser acceptance pending".
+
+Two fixes follow:
+- **Drafts:** a draft lands only once its holder has been quiet for 2 hours, the point at which D-085 frees a claim. A draft whose holder is still active is skipped.
+- **REST fallback:** when auto-merge cannot be enabled, a ready PR that is already clean against main merges at once over REST, at the same SHA and with the same checks. A behind or draft PR is never merged this way.
+
+Tests: 3 new ones failed on the earlier code, and now 11/11 pass. The `scripts/` suite passes 1658/1658.
