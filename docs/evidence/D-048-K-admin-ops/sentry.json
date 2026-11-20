@@ -1,0 +1,47 @@
+[
+  {
+    "route": "/admin/activity",
+    "query": "is:unresolved environment:production transaction:/admin/activity",
+    "project": "skipwait/skipwait-webapp",
+    "period": "24h",
+    "checkedAt": "2026-11-19T22:30:39.085070+00:00",
+    "data": [],
+    "hasMore": false
+  },
+  {
+    "route": "/admin/flow-health",
+    "query": "is:unresolved environment:production transaction:/admin/flow-health",
+    "project": "skipwait/skipwait-webapp",
+    "period": "24h",
+    "checkedAt": "2026-11-19T22:30:42.581492+00:00",
+    "data": [],
+    "hasMore": false
+  },
+  {
+    "route": "/admin/schema",
+    "query": "is:unresolved environment:production transaction:/admin/schema",
+    "project": "skipwait/skipwait-webapp",
+    "period": "24h",
+    "checkedAt": "2026-11-19T22:30:45.966074+00:00",
+    "data": [],
+    "hasMore": false
+  },
+  {
+    "route": "/admin/partners",
+    "query": "is:unresolved environment:production transaction:/admin/partners",
+    "project": "skipwait/skipwait-webapp",
+    "period": "24h",
+    "checkedAt": "2026-11-19T22:30:48.393123+00:00",
+    "data": [],
+    "hasMore": false
+  },
+  {
+    "route": "/admin/smoke",
+    "query": "is:unresolved environment:production transaction:/admin/smoke",
+    "project": "skipwait/skipwait-webapp",
+    "period": "24h",
+    "checkedAt": "2026-11-19T22:30:50.601599+00:00",
+    "data": [],
+    "hasMore": false
+  }
+]
