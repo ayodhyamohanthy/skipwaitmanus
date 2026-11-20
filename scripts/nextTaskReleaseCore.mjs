@@ -21,7 +21,7 @@ export function releaseLights(e = {}) {
     incidents: [...new Set([...issueNumbers(e.downIssues), ...issueNumbers(e.incidents)])],
     lights: [
       light(1, "Built right", known(e.mainCi?.state), `main CI: ${e.mainCi?.state ?? "unknown"}`),
-      light(2, "Checked by someone else", known(e.review), "exact released PR head's CI review gate (D-352)"),
+      light(2, "Required CI", workflowState(e.checks), "CI workflow on the exact released PR head (D-370); no review dependency"),
       light(3, "Landed cleanly", known(e.landed), "merged PR into main, merge commit and retired branch/markers"),
       light(4, "Deployed", combine([workflowState(e.deployApi), workflowState(e.deployWeb)]),
         `Deploy API: ${workflowState(e.deployApi)}; Deploy Web: ${workflowState(e.deployWeb)}`),

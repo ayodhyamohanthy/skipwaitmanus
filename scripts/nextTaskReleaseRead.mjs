@@ -13,9 +13,6 @@ const statuses = z.object({ sha, statuses: z.array(z.object({ context: z.string(
   created_at: z.string().datetime(), updated_at: z.string().datetime() })) });
 const pull = z.object({ number: z.number().int().positive(), merged_at: z.string().nullable(), merge_commit_sha: sha.nullable(),
   head: z.object({ sha, ref: z.string() }), base: z.object({ ref: z.string(), repo: z.object({ full_name: z.string() }) }) });
-const jobs = z.object({ jobs: z.array(z.object({ name: z.string(), steps: z.array(z.object({
-  name: z.string(), status: z.string(), conclusion: z.string().nullable(),
-})) })) });
 const newest = list => [...list].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id)[0] ?? null;
 
 export async function readLiveRelease({ repo, github, mainCi, tryGit, fetchImpl = fetch, warn = console.error }) {
@@ -72,7 +69,7 @@ export async function readLiveRelease({ repo, github, mainCi, tryGit, fetchImpl 
   const governanceRead = liveWeb ? safe("released PR governance", async () => {
     const associated = z.array(pull).parse(await get(`/commits/${liveWeb}/pulls?per_page=100`));
     const pr = associated.find(p => p.merge_commit_sha === liveWeb && p.merged_at && p.base.ref === "main" && p.base.repo.full_name === repo);
-    if (!pr) return { review: "unknown", landed: "unknown" };
+    if (!pr) return { checks: null, landed: "unknown" };
     const parents = tryGit("rev-list", "--parents", "-n", "1", liveWeb);
     const ancestry = tryGit("merge-base", "--is-ancestor", liveWeb, "origin/main");
     const slug = pr.head.ref.split("/").at(-1);
@@ -82,12 +79,8 @@ export async function readLiveRelease({ repo, github, mainCi, tryGit, fetchImpl 
       : parents.trim().split(/\s+/).length === 3 && !refs ? "green" : "red";
     const prRuns = runs.parse(await get(`/actions/workflows/ci.yml/runs?head_sha=${pr.head.sha}&event=pull_request&per_page=10`));
     const ci = newest(prRuns.workflow_runs.filter(r => r.head_sha === pr.head.sha));
-    if (!ci || ci.status !== "completed") return { landed, review: "unknown" };
-    const data = jobs.parse(await get(`/actions/runs/${ci.id}/jobs?filter=latest&per_page=100`));
-    const gate = data.jobs.find(j => j.name === "typecheck")?.steps.find(s => s.name === "Review gate (independent Tier 1 pass)");
-    const review = gate?.status === "completed" && gate.conclusion === "success" ? "green"
-      : gate?.conclusion === "failure" ? "red" : "unknown";
-    return { landed, review };
+    // D-370: CI is the evidence; a successful review step alone never proves it.
+    return { landed, checks: ci };
   }) : null;
   const [downIssues, verified, governance] = await Promise.all([downIssuesRead, verifiedRead, governanceRead]);
   return releaseLights({ mainCi, ...governance, deployApi: newest(apiRuns ?? []), deployWeb: newest(webRuns ?? []),

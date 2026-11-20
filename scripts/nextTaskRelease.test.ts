@@ -8,7 +8,7 @@ const SHA = "a".repeat(40), API = "b".repeat(40), OLD = "c".repeat(40);
 const NOW = Date.parse("2026-11-20T08:00:00Z");
 const run = (conclusion = "success") => ({ head_sha: SHA, status: "completed", conclusion });
 const evidence = () => ({
-  mainCi: { state: "green", sha: SHA }, review: "green", landed: "green",
+  mainCi: { state: "green", sha: SHA }, checks: run(), landed: "green",
   deployApi: run(), deployWeb: run(), expectedApi: API, expectedWeb: SHA,
   liveApi: API, liveWeb: SHA, verified: { state: "success", sha: SHA },
   downIssues: [], incidents: [], jobs: { ok: true },
@@ -38,7 +38,7 @@ describe("D-212 release lights are evidence, never guesses", () => {
   });
 
   it.each([
-    [1, { mainCi: { state: "red", sha: SHA } }], [2, { review: "red" }], [3, { landed: "red" }],
+    [1, { mainCi: { state: "red", sha: SHA } }], [2, { checks: run("failure") }], [3, { landed: "red" }],
     [4, { deployApi: run("failure") }], [4, { deployWeb: run("failure") }],
     [5, { verified: { state: "failure", sha: SHA } }], [5, { liveApi: OLD }], [5, { liveWeb: OLD }],
     [6, { downIssues: [{ number: 7 }] }], [6, { jobs: { ok: false } }], [7, { incidents: [{ number: 8 }] }],

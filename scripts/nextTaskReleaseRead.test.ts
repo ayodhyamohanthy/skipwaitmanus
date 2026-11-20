@@ -49,6 +49,43 @@ function fixture() {
 }
 
 describe("the live release adapter reads exact, independently deployed evidence", () => {
+  it("D-370 reports successful exact-head CI without requiring a review step", async () => {
+    const f = fixture();
+    f.data.delete("/actions/runs/4/jobs?filter=latest&per_page=100");
+    const result = await f.read();
+    expect(result.lights[1]).toMatchObject({ label: "Required CI", state: "green" });
+    expect(f.calls).not.toContain("/actions/runs/4/jobs?filter=latest&per_page=100");
+    expect(releaseLandingHold(result)).toBeNull();
+  });
+
+  it("D-370 cannot turn failed exact-head CI green with a passing review step", async () => {
+    const f = fixture();
+    f.data.set(`/actions/workflows/ci.yml/runs?head_sha=${HEAD}&event=pull_request&per_page=10`, {
+      workflow_runs: [{ ...workflow(HEAD, 4), conclusion: "failure" }],
+    });
+    const result = await f.read();
+    expect(result.lights[1]).toMatchObject({ label: "Required CI", state: "red" });
+    expect(result.lights[1].detail).not.toContain("D-352");
+    expect(releaseLandingHold(result)).toBeNull();
+  });
+
+  it.each(["in_progress", "queued"])("D-370 keeps %s exact-head CI unknown", async status => {
+    const f = fixture();
+    f.data.set(`/actions/workflows/ci.yml/runs?head_sha=${HEAD}&event=pull_request&per_page=10`, {
+      workflow_runs: [{ ...workflow(HEAD, 4), status, conclusion: null }],
+    });
+    expect((await f.read()).lights[1].state).toBe("unknown");
+  });
+
+  it("D-370 never substitutes a different head or an unreadable run for exact-head CI", async () => {
+    const f = fixture();
+    const route = `/actions/workflows/ci.yml/runs?head_sha=${HEAD}&event=pull_request&per_page=10`;
+    f.data.set(route, { workflow_runs: [workflow(OLD, 5)] });
+    expect((await f.read()).lights[1].state).toBe("unknown");
+    f.data.delete(route);
+    expect((await f.read()).lights[1].state).toBe("unknown");
+  });
+
   it("all seven are green from real provider-shaped fixtures, using only reads", async () => {
     const f = fixture();
     const result = await f.read();

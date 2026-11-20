@@ -7262,7 +7262,7 @@
       "lane": "picker",
       "branch": "agent/queue/picker-fullstack-lights",
       "status": "todo",
-      "syncedTo": "D-309",
+      "syncedTo": "D-370",
       "dependsOn": [
         "PICKER-parallel-eligibility",
         "REL-release-verify",
