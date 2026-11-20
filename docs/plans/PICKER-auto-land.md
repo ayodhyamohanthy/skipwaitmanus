@@ -1,6 +1,6 @@
 # PICKER-auto-land: green task pull requests land on their own (D-371)
 
-Status: todo. Row `PICKER-auto-land`, branch `agent/queue/picker-auto-land`, decision D-371 (3). The owner said "auto land" on Nov 20, 2026.
+Status: in review (PR open). Row `PICKER-auto-land`, branch `agent/queue/picker-auto-land`, decision D-371 (3). The owner said "auto land" on Nov 20, 2026.
 
 ## 1. Why
 
@@ -30,3 +30,8 @@ Required CI, the queue gate, the scope check, the test-integrity gate, migration
 ## 4. Done means
 
 Tests cover the candidate filter and every runner path: draft, behind, conflict, closed, head moved, an API failure, and red main. The PR's CI is green. A real `--auto-land` run on main shows at least one green task PR set to auto-merge.
+
+## 5. Proof
+
+- `scripts/autoLand.test.ts`: 8 tests covering the candidate filter (green, red, out-of-sync, parked, CI moved, no sha, unknown task, review-pending), the hold (red, running-after-red, unknown main, unreadable PRs) and every runner path (draft+behind, already queued, conflict, closed, merged, head moved, foreign branch, API failure then next candidate, none).
+- Full `scripts/` suite: 1655/1655 pass; `pnpm check` exits 0.
