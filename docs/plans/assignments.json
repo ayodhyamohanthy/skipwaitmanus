@@ -6576,12 +6576,12 @@
       "tier": 1,
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [
         "REL-webhook-auth-alarm"
       ],
-      "note": "D-223 subtask of D-100. Read-only provider comparison; never adds a gateway key or changes money. D-370 supersedes the earlier independent-review, Fixed/landing-marker and model-route restrictions; integrate current main and land only through protected green required CI. Preserve the H1 repair: persisted pack fulfillments and actual-paid activity evidence, bounded reads, unknown invoices counted/skipped, employer/gift/subscription invoice coverage absent and billing-site isolation unverified. PROVIDER_RECON_ENABLED remains false. Current checkpoint18de34f38 passed full required CI44770945638; latest-main composition witha4e93b796 passed175 focused tests, check and build. Final-head CI and exact release verification are still required; status stays todo until those complete. Packet status records incomplete/red local full-run evidence and passing isolated reruns. Existing dependency, lane, position and owns are unchanged.",
+      "note": "Done: PR #1171 merged as 84614d5ad59421a4840b6ad6c6cf66b44f788e13 on 2026-11-20. Final-head CI 44773294244, main CI 44773869883 and Deploy API 44773869949 passed. Canonical exact-release script returned RUNTIME CONVERGED, state ready, direct origin closed; signed-out credits/referrals/admin probes returned 401. Dormant implementation only: PROVIDER_RECON_ENABLED remains false, no real-money/provider write or activation. H1 reads persisted pack fulfillments and actual-paid evidence; unknown invoices counted/skipped, employer/gift/subscription invoice coverage absent and billing-site isolation unverified. Local focused 175/check/build pass; packet retains the incomplete/red full-local run and isolated reruns without calling them green. D-370 supersedes the old review/Fixed/model dead end. Existing dependency, lane, position and owns are unchanged.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
