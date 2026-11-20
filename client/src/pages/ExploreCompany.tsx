@@ -31,7 +31,6 @@ import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
 // ASK_COST_SENTENCE stays for the SEO description below; the block states the
 // cost once, through MONEY_SENTENCE.
 import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
-import { NotFoundContent } from "./NotFound";
 import { AskDrawer } from "./explore/AskDrawer";
 import { useAskComposer } from "./explore/useAskComposer";
 

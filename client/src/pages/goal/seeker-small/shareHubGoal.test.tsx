@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-// Goal /share (D-048-p3-seeker-small, dark): goal line, one Copy commit,
-// link lifecycle, flags-off kit control.
+// Goal sharing: reward boundaries, invoice lock, and honest link readiness.
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React, { Profiler } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -9,13 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const authState = { isSignedIn: true };
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn }), SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/const", () => ({ startLogin: vi.fn() }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "share" };
-});
-vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => null }));
-vi.mock("@/components/Brand", () => ({ Brand: () => null }));
 
 import ShareHub from "@/pages/ShareHub";
 import GoalShareHub from "@/pages/goal/seeker-small/GoalShareHub";
@@ -37,7 +29,7 @@ function claimsReadyWithoutLink(paints: string[]) {
 }
 
 describe("goal share hub", () => {
-  beforeEach(() => { authState.isSignedIn = true; flagState.on = true; });
+  beforeEach(() => { authState.isSignedIn = true; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("opens on the goal with the copy commit once the link is ready", async () => {
@@ -151,11 +143,10 @@ describe("goal share hub", () => {
     expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeTruthy();
   });
 
-  it("flags off keeps the kit hub", async () => {
-    flagState.on = false;
+  it("renders the goal hub without a surface override", async () => {
     vi.stubGlobal("fetch", stubInvite());
     render(<ShareHub />);
-    expect(await screen.findByText(/You found an opportunity/)).toBeTruthy();
-    expect(screen.queryByTestId("goal-share-hub")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Help a friend find their next role." })).toBeTruthy();
+    expect(await screen.findByText(/Your link is ready/)).toBeTruthy();
   });
 });

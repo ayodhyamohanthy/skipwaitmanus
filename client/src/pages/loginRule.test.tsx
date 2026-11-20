@@ -90,7 +90,7 @@ describe("login rule: referrer", () => {
       const source = readFileSync(`client/src/pages/${file}.tsx`, "utf8");
       expect(source, `${file}.tsx must use referrerSignInHref / the OTP dialog`).not.toMatch(/SignInButton|openSignIn|auth\/workos/);
     }
-    for (const file of ["components/referrer/ReferrerSignInDialog.tsx", "components/referrer/ReferrerWorkspace.tsx", "components/referrer/CapacitySettingsPanel.tsx", "components/ReferrerOtpSignIn.tsx"]) {
+    for (const file of ["pages/goal/referrer/GoalReferrer.tsx", "pages/goal/referrer/GoalReferrerImpact.tsx", "pages/goal/referrer/GoalOtpSignIn.tsx", "components/referrer/ReferrerSignInDialog.tsx", "components/ReferrerOtpSignIn.tsx"]) {
       expect(readFileSync(`client/src/${file}`, "utf8"), file).not.toMatch(/SignInButton|openSignIn|auth\/workos/);
     }
   });

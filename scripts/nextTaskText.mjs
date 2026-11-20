@@ -125,9 +125,13 @@ const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : step
 const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
-  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
-  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
-  `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
+  ...(pick.packetFindingsCommit ? [
+    `Address the recorded packet findings (verdict ${pick.packetFindingsCommit.slice(0, 8)}) on ${pick.lock} and push your correction. Then run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` to bind the fix to the published packet head. Required CI and the existing review gate decide whether it can land.`,
+  ] : [
+    "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
+    `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
+  ]),
+  `${pick.packetFindingsCommit ? "Re-run required CI on the exact corrected head. Another session lands the packet when eligible (D-190)." : "Land it like any docs change (D-082: pull request, every check green on that exact commit)."} ${keepAlive(who)}`,
   report(pick.task, who),
 ]);
 
@@ -181,15 +185,24 @@ const resyncSteps = (pick, who, register = null) => {
 };
 
 /** D-202: the register block every pick opens with — the newest decisions, then the stop rule. */
+const DECISIONS_SUMMARISED = 10;
+const DECISION_SUMMARY_MAX = 160;
 function decisionsBlock(pick, register) {
   if (!register?.length) return "";
   const stamp = pick.task?.syncedTo;
   const at = stamp ? register.findIndex(e => e.id === stamp) : -1;
   const first = Math.max(0, Math.min(register.length - 5, at < 0 ? register.length - 5 : at));
   const shown = register.slice(first).reverse();
+  // D-361: the 10 newest with a short summary, every other entry by ID, so a stale syncedTo cannot push the
+  // assignment past an agent's output limit; nothing D-202 requires is dropped.
+  const summarised = shown.slice(0, DECISIONS_SUMMARISED);
+  const named = shown.slice(DECISIONS_SUMMARISED).map(e => e.id);
+  const short = title => (title.length > DECISION_SUMMARY_MAX ? `${title.slice(0, DECISION_SUMMARY_MAX - 1).trimEnd()}…` : title);
   return [
     "Newest decisions (read before you work):",
-    ...shown.map(e => `- ${e.id} · ${e.date} · ${e.title}`),
+    ...summarised.map(e => `- ${e.id} · ${e.date} · ${short(e.title)}`),
+    ...(named.length ? [`- Also newer than this task's syncedTo: ${named.join(", ")}`] : []),
+    "Read each of these in full in docs/DECISIONS.md before you work.",
     `If any of these changes what your task says, stop and run \`${CMD} --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn"\` (D-032). A newer decision always beats an older packet, note or chat message.`,
   ].join("\n");
 }

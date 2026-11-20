@@ -84,7 +84,7 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="09" title="Business identity">
-      <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as skipwait.me.</p>
+      <p>skipwait.me is operated by a sole proprietor based in India, trading as skipwait.me.</p>
       <p>The business is not GST-registered. We do not charge GST.</p>
       <ul>
         <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
@@ -98,7 +98,7 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="11" title="Grievance officer">
-      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Phone <a href="tel:+919513064808" className="font-semibold text-foreground">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-foreground">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
+      <p>Grievance officer: the Proprietor, skipwait.me. Phone <a href="tel:+919513064808" className="font-semibold text-foreground">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-foreground">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
     </PolicySection>
   </PolicyPageShell>;
 }

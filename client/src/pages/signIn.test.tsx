@@ -18,19 +18,19 @@ function stubAssign() {
 }
 
 describe("SignIn", () => {
-  it("renders the kit split design with intent choice and WorkOS continuations", () => {
+  it("renders the released goal design with intent choice and WorkOS continuations", () => {
     const assign = stubAssign();
     render(<SignIn />);
-    expect(screen.getByText(/One sign-in/)).toBeTruthy();
-    expect(screen.getByText("Welcome to skipwait.me.")).toBeTruthy();
-    expect(screen.getByText("YOUR DOOR STARTS HERE")).toBeTruthy();
-    expect(screen.getByAltText(/open blue door/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sign in to find or give a referral." })).toBeTruthy();
+    expect(screen.queryByText("Welcome to skipwait.me.")).toBeNull();
+    expect(screen.queryByText("YOUR DOOR STARTS HERE")).toBeNull();
+    expect(screen.queryByAltText(/open blue door/)).toBeNull();
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     // FOUNDER-LOCKED login rule (Oct 16 2026): Give a referral = work-email OTP only, no personal or social options.
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByText(/Choose who you help/)).toBeTruthy();
+    expect(screen.getByText("Sign in with your company email. A one-time code proves where you work.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue with (Google|Microsoft|GitHub)/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Continue with email/ })).toBeNull();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
@@ -38,13 +38,13 @@ describe("SignIn", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
-  it("keeps Terms and Privacy Policy reachable as plain-text links, underlined only on hover or focus", () => {
+  it("keeps Terms and Privacy Policy reachable with persistent underlines and hover decoration", () => {
     render(<SignIn />);
     for (const [name, href] of [["Terms", "/terms"], ["Privacy Policy", "/privacy"]]) {
       const link = screen.getByRole("link", { name });
       expect(link.getAttribute("href")).toBe(href);
-      expect(link.className.split(" ")).not.toContain("underline");
-      expect(link.className).toContain("hover:underline");
+      expect(link.className.split(" ")).toContain("underline");
+      expect(link.className).toContain("hover:decoration-g-ink");
     }
   });
 

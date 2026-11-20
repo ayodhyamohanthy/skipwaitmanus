@@ -4,7 +4,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Page from "./Alerts";
 
 vi.mock("@/hooks/useReferrerAccess", () => ({
@@ -25,6 +25,8 @@ vi.mock("wouter", () => ({
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
+// Resolve the real goal module before the existing session-gate assertions.
+beforeAll(async () => { await import("./goal/alerts/GoalAlerts"); });
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/api/notifications") ? { ok: true, status: 200, json: async () => ({ notifications: [] }) } : new Promise<never>(() => undefined)));
 });

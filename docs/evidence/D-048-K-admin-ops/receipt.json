@@ -1,0 +1,502 @@
+{
+  "expectedWebSha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+  "origin": "https://skipwait.me",
+  "scope": "Clean signed-out UI only; no admin authentication or live business mutation.",
+  "startedAt": "2026-11-19T22:32:08.309Z",
+  "cases": [
+    {
+      "name": "activity",
+      "heading": "Diagnose the referral journey.",
+      "width": 1280,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "documentWidth": 1280,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "activity-1280.png",
+      "pngWidth": 1280
+    },
+    {
+      "name": "flow-health",
+      "heading": "See where the referral flow needs work.",
+      "width": 1280,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "documentWidth": 1280,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "flow-health-1280.png",
+      "pngWidth": 1280
+    },
+    {
+      "name": "schema",
+      "heading": "Reconcile the database schema.",
+      "width": 1280,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "documentWidth": 1280,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "schema-1280.png",
+      "pngWidth": 1280
+    },
+    {
+      "name": "partners",
+      "heading": "Curate partner slots and sponsored roles.",
+      "width": 1280,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "documentWidth": 1280,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "partners-1280.png",
+      "pngWidth": 1280
+    },
+    {
+      "name": "smoke",
+      "heading": "Not found",
+      "width": 1280,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "documentWidth": 1280,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/admin/smoke/status",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [
+        404
+      ],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "smoke-1280.png",
+      "pngWidth": 1280
+    },
+    {
+      "name": "activity",
+      "heading": "Diagnose the referral journey.",
+      "width": 390,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "documentWidth": 390,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "activity-390.png",
+      "pngWidth": 780
+    },
+    {
+      "name": "flow-health",
+      "heading": "See where the referral flow needs work.",
+      "width": 390,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "documentWidth": 390,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "flow-health-390.png",
+      "pngWidth": 780
+    },
+    {
+      "name": "schema",
+      "heading": "Reconcile the database schema.",
+      "width": 390,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "documentWidth": 390,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "schema-390.png",
+      "pngWidth": 780
+    },
+    {
+      "name": "partners",
+      "heading": "Curate partner slots and sponsored roles.",
+      "width": 390,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "documentWidth": 390,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "partners-390.png",
+      "pngWidth": 780
+    },
+    {
+      "name": "smoke",
+      "heading": "Not found",
+      "width": 390,
+      "documentStatus": 200,
+      "metrics": {
+        "sha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "documentWidth": 390,
+        "h1Count": 1
+      },
+      "reads": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/admin/smoke/status",
+          "method": "GET"
+        }
+      ],
+      "statusResponses": [
+        404
+      ],
+      "errors": [],
+      "privateReads": [],
+      "blockedWrites": [],
+      "blockedSecurityReports": [
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src-elem",
+          "source": "cloudflare-beacon",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "script-src",
+          "source": "eval",
+          "disposition": "report"
+        },
+        {
+          "path": "/api/csp-report",
+          "method": "POST",
+          "directive": "connect-src",
+          "source": "sentry-ingest",
+          "disposition": "report"
+        }
+      ],
+      "image": "smoke-390.png",
+      "pngWidth": 780
+    }
+  ],
+  "finishedAt": "2026-11-19T22:32:35.430Z",
+  "success": true
+}

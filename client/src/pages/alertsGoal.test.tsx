@@ -1,18 +1,13 @@
 // @vitest-environment jsdom
-// Goal /alerts (AYO-8, dark): goal line, next step = newest unread, needs-you
-// vs earlier hierarchy, mark-all-read, routing, flags-off kit control.
+// Released /alerts: goal line, next step = newest unread, needs-you vs earlier
+// hierarchy, mark-all-read and routing, without a surface override.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isLoaded: true, isSignedIn: true };
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ ...authState, userId: "u1", getToken: async () => "tok" }), SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "alerts" };
-});
 vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "verified" }) }));
 vi.mock("@/components/alerts/SavedAlerts", () => ({ SavedAlerts: () => <div data-testid="saved-alerts" /> }));
@@ -43,13 +38,16 @@ vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit
 
 import Alerts from "@/pages/Alerts";
 
+// Preload the real module without replacing the route's lazy component.
+beforeAll(async () => { await import("./goal/alerts/GoalAlerts"); });
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><Alerts /></QueryClientProvider>);
 }
 
 describe("goal alerts", () => {
-  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true; serverState.items = [...items]; serverState.ok = true; serverState.failOnce = []; serverState.block = null; serverState.readCalls = []; goMock.mockReset(); });
+  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; serverState.items = [...items]; serverState.ok = true; serverState.failOnce = []; serverState.block = null; serverState.readCalls = []; goMock.mockReset(); });
   afterEach(() => { cleanup(); });
 
   it("opens on the goal with the newest unread as the next step", async () => {
@@ -121,10 +119,10 @@ describe("goal alerts", () => {
     expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
   });
 
-  it("flags off keeps the kit alerts", async () => {
-    flagState.on = false;
+  it("renders only the released goal page without a surface override", async () => {
     renderPage();
-    expect(await screen.findByText(/STAY IN THE LOOP/)).toBeTruthy();
-    expect(screen.queryByTestId("goal-alerts")).toBeNull();
+    expect(await screen.findByTestId("goal-alerts")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("See what needs you.");
+    expect(screen.queryByText("STAY IN THE LOOP")).toBeNull();
   });
 });
