@@ -1,0 +1,713 @@
+{
+  "task": "D-048-K-system",
+  "beforeSource": "1612c6689db99b3553a2805ca1bf2a164fea62b4",
+  "afterSource": "f5fc5da72726930d3bebc3759e2cbecd40ad950d",
+  "goalSourceHashesUnchanged": true,
+  "pairs": [
+    {
+      "name": "android",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-install-iphone-",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-push-permission",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-offline",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-slow-connection",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-not-found",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-something-went-wrong",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-payment-failed",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-loading",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "android-dismiss",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "android-reopen",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "iphone-dismiss",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "iphone-reopen",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-unavailable",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-accepted",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-dismissed",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-error",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-granted",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-denied",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-default",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-error",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-absent",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-later",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "offline",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "offline-draft",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "not-found",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-work-email-code",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-password-reset",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-welcome",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-request-claimed",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-referral-accepted",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-referral-passed",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-new-message",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-waiting-for-coverage",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-slot-opened",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-review-ready",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-re-verify-reminder",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-report-outcome",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-payment-receipt-failed",
+      "width": 1280,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "android",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-install-iphone-",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-push-permission",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-offline",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-slow-connection",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-not-found",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-something-went-wrong",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-payment-failed",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "gallery-loading",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "android-dismiss",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "android-reopen",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "iphone-dismiss",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "iphone-reopen",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-unavailable",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-accepted",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-dismissed",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "install-error",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-granted",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-denied",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-default",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-error",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-absent",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "push-later",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "offline",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "offline-draft",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "not-found",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-work-email-code",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-password-reset",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-welcome",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-request-claimed",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-referral-accepted",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-referral-passed",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-new-message",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-waiting-for-coverage",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-slot-opened",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-review-ready",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-re-verify-reminder",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-report-outcome",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "email-payment-receipt-failed",
+      "width": 390,
+      "requestsEqual": true,
+      "visibleTextEqual": true,
+      "browserCallsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    }
+  ],
+  "synthetic": true,
+  "productionRequests": 0,
+  "limits": "Owned local Vite preview with synthetic install/notification APIs and intercepted network. Source hashes identify rendered files; not real installation/permission, production-browser, clean-tree or canonical evidence."
+}

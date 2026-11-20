@@ -28,16 +28,16 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | GO-LIVE-1b (PR #359) | - | QA + build | landed (#359); passes stay off (`PASS_SALES_ENABLED = false`, D-146) |
 | W0 goal shell (PR #361) | L6 | build | live (#361) |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
-| Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
-| BYOR one-time link (idea 2) | L2 | build | in review on draft PR (`agent/claude/d090-byor`); C1–C6 complete; full gate passed; flags OFF/not live |
-| Employee request-inbox link (idea 1) | L4 | packet to write (`D-089-request-inbox`, D-163) | build after idea 2 |
+| Demand list (D-086) | L1 | release | Count, UI, mounts and admin view are merged, with both switches off. Release `D-086-demand-list` waits for the owner's decision on employer-bonus copy (D-323, D-366 (7)); see the [release packet](plans/D-086-demand-list.md#54-d-086-demand-list-release-held-for-the-owners-positioning-decision-d-366-7). |
+| BYOR one-time link (idea 2) | L2 | build | landed (`D-090-BYOR`, PR #632, reviewed); flags `BYOR_LINK_ENABLED`/`VITE_BYOR_LINK` stay OFF until its release row |
+| Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-327): screen name on the referral link, direct-request marker, one switch starting off | build after idea 2 and the demand list; its two build rows (`D-089.server`, `D-089.ui`) are registered (D-327, Nov 12) and queue behind their dependencies; the release row flips the switch only after both rows, QA and the owner's look at the captures |
 | Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
-## Demand-list copy (D-086, verbatim)
-- "{N} people are asking for a referral at {Company}." (N from 3 up; for 1-2 people D-086 (2) gives only "A few people asking", and the D-086 packet proposes the full sentence; never a count of 0 — D-086 (2), D-162)
-- Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
-- Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
+## Demand-list release contract (D-086, D-227, D-366)
+- For listed companies, show a live count from three distinct people; for one or two say “A few people are asking for a referral at {Company}.” At zero, the demand section renders nothing. That does not imply anything about company coverage or the availability of jobs.
+- The employee invitation uses the existing work-email verification path. Do not promise a payout, referral, or notification.
+- The company detail's employer-bonus copy remains an owner decision under D-366 (7). The separate release is on hold; both demand switches remain off.
 
 ## Claim-your-company (D-107, draft)
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
@@ -45,6 +45,7 @@ Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COM
 ## Go-to-market (D-102, changeable)
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
+- Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.
 - Public launch when the 10 most-asked companies each have a verified referrer (confirmed by the owner, Oct 21; no payment test in the trigger).
 - Loops L1 to L4. Measure: asks per company, companies with a verified referrer, asks answered within 5 days, reports-as-annoying.
 

@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Page from "./ReferrerImpact";
+// Warm the real chunk; assertions still exercise the lazy route entrypoint.
+import "./goal/referrer/GoalReferrerImpact";
 
 vi.mock("@/hooks/useReferrerAccess", () => ({
   referrerAccessKey: (userId: string | null) => ["referrer-access", userId],

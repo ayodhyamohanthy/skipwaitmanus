@@ -1,10 +1,14 @@
-// The ask composer as a page (D-048 phase 3 W2; comp design/goal-ui/w2/ask-*.png):
-// the W1 drawer's anatomy at full width - job link with an honest hint, the
-// resume (shared only after a referrer accepts), "Why me" as three reasons of
-// up to 140 characters (D-077(4)), and the cost line with the refund rules
-// beside one black Send ask from the first moment (no drip pricing). The form,
-// draft, caps and the live send come from useAskComposer, shared with the
-// directory drawer and the company door. Flags off: "Uses 1 of your N credits".
+// The ask composer as a page, redesigned to the doctrine (D-048-p3-live-review-find;
+// contract proposed in docs/plans/GOAL_UI_MIGRATION.md): the W1 drawer's
+// anatomy at full width under the goal line ("Get referred.", or "Get referred
+// at <Company>." once the ask's company resolves). While sign-in resolves,
+// an auth-loading frame renders instead of the composer (packet item 5) — a
+// signed-out visitor never sees a form that cannot send yet. The cost line
+// and the refund rules sit inside the single "Your next step" block beside
+// one black Send ask from the first moment (no drip pricing), with the full
+// money sentence beside them. The form, draft, caps and the live send come
+// from useAskComposer, shared with the directory drawer and the company door.
+// Flags off: "Uses 1 of your N credits".
 import { ArrowLeft, FileText, Info, Lock } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Link } from "wouter";
@@ -13,12 +17,14 @@ import {
   GoalAppShell,
   GoalButton,
   GoalField,
+  GoalNextStep,
   GoalNum,
   GoalReasonInput,
   GoalStatus,
   GoalTextInput,
   GoalVerifiedMark,
 } from "@/components/goal";
+import { MONEY_SENTENCE } from "@shared/moneyCopy";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readAskPrefill } from "@/lib/askPrefill";
@@ -26,8 +32,10 @@ import { useAskDraft } from "@/lib/askDraftApi";
 import { useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { applySeo } from "@/lib/seo";
 import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
-import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
+import { completeTargetRoleUrl, jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
+import { domainBelongsToCompany, isSafePreview, jobLinkPrefillEnabled } from "./explore/jobLinkPrefill";
+import { JobLinkFromPosting } from "./explore/JobLinkFromPosting";
 import { useAskComposer } from "./explore/useAskComposer";
 
 const PLACEHOLDERS = [
@@ -57,15 +65,40 @@ export default function Ask() {
   useEffect(() => {
     const companies = directory.data?.companies;
     if (!companies || !isValidTargetRoleUrl(composer.url.trim())) { setUrlCompany(null); return; }
-    setUrlCompany(companies.find(item => jobLinkFitsCompany(composer.url, item.domains)) ?? null);
+    if (!jobLinkPrefillEnabled()) {
+      setUrlCompany(companies.find(item => jobLinkFitsCompany(composer.url, item.domains)) ?? null);
+      return;
+    }
+    // D-094 item 2 (packet §4.5): with the switch on, only a company's own
+    // domains match locally. A hosted link takes its company only from a safe
+    // preview domain a directory company owns, and otherwise from none.
+    let host = "";
+    try { host = new URL(completeTargetRoleUrl(composer.url).trim()).hostname; } catch { host = ""; }
+    const direct = host ? companies.find(item => domainBelongsToCompany(host, item.domains)) ?? null : null;
+    if (direct) { setUrlCompany(direct); return; }
+    const preview = composer.jobLinkPreview;
+    setUrlCompany(preview && isSafePreview(preview) ? companies.find(item => domainBelongsToCompany(preview.companyDomain, item.domains)) ?? null : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composer.url, directory.data]);
+  }, [composer.url, directory.data, composer.jobLinkPreview]);
 
   useEffect(() => {
     applySeo({ title: "Ask for a referral", description: "Ask a verified employee for a referral. Your name and resume stay private until one accepts.", path: "/ask" });
   }, []);
 
   const sent = composer.sent;
+  const goalLine = company ? `Get referred at ${company.name}.` : "Get referred.";
+  // While sign-in resolves, the composer must not render (packet item 5): the
+  // signed-out form exists for reading, but a send under an unresolved
+  // identity is never offered — the frame says what is happening instead.
+  if (!isLoaded) {
+    return (
+      <GoalAppShell active="find" pageTitle="Ask for a referral">
+        <div data-skipwait-screen="ask-auth-loading" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6" aria-busy="true">
+          <p role="status" className="text-g-body text-g-ink-2">Checking sign-in — one moment.</p>
+        </div>
+      </GoalAppShell>
+    );
+  }
   return (
     <GoalAppShell active="find" pageTitle="Ask for a referral">
       <div data-skipwait-screen="ask" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
@@ -87,27 +120,29 @@ export default function Ask() {
         ) : (
           <>
             <header className="mt-6">
-              <h1 className="text-g-display text-g-ink">Ask for a referral</h1>
+              <h1 className="text-g-display text-g-ink">{goalLine}</h1>
               {composer.context ? <p className="mt-1 truncate text-g-meta text-g-ink-3">{composer.context}</p> : null}
             </header>
 
             <div className="mt-5 grid gap-2">
-              {company?.openToReferrals ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
+              {company ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Only verified ${company.name} employees can see it`}</GoalVerifiedMark> : null}
               <p className="text-pretty text-g-body text-g-ink-2">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
               {!composer.signedIn ? <p className="text-pretty text-g-meta text-g-ink-2">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
             </div>
 
             <div className="mt-8 grid gap-6">
-              <AskFields composer={composer} company={company} />
+              <AskFields composer={composer} company={company} companies={directory.data?.companies} />
             </div>
 
-            <div className="mt-8 border-t border-g-hairline pt-5">
-              <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{composer.cost.line}</p>
-              <p className="mt-1 text-pretty text-g-meta text-g-ink-2">{composer.cost.detail}</p>
-              {composer.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-3 text-pretty text-g-meta text-g-ink">{composer.sendGuidance}</p> : null}
-              {composer.creditRecovery ? <Link href="/plans" className="mt-2 inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
-              {composer.sendError ? <div role="alert" className="mt-2 text-pretty text-g-meta text-g-ink">{composer.sendError}</div> : null}
-              <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-1">
+            <div className="mt-8">
+              <GoalNextStep reason={composer.cost.detail}>
+                {/* Packet item 5: the page says which file is attached before sending. */}
+                {composer.resumeView ? <p className="text-g-meta text-g-ink-2">Attached resume: {composer.resumeView.name}</p> : null}
+                <p data-testid="goal-ask-cost" className="text-g-label text-g-ink">{composer.cost.line}</p>
+                {composer.sendGuidance ? <p data-testid="ask-send-guidance" role="status" className="mt-3 text-pretty text-g-meta text-g-ink">{composer.sendGuidance}</p> : null}
+                {composer.creditRecovery ? <Link href="/plans" className="mt-2 inline-flex min-h-11 items-center text-g-meta text-g-ink underline underline-offset-4">View referral options</Link> : null}
+                {composer.sendError ? <div role="alert" className="mt-2 text-pretty text-g-meta text-g-ink">{composer.sendError}</div> : null}
+                <div className="mt-4 flex items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-1">
                 {composer.onSaveDraft ? (
                   <GoalButton variant="ghost" touch="large" className="max-gdesk:w-full" busy={composer.draftState === "saving"} busyLabel="Saving…" onClick={composer.onSaveDraft}>
                     {composer.draftState === "saved" ? "Draft saved" : "Save draft"}
@@ -123,6 +158,8 @@ export default function Ask() {
                   </GoalButton>
                 )}
               </div>
+                <p className="mt-3 text-g-meta text-g-ink-3">{MONEY_SENTENCE}</p>
+              </GoalNextStep>
             </div>
           </>
         )}
@@ -133,7 +170,7 @@ export default function Ask() {
 
 type Composer = ReturnType<typeof useAskComposer>;
 
-function AskFields({ composer, company }: { composer: Composer; company: PublicCompany | null }) {
+function AskFields({ composer, company, companies }: { composer: Composer; company: PublicCompany | null; companies?: readonly PublicCompany[] }) {
   const linkId = useId();
   const resumeId = useId();
   return (
@@ -154,10 +191,12 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
           placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
           value={composer.url}
           invalid={composer.hint?.tone === "error"}
-          onChange={event => composer.onUrlChange(event.target.value)}
+          onChange={event => composer.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
           onBlur={composer.onUrlBlur}
         />
       </GoalField>
+      {/* D-094 item 2 (switch off): what the posting says, under its link. */}
+      <JobLinkFromPosting url={composer.url} company={company} companies={companies} />
       {composer.postSelection ? (
         <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.</p>
       ) : null}

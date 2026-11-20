@@ -1,0 +1,168 @@
+{
+  "synthetic": true,
+  "baseline": "d0e3bb899e5f05065bd630301964fa8999813b68",
+  "entrySha256": "31ce85233226854a002799d0a3c031d0674eec23e9208223df8c748ba0a98033",
+  "phase": "before",
+  "results": [
+    {
+      "state": "region",
+      "width": 1280,
+      "file": "region-1280.png",
+      "sha256": "58363dcbcc287be77187821204dfde71d9e074e5764a087779177667e676c8a3",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "region",
+      "width": 390,
+      "file": "region-390.png",
+      "sha256": "c4db8547f00deb70067b0d7ee283da1f0078130296f5e978f2a8d7af6718c103",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "notifications",
+      "width": 1280,
+      "file": "notifications-1280.png",
+      "sha256": "93eff9f23ba94283518dcb685eb5a42cdbb098dcf0b278bd9d7c8ce935566af2",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "notifications",
+      "width": 390,
+      "file": "notifications-390.png",
+      "sha256": "3363ea84d59a909275b5f11fd88b3ea4b0385b5fd82d66de4fc1145a8b09c0c3",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "app",
+      "width": 1280,
+      "file": "app-1280.png",
+      "sha256": "e3e7c23cd980cccd23fac2cb165ae8c714dfc645d233135df0195a982eb49f74",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "app",
+      "width": 390,
+      "file": "app-390.png",
+      "sha256": "36721e21f163a8b6cdad0000ba541597306dd0ec1d27aeac114297d023c9e46b",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "privacy",
+      "width": 1280,
+      "file": "privacy-1280.png",
+      "sha256": "61dc51e8ccc2e1707a9e296b9f40c842b1cf6e036c29a422a02b0be1225b8733",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "privacy",
+      "width": 390,
+      "file": "privacy-390.png",
+      "sha256": "0a3eb01a4602529d021208f4ecb4309198d1ee4603c2765be0fb496dc9b23a4f",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "account",
+      "width": 1280,
+      "file": "account-1280.png",
+      "sha256": "4aff96f85ca9b235388072859f9a5bf711e1698bee5fbdb82a9f7b5615b4ca6d",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "account",
+      "width": 390,
+      "file": "account-390.png",
+      "sha256": "b55bb2e318fb57a4e7e3f62b25493fa77c91e0d96cb726123d50327416a0589c",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "guest-privacy",
+      "width": 1280,
+      "file": "guest-privacy-1280.png",
+      "sha256": "c3f0f97efbd700b730e45bdf94b5e90a78f40d28a8f69d3f5f21c2c235fa5cee",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "guest-privacy",
+      "width": 390,
+      "file": "guest-privacy-390.png",
+      "sha256": "d27d518b3fb39b649f90abf55210a6404d191167c5659e30d1c6c018d8024345",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "guest-account",
+      "width": 1280,
+      "file": "guest-account-1280.png",
+      "sha256": "5732dc9c33b7e9ed0d6b661e497527b4645315a0fb501f7272923339158ae5d6",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "guest-account",
+      "width": 390,
+      "file": "guest-account-390.png",
+      "sha256": "fa7d2f93e777ad00088581c1ba669964c97439eceedc71b3bcba0e632f6533a6",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "access-error",
+      "width": 1280,
+      "file": "access-error-1280.png",
+      "sha256": "ccf49d5cdf29c7dd01ba88b9387d42275496950c8140fa968c5c68bfb652215b",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "access-error",
+      "width": 390,
+      "file": "access-error-390.png",
+      "sha256": "e69efc666adadad23c88c5364785ebadee7353b9b19ae35960fc4a0204d61e92",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "offline",
+      "width": 1280,
+      "file": "offline-1280.png",
+      "sha256": "c96a4ff46b921a1bed401add6db50737e1d111b2ddc909d85295180084a3e986",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "offline",
+      "width": 390,
+      "file": "offline-390.png",
+      "sha256": "96e4b00106fdb3364ce61b36e80198f08bc4ea78b71d730c0a980b4112043815",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "active-consent",
+      "width": 1280,
+      "file": "active-consent-1280.png",
+      "sha256": "d24e526508523baa56c26bcbc52977b6371d9215bbe561dc01817e32a0f0862c",
+      "overflow": 0,
+      "errors": []
+    },
+    {
+      "state": "active-consent",
+      "width": 390,
+      "file": "active-consent-390.png",
+      "sha256": "237d4058ab208618cff4f860e01af7ae0a13bec7b58673d23fe2eb6c3a49eb29",
+      "overflow": 0,
+      "errors": []
+    }
+  ]
+}

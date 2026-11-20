@@ -1,0 +1,123 @@
+{
+  "task": "D-048-K-links",
+  "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+  "checkedAt": "2026-11-19T20:32:39.039Z",
+  "signedOutSessionReadFulfilledLocally": true,
+  "mutationsAllowed": false,
+  "captures": [
+    {
+      "path": "/fast/release-capture",
+      "heading": "This private link isn’t available.",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "scale": 1
+      },
+      "httpStatus": 200,
+      "endpointStatus": 404,
+      "anonymousSessionReadsFulfilledLocally": 1,
+      "recovery": "/start",
+      "screenshot": "fast-1280.png",
+      "pageErrors": [],
+      "unexpectedRequests": [],
+      "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+      "viewportWidth": 1280,
+      "overflow": 0
+    },
+    {
+      "path": "/fast/release-capture",
+      "heading": "This private link isn’t available.",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "scale": 2
+      },
+      "httpStatus": 200,
+      "endpointStatus": 404,
+      "anonymousSessionReadsFulfilledLocally": 1,
+      "recovery": "/start",
+      "screenshot": "fast-390.png",
+      "pageErrors": [],
+      "unexpectedRequests": [],
+      "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+      "viewportWidth": 390,
+      "overflow": 0
+    },
+    {
+      "path": "/refer/acme-example/release-capture",
+      "heading": "This private link isn’t available.",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "scale": 1
+      },
+      "httpStatus": 200,
+      "endpointStatus": 404,
+      "anonymousSessionReadsFulfilledLocally": 1,
+      "recovery": "/start",
+      "screenshot": "vanity-1280.png",
+      "pageErrors": [],
+      "unexpectedRequests": [],
+      "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+      "viewportWidth": 1280,
+      "overflow": 0
+    },
+    {
+      "path": "/refer/acme-example/release-capture",
+      "heading": "This private link isn’t available.",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "scale": 2
+      },
+      "httpStatus": 200,
+      "endpointStatus": 404,
+      "anonymousSessionReadsFulfilledLocally": 1,
+      "recovery": "/start",
+      "screenshot": "vanity-390.png",
+      "pageErrors": [],
+      "unexpectedRequests": [],
+      "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+      "viewportWidth": 390,
+      "overflow": 0
+    },
+    {
+      "path": "/share-card/release-capture-token",
+      "heading": "This share card isn’t available.",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "scale": 1
+      },
+      "httpStatus": 200,
+      "endpointStatus": 404,
+      "anonymousSessionReadsFulfilledLocally": 1,
+      "recovery": "/start",
+      "screenshot": "share-card-1280.png",
+      "pageErrors": [],
+      "unexpectedRequests": [],
+      "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+      "viewportWidth": 1280,
+      "overflow": 0
+    },
+    {
+      "path": "/share-card/release-capture-token",
+      "heading": "This share card isn’t available.",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "scale": 2
+      },
+      "httpStatus": 200,
+      "endpointStatus": 404,
+      "anonymousSessionReadsFulfilledLocally": 1,
+      "recovery": "/start",
+      "screenshot": "share-card-390.png",
+      "pageErrors": [],
+      "unexpectedRequests": [],
+      "webSha": "c0a16f818a6795f3d0a21d74bb90ab939e707c13",
+      "viewportWidth": 390,
+      "overflow": 0
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 // accepts), "Why me" as three reasons of up to 140 characters (D-077(4)), and
 // the cost line beside Send ask from the first moment. The parent owns the
 // form state, so closing the drawer keeps the draft.
-import { Bell, FileText, Info, Lock } from "lucide-react";
+import { FileText, Info, Lock } from "lucide-react";
 import { useId, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
@@ -21,6 +21,7 @@ import { WHY_ME_MAX } from "@shared/whyMe";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import type { LinkHint } from "./findModel";
+import { JobLinkFromPosting } from "./JobLinkFromPosting";
 
 export type AskResume = { name: string } | null;
 export type AskSentView = { company: string; detail: string; slots: string | null; trackHref: string };
@@ -38,7 +39,7 @@ export type AskDrawerProps = {
   context: string | null;
   signedIn: boolean;
   url: string;
-  onUrlChange(value: string): void;
+  onUrlChange(value: string, pasted?: boolean): void;
   onUrlBlur(): void;
   hint: LinkHint;
   resume: AskResume;
@@ -51,6 +52,10 @@ export type AskDrawerProps = {
   work: PinnedWorkState;
   watch: { state: "idle" | "busy" | "done" | "error"; message: string; onWatch(): void } | null;
   cost: AskCostLine;
+  /** D-174: whether a posted role is selected, showing read-only link and Change role */
+  isPostSelected?: boolean;
+  postSelection?: { opportunityId?: number | null } | null;
+  onChangeRole?: () => void;
   /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): set when the by-level quote is short; the primary action becomes the top-up. */
   topUp: { shortfall: number; href?: string } | null;
   onTopUp?: (event?: React.MouseEvent) => void;
@@ -70,6 +75,7 @@ export type AskDrawerProps = {
 
 export function AskDrawer(props: AskDrawerProps) {
   const { company, sent } = props;
+  const isPostSelected = Boolean(props.isPostSelected || props.postSelection?.opportunityId);
   const linkId = useId();
   const resumeId = useId();
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -115,31 +121,17 @@ export function AskDrawer(props: AskDrawerProps) {
     <GoalDrawer open={props.open} onOpenChange={props.onOpenChange} title={sent ? "Ask sent" : "Ask for a referral"} context={props.context ?? undefined} closeLabel="Close" footer={footer}>
       {sent ? (
         <div className="grid gap-2" role="status">
-          <p className="text-g-heading text-g-ink">Ask sent to {sent.company}.</p>
+          <p className="text-g-heading text-g-ink">Referral request sent to {sent.company}.</p>
           <p className="text-pretty text-g-body text-g-ink-2">{sent.detail}</p>
           {sent.slots ? <p className="text-g-meta text-g-ink-2">{sent.slots}</p> : null}
         </div>
       ) : (
         <div className="contents" onKeyDown={onKeyDown}>
           <div className="grid gap-2">
-            {company?.openToReferrals ? <GoalVerifiedMark>{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
+            {company ? <GoalVerifiedMark>{`Only verified ${company.name} employees can see it`}</GoalVerifiedMark> : null}
             <p className="text-pretty text-g-meta text-g-ink-2">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
             {!props.signedIn ? <p className="text-pretty text-g-meta text-g-ink">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
           </div>
-
-          {company && !company.openToReferrals && props.watch ? (
-            <div className="grid gap-1 rounded-g-tile border border-g-hairline bg-g-surface-sunken px-4 py-3.5">
-              <p className="text-pretty text-g-label text-g-ink">No verified employee at {company.name} can take a new ask right now.</p>
-              <p className="text-pretty text-g-meta text-g-ink-2">You can still send it: it waits for free until one can. Or get told when a referrer joins.</p>
-              <div className="-ml-3 mt-1">
-                <GoalButton variant="ghost" size="sm" leadingIcon={Bell} busy={props.watch.state === "busy"} busyLabel="Saving your alert…" onClick={props.watch.onWatch} disabledReason={props.watch.state === "done" ? "Your alert is saved." : undefined}>
-                  Get told when a referrer joins
-                </GoalButton>
-              </div>
-              <p role="status" className="text-g-meta text-g-ink-2">{props.watch.message}</p>
-              <p className="text-g-meta text-g-ink-3">An alert is not a referral.</p>
-            </div>
-          ) : null}
 
           <GoalField
             label="Job link"
@@ -147,21 +139,48 @@ export function AskDrawer(props: AskDrawerProps) {
             hint={props.hint && props.hint.tone !== "error" ? { icon: Info, text: props.hint.text, tone: props.hint.tone === "pass" ? "pass" : "muted" } : undefined}
             error={props.hint?.tone === "error" ? props.hint.text : undefined}
           >
-            <GoalTextInput
-              id={linkId}
-              autoFocus
-              type="url"
-              inputMode="url"
-              autoCapitalize="none"
-              autoComplete="url"
-              spellCheck={false}
-              placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
-              value={props.url}
-              invalid={props.hint?.tone === "error"}
-              onChange={event => props.onUrlChange(event.target.value)}
-              onBlur={props.onUrlBlur}
-            />
+            {isPostSelected ? (
+              <div className="flex items-center gap-2">
+                <GoalTextInput
+                  id={linkId}
+                  readOnly
+                  aria-readonly="true"
+                  type="url"
+                  value={props.url}
+                  className="bg-g-surface-sunken text-g-ink-2"
+                />
+                {props.onChangeRole ? (
+                  <GoalButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-g-meta text-g-ink-2 hover:text-g-ink"
+                    onClick={props.onChangeRole}
+                  >
+                    Change role
+                  </GoalButton>
+                ) : null}
+              </div>
+            ) : (
+              <GoalTextInput
+                id={linkId}
+                autoFocus
+                type="url"
+                inputMode="url"
+                autoCapitalize="none"
+                autoComplete="url"
+                spellCheck={false}
+                placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
+                value={props.url}
+                invalid={props.hint?.tone === "error"}
+                onChange={event => props.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
+                onBlur={props.onUrlBlur}
+              />
+            )}
           </GoalField>
+
+          {/* D-094 item 2 (switch off): what the posting says, under its link. */}
+          <JobLinkFromPosting url={props.url} company={company} />
 
           <GoalField
             label="Resume"

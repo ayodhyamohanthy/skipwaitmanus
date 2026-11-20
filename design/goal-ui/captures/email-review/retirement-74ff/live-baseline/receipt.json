@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-11-19T13:09:50.248Z",
+  "expected": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+  "phase": "baseline",
+  "readOnly": true,
+  "canonical": "https://skipwait.me",
+  "route": "/email-review/:synthetic-token",
+  "results": [
+    {
+      "width": 1280,
+      "status": 200,
+      "webSha": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+      "overflow": 0,
+      "privateReads": [],
+      "blockedMutations": [
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        }
+      ],
+      "errors": [],
+      "file": "email-review-1280.png",
+      "sha256": "43aee440b163e175a39b88011bff53e2f92d84d9e242bc28d1ceefd7221d430f"
+    },
+    {
+      "width": 390,
+      "status": 200,
+      "webSha": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+      "overflow": 0,
+      "privateReads": [],
+      "blockedMutations": [
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        },
+        {
+          "method": "POST",
+          "path": "/api/csp-report"
+        }
+      ],
+      "errors": [],
+      "file": "email-review-390.png",
+      "sha256": "e6825bf8e1ed08e54f2ced908bca7c2ee21a702b1f025ab7fc33fd547c7ba439"
+    }
+  ]
+}

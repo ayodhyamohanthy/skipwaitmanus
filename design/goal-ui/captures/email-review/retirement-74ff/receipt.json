@@ -1,0 +1,1693 @@
+{
+  "synthetic": true,
+  "preview": "Two production bundles, identical source apart from the recorded route entry; no design override",
+  "baseline": "45258e7a158fd66d8063883a0a91d6f923994b8f",
+  "entryPath": "client/src/pages/EmailReviewAction.tsx",
+  "beforeSourceSha256": "6cf7df9a3795f8b907e559d1b74b65809ba2b3d957c0db3ec749ca4e701e5824",
+  "afterSourceSha256": "8f13043e894f2aef0d4404c2f4d8a1d7d01400a0ee5813ae0c2db41475942f7f",
+  "goalSourceSha256": "8c1e899a699ecade834e9989b701e92be9a677b27edaf8f6ad44e1ef92558475",
+  "results": [
+    {
+      "phase": "before",
+      "state": "signed-out",
+      "width": 1280,
+      "file": "before/signed-out-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "43aee440b163e175a39b88011bff53e2f92d84d9e242bc28d1ceefd7221d430f"
+    },
+    {
+      "phase": "before",
+      "state": "signed-out",
+      "width": 390,
+      "file": "before/signed-out-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "09fd9541c745607120b1a39353287767ea2739ab23941429608d99e3f3c569ab"
+    },
+    {
+      "phase": "before",
+      "state": "auth-loading",
+      "width": 1280,
+      "file": "before/auth-loading-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "1cd1450830a7e22f4d590b4722598f7aca1d6e19965e62a599257d7a7a67065a"
+    },
+    {
+      "phase": "before",
+      "state": "auth-loading",
+      "width": 390,
+      "file": "before/auth-loading-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "4bd56cb64712a3ef769c88204af1a11283fa1a1268fee5aa4f3ef40415786b18"
+    },
+    {
+      "phase": "before",
+      "state": "review",
+      "width": 1280,
+      "file": "before/review-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "92718a14088b6d0687395f7098c604f6808543acd594326cceedc7db33a14702"
+    },
+    {
+      "phase": "before",
+      "state": "review",
+      "width": 390,
+      "file": "before/review-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "6d996b1d27951c18d07ef0e852c73ca8af974afbd7fae762fdeb03f360c7323a"
+    },
+    {
+      "phase": "before",
+      "state": "approved",
+      "width": 1280,
+      "file": "before/approved-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"approved\",\"ethicsConfirmed\":true}"
+        }
+      ],
+      "sha256": "a7e1d2cb60a30400399763e1054d6293c7bb9dc47021224a41820f4782ffd6eb"
+    },
+    {
+      "phase": "before",
+      "state": "approved",
+      "width": 390,
+      "file": "before/approved-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"approved\",\"ethicsConfirmed\":true}"
+        }
+      ],
+      "sha256": "2ecc915e5a34ebe21232186ff1cba734ecd539d8894e571d0e0ca7d5f403a5e9"
+    },
+    {
+      "phase": "before",
+      "state": "passed",
+      "width": 1280,
+      "file": "before/passed-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"declined\",\"declineReason\":\"timing\"}"
+        }
+      ],
+      "sha256": "5ee06988b3afa18b43ca6d4a25530d6253845aafa58480d4434eb12dad26a480"
+    },
+    {
+      "phase": "before",
+      "state": "passed",
+      "width": 390,
+      "file": "before/passed-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"declined\",\"declineReason\":\"timing\"}"
+        }
+      ],
+      "sha256": "053954a9bff77c3e48d6d817e17f9e14d8f232ca1eae460de078cf4a0d72eb54"
+    },
+    {
+      "phase": "before",
+      "state": "unavailable",
+      "width": 1280,
+      "file": "before/unavailable-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "65bcf324a8fc552e205fb74170668eb1a1b8a50d6649bf771c94d404a2b83c9d"
+    },
+    {
+      "phase": "before",
+      "state": "unavailable",
+      "width": 390,
+      "file": "before/unavailable-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "ac13f47901bccd21e4ee0408ccbf485bb10dc4e0ab6f13e63de08677d89e3de2"
+    },
+    {
+      "phase": "before",
+      "state": "step-up",
+      "width": 1280,
+      "file": "before/step-up-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "9aeb33ea30a4d19d19647c3b8a3a6b66dc64a9668aca411cc67979ec133c9642"
+    },
+    {
+      "phase": "before",
+      "state": "step-up",
+      "width": 390,
+      "file": "before/step-up-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "c5e4bbebecf1a62b3d103f800c103cf5e3652d93b56fc667bb8f73df4b5e3253"
+    },
+    {
+      "phase": "before",
+      "state": "step-up-code",
+      "width": 1280,
+      "file": "before/step-up-code-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        }
+      ],
+      "sha256": "ec65311f89678216aa225cbe790617bb90a80e6243a5c94db764762c53a06e74"
+    },
+    {
+      "phase": "before",
+      "state": "step-up-code",
+      "width": 390,
+      "file": "before/step-up-code-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        }
+      ],
+      "sha256": "59cdf5fbab6a8e26a305ba69417de16007aa70901dd5fca8f59400b1034ea4be"
+    },
+    {
+      "phase": "before",
+      "state": "step-up-resumed",
+      "width": 1280,
+      "file": "before/step-up-resumed-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        },
+        {
+          "path": "/api/referrer/step-up/verify",
+          "method": "POST",
+          "body": "{\"challengeId\":\"ccccccccccccccccccccccccccccccccccccccccccc\",\"code\":\"123456\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "92718a14088b6d0687395f7098c604f6808543acd594326cceedc7db33a14702"
+    },
+    {
+      "phase": "before",
+      "state": "step-up-resumed",
+      "width": 390,
+      "file": "before/step-up-resumed-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        },
+        {
+          "path": "/api/referrer/step-up/verify",
+          "method": "POST",
+          "body": "{\"challengeId\":\"ccccccccccccccccccccccccccccccccccccccccccc\",\"code\":\"123456\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "6d996b1d27951c18d07ef0e852c73ca8af974afbd7fae762fdeb03f360c7323a"
+    },
+    {
+      "phase": "before",
+      "state": "access-error",
+      "width": 1280,
+      "file": "before/access-error-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "714566faf9327b50a6b31c8256393ea11218d08776a70e0001124105e3dbb5b5"
+    },
+    {
+      "phase": "before",
+      "state": "access-error",
+      "width": 390,
+      "file": "before/access-error-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "2f5d1a72a22df6b64c1bc61fb2a9e599c3e187bbd089a84551ed06b2eb597f9c"
+    },
+    {
+      "phase": "after",
+      "state": "signed-out",
+      "width": 1280,
+      "file": "after/signed-out-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "43aee440b163e175a39b88011bff53e2f92d84d9e242bc28d1ceefd7221d430f"
+    },
+    {
+      "phase": "after",
+      "state": "signed-out",
+      "width": 390,
+      "file": "after/signed-out-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "e6825bf8e1ed08e54f2ced908bca7c2ee21a702b1f025ab7fc33fd547c7ba439"
+    },
+    {
+      "phase": "after",
+      "state": "auth-loading",
+      "width": 1280,
+      "file": "after/auth-loading-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "1cd1450830a7e22f4d590b4722598f7aca1d6e19965e62a599257d7a7a67065a"
+    },
+    {
+      "phase": "after",
+      "state": "auth-loading",
+      "width": 390,
+      "file": "after/auth-loading-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "4bd56cb64712a3ef769c88204af1a11283fa1a1268fee5aa4f3ef40415786b18"
+    },
+    {
+      "phase": "after",
+      "state": "review",
+      "width": 1280,
+      "file": "after/review-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        }
+      ],
+      "sha256": "92718a14088b6d0687395f7098c604f6808543acd594326cceedc7db33a14702"
+    },
+    {
+      "phase": "after",
+      "state": "review",
+      "width": 390,
+      "file": "after/review-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        }
+      ],
+      "sha256": "6d996b1d27951c18d07ef0e852c73ca8af974afbd7fae762fdeb03f360c7323a"
+    },
+    {
+      "phase": "after",
+      "state": "approved",
+      "width": 1280,
+      "file": "after/approved-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"approved\",\"ethicsConfirmed\":true}"
+        }
+      ],
+      "sha256": "a7e1d2cb60a30400399763e1054d6293c7bb9dc47021224a41820f4782ffd6eb"
+    },
+    {
+      "phase": "after",
+      "state": "approved",
+      "width": 390,
+      "file": "after/approved-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"approved\",\"ethicsConfirmed\":true}"
+        }
+      ],
+      "sha256": "f2c7e00419a2bcd54d58644b34ba84d6c2dc78e73c7ed0cff28d41193d2eab78"
+    },
+    {
+      "phase": "after",
+      "state": "passed",
+      "width": 1280,
+      "file": "after/passed-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"declined\",\"declineReason\":\"timing\"}"
+        }
+      ],
+      "sha256": "5ee06988b3afa18b43ca6d4a25530d6253845aafa58480d4434eb12dad26a480"
+    },
+    {
+      "phase": "after",
+      "state": "passed",
+      "width": 390,
+      "file": "after/passed-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee/decision",
+          "method": "POST",
+          "body": "{\"decision\":\"declined\",\"declineReason\":\"timing\"}"
+        }
+      ],
+      "sha256": "053954a9bff77c3e48d6d817e17f9e14d8f232ca1eae460de078cf4a0d72eb54"
+    },
+    {
+      "phase": "after",
+      "state": "unavailable",
+      "width": 1280,
+      "file": "after/unavailable-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        }
+      ],
+      "sha256": "65bcf324a8fc552e205fb74170668eb1a1b8a50d6649bf771c94d404a2b83c9d"
+    },
+    {
+      "phase": "after",
+      "state": "unavailable",
+      "width": 390,
+      "file": "after/unavailable-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        }
+      ],
+      "sha256": "959a7fe88befc9c3a8eaf058fdc26b70860eed89307f4eb30b411a26486b6727"
+    },
+    {
+      "phase": "after",
+      "state": "step-up",
+      "width": 1280,
+      "file": "after/step-up-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "9aeb33ea30a4d19d19647c3b8a3a6b66dc64a9668aca411cc67979ec133c9642"
+    },
+    {
+      "phase": "after",
+      "state": "step-up",
+      "width": 390,
+      "file": "after/step-up-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "8823312b3c6e5e2e7e396a49bdabf3806ef6593080e43cc7324d4beeb4926f74"
+    },
+    {
+      "phase": "after",
+      "state": "step-up-code",
+      "width": 1280,
+      "file": "after/step-up-code-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        }
+      ],
+      "sha256": "ec65311f89678216aa225cbe790617bb90a80e6243a5c94db764762c53a06e74"
+    },
+    {
+      "phase": "after",
+      "state": "step-up-code",
+      "width": 390,
+      "file": "after/step-up-code-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        }
+      ],
+      "sha256": "3bbdc18c668d0a23664c02bf6f592a4d48e1a2524a779ea9aa14d99d4655cb05"
+    },
+    {
+      "phase": "after",
+      "state": "step-up-resumed",
+      "width": 1280,
+      "file": "after/step-up-resumed-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        },
+        {
+          "path": "/api/referrer/step-up/verify",
+          "method": "POST",
+          "body": "{\"challengeId\":\"ccccccccccccccccccccccccccccccccccccccccccc\",\"code\":\"123456\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "92718a14088b6d0687395f7098c604f6808543acd594326cceedc7db33a14702"
+    },
+    {
+      "phase": "after",
+      "state": "step-up-resumed",
+      "width": 390,
+      "file": "after/step-up-resumed-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer/step-up/send",
+          "method": "POST",
+          "body": "{\"email\":\"referrer@example.test\"}"
+        },
+        {
+          "path": "/api/referrer/step-up/verify",
+          "method": "POST",
+          "body": "{\"challengeId\":\"ccccccccccccccccccccccccccccccccccccccccccc\",\"code\":\"123456\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "6d996b1d27951c18d07ef0e852c73ca8af974afbd7fae762fdeb03f360c7323a"
+    },
+    {
+      "phase": "after",
+      "state": "access-error",
+      "width": 1280,
+      "file": "after/access-error-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "714566faf9327b50a6b31c8256393ea11218d08776a70e0001124105e3dbb5b5"
+    },
+    {
+      "phase": "after",
+      "state": "access-error",
+      "width": 390,
+      "file": "after/access-error-390.png",
+      "overflow": 0,
+      "errors": [],
+      "unmatched": [],
+      "requests": [
+        {
+          "path": "/api/trpc/auth.me",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/referrer-review-links/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/preferences",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/account/signup-language",
+          "method": "POST",
+          "body": "{\"language\":\"en-US\"}"
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        },
+        {
+          "path": "/api/company-referrals/access",
+          "method": "GET",
+          "body": null
+        }
+      ],
+      "sha256": "2f5d1a72a22df6b64c1bc61fb2a9e599c3e187bbd089a84551ed06b2eb597f9c"
+    }
+  ],
+  "comparisons": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": true
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "sameImage": false,
+      "sameRequests": true
+    },
+    {
+      "state": "auth-loading",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": true
+    },
+    {
+      "state": "auth-loading",
+      "width": 390,
+      "sameImage": true,
+      "sameRequests": true
+    },
+    {
+      "state": "review",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "review",
+      "width": 390,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "approved",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "approved",
+      "width": 390,
+      "sameImage": false,
+      "sameRequests": false
+    },
+    {
+      "state": "passed",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "passed",
+      "width": 390,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "unavailable",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "unavailable",
+      "width": 390,
+      "sameImage": false,
+      "sameRequests": false
+    },
+    {
+      "state": "step-up",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "step-up",
+      "width": 390,
+      "sameImage": false,
+      "sameRequests": false
+    },
+    {
+      "state": "step-up-code",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "step-up-code",
+      "width": 390,
+      "sameImage": false,
+      "sameRequests": false
+    },
+    {
+      "state": "step-up-resumed",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "step-up-resumed",
+      "width": 390,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "access-error",
+      "width": 1280,
+      "sameImage": true,
+      "sameRequests": false
+    },
+    {
+      "state": "access-error",
+      "width": 390,
+      "sameImage": true,
+      "sameRequests": false
+    }
+  ]
+}

@@ -1,31 +1,50 @@
-// Find a referral (D-048 phase 3; approved comp design/goal-ui/pick/find-a-referral.*):
-// the company directory with search and filter chips, and the ask drawer
-// (desktop: docked 480px column, no scrim; phone: full-height sheet). Every
-// number comes from GET /api/companies, /api/credits/summary and the live send
-// response; D-176: availability never appears in the directory - it only routes the sent ask.
-// The composer machinery is useAskComposer, shared with the company page.
+// Find a referral, redesigned to the doctrine (D-048-p3-live-review-find;
+// contract "Get referred." in docs/plans/GOAL_UI_MIGRATION.md): the seeker
+// home of the contract. It opens with the goal line, holds the search inside
+// the single "Your next step" block with one black commit ("Find your
+// company": opens the door when the search names exactly one company, routes
+// an unlisted company to the paste-a-link path on /ask, and otherwise hands
+// the seeker to the filtered list), states the free-credit line from the
+// shared money copy, and closes with the three-step how-it-goes. The ask
+// drawer (desktop: docked 480px column, no scrim; phone: full-height sheet)
+// and its composer machinery (useAskComposer, shared with the company page)
+// are unchanged; every number comes from GET /api/companies,
+// /api/credits/summary and the live send response; D-176: availability never
+// appears in the directory - it only routes the sent ask.
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
   GoalAppShell,
+  GoalButton,
   GoalCompanyRow,
   GoalEmptyState,
   GoalErrorState,
   GoalFilterChip,
+  GoalNextStep,
   GoalNum,
   GoalSearchInput,
   GoalSkeletonRows,
 } from "@/components/goal";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import { exploreDescription, useCompanyDirectory } from "@/lib/companyDirectory";
+import { CompanyDemandList } from "@/components/demand/CompanyDemandList";
 import { trackClarityEvent } from "@/lib/clarity";
 import { applySeo } from "@/lib/seo";
 import { publicRoute } from "@shared/publicRoutes";
 import { AskDrawer } from "./explore/AskDrawer";
 import { directorySummary, filterCompanies, FILTER_FUNCTIONS } from "./explore/findModel";
 import { useAskComposer } from "./explore/useAskComposer";
-import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState } from "./explore/useCompanySearch";
+import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState, type DiscoveredSuggestion } from "./explore/useCompanySearch";
+import { saveDiscoveryHandoff } from "./explore/discoveryHandoff";
 
+// The goal line is the seeker's goal in their words; the directory IS the
+// next step, so the search lives inside the block. The page does not export
+// GOAL_PAGE yet: §1.7's assertGoalPage needs exactly one h1, and the goal
+// shell renders a second h1 of its own (GoalShell.tsx:150, foundation-owned)
+// — the recorded blocker for every GoalAppShell page (D-048-p3-live-review-
+// conversation's landing record). Exporting it before that passes would be a
+// claim the page's own test could not make.
 export default function Explore() {
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -53,12 +72,13 @@ export default function Explore() {
   // "Unlisted" needs both: an answered search with no company and no directory row for the query.
   // Whether the company exists is a question about the query alone: the active
   // function chip only narrows what the directory shows, so it never makes a company unlisted.
-  const queryMatched = useMemo(() => filterCompanies(companies ?? [], { query, fn: null }).length > 0, [companies, query]);
+  const queryMatches = useMemo(() => filterCompanies(companies ?? [], { query, fn: null }), [companies, query]);
+  const queryMatched = queryMatches.length > 0;
   const noMatch = typeahead && Boolean(companies) && companySearch.status === "ready" && companySearch.noMatch && !queryMatched;
   // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
   // When the query does match rows the chip hides, the filter empty state is the truthful line and stays.
   // Invalid input speaks for itself (the typeahead's invalid line), so the directory never claims the company is missing.
-  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && companySearch.suggestions.length > 0))));
+  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && (companySearch.suggestions.length > 0 || companySearch.discovered.length > 0)))));
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
 
@@ -102,6 +122,38 @@ export default function Explore() {
 
   const clearFilters = () => { setQuery(""); setFn(null); };
 
+  // The next step's single black commit: an unambiguous search opens the
+  // company's door; an answered no-match routes to /ask's paste-a-link path
+  // (the same hand-off the typeahead's no-match state offers); anything else
+  // hands the seeker to the filtered list. Unlisted needs an answered read
+  // (the file's own invariant above): /ask is never the answer while the
+  // directory is loading or failed, and the query alone decides — the active
+  // function chip only narrows the list, so it never makes a company unlisted.
+  const unlistedAnswered = noMatch || (!typeahead && Boolean(companies) && !directory.isError && !queryMatched);
+  // An enabled commit must always do something (N6): the one remaining no-op is
+  // an empty filtered list where the query names several (or no) companies.
+  const commitDoesNothing = shown.length === 0 && !unlistedAnswered && queryMatches.length !== 1;
+  const commitBlockedReason = commitDoesNothing
+    ? searchSpeaks
+      ? "Pick a company from the suggestions."
+      : queryMatched
+        ? "Clear the filters to see matching companies."
+        : "Widen the name to see matches."
+    : undefined;
+  const findCompany = () => {
+    if (!query.trim()) return;
+    if (shown.length === 1) { selectCompany(shown[0].slug); return; }
+    if (shown.length === 0) {
+      if (unlistedAnswered) { navigate("/ask"); return; }
+      // The query alone decides: one named company opens even while a chip
+      // hides its row, so an enabled commit always does something (N6).
+      if (queryMatches.length === 1) { selectCompany(queryMatches[0].slug); return; }
+      return;
+    }
+    listRef.current?.focus();
+  };
+  const listRef = useRef<HTMLUListElement | null>(null);
+
   let directoryBody: ReactNode;
   if (directory.isError) {
     directoryBody = <GoalErrorState className="px-0" title="We couldn’t load companies." body="Check your connection and try again." retry={{ label: "Try again", onClick: () => { void directory.refetch(); } }} />;
@@ -122,7 +174,7 @@ export default function Explore() {
         <p data-testid="goal-directory-summary" className="mt-7 text-g-meta text-g-ink-3 max-gdesk:mt-6">
           <GoalNum className="text-g-ink-2">{summary.total}</GoalNum> {summary.total === 1 ? "company" : "companies"}
         </p>
-        <ul aria-label="Companies" className="-mx-2 mt-2 grid max-gdesk:mx-0">
+        <ul ref={listRef} tabIndex={-1} aria-label="Companies" className="-mx-2 mt-2 grid max-gdesk:mx-0 focus:outline-none">
           {shown.map(item => (
             <GoalCompanyRow
               key={item.slug}
@@ -183,15 +235,41 @@ export default function Explore() {
       ) : undefined}
     >
       <div data-skipwait-screen="find-a-referral" className="max-w-[696px] px-8 pt-10 pb-8 max-gdesk:px-4 max-gdesk:pt-6 max-gdesk:pb-6">
-        <h1 className="text-balance text-g-display text-g-ink">Where do you want a referral?</h1>
+        <h1 className="text-balance text-g-display text-g-ink">Get referred.</h1>
         <p className="mt-2 text-pretty text-g-body text-g-ink-2">Ask a verified employee. Your name and resume stay private until they accept.</p>
         <div className="mt-6 max-gdesk:mt-5">
-          {typeahead ? (
-            <CompanyTypeahead value={query} onChange={setQuery} search={companySearch} unlisted={noMatch} onOpen={slug => navigate(`/explore/${slug}`)} />
-          ) : (
-            <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
-          )}
+        <GoalNextStep reason="Search for your company, then request a referral.">
+          <div>
+            {typeahead ? (
+              <CompanyTypeahead value={query} onChange={setQuery} search={companySearch} unlisted={noMatch} onOpen={slug => navigate(`/explore/${slug}`)} />
+            ) : (
+              <GoalSearchInput label="Search companies" placeholder="Company, function or industry…" value={query} onChange={setQuery} />
+            )}
+          </div>
+          <div className="mt-3 max-gdesk:grid">
+            <GoalButton
+              variant="primary"
+              touch="large"
+              className="gdesk:min-w-[240px]"
+              disabledReason={
+                !query.trim()
+                  ? "Type a company name to search."
+                  : directory.isError
+                    ? "Companies could not load. Try again, then search."
+                    : !companies
+                      ? "Still loading companies."
+                      : typeahead && companySearch.status === "loading"
+                        ? "Still checking that name."
+                        : commitBlockedReason
+              }
+              onClick={findCompany}
+            >
+              Find your company
+            </GoalButton>
+          </div>
+        </GoalNextStep>
         </div>
+        <p className="mt-3 text-g-meta text-g-ink-3">{FREE_ASKS_CHIP}.</p>
         <div role="group" aria-label="Filter companies" className="mt-4 flex flex-wrap gap-2 max-gdesk:gap-y-3">
           <GoalFilterChip label="All companies" pressed={fn === null} onPressedChange={() => { setFn(null); }} />
           {FILTER_FUNCTIONS.map(item => (
@@ -199,6 +277,26 @@ export default function Explore() {
           ))}
         </div>
         {directoryBody}
+        {/* D-086.mount: the browse state only (empty search); renders nothing while the switch is off. */}
+        {!query.trim() && !fn ? <div className="mt-10"><CompanyDemandList /></div> : null}
+        <section className="mt-10" aria-label="How it goes">
+          <h2 className="text-g-heading text-g-ink">How it goes</h2>
+          <ol className="mt-3 divide-y divide-g-hairline border-t border-g-hairline">
+            {[
+              ["Find your company", "Search companies where verified employees can review requests."],
+              ["Paste the job link and say why you fit", "One link and three short reasons. Your name and resume stay private until an employee accepts."],
+              ["A verified employee accepts and refers", "You see their answer in My asks. No referral is guaranteed."],
+            ].map(([title, body], index) => (
+              <li key={title} className="flex gap-4 py-4">
+                <span aria-hidden="true" className="font-g-mono text-g-meta text-g-ink-3">{`0${index + 1}`}</span>
+                <div className="min-w-0">
+                  <p className="text-g-label text-g-ink">{title}</p>
+                  <p className="mt-0.5 text-g-meta text-g-ink-3">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
     </GoalAppShell>
   );
@@ -217,30 +315,58 @@ const INVALID_REFUSED = "We couldn’t use that search. Try a different company 
  * the error state's retry line (the client filter below keeps working). Events
  * carry no query text, and no state reads availability (D-176).
  */
+/** Discovered-candidate logo: the CSP allows same-origin images only, so a Commons logo can be blocked; a blocked or broken logo degrades to the company's initial, never a broken image. */
+function DiscoveredLogo({ name, logoUrl }: { name: string; logoUrl?: string }) {
+  const [broken, setBroken] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const initial = <span aria-hidden="true" data-testid="company-discovery-initial" className="grid size-5 shrink-0 place-items-center rounded-sm bg-g-surface-hover text-[10px] font-semibold text-g-ink-3">{(name.trim().charAt(0) || "?").toUpperCase()}</span>;
+  if (!logoUrl || broken) return initial;
+  // The initial stays until the logo has actually painted: a slow or hung Commons
+  // request leaves the initial behind, never a blank box; a blocked or broken logo
+  // errors into the same initial.
+  return (
+    <span className="relative grid size-5 shrink-0 place-items-center">
+      {!loaded && initial}
+      <img src={logoUrl} alt="" onLoad={() => setLoaded(true)} onError={() => setBroken(true)} className={loaded ? "size-5 shrink-0 rounded-sm object-contain" : "absolute inset-0 size-5 rounded-sm object-contain opacity-0"} />
+    </span>
+  );
+}
+
 function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; unlisted: boolean; onOpen(slug: string): void }) {
   const listId = useId();
   const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
+  // A discovered (worldwide, not-in-directory) candidate the seeker picked; it confirms before acting.
+  const [confirm, setConfirm] = useState<DiscoveredSuggestion | null>(null);
   const tracked = useRef<string | null>(null);
-  const { status, suggestions, query } = search;
+  const { status, suggestions, discovered, query } = search;
   // Only Explore knows whether the directory also has no row for the query.
   const noMatch = unlisted;
-  const open = !dismissed && suggestions.length > 0;
+  const options: ({ kind: "directory"; item: (typeof suggestions)[number] } | { kind: "discovered"; item: DiscoveredSuggestion })[] = [
+    ...suggestions.map(item => ({ kind: "directory" as const, item })),
+    ...discovered.map(item => ({ kind: "discovered" as const, item })),
+  ];
+  const open = !dismissed && !confirm && options.length > 0;
 
-  useEffect(() => { setActive(-1); }, [query, suggestions]);
+  useEffect(() => { setActive(-1); }, [query, suggestions, discovered]);
+  useEffect(() => { setConfirm(null); }, [query]);
   useEffect(() => {
     if (!query || tracked.current === query) return;
-    if (suggestions.length > 0) { tracked.current = query; trackClarityEvent("journey_company_suggested"); }
+    if (options.length > 0) { tracked.current = query; trackClarityEvent("journey_company_suggested"); }
     else if (noMatch) { tracked.current = query; trackClarityEvent("journey_company_no_match"); }
-  }, [query, suggestions, noMatch]);
+  }, [query, options.length, noMatch]);
 
+  const choose = (option: (typeof options)[number]) => {
+    if (option.kind === "directory") onOpen(option.item.slug);
+    else setConfirm(option.item);
+  };
   const optionId = (index: number) => `${listId}-option-${index}`;
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") { setDismissed(true); setActive(-1); return; }
+    if (event.key === "Escape") { setDismissed(true); setConfirm(null); setActive(-1); return; }
     if (!open) return;
-    if (event.key === "ArrowDown") { event.preventDefault(); setActive(index => Math.min(index + 1, suggestions.length - 1)); }
+    if (event.key === "ArrowDown") { event.preventDefault(); setActive(index => Math.min(index + 1, options.length - 1)); }
     else if (event.key === "ArrowUp") { event.preventDefault(); setActive(index => Math.max(index - 1, 0)); }
-    else if (event.key === "Enter" && active >= 0) { event.preventDefault(); onOpen(suggestions[active].slug); }
+    else if (event.key === "Enter" && active >= 0) { event.preventDefault(); choose(options[active]); }
   };
 
   return (
@@ -265,19 +391,39 @@ function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value
       </div>
       {open ? (
         <ul id={listId} role="listbox" aria-label="Company suggestions" className="mt-1 grid rounded-g-control border border-g-control-edge bg-g-surface py-1 shadow-g-popover">
-          {suggestions.map((item, index) => (
+          {options.map((option, index) => (
             <li
-              key={item.slug}
+              key={option.kind === "directory" ? option.item.slug : option.item.domain}
               id={optionId(index)}
               role="option"
               aria-selected={index === active}
-              onMouseDown={event => { event.preventDefault(); onOpen(item.slug); }}
+              onMouseDown={event => { event.preventDefault(); choose(option); }}
               className={`cursor-pointer px-3 py-2.5 text-g-body text-g-ink max-gdesk:py-3 ${index === active ? "bg-g-surface-hover" : "hover:bg-g-surface-hover"}`}
             >
-              {item.name}
+              {option.kind === "directory" ? (
+                option.item.name
+              ) : (
+                <span className="flex items-center gap-2" data-testid="company-discovery-option">
+                  <DiscoveredLogo name={option.item.name} logoUrl={option.item.logoUrl} />
+                  <span>{option.item.name}</span>
+                  <span className="text-g-meta text-g-ink-3">{option.item.domain}</span>
+                </span>
+              )}
             </li>
           ))}
         </ul>
+      ) : null}
+      {confirm ? (
+        <div data-testid="company-discovery-confirm" className="mt-3 grid gap-1">
+          <p className="text-g-body text-g-ink">{confirm.name} · {confirm.domain}</p>
+          <p className="text-g-meta text-g-ink-3">No referral door at {confirm.name} yet, so this pick can't start an ask by itself. On the ask page you paste a {confirm.name} job link yourself, or we can open the door.</p>
+          <Link href="/ask" onClick={() => saveDiscoveryHandoff({ name: confirm.name, domain: confirm.domain })} className="text-g-label text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Paste a job link on the ask page</Link>
+          <p className="text-g-meta text-g-ink-3"><Link href="/invite" className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Ask us to open the door</Link></p>
+          <button type="button" onClick={() => setConfirm(null)} className="justify-self-start text-g-meta text-g-ink-3 underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Back to results</button>
+        </div>
+      ) : null}
+      {search.discoveryState === "degraded" && status === "ready" ? (
+        <p data-testid="company-discovery-degraded" role="status" className="mt-3 text-g-meta text-g-ink-3">Worldwide company search is briefly limited, so an unlisted company may not appear right now. Directory companies still show, and the ask page accepts a pasted job link.</p>
       ) : null}
       {status === "loading" ? (
         <p data-testid="company-search-loading" role="status" aria-busy="true" className="mt-3 text-g-meta text-g-ink-3">Searching companies…</p>

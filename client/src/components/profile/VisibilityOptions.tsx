@@ -3,17 +3,16 @@
 // /p/:handle, the kit home for page visibility.
 import { Globe, Link2, LockKeyhole, type LucideIcon } from "lucide-react";
 
-export type ProfileVisibility = "public" | "link" | "private";
+// D-319 (4): the value and its parser live in the behaviour-only module now; this kit card imports and re-exports
+// them so every kit caller keeps its import path, and the goal pages stop needing this file at all.
+export { asProfileVisibility, type ProfileVisibility } from "./profileVisibility";
+import { type ProfileVisibility } from "./profileVisibility";
 
 export const VISIBILITY_OPTIONS: ReadonlyArray<readonly [ProfileVisibility, LucideIcon, string, string]> = [
   ["public", Globe, "Public", "Anyone, and search engines"],
   ["link", Link2, "Link only", "People with the link"],
   ["private", LockKeyhole, "Private", "Only referrers you ask"],
 ];
-
-export function asProfileVisibility(value: string | null | undefined): ProfileVisibility {
-  return value === "public" || value === "link" ? value : "private";
-}
 
 export function VisibilityOptions({ value, onChange, disabled = false, className = "mt-4 grid gap-2 sm:grid-cols-3" }: {
   value: ProfileVisibility;

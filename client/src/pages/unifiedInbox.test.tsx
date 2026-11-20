@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UnifiedInbox from "./UnifiedInbox";
 
@@ -72,10 +72,11 @@ describe("UnifiedInbox", () => {
   it("shows referring threads with hidden seeker identity, never names", async () => {
     stubAll([], REFERRING_NEW, []);
     renderInbox();
-    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
-    expect(screen.getByText("Requested")).toBeTruthy();
-    expect(screen.getByText(/New ask for you to review/)).toBeTruthy();
-    expect(screen.getByLabelText(/Seeker · identity hidden/).getAttribute("href")).toBe("/conversation/21?from=inbox");
+    const row = await screen.findByRole("link", { name: /^Seeker · identity hidden, .*New referral request/ });
+    expect(within(row).getByText("Seeker · identity hidden")).toBeTruthy();
+    expect(within(row).getByText("New referral request")).toBeTruthy();
+    expect(within(row).getByText(/New referral request to review/)).toBeTruthy();
+    expect(row.getAttribute("href")).toBe("/conversation/21?from=inbox");
     expect(document.body.textContent).not.toContain("Rahul");
   });
 
@@ -89,11 +90,11 @@ describe("UnifiedInbox", () => {
   it("filters by side and searches without inventing results", async () => {
     stubAll(ASKING, REFERRING_NEW, []);
     renderInbox();
-    await screen.findByText("Your referrer · Wipro");
-    fireEvent.click(screen.getByRole("tab", { name: "Referring" }));
-    expect(screen.queryByText("Your referrer · Wipro")).toBeNull();
-    expect(screen.getByText("Seeker · identity hidden")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "All" }));
+    await screen.findByRole("link", { name: /^Your referrer · Wipro,/ });
+    fireEvent.click(await screen.findByRole("button", { name: /^Referring/ }));
+    expect(screen.queryByRole("link", { name: /^Your referrer · Wipro,/ })).toBeNull();
+    expect(await screen.findByRole("link", { name: /^Seeker · identity hidden,/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^All/ }));
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "tcs" } });
     expect(screen.getByText("No matching conversations.")).toBeTruthy();
     expect(screen.queryByText("No conversations yet.")).toBeNull();
@@ -107,13 +108,13 @@ describe("UnifiedInbox", () => {
     expect(screen.queryByText(/Review queue/)).toBeNull();
   });
 
-  it("opens a verified referrer's new ask from its list row, with no separate review-queue card (kit v4)", async () => {
+  it("opens a verified referrer's new request from its row and next step, without a separate queue", async () => {
     stubAll([], REFERRING_NEW, REFERRING_DONE);
     renderInbox();
-    const hidden = await screen.findByText("Seeker · identity hidden");
-    expect(hidden.closest("a")?.getAttribute("href")).toBe("/conversation/21?from=inbox");
-    expect(screen.queryByText(/Review queue/)).toBeNull();
-    expect(screen.queryByRole("link", { name: /new asks? waiting/ })).toBeNull();
+    const row = await screen.findByRole("link", { name: /^Seeker · identity hidden,/ });
+    expect(row.getAttribute("href")).toBe("/conversation/21?from=inbox");
+    expect(screen.getByRole("link", { name: "Review the request" }).getAttribute("href")).toBe(row.getAttribute("href"));
+    expect(screen.queryByRole("link", { name: /review queue/i })).toBeNull();
   });
 
   it("never asks the referrer inbox for an account the server has not verified", async () => {
@@ -121,7 +122,7 @@ describe("UnifiedInbox", () => {
     stubAll(ASKING, REFERRING_NEW, []);
     replies.access = UNVERIFIED_ACCESS;
     renderInbox();
-    await screen.findByText("Your referrer · Wipro");
+    await screen.findByRole("link", { name: /^Your referrer · Wipro,/ });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/access", expect.anything()));
     expect(fetchMock.mock.calls.map(([url]) => String(url)).sort()).toEqual(["/api/company-referrals/access", "/api/company-referrals/mine"]);
     expect(screen.queryByText(/Review queue/)).toBeNull();
@@ -133,7 +134,7 @@ describe("UnifiedInbox", () => {
     stubAll(ASKING, REFERRING_NEW, []);
     replies.access = UNVERIFIED_ACCESS;
     renderInbox();
-    await screen.findByText("Your referrer · Wipro");
+    await screen.findByRole("link", { name: /^Your referrer · Wipro,/ });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/access", expect.anything()));
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/inbox?scope="))).toBe(false);
     expect(screen.queryByText("Seeker · identity hidden")).toBeNull();
@@ -143,8 +144,8 @@ describe("UnifiedInbox", () => {
     userState.user = PERSONAL_USER;
     stubAll(ASKING, REFERRING_NEW, []);
     renderInbox();
-    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
-    expect(screen.getByText("Your referrer · Wipro")).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /^Seeker · identity hidden,/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /^Your referrer · Wipro,/ })).toBeTruthy();
   });
 
   it("shows a failed verification check as a load error, never as a seeker-only inbox, then recovers on retry", async () => {
@@ -152,12 +153,12 @@ describe("UnifiedInbox", () => {
     stubAll([], REFERRING_NEW, []);
     replies.access = { status: 500, body: { error: "We could not check your company-email access" } };
     renderInbox();
-    expect(await screen.findByText("We could not check your company-email access", undefined, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByText("We couldn't load your inbox.", undefined, { timeout: 4000 })).toBeTruthy();
     expect(screen.queryByText("No conversations yet.")).toBeNull();
     replies.access = VERIFIED_ACCESS;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(await screen.findByRole("link", { name: /^Seeker · identity hidden,/ })).toBeTruthy();
+    expect(screen.queryByText("We couldn't load your inbox.")).toBeNull();
   });
 
   it("shows a load error instead of an empty inbox, then recovers on retry", async () => {
@@ -165,11 +166,11 @@ describe("UnifiedInbox", () => {
     replies.mine = { status: 500, body: { error: "We could not load your referral requests" } };
     renderInbox();
     expect(await screen.findByText("We couldn't load your inbox.")).toBeTruthy();
-    expect(screen.getByText("We could not load your referral requests")).toBeTruthy();
+    expect(screen.getByText("Your conversations are still there — nothing was lost.")).toBeTruthy();
     expect(screen.queryByText("No conversations yet.")).toBeNull();
     replies.mine = { body: { requests: ASKING } };
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("Your referrer · Wipro")).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /^Your referrer · Wipro,/ })).toBeTruthy();
     expect(screen.queryByText("We couldn't load your inbox.")).toBeNull();
   });
 
@@ -177,7 +178,7 @@ describe("UnifiedInbox", () => {
     stubAll(ASKING, [], []);
     replies.fresh = "network";
     renderInbox();
-    expect(await screen.findByText("Your referrer · Wipro")).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /^Your referrer · Wipro,/ })).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Some conversations could not load."));
   });
 
@@ -187,12 +188,13 @@ describe("UnifiedInbox", () => {
     expect(await screen.findByText("We couldn't load your inbox.")).toBeTruthy();
   });
 
-  it("keeps the list behind sign-in", () => {
+  it("keeps the list behind sign-in", async () => {
     authState.isSignedIn = false;
     stubAll(ASKING, [], []);
     renderInbox();
-    expect(screen.getByRole("heading", { name: "Inbox." })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    const signIn = await screen.findByRole("button", { name: "Sign in" });
+    expect(screen.getByRole("heading", { name: "Keep your referrals moving." })).toBeTruthy();
+    fireEvent.click(signIn);
     expect(authState.openSignIn).toHaveBeenCalledTimes(1);
     expect(fetchMock).not.toHaveBeenCalled();
   });

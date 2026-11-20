@@ -10,6 +10,7 @@ import { GoalStatus } from "@/components/goal/GoalStatus";
 import { ADMIN_ACCESS_MESSAGE, AdminAccessError, adminKeys, adminRequest, adminRetry, companySuggestionsSchema, flowHealthSchema, loadEnrollments, OPEN_ENROLLMENT_STATUSES, safetyReportsSchema, TERMINAL_CASE_STATUSES } from "@/components/admin/adminApi";
 import { caseAge, companyCase, enrollmentCase, reportCase, type ReviewCase } from "@/components/admin/reviewCases";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { UnlistedDemandView } from "@/components/admin/UnlistedDemandView";
 import { AdminGoalFrame, AdminGoalHeading } from "./AdminGoalFrame";
 import { adminTabFor, plural } from "./adminGoalCopy";
 
@@ -101,6 +102,7 @@ export default function GoalAdminOverview() {
           </section>
         </div>
       ) : null}
+      <UnlistedDemandView />
     </AdminGoalFrame>
   );
 }

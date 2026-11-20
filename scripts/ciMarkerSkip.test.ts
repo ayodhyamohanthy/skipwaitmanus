@@ -18,6 +18,25 @@
 //    classifier uses to fail the job red when the counts contradict the diff.
 //    `toJSON()` is deliberate: it is the only way a GitHub expression can tell
 //    the number 0 from the string "0" (packet E3).
+//
+// GATE-unit-shards (D-351, owner, Nov 16): the unit tests run as three shard
+// jobs, and the required check `unit + component + route tests` is now one
+// aggregate job that `needs:` them. The old rule here was "no job uses
+// `needs:`", because a job that needs a failed or skipped job is itself
+// skipped, and GitHub counts a skipped required job as passed. The aggregate
+// keeps that hole closed another way: it runs with `if: ${{ always() }}`, so it
+// always starts, and it fails unless the shards' combined result is `success`.
+// The shard jobs take over every rule the single test job carried (they start,
+// classify their own pinned diff and skip only their expensive steps), and
+// together they run the whole suite with no `--exclude`.
+//
+// GATE-release-captures (D-346 (6), docs/plans/D-344-unblock.md row 4): two
+// NON-required jobs join the file. `release captures (plan)` runs on pull
+// requests only and names the goal surfaces to capture; the matrix job
+// `release captures (<id>)` `needs:` it and starts only when it planned one.
+// Every required-job start, classifier and shard-aggregate assertion above and
+// below is kept; the inventory, `needs:` and runner counts are ported to name
+// the two jobs explicitly, and no required job may read either of them.
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -25,11 +44,25 @@ import path from "node:path";
 const ci = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
 
 const REQUIRED_JOBS = ["typecheck", "unit + component + route tests", "production build"] as const;
+/** D-351: the required unit-test check is an aggregate over the shard jobs. */
+const AGGREGATE_JOB = "unit + component + route tests";
+/** D-351: the matrix job that runs the suite in three shards (job key `test-shard`). */
+const SHARD_JOB = "unit tests (shard ${{ matrix.shard }}/3)";
+const SHARD_COUNT = 3;
+/**
+ * The jobs that do the work: each starts on every event and classifies its own
+ * pinned diff. The aggregate does no work of its own; it only reads the shards'
+ * result, so the classifier rules apply to the shard job in its place.
+ */
+const CLASSIFYING_JOBS = ["typecheck", SHARD_JOB, "production build"] as const;
 // D-239: the required list stays exactly the three jobs in the ruleset. The
 // whole-file inventory assertions below must also account for the non-required
-// `e2e journeys` job, which is named here explicitly so no job can appear
-// silently. This union is used by those two assertions only.
-const CI_JOBS = [...REQUIRED_JOBS, "e2e journeys"] as const;
+// `e2e journeys` job and the shard job, which are named here explicitly so no job
+// can appear silently. This union is used by those two assertions only.
+/** GATE-release-captures: the non-required planner (job key `capture-plan`) and its capture matrix (job key `capture`). */
+const CAPTURE_PLAN_JOB = "release captures (plan)";
+const CAPTURE_JOB = "release captures (${{ matrix.id }})";
+const CI_JOBS = [...REQUIRED_JOBS, SHARD_JOB, "e2e journeys", CAPTURE_PLAN_JOB, CAPTURE_JOB] as const;
 /** The one gate every skippable step carries, byte for byte. */
 const FAST_PATH_GATE = "${{ steps.classify.outputs.marker_only != 'true' }}";
 /** The event-count claim, byte for byte: only ever an input to the classifier. */
@@ -68,7 +101,9 @@ describe("H1: every required job starts, and only its own classifier may skip st
     it(`${job} keeps its required name`, () => {
       expect(ci).toContain(`name: ${job}\n`);
     });
+  }
 
+  for (const job of CLASSIFYING_JOBS) {
     it(`${job} has no job-level if: - it always starts`, () => {
       const lines = jobBlock(job).split("\n");
       const jobIf = lines.find((l) => /^\s{4}if:\s/.test(l));
@@ -109,8 +144,23 @@ describe("H1: every required job starts, and only its own classifier may skip st
     });
   }
 
-  it("no required job needs another job (packet F1)", () => {
-    expect(ci).not.toMatch(/^\s+needs:/m);
+  it("only the aggregate needs another job, and it always runs (packet F1, D-351)", () => {
+    // Packet F1 forbade `needs:` because a job behind a failed or skipped need is
+    // skipped, and a skipped required job counts as passed. D-351 allows exactly
+    // one among the required checks: the aggregate, which carries
+    // `if: ${{ always() }}` so it always starts. GATE-release-captures adds the
+    // one other: the NON-required capture matrix waiting on its planner.
+    const needsLines = ci.split("\n").filter((line) => /^\s+needs:/.test(line));
+    expect(needsLines).toEqual(["    needs: test-shard", "    needs: capture-plan"]);
+    expect(jobBlock(CAPTURE_JOB)).toContain("\n    needs: capture-plan\n");
+    for (const job of [...REQUIRED_JOBS, SHARD_JOB].filter((name) => name !== AGGREGATE_JOB)) {
+      expect(jobBlock(job), `${job} must not wait on another job`).not.toMatch(/^\s+needs:/m);
+    }
+    expect(jobBlock(AGGREGATE_JOB)).toContain("\n    needs: test-shard\n");
+    expect(jobBlock(AGGREGATE_JOB)).toContain("\n    if: ${{ always() }}\n");
+    for (const job of CLASSIFYING_JOBS) {
+      expect(jobBlock(job), `${job} must not wait on another job`).not.toMatch(/^\s+needs:/m);
+    }
   });
 
   it("the event counts are an input to the classifier, never a skip rule", () => {
@@ -118,13 +168,13 @@ describe("H1: every required job starts, and only its own classifier may skip st
       .split("\n")
       .filter((line) => !line.trim().startsWith("#"))
       .filter((line) => line.includes("changed_files") || line.includes("additions") || line.includes("deletions"));
-    expect(countLines.length).toBe(REQUIRED_JOBS.length);
+    expect(countLines.length).toBe(CLASSIFYING_JOBS.length);
     for (const line of countLines) {
       expect(line.trim().startsWith("EVENT_CLAIMED_EMPTY:"), `counts used outside the classifier input: ${line}`).toBe(true);
     }
   });
 
-  it("no aggregate job hides a skipped required job", () => {
+  it("no aggregate job hides a skipped required job: the inventory is exact", () => {
     const jobs = ci.slice(ci.indexOf("\njobs:")).split(/\n  (?=[a-zA-Z][\w-]*:\n)/).filter((b) => b.trim());
     const names = jobs.map((b) => /name: (.+)\n/.exec(b)?.[1]).filter(Boolean);
     expect(names.sort()).toEqual([...CI_JOBS].sort());
@@ -151,7 +201,7 @@ describe("H1: every required job starts, and only its own classifier may skip st
 describe("H1: the steps each job may skip on a verified empty diff", () => {
   it("the tests and build jobs skip only their expensive steps", () => {
     for (const [job, names] of [
-      ["unit + component + route tests", ["Install dependencies", "Vitest"]],
+      [SHARD_JOB, ["Install dependencies", "Vitest"]],
       ["production build", ["Install dependencies", "Build", "Build with all goal surfaces on"]],
     ] as const) {
       for (const name of names) {
@@ -208,7 +258,7 @@ describe("CI-architect-real-checks: what must not move", () => {
 // additions assert each required job runs its own blocking commands inside its
 // own job block; `CI_JOBS` is not used here.
 describe("D-239 F1: each required job runs its own blocking commands", () => {
-  const BLOCKING_COMMANDS: Record<(typeof REQUIRED_JOBS)[number], readonly string[]> = {
+  const BLOCKING_COMMANDS: Record<(typeof REQUIRED_JOBS)[number] | typeof SHARD_JOB, readonly string[]> = {
     typecheck: [
       "pnpm install --frozen-lockfile",
       "NODE_OPTIONS=--max-old-space-size=6144 pnpm check",
@@ -216,11 +266,13 @@ describe("D-239 F1: each required job runs its own blocking commands", () => {
       "node scripts/check-deploy-triggers.mjs",
       "node scripts/scope-check.mjs --branch",
     ],
-    "unit + component + route tests": ["pnpm install --frozen-lockfile", "pnpm vitest run"],
+    // D-351: the aggregate runs no suite itself; it fails unless every shard succeeded.
+    "unit + component + route tests": ["SHARDS: ${{ needs.test-shard.result }}", "exit 1"],
+    [SHARD_JOB]: ["pnpm install --frozen-lockfile", "pnpm vitest run --shard=${{ matrix.shard }}/3"],
     "production build": ["pnpm install --frozen-lockfile", "pnpm build"],
   };
 
-  for (const job of REQUIRED_JOBS) {
+  for (const job of [...REQUIRED_JOBS, SHARD_JOB]) {
     it(`${job} carries each of its blocking commands in its own job block`, () => {
       const block = jobBlock(job);
       for (const command of BLOCKING_COMMANDS[job]) {
@@ -228,4 +280,114 @@ describe("D-239 F1: each required job runs its own blocking commands", () => {
       }
     });
   }
+});
+
+// GATE-unit-shards (D-351): the suite runs in three parallel shards, and the one
+// required check over them cannot pass unless every shard passed.
+describe("D-351: three unit-test shards under the one required check", () => {
+  it("the shard job is a 3-way matrix that keeps running when one shard fails", () => {
+    const block = jobBlock(SHARD_JOB);
+    expect(block).toMatch(/^test-shard:\n/);
+    expect(block).toContain("\n    strategy:\n      fail-fast: false\n      matrix:\n        shard: [1, 2, 3]\n");
+    expect(SHARD_JOB).toContain(`/${SHARD_COUNT})`);
+  });
+
+  it("each shard runs its slice of the full suite, and nothing is excluded", () => {
+    const vitest = stepNamed(SHARD_JOB, "Vitest");
+    expect(vitest).toContain(`run: pnpm vitest run --shard=\${{ matrix.shard }}/${SHARD_COUNT}\n`);
+    // Re-adding an --exclude (or a filter) here hides a red main: the shards
+    // together must cover every test file.
+    const runnable = ci
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("#"))
+      .join("\n");
+    expect(runnable).not.toContain("--exclude");
+    // The one vitest command in the file is the shard command, with nothing after it.
+    const vitestLines = runnable.split("\n").filter((line) => line.includes("vitest"));
+    expect(vitestLines).toEqual([`        run: pnpm vitest run --shard=\${{ matrix.shard }}/${SHARD_COUNT}`]);
+  });
+
+  it("the aggregate always starts, after the shards, and classifies nothing itself", () => {
+    const block = jobBlock(AGGREGATE_JOB);
+    const jobIfs = block.split("\n").filter((line) => /^\s{4}if:\s/.test(line));
+    expect(jobIfs).toEqual(["    if: ${{ always() }}"]);
+    expect(block).not.toContain("id: classify");
+    expect(block).not.toContain(FAST_PATH_GATE);
+    expect(block).not.toContain("pnpm install");
+  });
+
+  it("the aggregate fails unless the shards' combined result is success", () => {
+    const check = stepNamed(AGGREGATE_JOB, "Every shard passed");
+    expect(check).toContain("SHARDS: ${{ needs.test-shard.result }}");
+    expect(check).toContain('if [ "$SHARDS" != "success" ]; then');
+    expect(check).toContain("exit 1");
+    // A failed, cancelled or skipped shard is never read as a pass.
+    expect(check).not.toMatch(/skipped|cancelled|continue-on-error/);
+  });
+
+  it("the aggregate reads only its shards' result, never a branch, prefix or label", () => {
+    const runnable = jobBlock(AGGREGATE_JOB)
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("#"))
+      .join("\n");
+    expect(runnable.match(/needs\./g)).toEqual(["needs."]);
+    for (const banned of ["startsWith", "head_ref", "ref_name", "agent/reports/", "agent/review/", "agent/heartbeat/", "agent/architect/", "agent/queue/landing"]) {
+      expect(runnable, `the aggregate must not read ${banned}`).not.toContain(banned);
+    }
+  });
+});
+
+// GATE-release-captures (D-346 (6)): the capture planner and matrix are not
+// required checks, start only for a pull request that releases a surface, and
+// change nothing about the required jobs.
+describe("GATE-release-captures: non-required release captures", () => {
+  it("no required job, shard or aggregate reads the capture jobs", () => {
+    for (const job of [...REQUIRED_JOBS, SHARD_JOB]) {
+      const runnable = jobBlock(job)
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("#"))
+        .join("\n");
+      expect(runnable, `${job} must not read the capture jobs`).not.toMatch(/capture/i);
+    }
+    expect(REQUIRED_JOBS).not.toContain(CAPTURE_PLAN_JOB);
+    expect(REQUIRED_JOBS).not.toContain(CAPTURE_JOB);
+  });
+
+  it("the planner runs on pull requests only, with Node and no install", () => {
+    const block = jobBlock(CAPTURE_PLAN_JOB);
+    expect(block).toMatch(/^capture-plan:\n/);
+    const jobIfs = block.split("\n").filter((line) => /^\s{4}if:\s/.test(line));
+    expect(jobIfs).toEqual(["    if: ${{ github.event_name == 'pull_request' }}"]);
+    expect(block).not.toContain("pnpm install");
+    expect(block).not.toMatch(/^\s+needs:/m);
+    expect(block).toContain("      capture: ${{ steps.plan.outputs.capture }}\n      matrix: ${{ steps.plan.outputs.matrix }}\n");
+    const plan = stepNamed(CAPTURE_PLAN_JOB, "Plan the captures");
+    expect(plan).toContain("id: plan");
+    expect(plan).toContain("run: node scripts/release-captures.mjs plan");
+    // The branch name reaches the script as data in an env var, never spliced into the shell line.
+    expect(plan).toContain("CAPTURE_BRANCH: ${{ github.head_ref }}");
+    expect(plan.split("\n").filter((line) => line.includes("run:")).join("\n")).not.toContain("${{");
+  });
+
+  it("the capture matrix starts only when the planner named a surface, one job per surface", () => {
+    const block = jobBlock(CAPTURE_JOB);
+    expect(block).toMatch(/^capture:\n/);
+    const jobIfs = block.split("\n").filter((line) => /^\s{4}if:\s/.test(line));
+    expect(jobIfs).toEqual(["    if: ${{ needs.capture-plan.outputs.capture == 'true' }}"]);
+    expect(block).toContain("\n    strategy:\n      fail-fast: false\n      matrix:\n        id: ${{ fromJSON(needs.capture-plan.outputs.matrix) }}\n");
+  });
+
+  it("each capture job builds with only its surface on, captures it and uploads release-captures-<id>", () => {
+    expect(stepNamed(CAPTURE_JOB, "Build with this surface on")).toContain("VITE_GOAL_SURFACES: ${{ matrix.id }}");
+    expect(stepNamed(CAPTURE_JOB, "Build with this surface on")).toContain("run: pnpm build");
+    expect(stepNamed(CAPTURE_JOB, "Prepare the e2e database")).toContain("run: node scripts/e2e-server.mjs prepare");
+    const capture = stepNamed(CAPTURE_JOB, "Capture every route at 1280 and 390");
+    expect(capture).toContain("RELEASE_CAPTURE_IDS: ${{ matrix.id }}");
+    expect(capture).toContain("run: pnpm exec playwright test -c e2e/playwright.config.ts e2e/release-captures.e2e.ts");
+    const upload = stepNamed(CAPTURE_JOB, "Upload the captures");
+    expect(upload).toContain("if: ${{ always() }}");
+    expect(upload).toContain("uses: actions/upload-artifact@v4");
+    expect(upload).toContain("name: release-captures-${{ matrix.id }}");
+    expect(upload).toContain("path: e2e/.results/release-captures/${{ matrix.id }}");
+  });
 });
