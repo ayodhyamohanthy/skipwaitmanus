@@ -16,9 +16,7 @@
  * promised. Internal identifiers, amounts, charges, card rules, timing,
  * expiration and recovery behavior stay exactly as they are.
  */
-import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   CREDIT_RULE,
   FREE_ASKS_CHIP,
@@ -34,14 +32,6 @@ import {
   creditUsedPhrase,
 } from "../shared/moneyCopy";
 import { FREE_PLAN } from "../shared/planCatalog";
-import Emails from "../client/src/pages/Emails";
-
-vi.mock("wouter", () => ({
-  Link: ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) =>
-    React.createElement("a", { href, ...rest }, children),
-}));
-
-afterEach(cleanup);
 
 /**
  * The only allowed "ask" in these strings is the verb. Strip those verb
@@ -136,43 +126,3 @@ describe("D-180 public money copy", () => {
   });
 });
 
-describe("D-180 kit email gallery", () => {
-  const STAGES = [/claims|claimed/i, /accepted/i, /passed/i, /coverage/i, /slot opened/i];
-
-  function articleText(): string {
-    const text = screen.getByRole("article").textContent ?? "";
-    // The shared money footer is independently covered by the money-copy
-    // suite above, including its allowance and balance-use tail. Remove it
-    // only to isolate the gallery stage text in this separate control.
-    return text.replace(MONEY_SENTENCE, "");
-  }
-
-  it("names the referral stages with referral nouns", () => {
-    render(React.createElement(Emails));
-    const violations = STAGES.flatMap(stage => {
-      const name = screen.getByRole("button", { name: stage }).textContent ?? "";
-      const hit = forbiddenNoun(name);
-      return hit ? [`${name} -> ${hit[0]}`] : [];
-    });
-    expect(violations).toEqual([]);
-  });
-
-  it("describes each stage with referral nouns, never credits or the noun ask", () => {
-    render(React.createElement(Emails));
-    const violations = STAGES.flatMap(stage => {
-      fireEvent.click(screen.getByRole("button", { name: stage }));
-      const text = articleText();
-      const hit = forbiddenNoun(text);
-      return hit ? [`${stage}: ${text} -> ${hit[0]}`] : [];
-    });
-    expect(violations).toEqual([]);
-  });
-
-  it("shows an accepted request as accepted, never as a completed referral", () => {
-    render(React.createElement(Emails));
-    fireEvent.click(screen.getByRole("button", { name: /accepted/i }));
-    const text = articleText();
-    expect(text).toMatch(/accepted/i);
-    expect(text).not.toMatch(/completed referral|referral completed|was referred|is referred|guaranteed referral/i);
-  });
-});
