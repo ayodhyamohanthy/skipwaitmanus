@@ -20,4 +20,13 @@ describe("Cloudflare container acceptance", () => {
       expect(source).not.toContain("containers instances");
     }
   });
+  it("uploads secrets with the release instead of editing them afterwards (D-369)", () => {
+    expect(deploy).toContain('npx wrangler deploy --secrets-file "$secrets_file"');
+    expect(deploy).toContain('build-deploy-secrets.mjs" "$secrets_file"');
+    expect(deploy).toContain("trap 'rm -rf \"$secrets_dir\"' EXIT");
+    expect(deploy).not.toContain("wrangler secret put DATABASE_URL");
+    expect(workflow).toContain("REVIEWER_SEEKER_HASH: ${{ github.event.inputs.reviewer_seeker_hash }}");
+    expect(workflow).toContain("REVIEWER_REFERRER_HASH: ${{ github.event.inputs.reviewer_referrer_hash }}");
+    expect(workflow).not.toMatch(/run:[^\n]*github\.event\.inputs\.reviewer_/);
+  });
 });
