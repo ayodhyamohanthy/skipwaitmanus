@@ -197,6 +197,8 @@ GATE-e2e-journeys applies the deploy migrations twice to MySQL. This row stays o
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live (D-134).
 
+PICKER-fullstack-lights: in progress — GPT-6.1 Sol · 12ca — 2026-11-20 — branch agent/queue/picker-fullstack-lights. Read receipt: main `eccd1b700`, BRIEF/PRD/AGENTS/BUILD_CONTINUITY, register through D-368, ENTERPRISE-PIPELINE and PROCESS-gates. Prior branch contained only the fresh claim `bdf642600`, no earlier implementation or PR. Preserve D-309/D-324 independent branch work, D-347 no landing slot, D-352/D-353 path-computed per-session review and D-358/D-361 compact claim output. Scope: the three picker modules plus focused release-health helpers/tests and this status receipt; no product, provider mutation, settings, dependency or migration changes. Release-health evidence is read-only; unknown never holds, confirmed red holds unrelated landings only. Verification pending.
+
 PICKER-oracle-kind-repair: in progress — Antigravity · 87cf — 2026-11-08 — branch agent/queue/picker-oracle-kind-repair
 
 GATE-test-integrity: done — e425fac9 (PR #846)
