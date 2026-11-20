@@ -33,6 +33,7 @@ vi.mock("@/components/goal/GoalShell", () => ({
   ),
 }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account menu</div> }));
+vi.mock("@/components/goal/GoalMoreMenu", () => ({ GoalMoreMenu: () => null }));
 vi.mock("@/components/goal/GoalButton", () => ({
   GoalButton: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }));
@@ -61,6 +62,26 @@ describe("D-093 shell language mounts", () => {
     expect(screen.getByRole("banner").querySelector('[data-testid="language-picker"]')?.getAttribute("data-variant")).toBe("bar");
   });
 
+  it("renders the optional language control inside GoalShell's real responsive header", async () => {
+    const { GoalShell: ActualGoalShell } = await vi.importActual<typeof import("./goal/GoalShell")>("./goal/GoalShell");
+    render(
+      <ActualGoalShell
+        active="asks"
+        verifiedReferrer={false}
+        pageTitle="My asks"
+        credits={null}
+        account={{ initials: "" }}
+        languagePicker={<span data-testid="actual-language-picker">English</span>}
+        alertsHref="/alerts"
+        showAlerts={false}
+      >
+        <p>Page content</p>
+      </ActualGoalShell>,
+    );
+
+    expect(screen.getByRole("banner").querySelector('[data-testid="actual-language-picker"]')?.textContent).toBe("English");
+  });
+
   it("places consent before every AppShell-wrapped page and does not offer the picker when signed in", () => {
     state.signedIn = true;
     render(<AppShell><p data-testid="app-content">App content</p></AppShell>);
@@ -78,6 +99,13 @@ describe("D-093 shell language mounts", () => {
     const main = screen.getByTestId("goal-shell").querySelector("main");
     expect(main?.firstElementChild?.getAttribute("data-testid")).toBe("language-consent");
     expect(screen.getByTestId("goal-content").parentElement).toBe(main);
+  });
+
+  it("offers the signed-out picker from GoalAppShell's responsive top bar", () => {
+    state.visibleLanguages = 2;
+    render(<GoalAppShell active="asks" pageTitle="My asks"><p>Goal content</p></GoalAppShell>);
+
+    expect(screen.getByRole("banner").querySelector('[data-testid="language-picker"]')?.getAttribute("data-variant")).toBe("bar");
   });
 
   it("places consent above the signed-out goal landing header without changing Sign in destinations", () => {

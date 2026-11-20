@@ -7,6 +7,7 @@ import { useAuth, useUser } from "@/_core/auth";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 import { GoalLanguageConsent } from "./GoalLanguageConsent";
+import { GoalLanguagePicker } from "./GoalLanguagePicker";
 import { GoalShell } from "./GoalShell";
 import type { GoalNavId } from "./nav";
 
@@ -41,6 +42,7 @@ export function GoalAppShell({ active, pageTitle, drawer, children }: { active: 
       pageTitle={pageTitle}
       credits={credits}
       account={{ initials: isSignedIn && isLoaded ? initialsOf(user) : "" }}
+      languagePicker={isLoaded && !isSignedIn ? <GoalLanguagePicker variant="bar" className="max-w-28" /> : null}
       alertsHref="/alerts"
       drawer={drawer}
     >
