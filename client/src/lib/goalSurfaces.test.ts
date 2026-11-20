@@ -17,13 +17,13 @@ afterEach(() => {
 
 describe("goalSurfaces flag module", () => {
   it("releases only what RELEASED lists", () => {
-    expect(releasedGoalSurfaces()).toEqual(["home"]);
+    expect(releasedGoalSurfaces()).toEqual(["home",  "home-signed-in",  "referrer",  "referrer-home",  "invite",  "post-opportunity",  "admin",  "admin-money",  "admin-approvals",  "admin-ops",  "admin-people",  "alerts",  "assistants",  "conversation",  "developers",  "discovery",  "email-review",  "employer",  "employer-billing",  "employer-talent",  "for-companies",  "inbox",  "landed",  "links",  "messages",  "onboarding",  "plans",  "policy",  "pricing",  "profile",  "settings",  "share",  "start",  "suggest-company",  "support",  "system",  "verify",  "sign-in",  "public-profile"]);
     for (const id of releasedGoalSurfaces()) {
       expect(goalSurfaceIds()).toContain(id);
     }
     // Vitest runs in MODE=test, so the env is empty by default: an unreleased
     // id is off, and even the released `home` is off (test-mode rule below).
-    expect(goalSurfaceOn("inbox")).toBe(false);
+    expect(goalSurfaceOn("skippy")).toBe(false);
   });
 
   it("unknown ids are refused and no route is declared twice", () => {
@@ -57,19 +57,23 @@ describe("goalSurfaces flag module", () => {
   it("production renders the V9 landing from RELEASED, not from a workflow flag", () => {
     // The home id is released in code; a production build needs no env flag.
     expect(goalSurfaceDecision("home", "production", "")).toBe(true);
-    expect(goalSurfaceDecision("inbox", "production", "")).toBe(false);
+    expect(goalSurfaceDecision("home-signed-in", "production", "")).toBe(true);
+    expect(goalSurfaceDecision("inbox", "production", "")).toBe(true);
+    expect(goalSurfaceDecision("skippy", "production", "")).toBe(false);
     // deploy-pages.yml must never pass the retired landing flags or
     // VITE_GOAL_SURFACES (D-097: production truth in code).
     const workflow = readFileSync(join(__dirname, "..", "..", "..", ".github", "workflows", "deploy-pages.yml"), "utf8");
     expect(workflow).not.toMatch(/VITE_GOAL_UI_LANDING/);
     expect(workflow).not.toMatch(/VITE_GOAL_SURFACES/);
-    // The folded flag consumers read goalSurfaces, never goalFlags.
+    // Home still reads goalSurfaces; retired sign-in keeps only its goal routes.
     const home = readFileSync(join(__dirname, "..", "pages", "Home.tsx"), "utf8");
     const signIn = readFileSync(join(__dirname, "..", "pages", "SignIn.tsx"), "utf8");
     expect(home).not.toMatch(/@\/lib\/goalFlags/);
     expect(signIn).not.toMatch(/@\/lib\/goalFlags/);
     expect(home).toMatch(/goalSurfaceOn\("home"\)/);
-    expect(signIn).toMatch(/goalSurfaceOn\("sign-in"\)/);
+    expect(signIn).not.toMatch(/goalSurfaceOn|@\/components\/kit/);
+    expect(signIn).toContain("<GoalSignInPage />");
+    expect(signIn).toContain("<GoalSignIn />");
   });
 
   it("declares every id the split names, each with its routes", () => {

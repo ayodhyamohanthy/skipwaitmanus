@@ -12,6 +12,10 @@ import { GoalAppShell, GoalButton, GoalErrorState, GoalField, GoalSkeletonRows, 
 import MyOpenings from "@/components/opportunities/MyOpenings";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
+import { completeTargetRoleUrl } from "@shared/referralUrl";
 
 type OpportunityMode = "hiring_now" | "walk_in";
 function localInputToIso(value: string) { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date.toISOString(); }
@@ -50,7 +54,7 @@ function GoalPostOpportunityBody() {
       const token = await getToken();
       const response = await fetch("/api/opportunities", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ kind: mode, roleTitle, targetRoleUrl: targetRoleUrl || undefined, location: location || undefined, compensation: compensation.trim() || undefined, walkInAt: localInputToIso(walkInAt), walkInEndsAt: localInputToIso(walkInEndsAt), ...(showPosterFirstName ? { showPosterFirstName: true } : {}) }) });
       const payload = await readApiJson<{ opportunity?: { companyDomain: string; roleTitle: string }; error?: string }>(response, "We could not publish that opportunity");
-      if (!response.ok || !payload.opportunity) throw new Error(payload.error || "We could not publish that opportunity");
+      if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired(); if (!response.ok || !payload.opportunity) throw new Error(payload.error || "We could not publish that opportunity");
       setPublished(payload.opportunity);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not publish that opportunity"); } finally { setPublishing(false); }
   };
@@ -58,6 +62,8 @@ function GoalPostOpportunityBody() {
 
   if (access.status === "checking") return <div data-skipwait-screen="post-opportunity-loading" className="px-5 py-6"><p className="mb-4 text-g-meta text-g-ink-3">Checking your company access…</p><GoalSkeletonRows density="company" count={3} /></div>;
   if (access.status === "error") return <div data-skipwait-screen="post-opportunity-access-error"><GoalErrorState title="We couldn’t check your company access" body={`${access.error.message || "Check your connection and try again."} Nothing changed on your account.`} retry={{ label: access.retrying ? "Trying again…" : "Try again", onClick: access.retry }} /></div>;
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  if (access.status === "code_required") return <div data-skipwait-screen="post-opportunity-step-up"><GoalWorkEmailStepUp access={access.access} /></div>;
   if (access.status === "signed-out" || access.status === "unverified") {
     return (
       <div data-skipwait-screen="post-opportunity-access" className="max-w-[560px] px-5 py-8 max-gdesk:px-4">
@@ -65,7 +71,9 @@ function GoalPostOpportunityBody() {
         <div className="mt-5"><Kicker>YOUR NEXT STEP</Kicker></div>
         <h2 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Verify your work email first.</h2>
         <p className="mt-3 text-g-body leading-[1.6] text-g-ink-2">Company opportunities are shared only by verified employees. Your name and work email remain private.</p>
-        <div className="mt-6"><GoalButton variant="primary" onClick={() => go("/referrer?returnTo=%2Fpost-opportunity")}>Verify work email</GoalButton></div>
+        {/* Packet guardrail 2: the referrer sign-in is the canonical helper href, never a
+            hand-written URL and never a seeker sign-in control. */}
+        <div className="mt-6"><GoalButton variant="primary" asChild><Link href={referrerSignInHref("/post-opportunity")}>Verify work email</Link></GoalButton></div>
       </div>
     );
   }
@@ -112,7 +120,7 @@ function GoalPostOpportunityBody() {
             <h2 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.02em]">Add useful details.</h2>
             <p className="mt-2 text-g-body leading-[1.6] text-g-ink-2">A link and location help candidates act without exposing you.</p>
             <div className="mt-5 grid gap-4">
-              <GoalField label={mode === "hiring_now" ? "Public job link" : "Public job link (optional)"} htmlFor="goal-opp-link" help={mode === "hiring_now" ? "Required for hiring-now posts. We check the link before publishing." : undefined}><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl(event.target.value)} placeholder="https://careers.company.com/role" /></GoalField>
+              <GoalField label={mode === "hiring_now" ? "Public job link" : "Public job link (optional)"} htmlFor="goal-opp-link" help={mode === "hiring_now" ? "Required for hiring-now posts. We check the link before publishing." : undefined}><GoalTextInput id="goal-opp-link" aria-label="Public job link" type="url" value={targetRoleUrl} onChange={event => setTargetRoleUrl((event.nativeEvent as InputEvent).inputType === "insertFromPaste" ? completeTargetRoleUrl(event.target.value) : event.target.value)} onBlur={() => setTargetRoleUrl(current => completeTargetRoleUrl(current))} placeholder="https://careers.company.com/role" /></GoalField>
               <GoalField label={mode === "walk_in" ? "Location" : "Location (optional)"} htmlFor="goal-opp-location" help={mode === "walk_in" ? "Required for walk-ins." : undefined}><GoalTextInput id="goal-opp-location" value={location} onChange={event => setLocation(event.target.value)} placeholder="e.g. Bengaluru or Remote" /></GoalField>
               <GoalField label="Compensation (optional)" htmlFor="goal-opp-comp" help="One line for the public pay range. Leave blank if you prefer not to share."><GoalTextInput id="goal-opp-comp" aria-label="Compensation" value={compensation} onChange={event => setCompensation(event.target.value.slice(0, 80))} placeholder="₹12–18 LPA or $80k–$110k" /></GoalField>
               <label className="flex items-start gap-3 rounded-[10px] border border-g-hairline p-4"><input type="checkbox" checked={showPosterFirstName} onChange={event => setShowPosterFirstName(event.target.checked)} className="mt-0.5 h-4 w-4 accent-g-ink" /><span><strong className="block text-g-label text-g-ink">Show my first name</strong><span className="mt-1 block text-g-meta leading-[1.5] text-g-ink-3">Candidates see just your first name on the card. Your last name and work email never appear.</span></span></label>
@@ -134,7 +142,7 @@ function GoalPostOpportunityBody() {
             ? <GoalButton variant="primary" type="submit" disabledReason={canProceed ? undefined : "Add the required details first"}>Continue<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
             : isSignedIn
               ? <GoalButton variant="primary" type="submit" busy={publishing} busyLabel="Publishing…" disabledReason={canProceed ? undefined : "Add the required details first"}>Publish privately<ArrowRight className="h-4 w-4" aria-hidden="true" /></GoalButton>
-              : <GoalButton variant="primary" type="button" onClick={() => go("/referrer")}>Use company email to publish</GoalButton>}
+              : <GoalButton variant="primary" type="button" asChild><Link href={referrerSignInHref("/post-opportunity")}>Use company email to publish</Link></GoalButton>}
         </div>
       </form>
     </div>

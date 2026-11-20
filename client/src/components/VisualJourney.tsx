@@ -12,7 +12,7 @@ export const referrerSteps: Step[] = [
 ];
 
 const seekerSteps: Step[] = [
-  { title: "Find a company", text: "Start with where you want to work.", icon: Search, detail: "Look for a company with someone available to refer. You can explore before signing in." },
+  { title: "Find a company", text: "Start with where you want to work.", icon: Search, detail: "Search a company, pick a job, request a referral. You can explore before signing in." },
   { title: "Ask for a referral", text: "Share the role and why you fit.", icon: Send, detail: `Make a thoughtful request. The referrer chooses whether to accept. ${ASK_COST_SENTENCE} No paid priority.` },
   { title: "Connect privately", text: "Talk, then follow your next steps.", icon: MessagesSquare, detail: "Once accepted, your private conversation opens. Track the introduction in My requests. A referral does not guarantee an interview." },
 ];

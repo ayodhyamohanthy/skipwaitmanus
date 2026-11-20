@@ -11,7 +11,7 @@
  * not produce itself.
  */
 import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE, REFERRING_FREE_LINE } from "./moneyCopy";
-import { firstPackClaim } from "./planCatalog";
+import { CREDIT_PACKS_ON_SALE, firstPackClaim } from "./planCatalog";
 
 /** The first-pack claim, from the catalog the server sells (POSTMERGE-oct22 #534). */
 const FIRST_PACK_INR = firstPackClaim("INR") ?? "our smallest pack";
@@ -31,7 +31,7 @@ export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
 export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
 export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
 /** The search snippet (160 characters at most): how it works, then both money facts (D-063). */
-export const LANDING_SUMMARY = `Paste a role link; verified employees decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
+export const LANDING_SUMMARY = `Verified employees privately decide whether to refer you. ${MONEY_SENTENCE_SHORT}`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [
   { title: "Start with the role", body: "Paste the job link for the company you want to join." },
@@ -55,7 +55,9 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/jobs", label: "Browse roles", summary: "Published roles worth a referral." },
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
-  { href: "/premium", label: "Buy credits", summary: "Extra referral credits are sold in one-time packs that never expire." },
+  ...(CREDIT_PACKS_ON_SALE
+    ? [{ href: "/premium", label: "Buy credits", summary: "Extra referral credits are sold in one-time packs that never expire." }]
+    : [{ href: "/premium", label: "Credit packs", summary: "Credit packs are paused while we update our plans." }]),
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
   { href: "/plans", label: "Plans and credits", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },

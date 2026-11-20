@@ -1,0 +1,102 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "trpc": {
+    "talentConsent.state": {
+      "active": false,
+      "audience": "Approved employers on SkipWait",
+      "retentionDays": 90,
+      "policyVersion": "talent-consent-2026-09",
+      "unlockCreditCost": 5,
+      "unlockDays": 30
+    }
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/privacy/export-requests/latest",
+      "status": 200,
+      "body": {
+        "export": {
+          "id": 12,
+          "status": "ready",
+          "requestedAt": "2026-10-08T04:30:00.000Z",
+          "readyAt": "2026-10-08T05:05:00.000Z",
+          "expiresAt": "2026-10-15T05:05:00.000Z",
+          "byteSize": 184320,
+          "fileName": "skipwait-personal-data.zip"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/blocks/mine",
+      "status": 200,
+      "body": {
+        "blocks": [
+          {
+            "id": 7,
+            "blockedUserId": 22,
+            "reason": null,
+            "createdAt": "2026-10-02T09:00:00.000Z"
+          },
+          {
+            "id": 8,
+            "blockedUserId": 31,
+            "reason": "Asked for payment",
+            "createdAt": "2026-09-18T09:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Download my data"
+    }
+  ]
+}

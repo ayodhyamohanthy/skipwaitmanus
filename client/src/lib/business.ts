@@ -3,7 +3,8 @@
  * Must match the legal name on the payment-provider (Razorpay) account.
  */
 export const BUSINESS = {
-  operator: "Ayodhya Ram Mohanthy",
+  // Owner, Nov 19 2026 (D-365): no person's name is shown anywhere on the site.
+  operator: "a sole proprietorship based in India",
   brand: "skipwait.me",
   email: "support@skipwait.me",
   // Set before publishing. City/state at minimum; a full postal address passes provider reviews more reliably.

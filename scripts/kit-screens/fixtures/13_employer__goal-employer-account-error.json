@@ -1,0 +1,24 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 500,
+      "body": {
+        "error": "We could not load your employer account"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=We could not load your employer account"
+    }
+  ]
+}

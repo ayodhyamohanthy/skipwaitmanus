@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AdminSchema from "./AdminSchema";
+import "./goal/admin-ops/GoalAdminSchema";
 
 // Stable getToken identity: the real useAuth memoizes it with useCallback, and
 // an unstable identity would re-trigger the page's [getToken, isSignedIn] effect.
@@ -12,6 +14,8 @@ vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, getToken: getTokenMock }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminSchema /></QueryClientProvider>);
 
 const snapshot = {
   reconciled: false,
@@ -31,7 +35,7 @@ describe("administrator schema reconcile screen", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("renders the reconciled flag, first error, and per-statement outcomes", async () => {
-    render(<AdminSchema />);
+    renderPage();
     await waitFor(() => expect(screen.getByText("Not fully reconciled")).toBeTruthy());
     // The failure text shows twice by design: first-error panel + statement row.
     expect(screen.getAllByText(/Lock wait timeout exceeded; try restarting transaction/).length).toBe(2);
@@ -42,7 +46,7 @@ describe("administrator schema reconcile screen", () => {
   it("posts to run the reconcile and renders the fresh snapshot", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => init?.method === "POST" ? { ok: true, json: async () => reconciledSnapshot } : { ok: true, json: async () => snapshot });
     vi.stubGlobal("fetch", fetchMock);
-    render(<AdminSchema />);
+    renderPage();
     await waitFor(() => expect(screen.getByText("Not fully reconciled")).toBeTruthy());
 
     fireEvent.click(screen.getByRole("button", { name: /Run reconcile/ }));
@@ -54,7 +58,7 @@ describe("administrator schema reconcile screen", () => {
 
   it("shows the empty state when no run has happened yet", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ reconciled: false, results: [], firstError: null }) })));
-    render(<AdminSchema />);
+    renderPage();
     await waitFor(() => expect(screen.getByText(/No run has happened yet/)).toBeTruthy());
   });
 });

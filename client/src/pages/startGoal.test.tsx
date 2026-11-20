@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-// Goal /start (D-048-p3-start, dark): job-link preview, invalid/foreign link,
-// draft continuity, clear-and-start-new, fast-track handoff, flags-off kit
-// control. Behavior contract copied from the kit Onboarding page: same preview
-// call, same domain-confirmation rule, same bridge keys, same /request target.
+// Goal /start (D-048-p3-start): job-link preview, invalid/foreign link,
+// draft continuity, clear-and-start-new and fast-track handoff. The goal page
+// preserves the existing preview call, domain-confirmation rule, bridge keys
+// and /request target.
 import React from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Onboarding from "./Onboarding";
@@ -12,11 +14,11 @@ import { TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
 const { authState, flags, go } = vi.hoisted(() => ({
   authState: { isSignedIn: true },
-  flags: { start: true },
+  flags: { start: true, asked: [] as string[] },
   go: vi.fn(),
 }));
 
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => (flags as Record<string, boolean>)[id] === true }));
+vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flags.asked.push(id); return flags.start; } }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken: vi.fn().mockResolvedValue("t"), openSignIn: vi.fn() }),
   useUser: () => ({ user: { id: "u1" } }),
@@ -44,7 +46,7 @@ function typeUrl(value: string) {
 }
 
 beforeEach(() => {
-  authState.isSignedIn = true; flags.start = true; go.mockClear();
+  authState.isSignedIn = true; flags.start = true; flags.asked = []; go.mockClear();
   window.history.replaceState({}, "", "/start");
   clearReferralDraft();
   localStorage.removeItem("bridge-target-url");
@@ -52,6 +54,30 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("goal start", () => {
+  it("keeps Onboarding as a goal-only entry without a kit import or surface switch", () => {
+    const source = readFileSync(resolve(process.cwd(), "client/src/pages/Onboarding.tsx"), "utf8");
+    expect(source).not.toMatch(/goalSurfaceOn|@\/components\/kit/);
+  });
+
+  it("completes a link without https:// instead of showing an error (owner, Nov 19 2026)", async () => {
+    stubFetch(() => ({}));
+    render(<Onboarding />);
+    const input = await screen.findByLabelText(/Target Role URL/i) as HTMLInputElement;
+    typeUrl("careers.acme.com/jobs/123");
+    expect(screen.queryByText(TARGET_ROLE_URL_ERROR)).toBeNull();
+    expect(input.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.blur(input);
+    expect(input.value).toBe("https://careers.acme.com/jobs/123");
+    typeUrl("");
+    fireEvent.change(input, { target: { value: "Apply here: www.linkedin.com/jobs/view/4446365088" } });
+    fireEvent.blur(input);
+    expect(input.value).toBe("https://www.linkedin.com/jobs/view/4446365088");
+    fireEvent.change(input, { target: { value: "<https://acme.com/jobs/9>" } });
+    fireEvent.blur(input);
+    expect(input.value).toBe("https://acme.com/jobs/9");
+    expect(screen.queryByText(TARGET_ROLE_URL_ERROR)).toBeNull();
+  });
+
   it("opens on the goal with one commit and rejects an invalid link inline", async () => {
     stubFetch(() => ({}));
     render(<Onboarding />);
@@ -138,11 +164,11 @@ describe("goal start", () => {
     expect(go).toHaveBeenCalledWith("/request?fast=FAST123");
   });
 
-  it("renders the kit page untouched while the surface is off (release control)", async () => {
+  it("renders the released goal page without consulting the legacy surface switch", async () => {
     flags.start = false;
     stubFetch(() => ({}));
     render(<Onboarding />);
-    expect(await screen.findByText("Paste the job link.")).toBeTruthy();
-    expect(screen.queryByTestId("goal-start")).toBeNull();
+    expect(await screen.findByTestId("goal-start")).toBeTruthy();
+    expect(flags.asked).toEqual([]);
   });
 });

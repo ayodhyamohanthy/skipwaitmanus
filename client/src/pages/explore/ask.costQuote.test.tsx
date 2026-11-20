@@ -165,7 +165,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     const topUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
     expect(topUp.getAttribute("href")).toBe("/plans#packs");
     expect(screen.queryByRole("button", { name: /send ask/i })).toBeNull();
@@ -180,7 +180,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     const topUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
     expect(topUp.getAttribute("href")).toBe("/premium?role=job_seeker");
   });
@@ -190,7 +190,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ quote: { status: 200, body: { level: 2, cost: 2, totalAvailable: 3, shortfall: 0 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 of your 3 credits"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance of 3"));
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     expect(screen.getByRole("button", { name: /send ask/i })).toBeTruthy();
   });
@@ -201,7 +201,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("We could not price this ask"));
-    expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("1 credit");
+    expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("Uses 1 from your balance");
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     const sendButton = screen.getByRole("button", { name: /send ask/i });
     expect(sendButton.getAttribute("aria-disabled")).toBe("true");
@@ -220,7 +220,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.click(sendButton); // inert GoalButton swallows activation (preventDefault/stopPropagation)
     expect(fetchMock.mock.calls.some(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST")).toBe(false);
     release(null);
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
   });
 
   it("flag on, link edited after a quote: the old target's price never shows against the new link", async () => {
@@ -236,12 +236,12 @@ describe("shared composer quote (D-132 item 3)", () => {
     } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     const field = screen.getByLabelText(/job link/i);
     fireEvent.change(field, { target: { value: "https://careers.wipro.com/jobs/7654321-senior-designer" } });
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Pricing this ask…"));
-    expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("5 credit");
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 of your 3 credits"), { timeout: 3000 });
+    expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("Uses 5 from your balance");
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance of 3"), { timeout: 3000 });
   });
 
   it("flag on: editing inside a valid link debounces to one fetch per settled target", async () => {
@@ -265,7 +265,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 of your 3 credits"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance of 3"));
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
@@ -280,7 +280,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 3 credits"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 3"));
     expect(quoteCalls(fetchMock)).toHaveLength(0);
   });
 
@@ -296,7 +296,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
@@ -313,7 +313,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub();
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 of your 3 credits"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 3"));
     await new Promise(resolve => setTimeout(resolve, 50));
     expect(fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/plans/catalog"))).toHaveLength(0);
   });
@@ -334,7 +334,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 credit"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance"));
     expect(quoteCalls(fetchMock)).toHaveLength(0);
   });
 
@@ -347,7 +347,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.click(card[0]);
     const drawer = await screen.findByRole("dialog");
     await typeLink(drawer);
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 4 credits. You have 3. Add 1 more."));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 4 from your balance. You have 3. Add 1 more."));
     const topUp = within(drawer).getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
     expect(topUp.getAttribute("href")).toBe("/plans#packs");
     expect(within(drawer).queryByRole("button", { name: /send ask/i })).toBeNull();
@@ -380,7 +380,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ directory: WIPRO_CLOSED, quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     const sendButton = screen.getByRole("button", { name: /send ask/i });
     expect(sendButton.getAttribute("aria-disabled")).toBeNull();
@@ -396,7 +396,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
@@ -417,7 +417,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
@@ -432,7 +432,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     await screen.findByText(/Nothing was sent and nothing was charged/);
     expect(screen.queryByText(/nothing was spent/i)).toBeNull();
     // Directory + quote invalidated: the covered cost line and top-up are live for a conscious re-send.
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 6 credits. You have 2. Add 4 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 6 from your balance. You have 2. Add 4 more."));
     const flipTopUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
     expect(flipTopUp.href).toContain("/plans#packs");
   });
@@ -445,7 +445,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ directory: WIPRO_CLOSED, quote: () => gate.then(() => json(200, { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 })) });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("No credit used until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
     const sendButton = screen.getByRole("button", { name: /send ask/i });
     expect(sendButton.getAttribute("aria-disabled")).toBeNull();
     release(null);
@@ -465,7 +465,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Mentored teammates across three product launches." } });
     const selectedResume = pickCustomResume();
     await pickNonDefaultWork();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     const topUp = screen.getByRole("link", { name: "Add credits" });
     fireEvent.click(topUp);
     await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
@@ -474,7 +474,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     // Simulate return to /ask
     renderPage(<Ask />);
     await waitFor(() => expect((screen.getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK));
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 of your 5 credits"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance of 5"));
     expect((screen.getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led a checkout redesign that cut drop-off by eighteen percent.");
     expect(screen.getByText("selected-resume.pdf")).toBeTruthy();
     expectNonDefaultWorkSelected();
@@ -500,7 +500,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
     pickCustomResume(drawer);
     await pickNonDefaultWork(drawer);
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 4 credits. You have 3. Add 1 more."));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 4 from your balance. You have 3. Add 1 more."));
     const topUp = within(drawer).getByRole("link", { name: "Add credits" });
     fireEvent.click(topUp);
     await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
@@ -528,7 +528,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     pickCustomResume(drawer);
     await pickNonDefaultWork(drawer);
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     fireEvent.click(within(drawer).getByRole("link", { name: "Add credits" }));
     await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
     cleanup();
@@ -555,7 +555,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     pickCustomResume();
     await pickNonDefaultWork();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     fireEvent.click(screen.getByRole("link", { name: "Add credits" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Your ask is still here"));
     expect(go).not.toHaveBeenCalled();
@@ -573,10 +573,64 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This ask costs 5 credits. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
     const topUp = screen.getByRole("link", { name: "Add credits" });
     fireEvent.click(topUp);
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not save your draft"));
     expect(go).not.toHaveBeenCalled();
+  });
+});
+
+// Packet item 5 (D-048-p3-live-review-find): the slot-cap nudge's
+// once-per-session rule is back. The first capped send shows the shared
+// nudge copy with its CTA and marks it shown; a second capped send in the
+// same session still states the reason, but plainly - no second nudge, no
+// second CTA. The reason is never hidden either way.
+describe("slot-cap nudge once per session", () => {
+  // F2 (PR #1161 review): the earlier fixture carried nextPlan: null, so the
+  // shared copy never produced a CTA and the once-per-session tests passed
+  // with useAskComposer.tsx reverted (they bound to nothing). A real next plan
+  // makes the CTA exist, so "shown once, then plain" is actually pinned.
+  const CAPPED = { status: 409, body: { error: "Your 3 open requests are all open", code: "slot_cap_reached", slots: { plan: "free", planLabel: "Free", open: 0, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } } };
+
+  it("shows the nudge with its CTA once, then states the cap plainly without it", async () => {
+    stub({ send: CAPPED, workItems });
+    renderPage(<Ask />);
+    await typeLink();
+    await pickNonDefaultWork();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Your 3 requests are all open");
+    expect(within(alert).getByRole("link", { name: /See Momentum/i })).toBeTruthy();
+    cleanup();
+
+    // The same browser session marks the nudge shown; the reason is never
+    // hidden, but the second capped send states the cap plainly, no CTA.
+    stub({ send: CAPPED, workItems });
+    renderPage(<Ask />);
+    await typeLink();
+    await pickNonDefaultWork();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    const again = await screen.findByRole("alert");
+    expect(again.textContent).toContain("Your 3 requests are all open"); // the reason always shows
+    expect(within(again).queryByRole("link", { name: /See Momentum/i })).toBeNull();
+  });
+
+  it("a blocked storage only means the nudge may show again; the reason still shows", async () => {
+    stub({ send: CAPPED, workItems });
+    renderPage(<Ask />);
+    await typeLink();
+    await pickNonDefaultWork();
+    fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
+    fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
+    fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
+    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Your 3 requests are all open");
   });
 });

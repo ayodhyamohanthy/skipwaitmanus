@@ -56,3 +56,5 @@ jsdom cannot scroll, so attach real-viewport proof to the pull request:
 - [ ] Required CI is green on the exact head, and the row is set to `done`.
 
 ## Status
+
+- SHELL-focus-clearance: done — fef78166 (PR #700) — data-goal-bottom-bar on phone nav + scroll-padding-bottom rule in index.css; focus clearance verified; exact-head CI green.

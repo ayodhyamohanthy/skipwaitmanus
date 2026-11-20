@@ -1,0 +1,11 @@
+{
+  "task": "D-048-K-developers",
+  "project": "skipwait/skipwait-webapp",
+  "readOnly": true,
+  "phase": "pre-landing baseline",
+  "results": [
+    {"query": "is:unresolved environment:production transaction:/developers lastSeen:-30d", "issues": [], "hasMore": false},
+    {"query": "is:unresolved environment:production transaction:/developer-console lastSeen:-30d", "issues": [], "hasMore": false}
+  ],
+  "limits": "Baseline route queries only, not post-release acceptance or proof all flows ran in production. No event/account payload retained."
+}

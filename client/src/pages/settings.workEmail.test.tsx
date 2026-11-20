@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Settings from "./Settings";
+import "./goal/settings/GoalSettings";
 
 const accessState = vi.hoisted(() => ({ verified: false }));
 vi.mock("@/_core/auth", () => ({
@@ -45,20 +46,20 @@ describe("Settings work email", () => {
   it("offers Referrer mode after a work email is verified", async () => {
     accessState.verified = true;
     renderAt("?section=account");
-    expect(await screen.findByText("Work email verified")).toBeTruthy();
+    expect(await screen.findByText("Verified · acme.com")).toBeTruthy();
     expect(screen.getByText(/acme\.com/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Switch to Job Referrer mode" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Switch to Job Referrer mode" }).getAttribute("href")).toBe("/referrer");
   });
 
-  it("asks for a deletion review instead of claiming an immediate deletion", () => {
+  it("asks for a deletion review instead of claiming an immediate deletion", async () => {
     renderAt("?section=account");
-    expect(screen.getByRole("button", { name: "Request account deletion" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Request account deletion" })).toBeTruthy();
     expect(screen.getByText(/review deletion requests rather than silently removing/i)).toBeTruthy();
   });
 
-  it("keeps the personal data download in Privacy", () => {
+  it("keeps the personal data download in Privacy", async () => {
     renderAt("?section=privacy");
-    expect(screen.getByRole("button", { name: "Request my data" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Request my data" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Blocked people" })).toBeTruthy();
   });
 });

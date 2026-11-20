@@ -13,6 +13,7 @@ import { initializeDevicePreferences } from "./lib/device";
 import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
 import { captureClientError, initClientSentry, testClientSentry } from "./lib/sentry";
+import { reportQueryCacheError } from "./lib/apiFetch";
 import { initClarity } from "./lib/clarity";
 import { applyAnalyticsConsent, readCookieConsent } from "./components/CookieConsent";
 
@@ -82,6 +83,7 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
+    reportQueryCacheError(error, "query");
     if (!(error instanceof Error && error.message.includes("Unexpected token '<'"))) console.error("[API Query Error]", error);
   }
 });
@@ -90,6 +92,7 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
+    reportQueryCacheError(error, "mutation");
     if (!(error instanceof Error && error.message.includes("Unexpected token '<'"))) console.error("[API Mutation Error]", error);
   }
 });

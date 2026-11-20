@@ -1,0 +1,327 @@
+{
+  "source": "c52166cb934bdcacd5e236ae004520b4d629e23e",
+  "command": "VITE_GOAL_SURFACES=all pnpm build && node design/goal-ui/captures/public-profile/capture.mjs",
+  "synthetic": true,
+  "results": [
+    {
+      "file": "visible-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWorkCase study · from Behance · PinnedCheckout redesignProject · from GitHubDesign system for a fintech appYour next stepFind a role at Synthetic Co and send a referral request to a verified employee.Explore companiesNo feed. No followers. No likes. Just work. · "
+      },
+      "errors": []
+    },
+    {
+      "file": "empty-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWorkNo work shared yet.When this person shares a piece, it shows here.Your next stepFind a role at Synthetic Co and send a referral request to a verified employee.Explore companiesNo feed. No followers. No likes. Just work. · Make your own on skipwait.me"
+      },
+      "errors": []
+    },
+    {
+      "file": "private-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "This profile is private.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "This profile is private.Only this person can see this page.Your next stepYou can still find a company you want a referral at and send one referral request.Explore companiesNo feed. No followers. No likes. Just work. · Make your own on skipwait.me"
+      },
+      "errors": []
+    },
+    {
+      "file": "missing-1280.png",
+      "route": "/p/nobody-here",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "This profile isn't available.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "This profile isn't available.The link may be wrong, or this person changed their profile link.Your next stepFind a company you want a referral at and start from there.Explore companiesNo feed. No followers. No likes. Just work. · Make your own on skipwait.me"
+      },
+      "errors": []
+    },
+    {
+      "file": "error-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "This profile didn't load.",
+        "primaries": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "This profile didn't load.We couldn't load this profile.Nothing was changed. Try again in a moment.Try again"
+      },
+      "errors": []
+    },
+    {
+      "file": "owner-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWho can see this pageskipwait.me/p/asha-raoPublicAnyone, and search enginesLink onlyPeople with the linkPrivateOnly youWorkManage your workOnly pieces marked visible on profile appear to visitors.Case study · from Behance · PinnedCheckout redesignVisible on profi"
+      },
+      "errors": []
+    },
+    {
+      "file": "owner-visitor-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWorkCase study · from Behance · PinnedCheckout redesignProject · from GitHubDesign system for a fintech appYour next stepFind a role at Synthetic Co and send a referral request to a verified employee.Explore companiesNo feed. No followers. No likes. Just work. · "
+      },
+      "errors": []
+    },
+    {
+      "file": "offline-1280.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "metrics": {
+        "scrollWidth": 1280,
+        "innerWidth": 1280,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "You're offline. Changes can't be saved until you reconnect.See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWho can see this pageskipwait.me/p/asha-raoPublicAnyone, and search enginesLink onlyPeople with the linkPrivateOnly youWorkManage your workOnly pieces marked visible on profile appear to visitors.Case stu"
+      },
+      "errors": []
+    },
+    {
+      "file": "visible-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWorkCase study · from Behance · PinnedCheckout redesignProject · from GitHubDesign system for a fintech appYour next stepFind a role at Synthetic Co and send a referral request to a verified employee.Explore companiesNo feed. No followers. No likes. Just work. · "
+      },
+      "errors": []
+    },
+    {
+      "file": "empty-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWorkNo work shared yet.When this person shares a piece, it shows here.Your next stepFind a role at Synthetic Co and send a referral request to a verified employee.Explore companiesNo feed. No followers. No likes. Just work. · Make your own on skipwait.me"
+      },
+      "errors": []
+    },
+    {
+      "file": "private-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "This profile is private.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "This profile is private.Only this person can see this page.Your next stepYou can still find a company you want a referral at and send one referral request.Explore companiesNo feed. No followers. No likes. Just work. · Make your own on skipwait.me"
+      },
+      "errors": []
+    },
+    {
+      "file": "missing-390.png",
+      "route": "/p/nobody-here",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "This profile isn't available.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "This profile isn't available.The link may be wrong, or this person changed their profile link.Your next stepFind a company you want a referral at and start from there.Explore companiesNo feed. No followers. No likes. Just work. · Make your own on skipwait.me"
+      },
+      "errors": []
+    },
+    {
+      "file": "error-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "This profile didn't load.",
+        "primaries": 0,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "This profile didn't load.We couldn't load this profile.Nothing was changed. Try again in a moment.Try again"
+      },
+      "errors": []
+    },
+    {
+      "file": "owner-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWho can see this pageskipwait.me/p/asha-raoPublicAnyone, and search enginesLink onlyPeople with the linkPrivateOnly youWorkManage your workOnly pieces marked visible on profile appear to visitors.Case study · from Behance · PinnedCheckout redesignVisible on profi"
+      },
+      "errors": []
+    },
+    {
+      "file": "owner-visitor-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWorkCase study · from Behance · PinnedCheckout redesignProject · from GitHubDesign system for a fintech appYour next stepFind a role at Synthetic Co and send a referral request to a verified employee.Explore companiesNo feed. No followers. No likes. Just work. · "
+      },
+      "errors": []
+    },
+    {
+      "file": "offline-390.png",
+      "route": "/p/asha-rao",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "metrics": {
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "h1": "See Asha Rao's work.",
+        "primaries": 1,
+        "nestedButtons": 0,
+        "kitHexClasses": 0,
+        "outsideGoalScope": [],
+        "text": "You're offline. Changes can't be saved until you reconnect.See Asha Rao's work.Senior product designerBengaluruVerified at synthetic.example via work emailOpen to: Product DesignerOpen to: UX LeadWho can see this pageskipwait.me/p/asha-raoPublicAnyone, and search enginesLink onlyPeople with the linkPrivateOnly youWorkManage your workOnly pieces marked visible on profile appear to visitors.Case stu"
+      },
+      "errors": []
+    }
+  ]
+}

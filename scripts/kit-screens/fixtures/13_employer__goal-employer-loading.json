@@ -1,0 +1,27 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 200,
+      "delayMs": 8000,
+      "body": {
+        "account": {
+          "id": 7,
+          "companyName": "Northwind Robotics",
+          "billingEmail": "hire@northwind.example",
+          "credits": 8,
+          "budgetMonthlyUsdCents": 5000,
+          "approvalStatus": "approved"
+        }
+      }
+    }
+  ]
+}

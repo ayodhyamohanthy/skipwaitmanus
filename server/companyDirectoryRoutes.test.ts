@@ -17,6 +17,122 @@ function appWith(deps: Partial<CompanyDirectoryRouteDeps> = {}) {
   return { app, activity };
 }
 
+describe("GET /api/companies/search", () => {
+  const list = async () => ({ companies: [wipro, { ...wipro, slug: "tcs", name: "TCS", domains: ["tcs.com"] }], openCount: 2 });
+  it("is not swallowed by /:slug and finds TCS by alias", async () => {
+    const getCompanyDirectoryEntry = vi.fn(async () => undefined);
+    const { app } = appWith({ listCompanyDirectory: list, getCompanyDirectoryEntry, discoverCompanies: async () => ({ companies: [], degraded: false }) });
+    const r = await request(app).get("/api/companies/search?q=tata");
+    expect(r.status).toBe(200);
+    expect(getCompanyDirectoryEntry).not.toHaveBeenCalled();
+    expect(r.headers["cache-control"]).toBe("public, max-age=60");
+    expect(r.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+  });
+  it("refuses unknown query keys", async () => {
+    const { app } = appWith({ listCompanyDirectory: list });
+    expect((await request(app).get("/api/companies/search?q=tcs&industry=x")).status).toBe(400);
+  });
+  it("carries no availability field", async () => {
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies: async () => ({ companies: [], degraded: false }) });
+    const r = await request(app).get("/api/companies/search?q=wipro");
+    expect(r.body.companies).toHaveLength(1);
+    expect(JSON.stringify(r.body)).not.toMatch(/openToReferrals|available/i);
+  });
+
+  it("merges worldwide discovery candidates and drops ones the directory already holds (D-174-worldwide-discovery)", async () => {
+    const discoverCompanies = vi.fn(async () => ({ companies: [
+      { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" as const },
+      { name: "Wipro", domain: "wipro.com", source: "wikidata" as const },
+    ], degraded: false }));
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=google");
+    expect(r.status).toBe(200);
+    expect(r.body.companies).toEqual([]);
+    expect(r.body.discovered).toEqual([{ name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" }]);
+    expect(discoverCompanies).toHaveBeenCalledWith("google", expect.any(String));
+    // A healthy discovery portion says so, and the answer is publicly cacheable.
+    expect(r.body.discoveryState).toBe("ok");
+    expect(r.headers["cache-control"]).toBe("public, max-age=60");
+  });
+
+  it("drops discovery candidates whose domain is a subdomain (or parent) of a directory domain", async () => {
+    const discoverCompanies = vi.fn(async () => ({ companies: [
+      { name: "TCS Careers", domain: "careers.tcs.com", source: "wikidata" as const },
+      { name: "Wipro Parent", domain: "wipro.com", source: "wikidata" as const },
+      { name: "Other Co", domain: "other.example.com", source: "wikidata" as const },
+    ], degraded: false }));
+    const heldSub = async () => ({ companies: [{ ...wipro, slug: "wipro", domains: ["careers.wipro.com"] }, { ...wipro, slug: "tcs", name: "TCS", domains: ["tcs.com"] }], openCount: 2 });
+    const { app } = appWith({ listCompanyDirectory: heldSub, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=co");
+    expect(r.status).toBe(200);
+    expect(r.body.discovered).toEqual([{ name: "Other Co", domain: "other.example.com", source: "wikidata" }]);
+  });
+
+  it("a discovered candidate never carries door, credit or verification authority (D-176 boundary)", async () => {
+    const discoverCompanies = vi.fn(async () => ({ companies: [{ name: "Zoho Corporation", domain: "zoho.com", source: "wikidata" as const }], degraded: false }));
+    const getCompanyDirectoryEntry = vi.fn(async () => undefined);
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies, getCompanyDirectoryEntry });
+    const r = await request(app).get("/api/companies/search?q=zoho");
+    expect(r.status).toBe(200);
+    // The strict schema admits only name/domain/logoUrl/source: no slug, no availability, no credits.
+    expect(JSON.stringify(r.body.discovered)).not.toMatch(/slug|openToReferrals|available|credits|verified/i);
+    // And the discovered company has no door: the directory never resolves it.
+    const door = await request(app).get("/api/companies/zoho-corporation");
+    expect(door.status).toBe(404);
+    expect(door.body.error).toBe(COMPANY_NOT_FOUND_ERROR);
+    // The schema itself refuses an attempt to attach authority fields.
+    const { discoveredCompanySchema } = await import("../shared/companies");
+    expect(discoveredCompanySchema.safeParse({ name: "X Co", domain: "xco.example.com", source: "wikidata", slug: "x-co", openToReferrals: true }).success).toBe(false);
+  });
+
+  it("keeps directory search truthful while discovery is throttled or failing", async () => {
+    const discoverCompanies = vi.fn(async () => { throw new Error("wikimedia 429"); });
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=tata");
+    expect(r.status).toBe(200);
+    expect(r.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+    expect(r.body.discovered).toEqual([]);
+    // A degraded discovery portion is said out loud and never publicly cached: it can never
+    // masquerade as "no such company" for every visitor of a shared cache.
+    expect(r.body.discoveryState).toBe("degraded");
+    expect(r.body.discoveryDegradedReason).toBe("unavailable");
+    expect(r.headers["cache-control"]).toBe("private, no-store");
+  });
+
+  it("marks a throttled discovery portion degraded with its reason and keeps it out of shared caches", async () => {
+    const discoverCompanies = vi.fn(async () => ({ companies: [], degraded: true, reason: "budget" as const }));
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies });
+    const r = await request(app).get("/api/companies/search?q=tata");
+    expect(r.status).toBe(200);
+    expect(r.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+    expect(r.body.discoveryState).toBe("degraded");
+    expect(r.body.discoveryDegradedReason).toBe("busy");
+    expect(r.headers["cache-control"]).toBe("private, no-store");
+    const limited = vi.fn(async () => ({ companies: [], degraded: true, reason: "rate_limited" as const }));
+    const second = appWith({ listCompanyDirectory: list, discoverCompanies: limited });
+    const r2 = await request(second.app).get("/api/companies/search?q=tata");
+    expect(r2.body.discoveryState).toBe("degraded");
+    expect(r2.body.discoveryDegradedReason).toBe("rate_limited");
+    expect(r2.headers["cache-control"]).toBe("private, no-store");
+  });
+
+  it("caps discovery at five candidates and survives a discovery failure with the directory answer intact", async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({ name: `Co ${i}`, domain: `co${i}.example.com`, source: "wikidata" as const }));
+    const { app } = appWith({ listCompanyDirectory: list, discoverCompanies: async () => ({ companies: many, degraded: false }) });
+    const r = await request(app).get("/api/companies/search?q=wipro");
+    expect(r.status).toBe(200);
+    expect(r.body.companies).toHaveLength(1);
+    expect(r.body.discovered).toHaveLength(5);
+    const boom = appWith({ listCompanyDirectory: list, discoverCompanies: async () => { throw new Error("provider down"); } });
+    const failed = await request(boom.app).get("/api/companies/search?q=tata");
+    expect(failed.status).toBe(200);
+    expect(failed.body.companies.map((c: { slug: string }) => c.slug)).toEqual(["tcs"]);
+    expect(failed.body.discovered).toEqual([]);
+    expect(failed.body.discoveryState).toBe("degraded");
+    expect(failed.headers["cache-control"]).toBe("private, no-store");
+  });
+});
+
 describe("public company directory routes", () => {
   it("serves the listed directory with a public cache header", async () => {
     const { app } = appWith({ listCompanyDirectory: async () => ({ companies: [wipro], openCount: 1 }) });

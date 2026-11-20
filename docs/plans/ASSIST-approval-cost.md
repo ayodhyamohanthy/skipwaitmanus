@@ -41,6 +41,18 @@ So the owner would see 1 credit and pay up to 10.
 4. A decline needs no cost.
 5. Race note: the check runs just before execution, and the cost depends only on the job link and a deploy-time flag. The only remaining window is a flag flip between two lines of one request, which no user can trigger. Say so in a code comment.
 
+### 4a. As built (Oct 27, `Claude Code · d2fb`; the row's D-221 note wins over item 1)
+The D-221 row note says the owner approves the quote route's full cost object, not an integer. On `main` that object is the quote's `{ level, cost }`. A D-219 band or spend-source quote does not exist yet. Coordination is on #644 (comment 6447494982).
+- **Contract.** `shared/assistantApprovalCost.ts` holds a strict Zod `{ level, cost }`, `sameApprovalCost` (compares every schema field), the 409 body schema and the message. A field added later (a D-219 level band or spend source) is compared too, and a client that does not echo it gets a 409, never a charge.
+- **The card shows the real cost.** `GET /api/assistants/approvals` attaches `cost` to each pending `ask_send` that would charge. It comes from one owner-scoped read (`readApprovalCosts`), so the screen shows what the route will hold the owner to.
+- **The decision.**
+  - On approve, the body carries `expectedCost`. A missing or different value gets 409 `{ code: "cost_changed", cost, error }`, the executor is never called, and `assistant.approval_cost_changed` (denied) is recorded.
+  - A decline never reads a cost. A paid-tool marker, a handled or expired approval, or one without a job link charges nothing, so it is decided as before.
+  - An unreadable cost fails closed (500, nothing charged).
+- **Message (D-180, no "ask" or "credit"):** "This referral request now costs N referrals. Approve again to send it at that cost."
+- **§8 check, not triggered.** Tests pin `quoteApprovalCost` both to the quote route (through its deps) and to the executor's own call, `askCreditCost({ title, description, url: targetRoleUrl })` of `companyAskJobRow`, across 8 links with the flag on and off.
+- **Extra files, registered in #760.** `Approve.tsx` now only switches to the dark goal `GoalApprove.tsx`, which posted `{ decision, kind }` too, so it gets the same change. `shared/assistantApprovalCost.ts` keeps the client from importing `server/`.
+
 ## 5. Files
 - **New:** `server/assistantApprovalCost.ts`, which exports `currentApprovalCost(approval)` and reuses `assignJobLevel`, `normalizeTargetRoleUrl`, `creditsForLevel` and `askLevelCostEnabled` exactly as the quote route does. Import them; never copy the formula.
 - **New:** `server/assistantApprovalCost.test.ts`.
@@ -48,6 +60,7 @@ So the owner would see 1 credit and pay up to 10.
 - `server/assistantRoutes.test.ts`.
 - `client/src/pages/Approve.tsx`: send `expectedCreditCount` (the cost the card shows). On 409 `cost_changed`, show "This ask now costs N referrals. Approve again to send it at that cost." and update the card's cost.
 - `client/src/pages/approve.test.tsx`.
+- Added Oct 27 (§4a, #760): `shared/assistantApprovalCost.ts` and its test, `client/src/pages/goal/assistants/GoalApprove.tsx` and `assistantFlows.test.tsx`; the list handler in `server/assistantRoutes.ts` attaches the current cost.
 - Out of scope: `server/db.ts` and `server/privateReferralRoutes.ts` (owned by `D-132-audit` and others). Do not edit them.
 
 ## 6. Tests first (red on today's code)
@@ -71,3 +84,4 @@ So the owner would see 1 credit and pay up to 10.
 The quote route and `createCompanyReferralRequest` price the same link differently on `main`. That is a D-132-audit finding: report it with both numbers.
 
 ## Status
+- ASSIST-approval-cost: done — 7db0bd6b. Code reviewed PASS by Cline · 03b2 on b8b4520d (independent, non-Claude); every commit after that head is a main merge touching no owned path, verified before landing. Landed after a full gate on the merged tree: typecheck, token audit, migration lint, deploy triggers, scope-check (10 owned paths), 60/60 focused money-path tests, production build.
