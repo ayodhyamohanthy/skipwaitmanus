@@ -1,0 +1,285 @@
+{
+  "task": "D-048-K-employer-talent",
+  "beforeIdentity": {
+    "revision": "d26b995ef4e0654e8540a61dafad38b0cdd71f52",
+    "goalSourceSha256": "7d8c6a64a4b93708508eb3c6d84e2b8cd4e1b6c5187ad5b825182f9b450aff2f",
+    "goalRuntimeAstSha256": "9a7bf6313103768bb511dbe73a0c1f18dd7db578275f0cc51c151a278ef31cf2"
+  },
+  "afterIdentity": {
+    "revision": "31a791100993b606f55a61580cd0e23502575ca7",
+    "goalSourceSha256": "9f202e358562eaa6c88368f704d57cc2664adbb8cb08ae5e39cd7bb4607c03e3",
+    "goalRuntimeAstSha256": "9a7bf6313103768bb511dbe73a0c1f18dd7db578275f0cc51c151a278ef31cf2"
+  },
+  "pairs": [
+    {
+      "scenario": "default",
+      "width": 1280,
+      "before": "before/default-1280.png",
+      "after": "after/default-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "profile",
+      "width": 1280,
+      "before": "before/profile-1280.png",
+      "after": "after/profile-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "profile-cleared",
+      "width": 1280,
+      "before": "before/profile-cleared-1280.png",
+      "after": "after/profile-cleared-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "intro-sent",
+      "width": 1280,
+      "before": "before/intro-sent-1280.png",
+      "after": "after/intro-sent-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "intro-refused",
+      "width": 1280,
+      "before": "before/intro-refused-1280.png",
+      "after": "after/intro-refused-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-pending",
+      "width": 1280,
+      "before": "before/unlock-pending-1280.png",
+      "after": "after/unlock-pending-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-confirmed",
+      "width": 1280,
+      "before": "before/unlock-confirmed-1280.png",
+      "after": "after/unlock-confirmed-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-error",
+      "width": 1280,
+      "before": "before/unlock-error-1280.png",
+      "after": "after/unlock-error-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-402",
+      "width": 1280,
+      "before": "before/unlock-402-1280.png",
+      "after": "after/unlock-402-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "search",
+      "width": 1280,
+      "before": "before/search-1280.png",
+      "after": "after/search-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "loading",
+      "width": 1280,
+      "before": "before/loading-1280.png",
+      "after": "after/loading-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "empty",
+      "width": 1280,
+      "before": "before/empty-1280.png",
+      "after": "after/empty-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "load-error",
+      "width": 1280,
+      "before": "before/load-error-1280.png",
+      "after": "after/load-error-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "retry",
+      "width": 1280,
+      "before": "before/retry-1280.png",
+      "after": "after/retry-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "denied",
+      "width": 1280,
+      "before": "before/denied-1280.png",
+      "after": "after/denied-1280.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "default",
+      "width": 390,
+      "before": "before/default-390.png",
+      "after": "after/default-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "profile",
+      "width": 390,
+      "before": "before/profile-390.png",
+      "after": "after/profile-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "profile-cleared",
+      "width": 390,
+      "before": "before/profile-cleared-390.png",
+      "after": "after/profile-cleared-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "intro-sent",
+      "width": 390,
+      "before": "before/intro-sent-390.png",
+      "after": "after/intro-sent-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "intro-refused",
+      "width": 390,
+      "before": "before/intro-refused-390.png",
+      "after": "after/intro-refused-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-pending",
+      "width": 390,
+      "before": "before/unlock-pending-390.png",
+      "after": "after/unlock-pending-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-confirmed",
+      "width": 390,
+      "before": "before/unlock-confirmed-390.png",
+      "after": "after/unlock-confirmed-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-error",
+      "width": 390,
+      "before": "before/unlock-error-390.png",
+      "after": "after/unlock-error-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "unlock-402",
+      "width": 390,
+      "before": "before/unlock-402-390.png",
+      "after": "after/unlock-402-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "search",
+      "width": 390,
+      "before": "before/search-390.png",
+      "after": "after/search-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "loading",
+      "width": 390,
+      "before": "before/loading-390.png",
+      "after": "after/loading-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "empty",
+      "width": 390,
+      "before": "before/empty-390.png",
+      "after": "after/empty-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "load-error",
+      "width": 390,
+      "before": "before/load-error-390.png",
+      "after": "after/load-error-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "retry",
+      "width": 390,
+      "before": "before/retry-390.png",
+      "after": "after/retry-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    },
+    {
+      "scenario": "denied",
+      "width": 390,
+      "before": "before/denied-390.png",
+      "after": "after/denied-390.png",
+      "pixelIdentical": true,
+      "pngByteIdentical": true,
+      "requestsIdenticalIgnoringOrder": true
+    }
+  ]
+}
