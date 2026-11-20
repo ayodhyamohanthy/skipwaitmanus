@@ -81,6 +81,9 @@ try {
                 if (url.pathname === "/api/dev-auth/session") return json({ signedIn, account: signedIn ? person : null });
                 if (url.pathname === "/api/account/preferences") return json({ preferences: { timeZone: "UTC", dateFormat: "mdy", language: null } });
                 if (["/api/account/signup-language", "/api/csp-report"].includes(url.pathname)) return requestRoute.fulfill({ status: 204, body: "" });
+                if (url.pathname === "/api/profile/setup") return json({ goal: "", roles: [], level: "", links: [], city: "", countries: "", remote: true, visa: "", resume: null });
+                if (url.pathname === "/api/work-items") return json({ items: [] });
+                if (url.pathname === "/api/ask-drafts") return json({ draft: null });
                 if (url.pathname === "/api/company-referrals/access") return json({ verifiedCompanyAccess: false, workEmailDomain: null });
                 if (url.pathname === "/api/company-referrals/mine") return json({ requests: [], slots: { plan: "free", planLabel: "Free", open: 0, cap: 3, full: false, nextPlan: null }, hasEverAsked: false });
                 if (url.pathname === "/api/credits/summary") return json({ summary: { totalAvailable: 3 } });
@@ -91,6 +94,7 @@ try {
               });
               const response = await page.goto(`${host.origin}${route.path}`, { waitUntil: "networkidle", timeout: 25_000 });
               assert.equal(response?.status(), 200, `${route.name} returns 200`);
+              await page.getByRole("heading", { level: 1 }).last().waitFor({ timeout: 15_000 });
               await page.evaluate(() => document.fonts.ready);
               const consent = page.getByRole("region", { name: "Language suggestion" });
               if (target.fixtureOnly) await consent.waitFor();
