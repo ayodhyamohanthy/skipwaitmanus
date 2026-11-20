@@ -6002,7 +6002,7 @@
       "lane": "jobs",
       "branch": "agent/queue/rel-heartbeats",
       "status": "todo",
-      "syncedTo": "D-222",
+      "syncedTo": "D-368",
       "dependsOn": [
         "REL-watchdog",
         "D-090-BYOR"
@@ -6015,9 +6015,10 @@
         "server/scheduledJobsRoutes*.test.ts",
         "server/_core/index.ts (switch only)",
         "watchdog/src/core.ts",
-        "scripts/watchdogCore.test.ts"
+        "scripts/watchdogCore.test.ts",
+        "shared/scheduledJobs.ts"
       ],
-      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
+      "note": "Current packet checked through D-368: public names/booleans only, one overdue rule, startup grace and existing watchdog two-round alarm. Shared-file serialization is superseded by D-309/D-314; recorded dependencies and all review/CI/release gates remain. shared/scheduledJobs.ts gains only the strict public response schema; existing job names and tick/admin contracts stay unchanged."
     },
     {
       "id": "REL-rollback-skew",
