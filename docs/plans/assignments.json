@@ -166,6 +166,25 @@
       "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
     },
     {
+      "id": "BANDED-schema-migration",
+      "title": "Apply and verify the exact banded storage migration before schema-dependent readiness lands",
+      "row": "PRICING",
+      "packet": "docs/plans/BANDED-schema-migration.md",
+      "tier": 1,
+      "lane": "banded-schema-migration",
+      "branch": "agent/queue/banded-schema-migration",
+      "status": "todo",
+      "syncedTo": "D-370",
+      "dependsOn": [],
+      "owns": [
+        "drizzle/deploy/0123_banded_plans.sql",
+        "e2e/banded-migration.e2e.ts",
+        "docs/plans/BANDED-schema-migration.md"
+      ],
+      "epic": "BANDED-release",
+      "note": "Migration-first prerequisite split from BANDED-schema under D-200/D-223, following REL-review-email-retry-schema. Copy the exact 0123 SQL from PR #1371; no readiness/schema runtime code. Protected main migration run and checksum/readiness acceptance precede completion; D-370 removes review, not migration-first."
+    },
+    {
       "id": "BANDED-schema",
       "title": "Banded plan ids, per-level referral balances and an oversell-proof founding-membership counter: contract plus one forward-only migration, no reader yet",
       "row": "PRICING",
@@ -175,7 +194,9 @@
       "branch": "agent/queue/banded-schema",
       "status": "todo",
       "syncedTo": "D-370",
-      "dependsOn": [],
+      "dependsOn": [
+        "BANDED-schema-migration"
+      ],
       "owns": [
         "drizzle/schema.ts",
         "drizzle/",
