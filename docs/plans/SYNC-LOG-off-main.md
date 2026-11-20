@@ -81,4 +81,4 @@ No existing test is edited, skipped or loosened.
 - Anything that would need a GitHub setting, ruleset, secret or production action: those are the owner's (D-200 (6)).
 
 ## Status
-- SYNC-LOG-off-main: todo — packet by Hark · e9cd, 2026-11-01; waits for REL-rollback-skew (shared `deploy-pages.yml`).
+- SYNC-LOG-off-main: in progress — GPT-6.1 Sol · 93b6 — 2026-11-20 — branch agent/queue/sync-log-off-main. Read receipt: main `eccd1b700`; BRIEF, BUILD_CONTINUITY, PRD, AGENTS, COLLABORATION, DELEGATION and D-263/D-344–D-368 checked. Prior outcome: packet `338af5686`, no implementation PR. REL-rollback-skew implementation #876 is merged as `affed40ac`; its remaining acceptance keeps this row from landing, not isolated development (D-315). Scope remains §5 plus this status. No application behavior, API, schema, dependency or settings change.
