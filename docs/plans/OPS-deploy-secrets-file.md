@@ -1,6 +1,6 @@
 # Packet OPS-deploy-secrets-file: production secrets ride the release (D-369)
 
-> Read `docs/BRIEF.md` first, then this packet. One queue row: `OPS-deploy-secrets-file` in `docs/plans/assignments.json` (status lives there).
+> Read `docs/BRIEF.md` first, then this packet. `OPS-deploy-secrets-file` is the original deployment row. §6 specifies the separate `OPS-reviewer-credential-transport` follow-up. The queue registry records both rows.
 
 | Field | Value |
 |---|---|
@@ -12,24 +12,29 @@
 ## 1. The defect (evidence)
 Cloudflare refuses any secret edit while the newest uploaded Worker version is not the deployed one (API error 10215). Workers Builds runs `wrangler versions upload` on every branch push (D-182 (1)), and the agent sessions push many branches an hour, so a branch preview is almost always the newest version.
 
-- `Reviewer QA passwords` runs 2, 3, 4 (Nov 19) and 5 (Nov 20 07:37 UTC, run 44696345516) all failed on `REVIEWER_SEEKER_PASSWORD_HASH` with 10215. Only run 1 (Nov 17) found a quiet moment. Nothing was changed by the failed runs.
+- `Reviewer QA passwords` runs 2–5 failed with 10215 on November 19–20. [Run 44709862016](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44709862016) later succeeded through the original workflow.
 - The production deploy of `e285f13c` (run 44615379181, Nov 19 21:14 UTC) tried `wrangler secret put DATABASE_URL` 12 times over 5 minutes, starting 5 seconds after its own `wrangler deploy`, and every attempt was refused. It fell back to the existing secret with a warning. So today a database password rotation cannot reach production.
 
-## 2. The fix
-Upload secrets as part of the version itself, which 10215 does not cover: `wrangler deploy --secrets-file <json>` (Wrangler 4.165.0; additive, an omitted secret is kept, nothing is deleted).
+## 2. Original implementation (merged in #1382)
 
-1. `scripts/build-deploy-secrets.mjs` (new): reads `NEWDB_HOST`, `NEWDB_USER`, `NEWDB_PASSWORD`, `REVIEWER_SEEKER_HASH`, `REVIEWER_REFERRER_HASH` from the environment and writes one JSON object to the path it is given, mode 0600. `DATABASE_URL` only when all three database values are present (partial = refuse, exit 4); each reviewer hash only when given, and only in the exact `scrypt$<hex>$<64 hex>` form the server verifies (`server/_core/reviewerLogin.ts`), with no line break (else exit 3). It prints secret names, never values.
-2. `scripts/deploy-cloudflare-two-phase.sh`: builds that file in a private temp directory (removed on exit), passes `--secrets-file` to `wrangler deploy` and drops the post-deploy `wrangler secret put DATABASE_URL` retry loop.
-3. `.github/workflows/deploy-api.yml`: two optional `workflow_dispatch` inputs, `reviewer_seeker_hash` and `reviewer_referrer_hash`, passed to the deploy step through `env` (never interpolated into a script). A manual dispatch already forces a full runtime release behind the same green-CI gates.
-4. `.github/workflows/reviewer-qa-passwords.yml`: on 10215, the error names the working route (dispatch Deploy API with the two hashes).
+`wrangler deploy --secrets-file` uploads database and reviewer credential material as part of the Worker version. The builder validates the inputs and writes a mode-0600 file in a private temporary directory. The deploy removes the file when it exits. See §6 for the current reviewer reset path.
 
 ## 3. Rules
-- No secret value in the repository, a log or a step summary (D-059). Inputs are hashes only; the plaintext passwords stay in the session that made them (D-366 (2)).
+- Keep secret values out of the repository, logs and step summaries (D-059). Keep plaintext reviewer passwords only in the authorized session's private storage (D-366 (2)).
 - Every existing gate stays: release gate, migration-first, exact-SHA readiness, workers.dev closed, admin gate.
 - Nothing about sign-in behaviour changes; the reviewer route stays behind `REVIEWER_LOGIN_ENABLED`.
 
-## 4. Done means
-Required CI green with the Tier 1 review (D-352); then a manual Deploy API dispatch with fresh hashes releases the current `main`, the readiness gate passes on that SHA, both reviewer accounts sign in on skipwait.me, and `LAUNCH-live-qa` resumes.
+## 4. Release evidence
+
+[PR #1382](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1382) merged at `38b9a44e6`. [CI passed on that SHA](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44758926742). The [push workflow](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44758926866) validated the pipeline. It skipped the rollout and readiness gates for this pipeline-only change. The two demo sign-ins reported on API `73be7b313` used an earlier release. Live acceptance of the release-time reset remains open in §6.
 
 ## 5. Owner option (faster, and fixes the root cause)
 D-182 (3), asked Oct 24 and still open: in the Cloudflare dashboard, disconnect the Git repository from the `skipwaitmanus` Worker's Builds settings (or turn off builds for non-production branches). Then secret edits work again at any time, and this row is still worth landing as defence in depth.
+
+## 6. Follow-up: `OPS-reviewer-credential-transport`
+
+Use the workflow runner's protected secret channel for the two reviewer inputs. Expose only an explicit, non-sensitive choice to run the reset, off by default. Validate the complete pair before any production mutation, including the existing hash-format checks. Ordinary deploys keep their current reviewer bindings. Keep the release-time secrets file, its private mode and cleanup, and the database secret handling from §2. Update the original reset workflow's recovery guidance to point to the protected path.
+
+**Owns:** `.github/workflows/deploy-api.yml`, `.github/workflows/reviewer-qa-passwords.yml`, `scripts/build-deploy-secrets.mjs`, `scripts/buildDeploySecrets.test.ts`, `server/cloudflareContainerRelease.test.ts` and this packet. Reuse the two existing Worker binding names. The owners of repository settings and secrets retain provisioning authority.
+
+**Verification:** test the workflow boundary and the valid-pair, missing-pair, partial, malformed and ordinary-deploy cases with synthetic values. Check that command arguments, logs and artifacts omit secret material. Keep admin access, migration-first, required CI, exact release identity and readiness gates. After protected CI and the authorized reset, record release identity and both demo sign-in outcomes in a sanitized receipt. A skipped rollout or a sign-in on an earlier release cannot close that check. Keep private finding details in the advisory. Existing approved demo sessions can continue QA independently of a new reset.
