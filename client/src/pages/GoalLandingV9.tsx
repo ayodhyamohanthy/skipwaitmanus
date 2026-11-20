@@ -11,6 +11,7 @@ import CookieConsent from "@/components/CookieConsent";
 import type { FormEvent, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
+import { GoalLanguageConsent } from "@/components/goal/GoalLanguageConsent";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { COST_COPY, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
@@ -75,6 +76,7 @@ export default function GoalLandingV9() {
   }, []);
   return (
     <div className="min-h-screen bg-white font-g-sans text-g-ink">
+      <GoalLanguageConsent />
       <header className="border-b border-g-hairline">
         <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 gdesk:px-8">
           <div className="flex items-center gap-2.5">
