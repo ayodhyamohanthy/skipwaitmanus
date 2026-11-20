@@ -1,6 +1,6 @@
 # LAUNCH-qa-fixes: live-QA findings from release 73be7b31 (D-371)
 
-Status: todo. Row `LAUNCH-qa-fixes`, branch `agent/queue/launch-qa-fixes`, decision D-371 (4). The owner said "go ahead" on Nov 20, 2026.
+Status: in review (PR open). Captures follow the deploy. Row `LAUNCH-qa-fixes`, branch `agent/queue/launch-qa-fixes`, decision D-371 (4). The owner said "go ahead" on Nov 20, 2026.
 
 ## 1. Findings (signed-in QA, Nov 20, deploy run 44757175398)
 

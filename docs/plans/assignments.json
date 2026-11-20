@@ -615,13 +615,13 @@
       "tier": 2,
       "lane": "ops-reviewer",
       "branch": "agent/queue/ops-reviewer-qa-passwords",
-      "status": "todo",
-      "syncedTo": "D-366",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         ".github/workflows/reviewer-qa-passwords.yml"
       ],
-      "note": "D-366 (2), owner Nov 19: an agent session may run the reset and keep the plaintext only in its private storage. Build docs/plans/D-344-unblock.md row 6. Then a Claude session runs it with fresh hashes and gives the passwords to the owner for the agent secrets, never the repository (D-059)."
+      "note": "Workflow implementation delivered by #1236/ab4fc771d; required CI43908176336 and historical reset44709862016 passed. D-369/#1396 replaced direct hash inputs with protected repository-secret provisioning and confirm=reset dispatch to gated Deploy API. Current procedure: OPS-deploy-secrets-file.md section6. Do not rebuild or restore the old inputs. OPS-reviewer-credential-transport retains authorized provisioning, reset and same-release demo sign-in acceptance; LAUNCH QA remains separate. Docs-only reconciliation checked through D-371, no reset or secret mutation."
     },
     {
       "id": "PICKER-block-dedupe",
@@ -7066,20 +7066,20 @@
       "lane": "i18n-mount",
       "branch": "agent/queue/d093-mount",
       "status": "todo",
-      "syncedTo": "D-333",
+      "syncedTo": "D-370",
       "epic": "D-093-language",
       "dependsOn": [
-        "D-093.picker",
-        "D-222-referral-count-shell"
+        "D-093.picker"
       ],
       "owns": [
         "client/src/pages/GoalLandingV9.tsx (switch only)",
         "client/src/components/appShell.language.test.tsx",
         "design/goal-ui/captures/language/**",
         "client/src/components/AppShell.tsx",
+        "client/src/components/goal/GoalShell.tsx",
         "client/src/components/goal/GoalAppShell.tsx"
       ],
-      "note": "D-093 packet §5.5. Waits for D-222-referral-count-shell (and through it PRICING-banded-oct25), which own AppShell.tsx. GoalLandingV9 and GoalAppShell get switch-only consent mounts (C7). The Sign in link and referrer sign-in links stay unchanged. Nov 9 temporary D-057 handoff (packet §0b.8c): only client/src/components/AppShell.tsx, client/src/components/goal/GoalAppShell.tsx (switch only) are temporarily serialized to D-057 for its code_required navigation repair. This row retains its original branch, code, other paths, status, findings and all owner/product holds. These paths return through a separately reviewed registry restoration after D-057 is landed, before this row resumes runtime work; first normally merge D-057/current main and preserve both changes. No dependency or blanket takeover. See §0b.8c for conditional entry, stale coordinator hold qualification and unpublished-work limits. AppShell.tsx and GoalAppShell.tsx Returned by the D-057 §0b.8c registry restoration (D-333 (7)): merge current main, including the D-057 result, and keep both changes before any runtime work on the returned file."
+      "note": "D-093 packet §5.5. Depends on D-093.picker. AppShell.tsx is shared with D-222-referral-count-shell; GoalShell.tsx is shared with D-222-referral-count-shell and D-344-shell-referral-words. D-314 says shared-file overlap is not an output dependency or build hold, so the second lander merges main and keeps both changes. GoalLandingV9 mounts consent; GoalAppShell mounts consent and offers the signed-out top-bar picker without changing its account identity/initials behavior (C7). The Sign in link and referrer sign-in links stay unchanged. Nov 9 temporary D-057 handoff (packet §0b.8c): AppShell.tsx and GoalAppShell.tsx were temporarily serialized to D-057 for its code_required navigation repair; D-333 (7) returned them. Merge current main and preserve both changes. GoalShell.tsx is added for the responsive top-bar picker slot; its existing navigation, credits and account presentation stay unchanged."
     },
     {
       "id": "D-048-R7-prep",
