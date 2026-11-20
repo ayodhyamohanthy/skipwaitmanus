@@ -588,6 +588,20 @@ const lastBy = (markers, verbs) => [...markers].reverse().find(m => verbs.includ
 const everyone = (markers, verbs) => [...new Set(markers.filter(m => verbs.includes(m.verb)).map(m => m.who))];
 const holderOf = (info, id) => (info ? lastBy(stageMarkers(info, id), ["Claim", "Takeover"])?.who ?? null : null);
 
+function latestFindings(lock, id) {
+  const marker = stageMarkers(lock, id).at(-1);
+  return marker?.verb === "Verdict" && marker.verdict === "findings" ? marker : null;
+}
+
+/** D-334: only the writer of an open packet addresses another session's outstanding findings. */
+export function packetFixHead({ task, branches, openPrs, claimant }) {
+  if (task.status !== "architect" || !claimant) return null;
+  const branch = architectLockOf(task), packet = branches.get(branch);
+  if (!openPrs?.has(branch) || !packet?.work || packet.merged || holderOf(packet, task.id) !== claimant) return null;
+  const finding = latestFindings(branches.get(reviewLockOf(task)), task.id);
+  return finding && finding.who !== claimant ? packet.tipSha ?? null : null;
+}
+
 /** Server-side code a declared Tier 1 row keeps its review for: scripts/review-gate.mjs's #1219 backstop, kept identical. */
 export const REVIEW_SERVER_SIDE = /^(?:server\/|shared\/|drizzle\/|functions\/|src\/worker\.ts$)/;
 const changePath = change => (typeof change === "string" ? change : typeof change?.path === "string" ? change.path : "");
@@ -763,6 +777,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
     const work = packet ? archName : workBranchOf(task, branches);
     const info = work ? branches.get(work) : null;
     const pr = work ? openPrs.get(work) ?? null : null;
+    const packetFinding = packet && pr ? latestFindings(lock, id) : null;
     const ci = pr ? ciOnTip(prCi.get(work) ?? { state: "unknown" }, info?.tipSha) : { state: "unknown" };
     // A squash merge leaves the branch unmerged in git; GitHub's merged pull request says it landed.
     const landedBefore = info ? Boolean(info.merged) || Boolean(info.tipSha && mergedHeads.get(work)?.has(info.tipSha)) : mergedHeads.has(task.branch);
@@ -782,6 +797,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
     // PICKER-path-tier-review: the loader's facts count only for the tip they were read on.
     const facts = pr ? prFacts?.get?.(work) ?? null : null;
     const factsOnTip = Boolean(facts && info?.tipSha && facts.tipSha === info.tipSha);
+    const gateClear = factsOnTip && facts.gateClear === true;
     return {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
       slug: slugOf(task.branch), owner, pr, ci: ci.state, said, blockWaitingForEvidence,
@@ -801,7 +817,9 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       packetLander: packet ? (archMarkers.at(-1)?.verb === "Land claim" ? archMarkers.at(-1).who : null) : null,
       // The pull request's changed paths (null when unknown) and whether the CI review gate already clears its tip.
       reviewPaths: factsOnTip && Array.isArray(facts.paths) ? facts.paths : null,
-      gateClear: factsOnTip && facts.gateClear === true,
+      gateClear,
+      packetFindingsCommit: packetFinding?.sha ?? null,
+      fixedPacket: packet && gateClear && lockMarkers.at(-1)?.verb === "Fixed",
     };
   });
 }
@@ -1058,6 +1076,9 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       return { kind: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, from: v.packetLander ?? v.owner };
     }
     if (v.packet && v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
+    if (v.fixedPacket && (v.gateOnlyRed || ["running", "running-after-red", "no-tip-ci"].includes(v.ci))) {
+      return skip(v, `packet findings fixed; wait for required exact-head CI on ${v.pr}, not a re-review`);
+    }
     // D-294: the packet is the architect lock's work, but REVIEW uses the ordinary review lock.
     if (v.packet && v.pr && needsReview(v) && v.gateOnlyRed) {
       // D-307: a passed stage on an exact-tip gate-only red cannot be cleared by re-running CI when the pass names
@@ -1081,7 +1102,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     if (v.task.status === "architect") {
       const writer = holderOf(v.arch, v.task.id);
       if (writer && !quiet(archAt(v))) return skip(v, `${writer} is writing its packet`);
-      return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer };
+      return { kind: "architect", task: v.task, lock: v.archName, lockExists: Boolean(v.arch), from: writer, ...(v.packetFindingsCommit ? { packetFindingsCommit: v.packetFindingsCommit } : {}) };
     }
     if (v.task.status !== "todo") return skip(v, { "in-review": "being landed by its reviewer", owner: "waits for the owner" }[v.task.status]);
     const unmet = unmetOf(v);
@@ -1266,7 +1287,9 @@ function ownStage(v, claimant) {
   }
   // D-190: the packet's lander (a Land claim on the lock, never its writer) continues the landing while CI is green.
   if (v.packet && v.pr && v.packetLander === claimant && v.ci === "green" && !v.writers.includes(claimant)) return { kind: "continue", of: "land", task: v.task, work: v.work, pr: v.pr, lock: v.archName, tier1: true, packet: true, at: v.at };
-  if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) return { kind: "continue", of: "architect", task: v.task, lock: v.archName, at: v.at };
+  if (v.task.status === "architect" && v.arch && holderOf(v.arch, v.task.id) === claimant) {
+    return { kind: "continue", of: "architect", task: v.task, lock: v.archName, ...(v.packetFindingsCommit ? { packetFindingsCommit: v.packetFindingsCommit } : {}), at: v.at };
+  }
   if (v.open && v.said?.status === "blocked" && v.unblocker === claimant && !(v.said.blockers ?? [v.said.who]).includes(claimant)) return { kind: "continue", of: "unblock", task: v.task, report: v.said, lock: v.archName, at: v.at };
   return null;
 }
@@ -1281,6 +1304,8 @@ function ownWorkList(view, claimant, { includeWaiting = false } = {}) {
   let blockedOwn = null;
   for (const v of view) {
     if (!includeWaiting && v.task.dependsOn.some(d => !doneIds.has(d))) continue;
+    // A writer waiting for CI has no work to resume but still holds the architect lease.
+    if (!includeWaiting && v.owner === claimant && v.fixedPacket && (v.gateOnlyRed || ["green", "running", "running-after-red", "no-tip-ci"].includes(v.ci))) continue;
     const hit = ownStage(v, claimant);
     if (hit?.kind === "wait") blockedOwn ??= hit;
     else if (hit) found.push(hit);
