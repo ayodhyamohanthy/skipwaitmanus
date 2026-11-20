@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "./db";
+import { validateBandedSchema } from "./bandedSchemaValidation";
 
 // Columns the running code expects. Each entry is applied idempotently at boot
 // when missing (MySQL 8.0 has no ADD COLUMN IF NOT EXISTS, so check
@@ -549,6 +550,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
           ok: foreignKeys.has(`${schemaKey(item.table, item.column)}->${schemaKey(item.referencedTable, item.referencedColumn)}`),
         })),
       );
+      checks.push(...await validateBandedSchema(db, DESIRED_INDEXES));
       for (const check of checks) results.push({ statement: check.key, ok: check.ok, ...(!check.ok ? { errorCode: "SCHEMA_MISMATCH" } : {}) });
       const failed = checks.filter(check => !check.ok);
       if (failed.length) lastError = `Schema validation failed (${failed.length} checks)`;

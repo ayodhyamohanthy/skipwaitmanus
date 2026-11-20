@@ -2,12 +2,17 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import mysql, { type Connection, type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
 import { test, expect } from "playwright/test";
-import { INTENT_PLAN_IDS, WALLET_PLAN_IDS } from "../shared/billingCatalog";
+import { drizzle } from "drizzle-orm/mysql2";
+import { validateBandedSchema } from "../server/bandedSchemaValidation";
+import { DESIRED_INDEXES } from "../server/schemaReconcile";
 import { PLAN_FAMILY, PLAN_FAMILY_IDS } from "../shared/planFamily";
 
 const migration = readFileSync(new URL("../drizzle/deploy/0123_banded_plans.sql", import.meta.url), "utf8");
-const oldWalletPlans = WALLET_PLAN_IDS.slice(0, 12);
-const oldIntentPlans = INTENT_PLAN_IDS.slice(0, 11);
+// Immutable 0091 storage order. Never derive the pre-migration fixture from
+// current unions: that would let a future ordinal regression rewrite its oracle.
+const oldWalletPlans = ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+const oldIntentPlans = ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+const historicalMigration = readFileSync(new URL("../drizzle/deploy/0091_pricing_model.sql", import.meta.url), "utf8");
 const literals = (values: readonly string[]) => values.map(value => `'${value}'`).join(",");
 
 type Fixture = { db: Connection; connect: () => Promise<Connection> };
@@ -49,6 +54,9 @@ async function count(db: Connection, query: string, values: unknown[] = []) {
 }
 
 test("band migration preserves every legacy ENUM ordinal and accepts the new plans", async () => {
+  for (const [table, values] of [["tokenBalances", oldWalletPlans], ["subscriptionCheckoutIntents", oldIntentPlans]] as const) {
+    expect(historicalMigration).toContain(`ALTER TABLE \`${table}\` MODIFY \`plan\` ENUM(${values.map(value => `''${value}''`).join(",")})`);
+  }
   await withDatabase(async ({ db }) => {
     for (const [table, old] of [["tokenBalances", oldWalletPlans], ["subscriptionCheckoutIntents", oldIntentPlans]] as const) {
       const [rows] = await db.query<RowDataPacket[]>(`SELECT plan, plan + 0 AS ordinal FROM \`${table}\` ORDER BY id`);
@@ -111,6 +119,22 @@ test("issued sequences and checkout ids are unique, bounded and survive account 
     await expect(db.execute("INSERT INTO bandedFoundingMemberships (site,planId,checkoutIntentId,expiresAt) VALUES ('test','early_to_mid','checkout-early_to_mid','2026-12-20 00:00:00')")).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
     await db.execute("DELETE FROM users WHERE id=1");
     expect(await count(db, "SELECT COUNT(*) AS n FROM bandedFoundingMemberships WHERE status='issued' AND userId IS NULL")).toBe(PLAN_FAMILY.length);
+  });
+});
+
+test("readiness verifies actual migrated metadata and detects drift without writes", async () => {
+  await withDatabase(async ({ db }) => {
+    const validate = () => validateBandedSchema(drizzle(db), DESIRED_INDEXES);
+    expect((await validate()).every(check => check.ok)).toBe(true);
+    await db.query("ALTER TABLE bandedFoundingCounters ALTER CHECK banded_founding_counter_cap NOT ENFORCED");
+    expect(await validate()).toContainEqual({ key: "check:bandedFoundingCounters.banded_founding_counter_cap", ok: false });
+    await db.query("ALTER TABLE bandedFoundingCounters ALTER CHECK banded_founding_counter_cap ENFORCED");
+    await db.query("ALTER TABLE bandedFoundingMemberships DROP CHECK banded_founding_sequence_cap");
+    expect(await validate()).toContainEqual({ key: "check:bandedFoundingMemberships.banded_founding_sequence_cap", ok: false });
+    await db.query("ALTER TABLE bandedFoundingMemberships DROP INDEX banded_founding_sequence_unique, ADD UNIQUE INDEX banded_founding_sequence_unique (site,planId,id)");
+    expect(await validate()).toContainEqual({ key: "definition:bandedFoundingMemberships.banded_founding_sequence_unique", ok: false });
+    await db.query(`ALTER TABLE tokenBalances MODIFY plan ENUM(${literals(oldWalletPlans)}) NOT NULL DEFAULT 'free'`);
+    expect(await validate()).toContainEqual({ key: "definition:tokenBalances.plan", ok: false });
   });
 });
 
