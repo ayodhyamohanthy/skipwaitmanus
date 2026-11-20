@@ -7,12 +7,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Router } from "wouter";
 import Terms from "@/pages/Terms";
 import GuidePage from "@/pages/GuidePage";
+import { PolicyPageShell } from "@/components/PolicyPageShell";
 import { GUIDES } from "@/content/guides";
 
 beforeEach(() => { vi.stubGlobal("fetch", vi.fn()); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("released policy routes after retirement", () => {
+  it("preserves supplied legal words without a surface override", () => {
+    window.history.replaceState({}, "", "/terms");
+    const legalText = "Synthetic clause retained exactly.";
+    const { container } = render(
+      <Router ssrPath="/terms">
+        <PolicyPageShell screen="terms" eyebrow="Legal" title="Synthetic policy heading." intro="Synthetic intro." updated="2026-01-01" footnote="Synthetic footnote.">
+          <p>{legalText}</p>
+        </PolicyPageShell>
+      </Router>,
+    );
+    expect(container.querySelector('[data-testid="goal-policy"]')).not.toBeNull();
+    const text = container.textContent ?? "";
+    for (const phrase of ["Synthetic policy heading", "Synthetic intro.", legalText, "Synthetic footnote."]) {
+      expect(text).toContain(phrase);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("opens a policy on the goal frame without a surface override", () => {
     window.history.replaceState({}, "", "/terms");
     const { container } = render(<Router ssrPath="/terms"><Terms /></Router>);
