@@ -4869,7 +4869,7 @@
       "tier": 2,
       "lane": "d048-retire-admin-ops",
       "branch": "agent/queue/d048-k-admin-ops",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-048-release-platform"
@@ -6214,7 +6214,7 @@
       "tier": 2,
       "lane": "picker-packet-findings",
       "branch": "agent/queue/picker-packet-findings-exit",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-354",
       "dependsOn": [],
       "owns": [
