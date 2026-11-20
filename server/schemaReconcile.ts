@@ -85,6 +85,10 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
+  { table: "referralReviewDeliveries", column: "ownerAlertStatus", definition: "ENUM('pending','leased','sent') NULL" },
+  { table: "referralReviewDeliveries", column: "ownerAlertLeaseOwner", definition: "VARCHAR(64) NULL" },
+  { table: "referralReviewDeliveries", column: "ownerAlertLeaseExpiresAt", definition: "TIMESTAMP NULL" },
+  { table: "referralReviewDeliveries", column: "ownerAlertSentAt", definition: "TIMESTAMP NULL" },
   { table: "safetyReports", column: "severity", definition: "VARCHAR(8) NOT NULL DEFAULT 'normal'" },
   { table: "safetyReports", column: "dueAt", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
@@ -209,6 +213,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
 // skipped, and mismatched uniqueness is dropped and recreated.
 // Keep in sync with drizzle/schema.ts.
 export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string; nonUnique?: boolean }> = [
+  { table: "referralReviewDeliveries", name: "referral_review_owner_alert_idx", columns: "`ownerAlertStatus`, `ownerAlertLeaseExpiresAt`, `id`", nonUnique: true },
   { table: "seekerAgentGrants", name: "seeker_agent_grants_key_hash_unique", columns: "`keyHash`" },
   { table: "seekerAgentGrants", name: "seeker_agent_grants_user_idx", columns: "`userId`", nonUnique: true },
   { table: "seekerAgentControls", name: "seeker_agent_controls_user_unique", columns: "`userId`" },
