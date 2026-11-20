@@ -135,3 +135,24 @@ source was changed before this amendment. D-370 removes the historical
 model-binding/reviewer requirements; unique session claims, all tests,
 required CI and protected merging still apply. Original evidence remains
 unverified. No atomic multi-ref protocol is authorized or claimed.
+
+Implementation checkpoint, 2026-11-20: explicit fetch destinations/pruning
+refresh main and nested agent tracking refs without changing clone config;
+before every marker push, relevant work/review/architect/heartbeat/landing/
+report refs are compared with origin. Changed snapshots rerun the command
+at most three times using one session identity. Report and side-heartbeat
+push races reread complete state. Shallow or unreadable history/ref reads
+STOP before writing. Pushes remain non-force; the recheck-to-push race is
+not atomic or eliminated.
+
+Validation: independently authored actual-CLI bare-origin fixtures first
+failed 12/14 on unchanged source. Final 17/17 pass in the broader tooling
+run, including main-only and normal clone controls, deleted/new/mid-read
+refs, report/heartbeat retries, bounded churn, unavailable origin and
+shallow history. Existing requested-task CLI suite passes 8/8; compiler,
+syntax, whitespace, token audit, migration lint and deploy-trigger checks
+pass. Scope checker declares no owns and therefore performs no comparison;
+manual diff contains only the CLI, new test and this packet Status. The
+broader scripts suite is still running and has a separate 400-commit
+classification-fixture timeout; no full-suite PASS or deployment is claimed.
+Required CI, current-main integration and released-CLI live read remain.
