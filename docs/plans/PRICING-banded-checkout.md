@@ -43,3 +43,14 @@ A seeker can buy one of the three banded plans (Early to Mid, Mid to Senior, Sen
 
 ## 6. Done means
 Each row lands on green required CI with its Tier 1 review (D-352), behaviour unchanged while the switch is off. The release row is done only when a buyer could buy on skipwait.me in INR and USD, proven on the TEST site and checked live up to the hosted payment page without paying.
+
+## 7. BANDED-schema storage and rollout contract
+
+- Stored `tokenBalances.plan` and `subscriptionCheckoutIntents.plan` append the three `PLAN_FAMILY_IDS`, preserving every legacy ENUM position. `WALLET_PLAN_IDS` and `INTENT_PLAN_IDS` follow those storage values; billable plan ids, prices and checkout request schemas do not change. The immutable 0091 migration pin remains bound to its original prefix, not future append-only values.
+- `bandedReferralBalances` has one row per user and referral level, with separate non-negative included-cycle and purchased balances. Included balance carries a cycle key and end date; purchased balance has no expiry. These are new empty tables, not grants or a conversion of existing money.
+- `bandedFoundingCounters` stores issued and reserved counts per plan, bounded together by its frozen cap. `bandedFoundingMemberships` retains checkout-idempotency, reservation expiry and a unique bounded sequence on issuance. Only reserved places can release; an issued membership remains issued through lapse/cancellation, so account deletion must not cascade away its place. BANDED-checkout/grants must lock the counter row and mutate the reservation/issuance in one transaction. This row supplies constraints, no checkout or payment reader.
+- Production order follows `docs/BRIEF.md`: a migration-only prerequisite must be reviewed, deployed and verified before schema-dependent readiness code lands, as in `REL-review-email-retry-schema` / PR #1341. The draft implementation does not waive that order. Runtime reconciliation stays SELECT-only; startup never applies DDL.
+
+## Status
+
+- BANDED-schema: in progress — GPT-6.1 Sol · f734 — branch `agent/queue/banded-schema`; official takeover `1151d5173`, main `bdcc18577` integrated at `320f15279`. Prior holder `92ad` left only claim `3f2e855a8`, no source work or PR. Read BRIEF, AGENTS, BUILD_CONTINUITY, PRD, this packet and D-366–D-368; D-368 changes no banded-schema scope. The migration-first prerequisite request is recorded on coordination thread #811. Scope includes the storage unions and their historical contract test as necessary companion files; sale/catalog behaviour stays unchanged. No local MySQL or container CLI is installed; real application/replay and constraint proof will use isolated CI MySQL, never a production database.
