@@ -7092,11 +7092,11 @@
       "lane": "ai-coach",
       "branch": "agent/queue/d094-coach",
       "status": "todo",
-      "syncedTo": "D-279",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-094-ai-in-ui.job-link"
       ],
-      "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route (waits for DEPLOY-gate-docs-sync, the other open AGENTS.md owner). No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
+      "note": "Packet §4.11-4.16 and §6.3 (D-264 (1)): POST /api/ask/reasons-coach answers 404 while the switch is false; in-process caps are not the D-138 hard stop; routeChat's Forge fall-through is an enablement blocker; nothing but the reasons, role title and company name reaches the provider (D-139). Owns one AGENTS.md living-map row for the new route. Shared AGENTS.md and switch-only server/_core/index.ts edits are integrated by merging current main and preserving both changes; only D-094-ai-in-ui.job-link is a dependency. No env key, provider, account, migration or spend; switching on is the owner question in packet §13, never this row. Tier 1: owns client/src/pages/Ask.tsx and sends seeker text to a provider once on.",
       "epic": "D-094-ai-in-ui",
       "owns": [
         "shared/reasonsCoach.ts",
