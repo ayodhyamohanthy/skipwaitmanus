@@ -1,0 +1,18 @@
+{
+  "queriedAfterDeployment": true,
+  "deploymentMergedAt": "2026-11-20T17:34:53Z",
+  "queries": [
+    {
+      "project": "skipwait/skipwait-webapp",
+      "query": "firstSeen:>=2026-11-20T17:34:53 environment:production url:*/admin/approvals*",
+      "count": 0,
+      "hasMore": false
+    },
+    {
+      "project": "skipwait/skipwait-backend",
+      "query": "firstSeen:>=2026-11-20T17:34:53 environment:production url:*/api/admin/approval-queue*",
+      "count": 0,
+      "hasMore": false
+    }
+  ]
+}
