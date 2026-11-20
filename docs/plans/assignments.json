@@ -5263,7 +5263,7 @@
       "tier": 1,
       "lane": "d048-retire-inplace",
       "branch": "agent/queue/d048-k-inplace",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-349",
       "dependsOn": [
         "D-048-p3-live-review-find"
@@ -5275,7 +5275,7 @@
         "client/src/components/explore/CompanyResponseSignal.tsx",
         "client/src/components/explore/companyResponseSignal.test.tsx"
       ],
-      "note": "Retirement row (D-332) for the surfaces that went live in place with no switch (D-149): the leftovers the split's K1 row named. Delete each file only when nothing imports it any more, with its test and the assertions ported or listed (docs/plans/D-048-retire.md). The seeker part of client/src/components/thread/ThreadDecisionPanels.tsx belongs to D-048-K-conversation. Measure the explore test file's real name before deleting; if it differs from this owns list, ask for a widening (D-200). D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Done: PR #1353 merged at d26b995ef4e0654e8540a61dafad38b0cdd71f52 after exact-head CI 44678056402 passed all required checks, including three unit shards/aggregate, E2E, build and typecheck. Main CI 44678602392, Pages 44678602308 and Design Gate 44678602317 passed; Release verify 44679297130 passed. Canonical web meta SHA matched d26b995 on /explore; signed-out /explore, /requests, /ask, /queue, /explore/1password and /landed were inspected at 1280/390 with zero overflow and zero browser page errors. API remained e285f13 and verify-live-release reported CONVERGED. Post-release Sentry firstSeen queries for all five routes returned zero; two older explore issues last appeared before deployment. Historical full-local RED two-timeout receipt remains unchanged/not rerun; see docs/evidence/D-048-K-inplace/release.json. No auth, private read, payment, email, referral or business write.",
       "epic": "D-048-p3"
     },
     {

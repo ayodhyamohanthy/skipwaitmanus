@@ -1,0 +1,43 @@
+{
+  "task": "D-048-K-inplace",
+  "pullRequest": 1353,
+  "sourceHead": "aaece1543de3613e9d0f79484c594de54fa89156",
+  "mergeSha": "d26b995ef4e0654e8540a61dafad38b0cdd71f52",
+  "checks": {
+    "exactHeadCi": {"run": 44678056402, "conclusion": "success", "required": ["typecheck", "unit tests (shard 1/3)", "unit tests (shard 2/3)", "unit tests (shard 3/3)", "unit + component + route tests", "production build", "e2e journeys"]},
+    "mainCi": {"run": 44678602392, "conclusion": "success"},
+    "pages": {"run": 44678602308, "conclusion": "success"},
+    "designGate": {"run": 44678602317, "conclusion": "success"},
+    "releaseVerify": {"run": 44679297130, "conclusion": "success"}
+  },
+  "canonical": {
+    "webSha": "d26b995ef4e0654e8540a61dafad38b0cdd71f52",
+    "metaGitCommitObserved": true,
+    "apiSha": "e285f13c25da90b69ca3df172cb15f27dbb9826c",
+    "apiReady": true,
+    "apiVerifier": "CONVERGED",
+    "routes": ["/explore", "/requests", "/ask", "/queue", "/explore/1password", "/landed"],
+    "widths": [1280, 390],
+    "overflow": 0,
+    "nativePageErrors": 0,
+    "signedOut": true,
+    "privateReads": false,
+    "businessWrites": false,
+    "authOrPaymentAction": false,
+    "nativeInspection": ["/explore desktop and phone", "/requests terminal signed-out desktop and phone", "/ask desktop and phone", "/queue phone", "/explore/1password desktop and phone", "/landed terminal signed-out desktop and phone"]
+  },
+  "sentry": {
+    "project": "skipwait/skipwait-webapp",
+    "query": "is:unresolved environment:production url:*/<route>* firstSeen:>2026-11-20T05:04:43Z",
+    "routes": {"requests": 0, "explore": 0, "ask": 0, "queue": 0, "landed": 0},
+    "hasMore": false,
+    "olderExploreIssues": "Two unresolved explore issues exist but lastSeen is 2026-11-09 and 2026-11-11, before this release; no post-release issue matched."
+  },
+  "retirement": {
+    "deleted": ["client/src/components/requests/RequestRow.tsx", "client/src/components/requests/RequestSummary.tsx"],
+    "retained": ["client/src/components/requests/RequestStates.tsx", "client/src/components/explore/CompanyResponseSignal.tsx", "client/src/components/explore/companyResponseSignal.test.tsx"],
+    "historicalSyntheticPairs": 16,
+    "historicalLocalGate": "failed: 2 unchanged 20-second timeouts; not rerun or recast"
+  },
+  "limits": ["Native browser screenshot path output was unavailable for permanent evidence files; page text, meta SHA, dimensions, overflow and page errors were read through the actual deployed browser surface.", "The web release is web-only; the API remains the previously converged e285f13 runtime.", "No signed-in session, private read, payment, email, referral or business mutation was used."]
+}
