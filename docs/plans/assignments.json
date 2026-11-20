@@ -166,6 +166,25 @@
       "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
     },
     {
+      "id": "BANDED-schema-migration",
+      "title": "Apply and verify the exact banded storage migration before schema-dependent readiness lands",
+      "row": "PRICING",
+      "packet": "docs/plans/BANDED-schema-migration.md",
+      "tier": 1,
+      "lane": "banded-schema-migration",
+      "branch": "agent/queue/banded-schema-migration",
+      "status": "todo",
+      "syncedTo": "D-370",
+      "dependsOn": [],
+      "owns": [
+        "drizzle/deploy/0123_banded_plans.sql",
+        "e2e/banded-migration.e2e.ts",
+        "docs/plans/BANDED-schema-migration.md"
+      ],
+      "epic": "BANDED-release",
+      "note": "Migration-first prerequisite split from BANDED-schema under D-200/D-223, following REL-review-email-retry-schema. Copy the exact 0123 SQL from PR #1371; no readiness/schema runtime code. Protected main migration run and checksum/readiness acceptance precede completion; D-370 removes review, not migration-first."
+    },
+    {
       "id": "BANDED-schema",
       "title": "Banded plan ids, per-level referral balances and an oversell-proof founding-membership counter: contract plus one forward-only migration, no reader yet",
       "row": "PRICING",
@@ -175,7 +194,9 @@
       "branch": "agent/queue/banded-schema",
       "status": "todo",
       "syncedTo": "D-370",
-      "dependsOn": [],
+      "dependsOn": [
+        "BANDED-schema-migration"
+      ],
       "owns": [
         "drizzle/schema.ts",
         "drizzle/",
@@ -4923,7 +4944,7 @@
       "lane": "d048-retire-admin-approvals",
       "branch": "agent/queue/d048-k-admin-approvals",
       "status": "todo",
-      "syncedTo": "D-349",
+      "syncedTo": "D-366",
       "dependsOn": [
         "D-048-R-admin-approvals"
       ],
@@ -4935,7 +4956,7 @@
         "client/src/pages/adminApprovalRecord.test.tsx",
         "client/src/components/admin/**"
       ],
-      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin-approvals. Built by D-048-p3-admin-approvals; released by D-048-R-admin-approvals (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up.",
+      "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface id: admin-approvals. Built by D-048-p3-admin-approvals; released by D-048-R-admin-approvals, which is done, and the id remains in RELEASED. Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. D-349 suspends the 7-day soak in launch mode; the soak returns when the owner announces launch or the first real user signs up. The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns.",
       "epic": "D-048-p3"
     },
     {
@@ -6079,8 +6100,8 @@
       "tier": 2,
       "lane": "jobs",
       "branch": "agent/queue/rel-heartbeats",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [
         "REL-watchdog",
         "D-090-BYOR"
@@ -6093,9 +6114,13 @@
         "server/scheduledJobsRoutes*.test.ts",
         "server/_core/index.ts (switch only)",
         "watchdog/src/core.ts",
-        "scripts/watchdogCore.test.ts"
+        "scripts/watchdogCore.test.ts",
+        "shared/scheduledJobs.ts",
+        ".github/workflows/deploy-watchdog.yml",
+        "scripts/waitWatchdogJobs.ts",
+        "scripts/waitWatchdogJobs.test.ts"
       ],
-      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
+      "note": "Landing PR #1377: source 8bfc9622e, current-main integration b183e368e. Packet checked through D-370: public names/booleans only, shared overdue rule, startup grace and existing watchdog two-round alarm. D-309/D-314 remove shared-file serialization; D-370 removes review and model dependencies. Required CI, protected merge and canonical endpoint/watchdog deployment acceptance remain. shared/scheduledJobs.ts adds only the strict public response schema; existing job names and tick/admin contracts stay unchanged. Done status is prepared in the landing PR; its packet and PR distinguish pending production acceptance."
     },
     {
       "id": "REL-rollback-skew",
@@ -7482,11 +7507,11 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "Packet section 6.2, rulings 1 to 4: no openToReferrals read, askCostLine open:null, expectedCoverage never sent (server guard untouched), watch removed, post-save first clause only (expiry clauses stay for D-174-expiry-clock-removal). Money display: no amount, spend point, refund or key changes. Coordinator question 1 covers the D-132 flag-on re-pins.",
+      "note": "November 20 composer-only re-sync through D-370: packet section 6.2 replaces this row's older instructions. Preserve no-referrer request creation and honest server-driven pool/delivery status (D-360/D-363), D-364 link completion, current quote/accepted-cost/idempotency controls and all expiry/money clauses. askCostLine open:null; no expectedCoverage or directory availability gate. Legacy D-132 flags stay off; D-367 mapping is settled, BANDED-* owns pricing activation. Required CI, captures and exact-release checks; no review/model/coordinator dependency. Runtime task remains todo; docs re-sync is not implementation or release acceptance.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",
@@ -8021,10 +8046,10 @@
       "tier": 2,
       "lane": "picker-authoritative-refs",
       "branch": "agent/queue/picker-authoritative-ref-refresh",
-      "status": "todo",
-      "syncedTo": "D-345",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [],
-      "note": "Bounded tooling correctness under direct fix-picker/pending-work instructions. Exact manual scope scripts/next-task.mjs ref refresh/retry/revalidation only, NEW nextTaskAuthoritativeRefs.test.ts, own packet Status. No owns because existing shared picker ownership retained; manual exact-diff qualification required. Diagnostic implementation draft unbound/reference-only, never adopted. Independently rerun local bare-origin actual CLI fixtures red-first, preserve holders/deleted refs/reports/landing/FIFO/model/unknowns and no config change. Prewrite check is not atomic protocol; remaining cross-ref race cannot be claimed solved, any required protocol change needs packet amendment before dispatch. Ordinary actual qualified free author/independent reviewer/current-main/full CI/protected merge; D312 exception unavailable. D-345 (3) (Nov 16): no dependency on Instinct. Its claim, quiet for 132 hours, is free under the 2-hour rule, and any session may take it over on the same branch."
+      "note": "PR #1393: explicit main/agent tracking-ref fetch/prune, pre-marker snapshot comparison, bounded full-state retries with stable session identity, fail-closed unavailable/shallow history. Non-force pushes retain the documented recheck-to-push multi-ref race. Independent local bare-origin regressions replace unrecovered diagnostic fixtures under the packet's D-200 technical amendment; no external implementation used. D-370 removes model/review dependencies. Completion is carried in this PR; exact required CI, protected merge and released read-only CLI proof remain the acceptance gates. Evidence and local timeout/incomplete-run limitations are in the packet Status."
     },
     {
       "id": "PICKER-cli-output-drain",
