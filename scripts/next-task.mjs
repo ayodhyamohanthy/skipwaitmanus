@@ -36,6 +36,7 @@ import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from
 import { pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
+import { autoLandCandidates, autoLandHold, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
 
@@ -135,6 +136,7 @@ export function argsOf(argv) {
     else if (a === "--heartbeat") out.heartbeat = true;
     else if (a === "--status") out.status = true;
     else if (a === "--landed") out.landed = true;
+    else if (a === "--auto-land") out.autoLand = true;
     else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid", "--provenance", "--execution"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
@@ -174,14 +176,47 @@ function ghToken() {
   catch { return null; }
 }
 
+const githubTokenOf = () => process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
+
 async function github(repo, path, { signal } = {}) {
   // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
-  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
+  const token = githubTokenOf();
   const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
   const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
   return res.json();
+}
+
+/** PICKER-auto-land (D-371): one authenticated GitHub write; REST when `path` starts with "/", else a GraphQL query. */
+async function githubWrite(repo, method, path, body) {
+  const token = githubTokenOf();
+  if (!token) throw new Error("no GitHub token (sign in with gh)");
+  const graphql = !path.startsWith("/");
+  const res = await fetch(graphql ? "https://api.github.com/graphql" : `https://api.github.com/repos/${repo}${path}`, {
+    method: graphql ? "POST" : method, signal: AbortSignal.timeout(20_000),
+    headers: { accept: "application/vnd.github+json", "content-type": "application/json", "user-agent": "skipwait-next-task", authorization: `Bearer ${token}` },
+    body: JSON.stringify(graphql ? { query: path, variables: body } : body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`GitHub ${graphql ? "GraphQL" : path} answered ${res.status}`);
+  if (graphql && Array.isArray(json.errors) && json.errors.length) throw new Error(`GraphQL: ${String(json.errors[0]?.message ?? "error").slice(0, 120)}`);
+  return json;
+}
+
+/** PICKER-auto-land (D-371): land every green, in-sync task pull request the board shows; never while main is red. */
+async function autoLandFrom({ doc, mainCi, openPrs, prCi, board }) {
+  const hold = autoLandHold({ mainCi, openPrs });
+  if (hold) { console.log(`auto-land: held (${hold})`); return []; }
+  const candidates = autoLandCandidates({ rows: board, tasks: doc.tasks, prCi });
+  if (!candidates.length) { console.log("auto-land: no green task pull request waiting"); return []; }
+  return runAutoLand(candidates, {
+    readPull: number => github(doc.repo, `/pulls/${number}`),
+    markReady: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){clientMutationId}}", { id }),
+    updateBranch: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/update-branch`, { expected_head_sha: sha }),
+    enableAutoMerge: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}", { id }),
+    log: line => console.log(line),
+  });
 }
 
 /**
@@ -642,6 +677,12 @@ async function runCommand(args) {
     console.log(`Released landing slot ${LAND_SLOT}: ${subject}`);
     return;
   }
+  if (args.autoLand) {
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register });
+    await autoLandFrom({ doc, mainCi, openPrs, prCi, board });
+    return;
+  }
   if (args.status) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const newest = register.at(-1);
@@ -706,6 +747,8 @@ async function runCommand(args) {
     if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
+    // PICKER-auto-land (D-371): every claim first lands the green, in-sync task pull requests the board shows.
+    if (args.claim && attempt === 1) await autoLandFrom({ doc, mainCi, openPrs, prCi, board });
     if (pick.kind === "ceo") pick.board = board;
     // D-358: the short board, so the assignment below survives an agent's output cap; --status prints the full one.
     else console.log(renderBoardSummary(board));
