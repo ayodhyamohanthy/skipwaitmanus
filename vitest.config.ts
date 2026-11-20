@@ -14,6 +14,11 @@ process.env.TZ = "UTC";
 process.env.LC_ALL = "en_US.UTF-8";
 process.env.LANG = "en_US.UTF-8";
 
+// D-370 switched the independent-review and model-name rules off (scripts/sessionPolicy.mjs). The
+// existing picker, review-gate and scope-check tests describe the switched-off path, so the test
+// run keeps it on; scripts/sessionPolicy.test.ts pins the production default with the switch unset.
+process.env.SKIPWAIT_LEGACY_REVIEW_RULES = "on";
+
 const templateRoot = path.resolve(import.meta.dirname);
 
 export default defineConfig({
