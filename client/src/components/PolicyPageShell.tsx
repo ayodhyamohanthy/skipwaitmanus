@@ -5,19 +5,13 @@ import type { LucideIcon } from "lucide-react";
 import { applySeo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { breadcrumbsFor, publicRoute } from "@shared/publicRoutes";
-import { GOAL_SURFACES, goalSurfaceOn } from "@/lib/goalSurfaces";
-import { GoalPolicyPage } from "@/pages/goal/policy/GoalPolicyPage";
+import { GoalPolicyPage, goalPolicyLine } from "@/pages/goal/policy/GoalPolicyPage";
 
 /**
- * Kit v4 legal/reading layout (app/src/components/legal-page.tsx) shared by
- * /terms, /privacy, /guidelines, /refunds, /cancellations, /shipping, /about,
- * /contact, /pricing and /support.
- *
- * Wordmark header with the legal nav, eyebrow + title, "Last updated", an
- * optional "The short version" card, then numbered sections with an
- * "On this page" rail on desktop. Reading pages scroll normally. The kit's
- * design-only draft banner is never rendered; a page that is genuinely
- * awaiting review passes `status="draft"` and shows an inline status instead.
+ * Shared reading-page props and SEO. Declared policy routes always use the
+ * released goal frame. The existing fallback remains for non-policy callers,
+ * including /support; they are owned by separate surfaces.
+ * A page awaiting review passes status="draft" and shows its inline status.
  */
 /** Founder approved publishing Terms and Refunds on Sep 23, 2026 (removes the Draft badge). */
 export const POLICIES_PUBLISHED = true;
@@ -130,9 +124,9 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
     // between policy screens inside the single-page app.
     if (canonicalPath) applySeo({ title: seoTitle, description: seoDescription, path: canonicalPath });
   }, [canonicalPath, seoDescription, seoTitle]);
-  // D-048-p3-policy: the goal frame, keyed by route - only the routes the
-  // `policy` surface owns (never /pricing or /support, which have their own rows).
-  if (canonicalPath && (GOAL_SURFACES.policy as readonly string[]).includes(canonicalPath) && goalSurfaceOn("policy")) {
+  // D-332: policy routes always use their published frame. The goal-line map
+  // owns these reading routes; non-policy callers keep their existing frame.
+  if (canonicalPath && goalPolicyLine(canonicalPath) !== undefined) {
     return <GoalPolicyPage path={canonicalPath} screen={screen} title={title} updated={updated} draft={status === "draft"} intro={intro} summary={summary} sections={sections} footnote={footnote} supportEmail={SUPPORT_EMAIL}>{children}</GoalPolicyPage>;
   }
   // The kit sets the closing full stop as the blue brand dot.
