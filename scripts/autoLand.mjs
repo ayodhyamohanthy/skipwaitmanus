@@ -13,6 +13,9 @@
 
 const PR_NUMBER = /\/pull\/([1-9][0-9]*)$/;
 
+/** A draft says its holder is not finished; it lands only once the claim is free (D-085: 2 hours quiet). */
+export const DRAFT_QUIET_HOURS = 2;
+
 /** The pull-request number of a board row's PR URL, or null. */
 export function prNumberOf(url) {
   const match = PR_NUMBER.exec(typeof url === "string" ? url : "");
@@ -33,7 +36,7 @@ export function autoLandCandidates({ rows, tasks, prCi }) {
     if (!number || !task || task.status === "done" || task.status === "owner") continue;
     const ci = prCi?.get?.(task.branch);
     if (ci?.state !== "green" || !/^[0-9a-f]{40}$/.test(ci.sha ?? "")) continue;
-    out.push({ id: row.id, number, branch: task.branch, sha: ci.sha });
+    out.push({ id: row.id, number, branch: task.branch, sha: ci.sha, quietHours: Number.isFinite(row.quietHours) ? row.quietHours : null });
   }
   return out;
 }
@@ -61,10 +64,20 @@ export async function runAutoLand(candidates, io) {
       if (pr.head?.ref !== c.branch) { results.push({ ...result, outcome: "skipped", detail: "head branch is not the task branch" }); continue; }
       if (pr.head?.sha !== c.sha) { results.push({ ...result, outcome: "skipped", detail: "head moved since CI went green" }); continue; }
       if (pr.mergeable_state === "dirty") { results.push({ ...result, outcome: "conflict", detail: "merge conflict with main; the holder merges main" }); continue; }
+      if (pr.draft && !(Number.isFinite(c.quietHours) && c.quietHours >= DRAFT_QUIET_HOURS)) {
+        results.push({ ...result, outcome: "skipped", detail: `draft and its holder was active under ${DRAFT_QUIET_HOURS} h ago` }); continue;
+      }
       const steps = [];
       if (pr.draft) { await io.markReady(pr.node_id); steps.push("ready"); }
       if (pr.mergeable_state === "behind") { await io.updateBranch(c.number, c.sha); steps.push("updated with main"); }
-      if (!pr.auto_merge) { await io.enableAutoMerge(pr.node_id); steps.push("auto-merge on"); }
+      if (!pr.auto_merge) {
+        try { await io.enableAutoMerge(pr.node_id); steps.push("auto-merge on"); }
+        catch (error) {
+          // Where GraphQL is unavailable, a non-draft PR already clean against main merges now over REST, same checks.
+          if (pr.draft || pr.mergeable_state !== "clean" || !io.mergeNow) throw error;
+          await io.mergeNow(c.number, c.sha); steps.push("merged");
+        }
+      }
       results.push({ ...result, outcome: steps.length ? "queued" : "already-queued", ...(steps.length ? { detail: steps.join(", ") } : {}) });
     } catch (error) {
       results.push({ ...result, outcome: "error", detail: error instanceof Error ? error.message : String(error) });

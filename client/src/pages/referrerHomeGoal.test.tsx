@@ -124,17 +124,17 @@ describe("Goal /referrer-home", () => {
     expect(screen.queryByRole("link", { name: "Become a referrer" })).toBeNull();
   });
 
-  it("shows inert sample referral-request rows without claiming a decline releases credit", async () => {
+  it("never shows sample rows: a verified referrer who has never reviewed sees the honest empty state (D-371)", async () => {
     stubHome({ fresh: [], neverReviewed: true });
     renderWithQuery(<ReferrerHome />);
-    expect(await screen.findByText("SAMPLE · NOT REAL REFERRAL REQUESTS")).toBeTruthy();
-    expect(screen.getAllByText("SAMPLE")).toHaveLength(2);
+    expect(await screen.findByTestId("goal-empty-state")).toBeTruthy();
+    expect(screen.queryByTestId("goal-referrer-sample-rows")).toBeNull();
+    expect(screen.queryByText("SAMPLE · NOT REAL REFERRAL REQUESTS")).toBeNull();
+    expect(screen.queryAllByText("SAMPLE")).toHaveLength(0);
+    expect(screen.queryByText(/Examples only/)).toBeNull();
+    expect(screen.queryByText(/A\. Sample|B\. Example/)).toBeNull();
     expect(screen.queryByRole("link", { name: /Sample/ })).toBeNull();
-    const sampleZone = screen.getByTestId("goal-referrer-sample-rows");
-    expect(sampleZone.querySelectorAll("a, button, [tabindex], [role='button']")).toHaveLength(0);
-    expect(sampleZone.querySelector("ul")?.getAttribute("aria-hidden")).toBe("true");
-    expect(sampleZone.textContent).toContain("Examples only; these rows do not count toward your capacity or private record.");
-    expect(sampleZone.textContent).not.toMatch(/credit|release|pass/i);
+    expect(document.body.textContent).not.toMatch(/NOT REAL/);
     expect(screen.getByText("Referral requests waiting").parentElement?.textContent).toBe("0Referral requests waiting");
     expect(screen.getByRole("progressbar").getAttribute("aria-valuetext")).toBe("3 of 3 remaining");
   });

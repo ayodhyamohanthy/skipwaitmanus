@@ -215,6 +215,7 @@ async function autoLandFrom({ doc, mainCi, openPrs, prCi, board }) {
     markReady: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){clientMutationId}}", { id }),
     updateBranch: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/update-branch`, { expected_head_sha: sha }),
     enableAutoMerge: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}", { id }),
+    mergeNow: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/merge`, { merge_method: "merge", sha }),
     log: line => console.log(line),
   });
 }

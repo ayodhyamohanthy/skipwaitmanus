@@ -615,13 +615,13 @@
       "tier": 2,
       "lane": "ops-reviewer",
       "branch": "agent/queue/ops-reviewer-qa-passwords",
-      "status": "todo",
-      "syncedTo": "D-366",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         ".github/workflows/reviewer-qa-passwords.yml"
       ],
-      "note": "D-366 (2), owner Nov 19: an agent session may run the reset and keep the plaintext only in its private storage. Build docs/plans/D-344-unblock.md row 6. Then a Claude session runs it with fresh hashes and gives the passwords to the owner for the agent secrets, never the repository (D-059)."
+      "note": "Workflow implementation delivered by #1236/ab4fc771d; required CI43908176336 and historical reset44709862016 passed. D-369/#1396 replaced direct hash inputs with protected repository-secret provisioning and confirm=reset dispatch to gated Deploy API. Current procedure: OPS-deploy-secrets-file.md section6. Do not rebuild or restore the old inputs. OPS-reviewer-credential-transport retains authorized provisioning, reset and same-release demo sign-in acceptance; LAUNCH QA remains separate. Docs-only reconciliation checked through D-371, no reset or secret mutation."
     },
     {
       "id": "PICKER-block-dedupe",
