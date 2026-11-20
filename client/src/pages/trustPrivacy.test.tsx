@@ -21,7 +21,8 @@ describe("TrustPrivacy", () => {
 
   it("explains private referral safeguards and links users to their account controls", () => {
     render(<TrustPrivacy />);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Privacy.");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Know your rights.");
+    expect(screen.getByText("Privacy", { selector: "p" })).toBeTruthy();
     expect(screen.getByText(/A private handoff, not a public marketplace\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     expect(screen.getByText(/Resumes and identities stay private/i)).toBeTruthy();
