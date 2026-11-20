@@ -30,7 +30,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
-  mayReport, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
+  mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderBoardSummary, renderPick } from "./nextTaskText.mjs";
 import { pathToFileURL } from "node:url";
@@ -498,7 +498,7 @@ async function main() {
   const args = argsOf(process.argv.slice(2));
   const date = new Date().toLocaleDateString("en-CA");
   if (args.verdict || args.fixed) {
-    const { doc, branches, openPrs } = await state();
+    const { doc, register, branches, openPrs } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
     const lockName = reviewLockOf(task), lock = branches.get(lockName);
     const stage = reviewStateOf(lock, task.id);
@@ -510,20 +510,26 @@ async function main() {
     if (args.verdict && !rerecord && (stage !== "in-review" || holder !== args.as)) fail(`only the reviewer holding ${lockName} records a verdict (it is ${stage}, held by ${holder ?? "nobody"})`);
     // D-344 (7): the fixer may re-record its own Fixed marker on a newer head (stage needs-review, its own Fixed last).
     const refreshFixed = args.fixed && stage === "needs-review" && holder === args.as && [...(lock?.markers ?? [])].reverse().find(m => m.id === task.id && m.verb !== "Heartbeat")?.verb === "Fixed";
-    if (args.fixed && !refreshFixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
-    if (args.fixed) requireSynced(doc, branches, args.as);
+    const packetHead = args.fixed ? packetFixHead({ task, branches, openPrs, claimant: args.as }) : null;
+    if (args.fixed && !packetHead && !refreshFixed && (stage !== "fixing" || holder !== args.as)) fail(`only the agent holding the fix claim on ${lockName} marks it fixed (it is ${stage}, held by ${holder ?? "nobody"})`);
+    if (args.fixed) {
+      requireSynced(doc, branches, args.as);
+      const stale = packetHead ? outOfSyncOf({ task }, register) : null;
+      if (stale) fail(`re-sync ${task.id} with ${stale} before recording Fixed`);
+    }
     const subject = args.verdict ? markerSubject("Verdict", task.id, args.as, args.verdict) : markerSubject("Fixed", task.id, args.as);
     // The body names the head reviewed: the tip of the task's branch on origin now, which the gate compares with the PR head.
     const architect = architectLockOf(task);
     const reviewedBranch = task.status === "architect" && onOrigin(architect) && openPrs?.has(architect) ? architect : task.branch;
     const reviewed = args.verdict ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to review`)) : null;
     // D-344 (7): a Fixed marker names the head it fixed, so the review gate can land it without a re-review.
-    const fixedAt = args.fixed ? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to mark fixed`)) : null;
+    if (packetHead && (reviewedBranch !== architect || tip(architect) !== packetHead)) fail(`${architect} moved; fetch and run again`);
+    const fixedAt = args.fixed ? (packetHead ?? (onOrigin(reviewedBranch) ? tip(reviewedBranch) : fail(`${reviewedBranch} is not on origin; there is no head to mark fixed`))) : null;
     const body = [reviewed ? `reviewed ${reviewed}` : null, fixedAt ? `fixed ${fixedAt}` : null, args.provenance ? `provenance ${args.provenance}` : null, args.execution ? `execution ${args.execution}` : null].filter(Boolean).join("\n");
     const history = [...(branches.get(reviewedBranch)?.markers ?? []), ...(lock?.markers ?? [])];
     if (args.provenance || history.some(m => markerReferences(m.body).external)) {
       if (!args.provenance || !args.execution) fail("external completion requires qualified route and execution IDs");
-      const head = reviewed || tip(task.branch);
+      const head = reviewed ?? fixedAt;
       const marker = { id: task.id, who: args.as, verb: args.verdict ? "Verdict" : "Fixed", verdict: args.verdict, reviewed, body };
       const trusted = loadTrustedProvenance(tryGit);
       const result = resolveTaskProvenance({ taskId: task.id, head, workMarkers: branches.get(reviewedBranch)?.markers ?? [], lockMarkers: [...(lock?.markers ?? []), marker], ...trusted, git: tryGit });
@@ -531,7 +537,8 @@ async function main() {
       const model = result.reviewers?.get(args.as);
       if (args.verdict && (!model || [...result.builders, ...result.fixers].includes(model))) fail("external reviewer also built or fixed this work");
     }
-    if (!pushMarker(lockName, tip(lockName), subject, body || undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    const reviewParent = packetHead ? lock.tipSha : tip(lockName);
+    if (!pushMarker(lockName, reviewParent, subject, body || undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
     console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}${fixedAt ? ` (fixed ${fixedAt})` : ""}`);
     if (fixedAt) console.log("The PR's review-gate result was computed before this marker: re-run its failed checks (or push a merge of main) so CI re-evaluates the gate on this head.");
     return;

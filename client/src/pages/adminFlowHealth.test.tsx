@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import AdminFlowHealth from "./AdminFlowHealth";
+import "./goal/admin-ops/GoalAdminFlowHealth";
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminFlowHealth /></QueryClientProvider>);
 
 const health = { funnel: { requestsCreated: 3, requestsClaimed: 2, decisionsRecorded: 1, waitingForCoverage: 1 }, coverageGaps: [{ companyDomain: "acme.com", waitingRequests: 1, verifiedCoverage: 0 }], instrumentation: { uploadedDocuments: 5, recordedFailures: 0 } };
 const revenue = { byProvider: [{ provider: "chargebee", currency: "INR", totalAmount: 118800, count: 12 }, { provider: "chargebee", currency: "USD", totalAmount: 3000, count: 2 }], totalsByCurrency: [{ currency: "INR", totalAmount: 118800, count: 12 }, { currency: "USD", totalAmount: 3000, count: 2 }], refundedTotalByCurrency: [{ currency: "INR", totalAmount: 9900, count: 1 }], recordedAt: "2026-09-02T00:00:00.000Z" };
@@ -23,7 +27,7 @@ describe("administrator flow health revenue section", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("renders per-currency revenue totals and provider breakdown", async () => {
-    render(<AdminFlowHealth />);
+    renderPage();
     await waitFor(() => expect(screen.getAllByText("₹1188").length).toBeGreaterThan(0));
     expect(screen.getAllByText("$30").length).toBeGreaterThan(0);
     expect(screen.getByText("INR settled")).toBeTruthy();
@@ -38,7 +42,7 @@ describe("administrator flow health revenue section", () => {
       if (url.includes("/api/admin/revenue")) return { ok: true, json: async () => ({ revenue: { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: "" } }) };
       return { ok: true, json: async () => ({ health }) };
     }));
-    render(<AdminFlowHealth />);
+    renderPage();
     await waitFor(() => expect(screen.getByText("No revenue recorded yet")).toBeTruthy());
   });
 });
@@ -70,7 +74,7 @@ describe("administrator flow-health baseline panel (D-018)", () => {
       if (String(input).includes("/api/admin/revenue")) return { ok: true, json: async () => ({ revenue: { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: "" } }) };
       return { ok: true, json: async () => ({ health, baseline }) };
     }));
-    render(<AdminFlowHealth />);
+    renderPage();
     await waitFor(() => expect(screen.getByText("Baseline")).toBeTruthy());
     // Weekly buckets, newest week first, with the week that had no asks kept visible.
     expect(screen.getByText("Week of")).toBeTruthy();
@@ -87,10 +91,10 @@ describe("administrator flow-health baseline panel (D-018)", () => {
     expect(screen.getByText("beta.com")).toBeTruthy();
     expect(screen.getByText(/Companies at or above 3 available referrers: 1\./)).toBeTruthy();
     // Subscribers by plan and the excluded operator domain.
-    expect(screen.getByText("momentum · 2")).toBeTruthy();
-    expect(screen.getByText("keep warm · 1")).toBeTruthy();
-    // The wordmark also says skipwait.me, so assert the chip is present rather than unique.
-    expect(screen.getAllByText("skipwait.me").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("momentum").parentElement?.textContent).toMatch(/^momentum\s+2$/);
+    expect(screen.getByText("keep warm").parentElement?.textContent).toMatch(/^keep warm\s+1$/);
+    // The excluded operator domain stays visible independently of the wordmark.
+    expect(screen.getByText("skipwait.me").closest("li")?.textContent).toBe("skipwait.me");
     // Data quality is named, never a bare number.
     expect(screen.getByText("Asks with no state-machine record")).toBeTruthy();
     expect(screen.getByText("Audit that ask on its next read.")).toBeTruthy();
@@ -101,7 +105,7 @@ describe("administrator flow-health baseline panel (D-018)", () => {
       if (String(input).includes("/api/admin/revenue")) return { ok: true, json: async () => ({ revenue: { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: "" } }) };
       return { ok: true, json: async () => ({ health }) };
     }));
-    render(<AdminFlowHealth />);
+    renderPage();
     await waitFor(() => expect(screen.getByText(/The baseline is unavailable in this session/)).toBeTruthy());
     expect(screen.queryByText("Week of")).toBeNull();
   });
@@ -112,7 +116,7 @@ describe("administrator flow-health baseline panel (D-018)", () => {
       return { ok: true, json: async () => ({ health, baseline: { ...baseline, subscribers: { ...baseline.subscribers, trialing } } }) };
     }));
     serve(0);
-    render(<AdminFlowHealth />);
+    renderPage();
     await waitFor(() => expect(screen.getByText("Paying subscribers")).toBeTruthy());
     expect(screen.getByText("Wallets on a paid plan.")).toBeTruthy();
     expect(screen.queryByText("In reverse trial")).toBeNull();
@@ -120,7 +124,7 @@ describe("administrator flow-health baseline panel (D-018)", () => {
     cleanup();
     // A trial wallet with no offer running is an anomaly the operator must see, never hide.
     serve(1);
-    render(<AdminFlowHealth />);
+    renderPage();
     await waitFor(() => expect(screen.getByText("In reverse trial")).toBeTruthy());
     expect(screen.getByText(/while the trial is not on offer \(D-051\): check how it started/)).toBeTruthy();
   });

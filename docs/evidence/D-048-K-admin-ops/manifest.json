@@ -1,0 +1,55 @@
+{
+  "webSha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+  "images": [
+    {
+      "file": "activity-1280.png",
+      "sha256": "950d3462a4cc7071888654c7bdc3f6cd94d733b908153beb74187fe0b2db0639",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "flow-health-1280.png",
+      "sha256": "4eb1ac8689ef4593b130201bb5894223767c5dec130b093b815f93179702e94c",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "schema-1280.png",
+      "sha256": "bba10fc16c1b74ce25f51a184280df847cd820e105188d36d69e9220741a39ec",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "partners-1280.png",
+      "sha256": "bec9e334473150c7948dc2a069a6856313c00d51320b70650ba7fe3c53acaa50",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "smoke-1280.png",
+      "sha256": "a5a6deda681356956f7e8deb6373dafbe67d95d5e18d2fadbffad1c86454daf4",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "activity-390.png",
+      "sha256": "adff35daaaac0eac064b95daaaceb8551cb541bf94fecdb6f489e3695ac8885d",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "flow-health-390.png",
+      "sha256": "272bf5cd1d28055936a9fbe656994854f98a7a3f66aaded0a435c89c06729a55",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "schema-390.png",
+      "sha256": "40bea099af25430075c9aa25a1aee652683f6ca15995cede79b3d6a80f4c7df5",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "partners-390.png",
+      "sha256": "5a94ca1eba8f6ccf859f48dc4df08b1da42669f7a7deef2d804ffc25da36983e",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    },
+    {
+      "file": "smoke-390.png",
+      "sha256": "8d721d52363642062788e676801f705c6e8e096eca6a9ce8b908f8be2325de68",
+      "nativeVisualInspection": "readable; no signed-out clipping"
+    }
+  ]
+}

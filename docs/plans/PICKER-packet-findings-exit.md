@@ -1,6 +1,6 @@
 # PICKER-packet-findings-exit (D-334)
 
-A Tier 1 packet that got a findings verdict can leave that stage again. Today it cannot: the picker sends every session back to write the packet, forever.
+A packet with review findings can leave the `needs-fix` state without another writer takeover. D-334 supplies the missing `--fixed` path; D-344 and D-352 govern what follows. If the current review gate accepts the bound fix, wait for required CI on that head without requesting another review.
 
 ## Evidence and scope
 
@@ -16,17 +16,16 @@ Measured on main `80aeba16`, Nov 14 2026.
 
 ## The change (decided under D-200; changeable)
 
-1. `--fixed` on an `architect`-status task whose review lock is at `needs-fix` is accepted from the **current holder of the architect lock**: the latest `Claim` or `Takeover` on `agent/architect/<slug>` for that task (`holderOf`). It pushes the ordinary `Fixed` marker on the review lock, so `reviewStateOf` returns `needs-review`. The existing `requireSynced` check runs first, exactly as for any `--fixed`.
-2. The `Fixed` marker puts that session in `fixers` (`scripts/nextTaskCore.mjs:675`), so `did(v, ["builders", "fixers"])` keeps it, and its model, out of the re-review (D-151). The reviewer who wrote the findings may re-review (DELEGATION §6).
-   For a packet the work branch is the architect lock (`scripts/nextTaskCore.mjs:653`), so `builders` already holds every writer and their models stay out of the review too (D-151, D-190). No exclusion changes.
-3. When the WRITE THE PACKET hand-out (`kind: "architect"`) goes to a task whose review lock is at `needs-fix`, the printed steps (`scripts/nextTaskText.mjs`) say so. They name the findings verdict's commit and tell the writer to address it on the architect lock, push, then run `node scripts/next-task.mjs --fixed --task <id> --as "<name>"`.
+1. `--fixed` accepts the current architect-lock writer of an open packet at `needs-fix`, not the reviewer who filed its findings. The branch must hold actual packet work. The existing local sync check and the D-202 decision freshness check run before publishing an ordinary `Fixed` marker bound to the observed packet head.
+2. Keep the gate's current acceptance rules. A gate-accepted fix waits for exact-head CI rather than replacing its marker with another review claim. If independent review is still owed, preserve the existing writer/fixer session exclusions (D-344 (1), D-352/D-353), and keep external provenance separate and unchanged.
+3. Both new and continuing WRITE THE PACKET hand-outs show the findings verdict's commit, tell the writer to fix the findings on the existing architect branch and push, and give the normal `--fixed` command with the exact session identity.
 
 ## Acceptance (red first)
 
 The new test file builds its state the way `scripts/nextTask.test.ts` does (marker branches as data, no network). It must fail on main `80aeba16` for the reasons above, then pass:
 
 - A1. Packet PR, gate-only red, review lock ends in `Verdict findings`, architect lock held by S. The `--fixed` authorization helper accepts S and refuses any other session, including the reviewer and a session with no architect claim.
-- A2. After a `Fixed` marker by S, `reviewStateOf` is `needs-review`. `pickNextTask` hands kind `review` with `packet: true` to an unrelated model, and skips S's model and every writer's model (the writer skip already holds today and must keep holding).
+- A2. After a `Fixed` marker by S, `reviewStateOf` is `needs-review`. If the current gate accepts it, gate-only red CI waits for re-evaluation, not another REVIEW or a writing takeover; green CI retains the existing landing route. When independent review is still owed, the existing route applies and excludes all writer/fixer sessions, not unrelated sessions of their model.
 - A3. Same state with no `Fixed` marker: the architect hand-out's text includes the findings commit and the `--fixed` command.
 - A4. Regression guards: an ordinary (non-architect) Tier 1 task at `needs-fix` still needs a `Fix claim` before `--fixed`. A packet at `in-review`, `passed` or `landing` refuses `--fixed`. `--fixed` with an out-of-sync task is still refused by `requireSynced`.
 - A5. `scripts/nextTask.test.ts` passes unchanged: no deleted or loosened assertion (GATE-test-integrity).
@@ -34,8 +33,8 @@ The new test file builds its state the way `scripts/nextTask.test.ts` does (mark
 ## Guardrails and handover
 
 - Tier 2, picker scripts only. It lands on green required CI with no separate review (D-200 (4)).
-- No change to `scripts/review-gate.mjs`, to CI workflows, to the verdict rules, to D-151/D-190 exclusions, to dependencies, or to any other stage's authorization. No marker is written by hand for #878 or any other task: the cure is this code, then the ordinary `--fixed`.
-- After it lands: whoever then holds `agent/architect/d089-request-inbox` (or the next session handed WRITE THE PACKET for it) runs `--fixed` on the current head. Then `D-089-request-inbox` goes to REVIEW by a model that neither wrote nor fixed the packet. Claude is excluded (Claude Code · 0cb9 fixed it). Record the actual hand-out in this packet's Status as read-only proof (`node scripts/next-task.mjs --as "<unrelated model>"`).
+- No change to `scripts/review-gate.mjs`, CI workflows, verdict rules, review exclusions, dependencies, or other stages' authorization. No live marker is written to demonstrate the repair.
+- Historical #878 has since merged at `8ca3b6a0`. Use an isolated packet fixture for verification. Do not re-open or re-mark #878.
 
 ## User and product effect
 
@@ -44,3 +43,6 @@ None directly: this changes how agents route work. Indirectly, the employee requ
 ## Status
 
 - Nov 14 2026, registered by Claude Code · 0cb9 (D-334). Not started.
+- PICKER-packet-findings-exit: in progress — GPT-6.1 Sol · f734 — branch `agent/queue/picker-packet-findings-exit`, claim `4ece1155`, current-main integration `538e8f7a` (`053e8a72`). Prior registration #1192 is merged; no implementation PR was found. The historical packet #878 is already merged (`8ca3b6a0`), so verify the reusable state transition with isolated fixtures; never write a marker for #878.
+- PICKER-packet-findings-exit: done on merge — source `92a629f6`, tested integration `efe1cae91` on main `a61d38ed0`. Read `BRIEF.md`, `AGENTS.md`, `BUILD_CONTINUITY.md`, the prior registration and this packet, and reconciled D-334 with D-202, D-344, D-352 and D-353. The newer D-367 pricing ruling does not affect these picker paths. Faster packet handoffs help ship referral improvements without repeated takeovers; no product runtime changed.
+- Red proof: the isolated suite failed 4 of 10 tests before the repair. Green proof: `pnpm exec vitest run scripts/nextTaskPacketFindingsExit.test.ts scripts/nextTaskPacketPassRed.test.ts scripts/nextTask.test.ts --maxWorkers=2` passed all 197 tests on the integrated source. Scope check passed. Existing picker tests, CI, review gate and #878 were not edited. Required CI on the PR head still governs landing.

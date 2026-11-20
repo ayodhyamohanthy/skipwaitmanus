@@ -1,0 +1,110 @@
+{
+  "task": "D-048-K-inplace",
+  "checkedHead": "83fe7c261c2aae4118d5fc7105929d20482de7f9",
+  "baseline": "4af170fbbb0a506916e2b03ddad9583c434e1f5c",
+  "candidateSource": "6f3b28cc6: two unused components deleted; captured bundles were built before that commit while HEAD was 4af170fbb",
+  "sourceHashes": [
+    {
+      "path": "client/src/pages/MyRequests.tsx",
+      "sha256": "32cc91ecb049aec25be9d281de0b4d4af6dd5263ad6066edc0c287e807b9091f",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/pages/MyCompanyInbox.tsx",
+      "sha256": "8e0c25254cd2dcd9aa1b4765ec23fc4edc49ed4e3ee9380a736c263b7339e0aa",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/pages/Ask.tsx",
+      "sha256": "a64836b37fb1f794b40c58f297f4d3061ad1fa5f3ba6b18ed568432b2ff741cb",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/pages/Explore.tsx",
+      "sha256": "914c45d74f42768dba6f407f4909ab91520e24cb6b48d09388a22680ef330958",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/pages/ExploreCompany.tsx",
+      "sha256": "097d0f30dd4498947e5cf670213a1b951a497a163c81ed6c0fd6381619bb757c",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/pages/goal/seeker-small/GoalLanded.tsx",
+      "sha256": "93722bfaf1719768d8f5fe1e2efcbb33a6a1e40d0cc300b82869bec6c4c52836",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/pages/CompanyClaim.tsx",
+      "sha256": "8af093bdec66cb203acb592a6d4a235c642a77b0b56aced90e45dacccf262189",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/components/requests/RequestStates.tsx",
+      "sha256": "79519c9dcff34307911415a6a282d0b5eebcbbcc6ecc14743279f17159c8ef2d",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/components/requests/requestModel.ts",
+      "sha256": "6bc191010af00fb4f6cd181ddbb1f79ef42df32f3c3ef58fd87d151026030d3e",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/components/requests/requestsApi.ts",
+      "sha256": "343fe5212680677ee045da7107c277bf304ecdbd30bdce452f2cd57935222184",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/components/explore/CompanyResponseSignal.tsx",
+      "sha256": "8822c8f391181ac387a324c5ba2c30aa0e2cc7167b72e0ad2092320c3ddf7e30",
+      "unchangedFromBaseline": true
+    },
+    {
+      "path": "client/src/components/explore/companyResponseSignal.test.tsx",
+      "sha256": "9aeaab5d070c2f50a01ec71a6cf3037066a55d5266895a4bd6eab3cdff99a5f9",
+      "unchangedFromBaseline": true
+    }
+  ],
+  "generatedBuild": {
+    "rawBytesIdentical": false,
+    "javascriptChunks": {
+      "before": 250,
+      "after": 250,
+      "identicalAfterAssetFilenameNormalization": true
+    },
+    "serverBundleIdentical": true,
+    "css": {
+      "beforeBytes": 246891,
+      "afterBytes": 246615,
+      "removedRules": [
+        ".rounded-r-full{border-top-right-radius:3.40282e38px;border-bottom-right-radius:3.40282e38px}",
+        ".hover\\:border-foreground:hover,.hover\\:border-foreground\\/40:hover{border-color:var(--foreground)}",
+        ".hover\\:border-foreground\\/40:hover{border-color:color-mix(in oklab,var(--foreground)40%,transparent)}"
+      ],
+      "addedRules": [
+        ".hover\\:border-foreground:hover{border-color:var(--foreground)}"
+      ]
+    }
+  },
+  "browser": {
+    "synthetic": true,
+    "productionRequests": 0,
+    "pairs": 16,
+    "byteIdenticalPairs": 16,
+    "allTextAndApiCountsEqual": true,
+    "apiOrderingMatches": 11,
+    "overflowOrPageErrors": 0,
+    "inspected": [
+      "after/company-390.png",
+      "after/requests-populated-1280.png",
+      "after/landed-error-390.png"
+    ]
+  },
+  "limits": [
+    "Local synthetic fixtures, not canonical production or authentication acceptance.",
+    "Initial harness attempts lacked work-items/company schema fields and selected premature loading headings; those incomplete captures were excluded and retained only in local scratch.",
+    "Concurrent React Query launch ordering differs; method/path counts and all rendered text match. No business write was performed.",
+    "RequestStates remains imported by GoalLanded and still renders its existing Kit error state. CompanyClaim retains the response-signal view and all seven tests. This row does not remove the entire Kit layer.",
+    "The first broad focused command timed out without results; a narrower 12-test run passed. Full-local suite and exact-head CI are separate evidence."
+  ]
+}
