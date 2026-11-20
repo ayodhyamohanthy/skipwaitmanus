@@ -7,7 +7,7 @@ import { GoalAppShell } from "./goal/GoalAppShell";
 import GoalLandingV9 from "@/pages/GoalLandingV9";
 
 const { state } = vi.hoisted(() => ({
-  state: { path: "/requests", signedIn: false },
+  state: { path: "/requests", signedIn: false, visibleLanguages: 1 },
 }));
 
 vi.mock("@/_core/auth", () => ({
@@ -21,12 +21,13 @@ vi.mock("@/components/goal/GoalLanguageConsent", () => ({
   GoalLanguageConsent: () => <div data-testid="language-consent" />,
 }));
 vi.mock("@/components/goal/GoalLanguagePicker", () => ({
-  GoalLanguagePicker: ({ variant }: { variant: string }) => <div data-testid="language-picker" data-variant={variant} />,
+  GoalLanguagePicker: ({ variant }: { variant: string }) => state.visibleLanguages < 2 ? null : <div data-testid="language-picker" data-variant={variant} />,
 }));
 vi.mock("@/components/goal/GoalShell", () => ({
-  GoalShell: ({ account, children }: { account: { menu?: React.ReactNode }; children: React.ReactNode }) => (
+  GoalShell: ({ account, languagePicker, children }: { account: { menu?: React.ReactNode }; languagePicker?: React.ReactNode; children: React.ReactNode }) => (
     <div data-testid="goal-shell">
       <div data-testid="account-slot">{account.menu}</div>
+      <header>{languagePicker}</header>
       <main>{children}</main>
     </div>
   ),
@@ -44,15 +45,20 @@ afterEach(() => {
   cleanup();
   state.path = "/requests";
   state.signedIn = false;
+  state.visibleLanguages = 1;
 });
 
 describe("D-093 shell language mounts", () => {
-  it("places the signed-out bar picker beside the existing Sign in link", () => {
-    render(<AppShell><p>App content</p></AppShell>);
+  it("places the signed-out picker in the top bar and keeps the existing Sign in link", () => {
+    const renderShell = () => render(<AppShell><p>App content</p></AppShell>);
+    const { rerender } = renderShell();
 
     const account = screen.getByTestId("account-slot");
-    expect(account.querySelector('[data-testid="language-picker"]')?.getAttribute("data-variant")).toBe("bar");
+    expect(screen.queryByTestId("language-picker")).toBeNull();
     expect(account.querySelector('a[href="/sign-in"]')?.textContent).toBe("Sign in");
+    state.visibleLanguages = 2;
+    rerender(<AppShell><p>App content</p></AppShell>);
+    expect(screen.getByRole("banner").querySelector('[data-testid="language-picker"]')?.getAttribute("data-variant")).toBe("bar");
   });
 
   it("places consent before every AppShell-wrapped page and does not offer the picker when signed in", () => {

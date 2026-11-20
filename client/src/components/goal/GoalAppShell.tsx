@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useAuth, useUser } from "@/_core/auth";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
+import { GoalLanguageConsent } from "./GoalLanguageConsent";
 import { GoalShell } from "./GoalShell";
 import type { GoalNavId } from "./nav";
 
@@ -43,6 +44,7 @@ export function GoalAppShell({ active, pageTitle, drawer, children }: { active: 
       alertsHref="/alerts"
       drawer={drawer}
     >
+      <GoalLanguageConsent />
       {children}
     </GoalShell>
   );
