@@ -4,7 +4,7 @@
 // employerBilling.goal.test.tsx; this entrypoint test prevents the Kit fallback
 // from becoming reachable again.
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import EmployerBilling from "../../EmployerBilling";
