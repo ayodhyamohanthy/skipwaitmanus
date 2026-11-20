@@ -105,7 +105,7 @@ const fillLink = (drawer: HTMLElement, value: string) => {
 };
 const previewCalls = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url, init]) => String(url) === "/api/job-link/preview" && (init as RequestInit | undefined)?.method === "POST");
 const previewUrl = (fetchMock: ReturnType<typeof vi.fn>, index = 0) => String((JSON.parse(String((previewCalls(fetchMock)[index][1] as RequestInit).body)) as { url: string }).url);
-const sendButton = (drawer: HTMLElement) => within(drawer).getByRole("button", { name: "Send ask" });
+const sendButton = (drawer: HTMLElement) => within(drawer).getByRole("button", { name: "Send referral request" });
 
 beforeEach(() => {
   authState.isLoaded = true;
