@@ -6930,8 +6930,8 @@
       "tier": 2,
       "lane": "i18n-menu",
       "branch": "agent/queue/d093-menu",
-      "status": "todo",
-      "syncedTo": "D-333",
+      "status": "done",
+      "syncedTo": "D-368",
       "epic": "D-093-language",
       "dependsOn": [
         "D-093.picker",

@@ -35,4 +35,4 @@ pnpm build
 node docs/evidence/D-093-menu/capture.mjs ../language-menu-baseline .
 ```
 
-The harness rebuilds its isolated fixture and takes fresh screenshots. The candidate's normal production build must be completed first. The picker prerequisite is merged as PR #1130 but its queue row still says `todo`; this menu remains draft/build-ahead until that lane records completed acceptance. No language beyond English is enabled by this task.
+The harness rebuilds its isolated fixture and takes fresh screenshots. The candidate's normal production build must be completed first. The earlier draft-only precaution was superseded after verifying protected-merged picker PR #1130, its green exact-head checks and the existing queue's merged-dependency completion rule. Its raw `todo` stamp is metadata drift, not a separate activation approval. The parent language release/translation holds remain unchanged. No language beyond English is enabled by this task.
