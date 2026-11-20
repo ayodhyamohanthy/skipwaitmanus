@@ -1,6 +1,6 @@
 # PROCESS-no-review-no-model: green CI lands everything, no rule reads a model name (D-370)
 
-Status: todo. Row `PROCESS-no-review-no-model`, branch `agent/queue/process-no-review-no-model`, decision D-370 (owner, Nov 20 2026).
+Status: in review (PR open). Row `PROCESS-no-review-no-model`, branch `agent/queue/process-no-review-no-model`, decision D-370 (owner, Nov 20 2026).
 
 ## 1. What changes
 
@@ -8,8 +8,8 @@ Status: todo. Row `PROCESS-no-review-no-model`, branch `agent/queue/process-no-r
 - `scripts/nextTaskCore.mjs`: `needsReview` is false for every pull request, so a green PR is handed out as a landing, never a review. Any session may report on any task. Any session gets the CEO review when nothing else is eligible, after build-ahead. The external-provenance hand-out holds (D-311/D-324) stop.
 - `scripts/next-task.mjs`: the external-route claim and reclaim refusals stop. `--provenance` stays optional and is still recorded when given.
 - `scripts/scope-check.mjs`: every session gets the out-of-`owns` notice D-359 gave GPT and Claude names.
-- One switch file, `scripts/sessionPolicy.mjs`, holds `INDEPENDENT_REVIEW_REQUIRED = false` and `MODEL_ROUTES_ENFORCED = false`. Turning either back on needs the owner's word.
-- Tests: new focused tests pin the D-370 behaviour. Old tests that assert the retired rule are updated, and the PR body carries the "Ported assertions" table the test-integrity gate asks for.
+- One switch file, `scripts/sessionPolicy.mjs`, sets `INDEPENDENT_REVIEW_REQUIRED` and `MODEL_ROUTES_ENFORCED`. Both are false unless `SKIPWAIT_LEGACY_REVIEW_RULES=on`, which only `vitest.config.ts` sets. Turning the rules back on anywhere else needs the owner's word.
+- Tests: `scripts/sessionPolicy.test.ts` pins the D-370 default by running the real modules with the variable unset. Before the change, all 6 of its tests failed on main. The 120 existing picker, review-gate and scope-check tests keep covering the switched-on path unchanged, so no assertion is removed.
 
 ## 2. What does not change
 
