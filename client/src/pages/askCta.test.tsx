@@ -97,21 +97,25 @@ describe("Ask CTA next step and blocked recovery", () => {
     expect(screen.getByTestId("ask-send-guidance").textContent).toContain("Write your reasons first");
     expect(posts(fetchMock)).toHaveLength(0);
     fillReasons(); await waitFor(()=>expect(screen.queryByTestId("ask-send-guidance")).toBeNull());
-    fireEvent.click(screen.getByRole("button",{name:"Send ask"}));
+    fireEvent.click(screen.getByRole("button",{name:"Send referral request"}));
     expect(await screen.findByText("Ask sent to Wipro.")).toBeTruthy(); expect(posts(fetchMock)).toHaveLength(1);
   });
   it("shows offline guidance and never posts", async () => {
     Object.defineProperty(navigator,"onLine",{configurable:true,value:false});
     const fetchMock=stub();renderPage();fillLink();fillReasons();
     expect(await screen.findByTestId("ask-send-guidance")).toBeTruthy();expect(screen.getByTestId("ask-send-guidance").textContent).toContain("offline");
-    fireEvent.click(screen.getByRole("button",{name:"Send ask"}));expect(posts(fetchMock)).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button",{name:"Send referral request"}));expect(posts(fetchMock)).toHaveLength(0);
     Object.defineProperty(navigator,"onLine",{configurable:true,value:true});
   });
-  it("keeps no-credit sends blocked and gives a real recovery link", async () => {
-    const original=stub(); const fetchMock=vi.fn(async(input:string,init?:RequestInit)=>String(input).startsWith("/api/credits/summary")?json(200,{summary:{totalAvailable:0}}):original(input,init));vi.stubGlobal("fetch",fetchMock);
+  it("preserves a zero-balance draft and the server's recovery message without revealing availability (D-176)", async () => {
+    const original=stub(); const fetchMock=vi.fn(async(input:string,init?:RequestInit)=>String(input).startsWith("/api/credits/summary")?json(200,{summary:{totalAvailable:0}}):String(input)==="/api/company-referrals"&&init?.method==="POST"?json(400,{error:"Your balance is too low. View referral options in Plans."}):original(input,init));vi.stubGlobal("fetch",fetchMock);
     renderPage();fillLink();fillReasons();
-    const recovery=await screen.findByRole("link",{name:"View referral options"});expect(recovery.getAttribute("href")).toBe("/plans");
-    expect(screen.getByTestId("ask-send-guidance").textContent).toContain("Your balance is too low to send this referral request.");
-    fireEvent.click(screen.getByRole("button",{name:"Send ask"}));expect(posts(fetchMock)).toHaveLength(0);
+    await screen.findByText("ada-resume.pdf");
+    expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it");
+    fireEvent.click(screen.getByRole("button",{name:"Send referral request"}));
+    expect((await screen.findByRole("alert")).textContent).toBe("Your balance is too low. View referral options in Plans.");
+    expect(posts(fetchMock)).toHaveLength(1);
+    expect(screen.getByLabelText("Job link")).toHaveProperty("value","https://careers.wipro.com/jobs/1234567-product-designer");
+    expect(screen.queryByText("Ask sent to Wipro.")).toBeNull();
   });
 });
