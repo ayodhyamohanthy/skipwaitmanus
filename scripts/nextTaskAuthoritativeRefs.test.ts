@@ -34,7 +34,7 @@ function fixture(mainOnly = true) {
   git("add", "docs"); git("commit", "-m", "fixture"); git("push", "-u", "origin", "main");
   const head = git("rev-parse", "HEAD");
   const marker = (ref: string, subject: string, parent = head, old = false) => {
-    const sha = execFileSync("git", ["commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject], {
+    const sha = execFileSync("git", ["commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject, "-m", `Fixture source ref: ${ref}`], {
       cwd: work, encoding: "utf8", stdio: "pipe", env: { ...process.env,
         ...(old ? { GIT_AUTHOR_DATE: "2020-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2020-01-01T00:00:00Z" } : {}) },
     }).trim();

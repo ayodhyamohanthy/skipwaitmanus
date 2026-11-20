@@ -180,3 +180,12 @@ findings and ran no tests; no independent-review dependency is introduced.
 Source-head CI `44783339644` was cancelled when the newer integration was
 pushed, not passed. Final status commit gets fresh required CI. This is a
 tooling-only change, so no new product deployment is requested or claimed.
+
+CI `44784254683` on `aa6ccc43b`: compiler, production build, end-to-end
+journeys and shards 1/2 pass. Shard 3 found one new-test setup defect: rival
+and picker heartbeat commits could be byte-identical within the same
+second, so no rejected push occurred. Fixture markers now include their
+source ref in the body, making the competing commit distinct regardless
+of clock speed. Parent/retry-count assertions are unchanged. The isolated
+rejected-heartbeat case passes after correction; no runtime change or test
+weakening. Fresh composed-head required CI remains pending.
