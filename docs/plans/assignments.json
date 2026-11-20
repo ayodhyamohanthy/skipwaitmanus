@@ -6547,11 +6547,11 @@
       "lane": "security-recon",
       "branch": "agent/queue/d100-provider-recon",
       "status": "todo",
-      "syncedTo": "D-366",
+      "syncedTo": "D-370",
       "dependsOn": [
         "REL-webhook-auth-alarm"
       ],
-      "note": "D-223 subtask of D-100. Writes nothing; never adds a gateway key. Oct 27: waits for REL-webhook-auth-alarm, which ranks higher and also edits server/dailyMoneyCheck.ts. Nov 19 D-200/D-344/D-353 execution ruling: current head40595a6c is gate-only red because landing documentation and its revert followed Fixed headfeab2fba; quiet Land claim4bdf3667 blocks the ordinary fix-stage refresh. PICKER-stale-fixed-landing is registered for positive shared-gate/quiet-lease recovery. No unconditional dependency is added: normally authorized current-head acceptance may still clear the gate. Preserve the H1 repair and its limitations; no manual marker, product verdict, consumer landing or reconciliation enablement is supplied by the ruling. PROVIDER_RECON_ENABLED remains false.",
+      "note": "D-223 subtask of D-100. Read-only provider comparison; never adds a gateway key or changes money. D-370 supersedes the earlier independent-review, Fixed/landing-marker and model-route restrictions; integrate current main and land only through protected green required CI. Preserve the H1 repair: persisted pack fulfillments and actual-paid activity evidence, bounded reads, unknown invoices counted/skipped, employer/gift/subscription invoice coverage absent and billing-site isolation unverified. PROVIDER_RECON_ENABLED remains false. Current checkpoint18de34f38 passed full required CI44770945638; latest-main composition witha4e93b796 passed175 focused tests, check and build. Final-head CI and exact release verification are still required; status stays todo until those complete. Packet status records incomplete/red local full-run evidence and passing isolated reruns. Existing dependency, lane, position and owns are unchanged.",
       "epic": "D-100",
       "owns": [
         "server/chargebeeAccountApi.ts",
