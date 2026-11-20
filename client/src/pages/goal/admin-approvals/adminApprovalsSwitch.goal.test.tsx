@@ -1,20 +1,19 @@
 // @vitest-environment jsdom
-// D-048-p3-admin-approvals switches (D-048-admin.md §3): /admin/approvals and
-// /admin/approvals/:kind/:id render the goal page only when
-// goalSurfaceOn("admin-approvals") is true; with the flag off both kit pages
-// stay untouched (adminApprovalQueue.test.tsx and adminApprovalRecord.test.tsx
-// pin the kit behaviour). One switch per page file, the goal implementation
-// under pages/goal/admin-approvals (D-048 split method).
+// D-048-K-admin-approvals: stable lazy route exports render the released goal
+// pages without a legacy body or a surface switch.
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminApprovalQueue from "../../AdminApprovalQueue";
 import AdminApprovalRecord from "../../AdminApprovalRecord";
+// Preload real chunks; the cases mount the real lazy entrypoints.
+import "./GoalAdminApprovalQueue";
+import "./GoalAdminApprovalRecord";
 
-const { flag } = vi.hoisted(() => ({ flag: { on: false, asked: [] as string[] } }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isLoaded: true, isSignedIn: false, getToken: async () => null }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: false, getToken: async () => null, openSignIn: vi.fn() }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("wouter", () => ({
@@ -25,27 +24,32 @@ vi.mock("wouter", () => ({
 }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = false; flag.asked = []; });
+beforeEach(() => { vi.stubEnv("VITE_GOAL_SURFACES", ""); vi.stubGlobal("fetch", vi.fn()); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-describe("admin-approvals switches (D-048-p3-admin-approvals)", () => {
+describe("admin-approvals retirement (D-048-K-admin-approvals)", () => {
   it.each([
     ["/admin/approvals", AdminApprovalQueue] as const,
     ["/admin/approvals/:kind/:id", AdminApprovalRecord] as const,
-  ])("%s renders the goal page when the goal flag is on", async (_route, Page) => {
-    flag.on = true;
+  ])("%s renders the goal page without a surface override", async (_route, Page) => {
     const { container } = render(<Page />);
     expect(await screen.findByRole("heading", { level: 1, name: "Decide this approval." })).toBeTruthy();
     expect(container.querySelector("[data-goal-page]")).toBeTruthy();
-    expect(flag.asked).toContain("admin-approvals");
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it.each([
-    ["/admin/approvals", AdminApprovalQueue, "Administrator approval queue"] as const,
-    ["/admin/approvals/:kind/:id", AdminApprovalRecord, "Administrator record"] as const,
-  ])("%s keeps the kit page when the goal flag is off", async (_route, Page, kitHeading) => {
-    const { container } = render(<Page />);
-    expect(await screen.findByRole("heading", { level: 1, name: kitHeading })).toBeTruthy();
-    await waitFor(() => expect(container.querySelector("[data-goal-page]")).toBeNull());
-    expect(flag.asked).toContain("admin-approvals");
+    ["AdminApprovalQueue.tsx", "GoalAdminApprovalQueue"] as const,
+    ["AdminApprovalRecord.tsx", "GoalAdminApprovalRecord"] as const,
+  ])("%s contains only the lazy goal route adapter", (file, goal) => {
+    const source = readFileSync(resolve(process.cwd(), "client/src/pages", file), "utf8");
+    expect(source).toContain(`export default function ${file.replace(".tsx", "")}()`);
+    expect(source).toContain(`lazy(() => import("./goal/admin-approvals/${goal}"))`);
+    expect(source).toContain("<Suspense fallback={null}>");
+    expect(source).not.toContain("goalSurfaceOn");
+    expect(source).not.toContain("@/_core/auth");
+    // The reverse boundary scans test text too; this is an assertion, not an import.
+    expect(source).not.toContain(["@", "components", "kit"].join("/"));
+    expect(source).not.toContain("useState");
   });
 });
