@@ -152,6 +152,8 @@ In progress — GPT-6.1 Sol · a25f — `agent/queue/d048-k-policy`, takeover `4
 
 Red-first local reproduction: `LANG=en_US.UTF-8 pnpm vitest run client/src/pages/trustPrivacy.test.tsx` fails one of three tests because the retired Kit H1 `Privacy.` is now the already released `Know your rights.`. Port that presentation expectation to the goal H1 plus the retained `Privacy` page label; all processor, privacy, account-control, disclosure and anchor assertions remain unchanged. No legal/source text, API, auth, schema, dependency or sales behavior changes. Complete current-head focused checks and 1280/390 parity before requesting landing.
 
+Repair `1d5ce2e03` passes 47 focused tests in six files, TypeScript and production build. The unchanged [capture generator and receipt](../../design/goal-ui/captures/policy/retirement-d859/README.md#november-20-completion-of-local-visual-evidence) now prove 22/22 identical before/after pairs at 1280 and 390, zero differing pixels, unchanged legal/data/goal hashes, text, links and API behavior, no overflow or page errors. Native inspection covers desktop privacy, mobile contact and a mobile guide. Token/migration/deploy audits and branch-aware scope pass. Full local suite and final-head CI are not yet complete. Sentry remains UNVERIFIED: no token/tool is configured and the read-only browser query redirects to login. Keep #1354 draft; canonical production acceptance and Sentry readback remain required, with no new owner hold or legal change inferred from this session's access gap.
+
 Each `D-048-K-<surface>` depends on the row that released (or will release) the surface. Soak start is that row's landing.
 
 | Row | Surface ids | Built by | Released by | Tier |
