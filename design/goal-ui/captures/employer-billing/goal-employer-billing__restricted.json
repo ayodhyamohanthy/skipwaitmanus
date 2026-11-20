@@ -1,0 +1,57 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "account": {
+          "id": 7,
+          "companyName": "Northwind Robotics",
+          "billingEmail": "hire@northwind.example",
+          "credits": 8,
+          "budgetMonthlyUsdCents": 5000,
+          "approvalStatus": "pending",
+          "decisionNote": "Employer access is under review"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/spend-history",
+      "match": "prefix",
+      "status": 403,
+      "body": {
+        "error": "Forbidden"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/employer/unlock-credits/purchase",
+      "match": "prefix",
+      "status": 200,
+      "body": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Employer tools, including top-ups, are closed"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 // Referrer data boundary for /referrer-home, /referrer-setup and /invite.
-// Parses the live REST payloads with Zod at the edge and derives the kit v4
-// referrer-home view from them. Derivations are pure so the honesty rules
+// Parses the live REST payloads with Zod and derives the referrer-home view.
+// Derivations are pure so the honesty rules
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
 import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import { impactCardPayloadSchema, type ImpactCardPayload } from "@shared/shareIm
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { referrerThankYouWallSchema, type ReferrerThankYouWall } from "@shared/landedJourney";
 import { readApiJson } from "@/lib/apiResponse";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
@@ -54,7 +55,8 @@ export const referrerPreferencesSchema = z.object({
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
 /** Verified work-email access (shared/referrerAccess.ts); companyName/companyInitials come from the server company directory. */
-export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null };
+/** `codeRequired`: verified, but this session needs the in-session work-email step-up before referrer actions (D-057). */
+export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null; codeRequired?: boolean };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
 export type ReferrerImpact = z.infer<typeof impactSchema>["summary"];
@@ -81,6 +83,8 @@ async function getJson<T>(path: string, getToken: TokenSource, schema: z.ZodType
   const token = await getToken();
   const response = await fetch(path, { credentials: "include", headers: authHeaders(token) });
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
+  // D-057: a referrer read refused for this session re-checks the verdict, so the page shows the step-up.
+  if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
   if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new Error(fallback);
@@ -96,6 +100,7 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
   const token = await getToken();
   const response = await fetch(path, { method, credentials: "include", headers: { "Content-Type": "application/json", ...authHeaders(token) }, body: JSON.stringify(body) });
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
+  if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
   if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new Error(fallback);
@@ -105,7 +110,7 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
 /** The server's verified-referrer verdict, judged by the one shared predicate. A failed or malformed check throws; it never reads as "not verified". */
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
   const access = await getJson(REFERRER_ACCESS_PATH, getToken, referrerAccessResponseSchema, "We could not check your work-email verification.");
-  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials };
+  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials, ...(access.codeRequired ? { codeRequired: true } : {}) };
 }
 
 export async function fetchReferrerPreferences(getToken: TokenSource): Promise<ReferrerPreferences> {
@@ -218,13 +223,6 @@ export async function fetchProfileHandle(getToken: TokenSource): Promise<string 
 /** The verified company's directory name and initials ("Wipro", "W"); the raw domain otherwise. */
 export function companyIdentity(access: Pick<CompanyAccess, "domain" | "companyName" | "companyInitials">): CompanyIdentity {
   return companyIdentityOf({ companyDomain: access.domain, companyName: access.companyName, companyInitials: access.companyInitials });
-}
-
-/** Greeting for the viewer's local hour, so the heading never says evening at breakfast. */
-export function greetingFor(hour: number): string {
-  if (hour >= 5 && hour < 12) return "Good morning";
-  if (hour >= 12 && hour < 17) return "Good afternoon";
-  return "Good evening";
 }
 
 function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt" | "waitingForCoverage" | "coverageVisibleAt">): number | null {

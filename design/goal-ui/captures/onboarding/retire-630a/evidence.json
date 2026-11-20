@@ -1,0 +1,114 @@
+{
+  "task": "D-048-K-onboarding",
+  "session": "GPT-6.1 Sol · 630a",
+  "date": "2026-11-18",
+  "release": "d6dd9c66",
+  "baseMain": "b63ea2e34971f6710b2998c1765c7bd0372e3271",
+  "beforeEntrypointCommit": "d3ed176e377fa1a644dcc95b56ece2b12b5b0ec5",
+  "browser": "Chromium, managed headless",
+  "origin": "http://127.0.0.1:4644",
+  "syntheticApiFixtures": true,
+  "liveSignedInAcceptance": false,
+  "goalSourceSha256": "d0fb156c0ad5fb905b44981e1b728e389d0df9f8f96d0d8cfe861fe0f6e1557e",
+  "sharedStateSha256": "a0f4d7b04a7b9fd7996cbcc0e2254d115e8b7a08d89a9baa4217a075f7612a7e",
+  "pageErrors": [],
+  "interaction": {
+    "selectedRoleToResume": true,
+    "resumePickerPresent": true
+  },
+  "nativeVisualInspection": [
+    "after-roles-1280.png",
+    "after-roles-390.png",
+    "after-ready-390.png"
+  ],
+  "pairs": [
+    {
+      "width": 1280,
+      "height": 900,
+      "scenario": "roles",
+      "before": "before-roles-1280.png",
+      "after": "after-roles-1280.png",
+      "byteIdentical": true,
+      "beforeSha256": "db8721285e744f2ee3f9afde88bf6ba092d6f6a3e54548f71e73734ff838e00e",
+      "afterSha256": "db8721285e744f2ee3f9afde88bf6ba092d6f6a3e54548f71e73734ff838e00e",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "scenario": "resume",
+      "before": "before-resume-1280.png",
+      "after": "after-resume-1280.png",
+      "byteIdentical": true,
+      "beforeSha256": "3cd8e7edd8821506a7d605f02a30a7f931199d0a1a29c4091d44ab62ebe20133",
+      "afterSha256": "3cd8e7edd8821506a7d605f02a30a7f931199d0a1a29c4091d44ab62ebe20133",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "scenario": "ready",
+      "before": "before-ready-1280.png",
+      "after": "after-ready-1280.png",
+      "byteIdentical": true,
+      "beforeSha256": "e4c373d318faff4010646acdc41cef715f68cd6333771e5219d665128be4b869",
+      "afterSha256": "e4c373d318faff4010646acdc41cef715f68cd6333771e5219d665128be4b869",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "scenario": "signed-out",
+      "before": "before-signed-out-1280.png",
+      "after": "after-signed-out-1280.png",
+      "byteIdentical": true,
+      "beforeSha256": "fa1f12dec25a39dc57d8acbbf19aff1f00474f7c0d5aa5e953f9383084f04c33",
+      "afterSha256": "fa1f12dec25a39dc57d8acbbf19aff1f00474f7c0d5aa5e953f9383084f04c33",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "scenario": "roles",
+      "before": "before-roles-390.png",
+      "after": "after-roles-390.png",
+      "byteIdentical": true,
+      "beforeSha256": "0589fe6035bf8ec986951ed04214e5d1f99d1d86611d8936d1db950d7d159a90",
+      "afterSha256": "0589fe6035bf8ec986951ed04214e5d1f99d1d86611d8936d1db950d7d159a90",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "scenario": "resume",
+      "before": "before-resume-390.png",
+      "after": "after-resume-390.png",
+      "byteIdentical": true,
+      "beforeSha256": "a9765b36b691582943b007ae019399a4754bd628d98fd0e461c4612598c691f4",
+      "afterSha256": "a9765b36b691582943b007ae019399a4754bd628d98fd0e461c4612598c691f4",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "scenario": "ready",
+      "before": "before-ready-390.png",
+      "after": "after-ready-390.png",
+      "byteIdentical": true,
+      "beforeSha256": "b02a6a1a30b2300fbdb8a3fedd448e869074d41ea14d1ac441182a3a324b8d1b",
+      "afterSha256": "b02a6a1a30b2300fbdb8a3fedd448e869074d41ea14d1ac441182a3a324b8d1b",
+      "horizontalOverflow": false
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "scenario": "signed-out",
+      "before": "before-signed-out-390.png",
+      "after": "after-signed-out-390.png",
+      "byteIdentical": true,
+      "beforeSha256": "5ae4cb468ef68591f0f0b8f62961fd9c18a5c58030a3b67b3f9dd82f6e430660",
+      "afterSha256": "5ae4cb468ef68591f0f0b8f62961fd9c18a5c58030a3b67b3f9dd82f6e430660",
+      "horizontalOverflow": false
+    }
+  ]
+}

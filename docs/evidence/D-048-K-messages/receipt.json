@@ -1,0 +1,50 @@
+{
+  "route": "https://skipwait.me/messages",
+  "checkedAt": "2026-11-19T00:12:15.011Z",
+  "runtimePullRequest": 1306,
+  "webSha": "4ca51a8510ef86ead3133db91f4998f68cabe7d9",
+  "api": {
+    "commitSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4",
+    "state": "ready",
+    "verifyLiveRelease": "CONVERGED"
+  },
+  "successfulRuns": {
+    "pullRequestCI": 44425383892,
+    "mainCI": 44426046303,
+    "pagesDeploy": 44426045739,
+    "releaseVerify": 44426872931
+  },
+  "browser": "Clean Chromium contexts, signed out, service workers blocked",
+  "captures": [
+    {
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "webSha": "4ca51a8510ef86ead3133db91f4998f68cabe7d9",
+      "goalMainCount": 1,
+      "signInActions": 1,
+      "acceptanceRuleVisible": true,
+      "horizontalOverflowPx": 0,
+      "privateDmReads": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "file": "messages-signed-out-1280.png"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "webSha": "4ca51a8510ef86ead3133db91f4998f68cabe7d9",
+      "goalMainCount": 1,
+      "signInActions": 1,
+      "acceptanceRuleVisible": true,
+      "horizontalOverflowPx": 0,
+      "privateDmReads": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "file": "messages-signed-out-390.png"
+    }
+  ],
+  "interceptedTelemetryAtBothWidths": ["CSP report", "Cloudflare RUM", "Sentry envelope"],
+  "productionSignInOrSendPerformed": false
+}

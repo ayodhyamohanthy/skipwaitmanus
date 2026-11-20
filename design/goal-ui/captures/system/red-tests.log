@@ -1,0 +1,1337 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/tmp/system-repair0623[39m
+
+[90mstdout[2m | client/src/pages/goal/system/systemParity.goal.test.tsx
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+ [31m❯[39m client/src/pages/goal/system/systemParity.goal.test.tsx [2m([22m[2m13 tests[22m[2m | [22m[31m13 failed[39m[2m)[22m[33m 822[2mms[22m[39m
+[31m   [31m×[31m preserves Android Not now dismissal[39m[32m 208[2mms[22m[39m
+[31m   [31m×[31m preserves iPhone Got it dismissal[39m[32m 150[2mms[22m[39m
+[31m   [31m×[31m preserves offered beforeinstallprompt action[39m[32m 30[2mms[22m[39m
+[31m   [31m×[31m preserves browser permission call and denied feedback[39m[32m 39[2mms[22m[39m
+[31m   [31m×[31m preserves Maybe later without permission call[39m[32m 67[2mms[22m[39m
+[31m   [31m×[31m shows an honest visible Loading message and retry reaches it[39m[32m 41[2mms[22m[39m
+[31m   [31m×[31m reports permission outcome granted[39m[32m 40[2mms[22m[39m
+[31m   [31m×[31m reports permission outcome default[39m[32m 37[2mms[22m[39m
+[31m   [31m×[31m reports permission errors honestly[39m[32m 35[2mms[22m[39m
+[31m   [31m×[31m reports install dismissed and consumes the offered prompt[39m[32m 23[2mms[22m[39m
+[31m   [31m×[31m reports install errors and unavailable API honestly[39m[32m 23[2mms[22m[39m
+[31m   [31m×[31m reopens both dismissed install sheets from the chips[39m[32m 92[2mms[22m[39m
+[31m   [31m×[31m supports absent notification API without requesting[39m[32m 33[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 13 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mpreserves Android Not now dismissal
+[31m[1mAssertionError[22m: expected <button type="button" …(1)></button> to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+<button
+  class="mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary"
+  type="button"
+>
+  Install app
+</button>
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m10:157[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mpreserves iPhone Got it dismissal
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an accessible element with the role "button" and name "Got it"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"g-scope min-h-dvh bg-g-canvas px-5 py-8 font-g-sans text-g-ink"[39m
+    [33mdata-goal-page[39m=[32m"app-states"[39m
+    [33mdata-skipwait-screen[39m=[32m"app-states"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"mx-auto max-w-3xl"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "See how skipwait.me behaves when things go wrong.":
+  [36m<h1[39m
+    [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+  [36m/>[39m
+
+  Name "Your next step":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+    [33mid[39m=[32m"goal-next-step-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-3 text-g-body text-g-ink-2"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  group:
+
+  Name "Screen":
+  [36m<div[39m
+    [33maria-label[39m=[32m"Screen"[39m
+    [33mclass[39m=[32m"mb-5 flex flex-wrap items-center gap-2 text-g-meta"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Install (Android)":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Install (iPhone)":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"true"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-ink bg-g-ink font-semibold text-g-on-primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Push permission":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Offline":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Slow connection":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Not found":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Something went wrong":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Payment failed":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Loading":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"block text-g-ink"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  [36m<ol[39m
+    [33mclass[39m=[32m"mt-3 space-y-3 text-g-body text-g-ink-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"flex items-center gap-2"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"flex items-center gap-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Your next step":
+  [36m<section[39m
+    [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+    [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Go home":
+  [36m<a[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-11 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+    [33mdata-g-primary[39m=[32m"true"[39m
+    [33mdata-testid[39m=[32m"goal-button"[39m
+    [33mhref[39m=[32m"/"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"g-scope min-h-dvh bg-g-canvas px-5 py-8 font-g-sans text-g-ink"[39m
+      [33mdata-goal-page[39m=[32m"app-states"[39m
+      [33mdata-skipwait-screen[39m=[32m"app-states"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"mx-auto max-w-3xl"[39m
+      [36m>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+        [36m>[39m
+          [0mSee how skipwait.me behaves when things go wrong.[0m
+        [36m</h1>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 text-g-body text-g-ink-2"[39m
+        [36m>[39m
+          [0mHow skipwait.me behaves when installing, asking permission, or when something goes wrong.[0m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mx-auto mt-5 max-w-3xl"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Screen"[39m
+          [33mclass[39m=[32m"mb-5 flex flex-wrap items-center gap-2 text-g-meta"[39m
+          [33mrole[39m=[32m"group"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"text-g-ink-3"[39m
+          [36m>[39m
+            [0mScreen:[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mInstall (Android)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"true"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-ink bg-g-ink font-semibold text-g-on-primary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mInstall (iPhone)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mPush permission[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mOffline[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mSlow connection[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mNot found[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mSomething went wrong[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mPayment failed[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mLoading[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mx-auto w-full max-w-sm overflow-hidden rounded-[2.5rem] border-8 border-g-ink bg-g-surface shadow-xl"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative flex min-h-[620px] flex-col p-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3 opacity-40"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-6 w-32 rounded-[0.25rem] bg-g-surface"[39m
+              [36m/>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-24 rounded-g-tile bg-g-surface"[39m
+              [36m/>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-24 rounded-g-tile bg-g-surface"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"absolute inset-x-3 bottom-3 rounded-g-tile border border-g-hairline bg-g-canvas p-5 shadow-lg"[39m
+            [36m>[39m
+              [36m<strong[39m
+                [33mclass[39m=[32m"block text-g-ink"[39m
+              [36m>[39m
+                [0mAdd skipwait.me to your Home Screen[0m
+              [36m</strong>[39m
+              [36m<ol[39m
+                [33mclass[39m=[32m"mt-3 space-y-3 text-g-body text-g-ink-2"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center gap-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"grid size-6 place-items-center rounded-full bg-g-surface text-g-meta"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                  [0mTap [0m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-share size-4"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 6 12 2 8 6"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"2"[39m
+                      [33my2[39m=[32m"15"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [0m Share in Safari[0m
+                [36m</li>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center gap-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"grid size-6 place-items-center rounded-full bg-g-surface text-g-meta"[39m
+                  [36m>[39m
+                    [0m2[0m
+                  [36m</span>[39m
+                  [0mChoose “Add to Home Screen”[0m
+                [36m</li>[39m
+              [36m</ol>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-8 max-w-3xl"[39m
+        [36m>[39m
+          [36m<section[39m
+            [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+            [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+              [33mid[39m=[32m"goal-next-step-heading"[39m
+            [36m>[39m
+              [0mYour next step[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mReference gallery of edge states.[0m
+            [36m</p>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-11 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+              [33mdata-g-primary[39m=[32m"true"[39m
+              [33mdata-testid[39m=[32m"goal-button"[39m
+              [33mhref[39m=[32m"/"[39m
+            [36m>[39m
+              [0mGo home[0m
+            [36m</a>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m chip client/src/pages/goal/system/systemParity.goal.test.tsx:[2m9:50[22m[39m
+    [90m  7|[39m vi.mock('wouter',()=>({Link:({href,children,...rest}:any)=><a href={hr…
+    [90m  8|[39m [34mafterEach[39m(()[33m=>[39m{[34mcleanup[39m()[33m;[39mvi[33m.[39m[34munstubAllGlobals[39m()})[33m;[39m
+    [90m  9|[39m const chip=(name:string)=>fireEvent.click(screen.getByRole('button',{n…
+    [90m   |[39m                                                  [31m^[39m
+    [90m 10|[39m it('preserves Android Not now dismissal',()=>{render(<GoalAppStates/>)…
+    [90m 11|[39m it('preserves iPhone Got it dismissal',()=>{render(<GoalAppStates/>);c…
+[90m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m11:95[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mpreserves offered beforeinstallprompt action
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called 1 times, but got 0 times[39m
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m12:374[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mpreserves browser permission call and denied feedback
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called 1 times, but got 0 times[39m
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m13:293[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mpreserves Maybe later without permission call
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an accessible element with the role "button" and name "Maybe later"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"g-scope min-h-dvh bg-g-canvas px-5 py-8 font-g-sans text-g-ink"[39m
+    [33mdata-goal-page[39m=[32m"app-states"[39m
+    [33mdata-skipwait-screen[39m=[32m"app-states"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"mx-auto max-w-3xl"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "See how skipwait.me behaves when things go wrong.":
+  [36m<h1[39m
+    [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+  [36m/>[39m
+
+  Name "Your next step":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+    [33mid[39m=[32m"goal-next-step-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-3 text-g-body text-g-ink-2"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-2 text-g-body text-g-ink-2"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  group:
+
+  Name "Screen":
+  [36m<div[39m
+    [33maria-label[39m=[32m"Screen"[39m
+    [33mclass[39m=[32m"mb-5 flex flex-wrap items-center gap-2 text-g-meta"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Install (Android)":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Install (iPhone)":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Push permission":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"true"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-ink bg-g-ink font-semibold text-g-on-primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Offline":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Slow connection":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Not found":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Something went wrong":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Payment failed":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Loading":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Allow":
+  [36m<button[39m
+    [33mclass[39m=[32m"mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"text-g-ink"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Your next step":
+  [36m<section[39m
+    [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+    [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Go home":
+  [36m<a[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-11 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+    [33mdata-g-primary[39m=[32m"true"[39m
+    [33mdata-testid[39m=[32m"goal-button"[39m
+    [33mhref[39m=[32m"/"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"g-scope min-h-dvh bg-g-canvas px-5 py-8 font-g-sans text-g-ink"[39m
+      [33mdata-goal-page[39m=[32m"app-states"[39m
+      [33mdata-skipwait-screen[39m=[32m"app-states"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"mx-auto max-w-3xl"[39m
+      [36m>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+        [36m>[39m
+          [0mSee how skipwait.me behaves when things go wrong.[0m
+        [36m</h1>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 text-g-body text-g-ink-2"[39m
+        [36m>[39m
+          [0mHow skipwait.me behaves when installing, asking permission, or when something goes wrong.[0m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mx-auto mt-5 max-w-3xl"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Screen"[39m
+          [33mclass[39m=[32m"mb-5 flex flex-wrap items-center gap-2 text-g-meta"[39m
+          [33mrole[39m=[32m"group"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"text-g-ink-3"[39m
+          [36m>[39m
+            [0mScreen:[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mInstall (Android)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mInstall (iPhone)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"true"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-ink bg-g-ink font-semibold text-g-on-primary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mPush permission[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mOffline[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mSlow connection[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mNot found[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mSomething went wrong[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mPayment failed[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mLoading[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mx-auto w-full max-w-sm overflow-hidden rounded-[2.5rem] border-8 border-g-ink bg-g-surface shadow-xl"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative flex min-h-[620px] flex-col p-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3 opacity-40"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-6 w-32 rounded-[0.25rem] bg-g-surface"[39m
+              [36m/>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-24 rounded-g-tile bg-g-surface"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"absolute inset-x-3 bottom-3 rounded-g-tile border border-g-hairline bg-g-canvas p-5 shadow-lg"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-3"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-bell size-6 text-g-ink-3"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M10.3 21a1.94 1.94 0 0 0 3.4 0"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [36m<strong[39m
+                  [33mclass[39m=[32m"text-g-ink"[39m
+                [36m>[39m
+                  [0mAllow notifications?[0m
+                [36m</strong>[39m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-2 text-g-body text-g-ink-2"[39m
+              [36m>[39m
+                [0mskipwait.me sends no device push today. This screen only sets the browser permission.[0m
+              [36m</p>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"mt-4 min-h-11 w-full rounded-g-tile bg-g-primary px-4 py-2 text-g-label font-semibold text-g-on-primary"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mAllow[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-8 max-w-3xl"[39m
+        [36m>[39m
+          [36m<section[39m
+            [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+            [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+              [33mid[39m=[32m"goal-next-step-heading"[39m
+            [36m>[39m
+              [0mYour next step[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mReference gallery of edge states.[0m
+            [36m</p>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-11 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+              [33mdata-g-primary[39m=[32m"true"[39m
+              [33mdata-testid[39m=[32m"goal-button"[39m
+              [33mhref[39m=[32m"/"[39m
+            [36m>[39m
+              [0mGo home[0m
+            [36m</a>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m chip client/src/pages/goal/system/systemParity.goal.test.tsx:[2m9:50[22m[39m
+    [90m  7|[39m vi.mock('wouter',()=>({Link:({href,children,...rest}:any)=><a href={hr…
+    [90m  8|[39m [34mafterEach[39m(()[33m=>[39m{[34mcleanup[39m()[33m;[39mvi[33m.[39m[34munstubAllGlobals[39m()})[33m;[39m
+    [90m  9|[39m const chip=(name:string)=>fireEvent.click(screen.getByRole('button',{n…
+    [90m   |[39m                                                  [31m^[39m
+    [90m 10|[39m it('preserves Android Not now dismissal',()=>{render(<GoalAppStates/>)…
+    [90m 11|[39m it('preserves iPhone Got it dismissal',()=>{render(<GoalAppStates/>);c…
+[90m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m14:188[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mshows an honest visible Loading message and retry reaches it
+[31m[1mAssertionError[22m: expected '' to contain 'Loading'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Loading[39m
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m16:195[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mreports permission outcome granted
+[31m[1mAssertionError[22m: expected 'Permission request not available in t…' to match /allowed/[39m
+
+[32m- Expected:[39m
+/allowed/
+
+[31m+ Received:[39m
+"Permission request not available in this browser."
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m17:282[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mreports permission outcome default
+[31m[1mAssertionError[22m: expected 'Permission request not available in t…' to match /stay off/[39m
+
+[32m- Expected:[39m
+/stay off/
+
+[31m+ Received:[39m
+"Permission request not available in this browser."
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m17:282[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mreports permission errors honestly
+[31m[1mAssertionError[22m: expected 'Permission request not available in t…' to match /didn't show/[39m
+
+[32m- Expected:[39m
+/didn't show/
+
+[31m+ Received:[39m
+"Permission request not available in this browser."
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m18:270[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mreports install dismissed and consumes the offered prompt
+[31m[1mAssertionError[22m: expected 'Install prompt not available in this …' to match /Install dismissed/[39m
+
+[32m- Expected:[39m
+/Install dismissed/
+
+[31m+ Received:[39m
+"Install prompt not available in this browser. Use its menu: Install app, or Add to Home screen."
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m19:381[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mreports install errors and unavailable API honestly
+[31m[1mAssertionError[22m: expected 'Install prompt not available in this …' to match /didn't open/[39m
+
+[32m- Expected:[39m
+/didn't open/
+
+[31m+ Received:[39m
+"Install prompt not available in this browser. Use its menu: Install app, or Add to Home screen."
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m20:369[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22mreopens both dismissed install sheets from the chips
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an accessible element with the role "button" and name "Got it"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"g-scope min-h-dvh bg-g-canvas px-5 py-8 font-g-sans text-g-ink"[39m
+    [33mdata-goal-page[39m=[32m"app-states"[39m
+    [33mdata-skipwait-screen[39m=[32m"app-states"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"mx-auto max-w-3xl"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "See how skipwait.me behaves when things go wrong.":
+  [36m<h1[39m
+    [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+  [36m/>[39m
+
+  Name "Your next step":
+  [36m<h2[39m
+    [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+    [33mid[39m=[32m"goal-next-step-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-3 text-g-body text-g-ink-2"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  group:
+
+  Name "Screen":
+  [36m<div[39m
+    [33maria-label[39m=[32m"Screen"[39m
+    [33mclass[39m=[32m"mb-5 flex flex-wrap items-center gap-2 text-g-meta"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Install (Android)":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Install (iPhone)":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"true"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-ink bg-g-ink font-semibold text-g-on-primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Push permission":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Offline":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Slow connection":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Not found":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Something went wrong":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Payment failed":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Loading":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"block text-g-ink"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  [36m<ol[39m
+    [33mclass[39m=[32m"mt-3 space-y-3 text-g-body text-g-ink-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"flex items-center gap-2"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"flex items-center gap-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Your next step":
+  [36m<section[39m
+    [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+    [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "Go home":
+  [36m<a[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-11 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+    [33mdata-g-primary[39m=[32m"true"[39m
+    [33mdata-testid[39m=[32m"goal-button"[39m
+    [33mhref[39m=[32m"/"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"g-scope min-h-dvh bg-g-canvas px-5 py-8 font-g-sans text-g-ink"[39m
+      [33mdata-goal-page[39m=[32m"app-states"[39m
+      [33mdata-skipwait-screen[39m=[32m"app-states"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"mx-auto max-w-3xl"[39m
+      [36m>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"text-balance text-g-display text-g-ink"[39m
+        [36m>[39m
+          [0mSee how skipwait.me behaves when things go wrong.[0m
+        [36m</h1>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-3 text-g-body text-g-ink-2"[39m
+        [36m>[39m
+          [0mHow skipwait.me behaves when installing, asking permission, or when something goes wrong.[0m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mx-auto mt-5 max-w-3xl"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Screen"[39m
+          [33mclass[39m=[32m"mb-5 flex flex-wrap items-center gap-2 text-g-meta"[39m
+          [33mrole[39m=[32m"group"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"text-g-ink-3"[39m
+          [36m>[39m
+            [0mScreen:[0m
+          [36m</span>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mInstall (Android)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"true"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-ink bg-g-ink font-semibold text-g-on-primary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mInstall (iPhone)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mPush permission[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mOffline[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mSlow connection[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mNot found[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mSomething went wrong[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mPayment failed[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-pressed[39m=[32m"false"[39m
+            [33mclass[39m=[32m"min-h-8 rounded-full border px-3 text-g-meta border-g-hairline text-g-ink-2 hover:bg-g-surface"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mLoading[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mx-auto w-full max-w-sm overflow-hidden rounded-[2.5rem] border-8 border-g-ink bg-g-surface shadow-xl"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative flex min-h-[620px] flex-col p-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3 opacity-40"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-6 w-32 rounded-[0.25rem] bg-g-surface"[39m
+              [36m/>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-24 rounded-g-tile bg-g-surface"[39m
+              [36m/>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"h-24 rounded-g-tile bg-g-surface"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"absolute inset-x-3 bottom-3 rounded-g-tile border border-g-hairline bg-g-canvas p-5 shadow-lg"[39m
+            [36m>[39m
+              [36m<strong[39m
+                [33mclass[39m=[32m"block text-g-ink"[39m
+              [36m>[39m
+                [0mAdd skipwait.me to your Home Screen[0m
+              [36m</strong>[39m
+              [36m<ol[39m
+                [33mclass[39m=[32m"mt-3 space-y-3 text-g-body text-g-ink-2"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center gap-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"grid size-6 place-items-center rounded-full bg-g-surface text-g-meta"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                  [0mTap [0m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-share size-4"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 6 12 2 8 6"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"2"[39m
+                      [33my2[39m=[32m"15"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [0m Share in Safari[0m
+                [36m</li>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center gap-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"grid size-6 place-items-center rounded-full bg-g-surface text-g-meta"[39m
+                  [36m>[39m
+                    [0m2[0m
+                  [36m</span>[39m
+                  [0mChoose “Add to Home Screen”[0m
+                [36m</li>[39m
+              [36m</ol>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-8 max-w-3xl"[39m
+        [36m>[39m
+          [36m<section[39m
+            [33maria-labelledby[39m=[32m"goal-next-step-heading"[39m
+            [33mclass[39m=[32m"border border-g-hairline p-4 gdesk:p-5"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-g-heading text-g-ink"[39m
+              [33mid[39m=[32m"goal-next-step-heading"[39m
+            [36m>[39m
+              [0mYour next step[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-2 text-g-meta text-g-ink-2"[39m
+            [36m>[39m
+              [0mReference gallery of edge states.[0m
+            [36m</p>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none h-(--g-control-h) px-[14px] max-gdesk:h-11 bg-g-primary text-g-on-primary hover:bg-g-primary-pressed active:bg-g-primary-pressed hover:not-active:bg-g-primary-hover"[39m
+              [33mdata-g-primary[39m=[32m"true"[39m
+              [33mdata-testid[39m=[32m"goal-button"[39m
+              [33mhref[39m=[32m"/"[39m
+            [36m>[39m
+              [0mGo home[0m
+            [36m</a>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m ../skw-s1-execution/node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m chip client/src/pages/goal/system/systemParity.goal.test.tsx:[2m9:50[22m[39m
+    [90m  7|[39m vi.mock('wouter',()=>({Link:({href,children,...rest}:any)=><a href={hr…
+    [90m  8|[39m [34mafterEach[39m(()[33m=>[39m{[34mcleanup[39m()[33m;[39mvi[33m.[39m[34munstubAllGlobals[39m()})[33m;[39m
+    [90m  9|[39m const chip=(name:string)=>fireEvent.click(screen.getByRole('button',{n…
+    [90m   |[39m                                                  [31m^[39m
+    [90m 10|[39m it('preserves Android Not now dismissal',()=>{render(<GoalAppStates/>)…
+    [90m 11|[39m it('preserves iPhone Got it dismissal',()=>{render(<GoalAppStates/>);c…
+[90m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m21:225[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m client/src/pages/goal/system/systemParity.goal.test.tsx[2m > [22msupports absent notification API without requesting
+[31m[1mAssertionError[22m: expected 'Permission request not available in t…' to match /support notifications/[39m
+
+[32m- Expected:[39m
+/support notifications/
+
+[31m+ Received:[39m
+"Permission request not available in this browser."
+
+[36m [2m❯[22m client/src/pages/goal/system/systemParity.goal.test.tsx:[2m22:227[22m[39m
+
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m13 failed[39m[22m[90m (13)[39m
+[2m   Start at [22m 00:53:20
+[2m   Duration [22m 2.86s[2m (transform 594ms, setup 72ms, import 1.04s, tests 822ms, environment 753ms)[22m
+

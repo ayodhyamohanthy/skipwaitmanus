@@ -2,6 +2,8 @@
 
 > Read `docs/BRIEF.md` first, then this packet. Each section is one queue row. Every pull request here is already written: this packet is its review, fix-stage and landing brief, not a fresh build.
 
+> **D-219, D-221 (Oct 26):** the Oct 25 banded freeze supersedes the D-132 model, so the `D-132-item3` and `D-132-v2-checkout` sections below are history until each row's packet is rewritten (both rows are `architect`). Keep only the invariants that survive: an ask is charged exactly the accepted quote or answers 409 with nothing charged, and free referrals survive an upgrade (D-165 (3)) unless the banded review rules otherwise.
+
 | Field | Value |
 |---|---|
 | Decisions | D-163 (4), D-074, D-151, the Oct 23 merge-policy amendment (`docs/DECISIONS.md`) |
@@ -51,16 +53,9 @@ Instinct built these, so every review and landing goes to a model other than Ins
 - Reviewer: check the file names no secret, no customer data and no account id (D-059: the repo is public), and that the `docs/PRICING.md` line matches the file. If a site id or customer count is a problem under D-059, remove that detail and keep the fact.
 - Merge `main` (it conflicts), focused checks, required CI, land.
 
-### D-132-item3: the held item-3 follow-ups, after D-132-audit
-- **Branch:** `agent/queue/d132-item3`, cut once from #550's head (`git push origin origin/agent/d132-item3-main-integration:refs/heads/agent/queue/d132-item3`). Then `git merge origin/agent/d132-bridge-quote-gate` (#542, the `/request` bridge page's quote gate, the only piece #550 lacks), then `git merge origin/main` after D-132-audit (#547) has landed. Never rebase or force-push.
-- **What it holds:** the Skippy coverage-aware credit gate (#543); the bridge page adopting the shared quote gate (#542); the accepted-price precondition (#544: `expectedCost` on the send, `AskPriceChangedError` / `CoverageOpenedUpError`, a two-click 409 re-quote). #547 already holds #541's composer quote, so where #547 and this branch both change a file, keep #547's version of #541's part and this branch's additions.
-- **Review checklist:**
-  1. With both flags off, every send behaves byte for byte as on `main`: prove it with the flags-off tests, not by reading code.
-  2. With the flags on in tests, a send whose cost changed since the quote is refused with the 409 and spends nothing, and the second click after a re-quote spends exactly the quoted cost once.
-  3. Skippy's credit gate uses the same quote math as `/ask` (D-144, D-132), and an uncovered company stays waiting at no cost (D-034, D-047).
-  4. Money copy comes only from `shared/moneyCopy.ts`.
-  5. Nothing changes the refund rules (D-147: a decline keeps the credit spent).
-- **Landing:** then close #541, #543, #544 and #550 with a link to the landing commit, and #542 too.
+### D-132-item3: superseded plan (D-221); the row now builds docs/plans/D-132-item3-accepted-price.md
+- **Do not cut a branch from #550 or merge #542.** D-219 superseded the D-132 per-level model these PRs build, and D-221 (2) holds them unlanded. The Oct 28 re-scope moves the row to [`D-132-item3-accepted-price.md`](./D-132-item3-accepted-price.md): only the model-independent accepted-price guard (`expectedCost` as `{ units, band, source }`, 409 `ask_price_changed` before any committed write, no D-219 level mapping). #541-#544, #550 and #542 are source material only. Whether to close them is the CEO's call once that row lands.
+- Historical plan (Oct 23, D-165), kept for the audit trail only: cut `agent/queue/d132-item3` from #550's head, merge #542, then merge `main` after D-132-audit. The superseded checklist covered flags-off byte parity, a 409 re-quote on a cost change, Skippy's quote math, money copy from `shared/moneyCopy.ts` and unchanged refunds (D-147). The new packet carries forward the parts that are still valid.
 
 ### D-132-v2-checkout: the v2 checkout and crediting port (#523), after D-132-item3
 - **What it holds:** `server/v2Checkout.ts`, `server/v2Crediting.ts`, `shared/planFamilyBilling.ts`, webhook, activation and catalog-sync deltas, and two additive migrations. It routes failed payments through the D-067 durable outbox.
@@ -86,5 +81,5 @@ These rows share the §3b row D-163 (D-132 rows: D-165), so their status lines g
 - REGISTER-520: done — 691c871b (landed on `main`; docs only, no deploy due. Independent review PASS by Qoder · bbc5 at 891c2756; merge-up and row-done delta reviewed; required CI green on 691c871b; closes #520).
 - D-155-share-paid-gate: done — 4dfeb6ba (merged `main`, renumbered to D-194 with migration 0114; delta review pass by DeepSeek V4.1 Flash Free · 3ecf, owner's go Oct 24).
 - D-132-catalog-record: done — 166fe5ff (docs only; landed on `main` by the status commit). Independent delta review passed: the audit names no secret, customer data or account/site id (D-059), and the `docs/PRICING.md` line matches the audit and `shared/planFamily.ts`. Focused checks 219/219 and `pnpm check` green; exact-head CI required before landing.
-- D-132-item3: todo; waits for D-132-audit.
+- D-132-item3: re-scoped Oct 28 (D-221); status lines live in `docs/plans/D-132-item3-accepted-price.md`. D-132-audit is done (it no longer waits for the audit).
 - D-132-v2-checkout: todo; waits for D-132-item3.

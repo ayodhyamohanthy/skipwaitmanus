@@ -1,0 +1,81 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "trpc": {
+    "talentConsent.state": {
+      "active": false,
+      "audience": "Approved employers on SkipWait",
+      "retentionDays": 90,
+      "policyVersion": "talent-consent-2026-09",
+      "unlockCreditCost": 5,
+      "unlockDays": 30
+    }
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/privacy/export-requests/latest",
+      "status": 200,
+      "body": {
+        "export": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/blocks/mine",
+      "status": 200,
+      "body": {
+        "blocks": []
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Request my data"
+    }
+  ]
+}

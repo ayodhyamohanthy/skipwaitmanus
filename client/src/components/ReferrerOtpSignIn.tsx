@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
+import { apiFetch } from "@/lib/apiFetch";
 
 /**
  * Referrer sign-in: work-email OTP IS the login. Enter company address,
@@ -18,7 +19,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
   const send = async () => {
     setBusy(true); setError(""); setNotice("");
     try {
-      const res = await fetch("/api/auth/otp/send", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim().toLowerCase() }) });
+      const res = await apiFetch("/api/auth/otp/send", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim().toLowerCase() }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.sent) { setError(body.error || "We could not send the code. Try again shortly."); return; }
       setNotice("Code sent to your company email.");
@@ -29,7 +30,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
   const verify = async () => {
     setBusy(true); setError("");
     try {
-      const res = await fetch("/api/auth/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }) });
+      const res = await apiFetch("/api/auth/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.signedIn) { setError(body.error || "That code could not be verified."); return; }
       rememberSignInEmail("referrer", email);
@@ -40,7 +41,7 @@ export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = 
   if (stage === "email") {
     return (
       <div className="w-full">
-        <div className="mb-4 text-sm leading-5 text-black"><p className="font-semibold">See the role, resume, and forwardable note before you choose. Decline or ask for context. Nothing is sent from your account.</p><p className="mt-2 text-xs text-[#505050]">Work email verifies company access; it stays private.</p></div>
+        <div className="mb-4 text-sm leading-5 text-black"><p className="font-semibold">You can review the role and note before you choose. The seeker's name and resume stay hidden until you accept. After you accept, you can open the resume only while your document access is active. Decline or ask for context. Nothing is sent from your account.</p><p className="mt-2 text-xs text-[#505050]">Work email verifies company access; it stays private.</p></div>
         <label htmlFor="otp-referrer-email" className="block text-xs font-semibold text-black">Company email</label>
         <input id="otp-referrer-email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} inputMode="email" placeholder="you@company.com" value={email}
           onChange={event => { setEmail(event.target.value); setError(""); }}
