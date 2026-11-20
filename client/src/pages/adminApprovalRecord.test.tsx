@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AdminApprovalRecord from "./AdminApprovalRecord";
+// Preload the real module; render the actual lazy route in every case.
+import "./goal/admin-approvals/GoalAdminApprovalRecord";
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("wouter", () => ({ useRoute: () => [true, { kind: "referral_request", id: "501" }], Link: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
@@ -23,15 +25,17 @@ describe("administrator approval record detail", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("renders the full record blocks and an ordered history with actors and timestamps", async () => {
-    render(<AdminApprovalRecord />);
+    await act(async () => { render(<AdminApprovalRecord />); });
     await waitFor(() => expect(screen.getByRole("heading", { name: "Ref-1501" })).toBeTruthy());
     expect(screen.getByText("Avery")).toBeTruthy();
     expect(screen.getByText("avery@example.com")).toBeTruthy();
     expect(screen.getByText("Blake")).toBeTruthy();
     expect(screen.getByText("Product Designer")).toBeTruthy();
-    expect(screen.getByText("1 credit reserved")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Picked up: its credit stays spent" })).toBeTruthy();
+    expect(screen.queryByText("1 credit reserved")).toBeNull();
     expect(screen.getByText(/Request created/)).toBeTruthy();
-    expect(screen.getByText("1 credit reserved (monthly)")).toBeTruthy();
+    expect(screen.queryByText("1 credit reserved (monthly)")).toBeNull();
+    expect(screen.getByText("Your decision here changes the request's status only. It moves no credit.")).toBeTruthy();
     expect(screen.getByText(/Claimed by verified referrer/)).toBeTruthy();
     expect(screen.getAllByText(/System/).length).toBeGreaterThan(0);
   });
@@ -46,7 +50,7 @@ describe("administrator approval record detail", () => {
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url) === "/api/admin/approval-queue/referral_request/501/decision" && (init as RequestInit)?.method === "POST" && String((init as RequestInit).body).includes("Domain matches the invite code"))).toBe(true);
   });
 
-  it("shows the failed-decision copy and retries the same decision", async () => {
+  it("shows the failed-decision copy and reloads before retrying the same pending decision", async () => {
     let posts = 0;
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -64,8 +68,15 @@ describe("administrator approval record detail", () => {
     await waitFor(() => expect(screen.getByText(/The decision may not have been recorded. Reload this record before you retry./)).toBeTruthy());
     expect(screen.queryByText(/The record is unchanged and still in the queue/)).toBeNull();
     expect(screen.queryByText(/No notifications were sent/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Retry decision" }));
+    expect(screen.getByRole("button", { name: "Approve" }).getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByRole("button", { name: "Reject" }).getAttribute("aria-disabled")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Retry decision" })).toBeNull();
+    expect(posts).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Reload this record" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(screen.getByText("Approved")).toBeTruthy());
+    expect(posts).toBe(2);
   });
 
   it("shows already-resolved copy when a decision returns 409", async () => {
