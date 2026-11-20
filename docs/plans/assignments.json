@@ -6079,8 +6079,8 @@
       "tier": 2,
       "lane": "jobs",
       "branch": "agent/queue/rel-heartbeats",
-      "status": "todo",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [
         "REL-watchdog",
         "D-090-BYOR"
@@ -6093,9 +6093,13 @@
         "server/scheduledJobsRoutes*.test.ts",
         "server/_core/index.ts (switch only)",
         "watchdog/src/core.ts",
-        "scripts/watchdogCore.test.ts"
+        "scripts/watchdogCore.test.ts",
+        "shared/scheduledJobs.ts",
+        ".github/workflows/deploy-watchdog.yml",
+        "scripts/waitWatchdogJobs.ts",
+        "scripts/waitWatchdogJobs.test.ts"
       ],
-      "note": "Oct 27 merge-up: also waits for D-090-BYOR (PR #632, built), which also edits server/_core/index.ts."
+      "note": "Landing PR #1377: source 8bfc9622e, current-main integration b183e368e. Packet checked through D-370: public names/booleans only, shared overdue rule, startup grace and existing watchdog two-round alarm. D-309/D-314 remove shared-file serialization; D-370 removes review and model dependencies. Required CI, protected merge and canonical endpoint/watchdog deployment acceptance remain. shared/scheduledJobs.ts adds only the strict public response schema; existing job names and tick/admin contracts stay unchanged. Done status is prepared in the landing PR; its packet and PR distinguish pending production acceptance."
     },
     {
       "id": "REL-rollback-skew",
@@ -7482,11 +7486,11 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-370",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "Packet section 6.2, rulings 1 to 4: no openToReferrals read, askCostLine open:null, expectedCoverage never sent (server guard untouched), watch removed, post-save first clause only (expiry clauses stay for D-174-expiry-clock-removal). Money display: no amount, spend point, refund or key changes. Coordinator question 1 covers the D-132 flag-on re-pins.",
+      "note": "November 20 composer-only re-sync through D-370: packet section 6.2 replaces this row's older instructions. Preserve no-referrer request creation and honest server-driven pool/delivery status (D-360/D-363), D-364 link completion, current quote/accepted-cost/idempotency controls and all expiry/money clauses. askCostLine open:null; no expectedCoverage or directory availability gate. Legacy D-132 flags stay off; D-367 mapping is settled, BANDED-* owns pricing activation. Required CI, captures and exact-release checks; no review/model/coordinator dependency. Runtime task remains todo; docs re-sync is not implementation or release acceptance.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",

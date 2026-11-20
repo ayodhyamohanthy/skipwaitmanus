@@ -33,6 +33,7 @@ export type ScheduledJobsRouteDeps = {
   /** The tick signing secret; JWT_SECRET by default. Empty disables the tick (404). */
   tickSecret?: () => string;
   now?: () => number;
+  processStartMs?: number;
   store?: JobRunStore;
   jobs?: readonly ScheduledJobDefinition[];
   capture?: JobCapture;
@@ -61,8 +62,14 @@ export function summarizeMoneyCheckAlerts(rows: Array<{ outcome: string; created
   };
 }
 
-/** No success within this many windows marks a job overdue on the admin read. */
+/** The same process origin supplies startup grace to both job-health reads. */
+export const JOBS_PROCESS_START_MS = Date.now() - process.uptime() * 1_000;
 export const OVERDUE_WINDOWS = 3;
+
+export function isJobOverdue(job: Pick<ScheduledJobDefinition, "windowMs">, lastSucceededAt: Date | null, nowMs: number, processStartMs: number): boolean {
+  const span = Math.min(OVERDUE_WINDOWS * job.windowMs, job.windowMs + 6 * 60 * 60_000);
+  return nowMs - (lastSucceededAt?.getTime() ?? processStartMs) > span;
+}
 
 function summarize(row: JobRunRecord): JobRunSummary {
   return { windowKey: row.windowKey, status: row.status, attempt: row.attempt, startedAt: row.startedAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null, processed: row.processedCount, failed: row.failedCount, error: row.error };
@@ -71,6 +78,7 @@ function summarize(row: JobRunRecord): JobRunSummary {
 export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRouteDeps) {
   const tickSecret = deps.tickSecret ?? (() => ENV.cookieSecret);
   const now = deps.now ?? Date.now;
+  const processStartMs = deps.processStartMs ?? JOBS_PROCESS_START_MS;
   const store = deps.store ?? createMysqlJobRunStore();
   const jobs = deps.jobs ?? SCHEDULED_JOBS;
   const capture = deps.capture ?? captureServerError;
@@ -117,7 +125,7 @@ export function registerScheduledJobsRoutes(app: Express, deps: ScheduledJobsRou
           windowMinutes: job.windowMs / 60_000,
           lastRun: lastRun ? summarize(lastRun) : null,
           lastSucceededAt: lastSucceededAt?.toISOString() ?? null,
-          overdue: !lastSucceededAt || nowMs - lastSucceededAt.getTime() > OVERDUE_WINDOWS * job.windowMs,
+          overdue: isJobOverdue(job, lastSucceededAt, nowMs, processStartMs),
         };
       }));
       res.json(adminScheduledJobsResponseSchema.parse({ cron: JOBS_CRON, checkedAt: new Date(nowMs).toISOString(), jobs: rows }));
