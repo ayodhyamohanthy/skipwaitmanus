@@ -247,17 +247,17 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
 - Coordinate ownership through a shared GitHub issue or draft PR; use one
   isolated branch/worktree per session. Never overwrite or commit another
   session's dirty files, or switch branches in a shared active working tree.
-- Work on feature branches; ship each verified group to `main` only after
-  the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on
-  that exact commit (D-003 as amended by D-082 and D-134 (6): pull request first,
-  then fast-forward `main` to that exact commit with `git push origin <sha>:main`,
-  or GitHub's merge-commit button, which the ruleset allows only for an up-to-date branch;
-  never squash or rebase-merge; while `main` is red, push nothing but the fix), serialized,
-  never as concurrent automatic pushes to main. Follow applicable user/tool
-  authorization before committing, pushing, merging, or deploying.
+- Work on feature branches and land through a protected pull request with
+  exact required CI green, current main integrated and main's CI green (D-082,
+  D-200, D-370). Use GitHub auto-merge with a merge commit; never push directly
+  to `main`, squash, rebase-merge or use an admin bypass. While main is red,
+  only its fix lands. No independent review or landing slot is required by
+  D-370. Follow applicable authorization before publishing or deploying.
 - Validate the integrated result (`pnpm check` + affected Vitest files;
   `pnpm build` for runtime/dependency changes) and leave an explicit handoff.
-- A push to main triggers both Cloudflare deploys; no local Docker needed.
+- A push to main starts each Cloudflare workflow whose path filter matches;
+  docs-only changes may start neither. Deployment and migration jobs wait for
+  exact-target main CI; workflow start is not release proof. See `docs/DEPLOY.md`.
 
 ## Environment
 - Copy `.env.example` → `.env`. Minimum for local dev: `JWT_SECRET` (any random
@@ -278,18 +278,34 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   `.env.example` and required deployment bindings. A build passing with an
   undeclared or unforwarded variable is a failed change, not deployment proof.
 
-## Deploy (fully automated, no local Docker)
-- Push to `main` (only once CI is green on that exact commit, D-082) → GitHub Actions:
-  - `deploy-api.yml`: typecheck → build → `wrangler deploy` (Cloudflare
-    Containers; image built remotely). Secrets live in the Worker secret store
-    (`wrangler secret put`) and are forwarded into the container by the
-    `SkipwaitApi` class in `src/worker.ts`.
-  - `deploy-pages.yml`: build + `wrangler pages deploy` → skipwait.me/www.
-- Repo secrets: `CLOUDFLARE_API_TOKEN` (Workers Scripts + Containers + Pages +
-  KV edit), `CLOUDFLARE_ACCOUNT_ID`.
-- **Containers do NOT inherit Worker secrets automatically** — the env
-  passthrough in `src/worker.ts` is load-bearing. If you add a secret, set it
-  with `wrangler secret put <NAME>`; it reaches the container on next start.
+## Deploy (GitHub Actions)
+- Path-filtered main pushes and deliberate dispatches run the owning workflow.
+  `scripts/require-green-release.mjs` requires the target's own completed green
+  main CI before production effects; missing, pending, red, cancelled, skipped,
+  unreadable or superseded evidence never authorizes a release. Each writer
+  rechecks immediately before its production step.
+  - `deploy-api.yml`: release gate → source-retirement/reset preflights → pending
+    migration gate → runtime/pipeline/skip classification. Runtime publication
+    follows typecheck/build and a gate recheck, then administrator sign-in and
+    canonical exact-SHA/direct-origin checks. A green run may have skipped rollout.
+  - `deploy-pages.yml`: release gate → build/prerender → guarded Pages upload →
+    canonical `git-commit` verification. Web and API have separate path filters
+    and concurrency groups; compare their own expected deployed SHAs.
+- Normal retry: repair failed CI first. If no eligible CI ran, dispatch CI on
+  main, then dispatch the affected deploy on main after it passes. A cancelled
+  CI run or filtered deploy does not automatically resume when later CI turns
+  green. An older-target recovery uses `rollback.yml` from main with the exact
+  commit repeated, target and reason; its schema, CI and identity guards still
+  apply. Procedure and limits: `docs/DEPLOY.md`. This is no new rollback authority.
+- Repo credentials: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; keep values
+  out of the repository and logs. Production secret changes use the currently
+  approved release-time path. Reviewer reset uses a default-off boolean and a
+  complete protected repository-secret pair, validated before writes and on
+  job reruns. Provisioning and live reset/sign-in acceptance remain separate;
+  see `OPS-reviewer-credential-transport`. Never submit secrets as ordinary inputs.
+- **Containers do not inherit Worker secrets automatically.** Declare every
+  server key in `.env.example` and forward it in `src/worker.ts`; a deployment
+  passing without the required binding is not proof the container received it.
 
 ## Living system map
 Keep this section concise and current in the same atomic commit whenever a route
@@ -343,9 +359,10 @@ fixtures beside each feature instead of relying on this list alone.
    prefix match). Unresolvable links are rejected with a clear error.
 5. Azure MySQL clock can skew vs app servers — never compare DB NOW() with JS
    Date.now() for correctness-critical logic; compute timestamps in JS.
-6. The deployed web bundle must be built from the same commit as the API
-   (contract: tRPC + REST shapes). CI deploys both on every push; check
-   `scripts/sync-check.sh` when working locally.
+6. Web and API must use compatible tRPC/REST contracts. Their path filters
+   can leave them on different deployed SHAs; verify each against its own
+   expected release. For API-runtime changes the Pages workflow waits for a
+   ready API on the same SHA or a descendant; see `docs/DEPLOY.md`.
 
 ## Product and identity constraints
 - A **verified referrer** is any canonical person with a verified work email, whatever else they use SkipWait for (definition moved here by D-067; see D-057 for continuity across employers).
@@ -424,10 +441,11 @@ fixtures beside each feature instead of relying on this list alone.
   canonical `https://skipwait.me`, exact baked commit SHA, readiness, and the
   expected active Worker/container revision. Keep `workers.dev` disabled and
   verify it remains unavailable.
-- Serialize production writers so latest `main` wins. Reconcile unexpected
-  remote changes before overwriting. Do not let stale queued workflows activate
-  after a newer release. Never delete the Containers application to recover a
-  rollout.
+- Serialize production writers and reject superseded normal releases. Reconcile
+  unexpected remote changes before publishing; CI cancellation and path filters
+  can require an explicit retry. An authorized older target uses `rollback.yml`
+  with its CI/schema/identity gates and the same concurrency groups, never a
+  normal-deploy bypass. Never delete the Containers application to recover.
 - Cloudflare container capacity changes are control-plane changes: verify the
   live application value and active instances. Container env passthrough in
   `src/worker.ts` must be updated for each new server secret. Return temporary

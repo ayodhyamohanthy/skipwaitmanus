@@ -7859,8 +7859,8 @@
       "tier": 3,
       "lane": "deploy-docs",
       "branch": "agent/queue/deploy-gate-docs-sync",
-      "status": "todo",
-      "syncedTo": "D-227",
+      "status": "done",
+      "syncedTo": "D-370",
       "dependsOn": [
         "P1-deploy-green-gate",
         "D-090-BYOR"
@@ -7871,7 +7871,7 @@
         "docs/ARCHITECTURE.md",
         "docs/BRIEF.md"
       ],
-      "note": "Serialized because existing BYOR and bonus rows own shared deploy docs. No runtime change or unsupported completion claims; incident748 remains open until path acceptance independently proven."
+      "note": "Docs-only delivery under D-370: AGENTS, DEPLOY, ARCHITECTURE and BRIEF now describe exact-target main CI before migrations/publication, path-filter/cancellation retry limits, deliberate older-target recovery with actor/reason/confirmation, per-surface concurrency and canonical verification limits. The packet retains the current dependency set and newer-decision receipt; D-309/D-314 replace the former shared-file-only bonus wait. No runtime, migration, settings, secret, provider or production action; issue748 remains open for its independently proven acceptance. Status completion applies only after protected required CI and merge of this task's PR."
     },
     {
       "id": "PICKER-landing-wait-fallthrough",
