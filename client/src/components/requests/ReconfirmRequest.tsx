@@ -20,10 +20,10 @@ export function ReconfirmRequest({ request, getToken, onChanged }: Props) {
   return (
     <div className="px-3 pb-3 text-g-meta text-g-ink-2">
       {confirm.isSuccess ? <p role="status">Confirmation saved. Check the conversation for the latest status.</p> : <>
+        {confirm.isError && <p role="alert" className="mb-2">{ASK_RECONFIRM_ERROR}</p>}
         <p className="text-g-label text-g-ink">{ASK_RECONFIRM_PROMPT}</p>
         <p className="mt-1">{ASK_RECONFIRM_COST}</p>
         <GoalButton className="mt-2" variant="outline" size="sm" busy={confirm.isPending} busyLabel="Confirming" onClick={() => confirm.mutate()}>Confirm</GoalButton>
-        {confirm.isError && <p role="alert" className="mt-2">{ASK_RECONFIRM_ERROR}</p>}
       </>}
     </div>
   );

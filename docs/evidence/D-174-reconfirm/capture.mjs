@@ -115,8 +115,9 @@ try {
     const files = [];
     for (const state of ["awaiting", "error"]) {
       if (state === "error") { await page.getByRole("button", { name: "Confirm", exact: true }).click(); await page.getByRole("alert").waitFor(); }
+      await page.getByRole("button", { name: "Confirm", exact: true }).scrollIntoViewIfNeeded();
       const name = `${state}-${width}.png`;
-      await page.screenshot({ path: join(output, name), fullPage: true });
+      await page.screenshot({ path: join(output, name), fullPage: width !== 390 });
       files.push({ name, sha256: createHash("sha256").update(readFileSync(join(output, name))).digest("hex") });
     }
     await page.getByRole("button", { name: "Confirm", exact: true }).click();

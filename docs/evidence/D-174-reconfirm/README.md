@@ -43,7 +43,23 @@ only `awaiting-*.png`/`error-*.png` consent fixtures for one day, on successful
 runs too; the existing failure-trace upload and all checks are unchanged.
 Fresh exact-head CI and actual image inspection remain required.
 
-## Browser evidence: behavior passed, images not yet inspected
+## Browser inspection and phone repair
+
+[CI 44916286695](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44916286695)
+passed every required check on `d92126d2a` and retained the synthetic images.
+All four were downloaded and inspected; the originals are in `before/`.
+The 390px error message was behind the fixed bottom navigation even though
+DOM visibility and the full browser journey passed. This is a real visual
+defect, so that green run is not final visual acceptance.
+
+The new error now precedes the prompt and the new helper sentence is shorter;
+the existing request cost and conversation/withdraw path are unchanged.
+The browser test additionally hit-tests the Confirm control and the alert
+against overlays. Mobile screenshots capture the actual 390×844 viewport
+after the control is brought into view; desktop captures retain the full page.
+Fresh repair CI and inspection of its new screenshots remain required.
+
+## Reproducing browser evidence
 
 `capture.mjs` bundles the actual `MyRequests`, request row/control, request API
 and `GoalAppShell` with the production-built CSS. It substitutes a synthetic
@@ -56,9 +72,10 @@ existing My Requests row/GoalButton. Preserve the white canvas, hairline list,
 Instrument Sans/JetBrains Mono roles, ink outline action, 44px phone target and
 existing page hierarchy. No new palette, cards or second black action.
 
-The standalone browser launch timed out. The app browser loaded the local
+The local standalone browser launch timed out. The app browser loaded the local
 fixture, but snapshot calls timed out and screenshot capture required a visible
-desktop window. **No local image or visual acceptance is claimed.**
+desktop window. No local browser success is claimed; the inspected images above
+come from the identified CI artifact, not the unavailable desktop renderer.
 
 The existing CI browser suite now includes `e2e/reconfirm.e2e.ts`: it starts the
 same local synthetic server, checks the complete page at 1280/390, verifies no
