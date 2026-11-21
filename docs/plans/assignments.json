@@ -8402,7 +8402,7 @@
       "tier": 2,
       "lane": "picker-snapshot-scope",
       "branch": "agent/queue/picker-snapshot-scope",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
@@ -8414,7 +8414,7 @@
         "docs/BUILD_CONTINUITY.md",
         "AGENTS.md"
       ],
-      "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324). Implementation is already open as PR #1421 by Claude Code · d891 on this branch with auto-merge on; it marks this row done when it lands. Appended last (FIFO) so no session is handed it first."
+      "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324): the pre-write check compared every task's refs and main, so any heartbeat, claim, push or landing during the GitHub reads aborted every claim. Now scoped to the write's task refs, report log, landing slot and fix-main locks; main by the task's row, dependencies, decision sync and landed state. PR #1421 (registered by #1422); red-first CLI tests; all picker suites pass. Completion is carried in this PR; required CI is the landing gate."
     }
   ]
 }
