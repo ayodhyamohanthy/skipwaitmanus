@@ -217,6 +217,46 @@ describe("authoritative refs in the real picker CLI", () => {
     expect(f.remoteSet()).not.toContain(`refs/heads/${A}`);
   }));
 
+  // PICKER-snapshot-scope: a write compares only its own task's refs and the shared report/landing inputs,
+  // so other agents' heartbeats, claims and pushes no longer starve every claim (owner, Nov 21: "all agents
+  // should be able to get work").
+  it("claims while another task's heartbeat keeps moving", () => check(f => {
+    f.marker("agent/heartbeat/w", `Heartbeat W: ${OTHER}`);
+    const result = f.run({ mutation: { ref: "agent/heartbeat/w", repeat: true } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD A");
+    expect(result.stderr).not.toContain("kept changing");
+    expect(f.git("rev-parse", `${f.remoteTip(A)}^`)).toBe(f.head);
+    expect(f.pushes()).toHaveLength(1);
+  }));
+
+  it("claims while main keeps moving without changing the picked task's inputs", () => check(f => {
+    const result = f.run({ mutation: { ref: "main", repeat: true } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD A");
+    expect(result.stderr).not.toContain("kept changing");
+    expect(f.remoteTip("main")).not.toBe(f.head);
+    expect(f.git("rev-parse", `${f.remoteTip(A)}^`)).toBe(f.head);
+    expect(f.pushes()).toHaveLength(1);
+  }));
+
+  it("rereads when main changes the picked task's own row before the write", () => check(f => {
+    const list = path.join(f.work, "docs/plans/assignments.json");
+    const doc = JSON.parse(readFileSync(list, "utf8"));
+    doc.tasks[0].dependsOn = ["W"];
+    writeFileSync(list, JSON.stringify(doc));
+    f.git("commit", "-qam", "A now waits for W");
+    const moved = f.git("rev-parse", "HEAD");
+    f.git("push", "-q", "origin", `${moved}:refs/heads/fixture-main-next`);
+    f.git("reset", "-q", "--hard", f.head);
+    const result = f.run({ mutation: { ref: "main", sha: moved } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stderr).toContain("snapshot changed");
+    expect(result.stdout).toContain("NEXT: BUILD W");
+    expect(f.remoteSet()).not.toContain(`refs/heads/${A}`);
+    expect(f.pushes()).toHaveLength(1);
+  }));
+
   it("stops without writing when the initial authoritative fetch fails", () => check(f => {
     const before = f.remoteSet();
     renameSync(f.remote, f.remote + ".offline");
