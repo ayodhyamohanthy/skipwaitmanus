@@ -1298,6 +1298,35 @@
       ]
     },
     {
+      "id": "D-048-p3-premium-repair",
+      "title": "Repair Premium to D-366: no legacy checkout or new bonus, preserved owned payment recovery",
+      "row": "D-048",
+      "packet": "docs/plans/D-048-money.md",
+      "tier": 1,
+      "lane": "d048-premium",
+      "branch": "agent/queue/d048-p3-premium-repair",
+      "status": "todo",
+      "syncedTo": "D-371",
+      "dependsOn": [
+        "D-048-F-harness",
+        "D-048-F-primitives",
+        "D-048-P-money",
+        "D-048-F-goal-check",
+        "PRICING-banded-oct25"
+      ],
+      "note": "Bounded D-200 repair child at its parent's FIFO position. Only after normal picker BUILD, merge preserved #1254 source d56bf410ea50c0ef2736dec40615fa05d58b2d0b into current main without rewriting history. Keep the original draft branch and unpublished checkouts untouched; transfer no markers. Apply the existing Premium contract in docs/plans/D-048-money.md: no new legacy checkout or first-payment bonus, including stale flags/catalog/offer inputs; preserve historical balances, owned seeker/referrer recovery, deadlines, sequential retries and account/unmount isolation. Server/shared/provider/data modules and price/cost/sale switches stay read-only. Prove no-sale/no-offer red first, unchanged recovery/server controls and synthetic 1280/390 captures; preserve all released ids. Required CI and canonical release proof remain; D-370 requires no independent review/model gate. Child supplies the corrected goal-page build/release; reconcile parent and R-premium only against that actual accepted output. No sale or application acceptance is supplied by registration.",
+      "epic": "D-048-p3-premium",
+      "owns": [
+        "client/src/pages/Premium.tsx (switch only)",
+        "client/src/pages/goal/premium/**",
+        "client/src/pages/premiumGoal.test.tsx",
+        "design/goal-ui/captures/premium/**",
+        "client/src/lib/goalSurfaces.ts (switch only)",
+        "client/src/lib/goalSurfaces.test.ts (switch only)",
+        "docs/DECISIONS.md"
+      ]
+    },
+    {
       "id": "D-048-p3-premium",
       "title": "W3 /premium: paused legacy sales, no new first-payment bonus, preserved payment recovery (D-366)",
       "row": "D-048",
@@ -1306,15 +1335,16 @@
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
       "status": "todo",
-      "syncedTo": "D-366",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
         "D-048-P-money",
         "D-048-F-goal-check",
-        "PRICING-banded-oct25"
+        "PRICING-banded-oct25",
+        "D-048-p3-premium-repair"
       ],
-      "note": "D-366 re-sync (Nov 19, GPT-6.1 Sol · c120): docs/plans/D-048-money.md's Premium current execution contract supersedes the legacy-checkout/bonus parity instructions. PR #1254 at d56bf410 still needs its legacy canBuy and first-payment-offer branch/tests repaired; historical green CI and the prior Fixed/merge receipt do not prove D-366 acceptance. Offer no new legacy single-request/pack/pass checkout or five-referral first-payment bonus, including under stale flags/catalog/offer fields; preserve server-confirmed historical balances and already-started seeker/referrer recovery, deadlines, sequential retries and account-race protection. Data/API/payment/provider modules and every pricing/cost/sale switch remain read-only. D-366's banded-checkout build and activation require their own implementation, test-site QA and unresolved owner mapping/fee/currency/post-cap decisions; this presentation row enables none. D-364 has no new job-link field here; D-365 forbids restoring the proprietor name/personal mailbox. PRICING-banded-oct25 remains a dependency (#666 is merged). D-349 releases the corrected goal page and completes R-premium with its build once current acceptance and required exact-head CI pass; retain all released ids. Use normal picker stages, D-344/D-352 path-based review and protected auto-merge/live verification. Prior review and bound Fixed remain historical evidence only for their inspected diff, not a new verdict or approval of a future source repair. Status/order/branch/owns/dependencies unchanged.",
+      "note": "Nov 21 D-200 execution ruling: preserve original row/branch/status/tier/lane/owns, draft #1254 at d56bf410 and its evidence-bearing block. The bounded D-048-p3-premium-repair child immediately before this row supplies the required current-contract source repair; the parent waits for that actual output and holds no lane under D-134. Historical green CI and prior Fixed/landing markers do not accept the superseded checkout/bonus. docs/plans/D-048-money.md retains no new legacy checkout or first-payment bonus and preserves owned payment recovery, deadlines, sequential retries and account isolation. Required current-main CI, captures and exact-release proof remain; D-370 removes review/model gates. Reconcile this row and R-premium only against the child's accepted implementation/release, never land obsolete #1254 or report application green from docs registration. D-367/D-370 settle separate banded decisions; BANDED-release owns TEST-site QA and activation. No sale switch, provider, price, ledger or unpublished work changes here.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
