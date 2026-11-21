@@ -1962,14 +1962,14 @@
     },
     {
       "id": "D-048-R-support",
-      "title": "Release the goal support page to production: add \"support\" to RELEASED (built and landed in D-048-p3-support) (D-317)",
+      "title": "Complete current-release acceptance of the already-live goal support pages (D-317)",
       "row": "D-048",
       "packet": "docs/plans/D-048-phase-3-split.md",
       "tier": 2,
       "lane": "d048-release-support",
       "branch": "agent/queue/d048-r-support",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-372",
       "dependsOn": [
         "D-048-p3-support"
       ],
@@ -1983,7 +1983,7 @@
         "client/src/pages/goal/support/**",
         "design/goal-ui/captures/support/**"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"support\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. D-335 (2026-11-15): owns also gains e2e/report-from-conversation.e2e.ts, because the release moves /report from the kit line to the goal page's 'Thanks. Your report is filed.'; only that one confirmation line is re-pinned. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=support); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-support's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; green required CI (Tier 2, D-200 (4)). Promises only what works today (D-153, SUPPORT-A). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-support, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged.",
+      "note": "Release #1193 merged November 15 as 6c64f04d1186533960d1c2bca1feeb32f8a40f02 after final-head CI 43658500373; support remains RELEASED. Retirement #1314 merged as c27ce712393d04aae2b6ce493c7a6c89ca832486 and supplies historical signed-out canonical 1280/390 and Sentry evidence in docs/evidence/D-048-K-support/. The picker reissued BUILD while closed-PR evidence was unreadable. This row now completes remaining acceptance only: never re-add the released switch, reland its old branch or restore retired bodies. November 21 partial receipt: design/goal-ui/captures/support/release-2026-11-21-4d81.json. Current 67 focused tests, TypeScript and scope check pass; GET /help, /report, /safety and /support return 200 with web83ecb3bab, API ready at the same SHA matches the remote api-runtime tag, canonical verifier CONVERGED and workers.dev404. A fresh /help1280 capture passes; mobile capture and later navigation timed out. Keep todo for complete fresh rendered 1280/390 checks of /help, /report and /safety, authenticated reporting acceptance through an approved session and the applicable route-specific Sentry watch. /support is a separate contact page, not the historical claimed redirect; preserve its D-365 content and separate policy ownership. D-370 governs required CI with no independent review. Preserve tier, owns, dependencies, FIFO position and all prior contribution/evidence history; no runtime, auth, money, legal or production change is authorized by this reconciliation.",
       "epic": "D-048-p3"
     },
     {
