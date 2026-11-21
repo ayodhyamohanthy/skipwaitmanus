@@ -172,6 +172,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
+- `pages/PlansV2.tsx` (row `BANDED-ui`, D-367): `plans/BandedExtraReferrals.tsx`, `plans/BandedPlanAction.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`
 - `pages/Profile.tsx`: `profile/PrivacyControls.tsx`, `profile/ProfileForm.tsx`
 - `pages/PublicProfile.tsx`: `profile/PublicWorkGrid.tsx`

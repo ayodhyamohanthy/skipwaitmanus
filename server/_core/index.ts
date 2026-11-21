@@ -75,6 +75,7 @@ import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerBlocksRoutes } from "../blocksRoutes";
 import { createCardValidationPageForUser, reconcileCardValidationFromProvider } from "../cardValidation";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
+import { bandedCheckoutStore } from "../bandedCheckoutStore";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { registerAdminCatalogSyncRoutes } from "../adminCatalogSyncRoutes";
 import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
@@ -333,6 +334,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
+    // BANDED-checkout (D-367): routes answer 409 not_on_sale until BANDED_SALES_ENABLED is true.
+    banded: bandedCheckoutStore(db.getDb),
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,

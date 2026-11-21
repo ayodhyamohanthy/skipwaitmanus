@@ -278,8 +278,8 @@
       "tier": 1,
       "lane": "banded-checkout",
       "branch": "agent/queue/banded-checkout",
-      "status": "todo",
-      "syncedTo": "D-370",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-schema",
         "BANDED-catalog-sync"
@@ -294,7 +294,7 @@
         "src/worker.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "PR #1411: banded plan and extra-referral checkout behind BANDED_SALES_ENABLED (exact 'true', same reader rule as BANDED-spend; off answers 409 not_on_sale before sign-in, a read or a provider call). Founding place reserved under the counter row lock; hosted pages keyed by the checkout idempotency key; extras inside the member's band with the volume discount as a fixed amount. Grants, UI and release remain their own rows. Completion is carried in this PR; required CI and the exact-release check are the acceptance gates."
     },
     {
       "id": "BANDED-grants",
@@ -1938,7 +1938,7 @@
       "tier": 1,
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-profile",
@@ -6155,7 +6155,7 @@
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
       "status": "todo",
-      "syncedTo": "D-359",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-174-job-catalog",
         "REL-review-email-retry-schema"
@@ -6181,7 +6181,7 @@
         "server/emailDelivery.ts",
         "server/emailDelivery*.test.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys). Nov 18 execution split: REL-review-email-retry-schema lands and production-verifies only the existing additive 0122 SQL first. The Fixed marker on PR874 does not prove that schema output; this row resumes landing only after the prerequisite is done. Existing runtime repair, history, Fixed binding, CI and first-live-job acceptance stay unchanged."
+      "note": "D-350 resumed this row. The schema prerequisite applied and verified migration 0122 in production. The Nov 21 ruling records the local test failures and their baseline evidence. Continue PR #874 with a current-main merge, fresh required CI including MySQL retry coverage, and protected auto-merge under D-370. Keep the exact applied SQL. Confirm canonical release identity and the first successful review-delivery-retry run after deployment."
     },
     {
       "id": "REL-heartbeats",
@@ -6616,15 +6616,14 @@
       "lane": "security-hsts",
       "branch": "agent/queue/d100-hsts-preload",
       "status": "todo",
-      "syncedTo": "D-227",
-      "dependsOn": [
-        "D-100.csp-release"
-      ],
-      "note": "D-223 subtask of D-100. Same file as the CSP rows, so after them.",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "note": "D-223 subtask of D-100. November 21 technical ruling under D-200/D-223/D-309/D-314 removes the CSP-release edge whose sole reason was the shared filename; dormant HSTS consumes no CSP acceptance output. Integrate current main into PR #1367, preserve both header changes, require green composed-head CI and exact-release verification. HSTS_PRELOAD stays false; activation and domain submission remain owner-only. CSP release remains todo with D-350's 48-hour collection/enforcement acceptance; inferred picker completion is not that evidence.",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts",
-        "server/securityHeaders.test.ts"
+        "server/securityHeaders.test.ts",
+        "docs/DECISIONS.md"
       ]
     },
     {
@@ -7613,19 +7612,19 @@
     },
     {
       "id": "D-174-seeker-journey-build.public-payload",
-      "title": "GET /api/companies stops sending openToReferrals and openCount; /plans coverage block reads only the seeker's own requests",
+      "title": "GET /api/companies stops sending openToReferrals and openCount; GET /api/companies/:slug adds referrerPresence; /plans coverage block reads only the seeker's own requests",
       "row": "D-174",
       "packet": "docs/plans/D-174-seeker-journey-build.md",
       "tier": 1,
       "lane": "d174-journey-payload",
       "branch": "agent/queue/d174-journey-payload",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-372",
       "dependsOn": [
         "D-174-seeker-journey-build.composer-neutral",
         "D-174-company-search"
       ],
-      "note": "Packet section 6.3, ruling 5 (D-193 (5)): expand-then-contract, keys optional for one release, admin schema keeps availability, companyClaim reads an internal getter, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9). Tier 1 at the existing machine floor: owns client/src/components/plans/PlansKitSections.tsx, matched by client/src/components/plans/** in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
+      "note": "Packet section 6.3 (re-synced Nov 21 through D-372), ruling 5 narrowed by D-360 (5)/D-363: expand-then-contract, openToReferrals/openCount optional for one release and no longer sent, admin schema keeps availability, companyClaim reads an internal getter, GET /api/companies/:slug adds referrerPresence (present/none: any verified, unsuspended referrer has joined; never availability, count or name; absent on the list and search) as the authoritative input section 6.5's jobs list needs, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9). Tier 1 at the existing machine floor (owns client/src/components/plans/PlansKitSections.tsx, matched by client/src/components/plans/** in TIER1_CLIENT, scripts/tierClassifyCore.mjs); lands on green required CI alone with no independent review (D-370) and auto-lands when green (D-371).",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "shared/companies.ts",
@@ -8415,6 +8414,30 @@
         "AGENTS.md"
       ],
       "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324): the pre-write check compared every task's refs and main, so any heartbeat, claim, push or landing during the GitHub reads aborted every claim. Now scoped to the write's task refs, report log, landing slot and fix-main locks; main by the task's row, dependencies, decision sync and landed state. PR #1421 (registered by #1422); red-first CLI tests; all picker suites pass. Completion is carried in this PR; required CI is the landing gate."
+    },
+    {
+      "id": "PICKER-report-append-snapshot",
+      "title": "Append a guarded task report after verified unrelated native reports without accepting stale same-task inputs",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-report-append-snapshot.md",
+      "tier": 2,
+      "lane": "picker-report-append",
+      "branch": "agent/queue/picker-report-append-snapshot-8817",
+      "status": "todo",
+      "syncedTo": "D-372",
+      "dependsOn": [
+        "PICKER-snapshot-scope"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-report-append-snapshot.md",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "docs/plans/assignments.json",
+        "docs/DECISIONS.md"
+      ],
+      "epic": "D-212",
+      "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
     }
   ]
 }
