@@ -14,10 +14,12 @@ export const CAP_FULL_LABEL = "Founding places for this plan are taken";
 export const OFFER_LOADING_LABEL = "Checking whether this plan is on sale…";
 const APPLY_EMAIL = "support@skipwait.me";
 
-const buttonBase = "g-hit flex w-full items-center justify-center rounded-[10px] border px-5 text-g-small font-semibold";
-export const primaryButton = `${buttonBase} border-transparent bg-g-primary text-g-on-primary hover:bg-g-primary-hover active:bg-g-primary-pressed`;
-export const outlineButton = `${buttonBase} border-g-ink bg-g-surface text-g-ink hover:bg-g-surface-hover`;
-export const inertButton = `${buttonBase} cursor-not-allowed border-g-control-edge bg-g-surface text-g-ink-3`;
+const buttonBase = "g-hit flex w-full items-center justify-center rounded-[10px] border px-5 text-center text-g-small font-semibold";
+// Actions are 40px on desktop and 44px on phones (DESIGN.md controls and rule 15); the off-state box keeps its old size.
+const actionBase = `${buttonBase} h-10 max-gdesk:h-11`;
+export const primaryButton = `${actionBase} border-transparent bg-g-primary text-g-on-primary hover:bg-g-primary-hover active:bg-g-primary-pressed`;
+export const outlineButton = `${actionBase} border-g-ink bg-g-surface text-g-ink hover:bg-g-surface-hover`;
+export const inertButton = `${actionBase} cursor-not-allowed border-g-control-edge bg-g-surface text-g-ink-3`;
 const statusBox = `${buttonBase} border-g-hairline bg-g-surface text-g-ink-3`;
 
 function Note({ children }: { children: ReactNode }) {
