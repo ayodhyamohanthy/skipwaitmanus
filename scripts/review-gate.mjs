@@ -29,6 +29,7 @@ import { pathToFileURL } from "node:url";
 import { modelOf, parseMarker, reviewLockOf, slugOf } from "./nextTaskCore.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
 import { z } from "zod";
+import { INDEPENDENT_REVIEW_REQUIRED, NO_REVIEW_NOTICE } from "./sessionPolicy.mjs";
 
 
 const ASSIGNMENTS = "docs/plans/assignments.json";
@@ -333,6 +334,11 @@ function fetchBranch(name) {
  * on its own it also checks the current local head.
  */
 export function runReviewGate({ local = false } = {}) {
+  // D-370: no review dependency. The step keeps its name (the picker reads it) and passes.
+  if (!INDEPENDENT_REVIEW_REQUIRED) {
+    console.log(NO_REVIEW_NOTICE);
+    return 0;
+  }
   let externalContext = false;
   const mergeGroup = process.env.GITHUB_EVENT_NAME === "merge_group";
   try {

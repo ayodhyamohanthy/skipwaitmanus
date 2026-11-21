@@ -10,6 +10,7 @@ import { z } from "zod";
 import { BILLING_REGIONS, indiaPriceNote, currencyForRegion, type BillingRegion } from "./billingRegion";
 import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, PASS_SALES_ENABLED, REVERSE_TRIAL, REVERSE_TRIAL_ON_OFFER, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
+import { PLAN_FAMILY_IDS } from "./planFamily";
 
 export const BILLING_INTERVALS = CATALOG_INTERVALS;
 export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
@@ -55,11 +56,11 @@ export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
 /** Every plan a subscription can bill: the kit catalog plans only (D-067). */
 export const BILLABLE_PLAN_IDS = CATALOG_PLAN_IDS;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
-/** tokenBalances.plan: existing values first and in order (0090, then 0091). */
-export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+/** Stored wallet ids, including dormant banded plans; not the sellable catalog. */
+export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", ...PLAN_FAMILY_IDS] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
-/** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+/** Stored checkout ids keep the same append-only ordering; new routes stay off. */
+export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge", ...PLAN_FAMILY_IDS] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);

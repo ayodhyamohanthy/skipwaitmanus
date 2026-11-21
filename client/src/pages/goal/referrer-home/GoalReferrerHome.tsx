@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { GoalButton, GoalEmptyState, GoalErrorState, GoalNextStep, GoalNum, GoalSkeletonRows, GoalVerifiedMark, useOnlineStatus } from "@/components/goal";
-import { ReferrerSampleRows } from "@/components/referrer-home/ReferrerSampleRows";
 import { askCountdown, deriveReferrerHome, fetchReferrerHome, saveReferrerPreferences, type InboxRow, type ReferrerHomeData, type ReferrerHomeView } from "@/components/referrer-home/referrerData";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
@@ -70,16 +69,8 @@ function Waiting({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
       </div>
       {view.atCapacity ? (
         <GoalEmptyState title="You have reached your referral capacity." body="Review open referral requests before taking on more." />
-      ) : view.waiting.length === 0 && view.showSamples ? (
-        <ReferrerSampleRows
-          kick="SAMPLE · NOT REAL REFERRAL REQUESTS"
-          rows={[
-            { name: "A. Sample · Product Analyst", time: "RECENT", reason: "They named you and shared why you may be a fit.", next: "Waiting for your review." },
-            { name: "B. Example · Data Engineer", time: "EARLIER", reason: "Sent to your company’s referral queue.", next: "Review the details before deciding." },
-          ]}
-          caption="Examples only; these rows do not count toward your capacity or private record."
-        />
       ) : view.waiting.length === 0 ? (
+        // D-371 (no sample data in the product, per AGENTS): a referrer who has never reviewed sees the honest empty state.
         <GoalEmptyState
           title={view.isNew ? "Your first referral request will appear here." : "No referral requests right now."}
           body={view.isNew ? `Referral requests${company ? ` for ${company.name}` : ""} now reach you privately. Share your profile when you are ready.` : "Your queue is clear for now."}

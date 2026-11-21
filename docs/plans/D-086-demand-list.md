@@ -1,21 +1,31 @@
 # Packet D-086: the demand list (public counts of people asking for a referral, loop L1)
 
-> **ADOPTION CANDIDATE, NOT MERGED.** A reasoning session (D-225) wrote this packet for the coordinator to validate and adopt. No runtime behavior changes:
-> - This candidate updates `docs/plans/assignments.json` and `docs/DECISIONS.md` only for the reviewed packet registration.
-> - The registry delta (§9) and register entry (§10) are included in this ordinary docs adoption candidate; they take effect only after protected merge.
-> - Nothing below is built or live, and none of it is owner-approved beyond what §2 quotes. No builder takes a row from this file before adoption.
+> **Current release state (D-366, Nov 19): both demand switches stay off.** D-366 reserves the conflict between the employer-bonus sentence in the demand UI and D-323's no-bonus-led positioning for the owner. The re-sync records the hold; it does not choose public copy, approve a preview with the old copy, or authorize activation. Use §5.4 and §8 for the release. The original registration, proposals and reviews below are historical where they conflict with those sections.
 >
-> **Revision 3** (same task, bounded, docs only). Revision 2 answered the coordinator's four findings on `5c1a4448` (PR #776). Revision 3 corrects one factual handoff gap found in the review of `ec0761a2`: there is no client company-create form, so `D-086.admit` is read-only and listing goes through the authenticated admin API. The dispositions are in §12.
+> **Original packet:** [PR #776](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/776) and the subsequent registry adoption are complete. Revision 3 corrected a factual handoff gap: there is no client company-create form, so `D-086.admit` is read-only and listing goes through the authenticated admin API. The original dispositions are in §12.
 
 > Read `docs/BRIEF.md` first, then this packet. Each row in §5 is its own task: claim it with the picker, build only that row, and edit only the paths in its `owns` (scope-check fails anything else). Write your status line in the Status section at the end; rows that share plan row D-086 never edit the §3b row (D-134).
 
 | Field | Value |
 |---|---|
-| Queue rows (registration candidate) | `D-086.count` (Tier 1), `D-086.ui` (Tier 2), `D-086.mount` (Tier 2), `D-086.admit` (Tier 2, admin only); the parent `D-086-demand-list` becomes the release row (Tier 1, D-223 (3)) |
-| Decisions | D-086, D-176, D-174, D-193 (3) and (4), D-162 (3), D-223; also D-006, D-019(e), D-028, D-030/D-057 (login rule), D-034, D-040, D-047, D-055, D-059, D-060, D-061, D-062, D-087, D-088, D-097, D-101, D-102, D-153, D-167, D-173/D-180, D-221 |
-| Verified against | `origin/main` `6cbee199` (Oct 28 2026). All heads were fetched for each revision; at revision 3 main was still `6cbee199` and the lock was at `ec0761a2`. No production query, API or provider call was made. |
-| Migrations, env keys, dependencies | None. The two switches are in-code constants (D-193 pattern, §4.7). |
-| Writer | Claude Opus 5.5 · fdae, architect lock `agent/architect/d086-demand-list`. This is a takeover from Claude Code · 4b71 (quiet 119 h), whose lock held only claim and heartbeat markers and no packet. |
+| Queue rows | `D-086.count`, `D-086.ui`, `D-086.mount` and `D-086.admit` have merged with the switches off; `D-086-demand-list` is the held release row (D-223 (3), D-366 (7)). |
+| Decisions | D-086, D-162 (3), D-174, D-176, D-193 (3) and (4), D-223, D-227; current release constraints D-323, D-345, D-352, D-360, D-363 and D-366. |
+| Verified against | `origin/main` `4335dd275` (Nov 20, 2026 IST); current source and merged PRs only. The original Oct 28 read receipt is retained in §0. |
+| Migrations, env keys, dependencies | No schema, environment variable or package changes in this re-sync. The two demand switches are in-code constants (§4.7). |
+
+## Current release read receipt (D-202, D-366)
+
+Picker claim `ee5337def`, branch `agent/architect/d086-demand-list`. Read the current brief, PRD, continuity and collaboration rules, the decision register, §5.4 and `docs/POSITIONING.md`. The prior packet [#776](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/776) is on main. Build evidence: [#955](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/955) `491d01e1` (count), [#1167](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1167) `58a68cd1` (UI), [#1169](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1169) `c2036159` (mount), and [#1184](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1184) `7e863749` (admin view) are ancestors of current main. The count's `todo` registry entry is stale relative to its merged PR; this re-sync changes only the parent row, not any build row or dependency. No public release or later owner resolution of the bonus-copy conflict was found.
+
+| Later decisions | Effect on this release |
+| --- | --- |
+| D-279, D-286, D-314, D-326, D-328, D-330 | Count/UI/mount/admission routing and ownership changes are reflected in the merged build PRs. Do not replay the historical parking or rebuild those slices. |
+| D-323 (4), D-366 (7) | `CompanyDemandLine` on `/explore/:slug` still renders `demandBonusLine()` when the public switch is on. Its disclaimer does not settle the owner-reserved positioning conflict. The browse list has no bonus copy. Neither switch turns on in this re-sync. |
+| D-344, D-345, D-347, D-352, D-353, D-366 (6) | Use protected merge-commit auto-merge on exact required green. Apply independent review where changed paths compute Tier 1, and keep the release privacy checks. Do not add a coordinator wait, a legacy landing slot, or a model-family review requirement. The owner's positioning choice is distinct from these gates. |
+| D-360 and D-363 | Job discovery and its no-referrer empty state are separate from the demand aggregate. Do not infer availability from a count, gate jobs or company results on demand, or promise an indefinite wait while legacy expiry still runs. |
+| Remaining entries after D-227 | No extra change to this aggregate, moderation, switches, queue order, or activation authority. The D-089 and D-099 rows retain their own gates. |
+
+L1 goal: verified employees can identify where help is needed without turning the request into a payout pitch or exposing anyone who asked. This re-sync is documentation only; there were no production account actions or reads of private demand data.
 
 ## 0. Read receipt (D-225)
 - **Main:** `6cbee199` (merge of #771), confirmed after `git fetch origin "+refs/heads/*:refs/remotes/origin/*"`, for each revision. D-225 (#772, `7a264327`) and D-226 (#773, `ee7386f6`) are ancestors of it. The highest register ID on `main` and every fetched head is D-226.
@@ -29,7 +39,7 @@
 
 ## 1. Goal
 Three outcomes:
-- **Public demand.** On `/explore` and each company page, show how many people are asking for a referral at that company. Use real live rows only, k-anonymous, with no identity. Invite the company's employees to verify and help, and state honestly that any referral bonus is the employer's own.
+- **Public demand.** On `/explore` and each company page, show how many people are asking for a referral at that company. Use real live rows only, k-anonymous, with no identity. Invite the company's employees to verify and help. Any employer-bonus wording for release is held under D-366 (7) and §8.
 - **The owner's unlisted-company outcome.** People can already request referrals at companies outside the directory (§3.6). Give that demand a moderated path to public display: admins see unlisted company domains ranked by people asking, verify the company, and list it through the existing authenticated admin API (a manual request; there is no client form). The public pages invite seekers and employees at unlisted companies to act.
 - **No new core code.** This packet adds no request, money, expiry or pool code.
 
@@ -117,12 +127,12 @@ Three outcomes:
    - **The admin display is `D-086.admit`**, a read-only view that waits for `D-048-p3-admin` (§5.5). Until it lands, the queue is readable only as admin JSON. `/admin/flow-health` `coverageGaps` stays the partial view (§3.3). This gap is named in §11.
 6. **The ask-to-any-company path is done.** D-086 (1) is §3.6-§3.7 and §3.11. The 90-day closure is replaced by D-174 plus D-193 (4) in `D-174-held-ask-reconfirm` and `D-174-expiry-clock-removal` (§3.8). The "not yet open" framing is dropped (D-176), and the plan §3b row and the queue title are reworded (§9).
 7. **Switches.** `shared/companyDemand.ts` exports `COMPANY_DEMAND_PUBLIC_ENABLED = false` (the two public routes and the client hooks) and `COMPANY_DEMAND_ADMIN_ENABLED = false` (the admin queue). Each is one reviewed line. There is no env key, so `.env.example`, `src/worker.ts` and `client/src/lib/flags.ts` stay untouched.
-8. **Copy (proposed; it replaces the PRD's demand-list section at release):**
-   - **Count:** "{N} people are asking for a referral at {Company}." (PRD verbatim; N in `GoalNum`.)
-   - **Few:** "A few people are asking for a referral at {Company}." (D-086 (2)'s "A few people asking", as the full sentence the PRD asks this packet to propose.)
-   - **None:** nothing renders. Both PRD empty lines are dropped. "No one has asked for {Company} yet" asserts the past and could be false. "Nobody at {Company} is waiting right now. We'll tell you if that changes." says "waiting" and promises a notice that nothing sends (D-153).
+8. **Demand copy (subject to the release hold in §5.4):**
+   - **Count:** "{N} people are asking for a referral at {Company}." (N in `GoalNum`.)
+   - **Few:** "A few people are asking for a referral at {Company}." (D-086 (2), D-162.)
+   - **None:** nothing renders. Do not imply anything about past demand or promise change notifications (D-153).
    - **Employee help** (a plain link, never a black commit): "Work at {Company}? Verify your work email to help." It links to `referrerSignInHref()`. It does not say "see these requests", because D-062 hands a new referrer at most their capacity.
-   - **Bonus:** "If {Company} pays employees a referral bonus, {Company} sets and pays it under its own rules. skipwait.me never pays referrers." It is informational only, with no payout promise. It has no figure (figures come only from D-099 with a source), no guarantee, and no "if they get selected you get". D-099's legal/privacy review hold and its separate Tier1 activation conditions remain unchanged; this line waives neither. The PRD's "Most companies pay..." is an unsourced statistic (D-088).
+   - **Employer-bonus copy is held (D-323, D-366 (7)).** The implemented company detail currently has an employer-specific bonus sentence with a SkipWait no-payout disclaimer. Treat it as a source fact, not release wording. Do not replace it with the old PRD's unsourced "Most companies pay" claim. The owner decides whether the detail may mention an employer bonus at all (§8); D-099's own positioning and release gates are unchanged.
    - **List heading on `/explore`:** "Companies in our directory where people are asking for a referral". Each entry links to `/explore/:slug`.
    - **Under the list, for unlisted companies (F1):**
      - "Your company isn't listed? Request a referral with a job link from its careers site." The link goes to `/ask`, the existing path.
@@ -131,9 +141,9 @@ Three outcomes:
 10. **Nothing outbound.** No email, share card, social post, sitemap entry, `JobPosting` or SEO markup carries a demand number (D-087/D-088). The numbers live only in the API responses and the components.
 
 ## 5. The rows
-Every row: claim through the picker, write red tests first, one commit per step, with `pnpm check` and its focused tests green on each commit, and the full gate on the merged result. Tier 1 rows open a draft PR and get an independent review by a model that neither built nor fixed the work (D-151).
+Claim work through the picker and stay within the assigned packet. Runtime changes use red-first focused tests and the integrated gate; docs-only re-syncs use focused verification and required CI. Under D-352, changed paths that compute Tier 1 also require a review from a session that did not build or fix the change. The original implementation instructions below are retained for provenance; §5.4 governs the pending release.
 
-General **Stop if** for every row: a cited function or contract changed on `main`, a test fails for a reason you cannot explain, or the work needs a file outside `owns`. Stopping means: push, run `--report blocked` with the question, and wait.
+Stop and report a contract, test or scope conflict before acting on it. Only the affected task waits (D-345, D-366).
 
 ### 5.1 `D-086.count` (Tier 1: a public aggregate of seeker activity plus an admin queue; M)
 - **Waits for:** `D-174-company-search`, which owns `server/companyDirectoryRoutes.ts`, where this row adds its one mount call (D-223 (6): an existing mount point). There is no BYOR edge, because no owned file is shared with BYOR (settled).
@@ -240,18 +250,12 @@ General **Stop if** for every row: a cited function or contract changed on `main
 - **Proof:** captures at 1280 and 390 from fictional fixtures (team rule 8) of count, few, none, the list with its unlisted lines, and the switch off, under `design/goal-ui/captures/demand/`.
 - **Owns:** `client/src/pages/Explore.tsx (switch only)`, `client/src/pages/ExploreCompany.tsx (switch only)`, `client/src/pages/explore.demandMount.test.tsx`, `design/goal-ui/captures/demand/**`.
 
-### 5.4 `D-086-demand-list`: the release row (Tier 1; status `todo`, waiting on its rows)
-- **Waits for:** `D-086.count`, `D-086.ui`, `D-086.mount`, `D-090-BYOR` (D-162 (3); BYOR also owns the three docs below) and `D-048-p3-live-review-find`. Not `D-086.admit`: the admin view is not behind the public switch and must not hold the release on `D-048-p3-admin` (§5.5).
-- **Do:**
-  - Flip both switches, `COMPANY_DEMAND_ADMIN_ENABLED` and `COMPANY_DEMAND_PUBLIC_ENABLED` (switch only).
-  - Add the `AGENTS.md` system-map row: `/api/company-demand*` and `/api/admin/company-demand/unlisted`, mapped to `shared/companyDemand.ts`, `server/companyDemand.ts` and `server/companyDemandRoutes.ts`. Describe it as live distinct canonical people, listed companies only in public, coverage-neutral, k-anonymous, with no age cutoff of its own.
-  - Replace the PRD demand-list copy with §4.8.
-  - Reword plan §3b row D-086 to drop "closed at 90 days under D-061" and "D-102's honest availability" (D-174, D-176).
-- **Before flipping:**
-  - QA on the preview with both switches on, with captures.
-  - The normal privacy review inside the independent Tier 1 review: payload and copy are checked against the live lines in §3.10, and the legal text is left as it is (§7).
-  - The CEO's sign-off (D-223 (3)).
-- **Done when:** after the deploy, `GET https://skipwait.me/api/company-demand` returns only slugs, names and demand states, with no number below 3, no total and no domain (paste the response). Screens at 1280 and 390.
+### 5.4 `D-086-demand-list`: release held for the owner's positioning decision (D-366 (7))
+
+- **Current state:** Both `COMPANY_DEMAND_ADMIN_ENABLED` and `COMPANY_DEMAND_PUBLIC_ENABLED` stay `false`. Do not implement a copy change, flip either switch, or infer approval from green CI, the older packet, or already-merged implementation. §8 names the decision that clears this hold. The owner decision must be recorded in `docs/DECISIONS.md` before the packet or runtime follows it.
+- **After the decision is recorded:** Re-sync this row to the recorded direction. If it requires client copy or tests outside this row's switch-only runtime scope, route that change through the picker and finish it before the release. Keep the existing count, UI, mount, BYOR and Find dependencies. `D-086.admit` is merged but is not a prerequisite for the public mount.
+- **Before activation:** Verify the approved copy in a test environment with synthetic data, with 1280/390 captures. Confirm that public payloads expose only listed-company slugs, names and the `none`/`few`/`count` contract; `few` never discloses an exact number, `count` starts at three, and there are no totals, identities or source domains. Check that the admin route requires an admin and returns `private, no-store` when enabled. Preserve the legal text, work-email help link, and coverage-neutral read. Apply the current path-computed D-352 review gate and exact required CI; no separate coordinator dependency (D-345).
+- **Release, once eligible:** Use the protected runtime release path. Record the system map and update the PRD and build plan to the authorized behavior with the release. Verify the exact deployed release and desktop/phone rendering. Public proof uses sanitized response shape/status, not a dump of demand values or admin data.
 - **Owns:** `shared/companyDemand.ts (switch only)`, `AGENTS.md`, `docs/PRD.md`, `docs/KIT_V4_BUILD_PLAN.md`.
 
 ### 5.5 `D-086.admit` (Tier 2: read-only admin view of the admission queue; S)
@@ -283,10 +287,17 @@ General **Stop if** for every row: a cited function or contract changed on `main
 ## 7. Privacy and legal text (F4)
 The legal text stays as it is. An aggregate count with no identity or request content contradicts none of the live lines in §3.10, so there is no separate approval gate. The Tier 1 reviews of `D-086.count` and the release row check payload and copy against those lines. A real contradiction goes to the owner under the standing legal-text rule (plan §6).
 
-## 8. Owner questions
-None remain. The scope question in revision 1 rested on the register title's narrow clause, not on the owner's broader request. §4.2 records the compatible reading. Choices the coordinator may still change without the owner: placement (§4.9) and copy (§4.8), within D-153.
+## 8. Owner decision before release (D-366 (7))
 
-## 9. Registry delta included in this adoption candidate (not effective until protected merge)
+May the company-page demand line mention an employer's referral bonus, or should the invitation use only verified matching, discretion and the employer's own referral process? The old component displays a bonus sentence near the work-email invitation even though skipwait.me never pays employees (D-055). D-323 (4) rules out a bonus-led pitch; D-366 assigns the conflict to the owner. No wording is selected by this packet.
+
+**Recommendation: omit bonus language from demand acquisition copy (8/10).** The seeker needs a request to reach a verified employee, not a promise of paid attention; the employee needs to know they can decide under company policy. The strongest argument for retaining a narrowly factual disclaimer is that it may answer a genuine employee question and clarify who funds any employer programme. Put that explanation in the employer-rules context only if approved. This is an evidence-backed positioning recommendation (D-323 and `docs/POSITIONING.md` §§2–5), not a measured conversion lift. Any later copy-only change should be checked against work-email verification completion and reports of annoyance, using existing consent-respecting measurement. No price, payout, privacy or legal change is proposed.
+
+The release stays at `owner` with both switches off until a recorded owner decision resolves the wording. After that decision and any required copy repair, apply §5.4. The D-099 decisions and rows stay separate.
+
+## 9. Historical registry adoption delta
+
+The configuration below describes the original registration, not the current assignment. Use `assignments.json` and §5.4 for release eligibility.
 **Historical architect validation at 6cbee199 (before D132 registration).** Current integration e67f7785 has214baseline rows, and this candidate has218rows/0errors; the graph probe serializes every open ownership overlap.
 - With the JSON below applied to a scratch copy of `origin/main`'s `docs/plans/assignments.json` (`6cbee199`), `validateAssignments` (`scripts/nextTaskCore.mjs:194`) returns **217 rows, 0 errors**. The unchanged file returns 213 rows, 0 errors.
 - An `ownsOverlap` probe of each proposed `owns` against every open row found overlaps only where a `dependsOn` edge, direct or transitive, already orders them. Nothing overlaps `PRICING-banded-oct25` (#666).
@@ -415,6 +426,11 @@ Baseline tests show the cited sources behave as cited; they do not prove the fea
 | P1.2 | `adminCompanyCreateSchema` on a minimal valid body, then the same body with `demand: 20` added | accepted / refused (strict) |
 
 ## Status
+
+- `D-086-demand-list`: re-synced to D-366 on `agent/architect/d086-demand-list` (claim `ee5337def`, GPT-6.1 Sol · 8642, Nov 20). The four implementation PRs have merged with both switches off; see the current read receipt. The release row is parked at `owner` for §8's specific positioning decision. No draft release, copy approval, runtime work or production deployment comes from this re-sync.
+- Validation: the real picker and assignment validator accepted all 377 rows. With dependencies satisfied in a local projection, the old row offered re-sync and the updated row was ineligible because it waits for the owner. Only the parent row's status, stamp and note change; both switch declarations are unchanged and false. The five-file local run passed 252 tests and timed out on one unchanged picker verdict integration case (`scripts/nextTask.test.ts:1664`, 20-second limit); an isolated rerun hit the same timeout. No test or limit changed; this is not a green local suite. Required exact-head CI remains the merge gate for the docs PR.
+
+### Historical build and registration receipts
 D-086.count: parked — D-279 (2026-11-02). The deliverable is complete on `agent/queue/d086-count` (head `4700fc10`, draft PR #955): the k-anonymous contract, the coverage-neutral read, the red-first fixture and route tests, the admin admission queue and the switch-only mount inside `registerCompanyDirectoryRoutes`, with both `COMPANY_DEMAND_PUBLIC_ENABLED` and `COMPANY_DEMAND_ADMIN_ENABLED` false. The only red required job on that head is the review gate — `typecheck` fails at its `Scope check (declared file ownership)` step with `review-gate: D-086.count at 4700fc10: Tier 1: this head has no independent passing review (D-074, D-151) … Nobody has reviewed D-086.count yet.`, while the job's own `Typecheck`, `Design tokens` and `Deploy trigger coverage` steps and the `unit + component + route tests`, `production build` and `e2e journeys` jobs are all green there. The review lock `agent/review/d086-count` has never existed on origin, so no session was ever handed the review that would clear the gate, and `scripts/nextTaskCore.mjs:573-584` can only answer `fix` or `green` while CI is red, so the picker's promised second review is unreachable. The row is therefore parked at `status: "owner"` with `syncedTo: "D-279"`; it is the eighth member of the class D-254 already measures, it asks no second question, and no gate is waived. Do not rebuild: the row lands unchanged once a review route exists, and both switches stay false. Its dependents `D-086.ui`, `D-086.admit` and the release row `D-086-demand-list` wait on it under D-134 either way.
 D-086-demand-list: revision3 reviewed source packet f81236e8; coordinator registration candidate on ordinary PR788, not yet merged. Four implementation rows and future release remain unbuilt; both switches stay off. The historical architect revision was proposal-only; registry and register changes in this candidate become effective only through protected merge.
 

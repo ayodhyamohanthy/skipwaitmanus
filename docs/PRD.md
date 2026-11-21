@@ -28,16 +28,16 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | GO-LIVE-1b (PR #359) | - | QA + build | landed (#359); passes stay off (`PASS_SALES_ENABLED = false`, D-146) |
 | W0 goal shell (PR #361) | L6 | build | live (#361) |
 | W1 comps: /explore + ask drawer (w1-comps) | L1 | build | live (#362), reviewed in #472; the redesign to the doctrine is D-048-p3-live-review-find (D-150) |
-| Demand list (D-086) | L1 | build | approved; queued as `D-086-demand-list`, packet to write (D-154); its build follows BYOR (D-162); mocks in hand |
+| Demand list (D-086) | L1 | release | Count, UI, mounts and admin view are merged, with both switches off. Release `D-086-demand-list` waits for the owner's decision on employer-bonus copy (D-323, D-366 (7)); see the [release packet](plans/D-086-demand-list.md#54-d-086-demand-list-release-held-for-the-owners-positioning-decision-d-366-7). |
 | BYOR one-time link (idea 2) | L2 | build | landed (`D-090-BYOR`, PR #632, reviewed); flags `BYOR_LINK_ENABLED`/`VITE_BYOR_LINK` stay OFF until its release row |
 | Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-327): screen name on the referral link, direct-request marker, one switch starting off | build after idea 2 and the demand list; its two build rows (`D-089.server`, `D-089.ui`) are registered (D-327, Nov 12) and queue behind their dependencies; the release row flips the switch only after both rows, QA and the owner's look at the captures |
 | Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
-## Demand-list copy (D-086, verbatim)
-- "{N} people are asking for a referral at {Company}." (N from 3 up; for 1-2 people D-086 (2) gives only "A few people asking", and the D-086 packet proposes the full sentence; never a count of 0 — D-086 (2), D-162)
-- Empty: "No one has asked for {Company} yet." / "Nobody at {Company} is waiting right now. We'll tell you if that changes."
-- Bonus honesty: "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers."
+## Demand-list release contract (D-086, D-227, D-366)
+- For listed companies, show a live count from three distinct people; for one or two say “A few people are asking for a referral at {Company}.” At zero, the demand section renders nothing. That does not imply anything about company coverage or the availability of jobs.
+- The employee invitation uses the existing work-email verification path. Do not promise a payout, referral, or notification.
+- The company detail's employer-bonus copy remains an owner decision under D-366 (7). The separate release is on hold; both demand switches remain off.
 
 ## Claim-your-company (D-107, draft)
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
@@ -61,6 +61,8 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing
+The admin catalog sync prepares the D-367 plan and per-level extra-referral prices in INR/USD from the frozen family. Its create-only, hash-confirmed apply does not enable checkout or sales; BANDED-release owns test-site acceptance and activation (D-370).
+
 One source of truth: [`docs/PRICING.md`](PRICING.md) (D-219, owner freeze Oct 25: banded seeker plans Early to Mid, Mid to Senior and Senior to Executive with per-level extra referrals; 3 free referrals a month at any level with a verified card; legacy packs paused; passes off). The D-132 credit-dropdown model and the D-152 plan names are superseded. Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
 
 ## Group Plan bulk purchase - approved build direction (Oct 31)
