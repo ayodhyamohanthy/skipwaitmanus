@@ -82,3 +82,4 @@ No existing test is edited, skipped or loosened.
 
 ## Status
 - SYNC-LOG-off-main: todo — packet by Hark · e9cd, 2026-11-01; waits for REL-rollback-skew (shared `deploy-pages.yml`).
+- SYNC-LOG-off-main (D-373 (6), 2026-11-21, recorded by Claude Code): the `REL-rollback-skew` dependency is removed. D-314 (3) kept it only so that a review pass surviving merges of `main` would not skip a resolved conflict; D-370 (2) removed review passes, and the row's one remaining item, the drill, changes no file. Re-synced through D-373: this packet's scope is unaffected by D-264 to D-372. Integrate current `main` into #1378 and land on green required CI.
