@@ -12,9 +12,10 @@ activation, live request, email, payment or database operation was performed.
 - Red-first UI regression: 4 failed / 3 passed before the control existed.
 - `pnpm vitest run server/askReconfirm.test.ts server/db.coverageDelivery.test.ts server/coverageDeliverySweep.test.ts server/dailyMoneyCheck.test.ts server/db.askCostStored.test.ts server/askInviteClaim.test.ts server/askInviteReservation.test.ts --maxWorkers=2`: **180 passed**.
 - `pnpm vitest run client/src/pages/myRequests.reconfirm.test.tsx --maxWorkers=1`:
-  **6 passed**. Tests cover success/refetch, no control without pending consent,
-  feature-off compatibility, HTTP failure, offline failure and a mismatched
-  response. The unrelated shell is isolated; existing shell suites are unchanged.
+  **7 passed**, including feedback scrolling after an error. Tests cover
+  success/refetch, no control without pending consent, feature-off compatibility,
+  HTTP/offline failure and a mismatched response. The unrelated shell is
+  isolated; existing shell suites are unchanged.
 - `pnpm check`; `pnpm build` (client, prerender, server and postbuild);
   design-token audit; migration lint; deploy-trigger coverage; `git diff --check`.
 - `pnpm exec playwright test --list --config e2e/playwright.config.ts` discovers
@@ -52,7 +53,8 @@ The 390px error message was behind the fixed bottom navigation even though
 DOM visibility and the full browser journey passed. This is a real visual
 defect, so that green run is not final visual acceptance.
 
-The new error now precedes the prompt and the new helper sentence is shorter;
+The new error now precedes the prompt, brings itself into view on failure,
+and the new helper sentence is shorter;
 the existing request cost and conversation/withdraw path are unchanged.
 The browser test additionally hit-tests the Confirm control and the alert
 against overlays. Mobile screenshots capture the actual 390×844 viewport

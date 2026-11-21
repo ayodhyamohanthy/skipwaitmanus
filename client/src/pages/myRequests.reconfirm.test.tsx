@@ -88,4 +88,21 @@ describe("My Requests confirmation", () => {
     expect(screen.getByRole("button", { name: "Confirm" }).hasAttribute("disabled")).toBe(false);
     expect(screen.getByText("Still want this referral request sent? Confirm to send it.")).toBeTruthy();
   });
+
+  it("brings failed-confirmation feedback into view for recovery", async () => {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scroll });
+    try {
+      setup({ fail: true });
+      await screen.findByText("Platform Engineer");
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+      const alert = await screen.findByRole("alert");
+      await waitFor(() => expect(scroll).toHaveBeenCalledWith({ block: "center" }));
+      expect(scroll.mock.contexts[0]).toBe(alert);
+    } finally {
+      if (original) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", original);
+      else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+    }
+  });
 });

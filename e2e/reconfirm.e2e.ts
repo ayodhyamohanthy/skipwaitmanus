@@ -48,14 +48,14 @@ test("old-request consent is readable at 1280/390 and recovers after a failed co
       }
       await confirm.scrollIntoViewIfNeeded();
       // Visibility alone does not detect an opaque fixed navigation overlay.
-      expect(await confirm.evaluate(element => {
+      await expect.poll(() => confirm.evaluate(element => {
         const box = element.getBoundingClientRect();
         return [box.top + 2, box.top + box.height / 2, box.bottom - 2].every(y => {
           const hit = document.elementFromPoint(box.left + box.width / 2, y);
           return hit !== null && element.contains(hit);
         });
       })).toBe(true);
-      if (state === "error") expect(await page.getByRole("alert").evaluate(element => {
+      if (state === "error") await expect.poll(() => page.getByRole("alert").evaluate(element => {
         const box = element.getBoundingClientRect();
         const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
         return hit !== null && element.contains(hit);
