@@ -8,6 +8,7 @@ import { z } from "zod";
 import { BILLING_CURRENCIES, BILLING_INTERVALS, planSellsInterval } from "./billingCatalog";
 import { BILLING_REGIONS, currencyForRegion } from "./billingRegion";
 import { CATALOG_PACK_IDS, CATALOG_PLAN_IDS, type CatalogInterval, type CatalogPlanId } from "./planCatalog";
+import { PLAN_FAMILY_IDS, REFERRAL_LEVELS, topUpMinor, volumeDiscountPct, type PlanPriceBook, type ReferralLevel } from "./planFamily";
 
 const role = z.enum(["job_seeker", "referrer"]).default("job_seeker");
 /** The billing address country route; INR is charged only with an Indian billing address (shared/billingRegion.ts). */
@@ -42,6 +43,9 @@ export const checkoutResponseSchema = z.object({ checkoutUrl: z.string().url(), 
 
 /** The plan or pack is in the catalog but its Chargebee item price is not live on the billing site yet. */
 export const NOT_AVAILABLE_CODE = "not_available_yet" as const;
+
+/** A by-application plan is never self-serve; the plan shows "Apply" with no checkout. */
+export const APPLICATION_REQUIRED_CODE = "application_required" as const;
 
 /**
  * D-067: the pre-kit monthly plans (a body naming `plan: "pro" | "max"`) are removed
@@ -96,3 +100,81 @@ export const SUBSCRIPTION_REFUSALS = {
   activeSubscription: "active_subscription",
   planRetired: PLAN_RETIRED_CODE, // 410
 } as const;
+
+// ---- BANDED-checkout (D-219 prices, D-367 answers, D-370 approval) ----
+// Behind BANDED_SALES_ENABLED (default off). The client names a plan or a cart
+// of levels; every amount comes from shared/planFamily.ts, never the client.
+
+/** Refusal codes the banded plans UI branches on (409 unless noted). */
+export const BANDED_REFUSALS = {
+  notOnSale: "not_on_sale",
+  applicationRequired: APPLICATION_REQUIRED_CODE, // 403
+  foundingFull: "founding_full",
+  activeSubscription: "active_subscription",
+  noPlan: "no_plan",
+  outsideBand: "outside_band",
+  notAvailable: NOT_AVAILABLE_CODE,
+  checkoutKeyUsed: "checkout_key_used",
+} as const;
+
+/** Most referral requests one extra-referral checkout may buy (the legacy per-credit limit). */
+export const BANDED_MAX_REFERRALS_PER_CHECKOUT = 1_000;
+
+/** One key per checkout attempt from the client; a retry with the same key reuses the same page and founding place. */
+const idempotencyKey = z.string().uuid();
+
+/** POST /api/chargebee/banded/plan-checkout. */
+export const bandedPlanCheckoutRequestSchema = z.strictObject({ planId: z.enum(PLAN_FAMILY_IDS), billingCountry, idempotencyKey });
+export type BandedPlanCheckoutRequest = z.infer<typeof bandedPlanCheckoutRequestSchema>;
+
+const bandedCartLine = z.strictObject({ level: z.enum(REFERRAL_LEVELS), quantity: z.number().int().min(1).max(BANDED_MAX_REFERRALS_PER_CHECKOUT) });
+
+/** POST /api/chargebee/banded/referral-checkout: distinct levels, whole quantities, bounded in total. */
+export const bandedReferralCheckoutRequestSchema = z.strictObject({
+  items: z.array(bandedCartLine).min(1).max(REFERRAL_LEVELS.length)
+    .refine(items => new Set(items.map(item => item.level)).size === items.length, { message: "List each level once" })
+    .refine(items => items.reduce((sum, item) => sum + item.quantity, 0) <= BANDED_MAX_REFERRALS_PER_CHECKOUT, { message: "Too many referral requests for one checkout" }),
+  billingCountry,
+  idempotencyKey,
+});
+export type BandedReferralCheckoutRequest = z.infer<typeof bandedReferralCheckoutRequestSchema>;
+
+export type BandedReferralQuote = {
+  currency: PlanPriceBook;
+  lines: Array<{ level: ReferralLevel; quantity: number; unitAmount: number; amount: number }>;
+  quantity: number;
+  subtotal: number;
+  discountPct: number;
+  discount: number;
+  total: number;
+};
+
+/**
+ * The extra-referral price shown before checkout and charged on the hosted page:
+ * frozen per-level top-up prices in level order, the frozen volume discount on
+ * the cart's total quantity, rounded half up to a whole minor unit.
+ */
+export function bandedReferralQuote(items: ReadonlyArray<{ level: ReferralLevel; quantity: number }>, currency: PlanPriceBook): BandedReferralQuote {
+  const lines = REFERRAL_LEVELS.flatMap(level => {
+    const quantity = items.filter(item => item.level === level).reduce((sum, item) => sum + item.quantity, 0);
+    if (quantity === 0) return [];
+    const unitAmount = topUpMinor(level, currency);
+    return [{ level, quantity, unitAmount, amount: unitAmount * quantity }];
+  });
+  const quantity = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const subtotal = lines.reduce((sum, line) => sum + line.amount, 0);
+  const discountPct = volumeDiscountPct(quantity);
+  const discount = Math.floor((subtotal * discountPct + 50) / 100);
+  return { currency, lines, quantity, subtotal, discountPct, discount, total: subtotal - discount };
+}
+
+/** GET /api/chargebee/banded/offer: what the plans page may sell right now; places left come only from the real count. */
+export const bandedOfferResponseSchema = z.discriminatedUnion("onSale", [
+  z.strictObject({ onSale: z.literal(false) }),
+  z.strictObject({
+    onSale: z.literal(true),
+    memberPlan: z.enum(PLAN_FAMILY_IDS).nullable(),
+    plans: z.array(z.strictObject({ planId: z.enum(PLAN_FAMILY_IDS), byApplication: z.boolean(), foundingPlacesLeft: z.number().int().min(0) })),
+  }),
+]);
+export type BandedOfferResponse = z.infer<typeof bandedOfferResponseSchema>;

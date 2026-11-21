@@ -22,6 +22,7 @@ import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import type { LinkHint } from "./findModel";
 import { JobLinkFromPosting } from "./JobLinkFromPosting";
+import { ReasonsCoach } from "./ReasonsCoach";
 
 export type AskResume = { name: string } | null;
 export type AskSentView = { company: string; detail: string; slots: string | null; trackHref: string };
@@ -86,8 +87,8 @@ export function AskDrawer(props: AskDrawerProps) {
   };
   const footer = sent ? (
     <div className="flex flex-wrap items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
-      <GoalButton variant="ghost" touch="large" onClick={props.onAnother}>Ask at another company</GoalButton>
-      <GoalButton asChild variant="primary" touch="large"><Link href={sent.trackHref}>Track this ask</Link></GoalButton>
+      <GoalButton variant="ghost" touch="large" onClick={props.onAnother}>New request</GoalButton>
+      <GoalButton asChild variant="primary" touch="large"><Link href={sent.trackHref}>Track this request</Link></GoalButton>
     </div>
   ) : (
     <>
@@ -118,7 +119,7 @@ export function AskDrawer(props: AskDrawerProps) {
   );
 
   return (
-    <GoalDrawer open={props.open} onOpenChange={props.onOpenChange} title={sent ? "Ask sent" : "Ask for a referral"} context={props.context ?? undefined} closeLabel="Close" footer={footer}>
+    <GoalDrawer open={props.open} onOpenChange={props.onOpenChange} title={sent ? "Referral request sent" : "Request a referral"} context={props.context ?? undefined} closeLabel="Close" footer={footer}>
       {sent ? (
         <div className="grid gap-2" role="status">
           <p className="text-g-heading text-g-ink">Referral request sent to {sent.company}.</p>
@@ -216,6 +217,7 @@ export function AskDrawer(props: AskDrawerProps) {
             ))}
             {/* A screen names no status hue (R3): field-level errors stay inside GoalField. */}
             {props.reasonsError ? <p role="alert" className="text-g-meta text-g-ink">{props.reasonsError}</p> : null}
+            <ReasonsCoach reasons={props.reasons} signedIn={props.signedIn} companyName={props.company?.name} />
           </fieldset>
 
           <PinnedWorkPicker work={props.work} />

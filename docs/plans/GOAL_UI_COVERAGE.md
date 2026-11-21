@@ -85,7 +85,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/settings` | `pages/Settings` | `D-048-p3-settings` | D-048-p3-settings: to be added by its lane packet |
 | `/referrer` | `pages/Referrer` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
 | `/referrer/impact` | `pages/ReferrerImpact` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
-| `/premium` | `pages/Premium` | `D-048-p3-premium` | D-048-p3-premium: to be added by its lane packet |
+| `/premium` | `pages/Premium` → `pages/goal/premium/GoalPremium` | `D-048-p3-premium` | Goal implementation on the task branch; selected-total, pause, referrer and recovery parity verified; draft review and release proof remain required. |
 | `/plans` | `?` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/billing` | `pages/Billing` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/privacy` | `pages/TrustPrivacy` | `D-048-p3-policy` | D-048-p3-policy: to be added by its lane packet |
@@ -169,9 +169,10 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
-- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`, `requests/ReconfirmRequest.tsx` (new goal-native control owned by `D-174-held-ask-reconfirm`, D-193; page redesign ownership unchanged)
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
+- `pages/PlansV2.tsx` (row `BANDED-ui`, D-367): `plans/BandedExtraReferrals.tsx`, `plans/BandedPlanAction.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`
 - `pages/Profile.tsx`: `profile/PrivacyControls.tsx`, `profile/ProfileForm.tsx`
 - `pages/PublicProfile.tsx`: `profile/PublicWorkGrid.tsx`

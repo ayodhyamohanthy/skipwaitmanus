@@ -1,5 +1,5 @@
 // Company directory REST surface.
-//   GET  /api/companies            public, cacheable: listed companies + openCount
+//   GET  /api/companies            public, cacheable: listed companies, no availability (D-176)
 //   GET  /api/companies/search?q=  public, cacheable: at most 10 companies by name or alias (D-174)
 //   GET  /api/companies/:slug      public, cacheable: one listed company, 404 otherwise
 //   GET  /api/companies/:slug/opportunities  public, cacheable: a company's live

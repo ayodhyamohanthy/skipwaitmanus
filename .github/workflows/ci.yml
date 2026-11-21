@@ -335,6 +335,20 @@ jobs:
       - name: Journeys
         if: ${{ steps.docs.outputs.docs_only != 'true' }}
         run: pnpm e2e
+      # These four synthetic UI fixtures are acceptance proof even on a green run.
+      # Retain only the explicit consent captures, not successful signed-in traces.
+      - name: Upload synthetic consent captures
+        if: ${{ always() && hashFiles('e2e/.results/**/awaiting-*.png') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: consent-captures-${{ github.run_id }}-${{ github.run_attempt }}
+          # .results is hidden; only the explicitly named synthetic PNGs are included.
+          include-hidden-files: true
+          path: |
+            e2e/.results/**/awaiting-*.png
+            e2e/.results/**/error-*.png
+          retention-days: 1
+          if-no-files-found: error
       - name: Upload the Playwright trace and screenshots
         if: ${{ failure() && steps.docs.outputs.docs_only != 'true' }}
         uses: actions/upload-artifact@v4

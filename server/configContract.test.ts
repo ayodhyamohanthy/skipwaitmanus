@@ -4,6 +4,11 @@ import { join, relative } from "node:path";
 
 const ROOT = join(__dirname, "..");
 
+it("banded billing defaults off and reaches the server through the Worker", () => {
+  expect(readFileSync(join(ROOT, ".env.example"), "utf8")).toMatch(/^BANDED_SALES_ENABLED=false$/m);
+  expect(workerPassthroughKeys()).toContain("BANDED_SALES_ENABLED");
+});
+
 // Ambient toolchain keys that are never application config.
 const AMBIENT = /^(CI|GITHUB_|NPM_|PATH|HOME|PWD|SHELL|TERM|LANG|TZ|VITEST_|NODE_OPTIONS|DOTENV_)/;
 

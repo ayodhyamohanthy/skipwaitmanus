@@ -115,7 +115,7 @@ describe("P0 personal-link sign-in round trip", () => {
     renderPage();
     await waitFor(() => expect((screen.getByLabelText("Job link") as HTMLInputElement).value).toContain("careers.wipro.com"));
     await screen.findByText("ada-resume.pdf");
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     const body = JSON.parse(String((posts(fetchMock)[0][1] as RequestInit).body));
     expect(body).toMatchObject(routing);
@@ -153,7 +153,7 @@ describe("P0 personal-link sign-in round trip", () => {
     expect((screen.getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toBe("Led a checkout redesign that cut drop-off 18%.");
     expect(posts(fetchMock)).toHaveLength(0);
     await screen.findByText("ada-resume.pdf");
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String((posts(fetchMock)[0][1] as RequestInit).body))).toMatchObject({
       targetRoleUrl: link, fastTrackCode: "abc",

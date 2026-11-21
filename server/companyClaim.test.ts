@@ -11,7 +11,8 @@ vi.mock("./workEmailOtp", async importOriginal => {
   return { ...actual, isValidOtpLoginEmail: (email: string) => /^[^@]+@quillmint\.com$/.test(email), hasDeliverableMailDomain: async () => true };
 });
 vi.mock("./companyResponseSignal", () => ({ loadCompanyResponseSignal: mocks.signal }));
-vi.mock("./companyDirectory", () => ({ getCompanyDirectoryEntry: mocks.company }));
+// D-174 public-payload: the dashboard reads the internal record (availability included), never the public shape.
+vi.mock("./companyDirectory", () => ({ getCompanyDirectoryRecord: mocks.company }));
 import { confirmCompanyClaim, loadCompanyClaimDashboard, sendCompanyClaimLink } from "./companyClaim";
 import { limiterKey } from "./workEmailOtp";
 const store = createInMemoryDrizzle();
@@ -28,7 +29,7 @@ async function execute(statement: SQL) {
   return [{ affectedRows: 1 }];
 }
 const claimDb = { ...store.db, transaction: <T>(run: (tx: unknown) => Promise<T>) => store.db.transaction(tx => run({ ...tx, execute })) };
-const company = { name: "Quillmint", slug: "quillmint", domains: ["quillmint.com"], openToReferrals: true };
+const company = { id: 1, name: "Quillmint", slug: "quillmint", domains: ["quillmint.com"], primaryDomain: "quillmint.com", status: "listed", openToReferrals: true };
 const base: Seed = [
   [companies, [{ id: 1, slug: "quillmint", status: "listed" }]],
   [companyDomains, [{ id: 1, companyId: 1, domain: "quillmint.com", isPrimary: true }]],
@@ -110,6 +111,14 @@ describe("company mailbox proof and aggregate privacy", () => {
     const result = await loadCompanyClaimDashboard(7, "quillmint");
     expect(result).toEqual({ company: { name: "Quillmint", slug: "quillmint", domain: "quillmint.com", openToReferrals: true }, signal: { state: "insufficient" } });
     expect(JSON.stringify(result)).not.toMatch(/userId|email|resume|seeker|messages|referrerId/);
+  });
+  it("reports the company's availability from the internal record, including when nobody is available", async () => {
+    store.reset([[companyAggregateAccess, [{ id: 1, userId: 7, domain: "quillmint.com" }]]]);
+    mocks.company.mockResolvedValue({ ...company, openToReferrals: false });
+    expect((await loadCompanyClaimDashboard(7, "quillmint")).company.openToReferrals).toBe(false);
+    expect(mocks.company).toHaveBeenCalledWith("quillmint");
+    mocks.company.mockResolvedValue(undefined);
+    await expect(loadCompanyClaimDashboard(7, "quillmint")).rejects.toMatchObject({ status: 404 });
   });
 });
 
