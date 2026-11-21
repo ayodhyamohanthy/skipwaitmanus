@@ -55,7 +55,7 @@ async function statuses(db: Connection, site: string, planId: string) {
 }
 const reserve = (db: Connection, input: { site?: "test" | "live"; planId?: "early_to_mid" | "mid_to_senior" | "senior_to_executive"; userId: number; key: string; now?: Date; ttlMinutes?: number }) => {
   const now = input.now ?? T0;
-  return reserveFoundingPlace(drizzle(db), { site: input.site ?? "test", planId: input.planId ?? "early_to_mid", userId: input.userId, checkoutIntentId: input.key, now, expiresAt: new Date(now.getTime() + (input.ttlMinutes ?? 360) * 60_000) });
+  return reserveFoundingPlace(drizzle(db), { site: input.site ?? "test", planId: input.planId ?? "early_to_mid", userId: input.userId, checkoutIntentId: input.key, now, expiresAt: new Date(now.getTime() + (input.ttlMinutes ?? 360) * 60_000), replayNotBefore: new Date(now.getTime() - 25 * 60_000) });
 };
 
 test("a reservation holds one place; replaying its key reuses it and a used key is refused", async () => {
@@ -63,6 +63,8 @@ test("a reservation holds one place; replaying its key reuses it and a used key 
     expect(await reserve(db, { userId: 1, key: "bp_a" })).toEqual({ status: "reserved" });
     expect(await reserve(db, { userId: 1, key: "bp_a", now: later(5) })).toEqual({ status: "existing" });
     expect(await counter(db, "test", "early_to_mid")).toEqual({ issued: 0, reserved: 1 });
+    // Past the provider's idempotency window the same key would open a second page: start a new checkout.
+    expect(await reserve(db, { userId: 1, key: "bp_a", now: later(26) })).toEqual({ status: "key_used" });
     // The same key from another person, for another plan, or after expiry is never a second place.
     expect(await reserve(db, { userId: 2, key: "bp_a" })).toEqual({ status: "key_used" });
     expect(await reserve(db, { userId: 1, key: "bp_a", now: later(361) })).toEqual({ status: "key_used" });

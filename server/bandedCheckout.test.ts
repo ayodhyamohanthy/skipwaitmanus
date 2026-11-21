@@ -9,6 +9,7 @@ import {
 import { bandedPlanItemPriceId, bandedReferralItemPriceId } from "../shared/bandedCatalog";
 import { VOLUME_DISCOUNTS, planFeeMinor, topUpMinor, type PlanFamilyId } from "../shared/planFamily";
 import {
+  BANDED_REPLAY_WINDOW_MS,
   BANDED_RESERVATION_TTL_MS,
   bandedCheckoutIntentId,
   bandedSalesEnabled,
@@ -155,7 +156,7 @@ describe("plan checkout decision", () => {
         price: { kind: "banded_plan", plan: "early_to_mid", currency: book, amount: planFeeMinor("early_to_mid", book), itemPriceId: bandedPlanItemPriceId("early_to_mid", book) },
         checkout: { hostedPageId: "hp_plan" },
       });
-      expect(deps.reserveFoundingPlace).toHaveBeenCalledWith({ site: "test", planId: "early_to_mid", userId: 7, checkoutIntentId, now: NOW, expiresAt: new Date(NOW.getTime() + BANDED_RESERVATION_TTL_MS) });
+      expect(deps.reserveFoundingPlace).toHaveBeenCalledWith({ site: "test", planId: "early_to_mid", userId: 7, checkoutIntentId, now: NOW, expiresAt: new Date(NOW.getTime() + BANDED_RESERVATION_TTL_MS), replayNotBefore: new Date(NOW.getTime() - BANDED_REPLAY_WINDOW_MS) });
       expect(deps.createPlanPage).toHaveBeenCalledWith(runtime, expect.objectContaining({ itemPriceId: bandedPlanItemPriceId("early_to_mid", book), checkoutIntentId, idempotencyKey: checkoutIntentId, billingCountry, email: "member@example.com", redirectUrl: urls.redirectUrl, cancelUrl: urls.cancelUrl }));
       const reserveOrder = vi.mocked(deps.reserveFoundingPlace).mock.invocationCallOrder[0];
       expect(reserveOrder).toBeLessThan(vi.mocked(deps.createPlanPage!).mock.invocationCallOrder[0]);
@@ -164,6 +165,12 @@ describe("plan checkout decision", () => {
 
   it("holds the reservation well past the provider page's life", () => {
     expect(BANDED_RESERVATION_TTL_MS).toBeGreaterThanOrEqual(2 * 3 * 60 * 60 * 1000);
+  });
+
+  it("treats a replay as the same checkout only inside the provider's 30-minute idempotency window", () => {
+    // Chargebee replays a key's first answer for 30 minutes; later the same key would open a second page.
+    expect(BANDED_REPLAY_WINDOW_MS).toBeGreaterThan(0);
+    expect(BANDED_REPLAY_WINDOW_MS).toBeLessThan(30 * 60 * 1000);
   });
 
   it("refuses an item price that is missing or differs from the frozen book, with no reservation", async () => {
