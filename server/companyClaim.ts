@@ -5,7 +5,7 @@ import { getDb } from "./db";
 import { isValidOtpLoginEmail, hasDeliverableMailDomain, consumeLimits, limiterKey } from "./workEmailOtp";
 import { sendTransactionalEmail } from "./emailDelivery";
 import { loadCompanyResponseSignal } from "./companyResponseSignal";
-import { getCompanyDirectoryEntry } from "./companyDirectory";
+import { getCompanyDirectoryRecord } from "./companyDirectory";
 
 export const companyClaimEnabled = () => process.env.COMPANY_CLAIM_ENABLED === "true";
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -60,7 +60,8 @@ export async function confirmCompanyClaim(userId: number, token: string) {
 }
 
 export async function loadCompanyClaimDashboard(userId: number, slug: string) {
-  const company = await getCompanyDirectoryEntry(slug);
+  // The internal record keeps availability; the public company shape no longer carries it (D-174 public-payload).
+  const company = await getCompanyDirectoryRecord(slug);
   if (!company) throw new CompanyClaimError(404, "Company not found");
   const db = await ready();
   const grants = await db.select({ domain: companyAggregateAccess.domain }).from(companyAggregateAccess).where(eq(companyAggregateAccess.userId, userId));

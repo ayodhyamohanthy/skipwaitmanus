@@ -8,6 +8,8 @@ import {
   companyDirectoryResponseSchema,
   companyDomainSchema,
   companyIdentityOf,
+  companySearchResponseSchema,
+  adminCompanySchema,
   companySlugSchema,
   deriveCompanyInitials,
   deriveCompanySlug,
@@ -65,12 +67,41 @@ describe("company directory seed", () => {
 describe("company directory contract", () => {
   const entry = toPublic(LAUNCH_COMPANY_SEED[1]!, true);
 
-  it("accepts a directory whose openCount matches its open companies and rejects a mismatch", () => {
-    const companies = [entry, toPublic(LAUNCH_COMPANY_SEED[0]!, false)];
-    expect(companyDirectoryResponseSchema.safeParse({ companies, openCount: 1 }).success).toBe(true);
-    expect(companyDirectoryResponseSchema.safeParse({ companies, openCount: 2 }).success).toBe(false);
-    expect(companyDirectoryResponseSchema.safeParse({ companies: [], openCount: 0 }).success).toBe(true);
+  it("accepts a directory without openToReferrals or openCount (D-174 public-payload; optional for one release)", () => {
+    const { openToReferrals: _open, ...bare } = entry;
+    const companies = [bare, { ...bare, slug: "tcs", name: "TCS" }];
+    expect(companyDirectoryResponseSchema.parse({ companies })).toEqual({ companies });
+    expect(companyDirectoryResponseSchema.safeParse({ companies: [] }).success).toBe(true);
+    // Expand-then-contract: an older payload that still carries the keys parses, and the count is no longer tied to them.
+    expect(companyDirectoryResponseSchema.safeParse({ companies: [entry, toPublic(LAUNCH_COMPANY_SEED[0]!, false)], openCount: 1 }).success).toBe(true);
+    expect(companyDirectoryResponseSchema.safeParse({ companies: [entry], openCount: -1 }).success).toBe(false);
     expect(companyDetailResponseSchema.parse({ company: entry }).company.slug).toBe("wipro");
+    expect(companyDetailResponseSchema.parse({ company: bare }).company).toEqual(bare);
+  });
+
+  it.each(["present", "none"] as const)("a detail payload carries referrerPresence %s and nothing else about referrers", presence => {
+    const { openToReferrals: _open, ...bare } = entry;
+    const parsed = companyDetailResponseSchema.parse({ company: { ...bare, referrerPresence: presence, referrerCount: 3, referrerNames: ["A"] } });
+    expect(parsed.company.referrerPresence).toBe(presence);
+    expect(Object.keys(parsed.company).sort()).toEqual(["blurb", "domains", "functions", "industry", "initials", "location", "name", "referrerPresence", "slug"]);
+  });
+
+  it.each([["yes"], [true], [1], ["available"], ["unknown"], [null]])("rejects referrerPresence %j", value => {
+    expect(publicCompanySchema.safeParse({ ...entry, referrerPresence: value }).success).toBe(false);
+  });
+
+  it("search results reject a company carrying openToReferrals or referrerPresence", () => {
+    const { openToReferrals: _open, ...bare } = entry;
+    expect(companySearchResponseSchema.safeParse({ companies: [bare] }).success).toBe(true);
+    expect(companySearchResponseSchema.safeParse({ companies: [{ ...bare, openToReferrals: true }] }).success).toBe(false);
+    expect(companySearchResponseSchema.safeParse({ companies: [{ ...bare, referrerPresence: "present" }] }).success).toBe(false);
+  });
+
+  it("the admin view still requires availability", () => {
+    const { openToReferrals: _open, ...bare } = entry;
+    const admin = { ...bare, id: 2, status: "listed", sortOrder: 20, primaryDomain: "wipro.com", updatedAt: "2026-10-01T00:00:00.000Z" };
+    expect(adminCompanySchema.safeParse(admin).success).toBe(false);
+    expect(adminCompanySchema.parse({ ...admin, openToReferrals: false }).openToReferrals).toBe(false);
   });
 
   it("strips fields a public reader must never see", () => {
