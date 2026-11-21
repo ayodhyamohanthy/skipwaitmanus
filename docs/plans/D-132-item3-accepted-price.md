@@ -90,6 +90,8 @@ Goal check: a seeker who is never charged a surprise amount trusts the send butt
 - `server/privateReferralRoutes.integration.test.ts`
 - this packet: Status plus the bounded D-366 qualification in §13 and the conflicting requirements it supersedes (D-200).
 - `docs/DECISIONS.md`: only this task's dated D-200/D-366 engineering ruling, declared after CI 44566540332's scope-only refusal. An UNBLOCK marker does not claim the GPT build/takeover/fix exemption; no marker, branch-routing or gate bypass is used.
+- `docs/plans/PRICING-banded-checkout.md`, `docs/plans/SKIPPY-fix.md` and `docs/plans/D-193-journey-foundations.md`: only the D-367/D-200 accepted-price carrier/output-dependency routing, with no runtime or pricing-policy change.
+- `scripts/register520Packets.test.ts`: replace the obsolete fixed task-id dependency pin with actual-picker refusal/landing coverage for the same output dependency under the current production policy. Declared on main before the bounded ruling because CI 44893941657 correctly reads scope from main; no gate or identity exception.
 
 **Out of scope:**
 - Skippy callers (`server/skippieSeeker.ts`, `server/skippieSeekerDeps.ts`): that is `SKIPPY-fix` S-3, which reuses this contract.
