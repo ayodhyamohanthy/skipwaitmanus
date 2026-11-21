@@ -45,7 +45,7 @@ After adopting #1421, the ordinary report still exhausted three snapshot checks 
 
 ## 6. Dispatch and steps
 
-1. Publish this packet, D-372 and the single appended row through the normal docs-only registration PR first. Preserve existing task order and statuses.
+1. Publish this packet, D-372 and the single appended row in the normal docs-only registration PR before source edits. Once that binding and the source receipt below are public, D-372 permits draft-only build-ahead work; source readiness/landing still waits for registration on main and all normal gates. Preserve existing task order and statuses. This corrects the implementer's extra development wait; it does not relax the user's pre-dispatch binding condition or any landing guard.
 2. Before source edits, publish a source-branch receipt naming the actual integration base and this binding. Check for an ordinary intervening claim/branch owner and preserve it; do not overwrite another writer. No fabricated automatic claim marker.
 3. Add the consumer-visible CLI regressions below, observe their failure on the current report path, then implement the smallest parent-refresh helper using the existing bounded Git and marker parsers.
 4. Run the focused safety suites and compiler; update the packet with real proof, push, and use a protected PR on current main with every required check green. No separate review is introduced.
@@ -77,7 +77,7 @@ Does the accepted delta contain only other tasks' empty native reports? Can a sa
 
 ## 11. Stop conditions
 
-Stop source dispatch if another session owns the implementation branch, registration has not landed, the target protocol differs from this inspected baseline, or the change requires weakening freshness/auth/ownership or changing CI/settings. Preserve work and report the exact conflict.
+Stop source dispatch if the binding/receipt is unpublished, another session owns the implementation branch, the target protocol differs from this inspected baseline, or the change requires weakening freshness/auth/ownership or changing CI/settings. Stop source readiness/landing until registration is admitted on main and every ordinary gate passes. Preserve work and report the exact conflict.
 
 ## 12. Owner questions
 
