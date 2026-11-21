@@ -68,22 +68,22 @@ describe("chargebee catalog api", () => {
     });
     const client = api();
     await client.createItemFamily({ id: "skipwait", name: "skipwait.me" });
-    const plan = spec("skipwait_start_90d-USD");
-    const pack = spec("skipwait_pack_25-INR");
+    const plan = spec("skipwait_early_to_mid_monthly-USD");
+    const pack = spec("skipwait_referral_mid-INR");
     await client.createItem({ ...plan.item, itemFamilyId: "skipwait" });
     await client.createItem({ ...pack.item, itemFamilyId: "skipwait" });
     await client.createItem({ ...pack.item, itemFamilyId: null });
     const created = await client.createItemPrice(plan.spec);
     await client.createItemPrice(pack.spec);
-    expect(created).toMatchObject({ id: "skipwait_start_90d-USD", price: 1900, currency_code: "USD" });
+    expect(created).toMatchObject({ id: "skipwait_early_to_mid_monthly-USD", price: 449, currency_code: "USD" });
 
     const fields = requests.map(request => Object.fromEntries(request.body ?? []));
     expect(fields[0]).toEqual({ id: "skipwait", name: "skipwait.me" });
-    expect(fields[1]).toEqual({ id: "skipwait_start", name: "skipwait_start", type: "plan", item_family_id: "skipwait", external_name: "Start", enabled_in_portal: "false" });
-    expect(fields[2]).toEqual({ id: "skipwait_pack_25", name: "skipwait_pack_25", type: "charge", item_family_id: "skipwait", external_name: "25 credits" });
-    expect(fields[3]).toEqual({ id: "skipwait_pack_25", name: "skipwait_pack_25", type: "charge", external_name: "25 credits" });
-    expect(fields[4]).toEqual({ id: "skipwait_start_90d-USD", name: "skipwait_start_90d-USD", item_id: "skipwait_start", pricing_model: "flat_fee", price: "1900", currency_code: "USD", external_name: "Start, 90 days", period: "3", period_unit: "month", billing_cycles: "1" });
-    expect(fields[5]).toEqual({ id: "skipwait_pack_25-INR", name: "skipwait_pack_25-INR", item_id: "skipwait_pack_25", pricing_model: "per_unit", price: "119900", currency_code: "INR", external_name: "25 credits" });
+    expect(fields[1]).toEqual({ id: "skipwait_early_to_mid", name: "skipwait_early_to_mid", type: "plan", item_family_id: "skipwait", external_name: "Early to Mid", enabled_in_portal: "false" });
+    expect(fields[2]).toEqual({ id: "skipwait_referral_mid", name: "skipwait_referral_mid", type: "charge", item_family_id: "skipwait", external_name: "Mid referral request" });
+    expect(fields[3]).toEqual({ id: "skipwait_referral_mid", name: "skipwait_referral_mid", type: "charge", external_name: "Mid referral request" });
+    expect(fields[4]).toEqual({ id: "skipwait_early_to_mid_monthly-USD", name: "skipwait_early_to_mid_monthly-USD", item_id: "skipwait_early_to_mid", pricing_model: "flat_fee", price: "449", currency_code: "USD", external_name: "Early to Mid, monthly", period: "1", period_unit: "month" });
+    expect(fields[5]).toEqual({ id: "skipwait_referral_mid-INR", name: "skipwait_referral_mid-INR", item_id: "skipwait_referral_mid", pricing_model: "per_unit", price: "19900", currency_code: "INR", external_name: "Mid referral request" });
     for (const form of fields) expect(form).not.toHaveProperty("is_taxable");
     expect(requests.every(request => request.method === "POST")).toBe(true);
     // The form builders are the single source of those fields.
@@ -101,7 +101,7 @@ describe("chargebee catalog api", () => {
     });
     const client = api();
     await Promise.all([client.listItemFamilies(), client.listItems({ idPrefix: "skipwait_" }), client.listItemPrices({ idPrefix: "skipwait_" }), client.listItemPrices({ itemIds: ["skipwait_start"] })]);
-    const entry = spec("skipwait_pack_2-INR");
+    const entry = spec("skipwait_referral_early-INR");
     await client.createItemFamily({ id: "skipwait", name: "skipwait.me" });
     await client.createItem({ ...entry.item, itemFamilyId: "skipwait" });
     await client.createItemPrice(entry.spec);
@@ -115,7 +115,7 @@ describe("chargebee catalog api", () => {
 
   it("turns a provider refusal into a sanitized ChargebeeApiError", async () => {
     recordFetch(() => ({ status: 400, body: { api_error_code: "invalid_request", error_code: "param_wrong_value", message: "period_unit : The billing frequency is not configured\n" } }));
-    const error = await api().createItemPrice(spec("skipwait_start_90d-INR").spec).catch((reason: Error) => reason);
+    const error = await api().createItemPrice(spec("skipwait_early_to_mid_monthly-INR").spec).catch((reason: Error) => reason);
     expect(error).toBeInstanceOf(ChargebeeApiError);
     expect(error).toMatchObject({ status: 400, apiErrorCode: "invalid_request", errorCode: "param_wrong_value", providerMessage: "period_unit : The billing frequency is not configured " });
   });

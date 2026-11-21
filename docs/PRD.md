@@ -61,6 +61,10 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing
+The admin catalog sync prepares the D-367 plan and per-level extra-referral prices in INR/USD from the frozen family. Its create-only, hash-confirmed apply does not enable checkout or sales; BANDED-release owns test-site acceptance and activation (D-370).
+
+BANDED-spend adds the dormant quote/charge contract: included at the request's level, then the monthly free allowance, then purchased at that level; outside-band requests use only free allowance. Stale source or cycle confirmations return 409 without a committed request or charge. The sales switch starts off; implementation acceptance and activation are separate.
+
 One source of truth: [`docs/PRICING.md`](PRICING.md) (D-219, owner freeze Oct 25: banded seeker plans Early to Mid, Mid to Senior and Senior to Executive with per-level extra referrals; 3 free referrals a month at any level with a verified card; legacy packs paused; passes off). The D-132 credit-dropdown model and the D-152 plan names are superseded. Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
 
 ## Group Plan bulk purchase - approved build direction (Oct 31)

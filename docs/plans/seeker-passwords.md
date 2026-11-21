@@ -1,20 +1,26 @@
 # Packet seeker passwords (queue task 2 + Drift-D030): seekers sign in on skipwait.me with a social provider or email and password, the paid six-digit seeker code is retired, and referrers can never get a password
 
-> Read `docs/BRIEF.md` first, then this packet and the current Status below. The existing carrier is draft PR #324 on `agent/claude/seeker-signin-finish`; `5653b3b` and the earlier branch notes are historical implementation context. Continue only through legitimate picker ownership in an isolated worktree, preserving unpublished work. Never rebase or force-push the pushed branch.
+> Read `docs/BRIEF.md` first, then this packet and its current Status. The integration carrier is `agent/queue/seeker-passwords-integration`, assigned only through the picker. Draft PR #324 on `agent/claude/seeker-signin-finish` at `f50db639` is preserved implementation source and history, not a current landing candidate. Work in an isolated checkout; never touch another session's unpublished files, rebase or force-push a published branch.
 
 | Field | Value |
 |---|---|
 | Queue rows | §3b `2` and `Drift-D030-seeker-signin` (one lane) |
-| Decisions | D-049 (amends D-030), D-078 (how it ships), D-030, D-057, D-011, D-033, D-063, D-074; the identity rules in `AGENTS.md` ("Product and identity constraints") |
+| Decisions | D-030/D-049/D-057, D-078/D-080/D-081/D-163, D-011/D-033/D-063, D-200, D-350/D-354/D-366/D-370/D-371; `AGENTS.md` identity constraints |
 | Risk tier | 1 (sign-in, sessions, identity linking) |
 | Size | M–L |
-| Implementer | any model; independent auth review required |
-| Branch | existing `agent/claude/seeker-signin-finish`, draft PR #324; merge current `origin/main` without history rewriting |
+| Implementer | any capable session; exact-session picker ownership and green required CI, no independent-review requirement (D-370) |
+| Branch | `agent/queue/seeker-passwords-integration` from current main; merge preserved `agent/claude/seeker-signin-finish` source without rewriting history |
 | Depends on | `D-057-session-gate`, done (D-163/D-080); WorkOS dashboard confirmation satisfied by D-350 |
 | Coordination | Inspect current claims and unpublished work before touching auth, identity or shared telemetry files; do not use another session's dirty checkout |
 | Verification baseline | Historical `e6b87f8`/`681ea79` and `5653b3b` checks are retained below; a current-main candidate needs new exact-head acceptance |
 
 ## Status
+
+- **November 21 routing ruling — GPT-6.1 Sol · f734, unblock `9ca037dde`:** the same `seeker-passwords` row now names `agent/queue/seeker-passwords-integration`. Its task ID, FIFO position, lane, tier, status and D-057 dependency do not change. Repeated unblock-only handoffs on the unchanged source carrier return LAND, not integration work. Start the new carrier only after the official picker grants BUILD. Keep PR #324 draft and preserve its branch, reviews, source and unpublished checkouts. No Fix/Fixed, verdict or participation marker transfers.
+- **No owner decision is pending:** D-078 chooses link-only sign-up; D-057 is done; D-350 confirms the production WorkOS steps, including the default mail provider. D-370 removes independent review, not required CI or security and release verification. Passwords are not a launch blocker (D-366 (4)).
+- **Read receipt:** main `3199920e4`, instructions and packet read through D-371; prior ruling [#1316](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1316), block `06b9b52ae` and [current scope handoff](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/324#issuecomment-7049129908) inspected. Source `f50db639` retains PASS `09b0a667` and the expired October 22 cutoff. The read-only merge preview reports 25 conflicts. This ruling changes docs/routing only; implementation, pickup and production acceptance are not yet verified.
+
+### Historical handoffs (review requirements below are superseded by D-370)
 
 - **November 19 unblock qualification — GPT-6.1 Sol · 830b:** the latest block correctly says the current carrier is not landable, but its review provenance is incomplete. The GitHub PASS comment names `bcff1742` (October 19); picker verdict `09b0a667` by Gemini · b7c1, dated November 15, explicitly names the actual carrier `f50db639`. Preserve both; do not erase or replace the newer verdict or claim no exact-head marker exists. The older review's later combined-diff merges (`2013d40b`, `f50db639`) are real source changes, but that fact alone does not invalidate a subsequent verdict naming `f50db639`.
 - **Ordinary technical continuation, not an owner decision:** at main `721cbd93`, the carrier is 5,244 main commits behind and still declares `SEEKER_CODE_VERIFY_UNTIL = 2026-10-22T00:00:00Z`. It cannot deploy as-is. The legitimate implementation/fix session must integrate current main while retaining the released goal auth routes (D-354), complete the existing password/reset contracts and actual release-plus-24-hours cutoff, run auth/identity/privacy and code-retirement tests, obtain independent Tier 1 acceptance of the new composition and green exact-head CI, and verify the deployed flow. Historical October 21 CI does not certify that future candidate. No runtime, cutoff, settings, price, login rule, claim, verdict or Fixed marker is changed by this documentation ruling. No no-code Fixed or manual forced claim is authorized.
@@ -30,13 +36,13 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
 ## 2. Binding rules (quoted)
 - D-049: "the seeker email method is **password only, no six-digit code** (each code is an email SkipWait pays to send through ZeptoMail, while WorkOS password and social sign-in are free); the only sign-in emails seekers get are password resets … seekers who signed up with a code set a password through the reset flow." Referrers: "work-email OTP only; never personal email, social login or password."
 - D-030 (as amended): hosted on skipwait.me, "no authkit.app page"; referrer surfaces use `referrerSignInHref()`.
-- D-057: "reviewing or accepting asks always needs a work-email code in that session." The full gate is the next packet (`D-057-session-gate.md`); this lane does the minimal part (ruling 4).
+- D-057: "reviewing or accepting asks always needs a work-email code in that session." Its session gate is done. Preserve that gate (D-080/D-163) and the work-email refusal in ruling 4.
 - AGENTS.md identity rules: exact alias first; never link or merge on an unverified email; a suspension covers every alias; one-time consumption is durable.
 
 ## 3. Rulings (D-078, decided under D-074; the owner may change them)
 1. **Retire the seeker code (finding S-1, BLOCKER).**
    - `POST /api/auth/workos/email-code/send` answers 410 `{ "error": "Email codes are retired. Sign in with your password, or use Forgot password." }` and never sends;
-   - `/email-code/verify` keeps working until `SEEKER_CODE_VERIFY_UNTIL`, a constant set to 24 hours after your push, then answers 410;
+   - `/email-code/verify` keeps working until `SEEKER_CODE_VERIFY_UNTIL`, set to the actual release plus 24 hours, then answers 410; never reuse the October placeholder or treat a branch push as release;
    - add server pins for both.
 2. **Sign-up by link, not by code** ("Option B", resolving the "no six-digit code" conflict in §A5 of the appendix):
    - sign-up asks only for the email and always answers "Check your email" at once, whether the account is new or existing (WorkOS work is deferred, as `/forgot` already does);
@@ -48,12 +54,12 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
    - check the email's standing (read-only) before `completeWorkosLogin`, before any revocation, and before any WorkOS call in sign-up;
    - a referrer work email gets exactly the "check your email" step, with no WorkOS call and no email;
    - the standing check lives inside `requestWorkosPasswordReset`, so every reset path skips referrer work emails.
-4. **Minimal session safety now (S-4):** the OAuth callback and the password path refuse a sign-in whose email is a referrer's verified work email (they answer the "use your work-email code" step and create no session). Passwords may ship before the full D-057 session gate, because the same gap already exists today for Google sessions; the gate is the next packet.
+4. **Session safety (S-4):** OAuth and password sign-in refuse a referrer's verified work email with the work-email-code direction and create no session. Preserve the already-shipped D-057 proof gate (D-080/D-163).
 5. **Account-takeover safety without waiting on WorkOS behaviour (S-5):** a password counts only after its setter proved the inbox.
    - Write an alias with provider `workos_password` (subject = the WorkOS user id; existing tables, no migration) when a reset confirm, or a link sign-up, succeeds.
    - A password sign-in for a WorkOS user without that alias gets no session: send a reset link and answer "check your email".
-   - The staging test in §5 step 3e can later confirm WorkOS removes pre-set passwords, but the rule stays.
-6. **The reset email.** If the staging check (§5 step 3a) shows that `createPasswordReset` does not make WorkOS send the email, send the returned `password_reset_url` through SkipWait's sender (`server/emailDelivery.ts`). D-049 allows reset emails, and the cost is one email per reset.
+   - Keep the witness requirement regardless of provider behavior; test that no session is issued without it (§5 step 3e).
+6. **The reset email.** Prove delivery through the confirmed WorkOS default mailer (§5 step 3a). D-078's fallback to SkipWait's sender applies only if WorkOS does not deliver; report that observed failure under §8 before choosing new spending or changing settings.
 7. **Small fixes:**
    - S-6: no `Server-Timing` on `/api/auth/`; a response-time floor on sign-in and sign-up;
    - S-7: durable single-use `pw_verify` ticket;
@@ -67,7 +73,7 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
    - the sent state adds "No email after a few minutes? Create an account with the same address; it joins your existing account.";
    - keep D-063 wording.
 
-## 4. What the branch already does (verified)
+## 4. Historical implementation evidence (not current-main or release acceptance)
 ### 4a. Reviewer verdict
 - **Not shippable yet.** Code quality and test coverage are high (217/217 focused tests on the branch, and tsc plus 259/259 focused tests after a trial merge with main). But: 1 BLOCKER (S-1: the paid six-digit seeker code is still live on the server, against D-049), 4 MAJOR (S-2 refused referrer logins still write identity links; S-3 sign-up and decoy resets ignore referrer work emails; S-4 personal/social sessions of dual-role accounts carry referrer access without a work-email code; S-5 possible pre-account-takeover, depends on WorkOS behaviour), one owner decision (§5: the WorkOS six-digit sign-up code vs D-049's "no code"; Option B recommended) and 7 MINOR.
 - Rebase onto main is NOT clean: 5 conflicts (1 code: `client/src/pages/SignIn.tsx`; 4 docs), all mechanical (§2). Never force-push the pushed branch (§6.1).
@@ -102,42 +108,42 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
 ## 5. Steps (adapted from the reviewer's plan; the rulings in §3 win where they differ)
 ### 5a. Ordered finishing steps
 
-1. **Branch hygiene (no history rewrite).** BRIEF forbids force-pushing and rewriting history, so do NOT rebase and force-push `agent/claude/seeker-signin`. Either `git switch -c agent/<you>/seeker-signin-finish origin/agent/claude/seeker-signin && git merge origin/main`, or rebase onto a NEW branch name. Resolve exactly the 5 conflicts as in §A2: `SignIn.tsx` keeps both imports, main's `MONEY_SENTENCE_SHORT` terms line and the branch's `seekerReturnTo`; for the 4 docs take main's file, then re-apply only this lane's rows and cells. Re-run `pnpm check` and the 26 focused files of §A2 (expect green, as in the merge trial).
+1. **Claimed integration, no history rewrite.** After BUILD is assigned, use only `agent/queue/seeker-passwords-integration` in a fresh current-main worktree. Merge the preserved `origin/agent/claude/seeker-signin-finish` source to retain its authorship and fixes. Resolve against current auth, identity and telemetry contracts and the released Goal pages (D-354), not §A2's historical conflict recipe. Do not resurrect deleted `RequestDialog` or Kit pages. Keep unrelated main docs and statuses; reapply only this task's changes. Leave other checkouts untouched. Run the focused auth, identity and privacy suites and `pnpm check` on the integrated result.
 2. **Code fixes, each test-first (BRIEF: failing test first):**
-   a. S-1: stop registering `registerSeekerEmailCodeRoutes` (`server/_core/workosAuth.ts:333-334`), or make `/send` a 410 with no send and drop `/verify` within a day. Server pin test. Fix the AGENTS.md sentence and `passwordAuthRoutes.ts:13-14`.
+   a. S-1: `/api/auth/workos/email-code/send` returns 410 and sends nothing. `/verify` finishes previously sent codes during the actual release-plus-24-hours window and returns 410 at and after the cutoff. Pin all transitions and update the AGENTS.md map and auth-route comments.
    b. S-2: move the `use_work_email_code` decision before `completeWorkosLogin` (read-only standing lookup) and before any revocation (`server/_core/passwordSession.ts:33-59`). Test: no alias/audit insert, no revocation on refusal.
    c. S-3: sign-up checks standing before `createUser`; a `referrer_work_email` gets the decoy step with no WorkOS call. Put the referrer skip inside `requestWorkosPasswordReset` (`server/passwordResetRoutes.ts:32`). Tests for sign-up and the decoy reset.
    d. S-7 (durable single-use ticket), S-11 (`name: null` without WorkOS names), S-6 (no `Server-Timing` on `/api/auth/`, response-time floor), S-10 (no Umami on `/reset-password`), S-8 (rate-limited copy, or clear the email lock on reset).
    e. Copy for code-only seekers (§A5 row 3): `PasswordForm.tsx:62`, `ForgotPassword.tsx:38-41`, the sent-state hint. Keep D-063 wording (no "referrals are free").
-3. **WorkOS staging matrix** (owner, or an agent with STAGING keys only; never production users). Record the raw status/code bodies as fixtures in `server/_core/workosPasswordErrors.test.ts`:
-   a. `createPasswordReset` for an existing user: does an email arrive, and does its link use the configured reset URL? (§A4; launch-blocking)
+3. **WorkOS staging checks** (existing STAGING access and a controlled inbox only; never production users or new spending). Keep sanitized status/code fixtures in `server/_core/workosPasswordErrors.test.ts`; never publish tokens, addresses or raw private responses:
+   a. An existing test user receives a password-reset email through WorkOS, and the reset link targets skipwait.me (§A4; required for this release, not the separate launch critical path).
    b. `createUser` with an existing email: exact status and `errors[].code` (S-12).
    c. `authenticateWithPassword`: unknown email, wrong password, and a Google-only user with no password: exact status/code. All three must classify as `invalid_credentials` (S-12).
-   d. `sendVerificationEmail` after `email_verification_required`: does the new code complete the original pending token?
-   e. **Pre-hijack (S-5):** create user X (a Gmail you control) via API with password P, unverified. Sign in with Google OAuth as X in the same environment. Then call `authenticateWithPassword(X, P)`. If it succeeds, implement S-5's witness-alias rule before release; if WorkOS refuses or the password was removed, record that in S-5 and close it.
-4. **Owner decisions (already ruled in §3 under D-074: Option B per §3.2, S-4 per §3.4; only the email-cost confirmation (iii) remains for the owner)** (one message, risks first, D-023): (i) Option A vs Option B for the sign-up code (§A5 row 2; recommend B); (ii) S-4: build the D-057 in-session work-email-code gate in this lane, or accept shipping passwords before it (record either way in D-049's status); (iii) confirm WorkOS emails are sent by WorkOS's own provider at no cost (or the D-049 cost argument changes). If Option B is chosen, change `passwordSignUpRequestSchema` (`shared/passwordAuth.ts:26`) to email-only, run the sign-up like `/forgot` (answer first, defer WorkOS), and route `email_verification_required` on sign-in to a reset link.
+   d. `email_verification_required` routes to a reset link, never a new seeker code screen or send.
+   e. **Password witness (S-5):** a defensive test with a mocked provider and no verified password witness must produce no session; a successful inbox-proven link can establish the witness. D-057 already satisfies the D-080 alternative; no staging takeover test is required.
+4. **Already decided:** D-078 requires email-only link sign-up, the neutral deferred "Check your email" response and a reset link for `email_verification_required`. D-057 is done, satisfying D-080/D-163. D-350 confirms the production/default-mailer setup; no repeat cost or dashboard question. Preserve the password witness and covered-work-domain checks (D-078/D-081). Unexpected observed provider behavior follows §8.
 5. **Owner WorkOS dashboard steps (production environment), confirmed by D-350 on Nov 16:** the list is retained as the configuration contract, not an outstanding owner action. New evidence of actual misconfiguration is a new defect to report, not a reason to repeat the old confirmation request.
    1. Authentication: enable **Email + Password** (plan §6). Keep the methods the admin needs on the hosted page (`/api/auth/workos/admin` uses `provider: "authkit"`).
    2. Applications -> SkipWait app -> Redirects -> **Password reset URL = `https://skipwait.me/reset-password`** (the default is the AuthKit page, a D-030 violation; S-9).
-   3. Emails -> Configuration: WorkOS sends **Password reset** (and **Email verification** if Option A) emails; confirm no custom email provider is set (cost); check WorkOS's default-provider sending caps against expected volume; check the email branding (sender name, logo) so seekers trust the mail.
+   3. Emails -> Configuration: password-reset mail uses WorkOS's default provider, with no custom provider. D-350 confirms the configuration; prove delivery to the permitted test inbox without changing settings or selecting a paid fallback.
    4. No required MFA for seekers; no Radar email/SMS challenge on password sign-in (otherwise seekers see "use another method").
    5. Confirm the Google connection (custom Google OAuth client for branding), as already listed in plan §6.
 6. **Docs in the same push (D-068/D-073):** AGENTS.md login rule and system-map rows; `docs/BRIEF.md:11` (remove "six-digit code today" and the Drift-D030 note); FOR_AI_BUILDERS (main's rows plus the reset-lifetime fix); D-049 status cell; `docs/BUGFREE_GATE.md` rows 1.1, 1.2 and 1.5, plus new rows for password sign-in, verification and reset; `docs/zeptomail-workos-setup.md` §2; plan rows `Drift-D030-seeker-signin` (also fix its stale `todo` cell, `main:docs/KIT_V4_BUILD_PLAN.md:103`) and `2`, §4.2, §6 (the five dashboard steps above replace "enable Email + Password").
 7. **Full gate** on the merged result: `pnpm check`; `node scripts/design-token-audit.mjs`; `bash scripts/lint-deploy-migrations.sh`; `node scripts/check-deploy-triggers.mjs`; `NODE_OPTIONS=--experimental-require-module LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=1`; `pnpm build`.
-8. **Screenshots at 1280 and 390** (plan rule 5; no real personal data), every state: `/sign-in` seeker options (5 socials + "Continue with email"); the sign-in password form (empty, "Signing in…", invalid-credentials error, rate-limited error, network error); create-account mode (rules unmet and met); the verify step (Option A: code entry, resend cooldown, invalid code, the sign-up "reset link instead" line) or the Option B "check your email" state; `/sign-in?intent=referrer` (work-email code only, no password, no Forgot link); `/forgot-password` (form, sent state, error); `/reset-password` (form with rules, expired link, "Password updated" signed in, "Password updated" signed out); and `use_work_email_code` / `account_inactive` messages.
-9. **Push to `main` and verify live (D-003):** `EXPECTED_SHA=<sha> bash scripts/verify-live-release.sh` prints CONVERGED; skipwait.me serves `<meta name="git-commit">` with the SHA. Then curl: `GET /api/auth/workos/sign-in` -> 302 `Location: /sign-in`; `?provider=google` -> WorkOS authorize; `POST /api/auth/workos/email-code/send` -> 404/410; a cross-origin `POST /api/auth/password/sign-in` -> 403 `forbidden_origin`; wrong credentials -> 401 `invalid_credentials`. Then one real end-to-end with a test inbox: sign-up -> verify (or link) -> signed in; forgot -> email links to `https://skipwait.me/reset-password` -> reset -> signed in, other sessions signed out; a code-only test seeker sets a password and lands on the same account. Check Sentry shows no bodies, query strings or tokens.
+8. **Screenshots at 1280 and 390** (synthetic data only), on the released Goal flow: `/sign-in` with the five social providers and email; password form (empty, busy, invalid credentials, rate limited, network error); email-only create-account and neutral "Check your email"; `/sign-in?intent=referrer` (work-email code only, no password or Forgot link); `/forgot-password` (form, sent, error); `/reset-password` (rules, expired link, updated signed in and signed out); and `use_work_email_code` / `account_inactive`.
+9. **Protected landing and exact release.** Require green exact-head CI on the current-main composition before merge-commit auto-merge (D-370/D-371). Verify canonical API readiness and the web `git-commit` against each surface's expected deployed SHA. Exercise the supported sign-in redirects, 410 seeker-code retirement, same-origin password boundary, neutral credential errors and 24-hour transition. With a controlled test inbox, prove link sign-up, forgot/reset on skipwait.me, other-session revocation and code-only migration to the same canonical account. Check Sentry strips credentials and reset links. A historical CI pass, branch push or skipped deploy proves none of this.
 10. **Close out:** mark rows `Drift-D030-seeker-signin` and `2` `done — <sha>`, set D-049 to done, update BUGFREE states and §6 with any remaining owner actions. Leave nothing local-only (BRIEF).
 
 ## 6. Definition of done
 - [ ] Every finding in §A3 is fixed with a test, or recorded as accepted in the row with the owner's OK. Rulings 1–8 are implemented.
-- [ ] Gate on the merged branch; draft PR; independent auth review (§7 and `docs/DELEGATION.md` §6).
+- [ ] Full gate and exact-head required CI on the current-main composition; protected PR and auto-merge (D-370), with the §7 security checklist evidenced.
 - [x] The owner dashboard steps (§5 step 5) are confirmed complete by D-350; deployment behavior still requires the checks below.
 - [ ] Screens at 1280 and 390 (§5 step 8).
-- [ ] Push; API CONVERGED; web `git-commit` matches.
+- [ ] Exact deployed API readiness and web identity, with the actual 24-hour transition verified (§5 step 9).
 - [ ] One real end-to-end sign-up, forgot and reset on production lands on skipwait.me.
 - [ ] Rows `2` and `Drift-D030-seeker-signin` done; the D-049 sync cell set to done.
 
-## 7. Review checklist (packet-specific)
+## 7. Security checklist (packet-specific; not an independent-review gate)
 1. Can any path send a seeker six-digit code after release, or sign anyone in with a code after `SEEKER_CODE_VERIFY_UNTIL`?
 2. Does any refused sign-in leave an alias, an audit row or a revoked session behind?
 3. Can a referrer's work email reach WorkOS `createUser` or `createPasswordReset`, or get a session from a social provider?
@@ -149,7 +155,7 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
 - Any fix needs a migration or a dependency.
 - The reset email cannot be sent by WorkOS or by SkipWait's sender.
 
-## Appendix A: the review (branch-tip line numbers)
+## Appendix A: historical review (old branch-tip line numbers; current Status and §§1–8 win)
 ### A2. Merge conflicts (rebase trial onto origin/main (`e6b87f8`) — NOT CLEAN (aborted, as instructed)
 
 `git rebase origin/main` in (local review copy) stopped at commit 1/5 (`9ccdad9`) with 3 conflicts; aborted (branch `tmp/signin-rebase` is back at `5653b3b`). Whole-branch `git merge-tree --write-tree origin/main origin/agent/claude/seeker-signin` lists the full set across all 5 commits: **5 files, 1 code + 4 docs**. Main moved 83 commits since the base `5ca2aab8`; files changed on both sides: `AGENTS.md`, `FOR_AI_BUILDERS.md`, `client/src/pages/Emails.tsx`, `client/src/pages/SignIn.tsx`, `docs/BUGFREE_GATE.md`, `docs/DECISIONS.md`, `docs/DEPLOY.md`, `docs/KIT_V4_BUILD_PLAN.md` (AGENTS.md, Emails.tsx, DEPLOY.md auto-merge cleanly; merged AGENTS.md login section reads coherently).
