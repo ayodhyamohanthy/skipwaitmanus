@@ -39,7 +39,7 @@ The banded plans will let a seeker buy one of three plans (Early to Mid, Mid to 
 - BANDED-catalog-sync: `server/catalogSyncDesired.ts` and its test; companion provisioning contract `shared/bandedCatalog.ts` and test, the `monthly` term in `shared/catalogSync.ts`, `server/catalogSyncPlan.ts` and its test, plus the existing apply/admin-route/provider-adapter tests. The runtime billing resolver, checkout, grant, spend and sales switches are unchanged.
 - BANDED-checkout: new `server/bandedCheckout.ts` and test, `shared/subscriptionManagement.ts`, `server/chargebeeRoutes.ts`, `.env.example`, `src/worker.ts`.
 - BANDED-grants: `server/creditCycles.ts`, `server/dailyMoneyCheck.ts`, `server/paymentWebhooks.ts`, the `applyChargebeeSubscriptionEvent` area of `server/db.ts`.
-- BANDED-spend: `server/creditLedger.ts`, `server/planGates.ts`, the quote in `server/privateReferralRoutes.ts`.
+- BANDED-spend: `server/creditLedger.ts`, `server/planGates.ts`, the quote/create transaction in `server/db.ts` and `server/privateReferralRoutes.ts`; shared accepted-cost contract/tests, production preview registration (`server/_core/index.ts`, switch only), and the quote, rollback-fixture, create-guard and route-integration tests formerly listed by `D-132-item3`. These companion paths transfer the existing invariant, not an old price or an activation.
 - BANDED-ui: `client/src/pages/PlansV2.tsx`, `client/src/pages/PlansV2Connected.tsx`, `client/src/components/plans/**`.
 
 ## 6. Done means
@@ -61,6 +61,16 @@ Each row lands on green required CI (D-370 supersedes D-352's review requirement
 | 0091 source-text comparisons of the complete wallet/intent enum lists in `server/pricingModelContract.test.ts` | Removed these two stale implementation pins. `e2e/banded-schema.e2e.ts` inserts every legacy plan before applying the real migration, checks unchanged numeric ENUM ordinals afterward, inserts each banded plan, and replays against live scratch data. The existing schema/shared-union comparisons remain. No applied migration is edited. |
 | New dormant-plan boundary | All three new ids are storable but remain refused by both legacy checkout/change schemas and unresolved by the billable catalog. |
 | Founding/balance safety | Isolated real-MySQL cases exercise all frozen caps, an eight-writer last-place race, duplicate and out-of-range sequences, TEST/LIVE isolation, account erasure, non-negative per-level balances, included-cycle provenance and replay without resetting money/counts. |
+
+## 8. One accepted-price implementation carrier (D-367 (6))
+
+`BANDED-spend` owns both the banded spend order and its accepted-price invariant. The duplicate `D-132-item3` row is withdrawn from the active queue, not marked as shipped. Its [packet §14](D-132-item3-accepted-price.md#14-november-21-d-367-absorption-into-banded-spend) preserves PR #1269 and the original findings/repairs as reference material. Do not dispatch or land that old carrier separately.
+
+- Quote, confirmation and authoritative charge must describe the same request level/band and actual spend source under D-219/D-367. Compare within the real locked request/spend transaction; a stale confirmation returns `409 ask_price_changed` before any committed debit or business row, with the current cost for an explicit second confirmation. The allocation compared is the allocation spent, never a second allocation or a client-supplied price.
+- Preserve rollback of rollover/reconciliation, ledger, request, attachment and delivery writes; preserve same-idempotency-key reconfirmation after refusal. Replay reconstructs the original charge only from debits bound to that user and request and creates no new charge. Keep the genuine F1/F2 repair guarantees from reviewer 630a and b53c's `d1300293`, not their old review authorization.
+- Re-scope reused contracts and tests to the actual banded balances and D-367 mapping. Neither the obsolete always-null band nor `ASK_LEVEL_COST=true` is an acceptable production pricing policy. Preserve meaningful allocation-identity/rollback regressions without treating a synthetic test count as an approved price; no helper-only test substitutes for the real transaction. Do not copy old source wholesale or inherit its prior CI/Fixed receipt.
+- `SKIPPY-fix` and `D-174-held-ask-reconfirm` now depend on this output, replacing their old `D-132-item3` edge. Their other dependencies, flags, scope and historical evidence remain. This routing amendment neither reopens a merged implementation nor certifies its compatibility with an unbuilt guard.
+- An actual picker-assigned builder still implements and proves the complete row on current main, including existing money/auth/referral controls, required CI and canonical release evidence. Sales remain off until BANDED-release. This documentation changes no runtime API, price, balance, refund, waiting-delivery rule or activation.
 
 ## Status
 
