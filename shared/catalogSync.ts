@@ -10,7 +10,7 @@ const ID_PATTERN = /^[A-Za-z0-9_.@-]+$/;
 const idSchema = z.string().min(1).max(100).regex(ID_PATTERN);
 const planHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const currencySchema = z.enum(["INR", "USD"]);
-const termSchema = z.enum(["one_time", "30d", "90d", "yearly"]);
+const termSchema = z.enum(["one_time", "monthly", "30d", "90d", "yearly"]);
 const environmentSchema = z.enum(["test", "live"]);
 const kindSchema = z.enum(["item_family", "item", "item_price"]);
 const checkedAtSchema = z.string().refine(value => !Number.isNaN(Date.parse(value)), { message: "checkedAt must be an ISO timestamp" });

@@ -1,9 +1,9 @@
 // Plans v2 ("Choose your referrers.") - FROZEN banded model (owner freeze
 // Oct 25, phonemsg-01M5SNVZEY1P8K169J48T2HGTJ; replacement push
-// phonemsg-01M5SNY88BXE470FEN4Z0K7KWF). Published READ-ONLY by default
-// (client/src/lib/planFamilyFlag.ts): prices display, but no checkout exists
-// here yet - billing switch-on waits for the payment readiness bars in
-// shared/planFamily.ts (USD rail blocked, INR not transaction-verified).
+// phonemsg-01M5SNY88BXE470FEN4Z0K7KWF). Prices always display from
+// shared/planFamily.ts. Buying (BANDED-ui, D-367) follows only the server's
+// banded offer passed in as `sales`: with no offer, or an offer that is not on
+// sale, every card keeps the read-only "not switched on" state.
 import { useEffect, useRef, useState } from "react";
 import {
   BAND_LEVELS,
@@ -21,6 +21,9 @@ import {
   type ReferralLevel,
 } from "@shared/planFamily";
 import { money } from "@/components/plans/format";
+import type { BandedSales } from "@/components/plans/bandedSales";
+import { BandedPlanAction, bandedPrimaryTarget } from "@/components/plans/BandedPlanAction";
+import { BandedExtraReferrals } from "@/components/plans/BandedExtraReferrals";
 
 const CARD_COPY: Record<PlanFamilyId, { tagline: string; primary: boolean }> = {
   early_to_mid: {
@@ -36,10 +39,6 @@ const CARD_COPY: Record<PlanFamilyId, { tagline: string; primary: boolean }> = {
     primary: false,
   },
 };
-
-// Read-only state (billing not switched on): the same non-transactional label
-// on every card, disabled, with the reason inline - never a purchase-looking CTA.
-const CHECKOUT_OFF_LABEL = "Checkout not switched on yet";
 
 function IncludedList({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook }) {
   void book;
@@ -66,7 +65,7 @@ function BandRow({ planId }: { planId: PlanFamilyId }) {
   );
 }
 
-function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook }) {
+function PlanCard({ planId, book, sales }: { planId: PlanFamilyId; book: PlanPriceBook; sales?: BandedSales }) {
   const entry = PLAN_FAMILY.find(p => p.id === planId)!;
   const copy = CARD_COPY[planId];
   const fee = planFeeMinor(planId, book);
@@ -85,14 +84,7 @@ function PlanCard({ planId, book }: { planId: PlanFamilyId; book: PlanPriceBook 
         <li className="flex items-start gap-2 text-g-small text-g-ink-2"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-g-ink" />Cost shown before every referral - included first, then your free allowance, then bought</li>
       </ul>
       <div className="mt-auto pt-5">
-        <p
-          data-g-primary={copy.primary || undefined}
-          aria-disabled="true"
-          className="g-hit flex w-full items-center justify-center rounded-[10px] border border-g-hairline bg-g-surface px-5 text-g-small font-semibold text-g-ink-3"
-        >
-          {CHECKOUT_OFF_LABEL}
-        </p>
-        <p className="mt-2 text-g-badge text-g-ink-3">These are the frozen founding prices. Billing is not switched on yet.</p>
+        <BandedPlanAction planId={planId} sales={sales} primary={bandedPrimaryTarget(sales) === planId} offPrimary={copy.primary} />
       </div>
     </section>
   );
@@ -119,7 +111,18 @@ function TopUpTable({ book }: { book: PlanPriceBook }) {
   );
 }
 
-export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook; seekerLevel?: number | null; onPickLevel?: (level: number | null) => void }) {
+function OfferError({ sales }: { sales?: BandedSales }) {
+  if (sales?.offer.status !== "error") return null;
+  return (
+    <div role="alert" className="mt-6 rounded-2xl border border-g-hairline bg-g-surface p-4">
+      <p className="text-g-small font-semibold text-g-ink">We couldn’t check whether these plans are on sale.</p>
+      <p className="mt-1 text-g-small text-g-ink-2">{sales.offer.message}</p>
+      <button type="button" onClick={sales.offer.retry} className="g-hit mt-3 inline-flex items-center rounded-[10px] border border-g-ink bg-g-surface px-4 text-g-small font-semibold text-g-ink hover:bg-g-surface-hover">Try again</button>
+    </div>
+  );
+}
+
+export default function PlansV2({ book = "INR", sales }: { book?: PlanPriceBook; seekerLevel?: number | null; onPickLevel?: (level: number | null) => void; sales?: BandedSales }) {
   const cmpRef = useRef<HTMLDivElement>(null);
   const [cmpCanScrollRight, setCmpCanScrollRight] = useState(false);
   useEffect(() => {
@@ -152,12 +155,14 @@ export default function PlansV2({ book = "INR" }: { book?: PlanPriceBook; seeker
       <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Reach sets who you can ask. It never changes your place in a queue.</p>
       <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Bands overlap at Mid and Senior on purpose. The free allowance spans every level, Executive included.</p>
       <p className="mt-1 max-w-[640px] text-g-small text-g-ink-3">Counts are referral requests that reach a verified employee; they never promise or guarantee an accepted, submitted or completed referral.</p>
+      <OfferError sales={sales} />
       <div className="mt-8 grid gap-4 gdesk:grid-cols-3">
-        <PlanCard planId="early_to_mid" book={book} />
-        <PlanCard planId="mid_to_senior" book={book} />
-        <PlanCard planId="senior_to_executive" book={book} />
+        <PlanCard planId="early_to_mid" book={book} sales={sales} />
+        <PlanCard planId="mid_to_senior" book={book} sales={sales} />
+        <PlanCard planId="senior_to_executive" book={book} sales={sales} />
       </div>
       <TopUpTable book={book} />
+      <BandedExtraReferrals sales={sales} primary={bandedPrimaryTarget(sales) === "referrals"} />
       <section aria-label="Founding-member terms" className="mt-12">
         <p className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Founding-member terms</p>
         <ul className="mt-3 max-w-[640px] space-y-1.5">

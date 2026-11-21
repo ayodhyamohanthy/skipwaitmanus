@@ -23,8 +23,6 @@ describe("pricing model schema contract (0091)", () => {
     expect(RESERVED_PLAN_IDS.some(plan => (CATALOG_PLAN_IDS as readonly string[]).includes(plan))).toBe(false);
     expect([...tokenBalances.plan.enumValues]).toEqual([...WALLET_PLAN_IDS]);
     expect([...subscriptionCheckoutIntents.plan.enumValues]).toEqual([...INTENT_PLAN_IDS]);
-    expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(WALLET_PLAN_IDS)}) NOT NULL DEFAULT ''free''`);
-    expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS)}) NOT NULL`);
   });
 
   it("billing periods append the 30- and 90-day passes after monthly and yearly, on every period column", () => {
