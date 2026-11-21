@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PostOpportunity from "../../PostOpportunity";
+import routeSource from "../../PostOpportunity.tsx?raw";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 
 const { authState, go, surfaces } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn(), surfaces: { on: new Set<string>() } }));
@@ -28,13 +29,17 @@ const renderPost = () => render(<QueryClientProvider client={new QueryClient({ d
 beforeEach(() => { surfaces.on = new Set(["post-opportunity"]); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); getToken.mockClear(); go.mockClear(); authState.isLoaded = true; authState.isSignedIn = true; });
 
-describe("Goal /post-opportunity flag gate", () => {
-  it("renders the kit wizard untouched when the flag is off", async () => {
+describe("retired /post-opportunity route", () => {
+  it("renders the released goal wizard without a surface override", async () => {
     surfaces.on = new Set();
     vi.stubGlobal("fetch", vi.fn(async () => ok(verified)));
     renderPost();
-    expect(await screen.findByText("What are you sharing?")).toBeTruthy();
-    expect(screen.queryByText("Share one useful signal.")).toBeNull();
+    expect(await screen.findByText("Share one useful signal.")).toBeTruthy();
+    expect(screen.queryByText("What are you sharing?")).toBeNull();
+  });
+
+  it("removes the legacy body and surface switch from the route entry", () => {
+    expect(routeSource).not.toMatch(/KitPostOpportunity|goalSurfaceOn|components\/kit/);
   });
 });
 
@@ -156,6 +161,9 @@ describe("Goal /post-opportunity wizard", () => {
     await screen.findByText("Add useful details.");
     expect(screen.getByText("Public job link", { exact: true })).toBeTruthy();
     expect(screen.queryByText("Public job link (optional)")).toBeNull();
+    const hiringLink = screen.getByLabelText("Public job link");
+    expect(hiringLink).toBeInstanceOf(HTMLInputElement);
+    expect(hiringLink).toHaveProperty("required", true);
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Walk-in/ }));
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Designer" } });
