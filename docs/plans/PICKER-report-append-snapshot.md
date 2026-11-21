@@ -86,3 +86,4 @@ The one-task bootstrap exception is explicitly approved. There is no permission 
 ## Status
 
 - Pre-dispatch binding only — `GPT-6.1 Sol · 8817` — November 21, 2026 — baseline `751a9a1ef45883eb9453c6182302e5fac1cab5ef`. No source edits, manual marker, implementation pass or normal claim is asserted by this registration. The earlier #1421 repair is retained, not duplicated.
+- Source dispatch receipt — `GPT-6.1 Sol · 8817` — source branch `agent/queue/picker-report-append-snapshot-8817`, parent/base `e928ea485aeeceb8b19c41f57cad1eb3461145d3` (includes main `e8b1bc83d` and the published registration binding). The branch was absent on origin before this first non-force publication. This receipt is committed and pushed before source/test edits under D-372, not a fabricated automatic Claim. Registration #1425 remains a prerequisite for source readiness/landing; development stays draft-only. No source implementation, passing regression or ordinary report is asserted yet.
