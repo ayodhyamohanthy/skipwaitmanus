@@ -402,7 +402,12 @@ Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person,
 
 `BANDED-catalog-sync` implements the existing pricing decisions, not a new price or sale permission: catalog provisioning derives six monthly plan prices and eight per-level extra-referral prices from `shared/planFamily.ts`, using the shared `bandedCatalog` IDs/validated amounts. The existing admin dry-run/apply path keeps its reviewed hash, create-only operations, failure stops and audit trail; paused packs, passes and human sessions are excluded rather than recreated. Senior to Executive can be provisioned while its application-only checkout gate remains separate. Monthly metadata is catalog-only and does not register a new price in the legacy checkout resolver. No provider apply or sale activation occurs in this row; protected required CI and exact-release acceptance remain, then BANDED-release supplies its TEST-site proof and authorized admin apply under D-370 (6). Source/test evidence and known verification limits live in the packet Status section.
 
+### November 21 banded spend execution receipt (D-219/D-367/D-370)
+
+November 21 spend execution, `GPT-6.1 Sol · 1331`: the assigned BANDED-spend carrier implements the existing D-219/D-367 allocation and accepted-price invariant behind `BANDED_SALES_ENABLED=false`. Quote, locked allocation and debit share the request level and source/cycle identity; a stale confirmation rolls back business and reconciliation writes. Request-bound replay and source-preserving refunds retain the earlier F1/F2 guarantees without restoring the superseded per-level credit cost. The packet records current tests and remaining acceptance. This is an implementation receipt, not a new owner decision, a completed release, a provider action or permission to enable sales; BANDED-release remains the activation row.
+
 ### November 20 launch QA and reviewer credential handling (D-200)
+
 
 Official `LAUNCH-live-qa` unblock `6d6f9138c`, GPT-6.1 Sol · 67c6, checked through D-370 on `aec141720`. [Reset run 44709862016](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44709862016) succeeded on `f759d63de`. [Deploy run 44757175398](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44757175398) passed rollout and readiness checks. The canonical readiness endpoint served `73be7b313`, matching the release in session report `cd01bb1af` for the two demo sign-ins. This evidence supplements the earlier failed reset in #1381. Both runs predate the release-time credential path. [PR #1382](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1382) merged at `38b9a44e6`. Its [push workflow](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44758926866) validated pipeline fixtures and skipped the rollout and readiness steps.
 
@@ -925,4 +930,3 @@ cases for both consumers under the production no-review policy. No runtime,
 gate, price, legal, login, refund, flag, activation or production change;
 no new decision ID or product-completion claim. BANDED-release still owns
 TEST-site purchase proof, authorized activation and exact-release acceptance.
-
