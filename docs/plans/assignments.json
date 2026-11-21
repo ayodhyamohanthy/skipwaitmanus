@@ -6622,7 +6622,8 @@
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts",
-        "server/securityHeaders.test.ts"
+        "server/securityHeaders.test.ts",
+        "docs/DECISIONS.md"
       ]
     },
     {
