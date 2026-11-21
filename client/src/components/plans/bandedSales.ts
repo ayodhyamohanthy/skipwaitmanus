@@ -104,11 +104,15 @@ export type BandedSales = {
 
 export const bandedOfferKey = (signedIn: boolean) => ["banded-offer", signedIn] as const;
 
+// A signed-out offer read asks WorkOS for no token: the SDK answers getAccessToken() with a refresh request that
+// WorkOS refuses with 400, which logs a console error on /plans and fails live release verification (incident #1439).
+const noToken = async (): Promise<string | null> => null;
+
 export function useBandedSales(input: { book: PlanPriceBook; isSignedIn: boolean; getToken: () => Promise<string | null>; openSignIn: () => void; enabled?: boolean }): BandedSales {
   const queryClient = useQueryClient();
   const query = useQuery<BandedOfferResponse, Error>({
     queryKey: bandedOfferKey(input.isSignedIn),
-    queryFn: () => fetchBandedOffer(input.getToken),
+    queryFn: () => fetchBandedOffer(input.isSignedIn ? input.getToken : noToken),
     enabled: input.enabled ?? true,
     staleTime: 60_000,
     retry: false,
