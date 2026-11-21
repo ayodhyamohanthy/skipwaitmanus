@@ -13,7 +13,7 @@ import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import {
   companyReferralFingerprint, createCompanyReferralRequest, getUnclaimedCompanyReferralPreview,
-  tryDeliverWaitingAsk, previewBandedAskCost, refundLedgerSpendTx,
+  tryDeliverWaitingAsk, previewBandedAskCost, refundLedgerSpendTx, getTokenWallet,
   type CreateCompanyReferralInput,
 } from "./db";
 import { PlanLimitError } from "./planGates";
@@ -385,6 +385,28 @@ describe("BANDED-spend real create transaction", () => {
     expect(rows.tokenTransactions.filter(row => row.kind === "credit_spend")).toEqual([]);
     expect(rows.bandedReferralBalances[0].includedRemaining).toBe(2);
   });
+  it("first visibility spends the waiting request's matching included referral exactly once", async () => {
+    rows.profiles = [];
+    const waiting = await send();
+    rows.referralRequests[0].debitTransactionId = null;
+    rows.profiles = [referrerProfile(REFERRER)];
+    expect(await tryDeliverWaitingAsk(waiting.requestId, NOW)).toMatchObject({ outcome: "delivered" });
+    await tryDeliverWaitingAsk(waiting.requestId, NOW);
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(1);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    expect(rows.tokenTransactions.filter(row => row.kind === "credit_spend")).toHaveLength(1);
+  });
+  it("outside-band first visibility without free allowance stays held with no debit", async () => {
+    rows.profiles = [];
+    rows.tokenBalances[0].monthlyCreditsRemaining = 0;
+    const waiting = await send({ targetRoleUrl: "https://careers.acme.com/jobs/senior-engineer" });
+    rows.referralRequests[0].debitTransactionId = null;
+    rows.profiles = [referrerProfile(REFERRER)];
+    expect(await tryDeliverWaitingAsk(waiting.requestId, NOW)).toMatchObject({ outcome: "held" });
+    expect(rows.referralRequests[0].waitingForCoverage).toBe(true);
+    expect(rows.tokenTransactions.filter(row => row.kind === "credit_spend")).toHaveLength(0);
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(2);
+  });
   it("F1: refuses across calendar rollover atomically, then reconfirms with the same key", async () => {
     rows.bandedReferralBalances = [balance(0)];
     rows.tokenBalances[0].monthlyCycleKey = "2026-09";
@@ -423,6 +445,13 @@ describe("BANDED-spend real create transaction", () => {
     const before = structuredClone({ rows, sequence });
     await expect(send({ expectedCost: quote.acceptedCost })).rejects.toMatchObject({ code: "not_on_sale" });
     expect({ rows, sequence }).toEqual(before);
+  });
+  it("turning sales off keeps existing banded wallet state recoverable", async () => {
+    await send();
+    vi.stubEnv("BANDED_SALES_ENABLED", "false");
+    await getTokenWallet(SEEKER, "job_seeker");
+    expect(rows.tokenBalances[0]).toMatchObject({ plan: "early_to_mid", subscriptionStatus: "active", monthlyCreditsRemaining: 3 });
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(1);
   });
   it("waiting quote becomes a 409 when coverage opens; no request or debit is committed", async () => {
     rows.profiles = [];

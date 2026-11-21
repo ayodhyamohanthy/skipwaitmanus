@@ -762,7 +762,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (totalAvailable === null) return res.status(500).json({ error: "We could not load your referral credits" });
       res.set("Cache-Control", "private, no-store");
       res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) });
-    } catch { res.status(500).json({ error: "We could not price this ask" }); }
+    } catch (error) {
+      captureServerError(error, { area: "referral_quote" });
+      res.status(500).json({ error: "We could not load the referral cost. Try again." });
+    }
   });
   app.post("/api/company-referrals", async (req, res) => {
     let actorUserId: number | undefined;

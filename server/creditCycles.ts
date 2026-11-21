@@ -9,7 +9,6 @@ import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
 import { isBandedPlan } from "../shared/acceptedAskCost";
-import { bandedSalesEnabled } from "./billingSettings";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
@@ -169,7 +168,7 @@ function paidCycleSteps(wallet: WalletRow, now: Date): number[] {
 export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, now: Date): Promise<{ wallet: WalletRow; grants: GrantRow[]; changed: boolean }> {
   // Banded included cycles live in bandedReferralBalances. The wallet cycle is
   // exclusively the additional calendar-month free allowance, not a paid term.
-  if (bandedSalesEnabled() && isBandedPlan(locked.plan)) {
+  if (isBandedPlan(locked.plan)) {
     let wallet = locked;
     let changed = false;
     if (freeCycleBehind(wallet.monthlyCycleKey, now)) {
