@@ -1,6 +1,6 @@
 # PICKER-auto-land: green task pull requests land on their own (D-371)
 
-Status: `PICKER-auto-land` landed through PRs #1403 and #1406 (report `8021964cb`); branch `agent/queue/picker-auto-land`, decision D-371 (3). The owner said "auto land" on Nov 20, 2026. Follow-up row `PICKER-auto-land-cloud` (section 7, D-373 (4)) is registered and not built yet.
+Status: `PICKER-auto-land` landed through PRs #1403 and #1406 (report `8021964cb`); branch `agent/queue/picker-auto-land`, decision D-371 (3). The owner said "auto land" on Nov 20, 2026. Follow-up row `PICKER-auto-land-cloud` (section 7, D-373 (4), D-376) landed through #1455.
 
 ## 1. Why
 
@@ -69,4 +69,4 @@ Tests: 3 new ones failed on the earlier code, and now 11/11 pass. The `scripts/`
 
 ## Status
 One line per task (D-134).
-- PICKER-auto-land-cloud: in progress — Claude Code · e969 — 2026-11-21 — branch agent/queue/picker-auto-land-cloud
+- PICKER-auto-land-cloud: done — landed through #1455 (merge `2b9dbd96`, main CI green); built by Claude Code · e969 from branch `agent/queue/picker-auto-land-cloud`. Proof: `scripts/autoLand.test.ts` 18/18, and its 4 new behavioural tests fail on the old candidate filter and runner; `scripts/` suite 1704/1704. Live from a Claude Code cloud session (GraphQL refused with HTTP 403): `--auto-land` on the branch printed `PICKER-auto-land-cloud #1455 queued (merged)`. #1455 was already clean, so GitHub refused auto-merge and the existing REST merge fallback landed it at the CI-green SHA. Then `--auto-land` on main `2b9dbd96` printed `SYNC-LOG-off-main #1378 queued (ready, auto-merge on)`: a quiet draft marked ready and auto-merge turned on through `POST /pulls/1378/ccr/ready_for_review` and `PUT /pulls/1378/ccr/auto_merge` (merge commit). Gap seen: GitHub had not yet computed #1378's mergeability, so the conflict check passed on `unknown`; auto-merge then waits on the conflict, and a session merges main in.
