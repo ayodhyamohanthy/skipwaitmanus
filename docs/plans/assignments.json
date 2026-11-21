@@ -302,8 +302,8 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
-      "status": "todo",
-      "syncedTo": "D-373",
+      "status": "owner",
+      "syncedTo": "D-377",
       "dependsOn": [
         "OPS-deploy-secrets-file",
         "OPS-live-qa-runner"
@@ -314,7 +314,7 @@
         "docs/DECISIONS.md",
         "docs/plans/OPS-deploy-secrets-file.md"
       ],
-      "note": "D-373 (3): the signed-in evidence comes from OPS-live-qa-runner's run on the current release (run link, artifact, summary of both demo sign-ins and every captured route at 1280 and 390), plus one full e2e journeys run (D-353 (4)) and docs/BUGFREE_GATE.md sections 1-4 updated with the exact web/API release. Until the runner lands, a session that holds the current plaintext and has a browser may still run the packet steps by hand. Never post a password, hash, cookie or raw authenticated response. Keep the D-214 account exclusions and payment restrictions; unexecuted transitions are recorded as gaps. File each defect as its own row."
+      "note": "D-377: waits at owner only for the two QA repository secrets (REVIEWER_SEEKER_PASSWORD, REVIEWER_REFERRER_PASSWORD; OPS-live-qa-runner section 4 step 1), the owner's own settings change; runs 44941125936 and 44948082959 said not set. Release: once the owner adds them, any session runs section 4 steps 2 (reset) and 3 (Live QA run), and the pull request recording a run that signs in as both demo accounts sets this row back to todo with that run link. D-373 (3): the signed-in evidence comes from OPS-live-qa-runner's run on the current release (run link, artifact, summary of both demo sign-ins and every captured route at 1280 and 390), plus one full e2e journeys run (D-353 (4)) and docs/BUGFREE_GATE.md sections 1-4 updated with the exact web/API release. Until the runner lands, a session that holds the current plaintext and has a browser may still run the packet steps by hand. Never post a password, hash, cookie or raw authenticated response. Keep the D-214 account exclusions and payment restrictions; unexecuted transitions are recorded as gaps. File each defect as its own row."
     },
     {
       "id": "LAUNCH-qa-fixes",
