@@ -148,6 +148,14 @@ export function isKnownRoute(pathname: string): boolean {
 const CANONICAL_HOST = "skipwait.me";
 const REDIRECTED_HOSTS = new Set([`www.${CANONICAL_HOST}`]);
 
+function isPasswordResetPath(pathname: string): boolean {
+  try {
+    return /^\/reset-password\/*$/i.test(decodeURI(pathname));
+  } catch {
+    return false;
+  }
+}
+
 /** Same-origin browser security policy for Pages, assets, errors, and API proxy responses. */
 const CSP_REPORT_ONLY = [
   "default-src 'self'",
@@ -166,14 +174,15 @@ const CSP_REPORT_ONLY = [
 
 export const onRequest: PagesFunction = async context => {
   const url = new URL(context.request.url);
+  // The reset link query carries a live token before any app code can remove it.
+  const resetPage = isPasswordResetPath(url.pathname);
 
   // One host, permanently, so ranking signals and share links agree.
   if (REDIRECTED_HOSTS.has(url.hostname)) {
     const target = `${url.protocol}//${CANONICAL_HOST}${url.pathname}${url.search}`;
-    return new Response(null, {
-      status: 301,
-      headers: { location: target, "cache-control": "public, max-age=3600" },
-    });
+    const headers = new Headers({ location: target, "cache-control": "public, max-age=3600" });
+    if (resetPage) headers.set("Referrer-Policy", "no-referrer");
+    return new Response(null, { status: 301, headers });
   }
 
   const response = await context.next();
@@ -182,7 +191,7 @@ export const onRequest: PagesFunction = async context => {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set("X-Frame-Options", "DENY");
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Referrer-Policy", resetPage ? "no-referrer" : "strict-origin-when-cross-origin");
   headers.set("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
   const contentType = headers.get("content-type") || "";
   const isHtml = contentType.includes("text/html");

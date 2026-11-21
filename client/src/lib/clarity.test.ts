@@ -65,8 +65,20 @@ describe("Clarity wiring", () => {
     expect(shouldTrackClarityPath("/sign-in", "?returnTo=%2Fexplore&intent=job_seeker")).toBe(true);
   });
 
-  it("does not initialize on a sign-in page that returns to a one-time link", async () => {
-    vi.stubGlobal("window", { location: { pathname: "/sign-in", search: "?intent=referrer&returnTo=%2Fr%2Fabc" } });
+  it("does not track reset entries or nested reset links", () => {
+    expect(shouldTrackClarityPath("/reset-password", "?token=example")).toBe(false);
+    expect(shouldTrackClarityPath("/RESET-PASSWORD/")).toBe(false);
+    expect(shouldTrackClarityPath("/%72eset-password", "?token=example")).toBe(false);
+    expect(shouldTrackClarityPath("/sign-in", "?next=%252Freset-password%253Ftoken%253Dexample")).toBe(false);
+    expect(shouldTrackClarityPath("/forgot-password")).toBe(true);
+    expect(shouldTrackClarityPath("/reset-passwords")).toBe(true);
+  });
+
+  it.each([
+    { pathname: "/sign-in", search: "?intent=referrer&returnTo=%2Fr%2Fabc" },
+    { pathname: "/reset-password", search: "?token=example" },
+  ])("does not initialize on a single-use link entry ($pathname)", async location => {
+    vi.stubGlobal("window", { location });
     vi.stubEnv("VITE_CLARITY_PROJECT_ID", "test-project");
     vi.resetModules();
     try {

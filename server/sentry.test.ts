@@ -33,7 +33,7 @@ describe("server Sentry wiring", () => {
   it("captures the scrubbed API path in the error middleware (FND-4)", async () => {
     vi.resetModules();
     const captureException = vi.fn();
-    vi.doMock("@sentry/node", () => ({ init: vi.fn(), captureException, flush: vi.fn() }));
+    vi.doMock("@sentry/node", () => ({ init: vi.fn(), httpIntegration: vi.fn(), captureException, flush: vi.fn() }));
     process.env.SENTRY_DSN = "https://public@example.invalid/1";
     try {
       const sentry = await import("./sentry");
@@ -59,7 +59,7 @@ describe("server Sentry wiring", () => {
     vi.resetModules();
     const fresh = await import("./sentry");
     const Sentry = await import("@sentry/node");
-    expect(fresh.initServerSentry()).toBe(true);
+    expect(fresh.initServerSentry({ transport: () => ({ send: async () => ({ statusCode: 200 }), flush: async () => true }) })).toBe(true);
     const envelopes: string[] = [];
     Sentry.getClient()?.on("beforeEnvelope", envelope => { envelopes.push(JSON.stringify(envelope)); });
 
@@ -116,7 +116,7 @@ describe("server Sentry wiring", () => {
     vi.resetModules();
     const fresh = await import("./sentry");
     const Sentry = await import("@sentry/node");
-    expect(fresh.initServerSentry()).toBe(true);
+    expect(fresh.initServerSentry({ transport: () => ({ send: async () => ({ statusCode: 200 }), flush: async () => true }) })).toBe(true);
     const client = Sentry.getClient();
     // Sample every transaction, so the 10% production rate cannot hide the leak.
     if (client) client.getOptions().tracesSampleRate = 1;

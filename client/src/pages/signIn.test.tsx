@@ -25,7 +25,7 @@ describe("SignIn", () => {
     expect(screen.queryByText("Welcome to skipwait.me.")).toBeNull();
     expect(screen.queryByText("YOUR DOOR STARTS HERE")).toBeNull();
     expect(screen.queryByAltText(/open blue door/)).toBeNull();
-    expect(screen.queryByLabelText(/Password/)).toBeNull();
+    expect(screen.getByLabelText("Password").getAttribute("type")).toBe("password");
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     // FOUNDER-LOCKED login rule (Oct 16 2026): Give a referral = work-email OTP only, no personal or social options.
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
@@ -48,11 +48,11 @@ describe("SignIn", () => {
     }
   });
 
-  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a code", () => {
+  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a password", () => {
     const assign = stubAssign();
     render(<SignIn />);
-    expect(screen.queryByLabelText(/Password/)).toBeNull();
-    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(screen.getByLabelText("Password").getAttribute("type")).toBe("password");
+    expect(document.querySelector("input[type=password]")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Continue with GitHub/ }));
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
     expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeTruthy();
@@ -63,7 +63,7 @@ describe("SignIn", () => {
     render(<SignIn />);
     const emailInput = screen.getByLabelText(/email address/i);
     expect(emailInput).toBeTruthy();
-    expect(screen.getByRole("button", { name: /send sign-in code/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Sign in$/ })).toBeTruthy();
     const seekerForm = screen.getByTestId("seeker-sign-in");
     const focusable = seekerForm.querySelectorAll<HTMLElement>("input, button");
     expect(focusable[0]).toBe(emailInput);

@@ -61,6 +61,8 @@
       // an unset placeholder previously produced a broken request on every page.
       (function () {
         try {
+          // The reset link carries a one-time token. Do not load a tracker on that page.
+          if (/^\/reset-password\/*$/i.test(decodeURI(location.pathname))) return;
           var endpoint = "%VITE_ANALYTICS_ENDPOINT%";
           var websiteId = "%VITE_ANALYTICS_WEBSITE_ID%";
           if (!endpoint || endpoint.indexOf("%") === 0 || !websiteId || websiteId.indexOf("%") === 0) return;
@@ -68,6 +70,8 @@
           s.defer = true;
           s.src = endpoint + "/umami";
           s.setAttribute("data-website-id", websiteId);
+          s.setAttribute("data-exclude-search", "true");
+          s.setAttribute("data-exclude-hash", "true");
           document.head.appendChild(s);
         } catch (e) {}
       })();

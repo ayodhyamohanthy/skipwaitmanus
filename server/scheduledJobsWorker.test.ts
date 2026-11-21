@@ -44,7 +44,8 @@ describe("Worker scheduled() and public boundary (src/worker.ts)", () => {
     const dispatch = fetchHandler.indexOf("fetchContainerWithStoppedRecovery(");
     expect(guard).toBeGreaterThan(0);
     expect(dispatch).toBeGreaterThan(guard);
-    expect(fetchHandler).toContain("fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)))");
+    expect(fetchHandler).toContain('withSeekerPasswordRelease(request, typeof env.JWT_SECRET === "string" ? env.JWT_SECRET : "", env.API_RELEASE ?? "", Date.now())');
+    expect(fetchHandler).toContain("fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(signedRequest)))");
     expect(fetchHandler.match(/status: 404/g)).toHaveLength(2);
   });
 });

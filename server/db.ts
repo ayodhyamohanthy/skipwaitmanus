@@ -141,8 +141,21 @@ export async function listWorkosSubjectsForUser(userId: number): Promise<string[
   return rows.map(row => row.subject).filter(subject => /^user_[A-Za-z0-9]+$/.test(subject));
 }
 
+/** Lock the covered-domain predicate before password identity writes. Profiles has no
+ * domain index, so this current locking read also protects a concurrent first
+ * work-email enrollment from slipping between the refusal and identity commit. */
+async function assertPasswordEmailAllowedTx(tx: LedgerTx, email: string): Promise<void> {
+  const labels = email.slice(email.lastIndexOf("@") + 1).split(".").filter(Boolean);
+  const domains = labels.slice(0, -1).map((_, index) => labels.slice(index).join(".")).filter(isCorporateEmailDomain);
+  if (!domains.length) return;
+  const covered = await tx.select({ id: profiles.id }).from(profiles)
+    .where(and(inArray(profiles.workEmailDomain, domains), isNotNull(profiles.workEmailVerifiedAt)))
+    .limit(1).for("share");
+  if (covered.length) throw new Error("WORK_EMAIL_PASSWORD_REFUSED");
+}
+
 /** `name` is stored only when a new account is created; null leaves it unnamed (never derived from the email). */
-export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string | null; loginMethod: string }) {
+export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string | null; loginMethod: string; passwordLogin?: boolean }) {
   const email = normalizeVerifiedEmail(input.email);
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -152,13 +165,14 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
   const knownAlias = (await db.select().from(verifiedLoginAliases)
     .where(and(eq(verifiedLoginAliases.provider, input.provider), eq(verifiedLoginAliases.subject, input.subject)))
     .limit(1))[0];
-  if (knownAlias) {
+  if (knownAlias && !input.passwordLogin) {
     const account = (await db.select().from(users).where(eq(users.id, knownAlias.canonicalUserId)).limit(1))[0];
     const person = (await db.select().from(canonicalPeople).where(eq(canonicalPeople.id, knownAlias.canonicalPersonId)).limit(1))[0];
     if (!account || !person || account.suspended || person.suspended) throw new Error(person?.reviewReason ? "IDENTITY_REVIEW_REQUIRED" : "ACCOUNT_NOT_ACTIVE");
     return { ...account, suspended: false, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
   }
   const result = await db.transaction(async tx => {
+    if (input.passwordLogin) await assertPasswordEmailAllowedTx(tx, email);
     // Provider subject is the strongest key. It always resolves before email.
     const aliasRow = (await tx.select().from(verifiedLoginAliases)
       .where(and(eq(verifiedLoginAliases.provider, input.provider), eq(verifiedLoginAliases.subject, input.subject)))
@@ -276,7 +290,19 @@ export async function getUserByOpenId(openId: string) {
   if (!person) return account;
   return { ...account, suspended: account.suspended || person.suspended, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
 }
-export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; const account=await getUserByOpenId(openId);if(!account)return;const now=new Date();await db.update(users).set({sessionsValidAfter:now}).where(eq(users.id,account.id));if(account.canonicalPersonId)await db.update(canonicalPeople).set({sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId)); }
+export async function revokeUserSessions(openId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const account = await getUserByOpenId(openId);
+  if (!account) throw new Error("ACCOUNT_NOT_ACTIVE");
+  // JWT iat and MySQL timestamps have whole-second precision. Advance past the
+  // current second so every token minted before this revocation is rejected.
+  const cutoff = new Date((Math.floor(Date.now() / 1000) + 1) * 1000);
+  await db.transaction(async tx => {
+    await tx.update(users).set({ sessionsValidAfter: cutoff }).where(eq(users.id, account.id));
+    if (account.canonicalPersonId) await tx.update(canonicalPeople).set({ sessionsValidAfter: cutoff }).where(eq(canonicalPeople.id, account.canonicalPersonId));
+  });
+}
 export async function getSeekerLevel(userId: number): Promise<number | null> { const db = await getDb(); if (!db) return null; const r = await db.select({ level: seekerLevels.level }).from(seekerLevels).where(eq(seekerLevels.userId, userId)).limit(1); return r[0]?.level ?? null; }
 /** D-148: the seeker's own pick (1-10). Display only. */
 export async function setSeekerLevel(userId: number, level: number | null): Promise<number | null> {

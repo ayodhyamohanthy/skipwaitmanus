@@ -102,7 +102,9 @@ import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
-import { registerPasswordResetRoutes } from "../passwordResetRoutes";
+import { registerPasswordAuthRoutes } from "./passwordAuthRoutes";
+import { apiTiming } from "./apiTiming";
+import { seekerPasswordActivationMiddleware } from "./seekerCodeRetirement";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
 import { AssistantPlanRequiredError } from "../planGates";
@@ -153,6 +155,7 @@ async function startServer() {
   // Every API 5xx must reach Sentry and the owner, sign-in and webhooks included.
   app.use(httpErrorCaptureMiddleware);
   app.use(materialErrorAlertMiddleware);
+  app.use(seekerPasswordActivationMiddleware({ isReady: isSchemaReconciled, sha: async () => { try { return (await readFile("commit-sha.txt", "utf8")).trim(); } catch { return ""; } }, secret: () => process.env.JWT_SECRET ?? "" }));
   // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register
   // before the global JSON parser: the Razorpay handler must HMAC the exact
   // raw request bytes the provider signed, so it parses its own body.
@@ -181,20 +184,8 @@ async function startServer() {
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
-  // Timing only, no behavior change: Server-Timing header on /api responses and a log line for slow ones (path only, no query or user data).
-  app.use("/api", (req, res, next) => {
-    const started = performance.now();
-    const writeHead = res.writeHead.bind(res) as (...args: unknown[]) => typeof res;
-    res.writeHead = ((...args: unknown[]) => {
-      if (!res.headersSent) res.setHeader("Server-Timing", `app;dur=${Math.round(performance.now() - started)}`);
-      return writeHead(...args);
-    }) as typeof res.writeHead;
-    res.on("finish", () => {
-      const ms = Math.round(performance.now() - started);
-      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${scrubSentryPath(`${req.baseUrl}${req.path}`)} ${res.statusCode} ${ms}ms`);
-    });
-    next();
-  });
+  // Auth timing is private; retain scrubbed slow-response logs for other API routes.
+  app.use("/api", apiTiming);
   app.use((req, res, next) => {
     if (req.path === "/api/documents" || req.path === "/api/documents/opaque") return next();
     smallJson(req, res, error => error ? res.status(jsonBodyError(error).status).json(jsonBodyError(error).body) : next());
@@ -225,12 +216,12 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
   registerPasskeyLoginRoutes(app, { resolveIdentity });
-  // D-057-session-gate: the in-session work-email step-up and the referrer session gate, before the routes it guards.
+  // D-057: keep the in-session work-email proof before every guarded referrer route.
   registerReferrerStepUpRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerReviewerLoginRoutes(app);
-  registerPasswordResetRoutes(app);
+  // Password routes register once with WorkOS; missing configuration answers unavailable.
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
-  else registerDevAuthRoutes(app);
+  else { registerDevAuthRoutes(app); registerPasswordAuthRoutes(app, { client: null }); }
   registerAskInviteRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerStorageProxy(app);
   registerDbDocumentRoute(app, { resolveIdentity });

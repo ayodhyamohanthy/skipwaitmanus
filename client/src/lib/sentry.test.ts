@@ -46,7 +46,7 @@ describe("client Sentry breadcrumbs never carry a one-time token", () => {
     vi.resetModules();
     const Sentry = await import("@sentry/react");
     const fresh = await import("./sentry");
-    expect(fresh.initClientSentry()).toBe(true);
+    expect(fresh.initClientSentry({ transport: () => ({ send: async () => ({ statusCode: 200 }), flush: async () => true }) })).toBe(true);
     const envelopes: string[] = [];
     Sentry.getClient()?.on("beforeEnvelope", envelope => { envelopes.push(JSON.stringify(envelope)); });
     await run();
@@ -83,7 +83,7 @@ describe("client Sentry event fields never carry a one-time token", () => {
     vi.resetModules();
     const Sentry = await import("@sentry/react");
     const fresh = await import("./sentry");
-    expect(fresh.initClientSentry()).toBe(true);
+    expect(fresh.initClientSentry({ transport: () => ({ send: async () => ({ statusCode: 200 }), flush: async () => true }) })).toBe(true);
     const envelopes: string[] = [];
     Sentry.getClient()?.on("beforeEnvelope", envelope => { envelopes.push(JSON.stringify(envelope)); });
     Sentry.captureEvent(event as Parameters<typeof Sentry.captureEvent>[0]);
@@ -97,7 +97,7 @@ describe("client Sentry event fields never carry a one-time token", () => {
       message: `failed to load /api/ask-invites/${TOKEN}/claim`,
       transaction: `/r/${TOKEN}`,
       tags: { route: `/r/${TOKEN}`, healthy: "yes" },
-      extra: { nested: { url: `/r/${TOKEN}` }, list: [`/api/ask-invites/${TOKEN}`], count: 2 },
+      extra: { nested: { url: `/r/${TOKEN}` }, list: [`/api/ask-invites/${TOKEN}`], count: 2, role: "job_seeker" },
       contexts: { app: { path: `/r/${TOKEN}`, plain: "/explore" } },
       request: {
         url: `https://skipwait.me/r/${TOKEN}`,

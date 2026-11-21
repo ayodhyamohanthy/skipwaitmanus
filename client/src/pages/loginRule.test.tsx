@@ -30,20 +30,25 @@ describe("login rule: job seeker", () => {
     expect(assign).not.toHaveBeenCalledWith(expect.stringContaining("authkit.app"));
   });
 
-  it("email sign-in sends a code and verifies it against the email-code routes", async () => {
-    const calls: Array<[string, unknown]> = [];
-    vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => { calls.push([url, JSON.parse(init.body)]); return { ok: true, json: async () => (url.endsWith("/send") ? { sent: true } : { signedIn: true }) }; }));
+  it("email sign-in posts personal email and password without a seeker code", async () => {
+    const calls: Array<[string, object]> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/passkey/availability")) return { ok: true, json: async () => ({ enabled: false }) };
+      calls.push([url, JSON.parse(String(init?.body))]);
+      return { ok: true, json: async () => ({ ok: true, step: "signed_in", redirectTo: "/explore" }) };
+    }));
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign, search: "" });
     render(<SignIn />);
     fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Gmail.com " } });
-    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/ }));
-    const codeInput = await screen.findByLabelText("Six-digit code");
-    fireEvent.change(codeInput, { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "my password 1" } });
+    expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("current-password");
+    expect(screen.queryByLabelText("Six-digit code")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Sign in$/ }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
-    expect(calls).toEqual([["/api/auth/workos/email-code/send", { email: "asha@gmail.com" }], ["/api/auth/workos/email-code/verify", { email: "asha@gmail.com", code: "123456" }]]);
+    expect(calls).toEqual([["/api/auth/password/sign-in", { email: "asha@gmail.com", password: "my password 1", returnTo: "/explore" }]]);
+    expect(calls.some(([url]) => url.includes("email-code"))).toBe(false);
   });
 });
 

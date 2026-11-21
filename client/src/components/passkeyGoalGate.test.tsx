@@ -20,7 +20,7 @@ vi.mock("@/components/ReferrerOtpSignIn", () => ({
   ReferrerOtpSignIn: () => <div data-testid="mock-referrer-otp">Work Email OTP</div>,
 }));
 import { SeekerSignIn } from "./SeekerSignIn";
-import { GoalSeekerSignIn } from "./goal/GoalSeekerSignIn";
+import { GoalSeekerForm } from "@/pages/goal/sign-in/GoalSeekerForm";
 import GoalSignIn, { PasskeyManagement } from "../pages/GoalSignIn";
 
 beforeEach(() => {
@@ -41,24 +41,25 @@ describe("seeker sign-in passkey affordances exist only in the goal-native compo
       return { ok: true, json: async () => ({ enabled }) };
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<GoalSeekerSignIn />);
-    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    render(<GoalSeekerForm returnTo="/explore" />);
+    expect(screen.getByRole("button", { name: /^Sign in$/ })).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(screen.getByLabelText(/Email address/).getAttribute("autocomplete")).toBe("email");
     expect(screen.queryByRole("button", { name: /passkey/i })).toBeNull();
   });
-  it("the legacy kit page renders no device-credential UI", () => {
+  it("the compatibility entry delegates the same server-enabled Goal passkey behavior", async () => {
     render(<SeekerSignIn />);
-    expect(screen.queryByRole("button", { name: /Use a saved passkey/ })).toBeNull();
+    expect(await screen.findByRole("button", { name: /Use a saved passkey/ })).toBeTruthy();
     const email = screen.getByLabelText(/Email address/);
-    expect(email.getAttribute("autocomplete")).toBe("email");
+    expect(email.getAttribute("autocomplete")).toBe("username webauthn");
+    expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("current-password");
   });
 
   it("the goal sign-in opens with the server-enabled passkey action beside the social options", async () => {
-    render(<GoalSeekerSignIn />);
+    render(<GoalSeekerForm returnTo="/explore" />);
     expect(await screen.findByRole("button", { name: /Use a saved passkey/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Continue with email/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
   });
 
   it("referrer surface NEVER renders a passkey affordance (D-030, D-057, D-333 pin)", () => {
@@ -69,10 +70,17 @@ describe("seeker sign-in passkey affordances exist only in the goal-native compo
     expect(screen.getByText(/Work email only/)).toBeTruthy();
   });
 
-  it("a second code sign-in after enrollment skips the enrollment offer (F9)", () => {
+  it("a password sign-in after enrollment skips the enrollment offer (F9)", async () => {
     localStorage.setItem("skipwait_passkey_enrolled_seeker@example.com", "true");
-    render(<GoalSeekerSignIn returnTo="/explore" />);
-    // Initial stage is choose
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => url.endsWith("availability") ? { enabled: true } : { ok: true, step: "signed_in", redirectTo: "/explore" } })));
+    render(<GoalSeekerForm returnTo="/explore" />);
+    await screen.findByRole("button", { name: "Use a saved passkey" });
+    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "seeker@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password-123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
     expect(screen.queryByText(/Save this device for faster sign-in/)).toBeNull();
   });
 });
