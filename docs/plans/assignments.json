@@ -6472,7 +6472,7 @@
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-086.count",
@@ -6481,7 +6481,7 @@
         "D-090-BYOR",
         "D-048-p3-live-review-find"
       ],
-      "note": "D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: remove the bonus sentence from the demand line (demandBonusLine() in CompanyDemandLine; the one neutral, sourced bonus fact line on the company page belongs to D-099-bonus-line), then release under packet sections 5.4 and 8. D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
       "owns": [
         "shared/companyDemand.ts (switch only)",
         "AGENTS.md",
@@ -6962,7 +6962,7 @@
         "docs/DECISIONS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: keep the sourced figures, admin entry and report path the company-page fact line needs; drop the public /bonuses and /bonuses/:slug pages and their sitemap entries. Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
     },
     {
       "id": "D-099-bonus-line",
@@ -6986,7 +6986,7 @@
         "client/src/pages/explore/",
         "client/src/pages/explore.bonusLine.test.tsx"
       ],
-      "note": "D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory. It also waits for D-048-F-primitives, which owns GoalListRow.tsx first."
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: one neutral, sourced fact line on the company page (/explore/:slug) only, with no line in the /explore list and no link to a bonus page; never a headline or a reason to refer. D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory. It also waits for D-048-F-primitives, which owns GoalListRow.tsx first."
     },
     {
       "id": "PICKER-land-exact-head",
