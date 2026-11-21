@@ -278,8 +278,8 @@
       "tier": 1,
       "lane": "banded-checkout",
       "branch": "agent/queue/banded-checkout",
-      "status": "todo",
-      "syncedTo": "D-370",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-schema",
         "BANDED-catalog-sync"
@@ -294,7 +294,7 @@
         "src/worker.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "PR #1411: banded plan and extra-referral checkout behind BANDED_SALES_ENABLED (exact 'true', same reader rule as BANDED-spend; off answers 409 not_on_sale before sign-in, a read or a provider call). Founding place reserved under the counter row lock; hosted pages keyed by the checkout idempotency key; extras inside the member's band with the volume discount as a fixed amount. Grants, UI and release remain their own rows. Completion is carried in this PR; required CI and the exact-release check are the acceptance gates."
     },
     {
       "id": "BANDED-grants",
@@ -6155,7 +6155,7 @@
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
       "status": "todo",
-      "syncedTo": "D-359",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-174-job-catalog",
         "REL-review-email-retry-schema"
@@ -6181,7 +6181,7 @@
         "server/emailDelivery.ts",
         "server/emailDelivery*.test.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys). Nov 18 execution split: REL-review-email-retry-schema lands and production-verifies only the existing additive 0122 SQL first. The Fixed marker on PR874 does not prove that schema output; this row resumes landing only after the prerequisite is done. Existing runtime repair, history, Fixed binding, CI and first-live-job acceptance stay unchanged."
+      "note": "D-350 resumed this row. The schema prerequisite applied and verified migration 0122 in production. The Nov 21 ruling records the local test failures and their baseline evidence. Continue PR #874 with a current-main merge, fresh required CI including MySQL retry coverage, and protected auto-merge under D-370. Keep the exact applied SQL. Confirm canonical release identity and the first successful review-delivery-retry run after deployment."
     },
     {
       "id": "REL-heartbeats",
