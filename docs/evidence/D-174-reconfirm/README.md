@@ -5,6 +5,29 @@ Task: `D-174-held-ask-reconfirm`; implementation branch
 The source switch `ASK_RECONFIRM_ENABLED` is **false**. No production
 activation, live request, email, payment or database operation was performed.
 
+## Verified dormant implementation
+
+[CI 44918233505](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44918233505)
+passed every required check on final runtime source `d514aa883`: all three unit
+shards and aggregate, compiler, both production build modes, scope/integrity
+checks, migration apply/replay and all browser journeys. The seven local client
+cases include native error-feedback scrolling; the existing 180 server cases
+cover consent, delivery, stored costs, money checks and invite interactions.
+
+All four retained images from that run were downloaded and inspected. The
+repaired phone prompt/action and error/retry state are clear of fixed navigation.
+Desktop controls and feedback remain readable. The browser checks no horizontal
+overflow, a 44px phone target, actual overlay hit-tests, and error-then-success
+recovery. [`captures.json`](captures.json) records the source, run, dimensions and
+SHA-256 of the unedited images in [`after/`](after/). The earlier failed visual
+baseline is preserved separately in [`before/`](before/).
+
+D-373/D-374 were read against newer main `1c6dc427a`; their QA transport,
+automatic landing and bonus-copy rulings do not change this feature. That main
+composition adds no reconfirmation runtime change. The source flag remains
+false. Protected landing and canonical disabled-runtime acceptance are tracked
+separately on [PR #1437](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1437).
+
 ## Passing local checks
 
 - Red-first server regression: 9 failed / 3 passed before implementation.
@@ -28,7 +51,7 @@ timed out. The mutation-focused suite now isolates the unrelated shell instead
 of increasing timeouts or weakening its request/control assertions. The full
 page is still the browser-capture target.
 
-## First integrated CI and follow-up
+## First integrated CI and follow-up (history)
 
 [CI 44913737056](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44913737056)
 on integrated head `e5b060c98` passed typecheck, both build modes and the browser
@@ -42,7 +65,7 @@ The existing browser upload ran only on failure, so the successful run's four
 attached synthetic screenshots were not retained. The CI workflow now retains
 only `awaiting-*.png`/`error-*.png` consent fixtures for one day, on successful
 runs too; the existing failure-trace upload and all checks are unchanged.
-Fresh exact-head CI and actual image inspection remain required.
+Subsequent successful CI and inspected images are recorded above.
 
 ## Browser inspection and phone repair
 
@@ -59,7 +82,7 @@ the existing request cost and conversation/withdraw path are unchanged.
 The browser test additionally hit-tests the Confirm control and the alert
 against overlays. Mobile screenshots capture the actual 390×844 viewport
 after the control is brought into view; desktop captures retain the full page.
-Fresh repair CI and inspection of its new screenshots remain required.
+The subsequent repair CI and inspected images are recorded above.
 
 ## Reproducing browser evidence
 
@@ -101,5 +124,5 @@ No full local Vitest pass is claimed. An initial invocation hit the tool's
 120-second background limit; the longer run was stopped after Git-fixture and
 page tests timed out under host load and current main had been composed.
 It has no final totals and is not an exact-candidate gate. The full integrated
-CI result above is separate. Fresh green required CI, inspected images,
-protected landing and release acceptance remain open.
+CI results above are separate. Protected landing and canonical deployment
+receipts are tracked on the pull request; no activation is authorized here.
