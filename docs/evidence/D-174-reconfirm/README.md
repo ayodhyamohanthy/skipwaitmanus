@@ -27,7 +27,23 @@ timed out. The mutation-focused suite now isolates the unrelated shell instead
 of increasing timeouts or weakening its request/control assertions. The full
 page is still the browser-capture target.
 
-## Browser evidence: not yet verified
+## First integrated CI and follow-up
+
+[CI 44913737056](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44913737056)
+on integrated head `e5b060c98` passed typecheck, both build modes and the browser
+job. Its unit shards passed 8,171 tests and failed three inventory/documentation
+checks: missing goal-boundary registration, missing coverage-map registration,
+and the brief exceeding 10 KB. The component is now registered under the moved
+My Requests surface, with its D-193 owner, and the brief is 10,237 bytes. All
+**63 tests** in those three suites pass locally. No assertion or gate is removed.
+
+The existing browser upload ran only on failure, so the successful run's four
+attached synthetic screenshots were not retained. The CI workflow now retains
+only `awaiting-*.png`/`error-*.png` consent fixtures for one day, on successful
+runs too; the existing failure-trace upload and all checks are unchanged.
+Fresh exact-head CI and actual image inspection remain required.
+
+## Browser evidence: behavior passed, images not yet inspected
 
 `capture.mjs` bundles the actual `MyRequests`, request row/control, request API
 and `GoalAppShell` with the production-built CSS. It substitutes a synthetic
@@ -62,7 +78,9 @@ Or run with `--serve` to receive a structured local URL for an existing browser.
 Confirm intentionally returns a synthetic 503; the second succeeds. These
 fixtures never ship in the production bundle.
 
-The full local Vitest run and exact-head required CI remain pending. An initial
-full local invocation was stopped by the tool's 120-second background limit,
-without a final result; the longer bounded run is separate. No green full-suite,
-MySQL concurrency, protected landing or release acceptance is certified here.
+No full local Vitest pass is claimed. An initial invocation hit the tool's
+120-second background limit; the longer run was stopped after Git-fixture and
+page tests timed out under host load and current main had been composed.
+It has no final totals and is not an exact-candidate gate. The full integrated
+CI result above is separate. Fresh green required CI, inspected images,
+protected landing and release acceptance remain open.

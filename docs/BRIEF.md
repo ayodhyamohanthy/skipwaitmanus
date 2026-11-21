@@ -25,8 +25,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Design (D-120, D-150).** Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX (goal line, one next step, one black commit), never the old layout in black (`design/goal-ui/DOCTRINE.md`); until one moves, keep its tokens.
 - **Public repo (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
-- Banded quote, spend and refund contract (sales off): [packet](plans/PRICING-banded-checkout.md).
-- Old waiting requests: D-193's reconfirmation safeguard is built behind `ASK_RECONFIRM_ENABLED = false`; activation remains separate. When enabled, requests older than 30 days need their owner's confirmation before first-visibility spending. One in-app notice, no new email or closure; existing money rules remain.
+- Off: [banded](plans/PRICING-banded-checkout.md); [D-193](plans/D-193-journey-foundations.md).
 
 ## Working with the owner
 
