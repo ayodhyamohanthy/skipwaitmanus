@@ -22,6 +22,7 @@ import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { PinnedWorkPicker } from "@/components/ask/PinnedWorkPicker";
 import type { LinkHint } from "./findModel";
 import { JobLinkFromPosting } from "./JobLinkFromPosting";
+import { ReasonsCoach } from "./ReasonsCoach";
 
 export type AskResume = { name: string } | null;
 export type AskSentView = { company: string; detail: string; slots: string | null; trackHref: string };
@@ -216,6 +217,7 @@ export function AskDrawer(props: AskDrawerProps) {
             ))}
             {/* A screen names no status hue (R3): field-level errors stay inside GoalField. */}
             {props.reasonsError ? <p role="alert" className="text-g-meta text-g-ink">{props.reasonsError}</p> : null}
+            <ReasonsCoach reasons={props.reasons} signedIn={props.signedIn} companyName={props.company?.name} />
           </fieldset>
 
           <PinnedWorkPicker work={props.work} />
