@@ -25,7 +25,10 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Design (D-120, D-150).** Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX (goal line, one next step, one black commit), never the old layout in black (`design/goal-ui/DOCTRINE.md`); until one moves, keep its tokens.
 - **Public repo (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
+- Banded quote, spend and refund contract (sales off): [packet](plans/PRICING-banded-checkout.md).
+
 ## Working with the owner
+
 - **Roles (D-225):** Claude sessions build too (D-348). No step waits for one model. Ownership and required CI still apply; no review (D-347).
 - Be brutally honest (D-023): risks first, the strongest counter-argument, ideas rated 1–10, "I don't know" over a guess. Each session: fetch `main`, read new decisions, report the log and rated ideas (D-026). D-123/D-126: research, decide on merit, ship flagged, report deviations.
 - Never override a decision; recommend a better one with evidence. Value-adding features are pre-approved (D-091); the owner's word is still needed for real cash, posts in his name, prices or credit rules going live, new charges and anything that could upset users (D-123). Record decisions once in the register at highest ID + 1 across main/open branches; sync affected docs in the same push (D-068).

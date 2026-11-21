@@ -327,8 +327,8 @@
       "tier": 1,
       "lane": "banded-spend",
       "branch": "agent/queue/banded-spend",
-      "status": "todo",
-      "syncedTo": "D-370",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-levels",
         "BANDED-schema"
@@ -336,10 +336,20 @@
       "owns": [
         "server/creditLedger.ts",
         "server/planGates.ts",
-        "server/privateReferralRoutes.ts"
+        "server/privateReferralRoutes.ts",
+        "shared/acceptedAskCost.ts",
+        "shared/acceptedAskCost.test.ts",
+        "server/db.ts",
+        "server/_core/index.ts (switch only)",
+        "server/askQuoteWiring.test.ts",
+        "server/askCreateFixtureDb.ts",
+        "server/askCreateFixtureDb.test.ts",
+        "server/db.askPriceGuard.test.ts",
+        "server/askQuoteRoute.test.ts",
+        "server/privateReferralRoutes.integration.test.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "D-219/D-367/D-370: this is the sole implementation carrier for banded spend and the accepted-price invariant formerly queued as D-132-item3. Re-scope any reusable PR1269/7e1d3649 source and reviewer630a/b53c F1/F2 repairs against current main; the old PR and markers are historical evidence, not a FIX/LAND route or inherited approval. Preserve atomic confirmation/charge equality, rollback, same-key reconfirm and request-bound replay; do not restore ASK_LEVEL_COST or the obsolete band-null policy. See PRICING-banded-checkout.md section 8 and D-132-item3-accepted-price.md section 14. Added companion paths carry that existing guard work; no source implementation, sale, price, flag or production acceptance is claimed by this routing amendment."
     },
     {
       "id": "BANDED-ui",
@@ -395,8 +405,8 @@
       "tier": 2,
       "lane": "design-shell-words",
       "branch": "agent/queue/d344-shell-referral-words",
-      "status": "todo",
-      "syncedTo": "D-344",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         "client/src/components/goal/GoalShell.tsx",
@@ -407,7 +417,7 @@
         "e2e/fixtures.ts",
         "design/goal-ui/captures/shell/**"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes. D-344 (8): it also owns client/src/test/goalShellHarness.test.tsx (the harness pins the pill's aria-label) and e2e/fixtures.ts (readBalance reads the pill by that label), both owned by no open row; only the pinned label words change there.",
+      "note": "Delivered by PR #1222 on November 16: source 630c15356, final head e42057cf0, merge 857289ac2; exact-head CI 43895389256 and web deployment 43895979459 passed. November 21 reconciliation verified ancestry, existing 1280/390 captures and 69/69 current shell/request/harness tests. See docs/plans/D-344-unblock.md Status. Wording only; D-222 retains its separate count/ledger semantics. No runtime change in this status correction.",
       "epic": "D-048-p3"
     },
     {
@@ -669,8 +679,8 @@
       "tier": 2,
       "lane": "gate-captures",
       "branch": "agent/queue/gate-release-captures",
-      "status": "todo",
-      "syncedTo": "D-346",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
@@ -679,7 +689,7 @@
         "scripts/releaseCaptures.test.ts",
         "scripts/ciMarkerSkip.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 4. Shares ci.yml with GATE-merge-queue under D-314."
+      "note": "Delivered in PR #1246 at c17d3f7a6; CI 44035387946 passed required checks and all four 1280/390 capture jobs with uploaded artifacts. November 21 reconciliation checked through D-371 and 80/80 current planner/CI contract tests. Individual page acceptance remains with its release row; no rebuild is needed."
     },
     {
       "id": "GATE-unit-shards",
@@ -953,39 +963,6 @@
       ]
     },
     {
-      "id": "D-132-item3",
-      "title": "Atomic accepted-price precondition: a covered request is charged exactly the accepted cost (units, band, spend source) or answers 409 ask_price_changed with nothing written (D-221 re-scope; no D-219 mapping)",
-      "row": "D-132",
-      "packet": "docs/plans/D-132-item3-accepted-price.md",
-      "tier": 1,
-      "lane": "money-core",
-      "branch": "agent/queue/d132-item3",
-      "status": "todo",
-      "syncedTo": "D-366",
-      "dependsOn": [
-        "D-132-audit",
-        "D-090-BYOR",
-        "P0-referral-access-availability"
-      ],
-      "note": "D-221 model-independent accepted-price guard only: expectedCost={units,band,source}, band null until owner settles D-219 mapping; no old per-level price, new spending order or sales activation. Current product carrier PR1269/7e1d3649 is implemented but NOT landable. Nov19 UNBLOCK GPT-6.1 Sol · 814e re-syncs the packet to D-366 (7), main6f7f6811, under D-200; see docs/plans/D-132-item3-accepted-price.md section13 and dated register ruling. Real source-fixture correction required: replace new LEVEL3_URL/ASK_LEVEL_COST policy cases with deterministic model-independent counts while preserving real-create multi-unit split, units mismatch and full rollback/reconfirm/replay assertions. Keep explicitly dormant coverage precedence and unchanged quote/legacy compatibility tests. Preserve reviewer630a F1/F2 fixes from b53c/d1300293; existing Fixed is stale after7b896177/7e1d3649, so a marker-only cure is insufficient. Eligible official FIX holder must do the actual correction/current-main integration, record its own fresh head-bound Fixed and verification, then required CI/protected auto-merge; no impersonation or gate/status-only allowance change. This is contract sync for the fix stage, not source completion, verdict, done status or permission to land current7e1d3649. Canonical production readiness/identity/Sentry remain required because quote preview reconciles wallets even with no new confirmation caller. Add only docs/DECISIONS.md to owns for this D-200 ruling: CI44566540332 correctly refused that path because an UNBLOCK marker is not a Claim/Takeover/Fix scope exemption. No fake marker, alternate-branch escape or scope-gate change. No pricing/flag/refund/legal/login/consumer activation or dependency/other-holder change; real-money QA remains forbidden.",
-      "owns": [
-        "docs/DECISIONS.md",
-        "shared/acceptedAskCost.ts",
-        "shared/acceptedAskCost.test.ts",
-        "server/creditLedger.ts",
-        "server/planGates.ts",
-        "server/db.ts",
-        "server/privateReferralRoutes.ts",
-        "server/_core/index.ts (switch only)",
-        "server/askQuoteWiring.test.ts",
-        "server/askCreateFixtureDb.ts",
-        "server/askCreateFixtureDb.test.ts",
-        "server/db.askPriceGuard.test.ts",
-        "server/askQuoteRoute.test.ts",
-        "server/privateReferralRoutes.integration.test.ts"
-      ]
-    },
-    {
       "row": "D-048",
       "packet": "docs/plans/D-048-seeker.md",
       "epic": "D-048-p3",
@@ -1022,8 +999,8 @@
       "tier": 1,
       "lane": "d048-release-inbox",
       "branch": "agent/queue/d048-r-inbox",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-inbox",
         "D-344-shell-referral-words"
@@ -1038,7 +1015,7 @@
         "design/goal-ui/captures/inbox/**",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"inbox\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=inbox); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-inbox's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Pre-acceptance privacy preserved (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-338 (Nov 16): the review finding on PR #1196 (the /inbox shell count says credits) can only be fixed in GoalShell.tsx, which D-222-referral-count-shell owns; this row now depends on it, so no fix is handed out that its owns cannot carry. Once D-222 lands, merge main into PR #1196 and re-review. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-inbox, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): the shell finding on PR #1196 is fixed by D-344-shell-referral-words, which has no pricing dependency. This row now waits on that row instead of D-222-referral-count-shell. D-349 (launch mode): done by D-048-p3-inbox's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off.",
+      "note": "D-048-p3-inbox built the goal inbox. PR #1196 released inbox in RELEASED and its test pin (merge 4af408441), covering /inbox and the /thread list alias. The shell wording dependency is complete (#1416). The later retirement #1278 verified both canonical routes on web 8d4232b4 and ready API ac2eb04b (release verify run 44362721356). The release needs no further build.",
       "epic": "D-048-p3"
     },
     {
@@ -1962,7 +1939,7 @@
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-profile",
         "D-344-shell-referral-words"
@@ -1977,9 +1954,10 @@
         "design/goal-ui/captures/profile/**",
         "client/src/test/goalPagesBoundary.test.ts",
         "client/src/components/profile/profileVisibility.ts",
-        "client/src/components/profile/VisibilityOptions.tsx (switch only)"
+        "client/src/components/profile/VisibilityOptions.tsx (switch only)",
+        "docs/DECISIONS.md"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review. November 21 reconciliation: PR #1201 merged November 17 at e13c0a2c279278582ec1daffb1db2c4b2bd3b6a0 after final-head CI 44025206857; Pages deployment 44025739404 succeeded. D-344-shell-referral-words supplied the wording fix through #1222. The old #1209/D-341 proposal is superseded, not a new release or a dependency on the remaining D-222 count work. Status stays todo because fresh signed-in /profile and /work acceptance is unverified. Do not rebuild the switch or land the preserved release branch again; finish that bounded acceptance through a clean current-main carrier after an eligible picker assignment. D-370 replaces the historical review requirement. See the packet Status and the D-200 execution receipt in docs/DECISIONS.md; no runtime change.",
       "epic": "D-048-p3"
     },
     {
@@ -2530,6 +2508,8 @@
         "D-048-p3-admin-money"
       ],
       "owns": [
+        "docs/DECISIONS.md",
+        "e2e/release-captures.e2e.ts",
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)",
         "client/src/pages/AdminPaymentsReview.tsx",
@@ -5550,12 +5530,12 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix",
       "status": "todo",
-      "syncedTo": "D-352",
+      "syncedTo": "D-371",
       "dependsOn": [
-        "D-132-item3",
+        "BANDED-spend",
         "SKIPPY-fix.s1-ssrf"
       ],
-      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model. Oct 28 (D-132-item3 packet revision 2, decided under D-200; changeable): S-1 (the SSRF fix, server/skippieSeekerDeps.ts only, no DB guard) moves to SKIPPY-fix.s1-ssrf so it is not held behind the guard and its D-090-BYOR wait; this row keeps S-2 to S-6 and the live proof, and waits for both. No flag changes (D-201). D-352 (Nov 16): out of the launch set (owner: \"skippy also we can push later\"). Skippy stays switched off in production at launch (D-201), so this row follows the launch set."
+      "note": "D-201/D-219/D-221: S-2 and S-3 state referral counts and spend source, never the superseded per-level credit price. Under D-367 (6), BANDED-spend now owns the shared atomic accepted-price guard; this row's former D-132-item3 output dependency is redirected there rather than duplicated or removed. Reuse its current quote/confirmation/charged-cost contract; the old packet and PR1269 remain historical evidence, not an implementation or approval to inherit. SKIPPY-fix.s1-ssrf remains the separate no-network SSRF prerequisite, with its existing evidence preserved. D-352 keeps Skippy outside the launch set and its flags off; no source, release, historical merged-state or completion claim changes in this docs-only routing correction."
     },
     {
       "id": "D-048-p3-skippy",
@@ -7361,15 +7341,15 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-held-ask-reconfirm",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
         "D-132-audit",
         "D-090-BYOR",
-        "D-132-item3"
+        "BANDED-spend"
       ],
-      "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 28 (D-132-item3 re-scope): also waits for D-132-item3, which owns the same server/db.ts and server/privateReferralRoutes.ts and lands the accepted-price guard first; it already waits for D-090-BYOR, so no new wait beyond that row.",
+      "note": "D-193 section 5.3 and ruling (5): reconfirm before spending on every deliverWaitingAskTx path, never close the waiting request. Transition events, no migration; in-app notice only; ASK_RECONFIRM_ENABLED stays false until QA and expiry-clock removal still waits for this row. Existing post-copy, postmerge, audit and BYOR prerequisites remain. D-367 (6) moves the shared accepted-price guard into BANDED-spend, so the former D-132-item3 output dependency is redirected there. Reuse the current banded quote/spend contract after that output lands; the job-level mapping is D-367, never the superseded per-level credit cost or old band-null assumption. This changes routing only, not delivery, reconfirmation, money, flags or release acceptance.",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts",
@@ -8413,6 +8393,28 @@
       ],
       "note": "D-368 routing, D-048-retire.md §3c. Repair only the released Goal form's native hiring-now required-link parity; walk-ins stay optional, D-364 paste/blur completion and existing server/work-email gates stay unchanged. Carry forward #1297's missing-link regression, keep the legacy controls and prove blank blocks and valid link publishes in intercepted browser tests at 1280/390. No Kit deletion, route/release toggle, API, sign-in or payment change. Protected current-head CI and canonical web acceptance are required before retirement. This is the goal-build follow-up, not a reopening of the original build/release.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "PICKER-snapshot-scope",
+      "title": "A marker write compares only its own task's refs and judges a moved main by content, so other agents' activity never starves a claim",
+      "row": "D-085",
+      "packet": "docs/plans/PICKER-snapshot-scope.md",
+      "tier": 2,
+      "lane": "picker-snapshot-scope",
+      "branch": "agent/queue/picker-snapshot-scope",
+      "status": "done",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "docs/plans/PICKER-authoritative-ref-refresh.md",
+        "docs/plans/assignments.json",
+        "docs/BUILD_CONTINUITY.md",
+        "AGENTS.md"
+      ],
+      "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324): the pre-write check compared every task's refs and main, so any heartbeat, claim, push or landing during the GitHub reads aborted every claim. Now scoped to the write's task refs, report log, landing slot and fix-main locks; main by the task's row, dependencies, decision sync and landed state. PR #1421 (registered by #1422); red-first CLI tests; all picker suites pass. Completion is carried in this PR; required CI is the landing gate."
     }
   ]
 }
