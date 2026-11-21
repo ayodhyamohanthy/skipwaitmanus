@@ -327,7 +327,7 @@
       "tier": 1,
       "lane": "banded-spend",
       "branch": "agent/queue/banded-spend",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-levels",
