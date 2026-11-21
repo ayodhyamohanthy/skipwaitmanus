@@ -450,6 +450,31 @@ const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) 
 const tip = name => git("rev-parse", originRef(name));
 const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
 
+/** Other tasks' empty reports do not change this task's report/deduplication inputs. */
+function reportParentFor(task) {
+  const previous = decisionRefs.refs.get(REPORTS);
+  // A newly created log must still invalidate the original snapshot.
+  if (!previous) return base(REPORTS);
+  if (tryGit("fetch", "-q", "--no-tags", "origin", `+refs/heads/${REPORTS}:${originRef(REPORTS)}`) === null) {
+    throw new RefSnapshotChanged("report log refresh failed before append");
+  }
+  const current = tip(REPORTS);
+  if (current === previous) return current;
+  const range = `${previous}..${current}`;
+  if (tryGit("merge-base", "--is-ancestor", previous, current) === null
+    || tryGit("rev-list", "--count", "--merges", range) !== "0") {
+    throw new RefSnapshotChanged("report log history changed before append");
+  }
+  const changes = parseBranchLog(git("log", "--reverse", `--format=${BRANCH_LOG_FORMAT}`, "--name-only", range));
+  if (!changes.length || changes.some(change => {
+    const marker = parseMarker(change.subject);
+    return change.files.length !== 0 || marker?.verb !== "Report" || !marker.who || marker.id === task.id;
+  })) throw new RefSnapshotChanged("relevant or unknown report log input changed before append");
+  // The final scoped guard and non-force push still validate this exact parent.
+  decisionRefs.refs.set(REPORTS, current);
+  return current;
+}
+
 /**
  * Push one empty marker commit onto `parent` as `branch`. Returns the new
  * commit, or null when another agent got there first; any other refusal
@@ -775,7 +800,7 @@ async function runCommand(args) {
     const note = sanitizeNote(args.note);
     const subject = markerSubject("Report", task.id, args.as, args.report);
     const body = args.report === "blocked" ? blockedReportBody(note, blockEvidenceFor(blockInput)) : note;
-    const sha = pushMarker(REPORTS, base(REPORTS), subject, body, writeScopeOf([task]));
+    const sha = pushMarker(REPORTS, reportParentFor(task), subject, body, writeScopeOf([task]));
     if (!sha) {
       refreshAuthoritativeRefs();
       throw new RefSnapshotChanged("report push rejected; authoritative snapshot changed");

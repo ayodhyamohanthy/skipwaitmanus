@@ -3,12 +3,21 @@
 // phonemsg-01M5SNVZEY1P8K169J48T2HGTJ). Number-to-config pins live in
 // plansV2.config-guard.test.tsx; this file pins the page structure and the
 // read-only checkout state.
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BAND_LEVELS, LEVEL_DISPLAY_NAME, PLAN_FAMILY } from "@shared/planFamily";
 import PlansV2 from "./PlansV2";
+import PlansV2Connected from "./PlansV2Connected";
 
-afterEach(cleanup);
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: async () => "test-token", openSignIn: () => undefined }) }));
+vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: vi.fn() }));
+vi.mock("@/lib/trpc", () => ({ trpc: {
+  useUtils: () => ({ profile: { level: { invalidate: vi.fn() } } }),
+  profile: { level: { useQuery: () => ({ data: null }) }, setLevel: { useMutation: () => ({ mutate: vi.fn() }) } },
+} }));
+
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
 
 describe("PlansV2 frozen banded render", () => {
   it("opens with 'Choose your referrers.' and renders one card per frozen band", () => {
@@ -71,5 +80,42 @@ describe("PlansV2 frozen banded render", () => {
     render(<PlansV2 book="INR" />);
     expect(document.body.textContent).toMatch(/referral requests that reach a verified employee/i);
     expect(document.body.textContent).toMatch(/never promise or guarantee an accepted/i);
+  });
+});
+
+describe("PlansV2Connected sells from the server's banded offer (BANDED-ui)", () => {
+  const offer = { onSale: true, memberPlan: null, plans: PLAN_FAMILY.map(plan => ({ planId: plan.id, byApplication: plan.byApplication === true, foundingPlacesLeft: 5 })) };
+  function stubFetch(body: unknown) {
+    const fetchMock = vi.fn(async (url: RequestInfo | URL) => new Response(JSON.stringify(String(url).startsWith("/api/chargebee/banded/offer") ? body : { error: "offline" }), { status: String(url).startsWith("/api/chargebee/banded/offer") ? 200 : 503, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+  const renderConnected = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><PlansV2Connected /></QueryClientProvider>);
+
+  it("turns the plan buttons on when the offer says on sale", async () => {
+    window.history.pushState({}, "", "/plans?currency=INR");
+    stubFetch(offer);
+    renderConnected();
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Buy / }).length).toBe(2));
+    expect(screen.queryAllByText("Checkout not switched on yet")).toEqual([]);
+  });
+
+  it("keeps the not-on-sale state when the offer says off", async () => {
+    window.history.pushState({}, "", "/plans?currency=INR");
+    const fetchMock = stubFetch({ onSale: false });
+    renderConnected();
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/chargebee/banded/offer"))).toBe(true));
+    expect(screen.getAllByText("Checkout not switched on yet").length).toBe(PLAN_FAMILY.length);
+    expect(screen.queryAllByRole("button", { name: /^Buy / })).toEqual([]);
+  });
+
+  it("offers no purchase on the referrer role and never reads the offer (D-055)", async () => {
+    window.history.pushState({}, "", "/plans?role=referrer");
+    const fetchMock = stubFetch(offer);
+    renderConnected();
+    expect(screen.getAllByText("Checkout not switched on yet").length).toBe(PLAN_FAMILY.length);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/chargebee/"))).toBe(false);
+    expect(screen.queryAllByRole("button", { name: /^Buy / })).toEqual([]);
   });
 });
