@@ -35,4 +35,4 @@ Weaker sessions (free-model OpenCode) end when the picker hands them the same ta
 
 ## Status
 
-- PICKER-unblock-report-clears: registered — Claude Code · 435a — 2026-11-21. Source and tests built on a local branch from main `6bc75fa5c` (red-first `a002a3cc7`); they land from the row's own branch after this registration reaches main (D-166).
+- PICKER-unblock-report-clears: review — Claude Code · 435a — 2026-11-21 — branch agent/queue/picker-unblock-report-clears, claim `a5bee23ec` on main `2d302b877` (D-378 registered by #1460). Red-first `a002a3cc7` (4 failed, 6 passed), fix `6ace99b1e`, AGENTS.md system-map note `4e0892217`. `nextTaskUnblockClears` 10/10 and `nextTaskBlockDedupe` 15/15. `pnpm vitest run scripts/` gives 1712 passed; two suites (`nextTaskClaimTask`, `provenanceGitOutput`) cannot start a worker in the cloud container and fail the same way on unmodified main. `pnpm check` exits 0. Lands on green required CI (D-370).
