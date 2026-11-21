@@ -2042,7 +2042,7 @@
       "tier": 1,
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-profile",
@@ -7699,19 +7699,19 @@
     },
     {
       "id": "D-174-seeker-journey-build.public-payload",
-      "title": "GET /api/companies stops sending openToReferrals and openCount; /plans coverage block reads only the seeker's own requests",
+      "title": "GET /api/companies stops sending openToReferrals and openCount; GET /api/companies/:slug adds referrerPresence; /plans coverage block reads only the seeker's own requests",
       "row": "D-174",
       "packet": "docs/plans/D-174-seeker-journey-build.md",
       "tier": 1,
       "lane": "d174-journey-payload",
       "branch": "agent/queue/d174-journey-payload",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-372",
       "dependsOn": [
         "D-174-seeker-journey-build.composer-neutral",
         "D-174-company-search"
       ],
-      "note": "Packet section 6.3, ruling 5 (D-193 (5)): expand-then-contract, keys optional for one release, admin schema keeps availability, companyClaim reads an internal getter, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9). Tier 1 at the existing machine floor: owns client/src/components/plans/PlansKitSections.tsx, matched by client/src/components/plans/** in TIER1_CLIENT (scripts/tierClassifyCore.mjs, GATE-tier-floor D-212), so it needs an independent review (D-151).",
+      "note": "Packet section 6.3 (re-synced Nov 21 through D-372), ruling 5 narrowed by D-360 (5)/D-363: expand-then-contract, openToReferrals/openCount optional for one release and no longer sent, admin schema keeps availability, companyClaim reads an internal getter, GET /api/companies/:slug adds referrerPresence (present/none: any verified, unsuspended referrer has joined; never availability, count or name; absent on the list and search) as the authoritative input section 6.5's jobs list needs, CoverageBlock lists no directory companies. Fixture cleanup is a later row (packet section 9). Tier 1 at the existing machine floor (owns client/src/components/plans/PlansKitSections.tsx, matched by client/src/components/plans/** in TIER1_CLIENT, scripts/tierClassifyCore.mjs); lands on green required CI alone with no independent review (D-370) and auto-lands when green (D-371).",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "shared/companies.ts",
