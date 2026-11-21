@@ -35,4 +35,4 @@ Green required CI on the pull request, landed, the Web deploy green. Then the ne
 
 ## Status
 
-- REL-plans-signed-out-token: todo — registered 2026-11-21 by Claude Code; nothing built yet.
+- REL-plans-signed-out-token: in review — Claude Code · a71e — 2026-11-21 — branch agent/queue/rel-plans-signed-out-token. Red first: the new signed-out test failed because the offer read sent an `Authorization` header (`expected true to be false`); the signed-in control passed. Fix: `useBandedSales` passes a no-token getter to the offer read when signed out. Green: plans components 12 files / 133 tests, plans pages 7 files / 71 tests, `tsc --noEmit` clean, design-token audit clean. Done after the next release-verify run passes `page /plans loads clean` and closes the incidents.
