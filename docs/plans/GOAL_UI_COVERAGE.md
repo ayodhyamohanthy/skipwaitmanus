@@ -85,7 +85,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/settings` | `pages/Settings` | `D-048-p3-settings` | D-048-p3-settings: to be added by its lane packet |
 | `/referrer` | `pages/Referrer` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
 | `/referrer/impact` | `pages/ReferrerImpact` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
-| `/premium` | `pages/Premium` | `D-048-p3-premium` | D-048-p3-premium: to be added by its lane packet |
+| `/premium` | `pages/Premium` → `pages/goal/premium/GoalPremium` | `D-048-p3-premium` | Goal implementation on the task branch; selected-total, pause, referrer and recovery parity verified; draft review and release proof remain required. |
 | `/plans` | `?` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/billing` | `pages/Billing` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/privacy` | `pages/TrustPrivacy` | `D-048-p3-policy` | D-048-p3-policy: to be added by its lane packet |
