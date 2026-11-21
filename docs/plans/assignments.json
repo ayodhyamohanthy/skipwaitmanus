@@ -234,6 +234,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-unblock-report-clears",
+      "title": "The unblocker's own report clears an evidence-backed block, so a ruled UNBLOCK is never handed out again and no session loops on CONTINUE: UNBLOCK (D-378)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-unblock-report-clears.md",
+      "tier": 2,
+      "lane": "picker-unblock",
+      "branch": "agent/queue/picker-unblock-report-clears",
+      "status": "todo",
+      "syncedTo": "D-378",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskUnblockClears.test.ts",
+        "docs/plans/PICKER-unblock-report-clears.md"
+      ],
+      "note": "D-378, D-321 (11) same-day dead-end fix. Build docs/plans/PICKER-unblock-report-clears.md section 2: standingReport takes the task's unblockers (every Unblock marker on its architect lock) and their report clears an evidence-backed block; blockers, the holder and unrelated sessions still cannot (D-346). Red-first scripts/nextTaskUnblockClears.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
