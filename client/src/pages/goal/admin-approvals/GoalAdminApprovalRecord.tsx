@@ -2,9 +2,9 @@
 // approval." with the decision as the one commit. Guardrail 1
 // (D-048-admin.md §4): the two reads, the decision call with its optional note,
 // the failure copy, the retry and the local history line are the kit page's
-// own (approvalsData.ts); only the presentation changes. Guardrail 3: the
-// credit lines on the record and in its history come from shared/moneyCopy
-// (creditLine), never a string of this page.
+// own (approvalsData.ts); only the presentation changes. The money guidance
+// states the current rules without a price (approvalsData.ts, findings F3-F5),
+// and an employer access application has its own blocks (finding F1).
 import { useEffect, useState, type ReactNode } from "react";
 import { useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -12,10 +12,10 @@ import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { GoalStatus } from "@/components/goal/GoalStatus";
-import { compactDateTime, formatAmount, itemTitle, type AdminApprovalQueueItem, type AdminApprovalQueueKind } from "@/lib/adminApproval";
+import { compactDateTime, formatAmount } from "@/lib/adminApproval";
 import { cn } from "@/lib/utils";
 import { AdminGoalFrame, AdminGoalHeading } from "../admin/AdminGoalFrame";
-import { ACCESS_MESSAGE, adminSignInHref, approvalStatus, creditLine, decisionFailureCopy, decisionFailureOf, decisionLabel, isResolved, KIND_LABEL, loadApprovalRecord, postApprovalDecision, RECORD_LOAD_FALLBACK, statusAfter, tokenCountLine, type ApprovalDecision, type DecisionFailure, type HistoryEvent } from "./approvalsData";
+import { ACCESS_MESSAGE, ADMIN_DECISION_MONEY_NOTE, adminSignInHref, approvalStatus, approvalTitle, decisionFailureCopy, decisionFailureDetail, decisionFailureOf, decisionLabel, ENROLLMENT_MONEY_NOTE, holdsDecision, isApprovalKind, isResolved, KIND_LABEL, loadApprovalRecord, postApprovalDecision, RECORD_LOAD_FALLBACK, referralCreditGuidance, statusAfter, tokenCountLine, type ApprovalDecision, type ApprovalItem, type DecisionFailure, type EmployerApplicationItem, type HistoryEvent } from "./approvalsData";
 
 export const GOAL_PAGE = { goalLine: "Decide this approval." } as const;
 const BODY = "Read the record and its history, then approve or reject it. The decision and its note are recorded on the item's audit trail.";
@@ -31,9 +31,30 @@ function RecordBlock({ eyebrow, title, children }: { eyebrow: string; title: str
   );
 }
 
-function RecordBlocks({ item }: { item: AdminApprovalQueueItem }) {
+const countLine = (count: number | null | undefined, what: string) => `${count ?? 0} other application${(count ?? 0) === 1 ? "" : "s"} from this ${what}`;
+
+function EmployerBlocks({ item }: { item: EmployerApplicationItem }) {
+  return (
+    <div className="grid gap-3">
+      <RecordBlock eyebrow="Employer access application" title={item.meta.companyName || "Employer"}>
+        <p className="break-words">{item.meta.billingEmail || "Billing email hidden"}</p>
+        <p className="mt-2">{item.companyDomain || "No domain"} · submitted {compactDateTime(item.createdAt)}{item.meta.reviewDueAt ? ` · review due ${compactDateTime(item.meta.reviewDueAt)}` : ""}</p>
+      </RecordBlock>
+      <RecordBlock eyebrow="Evidence" title={`Evidence version ${item.meta.evidenceVersion || "not recorded"}`}>
+        <p>{countLine(item.meta.duplicatePersonCount, "person")} · {countLine(item.meta.duplicateDomainCount, "domain")}</p>
+      </RecordBlock>
+      <RecordBlock eyebrow="What the decision does" title="Employer workspace access">
+        <p>Approving opens the employer workspace. Rejecting ends any profile unlocks and talent links this employer holds and asks them to resubmit corrected evidence. Either way the employer is notified.</p>
+      </RecordBlock>
+    </div>
+  );
+}
+
+function RecordBlocks({ item }: { item: ApprovalItem }) {
+  if (item.kind === "employer_application") return <EmployerBlocks item={item} />;
   const tokens = tokenCountLine(item.meta.tokenCount);
   if (item.kind === "referral_request") {
+    const guidance = referralCreditGuidance(item);
     return (
       <div className="grid gap-3">
         <div className="grid gap-3 gdesk:grid-cols-2">
@@ -50,8 +71,9 @@ function RecordBlocks({ item }: { item: AdminApprovalQueueItem }) {
           <p>{item.companyDomain}{item.meta.waitingForCoverage ? " · waiting for company coverage" : ""}</p>
           {item.meta.targetRoleUrl ? <GoalButton size="sm" variant="outline" className="mt-2" asChild><a href={item.meta.targetRoleUrl} target="_blank" rel="noreferrer">Open job link</a></GoalButton> : null}
         </RecordBlock>
-        <RecordBlock eyebrow="Credit movement" title={creditLine()}>
-          <p>Reserved when the request was created. Returned on withdraw, consumed on accept, never consumed on decline.</p>
+        <RecordBlock eyebrow="Credit movement" title={guidance.title}>
+          <p>{guidance.body}</p>
+          <p className="mt-2">{ADMIN_DECISION_MONEY_NOTE}</p>
         </RecordBlock>
       </div>
     );
@@ -64,7 +86,7 @@ function RecordBlocks({ item }: { item: AdminApprovalQueueItem }) {
           <p className="mt-2">Work email OTP verified {item.meta.otpTime ? compactDateTime(item.meta.otpTime) : "—"}. The referrer has not yet claimed or reviewed a request.</p>
         </RecordBlock>
         <RecordBlock eyebrow="Credit movement" title="No credit movement yet">
-          <p>Verification grants nothing. Invite credits unlock after the first accepted referral.</p>
+          <p>{ENROLLMENT_MONEY_NOTE}</p>
         </RecordBlock>
       </div>
     );
@@ -113,9 +135,12 @@ function History({ events }: { events: HistoryEvent[] }) {
 export default function GoalAdminApprovalRecord() {
   const { isSignedIn, getToken, openSignIn } = useAuth();
   const [match, params] = useRoute<{ kind: string; id: string }>("/admin/approvals/:kind/:id");
-  const kind = (match ? params.kind : "") as AdminApprovalQueueKind;
-  const itemId = Number(match ? params.id : 0);
-  const [item, setItem] = useState<AdminApprovalQueueItem | null>(null);
+  const routeKind = match ? params.kind : "";
+  // An unknown kind matches no queue row, so the page shows "Record not found".
+  const kind = isApprovalKind(routeKind) ? routeKind : "referral_request";
+  const knownKind = isApprovalKind(routeKind);
+  const itemId = knownKind ? Number(match ? params.id : 0) : 0;
+  const [item, setItem] = useState<ApprovalItem | null>(null);
   const [events, setEvents] = useState<HistoryEvent[]>([]);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -123,7 +148,7 @@ export default function GoalAdminApprovalRecord() {
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
   const [workingDecision, setWorkingDecision] = useState<ApprovalDecision | null>(null);
-  const [decisionError, setDecisionError] = useState<DecisionFailure | null>(null);
+  const [decisionError, setDecisionError] = useState<{ failure: DecisionFailure; detail?: string } | null>(null);
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -140,15 +165,15 @@ export default function GoalAdminApprovalRecord() {
   };
 
   const decide = async (decision: ApprovalDecision) => {
-    if (!item || !kind) return;
+    if (!item) return;
     setWorkingDecision(decision); setDecisionError(null);
     try {
-      const payload = await postApprovalDecision(getToken, kind, item.id, { decision, note: note.trim() || undefined });
+      const payload = await postApprovalDecision(getToken, item.kind, item.id, { decision, note: note.trim() || undefined });
       const nextStatus = statusAfter(decision, payload.status);
       const now = new Date();
       setItem(current => current ? { ...current, status: nextStatus, meta: { ...current.meta, approvalNote: note.trim() || current.meta.approvalNote } } : current);
       setEvents(current => [...current.filter(event => event.label !== decisionLabel(decision)), { id: `local-decision-${now.getTime()}`, label: decisionLabel(decision), actor: "You (administrator)", time: now, note: note.trim() || undefined }].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()));
-    } catch (resolveError) { setDecisionError(decisionFailureOf(resolveError)); }
+    } catch (resolveError) { setDecisionError({ failure: decisionFailureOf(resolveError), detail: decisionFailureDetail(resolveError) }); }
     finally { setWorkingDecision(null); }
   };
 
@@ -220,8 +245,9 @@ export default function GoalAdminApprovalRecord() {
 
   const resolved = isResolved(item.status);
   // A failed decision leaves the server state unknown: hold both actions until
-  // the offered reload reconciles the record (coordinator finding, Nov 6).
-  const held = resolved ? "This record is already resolved" : decisionError ? "Reload this record before you decide again" : undefined;
+  // the offered reload reconciles the record (coordinator finding, Nov 6). A
+  // refusal recorded nothing, so its permitted recovery stays open (finding F2).
+  const held = resolved ? "This record is already resolved" : holdsDecision(decisionError?.failure) ? "Reload this record before you decide again" : undefined;
   const working = workingDecision !== null;
   return (
     <AdminGoalFrame screen="admin-approval-record">
@@ -234,8 +260,8 @@ export default function GoalAdminApprovalRecord() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-g-meta text-g-ink-3">{KIND_LABEL[item.kind]}</p>
-                <h2 id="approval-record-title" className="break-words text-g-heading text-g-ink">{itemTitle(item)}</h2>
-                <p className="mt-1 text-g-meta text-g-ink-2">{item.companyDomain || item.provider || "Credit pack"} · {compactDateTime(item.createdAt)}</p>
+                <h2 id="approval-record-title" className="break-words text-g-heading text-g-ink">{approvalTitle(item)}</h2>
+                <p className="mt-1 text-g-meta text-g-ink-2">{item.companyDomain || item.provider || KIND_LABEL[item.kind]} · {compactDateTime(item.createdAt)}</p>
               </div>
               <GoalStatus {...approvalStatus(item.status)} />
             </div>
@@ -250,7 +276,7 @@ export default function GoalAdminApprovalRecord() {
               className="mt-2 block w-full resize-none rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink placeholder:text-g-ink-3" />
             {decisionError ? (
               <div role="alert" className="mt-3 border-l-2 border-g-crimson pl-3">
-                <p className="text-g-meta text-g-crimson">{decisionFailureCopy(decisionError, "this record")}</p>
+                <p className="text-g-meta text-g-crimson">{decisionFailureCopy(decisionError.failure, "this record", decisionError.detail)}</p>
                 <GoalButton size="sm" variant="outline" className="mt-2" busy={loading} busyLabel="Loading…" onClick={() => void load()}>Reload this record</GoalButton>
               </div>
             ) : null}

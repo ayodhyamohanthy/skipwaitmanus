@@ -1,6 +1,4 @@
-// The goal /for-companies page (D-048 phase 3, row D-048-p3-for-companies;
-// packet docs/plans/D-048-employer.md). ForCompanies.tsx switches here when
-// goalSurfaceOn("for-companies") is true.
+// The released goal /for-companies page (D-048-p3-for-companies; employer packet).
 //
 // Rules this page keeps (packet §4):
 // - Every price claim is sourced: plans and labels come from
@@ -26,7 +24,7 @@ export const GOAL_PAGE = { goalLine: "Hire through people who know the work." } 
 
 const TEAM_SIZES = ["1–200", "201–2,000", "2,000+"] as const;
 
-/** The same prefilled demo email the kit page builds (pinned equal by the goal test). */
+/** Prepare the email in the visitor's mail app; this page sends nothing. */
 export function goalDemoMailto({ email, company, teamSize }: { email: string; company: string; teamSize: string }) {
   const name = company.trim();
   const subject = `Demo request${name ? ` — ${name}` : ""}`;

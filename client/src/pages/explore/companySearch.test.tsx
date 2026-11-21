@@ -95,8 +95,8 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-describe("the switch (ruling 8, release row turns it on)", () => {
-  it("ships off", async () => {
+describe("the switch (dark in this test environment; production and preview builds resolve it through vite.typeahead-flag.ts)", () => {
+  it("is false here: no VITE_COMPANY_TYPEAHEAD is set and vitest does not apply the vite.config define; main-branch builds ship it on after the 2026-11-18 release flip", async () => {
     const actual = await vi.importActual<typeof import("./useCompanySearch")>("./useCompanySearch");
     expect(actual.COMPANY_TYPEAHEAD_ENABLED).toBe(false);
     expect(companySearchModule.COMPANY_SEARCH_DEBOUNCE_MS).toBe(150);
@@ -121,9 +121,19 @@ describe("the switch (ruling 8, release row turns it on)", () => {
 describe("fetchCompanySearch", () => {
   it("asks the route with one q and parses the strict response", async () => {
     const fetchMock = stub(() => ({ status: 200, body: { companies: [searchRow("wipro")] } }));
-    const companies = await fetchCompanySearch("  wip ");
+    const { companies, discovered } = await fetchCompanySearch("  wip ");
     expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=wip"]);
     expect(companies.map(item => item.slug)).toEqual(["wipro"]);
+    expect(discovered).toEqual([]);
+  });
+
+  it("parses worldwide discovery candidates and rejects a malformed one", async () => {
+    const candidate = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [candidate] } }));
+    const answer = await fetchCompanySearch("google");
+    expect(answer.discovered).toEqual([candidate]);
+    stub(() => ({ status: 200, body: { companies: [], discovered: [{ ...candidate, domain: "not a domain" }] } }));
+    await expect(fetchCompanySearch("google")).rejects.toThrow();
   });
 
   it("refuses a response that carries availability (D-176) or more than 10 companies", async () => {
@@ -211,6 +221,114 @@ describe("switch on: typeahead on /explore", () => {
     fireEvent.mouseDown(await screen.findByRole("option", { name: "Merkle" }));
     expect(go).toHaveBeenCalledWith("/explore/merkle");
     expect(option).toBeTruthy();
+  });
+
+  it("a discovered candidate shows name and domain, and picking it confirms instead of opening a door", async () => {
+    const google = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [google] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "google" } });
+    const option = await screen.findByTestId("company-discovery-option");
+    expect(option.textContent).toContain("Google");
+    expect(option.textContent).toContain("google.com");
+    fireEvent.mouseDown(option);
+    const card = await screen.findByTestId("company-discovery-confirm");
+    expect(card.textContent).toContain("Google · google.com");
+    expect(card.textContent).toContain("No referral door at Google yet");
+    expect(card.textContent).toContain("this pick can't start an ask by itself");
+    expect(within(card).getByRole("link", { name: "Paste a job link on the ask page" }).getAttribute("href")).toBe("/ask");
+    expect(within(card).getByRole("link", { name: "Ask us to open the door" }).getAttribute("href")).toBe("/invite");
+    expect(go).not.toHaveBeenCalledWith("/explore/google");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Back to results" }));
+    await screen.findByTestId("company-discovery-option");
+    expect(screen.queryByTestId("company-discovery-confirm")).toBeNull();
+    expect(events).toEqual(["journey_company_suggested"]);
+    expectNoAvailabilityText();
+    expectNoQueryInEvents("google");
+  });
+
+  it("the confirm card's ask-page link carries the pick as display-only context (D-174-worldwide-discovery.company-context)", async () => {
+    localStorage.clear();
+    const acme = { name: "Acme Corp", domain: "acme.example", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [acme] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "acme" } });
+    fireEvent.mouseDown(await screen.findByTestId("company-discovery-option"));
+    const card = await screen.findByTestId("company-discovery-confirm");
+    fireEvent.click(within(card).getByRole("link", { name: "Paste a job link on the ask page" }));
+    const saved = JSON.parse(localStorage.getItem("skipwait:discovery-handoff") ?? "null");
+    expect(saved).toMatchObject({ name: "Acme Corp", domain: "acme.example" });
+    expect(typeof saved.at).toBe("number");
+    localStorage.clear();
+  });
+
+  it("a degraded discovery answer says search is briefly limited and never reads as no-match", async () => {
+    stub(() => ({ status: 200, body: { companies: [], discovered: [], discoveryState: "degraded", discoveryDegradedReason: "busy" } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "zqxunknownco" } });
+    const line = await screen.findByTestId("company-discovery-degraded");
+    expect(line.textContent).toContain("briefly limited");
+    // Honest fallback copy: no absolute promise - only that the ask page accepts a pasted link.
+    expect(line.textContent).toContain("the ask page accepts a pasted job link");
+    expect(line.textContent).not.toContain("always works");
+    expect(screen.queryByTestId("company-search-no-match")).toBeNull();
+  });
+
+  it("a discovered logo shows the initial while loading, swaps on paint, and a blocked or broken logo degrades to the initial, never a blank box or broken image", async () => {
+    const google = { name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [], discovered: [google] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "google" } });
+    const option = await screen.findByTestId("company-discovery-option");
+    // Loading (or hung): the initial is already there and the img is present but unpainted.
+    expect(screen.getByTestId("company-discovery-initial")).toBeTruthy();
+    const img = option.querySelector("img");
+    expect(img).toBeTruthy();
+    expect(img!.className).toContain("opacity-0");
+    // Painted: the img shows and the placeholder steps back.
+    fireEvent.load(img!);
+    expect(img!.className).not.toContain("opacity-0");
+    expect(screen.queryByTestId("company-discovery-initial")).toBeNull();
+    // Blocked or broken: the initial returns and the broken img is removed.
+    fireEvent.error(img!);
+    expect(await screen.findByTestId("company-discovery-initial")).toBeTruthy();
+    expect(option.querySelector("img")).toBeNull();
+    expect(option.textContent).toContain("Google");
+  });
+
+  it("an alias-resolved server answer renders: typing tata shows TCS (the alias lives server-side)", async () => {
+    const fetchMock = stub(q => ({ status: 200, body: q === "tata" ? { companies: [searchRow("tcs")], discovered: [] } : { companies: [], discovered: [] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: "tata" } });
+    const option = await screen.findByRole("option", { name: "TCS" });
+    expect(option).toBeTruthy();
+    expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=tata"]);
+  });
+
+  it("directory suggestions come first, discovered candidates after; arrows cross both kinds", async () => {
+    const zeta = { name: "Wipro Foundation", domain: "wiprofoundation.org", source: "wikidata" };
+    stub(() => ({ status: 200, body: { companies: [searchRow("wipro")], discovered: [zeta] } }));
+    renderExplore();
+    await screen.findByTestId("goal-directory-summary");
+    const box = screen.getByRole("combobox", { name: "Search companies" });
+    fireEvent.change(box, { target: { value: "wipro" } });
+    const listbox = await screen.findByRole("listbox", { name: "Company suggestions" });
+    const options = within(listbox).getAllByRole("option");
+    // The discovered option leads with the logo-degradation initial (aria-hidden), then name + domain.
+    expect(options.map(option => option.textContent)).toEqual(["Wipro", "WWipro Foundationwiprofoundation.org"]);
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.keyDown(box, { key: "Enter" });
+    await screen.findByTestId("company-discovery-confirm");
+    expect(go).not.toHaveBeenCalled();
   });
 
   it("no suggestion: the paste-a-link path comes first, Request a company stays the quiet link, and the event has no query text", async () => {

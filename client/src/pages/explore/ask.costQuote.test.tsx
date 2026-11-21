@@ -7,7 +7,7 @@
 // flat one-credit line exactly as before.
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
@@ -15,6 +15,24 @@ import { planCatalogResponse } from "@shared/billingCatalog";
 import Ask from "@/pages/Ask";
 import Explore from "@/pages/Explore";
 import ExploreCompany from "@/pages/ExploreCompany";
+import { useAskComposer as useRealAskComposer, type AskComposer } from "./useAskComposer";
+
+let recoveryComposer: AskComposer | null = null;
+vi.mock("./useAskComposer", async importOriginal => {
+  const actual = await importOriginal<typeof import("./useAskComposer")>();
+  return { ...actual, useAskComposer: (...args: Parameters<typeof useRealAskComposer>) => {
+    const composer = actual.useAskComposer(...args);
+    recoveryComposer = composer;
+    return composer;
+  } };
+});
+
+async function invokeTopUpRecovery() {
+  if (!recoveryComposer) throw new Error("The composer recovery callback was not rendered");
+  const composer = recoveryComposer;
+  expect(composer.topUp).toBeNull();
+  await act(async () => { composer.onTopUp(); });
+}
 
 const { go, searchState, authState, accessState, signIn, routeState, uploadResumeMock } = vi.hoisted(() => ({
   go: vi.fn(),
@@ -149,6 +167,7 @@ beforeEach(() => {
   accessState.status = "unverified";
   searchState.value = "";
   routeState.slug = null;
+  recoveryComposer = null;
   sessionStorage.clear();
   signIn.mockReset();
   go.mockReset();
@@ -160,19 +179,19 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("shared composer quote (D-132 item 3)", () => {
-  it("flag on, short of credits: the line states cost, balance and gap, and Send swaps for the top-up link", async () => {
+  it("D-176: a short quote states the charge condition without swapping Send for top-up", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
-    const topUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
-    expect(topUp.getAttribute("href")).toBe("/plans#packs");
-    expect(screen.queryByRole("button", { name: /send ask/i })).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
+    expect(screen.getByRole("button", { name: /send referral request/i }).getAttribute("aria-disabled")).toBeNull();
+    expect(recoveryComposer?.topUp).toBeNull();
     expect(quoteCalls(fetchMock).length).toBeGreaterThan(0);
   });
 
-  it("top-up link falls back to /premium?role=job_seeker when no pack is on sale (F5)", async () => {
+  it("D-176: dormant top-up recovery retains the no-pack destination (F5)", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     stub({
       quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } },
@@ -180,9 +199,10 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
-    const topUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
-    expect(topUp.getAttribute("href")).toBe("/premium?role=job_seeker");
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
+    await invokeTopUpRecovery();
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/premium?role=job_seeker"));
   });
 
   it("flag on, enough credits: the line uses the quote's numbers and Send stays", async () => {
@@ -190,9 +210,9 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ quote: { status: 200, body: { level: 2, cost: 2, totalAvailable: 3, shortfall: 0 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance of 3"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance when a verified employee can see it"));
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
-    expect(screen.getByRole("button", { name: /send ask/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /send referral request/i })).toBeTruthy();
   });
 
   it("flag on, failed quote: no false 1-credit line - the price failure shows and Send is blocked", async () => {
@@ -203,7 +223,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("We could not price this ask"));
     expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("Uses 1 from your balance");
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
-    const sendButton = screen.getByRole("button", { name: /send ask/i });
+    const sendButton = screen.getByRole("button", { name: /send referral request/i });
     expect(sendButton.getAttribute("aria-disabled")).toBe("true");
   });
 
@@ -215,12 +235,12 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Pricing this ask…"));
-    const sendButton = screen.getByRole("button", { name: /send ask/i });
+    const sendButton = screen.getByRole("button", { name: /send referral request/i });
     expect(sendButton.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(sendButton); // inert GoalButton swallows activation (preventDefault/stopPropagation)
     expect(fetchMock.mock.calls.some(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST")).toBe(false);
     release(null);
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
   });
 
   it("flag on, link edited after a quote: the old target's price never shows against the new link", async () => {
@@ -236,12 +256,12 @@ describe("shared composer quote (D-132 item 3)", () => {
     } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
     const field = screen.getByLabelText(/job link/i);
     fireEvent.change(field, { target: { value: "https://careers.wipro.com/jobs/7654321-senior-designer" } });
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Pricing this ask…"));
     expect(screen.getByTestId("goal-ask-cost").textContent).not.toContain("Uses 5 from your balance");
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance of 3"), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance when a verified employee can see it"), { timeout: 3000 });
   });
 
   it("flag on: editing inside a valid link debounces to one fetch per settled target", async () => {
@@ -265,12 +285,12 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance of 3"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 2 from your balance when a verified employee can see it"));
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
     const before = quoteCalls(fetchMock).length;
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("This ask costs 2 credits and your balance is lower"));
     await waitFor(() => expect(quoteCalls(fetchMock).length).toBeGreaterThan(before));
   });
@@ -280,7 +300,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 3"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
     expect(quoteCalls(fetchMock)).toHaveLength(0);
   });
 
@@ -296,11 +316,11 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST")).toBe(true));
     const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
     expect(JSON.parse(String((post![1] as RequestInit).body))).not.toHaveProperty("expectedCoverage");
@@ -313,7 +333,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub();
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 3"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
     await new Promise(resolve => setTimeout(resolve, 50));
     expect(fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/plans/catalog"))).toHaveLength(0);
   });
@@ -334,11 +354,11 @@ describe("shared composer quote (D-132 item 3)", () => {
     const fetchMock = stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
     expect(quoteCalls(fetchMock)).toHaveLength(0);
   });
 
-  it("the explore drawer runs the same quote and the same top-up swap", async () => {
+  it("D-176: the explore drawer quotes the same charge condition without a top-up swap", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     stub({ quote: { status: 200, body: { level: 4, cost: 4, totalAvailable: 3, shortfall: 1 } } });
     window.history.replaceState(null, "", "/explore");
@@ -347,10 +367,10 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.click(card[0]);
     const drawer = await screen.findByRole("dialog");
     await typeLink(drawer);
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 4 from your balance. You have 3. Add 1 more."));
-    const topUp = within(drawer).getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
-    expect(topUp.getAttribute("href")).toBe("/plans#packs");
-    expect(within(drawer).queryByRole("button", { name: /send ask/i })).toBeNull();
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 4 from your balance when a verified employee can see it"));
+    expect(within(drawer).queryByRole("link", { name: "Add credits" })).toBeNull();
+    expect(within(drawer).getByRole("button", { name: /send referral request/i }).getAttribute("aria-disabled")).toBeNull();
+    expect(recoveryComposer?.topUp).toBeNull();
   });
 
   it("drawer keyboard: Cmd+Enter during a pending quote sends nothing", async () => {
@@ -380,9 +400,9 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ directory: WIPRO_CLOSED, quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } } });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
-    const sendButton = screen.getByRole("button", { name: /send ask/i });
+    const sendButton = screen.getByRole("button", { name: /send referral request/i });
     expect(sendButton.getAttribute("aria-disabled")).toBeNull();
   });
 
@@ -396,17 +416,17 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 6 from your balance when a verified employee can see it"));
     expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST")).toBe(true));
     await waitFor(() => expect(screen.getByText(/nothing was spent/i)).toBeTruthy());
   });
 
-  it("coverage opens between compose and send: 409, nothing created or charged, re-priced to the covered line", async () => {
+  it("D-176: a legacy coverage-change refusal preserves the draft and re-prices without an availability claim", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     let open = false;
     const WIPRO_FLIP = () => directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, seed.slug !== "wipro" ? true : open)));
@@ -417,27 +437,28 @@ describe("shared composer quote (D-132 item 3)", () => {
     });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 6 from your balance when a verified employee can see it"));
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
     open = true; // the company opens up before the commit lands
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     await waitFor(() => {
       const post = fetchMock.mock.calls.find(([u, i]) => String(u) === "/api/company-referrals" && (i as RequestInit | undefined)?.method === "POST");
       expect(post).toBeTruthy();
-      expect(String(JSON.parse(String((post![1] as RequestInit).body)).expectedCoverage)).toBe("waiting_for_company_coverage");
+      expect(JSON.parse(String((post![1] as RequestInit).body))).not.toHaveProperty("expectedCoverage");
     });
     // Nothing was created: the refusal copy shows, no sent view.
     await screen.findByText(/Nothing was sent and nothing was charged/);
     expect(screen.queryByText(/nothing was spent/i)).toBeNull();
-    // Directory + quote invalidated: the covered cost line and top-up are live for a conscious re-send.
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 6 from your balance. You have 2. Add 4 more."));
-    const flipTopUp = screen.getByRole("link", { name: "Add credits" }) as HTMLAnchorElement;
-    expect(flipTopUp.href).toContain("/plans#packs");
+    // D-176: retain refusal/requote recovery without exposing directory availability.
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 6 from your balance when a verified employee can see it"));
+    expect(screen.queryByRole("link", { name: "Add credits" })).toBeNull();
+    expect(screen.getByRole("button", { name: /send referral request/i })).toBeTruthy();
+    expect(screen.getByLabelText(/job link/i)).toHaveProperty("value", LINK);
   });
 
-  it("flag on, company not open and quote still pending: Send never waits on pricing for a free-waiting ask", async () => {
+  it("D-176: a pending quote blocks Send for every company", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     const WIPRO_CLOSED = directoryOf(LAUNCH_COMPANY_SEED.map(seed => company(seed.slug, seed.slug !== "wipro")));
     let release!: (value: unknown) => void;
@@ -445,13 +466,13 @@ describe("shared composer quote (D-132 item 3)", () => {
     stub({ directory: WIPRO_CLOSED, quote: () => gate.then(() => json(200, { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 })) });
     renderPage(<Ask />);
     await typeLink();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Nothing deducted from your balance until a verified employee can see it"));
-    const sendButton = screen.getByRole("button", { name: /send ask/i });
-    expect(sendButton.getAttribute("aria-disabled")).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Pricing this ask…"));
+    const sendButton = screen.getByRole("button", { name: /send referral request/i });
+    expect(sendButton.getAttribute("aria-disabled")).toBe("true");
     release(null);
   });
 
-  it("flag on, short of credits: top-up preserves the selected resume and non-default work on /ask", async () => {
+  it("D-176: dormant top-up recovery preserves the selected resume and non-default work on /ask", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     let returned = false;
     const fetchMock = stub({
@@ -465,20 +486,19 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Mentored teammates across three product launches." } });
     const selectedResume = pickCustomResume();
     await pickNonDefaultWork();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
-    const topUp = screen.getByRole("link", { name: "Add credits" });
-    fireEvent.click(topUp);
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
+    await invokeTopUpRecovery();
     await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
     returned = true;
     cleanup();
     // Simulate return to /ask
     renderPage(<Ask />);
     await waitFor(() => expect((screen.getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK));
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance of 5"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
     expect((screen.getByPlaceholderText(/One result/) as HTMLInputElement).value).toBe("Led a checkout redesign that cut drop-off by eighteen percent.");
     expect(screen.getByText("selected-resume.pdf")).toBeTruthy();
     expectNonDefaultWorkSelected();
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     await waitFor(() => expect(uploadResumeMock).toHaveBeenCalledTimes(1));
     const restoredFile = uploadResumeMock.mock.calls[0][0] as File;
     expect(restoredFile.name).toBe(selectedResume.name);
@@ -488,7 +508,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     expect(JSON.parse(String((post![1] as RequestInit).body)).workItemIds).toEqual([22]);
   });
 
-  it("flag on, short of credits: top-up preserves the selected resume and non-default work in the explore drawer", async () => {
+  it("D-176: dormant top-up recovery preserves the selected resume and non-default work in the explore drawer", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     stub({ quote: { status: 200, body: { level: 4, cost: 4, totalAvailable: 3, shortfall: 1 } }, workItems });
     window.history.replaceState(null, "", "/explore");
@@ -500,9 +520,8 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
     pickCustomResume(drawer);
     await pickNonDefaultWork(drawer);
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 4 from your balance. You have 3. Add 1 more."));
-    const topUp = within(drawer).getByRole("link", { name: "Add credits" });
-    fireEvent.click(topUp);
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 4 from your balance when a verified employee can see it"));
+    await invokeTopUpRecovery();
     await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
     cleanup();
     // Return to explore drawer
@@ -516,7 +535,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     expectNonDefaultWorkSelected(drawer2);
   });
 
-  it("flag on, short of credits: top-up preserves the selected resume and non-default work on the company door", async () => {
+  it("D-176: dormant top-up recovery preserves the selected resume and non-default work on the company door", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } }, workItems });
     routeState.slug = "wipro";
@@ -528,8 +547,8 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     pickCustomResume(drawer);
     await pickNonDefaultWork(drawer);
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
-    fireEvent.click(within(drawer).getByRole("link", { name: "Add credits" }));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
+    await invokeTopUpRecovery();
     await waitFor(() => expect(go).toHaveBeenCalledWith("/plans#packs"));
     cleanup();
     routeState.slug = "wipro";
@@ -542,7 +561,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     expectNonDefaultWorkSelected(drawerAfterReturn);
   });
 
-  it("flag on, short of credits: selection save failure is visible and keeps the ask in place", async () => {
+  it("D-176: dormant top-up selection save failure is visible and keeps the ask in place", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     stub({ quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } }, workItems });
     const originalSetItem = Storage.prototype.setItem;
@@ -555,8 +574,8 @@ describe("shared composer quote (D-132 item 3)", () => {
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     pickCustomResume();
     await pickNonDefaultWork();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
-    fireEvent.click(screen.getByRole("link", { name: "Add credits" }));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
+    await invokeTopUpRecovery();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Your ask is still here"));
     expect(go).not.toHaveBeenCalled();
     expect((screen.getByLabelText(/job link/i) as HTMLInputElement).value).toBe(LINK);
@@ -564,7 +583,7 @@ describe("shared composer quote (D-132 item 3)", () => {
     expectNonDefaultWorkSelected();
   });
 
-  it("flag on, short of credits: top-up displays visible error if draft save fails and does not navigate", async () => {
+  it("D-176: dormant top-up recovery displays visible error if draft save fails and does not navigate", async () => {
     vi.stubEnv("VITE_ASK_LEVEL_COST", "true");
     stub({
       quote: { status: 200, body: { level: 5, cost: 5, totalAvailable: 3, shortfall: 2 } },
@@ -573,9 +592,8 @@ describe("shared composer quote (D-132 item 3)", () => {
     renderPage(<Ask />);
     await typeLink();
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led checkout redesign." } });
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("This referral request uses 5 from your balance. You have 3. Add 2 more."));
-    const topUp = screen.getByRole("link", { name: "Add credits" });
-    fireEvent.click(topUp);
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 5 from your balance when a verified employee can see it"));
+    await invokeTopUpRecovery();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not save your draft"));
     expect(go).not.toHaveBeenCalled();
   });
@@ -601,7 +619,7 @@ describe("slot-cap nudge once per session", () => {
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Your 3 requests are all open");
     expect(within(alert).getByRole("link", { name: /See Momentum/i })).toBeTruthy();
@@ -616,7 +634,7 @@ describe("slot-cap nudge once per session", () => {
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     const again = await screen.findByRole("alert");
     expect(again.textContent).toContain("Your 3 requests are all open"); // the reason always shows
     expect(within(again).queryByRole("link", { name: /See Momentum/i })).toBeNull();
@@ -630,7 +648,7 @@ describe("slot-cap nudge once per session", () => {
     fireEvent.change(screen.getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(screen.getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(screen.getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
-    fireEvent.click(screen.getByRole("button", { name: /send ask/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send referral request/i }));
     expect((await screen.findByRole("alert")).textContent).toContain("Your 3 requests are all open");
   });
 });

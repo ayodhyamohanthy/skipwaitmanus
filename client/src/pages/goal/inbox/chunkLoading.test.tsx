@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// Review finding 1 on the goal inbox (D-048-p3-inbox): with the surface on, the
-// route must never paint a blank screen while the goal chunk is still loading.
+// Review finding 1 on the goal inbox (D-048-p3-inbox): the route must never
+// paint a blank screen while the inbox chunk is still loading.
 // This file holds `goal/inbox/GoalInbox` pending on purpose (a real lazy import
 // that never settles), so it pins the Suspense fallback rather than the page.
 import React from "react";
@@ -9,7 +9,6 @@ import { describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import UnifiedInbox from "../../UnifiedInbox";
 
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => id === "inbox" }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("t"), openSignIn: vi.fn() }),
   useUser: () => ({ user: { id: "u1" } }),

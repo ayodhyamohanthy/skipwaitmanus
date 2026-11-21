@@ -136,7 +136,7 @@ export function isAskPost(request: Request): boolean {
 export async function sendAsk(page: Page): Promise<{ body: Record<string, unknown>; status: number }> {
   const posted = page.waitForRequest(isAskPost);
   const answered = page.waitForResponse(response => isAskPost(response.request()));
-  await page.getByRole("button", { name: "Send ask" }).click();
+  await page.getByRole("button", { name: "Send referral request" }).click();
   const body = JSON.parse((await posted).postData() ?? "{}") as Record<string, unknown>;
   const response = await answered;
   return { body, status: response.status() };
@@ -161,10 +161,11 @@ export async function seekerSendsAcmeAsk(context: BrowserContext): Promise<void>
   await page.close();
 }
 
-/** The shell's balance chip, read as the screen labels it ("2 credits" / "2 referrals", D-180). */
+/** The shell's balance chip, read as the screen labels it ("2 referrals left", D-180, D-344). */
 export async function readBalance(page: Page): Promise<number> {
-  // GoalShell's pill: aria-label "<n> credits available. Open credit details".
-  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) available/i }).first();
+  // GoalShell's pill: aria-label "<n> referrals left. Open plan details" (D-344; it said
+  // "<n> credits available" before). The old wording still matches so a stale build reads too.
+  const chip = page.getByRole("link", { name: /^\d+ (credits?|referrals?) (available|left)\b/i }).first();
   await expect(chip).toBeVisible();
   const value = Number((await chip.innerText()).match(/\d+/)?.[0]);
   expect(Number.isFinite(value)).toBeTruthy();

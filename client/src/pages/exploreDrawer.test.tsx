@@ -117,13 +117,13 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ask drawer", () => {
-  it("opens from a company row with the privacy line and the cost from the first moment", async () => {
+  it("opens from a company row with the privacy line and the cost from the first moment (D-176)", async () => {
     stub();
     const drawer = await openWipro();
-    expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
-    expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
+    expect(within(drawer).getByRole("heading", { name: "Request a referral" })).toBeTruthy();
+    expect(within(drawer).getByTestId("goal-verified-mark").textContent).toContain("Only verified Wipro employees can see it");
     expect(within(drawer).getByText("Referrers see your job link and reasons. Your name and resume are shared only if one accepts.")).toBeTruthy();
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 4"));
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
     // The cost is stated in one shared sentence pair (D-063): no retyped price.
     expect(within(drawer).getByTestId("goal-money-sentence").textContent).toBe(MONEY_SENTENCE);
     expect(within(drawer).getByText("ada-resume.pdf")).toBeTruthy();
@@ -131,7 +131,7 @@ describe("ask drawer", () => {
     expect(within(drawer).getByRole("group", { name: "Why me" })).toBeTruthy();
     expect(within(drawer).getAllByTestId("goal-reason-input")).toHaveLength(3);
     expect(within(drawer).getByRole("button", { name: "Save draft" })).toBeTruthy();
-    expect(within(drawer).getByRole("button", { name: "Send ask" })).toBeTruthy();
+    expect(within(drawer).getByRole("button", { name: "Send referral request" })).toBeTruthy();
   });
 
   it("reads the job link honestly: another employer is an error, Wipro's own site passes, a job board is confirmed on send", async () => {
@@ -153,8 +153,8 @@ describe("ask drawer", () => {
     fillLink(drawer);
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
-    const sent = await screen.findByText("Ask sent to Wipro.");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
+    const sent = await screen.findByText("Referral request sent to Wipro.");
     expect(sent).toBeTruthy();
     const call = posts(fetchMock)[0];
     if (!call) throw new Error("the ask was never posted");
@@ -169,11 +169,11 @@ describe("ask drawer", () => {
     });
     expect((init as RequestInit).headers).toMatchObject({ "Idempotency-Key": expect.stringMatching(/^[0-9a-f-]{36}$/) });
     const active = await screen.findByTestId("goal-drawer");
-    expect(within(active).getByText(`Verified wipro.com employees can see it now. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
-    expect(within(active).getByText("Open asks 1 of 3")).toBeTruthy();
-    expect(within(active).getByRole("link", { name: "Track this ask" }).getAttribute("href")).toBe("/conversation/501");
+    expect(within(active).getByText(`It reached verified wipro.com employees. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
+    expect(within(active).getByText("Open referral requests 1 of 3")).toBeTruthy();
+    expect(within(active).getByRole("link", { name: "Track this request" }).getAttribute("href")).toBe("/conversation/501");
     await waitFor(() => expect(fetchMock.mock.calls.some(([path, init2]) => String(path) === "/api/ask-drafts" && (init2 as RequestInit | undefined)?.method === "DELETE")).toBe(true));
-    fireEvent.click(within(active).getByRole("button", { name: "Ask at another company" }));
+    fireEvent.click(within(active).getByRole("button", { name: "New request" }));
     await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
     expect(go).toHaveBeenCalledWith("/explore", { replace: true });
   });
@@ -184,10 +184,10 @@ describe("ask drawer", () => {
     fillLink(drawer);
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     const active = await screen.findByTestId("goal-drawer");
     expect(within(active).getByText(`The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified wipro.com employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`)).toBeTruthy();
-    expect(within(active).queryByText(/^Verified wipro.com employees can see it now\./)).toBeNull();
+    expect(within(active).queryByText(/^It reached verified wipro.com employees\./)).toBeNull();
   });
 
   it("states the uncovered company's free wait and the later hold, verbatim (D-034, D-047)", async () => {
@@ -196,23 +196,23 @@ describe("ask drawer", () => {
     fillLink(drawer);
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     const active = await screen.findByTestId("goal-drawer");
-    expect(within(active).getByText(`No verified employee there can see it yet, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 is deducted from your balance and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
-    expect(within(active).getByRole("link", { name: "Track this ask" }).getAttribute("href")).toBe("/conversation/501");
+    expect(within(active).getByText(`It's waiting in Wipro's pool for verified employees who join, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, 1 is deducted from your balance and it goes live; if you have no credit then, we hold it until you add one.`)).toBeTruthy();
+    expect(within(active).getByRole("link", { name: "Track this request" }).getAttribute("href")).toBe("/conversation/501");
   });
 
   it("holds the send until the link, resume and reasons are there", async () => {
     const fetchMock = stub();
     const drawer = await openWipro();
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     expect(within(drawer).getAllByRole("alert").map(alert => alert.textContent)).toContain("Add the official job link first.");
     fillLink(drawer);
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     expect(within(drawer).getAllByRole("alert").map(alert => alert.textContent)).toContain("Write your reasons first (at least a sentence or two).");
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "x".repeat(141) } });
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     expect(within(drawer).getAllByRole("alert").map(alert => alert.textContent)).toContain("Keep each reason to 140 characters.");
     expect(within(drawer).getByPlaceholderText(/One result/).getAttribute("aria-invalid")).toBe("true");
     expect(posts(fetchMock)).toHaveLength(0);
@@ -234,11 +234,11 @@ describe("ask drawer", () => {
     fillLink(drawer);
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toContain("Your 3 requests are all open.");
     expect(alert.textContent).toContain("Queue position stays equal either way.");
-    expect(screen.queryByText(/Ask sent to/)).toBeNull();
+    expect(screen.queryByText(/Referral request sent to/)).toBeNull();
     expect(within(drawer).getByLabelText("Job link")).toBeTruthy();
   });
 
@@ -248,7 +248,7 @@ describe("ask drawer", () => {
     fillLink(drawer);
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toBe(companyCapCopy("wipro.com"));
   });
@@ -259,22 +259,25 @@ describe("ask drawer", () => {
     fillLink(drawer);
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     expect((await within(drawer).findByRole("alert")).textContent).toBe(ASK_NETWORK_ERROR);
     expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1234567-product-designer");
     expect((within(drawer).getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toContain("checkout redesign");
   });
 
-  it("says there are no credits and suppresses the send before any request", async () => {
-    const fetchMock = stub({ credits: 0 });
+  it("lets the server decide a zero-balance request and preserves the draft on shortfall (D-176)", async () => {
+    const fetchMock = stub({ credits: 0, send: () => ({ status: 400, body: { error: "Your balance is too low. View referral options in Plans." } }) });
     const drawer = await openWipro();
-    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Your balance is empty"));
-    const send = within(drawer).getByRole("button", { name: "Send ask" });
-    expect(send.getAttribute("aria-disabled")).toBe("true");
+    await waitFor(() => expect(within(drawer).getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
+    const send = within(drawer).getByRole("button", { name: "Send referral request" });
+    expect(send.getAttribute("aria-disabled")).toBeNull();
     fillLink(drawer);
     fillReasons(drawer);
     fireEvent.click(send);
-    expect(posts(fetchMock)).toHaveLength(0);
+    expect((await within(drawer).findByRole("alert")).textContent).toBe("Your balance is too low. View referral options in Plans.");
+    expect(posts(fetchMock)).toHaveLength(1);
+    expect(within(drawer).getByLabelText("Job link")).toHaveProperty("value", "https://careers.wipro.com/jobs/1234567-product-designer");
+    expect(screen.queryByText("Referral request sent to Wipro.")).toBeNull();
   });
 
   it("hands a signed-out seeker to sign-in with the company, link and reasons kept", async () => {
@@ -319,16 +322,16 @@ describe("ask drawer", () => {
     expect(within(next).getByText("ada-resume.pdf")).toBeTruthy();
   });
 
-  it("offers the alert on a company that is not open, and says an alert is not a referral", async () => {
+  it("offers no alert on a company the directory marks closed, because that would reveal availability (D-176, D-174 door-neutral)", async () => {
     const fetchMock = stub({ directory: WIPRO_CLOSED });
     renderPage();
     fireEvent.click(await screen.findByRole("link", { name: "Wipro" }));
     const drawer = await screen.findByTestId("goal-drawer");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Get told when a referrer joins" }));
-    expect(await within(drawer).findByText("We’ll tell you when a verified employee at Wipro joins.")).toBeTruthy();
-    const alert = fetchMock.mock.calls.find(([path, init]) => String(path) === "/api/seeker-alerts" && (init as RequestInit | undefined)?.method === "POST");
-    expect(JSON.parse(String((alert?.[1] as RequestInit | undefined)?.body))).toEqual({ companyDomain: "wipro.com" });
-    expect(within(drawer).getByText("An alert is not a referral.")).toBeTruthy();
+    expect(within(drawer).queryByRole("button", { name: "Get told when a referrer joins" })).toBeNull();
+    expect(within(drawer).queryByText(/No verified employee/i)).toBeNull();
+    expect(within(drawer).queryByText(/An alert is not a referral/i)).toBeNull();
+    expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/seeker-alerts")).toBe(false);
+    expect(within(drawer).getByText("Only verified Wipro employees can see it")).toBeTruthy();
   });
 
   it("the link field is read-only while a post is selected, and 'Change role' clears it", async () => {
@@ -407,7 +410,7 @@ describe("ask drawer", () => {
     fillLink(drawer, "https://careers.wipro.com/jobs/custom-hero");
     fillReasons(drawer);
     await within(drawer).findByText("ada-resume.pdf");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
 
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     const sentBody = JSON.parse(String(posts(fetchMock)[0][1]?.body));
@@ -459,7 +462,7 @@ describe("ask drawer", () => {
     const restoredDrawer = await screen.findByTestId("goal-drawer");
     await within(restoredDrawer).findByText("ada-resume.pdf");
 
-    fireEvent.click(within(restoredDrawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(restoredDrawer).getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(posts(fetchMock)).toHaveLength(1));
     const sentBody = JSON.parse(String(posts(fetchMock)[0][1]?.body));
     expect(sentBody.opportunityId).toBe(88);

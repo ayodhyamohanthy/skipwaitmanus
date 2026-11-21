@@ -32,8 +32,11 @@ import { useAskDraft } from "@/lib/askDraftApi";
 import { useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { applySeo } from "@/lib/seo";
 import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL } from "@shared/moneyCopy";
-import { jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
+import { completeTargetRoleUrl, jobLinkFitsCompany, isValidTargetRoleUrl } from "@shared/referralUrl";
 import { WHY_ME_MAX } from "@shared/whyMe";
+import { domainBelongsToCompany, isSafePreview, jobLinkPrefillEnabled } from "./explore/jobLinkPrefill";
+import { JobLinkFromPosting } from "./explore/JobLinkFromPosting";
+import { ReasonsCoach } from "./explore/ReasonsCoach";
 import { useAskComposer } from "./explore/useAskComposer";
 
 const PLACEHOLDERS = [
@@ -63,9 +66,21 @@ export default function Ask() {
   useEffect(() => {
     const companies = directory.data?.companies;
     if (!companies || !isValidTargetRoleUrl(composer.url.trim())) { setUrlCompany(null); return; }
-    setUrlCompany(companies.find(item => jobLinkFitsCompany(composer.url, item.domains)) ?? null);
+    if (!jobLinkPrefillEnabled()) {
+      setUrlCompany(companies.find(item => jobLinkFitsCompany(composer.url, item.domains)) ?? null);
+      return;
+    }
+    // D-094 item 2 (packet §4.5): with the switch on, only a company's own
+    // domains match locally. A hosted link takes its company only from a safe
+    // preview domain a directory company owns, and otherwise from none.
+    let host = "";
+    try { host = new URL(completeTargetRoleUrl(composer.url).trim()).hostname; } catch { host = ""; }
+    const direct = host ? companies.find(item => domainBelongsToCompany(host, item.domains)) ?? null : null;
+    if (direct) { setUrlCompany(direct); return; }
+    const preview = composer.jobLinkPreview;
+    setUrlCompany(preview && isSafePreview(preview) ? companies.find(item => domainBelongsToCompany(preview.companyDomain, item.domains)) ?? null : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composer.url, directory.data]);
+  }, [composer.url, directory.data, composer.jobLinkPreview]);
 
   useEffect(() => {
     applySeo({ title: "Ask for a referral", description: "Ask a verified employee for a referral. Your name and resume stay private until one accepts.", path: "/ask" });
@@ -111,13 +126,13 @@ export default function Ask() {
             </header>
 
             <div className="mt-5 grid gap-2">
-              {company?.openToReferrals ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Goes to verified ${company.name} employees`}</GoalVerifiedMark> : null}
+              {company ? <GoalVerifiedMark mutedText className="font-semibold text-g-ink">{`Only verified ${company.name} employees can see it`}</GoalVerifiedMark> : null}
               <p className="text-pretty text-g-body text-g-ink-2">Referrers see your job link and reasons. Your name and resume are shared only if one accepts.</p>
               {!composer.signedIn ? <p className="text-pretty text-g-meta text-g-ink-2">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
             </div>
 
             <div className="mt-8 grid gap-6">
-              <AskFields composer={composer} company={company} />
+              <AskFields composer={composer} company={company} companies={directory.data?.companies} />
             </div>
 
             <div className="mt-8">
@@ -156,7 +171,7 @@ export default function Ask() {
 
 type Composer = ReturnType<typeof useAskComposer>;
 
-function AskFields({ composer, company }: { composer: Composer; company: PublicCompany | null }) {
+function AskFields({ composer, company, companies }: { composer: Composer; company: PublicCompany | null; companies?: readonly PublicCompany[] }) {
   const linkId = useId();
   const resumeId = useId();
   return (
@@ -177,10 +192,12 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
           placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
           value={composer.url}
           invalid={composer.hint?.tone === "error"}
-          onChange={event => composer.onUrlChange(event.target.value)}
+          onChange={event => composer.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
           onBlur={composer.onUrlBlur}
         />
       </GoalField>
+      {/* D-094 item 2 (switch off): what the posting says, under its link. */}
+      <JobLinkFromPosting url={composer.url} company={company} companies={companies} />
       {composer.postSelection ? (
         <p className="-mt-4 text-pretty text-g-meta text-g-ink-3">The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.</p>
       ) : null}
@@ -218,6 +235,7 @@ function AskFields({ composer, company }: { composer: Composer; company: PublicC
           <GoalReasonInput key={index} index={index} value={reason} max={WHY_ME_MAX} placeholder={PLACEHOLDERS[index]} onChange={value => composer.onReasonChange(index, value)} />
         ))}
         {composer.reasonsError ? <p role="alert" className="text-g-meta text-g-ink">{composer.reasonsError}</p> : null}
+        <ReasonsCoach reasons={composer.reasons} signedIn={composer.signedIn} companyName={company?.name} />
       </fieldset>
 
       <PinnedWorkPicker work={composer.work} />

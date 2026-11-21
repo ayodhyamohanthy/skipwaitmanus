@@ -117,7 +117,7 @@ describe("Ask composer page (goal, W2)", () => {
     await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
     expect(screen.getByText(/The charge is refunded if you withdraw before anyone picks it up/)).toBeTruthy();
     expect(screen.getByText(/Once picked up, it stays charged, even if they pass\./)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send ask" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send referral request" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save draft" })).toBeTruthy();
     // No kit composer survives: no strength meter, no function eyebrow, no panels.
     expect(screen.queryByText("Write a great ask.")).toBeNull();
@@ -127,17 +127,17 @@ describe("Ask composer page (goal, W2)", () => {
     expect(document.querySelector("[data-skipwait-screen='ask']")).toBeTruthy();
   });
 
-  it("resolves the company from the job link: verified mark, back link and honest hint follow", async () => {
+  it("resolves the company from the job link: privacy mark, back link and honest hint follow (D-176)", async () => {
     stub();
     renderPage();
     expect((await screen.findByRole("link", { name: /All companies/ })).getAttribute("href")).toBe("/explore");
     fillLink();
     expect(await screen.findByTestId("goal-verified-mark")).toBeTruthy();
-    expect(screen.getByTestId("goal-verified-mark").textContent).toContain("Goes to verified Wipro employees");
+    expect(screen.getByTestId("goal-verified-mark").textContent).toContain("Only verified Wipro employees can see it");
     expect(screen.getByText("Matches Wipro’s careers site")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Wipro/ }).getAttribute("href")).toBe("/explore/wipro");
     expect(screen.getByText("Wipro · Product Designer")).toBeTruthy();
-    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance of 4"));
+    await waitFor(() => expect(screen.getByTestId("goal-ask-cost").textContent).toBe("Uses 1 from your balance when a verified employee can see it"));
   });
 
   it("keeps composing behind sign-in and hands the draft to sign-in on send", async () => {
@@ -163,7 +163,7 @@ describe("Ask composer page (goal, W2)", () => {
     expect((screen.getByPlaceholderText(/One result/) as HTMLTextAreaElement).value).toBe("Led a checkout redesign that cut drop-off 18%.");
     expect((screen.getByPlaceholderText(/Another result/) as HTMLTextAreaElement).value).toBe("Shipped a design system used by 40 teams.");
     expect(await screen.findByTestId("goal-verified-mark")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     expect(await screen.findByRole("status")).toBeTruthy();
     expect(sessionStorage.getItem(ASK_PREFILL_KEY)).toBeNull();
   });
@@ -175,7 +175,7 @@ describe("Ask composer page (goal, W2)", () => {
     await waitFor(() => expect((screen.getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1234567-product-designer"));
     expect(screen.getByText("The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.")).toBeTruthy();
     fillReasons();
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     await screen.findByRole("status");
     const call = posts(fetchMock as never)[0] as unknown as [string, { body: string }];
     expect(JSON.parse(call[1].body)).toMatchObject({ opportunityId: 91, companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1234567-product-designer" });
@@ -187,11 +187,11 @@ describe("Ask composer page (goal, W2)", () => {
     fillLink();
     fillReasons();
     await screen.findByTestId("goal-verified-mark");
-    fireEvent.click(screen.getByRole("button", { name: "Send ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send referral request" }));
     const status = await screen.findByRole("status");
     expect(within(status).getByRole("heading", { name: "Ask sent to Wipro." })).toBeTruthy();
     expect(within(status).getByTestId("goal-status").textContent).toContain("Waiting");
-    expect(within(status).getByText(/Verified wipro\.com employees can see it now/)).toBeTruthy();
+    expect(within(status).getByText(/It reached verified wipro\.com employees\./)).toBeTruthy();
     expect(within(status).getByRole("link", { name: "See my asks" }).getAttribute("href")).toBe("/requests");
     expect(within(status).getByRole("link", { name: "Ask another company" }).getAttribute("href")).toBe("/explore");
     const call = posts(fetchMock as never)[0] as unknown as [string, { headers: Record<string, string>; body: string }];

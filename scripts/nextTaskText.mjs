@@ -1,6 +1,17 @@
 // D-083: what the queue picker prints for each decision. Pure: the same pick
 // and context always print the same steps, which scripts/nextTask.test.ts pins.
-import { epicSummaries, slugOf } from "./nextTaskCore.mjs";
+import { epicSummaries, releaseLandingHold, slugOf } from "./nextTaskCore.mjs";
+
+export function renderReleaseLights(release) {
+  return [
+    "LIVE RELEASE — seven lights (D-212)",
+    `Web SHA: ${release.sha ?? "unknown"} · API SHA: ${release.apiSha ?? "unknown"}`,
+    ...release.lights.map(l => `${l.number}. ${l.label}: ${l.state} — ${l.detail}`),
+    releaseLandingHold(release) ? "Confirmed red: landings only are held except registered incident/release fixes; branch work continues."
+      : "No confirmed live-release landing hold; unknown is not green and never holds work by itself.",
+    "",
+  ].join("\n");
+}
 
 const CMD = "node scripts/next-task.mjs";
 const land = [
@@ -22,7 +33,7 @@ const worktree = branch => `Work in your own worktree, never by switching branch
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
 const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
 /** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
-const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with \`--avoid ${task.id}\` added instead, and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).`;
+const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with \`--avoid ${task.id}\` added (repeat the flag, or use one comma list, \`--avoid a,b\`), and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
@@ -63,6 +74,9 @@ function resumeSteps(task, who, branch) {
 
 /** D-074: a Tier 1 change lands only as reviewed; a commit pushed after the pass verdict was never reviewed. */
 const unreviewed = pick => `Before you land, take the head commit the pass verdict names on the pull request, or in the reviewer's report note on the board (the newest pass, if there were several), as <reviewed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\` and \`git log --merges --cc --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`. Every commit the first lists, except one that only changes docs/plans/assignments.json (the status commit a landing makes) and one that lists no file at all (an empty picker marker, D-315), and every merge the second shows with a diff hunk (a conflict resolution or an extra change, your own merge included) was never reviewed (D-074): do not land, and report it blocked to the CEO with --report blocked.`;
+
+// D-344 (7), D-353 (1): a fixed landing checks the head its Fixed marker names, as the review gate does.
+const fixedUnchanged = pick => `Before you land, take the head the newest Fixed marker names (the \`fixed <sha>\` line in its body on ${pick.lock}) as <fixed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <fixed>..origin/${pick.work} ^origin/main\`. Every commit it lists, except the status commit a landing makes (only docs/plans/assignments.json) and an empty picker marker, came after the fix: do not land, and report it blocked to the CEO with --report blocked. The CI review gate applies the same check.`;
 
 const reviewSteps = (pick, who) => steps([
   `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit, whatever arrives later, in its own worktree: \`git worktree add --detach ../skipwaitmanus-wt/review-${slugOf(pick.work)} <reviewed>\`, then \`${INSTALL}\` there before any test: ${INSTALL_WHY}`,
@@ -109,7 +123,7 @@ const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : step
   `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
   worktree(pick.work),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
-  ...(pick.tier1 ? [unreviewed(pick)] : []),
+  ...(pick.tier1 ? [pick.fixed ? fixedUnchanged(pick) : unreviewed(pick)] : []),
   pick.tier1
     ? `Set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`
     : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
@@ -122,9 +136,13 @@ const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : step
 const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
-  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
-  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
-  `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
+  ...(pick.packetFindingsCommit ? [
+    `Address the recorded packet findings (verdict ${pick.packetFindingsCommit.slice(0, 8)}) on ${pick.lock} and push your correction. Then run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` to bind the fix to the published packet head. Required CI and the existing review gate decide whether it can land.`,
+  ] : [
+    "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
+    `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
+  ]),
+  `${pick.packetFindingsCommit ? "Re-run required CI on the exact corrected head. Another session lands the packet when eligible (D-190)." : "Land it like any docs change (D-082: pull request, every check green on that exact commit)."} ${keepAlive(who)}`,
   report(pick.task, who),
 ]);
 
@@ -178,15 +196,24 @@ const resyncSteps = (pick, who, register = null) => {
 };
 
 /** D-202: the register block every pick opens with — the newest decisions, then the stop rule. */
+const DECISIONS_SUMMARISED = 10;
+const DECISION_SUMMARY_MAX = 160;
 function decisionsBlock(pick, register) {
   if (!register?.length) return "";
   const stamp = pick.task?.syncedTo;
   const at = stamp ? register.findIndex(e => e.id === stamp) : -1;
   const first = Math.max(0, Math.min(register.length - 5, at < 0 ? register.length - 5 : at));
   const shown = register.slice(first).reverse();
+  // D-361: the 10 newest with a short summary, every other entry by ID, so a stale syncedTo cannot push the
+  // assignment past an agent's output limit; nothing D-202 requires is dropped.
+  const summarised = shown.slice(0, DECISIONS_SUMMARISED);
+  const named = shown.slice(DECISIONS_SUMMARISED).map(e => e.id);
+  const short = title => (title.length > DECISION_SUMMARY_MAX ? `${title.slice(0, DECISION_SUMMARY_MAX - 1).trimEnd()}…` : title);
   return [
     "Newest decisions (read before you work):",
-    ...shown.map(e => `- ${e.id} · ${e.date} · ${e.title}`),
+    ...summarised.map(e => `- ${e.id} · ${e.date} · ${short(e.title)}`),
+    ...(named.length ? [`- Also newer than this task's syncedTo: ${named.join(", ")}`] : []),
+    "Read each of these in full in docs/DECISIONS.md before you work.",
     `If any of these changes what your task says, stop and run \`${CMD} --report blocked "${pick.task?.id ?? "<task id>"}: conflicts with D-nnn"\` (D-032). A newer decision always beats an older packet, note or chat message.`,
   ].join("\n");
 }
@@ -213,6 +240,7 @@ export function renderBoard(rows) {
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
     if (r.report) {
       bits.push(`report: ${r.report.status} — ${r.report.who}${r.report.note ? `: ${r.report.note}` : ""}`);
+      if (r.report.status === "blocked" && Number.isFinite(r.blockAgeHours)) bits.push(`blocked ${r.blockAgeHours}h${r.blockWaitingForEvidence ? " · waiting for new evidence or 24h" : ""}`);
       const newer = r.report.newer ?? [];
       for (const entry of newer.slice(0, 3)) {
         bits.push(`then: ${entry.status} — ${entry.who}${entry.note ? `: ${entry.note}` : ""}`);
@@ -225,16 +253,33 @@ export function renderBoard(rows) {
   return ["STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)", ...summaries, ...lines, ""].join("\n");
 }
 
-/** The steps for one pick. ctx: { who, date, claimed, register } (claimed = this run took the lock or holds it). */
-function renderPickLegacy(pick, { who, date, claimed, register = null }) {
-  const body = pickText(pick, { who, date, claimed, register });
+/**
+ * D-358 (owner, Nov 18 2026): "let no agent be blocked for taking a task". What a claim or preview prints: the board
+ * header, one line per priority with counts and one pointer to `--status`, never a line per task, so an agent with an
+ * output cap still reads its assignment. `--status` and the CEO review keep `renderBoard`.
+ */
+export function renderBoardSummary(rows) {
+  const done = rows.filter(r => r.state === "done").length;
+  const summaries = epicSummaries(rows).map(s => `${s.epic}: ${s.done}/${s.total} done, ${s.prs} PR, ${s.red} red, ${s.released.length} released`);
+  return [
+    "STATUS BOARD (priorities top down; a red or blocked one holds its lane and the tasks that depend on it)",
+    ...summaries,
+    `${rows.length} tasks, ${done} done. Every task, holder and report: node scripts/next-task.mjs --status`,
+    "",
+  ].join("\n");
+}
+
+/** The steps for one pick. ctx: { who, date, claimed, register, requestedTask } (claimed = this run took the lock or holds it). */
+function renderPickLegacy(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const body = pickText(pick, { who, date, claimed, register, requestedTask });
   // D-202: every pick opens with the newest decisions, so no agent works from an old packet unseen.
   const block = decisionsBlock(pick, register);
   return block ? `${block}\n\n${body}` : body;
 }
 
-function pickText(pick, { who, date, claimed, register = null }) {
-  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"\n`;
+function pickText(pick, { who, date, claimed, register = null, requestedTask = null }) {
+  const restriction = requestedTask ? ` --task ${requestedTask}` : "";
+  const take = claimed ? "" : `\nNot claimed yet. To take it: ${CMD} --claim "<your model name>"${restriction}\n`;
   switch (pick.kind) {
     case "stop": return head("STOP", [pick.reason, "Tell the owner what failed; do not choose work yourself."]);
     case "wait": return head("WAIT", waitLines(pick, who));
@@ -280,6 +325,8 @@ function pickText(pick, { who, date, claimed, register = null }) {
     case "land": return head(`LAND ${pick.task.id} — ${pick.task.title}`, [
       pick.packet
         ? `Packet pull request ${pick.pr} on its architect lock ${pick.work} has green CI and waits for a lander (written by ${pick.from ?? "unknown"}; D-190). You must not have written this packet: its writer never lands it.`
+        : pick.fixed
+        ? `Pull request ${pick.pr}'s review findings were fixed by ${pick.from ?? "another session"} (a Fixed marker bound to its head), so it lands without a re-review (D-344 (7), D-353 (1)). You must not have built or fixed it.`
         : `Pull request ${pick.pr} is ${pick.tier1 ? "reviewed and passed" : "built"}, but nobody has landed it for 2 hours (last held by ${pick.from ?? "unknown"}; D-085).${pick.tier1 ? " You must not have built or fixed it." : ""}`,
       ...holding(pick),
       landSteps(pick, who),
@@ -330,6 +377,7 @@ function pickText(pick, { who, date, claimed, register = null }) {
 export function renderPick(pick, context) {
   const base = renderPickLegacy(pick, context);
   // D-324: work goes on while main is red; landings do not.
-  const text = pick.mainRedNote ? base + "\nmain is red right now (D-324): do this work on its own branch as usual, but land nothing and merge nothing into main until main's CI is green again. Merge origin/main into your branch once it is.\n" : base;
+  let text = pick.mainRedNote ? base + "\nmain is red right now (D-324): do this work on its own branch as usual, but land nothing and merge nothing into main until main's CI is green again. Merge origin/main into your branch once it is.\n" : base;
+  if (pick.releaseHold) text += `\nLive release ${pick.releaseHold.sha.slice(0, 8)} has red lights ${pick.releaseHold.lights.join(", ")}: landings only are held (D-212), not builds, fixes or packets. ${pick.releaseFix ? "This row is a registered repair. Revert the causal commit first only if evidence proves a code-only release caused the incident; never blindly revert schema or money changes. Every required CI, ownership and release gate still applies (D-370); no review is required." : "Work on your own branch and push it, but do not follow any landing instruction above until the release recovers. Only its explicitly registered repair may land."}\n`;
   return pick.provenanceRoute ? text + `\nExternal model route: ${pick.provenanceRoute}. Keep your actual operator/session name. Preserve --provenance on claims/reclaims and add --execution for a completed exact-head verdict/fix. Read docs/MODEL_PROVENANCE.md; route qualification alone is not execution evidence.\n` : text;
 }
