@@ -1,4 +1,6 @@
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
+import { ASK_RECONFIRM_ENABLED, RECONFIRM_AFTER_DAYS, type AskReconfirmResponse } from "../shared/askReconfirm";
+import { ASK_RECONFIRM_NOTICE_TITLE, ASK_RECONFIRM_PROMPT } from "../shared/moneyCopy";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
@@ -2666,9 +2668,14 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   // countdown). P0-allocated-ask-stuck: so does a queue allocation nobody claimed; unclaimedAssignment covers both kinds
   // (Withdraw). Fail-soft and reported: the flags only add that entry point; withdraw and expiry re-decide under the row lock.
   let held: UnclaimedAssignments = { personalLink: new Set<number>(), queueAllocation: new Set<number>() };
+  const waitingIds = ASK_RECONFIRM_ENABLED ? rows.filter(row => row.status === "pending" && row.waitingForCoverage).map(row => row.id) : [];
+  const reconfirmEvents = waitingIds.length ? await db.select({ requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action }).from(referralTransitionEvents)
+    .where(and(inArray(referralTransitionEvents.referralRequestId, waitingIds), inArray(referralTransitionEvents.action, ["reconfirm_requested", "reconfirmed"]))) : [];
+  const confirmedIds = new Set(reconfirmEvents.filter(event => event.action === "reconfirmed").map(event => event.requestId));
+  const awaitingIds = new Set(reconfirmEvents.filter(event => event.action === "reconfirm_requested" && !confirmedIds.has(event.requestId)).map(event => event.requestId));
   try { held = await listHeldForReferrerIds(db, rows); }
   catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
-  return rows.map(row => ({ ...row, heldForReferrer: held.personalLink.has(row.id), unclaimedAssignment: held.personalLink.has(row.id) || held.queueAllocation.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  return rows.map(row => ({ ...row, awaitingReconfirm: awaitingIds.has(row.id), heldForReferrer: held.personalLink.has(row.id), unclaimedAssignment: held.personalLink.has(row.id) || held.queueAllocation.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 /**
@@ -2734,6 +2741,43 @@ async function readAllocatedSlotsForUpdateTx(tx: LedgerTx, referrerId: number): 
 
 type DeliveryCandidate = { userId: number; accountType: string | null; workEmailDomain: string | null; workEmailVerifiedAt: Date | null; paused: boolean | null; referralCapacity: number | null; userSuspended: boolean | null; personSuspended: boolean | null };
 
+/** Always called under the request lock; locking event reads also see concurrent committed consent. */
+async function readAskReconfirmActionsTx(tx: LedgerTx, requestId: number) {
+  return tx.select({ action: referralTransitionEvents.action }).from(referralTransitionEvents)
+    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["reconfirm_requested", "reconfirmed"]))).for("update");
+}
+
+/** Reconfirmation is metadata only: it neither changes request status nor opens referrer access. */
+async function recordAskReconfirmEventTx(tx: LedgerTx, request: typeof referralRequests.$inferSelect, action: "reconfirm_requested" | "reconfirmed", nowMs: number) {
+  const revision = request.revision + 1;
+  const updated = await tx.update(referralRequests).set({ revision }).where(and(eq(referralRequests.id, request.id), eq(referralRequests.revision, request.revision)));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("Request confirmation lost a stale-write race");
+  await tx.insert(referralTransitionEvents).values({ referralRequestId: request.id, operationKey: `${action}:${request.id}`, actorUserId: request.jobSeekerId, action, fromStatus: request.status, resultingStatus: request.status, resultingRevision: revision, createdAt: new Date(nowMs) });
+}
+
+export class AskReconfirmError extends Error {
+  constructor(public readonly reason: "missing" | "not_awaiting" | "disabled") {
+    super(reason === "missing" ? "This referral request is not in your account" : reason === "disabled" ? "Request confirmation is not available yet" : "This referral request is not awaiting confirmation");
+    this.name = "AskReconfirmError";
+  }
+}
+
+/** Commit consent before retrying delivery; a failed/lost response is safely retried with the same event and debit keys. */
+export async function reconfirmWaitingAsk(userId: number, requestId: number, nowMs: number = Date.now()): Promise<AskReconfirmResponse> {
+  if (!ASK_RECONFIRM_ENABLED) throw new AskReconfirmError("disabled");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const request = (await tx.select().from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
+    if (!request) throw new AskReconfirmError("missing");
+    const events = await readAskReconfirmActionsTx(tx, requestId);
+    if (events.some(event => event.action === "reconfirmed")) return;
+    if (request.status !== "pending" || !request.waitingForCoverage || !events.some(event => event.action === "reconfirm_requested")) throw new AskReconfirmError("not_awaiting");
+    await recordAskReconfirmEventTx(tx, request, "reconfirmed", nowMs);
+  });
+  await tryDeliverWaitingAsk(requestId, nowMs);
+  return { requestId, confirmed: true };
+}
+
 /**
  * D-062: employees of `companyDomain` who can take an ask right now, most
  * remaining capacity first (then lowest id). The ask's own seeker is never a
@@ -2769,6 +2813,17 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   const request = locked?.request;
   if (!locked || !request || request.status !== "pending" || !request.waitingForCoverage) return { outcome: "settled", requestId: input.requestId };
   if (request.jobSeekerId === input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  if (ASK_RECONFIRM_ENABLED && input.nowMs - new Date(request.createdAt).getTime() > RECONFIRM_AFTER_DAYS * 86_400_000) {
+    const events = await readAskReconfirmActionsTx(tx, request.id);
+    if (!events.some(event => event.action === "reconfirmed")) {
+      if (!events.some(event => event.action === "reconfirm_requested")) {
+        await recordAskReconfirmEventTx(tx, request, "reconfirm_requested", input.nowMs);
+        const eventKey = `ask-reconfirm:${request.id}`;
+        await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "ask_reconfirm", refId: request.id, title: ASK_RECONFIRM_NOTICE_TITLE, body: ASK_RECONFIRM_PROMPT, eventKey }).onDuplicateKeyUpdate({ set: { eventKey } });
+      }
+      return { outcome: "awaiting_reconfirm", requestId: request.id };
+    }
+  }
   // Ask → invite → profile is the BYOR lock order; keep this reservation check off when BYOR is disabled.
   const invite = process.env.BYOR_LINK_ENABLED === "true"
     ? (await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId, reservationExpiresAt: askInviteLinks.reservationExpiresAt })
@@ -2933,7 +2988,7 @@ export async function tryDeliverWaitingAsk(requestId: number, nowMs: number = Da
     }
     for (const candidate of await selectDeliveryCandidatesTx(tx, { companyDomain: current.companyDomain, seekerUserId: current.request.jobSeekerId })) {
       const outcome = await deliverWaitingAskTx(tx, { requestId, referrerId: candidate.userId, nowMs });
-      if (outcome.outcome === "delivered" || outcome.outcome === "held" || outcome.outcome === "settled") return outcome;
+      if (outcome.outcome === "delivered" || outcome.outcome === "held" || outcome.outcome === "settled" || outcome.outcome === "awaiting_reconfirm") return outcome;
       // blocked or waiting: a block is per pair and a full referrer may free capacity; try the next candidate.
     }
     if (wasHeld) {
