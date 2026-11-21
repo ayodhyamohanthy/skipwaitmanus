@@ -405,8 +405,8 @@
       "tier": 2,
       "lane": "design-shell-words",
       "branch": "agent/queue/d344-shell-referral-words",
-      "status": "todo",
-      "syncedTo": "D-344",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         "client/src/components/goal/GoalShell.tsx",
@@ -417,7 +417,7 @@
         "e2e/fixtures.ts",
         "design/goal-ui/captures/shell/**"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 2 exactly: wording only. The hook, the count source, the link, the loading and error states, and AppShell.tsx are unchanged. Captures at 1280 and 390. This unblocks D-048-R-inbox (#1196) and D-048-R-profile (#1201). It shares GoalShell.tsx with D-222-referral-count-shell under D-314: the second to land merges main and keeps both changes. D-344 (8): it also owns client/src/test/goalShellHarness.test.tsx (the harness pins the pill's aria-label) and e2e/fixtures.ts (readBalance reads the pill by that label), both owned by no open row; only the pinned label words change there.",
+      "note": "Delivered by PR #1222 on November 16: source 630c15356, final head e42057cf0, merge 857289ac2; exact-head CI 43895389256 and web deployment 43895979459 passed. November 21 reconciliation verified ancestry, existing 1280/390 captures and 69/69 current shell/request/harness tests. See docs/plans/D-344-unblock.md Status. Wording only; D-222 retains its separate count/ledger semantics. No runtime change in this status correction.",
       "epic": "D-048-p3"
     },
     {
