@@ -26,6 +26,11 @@ Pricing and monetization doctrine (AGENTS.md): "Never choose money-spending opti
 4. **Basics always work (D-019).** Hardening must never break valid sign-in, payments, webhooks, or the referral state machine.
 
 ## Subtasks
+
+HSTS unblock scope (November 21, D-200): `D-100.hsts-preload` also owns
+`docs/DECISIONS.md` solely to record its assigned technical routing ruling.
+This declaration changes no dependency, status, activation or runtime scope.
+
 | ID | Title | Tier | Lane | Owns | Depends on | Switch |
 |---|---|---|---|---|---|---|
 | D-100-security-audit | Read-only security audit of auth, money, session, cookies, CSP, rate limits | 3 | security | `docs/plans/D-100-security-audit.md`, `docs/reviews/D-100-security-audit.md` | none | n/a |
