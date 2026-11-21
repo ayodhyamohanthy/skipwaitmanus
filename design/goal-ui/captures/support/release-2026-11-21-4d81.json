@@ -1,0 +1,90 @@
+{
+  "task": "D-048-R-support",
+  "session": "GPT-6.1 Sol · 4d81",
+  "recordedAt": "2026-11-21T13:19:41.578Z",
+  "kind": "partial acceptance and queue reconciliation",
+  "mainChecked": "be9d67e87398caf29b126ca16cf9190596a589f7",
+  "decisionsCheckedThrough": "D-372",
+  "runtimeChange": false,
+  "priorRelease": {
+    "pullRequest": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1193",
+    "mergeCommit": "6c64f04d1186533960d1c2bca1feeb32f8a40f02",
+    "head": "fa0466e2e4d30beee3f3f08325af6184f025e971",
+    "ci": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/43658500373",
+    "inCurrentMainAncestry": true
+  },
+  "priorRetirement": {
+    "pullRequest": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1314",
+    "mergeCommit": "c27ce712393d04aae2b6ce493c7a6c89ca832486",
+    "inCurrentMainAncestry": true,
+    "historicalSignedOutEvidence": "../../../../docs/evidence/D-048-K-support/receipt.json",
+    "historicalSentryEvidence": "../../../../docs/evidence/D-048-K-support/sentry.json",
+    "currentAcceptanceInherited": false
+  },
+  "verification": {
+    "typecheck": { "command": "pnpm check", "exitCode": 0 },
+    "focusedTests": {
+      "command": "pnpm vitest run client/src/pages/goal/support/supportGoal.test.tsx client/src/pages/trustCluster.test.tsx client/src/pages/reportBlock.test.tsx client/src/pages/safetyIntake.test.tsx client/src/lib/goalSurfaces.test.ts --maxWorkers=1",
+      "exitCode": 0,
+      "filesPassed": 4,
+      "testsPassed": 67,
+      "testsFailed": 0,
+      "note": "reportBlock.test.tsx no longer exists after retirement; the four existing matched files ran. Report/block behavior is covered by supportGoal.test.tsx."
+    },
+    "scopeCheck": { "command": "node scripts/scope-check.mjs D-048-R-support", "exitCode": 0 },
+    "build": "not rerun: this carrier changes documentation and evidence only",
+    "fullLocalSuite": "not rerun: no runtime delta"
+  },
+  "production": {
+    "webSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac",
+    "webDeploy": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44905327382",
+    "apiDeploy": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44905327385",
+    "requests": "GET only",
+    "routes": [
+      { "route": "/help", "httpStatus": 200, "webSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac" },
+      { "route": "/report", "httpStatus": 200, "webSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac" },
+      { "route": "/safety", "httpStatus": 200, "webSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac" },
+      { "route": "/support", "httpStatus": 200, "webSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac" }
+    ],
+    "apiReadiness": { "httpStatus": 200, "state": "ready", "commitSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac", "matchesRemoteApiRuntimeTag": true },
+    "runtimeVerifier": {
+      "command": "EXPECTED_SHA=83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac bash scripts/verify-cloudflare-container-release.sh",
+      "exitCode": 0,
+      "output": "RUNTIME CONVERGED: release=83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac state=ready direct_origin=closed",
+      "workersDevHttpStatus": 404
+    }
+  },
+  "browser": {
+    "freshDesktopHelp": {
+      "route": "/help",
+      "width": 1280,
+      "height": 900,
+      "webSha": "83ecb3bab30e5fa2bff25f4f757dfcf8960fb6ac",
+      "horizontalOverflow": 0,
+      "goalHeading": "Get help.",
+      "nextStepAction": "Contact support",
+      "screenshot": "release-help-1280-20261121-4d81.png",
+      "visuallyInspected": true
+    },
+    "mobileHelp": {
+      "width": 390,
+      "height": 844,
+      "domRead": true,
+      "visualAcceptance": "UNVERIFIED",
+      "errors": ["browser command playwright timed out (32000ms)", "browser screenshot surface preparation timed out after 3000ms"]
+    },
+    "report": {
+      "navigation": "completed after the command timed out",
+      "observation": "shell and main only in the later snapshot",
+      "acceptance": "UNVERIFIED"
+    },
+    "signedInAcceptance": "UNVERIFIED; no fresh sign-in performed",
+    "freshSentryWatch": "not performed"
+  },
+  "remaining": [
+    "Fresh complete rendered acceptance at 1280 and 390 for /help, /report and /safety, including authenticated reporting states through an approved session.",
+    "Check the actual /support contact page; it is not a redirect to /help. Preserve current D-365 content and its separate policy ownership.",
+    "Complete the applicable route-specific Sentry watch.",
+    "Keep the release row todo until remaining acceptance is supported by evidence. Never re-add the released switch or restore retired page bodies."
+  ]
+}
