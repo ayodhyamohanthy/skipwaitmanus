@@ -8423,7 +8423,7 @@
       "tier": 2,
       "lane": "picker-report-append",
       "branch": "agent/queue/picker-report-append-snapshot-8817",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-372",
       "dependsOn": [
         "PICKER-snapshot-scope"
@@ -8437,7 +8437,7 @@
         "docs/DECISIONS.md"
       ],
       "epic": "D-212",
-      "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
+      "note": "Completed: protected PR1427 mergedf8a1199be from finaldacf50caf after green required CI44910960984; mainCI44911225644 passed. All28 authoritative-ref cases passed after the single red-first STOP in44908822613. Ordinary guarded reportfdf79482eb7bc8d7fa232598236c04f828edf464 succeeded from main without a snapshot retry. Ordinary picker takeoverf42ee2bbb for D-174-seeker-journey-build.jobs-list then succeeded after bounded rereads. D372 was consumed only for this pre-bound source repair; no fabricated Claim, force, auth/freshness/ownership/CI bypass or product/money/flag change. The exception is expired and grants no future manual dispatch. Full proof and honest local-run limits are in the packet."
     }
   ]
 }
