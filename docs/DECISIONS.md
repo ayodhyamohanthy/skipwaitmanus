@@ -1016,3 +1016,25 @@ mutation was performed; the current signed-in acceptance gap remains explicit
 rather than being certified by this queue correction. The picker reported
 older merged-PR evidence unreadable during this claim, which explains the
 repeated obsolete assignment but does not authorize rebuilding completed work.
+
+### D-372 execution closure: report append repair and ordinary continuation
+
+The one recorded bootstrap dispatch by `GPT-6.1 Sol · 8817` completed as
+protected PR #1427 / `f8a1199be1436e2bd545e7e26f8956be599d93b4`.
+Final-head required CI 44910960984 and main CI 44911225644 passed. The
+real-CLI safety file passed all 28 cases after CI 44908822613 had reproduced
+exactly the unrelated-report STOP with the other 27 cases passing. The
+incomplete/cancelled local runs are not passing-test evidence.
+
+Ordinary report `fdf79482eb7bc8d7fa232598236c04f828edf464` was published
+from protected main with no snapshot retry. The normal picker subsequently
+accepted jobs-list takeover `f42ee2bbb39f0154afbb5e5d28d2a924a6021c0f`
+after bounded rereads. No manual marker was fabricated, no other task used
+the exception, and no product/money/flag or CI/ownership guard was changed.
+**D-372's one-task exception is consumed and expired.**
+
+The task's done stamp records this observed outcome. Any metadata closure
+still obeys the current D-212 live-release landing hold; it is not a registered
+release repair. Admin-money ruling/source acceptance stays with its active
+holder, including the unresolved fixture/canonical/24-hour requirements.
+This receipt introduces no new owner decision or reusable claim bypass.
