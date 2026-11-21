@@ -483,3 +483,5 @@ landing authority or a live release. Historical heads ran old workflow
 revisions; require current-main composition and real current exact-head CI,
 not a fabricated gate-only reading. Follow the dated reconciliation in
 DECISIONS.md and all actual qualification/review/shared-hunk gates.
+
+REL-rollback-skew (D-373 (6), 2026-11-21, registered by Claude Code): reopened on the fresh branch `agent/queue/rel-rollback-drill` for item 3 only. Items 1 and 2 stand as landed in PR #876; the picker had read the old branch as done, so item 3 was never handed out. Run the production web rollback-and-forward drill through `rollback.yml` (web to the previous release, then forward to the current `main` release) and record both run links with the canonical exact-SHA readbacks here. D-350 (1) authorizes the drill while there are no users. `SYNC-LOG-off-main` no longer waits for this row.
