@@ -33,10 +33,10 @@ import {
   mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
-import { autoLandCandidates, autoLandHold, runAutoLand } from "./autoLand.mjs";
+import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
 
@@ -264,22 +264,34 @@ async function githubWrite(repo, method, path, body) {
     body: JSON.stringify(graphql ? { query: path, variables: body } : body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`GitHub ${graphql ? "GraphQL" : path} answered ${res.status}`);
+  // The status travels with the error: a 403 from GraphQL is the cloud proxy's refusal, which has a REST route (D-376).
+  if (!res.ok) throw Object.assign(new Error(`GitHub ${graphql ? "GraphQL" : path} answered ${res.status}`), { status: res.status });
   if (graphql && Array.isArray(json.errors) && json.errors.length) throw new Error(`GraphQL: ${String(json.errors[0]?.message ?? "error").slice(0, 120)}`);
   return json;
 }
 
-/** PICKER-auto-land (D-371): land every green, in-sync task pull request the board shows; never while main is red. */
-async function autoLandFrom({ doc, mainCi, openPrs, prCi, board }) {
+/**
+ * PICKER-auto-land (D-371): land every green, in-sync task pull request the board shows; never while main is red,
+ * and while the live release is red only its registered fix (D-376). Where GraphQL is refused (Claude Code cloud
+ * sessions), the ready and auto-merge steps use the proxy's REST routes (PICKER-auto-land-cloud, D-373 (4)).
+ */
+async function autoLandFrom({ doc, mainCi, openPrs, prCi, board, release }) {
   const hold = autoLandHold({ mainCi, openPrs });
   if (hold) { console.log(`auto-land: held (${hold})`); return []; }
-  const candidates = autoLandCandidates({ rows: board, tasks: doc.tasks, prCi });
+  const releaseLine = releaseHoldLine(release);
+  if (releaseLine) console.log(`auto-land: ${releaseLine}`);
+  const candidates = autoLandCandidates({ rows: board, tasks: doc.tasks, prCi, release });
   if (!candidates.length) { console.log("auto-land: no green task pull request waiting"); return []; }
+  const rest = route => githubWrite(doc.repo, route.method, route.path, route.body);
   return runAutoLand(candidates, {
     readPull: number => github(doc.repo, `/pulls/${number}`),
-    markReady: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){clientMutationId}}", { id }),
+    markReady: graphqlOrRest(
+      id => githubWrite(doc.repo, "POST", "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){clientMutationId}}", { id }),
+      (_id, number) => rest(CLOUD_ROUTES.ready(number))),
     updateBranch: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/update-branch`, { expected_head_sha: sha }),
-    enableAutoMerge: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}", { id }),
+    enableAutoMerge: graphqlOrRest(
+      id => githubWrite(doc.repo, "POST", "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}", { id }),
+      (_id, number) => rest(CLOUD_ROUTES.autoMerge(number))),
     mergeNow: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/merge`, { merge_method: "merge", sha }),
     log: line => console.log(line),
   });
@@ -449,6 +461,31 @@ function pullRequestFacts(tasks, heads, branches) {
 const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) !== null;
 const tip = name => git("rev-parse", originRef(name));
 const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
+
+/** Other tasks' empty reports do not change this task's report/deduplication inputs. */
+function reportParentFor(task) {
+  const previous = decisionRefs.refs.get(REPORTS);
+  // A newly created log must still invalidate the original snapshot.
+  if (!previous) return base(REPORTS);
+  if (tryGit("fetch", "-q", "--no-tags", "origin", `+refs/heads/${REPORTS}:${originRef(REPORTS)}`) === null) {
+    throw new RefSnapshotChanged("report log refresh failed before append");
+  }
+  const current = tip(REPORTS);
+  if (current === previous) return current;
+  const range = `${previous}..${current}`;
+  if (tryGit("merge-base", "--is-ancestor", previous, current) === null
+    || tryGit("rev-list", "--count", "--merges", range) !== "0") {
+    throw new RefSnapshotChanged("report log history changed before append");
+  }
+  const changes = parseBranchLog(git("log", "--reverse", `--format=${BRANCH_LOG_FORMAT}`, "--name-only", range));
+  if (!changes.length || changes.some(change => {
+    const marker = parseMarker(change.subject);
+    return change.files.length !== 0 || marker?.verb !== "Report" || !marker.who || marker.id === task.id;
+  })) throw new RefSnapshotChanged("relevant or unknown report log input changed before append");
+  // The final scoped guard and non-force push still validate this exact parent.
+  decisionRefs.refs.set(REPORTS, current);
+  return current;
+}
 
 /**
  * Push one empty marker commit onto `parent` as `branch`. Returns the new
@@ -669,9 +706,21 @@ function requireSynced(doc, branches, who) {
   fail("your own work is not on origin yet (the MUST PUSH lines above); push it, then run this again", 3);
 }
 
+/**
+ * SYNC-auto-push (D-375): a clone where sessions claim work pushes every commit on its own. Installs the
+ * post-commit hook (and the 15-minute timer on macOS) when missing; silent when in place, in CI, a test run, a
+ * cloud container or after an opt-out. It never stops the picker: any failure is one printed line.
+ */
+function autoSyncSetup() {
+  const run = spawnSync(process.execPath, [fileURLToPath(new URL("./sync-clone.mjs", import.meta.url)), "--auto-setup"], { encoding: "utf8", timeout: 30_000 });
+  const lines = `${run.stdout ?? ""}${run.status === 0 || run.status === 1 ? "" : run.stderr ?? ""}`.trim();
+  if (lines) console.log(`AUTO-PUSH (D-375): ${lines.split("\n").join("\n  ")}\n`);
+}
+
 async function main() {
   const args = argsOf(process.argv.slice(2));
   if (args.claim) {
+    autoSyncSetup();
     const who = sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4));
     if (who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
     args.claim = who;
@@ -746,9 +795,9 @@ async function runCommand(args) {
     return;
   }
   if (args.autoLand) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register });
-    await autoLandFrom({ doc, mainCi, openPrs, prCi, board });
+    await autoLandFrom({ doc, mainCi, openPrs, prCi, board, release });
     return;
   }
   if (args.status) {
@@ -775,7 +824,7 @@ async function runCommand(args) {
     const note = sanitizeNote(args.note);
     const subject = markerSubject("Report", task.id, args.as, args.report);
     const body = args.report === "blocked" ? blockedReportBody(note, blockEvidenceFor(blockInput)) : note;
-    const sha = pushMarker(REPORTS, base(REPORTS), subject, body, writeScopeOf([task]));
+    const sha = pushMarker(REPORTS, reportParentFor(task), subject, body, writeScopeOf([task]));
     if (!sha) {
       refreshAuthoritativeRefs();
       throw new RefSnapshotChanged("report push rejected; authoritative snapshot changed");
@@ -816,7 +865,7 @@ async function runCommand(args) {
     // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
     // PICKER-auto-land (D-371): every claim first lands the green, in-sync task pull requests the board shows.
-    if (args.claim && attempt === 1) await autoLandFrom({ doc, mainCi, openPrs, prCi, board });
+    if (args.claim && attempt === 1) await autoLandFrom({ doc, mainCi, openPrs, prCi, board, release });
     if (pick.kind === "ceo") pick.board = board;
     // D-358: the short board, so the assignment below survives an agent's output cap; --status prints the full one.
     else console.log(renderBoardSummary(board));

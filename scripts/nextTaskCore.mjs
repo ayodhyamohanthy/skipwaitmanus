@@ -1559,8 +1559,8 @@ export function releaseLandingHold(release) {
   return red.length ? { sha: release.sha, lights: red.map(l => l.number), incidents: release.incidents ?? [] } : null;
 }
 
-// Only an explicit association in the authoritative main registry grants repair priority.
-function releaseFixTasks(tasks, hold) {
+// Only an explicit association in the authoritative main registry grants repair priority (auto-land reads it too, D-376).
+export function releaseFixTasks(tasks, hold) {
   if (!hold) return [];
   return tasks.filter(task => {
     const note = String(task.note ?? "");

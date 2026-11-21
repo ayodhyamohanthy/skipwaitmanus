@@ -115,3 +115,16 @@
 - **Owner questions:** none new.
 - **Findings for the queue:** `D-048-p3-for-companies` is still handed out as BUILD while its id is in `RELEASED` (reported Nov 11 and Nov 13). `D-086.mount` (#1169) is handed LAND, but it conflicts in `Explore.tsx` with #1161's redesign, so it needs a builder to merge main before a lander can land it.
 - **Cursor:** unchanged from the Oct 26 section.
+
+### 2026-11-21, Claude Code (session ccr-d3ee9f32-69o0tx; owner asked "Make sure local build is pushing to repo without manually pushing to GitHub"; a partial review, not the full D-206 pass)
+- **Scope, stated plainly:** only the decisions this change rests on. The full D-206 pass was **not** done; the Cursor is unchanged.
+- **Measured on main `7076b65b`:** `scripts/sync-clone.mjs` (SYNC-clone-guard, #1445) pushes committed branch work only when someone runs it. Its timer is opt-in and has to be typed once per Mac. A commit on local `main` is only reported, so it stays on the machine.
+- **Ratings (against the goal: the go-to global site for job referrals, getting people referred faster):**
+  - **D-373 (5) as built (opt-in timer), 6/10.** The sync rules are right, but "nothing is installed without the flag" left the owner's own clone depending on a command nobody is reminded to type. Fine-tuned by D-375: a post-commit hook, and the picker installs the hook and timer by itself.
+  - **D-205 (every clone in sync with GitHub), 9/10.** Still right. Below 10 because landing still needs a pull request: a pushed branch without one is visible but never lands, and that stays a deliberate gate (D-166).
+  - **D-082 / D-166 (nothing reaches `main` except a queue row's pull request on green CI), 9/10.** Kept unchanged. D-375 saves local `main`'s own commits on a `sync/main-<sha>` branch rather than weakening this. Below 10 because those saved commits still need a session to bring them in.
+  - **D-371 (auto-land), 8/10.** Works where GraphQL is reachable. From cloud sessions it needs `PICKER-auto-land-cloud`, which is still unbuilt; that row is the next gap between "pushed" and "on main".
+  - **D-375 (new), 9/10.** Below 10 until a real Mac run shows the hook and timer installed by `--claim`; this session could test only on Linux.
+- **Actions:** D-375 recorded, with row `SYNC-auto-push` and its packet section in `docs/plans/BRANCH-HYGIENE.md`. No price, legal text, login rule, money path or owner-held row changed.
+- **Owner questions:** none new.
+- **Cursor:** unchanged from the Oct 26 section.

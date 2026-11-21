@@ -31,6 +31,7 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/support/, "Support"],
   [/^\/premium/, "Premium"],
   [/^\/agents/, "Assistants"],
+  [/^\/work/, "Your work"],
 ];
 
 export function shellPageTitle(path: string): string {

@@ -1,6 +1,6 @@
 # PICKER-auto-land: green task pull requests land on their own (D-371)
 
-Status: in review (PR open). Row `PICKER-auto-land`, branch `agent/queue/picker-auto-land`, decision D-371 (3). The owner said "auto land" on Nov 20, 2026.
+Status: `PICKER-auto-land` landed through PRs #1403 and #1406 (report `8021964cb`); branch `agent/queue/picker-auto-land`, decision D-371 (3). The owner said "auto land" on Nov 20, 2026. Follow-up row `PICKER-auto-land-cloud` (section 7, D-373 (4)) is registered and not built yet.
 
 ## 1. Why
 
@@ -49,3 +49,24 @@ Two fixes follow:
 - **REST fallback:** when auto-merge cannot be enabled, a ready PR that is already clean against main merges at once over REST, at the same SHA and with the same checks. A behind or draft PR is never merged this way.
 
 Tests: 3 new ones failed on the earlier code, and now 11/11 pass. The `scripts/` suite passes 1658/1658.
+
+## 7. Follow-up: `PICKER-auto-land-cloud` (D-373 (4))
+
+**Why.** Claude Code cloud sessions cannot reach GitHub GraphQL. Their proxy answers 403 with "GitHub GraphQL is not available from Claude Code sessions" and names REST routes for the same actions. So from those sessions, `markPullRequestReadyForReview` and `enablePullRequestAutoMerge` always fail. A quiet draft is never marked ready, and a PR that was behind is updated but never queued; it lands only if a later run happens to find it clean. The owner wants green work on `main` without anyone syncing by hand (D-373 (1)), from every session.
+
+**Change** (`scripts/next-task.mjs`, `scripts/autoLand.mjs`):
+- `runAutoLand` passes the pull-request number with the node id to `markReady` and `enableAutoMerge`, so the I/O layer can choose a route.
+- In `scripts/next-task.mjs`, when the GraphQL call fails with HTTP 403 (the proxy refusal), the same step uses the session's REST route once:
+  - mark ready: `POST /repos/{owner}/{repo}/pulls/{number}/ccr/ready_for_review`;
+  - auto-merge: `PUT /repos/{owner}/{repo}/pulls/{number}/ccr/auto_merge` with the merge-commit method (never squash or rebase).
+- Any other GraphQL error, or a failed REST route, is reported on that PR's line, and the next candidate still runs (section 2). The existing clean-and-ready REST merge fallback (section 6) stays as the last resort.
+- Nothing else changes: the same candidates, the same holds (red main, unreadable PRs), the same draft quiet time.
+- **Release hold (D-376).** `autoLandHold` also takes the live release that `state({ withRelease: true })` reads. While `releaseLandingHold(release)` returns a hold (a red light 4 to 7 on the exact released SHA), auto-land touches no pull request except one whose row is a registered release fix: the `Fixes release: <sha>` / `Fixes incident: #<n>` note that `releaseFixTasks` reads. An unreadable release adds no hold, as in the picker. `--claim` and `--auto-land` both read the release before auto-land runs.
+
+**Tests** (red first, `scripts/autoLand.test.ts`, injected I/O): a red live release holds every candidate except a registered release fix, and an unreadable or green release adds no hold; GraphQL 403 then the REST route succeeds, for both ready and auto-merge; GraphQL 403 then the REST route fails, which gives an error line and the next candidate still runs; a non-403 GraphQL error does not try the REST route; the merge method is always a merge commit.
+
+**Done means:** green required CI on the pull request; one real `node scripts/next-task.mjs --auto-land` run from a Claude Code cloud session that turns auto-merge on, or marks a quiet draft ready, on a real green task PR, with its output pasted in the pull request.
+
+## Status
+One line per task (D-134).
+- PICKER-auto-land-cloud: in progress — Claude Code · e969 — 2026-11-21 — branch agent/queue/picker-auto-land-cloud

@@ -11,6 +11,8 @@ import { openAskSlotsSchema, type OpenAskSlots } from "@shared/openAskSlots";
 import { referralStatuses } from "@shared/referral";
 import { askInviteMineSchema } from "@shared/askInvites";
 import { readApiJson } from "@/lib/apiResponse";
+import { askReconfirmResponseSchema } from "@shared/askReconfirm";
+import { ASK_RECONFIRM_ERROR } from "@shared/moneyCopy";
 
 export const LOAD_ERROR = "We could not load your referral requests";
 export const NETWORK_ERROR = "We couldn’t reach skipwait.me. Check your connection and try again.";
@@ -32,6 +34,7 @@ const referralRequestSchema = z.object({
   // D-061 window fields: a waiting ask counts 90 days from creation (and shows no countdown),
   // everything else 7 days from first visibility (pre-0095 rows: creation).
   waitingForCoverage: z.boolean().optional().catch(undefined),
+  awaitingReconfirm: z.boolean().optional(),
   coverageVisibleAt: z.string().nullish().transform(value => value ?? null),
   // D-050: a personal-link ask its employee has not acted on still counts as unclaimed. Optional so a
   // payload from before the flag still parses; a malformed flag reads as not held (the server decides a withdraw).
@@ -84,4 +87,16 @@ export async function fetchMyRequests(getToken: TokenSource): Promise<MyRequests
   const parsed = requestListSchema.safeParse(payload);
   if (!parsed.success) throw new Error(LOAD_ERROR);
   return parsed.data;
+}
+
+export async function reconfirmRequest(requestId: number, getToken: TokenSource): Promise<void> {
+  const token = await getToken();
+  const response = await fetch(`/api/company-referrals/${requestId}/reconfirm`, {
+    method: "POST", credentials: "include",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: "{}",
+  });
+  if (!response.ok) throw new Error(ASK_RECONFIRM_ERROR);
+  const result = askReconfirmResponseSchema.safeParse(await readApiJson(response, ASK_RECONFIRM_ERROR));
+  if (!result.success || result.data.requestId !== requestId) throw new Error(ASK_RECONFIRM_ERROR);
 }
