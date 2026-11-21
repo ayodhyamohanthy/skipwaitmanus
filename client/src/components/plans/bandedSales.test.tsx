@@ -189,6 +189,32 @@ describe("BANDED-ui: the offer decides what /plans sells", () => {
     expect(posts(fetchMock, BANDED_PLAN_CHECKOUT_PATH)).toEqual([]);
   });
 
+  // REL-plans-signed-out-token (incident #1439): a signed-out offer read must not ask WorkOS for a token. The SDK
+  // answers getAccessToken() with a refresh request that WorkOS refuses with 400, which fails live release verification.
+  it("signed out: the offer read asks for no token and sends no Authorization header", async () => {
+    auth.isSignedIn = false;
+    auth.getToken.mockClear();
+    const fetchMock = routes({ [BANDED_OFFER_PATH]: () => json(200, { onSale: false }) });
+    show();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe(BANDED_OFFER_PATH);
+    expect(init?.credentials).toBe("include");
+    expect(new Headers(init?.headers).has("Authorization")).toBe(false);
+    expect(auth.getToken).not.toHaveBeenCalled();
+  });
+
+  it("signed in: the offer read still sends the bearer token and the cookie", async () => {
+    auth.getToken.mockClear();
+    const fetchMock = routes({ [BANDED_OFFER_PATH]: () => json(200, { onSale: false }) });
+    show();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init?.credentials).toBe("include");
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-token");
+    expect(auth.getToken).toHaveBeenCalled();
+  });
+
   it("a member sees their plan named and no plan checkout anywhere", async () => {
     routes({ [BANDED_OFFER_PATH]: () => json(200, onSale("early_to_mid")) });
     show();
