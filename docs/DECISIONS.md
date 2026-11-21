@@ -926,3 +926,37 @@ gate, price, legal, login, refund, flag, activation or production change;
 no new decision ID or product-completion claim. BANDED-release still owns
 TEST-site purchase proof, authorized activation and exact-release acceptance.
 
+### November 21 admin-money synthetic capture unblock (D-200)
+
+Official UNBLOCK `GPT-6.1 Sol · 8817`, lock `cfa336993`, checked main
+`180dd268b`, current instructions and D-332/D-344/D-346/D-349/D-366–D-371,
+prior block `acf42760a`, and unchanged draft #1365 / `4a110136`.
+Retained CI 44639531167/job135966841047 proves the bounded capture failure:
+six route/viewport cases pass; catalog dry-run GET502 fails at both widths.
+No failed job/test was rerun. The current harness has no catalog network
+fixture. This does not establish a live provider outage or source completion.
+
+The existing release acceptance carrier may repair that harness through its
+normal eligible picker stage, with `e2e/release-captures.e2e.ts` explicitly
+owned. Scope prerequisite #1414 merged `180dd268b` on green CI44896819165
+before this ruling. Keep merged gate #1246 and its differing unpublished
+local work untouched; D-314/D-370 permit an isolated shared-file repair,
+not a takeover, new serialization edge or review/Fixed ritual.
+
+Only the local seeded-admin admin-money catalog capture may fulfill the
+exact catalog-sync GET with a deterministic synthetic test plan validated
+by the current `catalogSyncDryRunSchema`/banded contracts. Show meaningful
+extras/excluded explanations. Never intercept apply/POST or unrelated
+requests as successful, alter auth/backend/provider behavior, inject page
+state, weaken the global page-error/5xx checks or accept an error/sign-in
+page as the loaded catalog. No live provider calls or money actions.
+
+The bounded contract is [split packet, Admin-money capture unblock](plans/D-048-phase-3-split.md#admin-money-capture-unblock-contract-november-21-d-200).
+Keep the actual four-route/eight-image current-head capture proof, behavior
+tests, required CI, protected landing, canonical identity/readiness/admin
+acceptance and 24-hour Sentry release watch. The prior 48 synthetic captures
+are history, not live proof. R stays todo, checked to D-371; K's R dependency
+and D-370 owner park until BANDED-release stay. No new task or decision ID,
+source/capture/production acceptance, pricing/refund/sales/flag change,
+gate waiver or other-holder change is created by this ruling.
+
