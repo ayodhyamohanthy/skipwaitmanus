@@ -402,7 +402,12 @@ Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person,
 
 `BANDED-catalog-sync` implements the existing pricing decisions, not a new price or sale permission: catalog provisioning derives six monthly plan prices and eight per-level extra-referral prices from `shared/planFamily.ts`, using the shared `bandedCatalog` IDs/validated amounts. The existing admin dry-run/apply path keeps its reviewed hash, create-only operations, failure stops and audit trail; paused packs, passes and human sessions are excluded rather than recreated. Senior to Executive can be provisioned while its application-only checkout gate remains separate. Monthly metadata is catalog-only and does not register a new price in the legacy checkout resolver. No provider apply or sale activation occurs in this row; protected required CI and exact-release acceptance remain, then BANDED-release supplies its TEST-site proof and authorized admin apply under D-370 (6). Source/test evidence and known verification limits live in the packet Status section.
 
+### November 21 banded spend execution receipt (D-219/D-367/D-370)
+
+November 21 spend execution, `GPT-6.1 Sol · 1331`: the assigned BANDED-spend carrier implements the existing D-219/D-367 allocation and accepted-price invariant behind `BANDED_SALES_ENABLED=false`. Quote, locked allocation and debit share the request level and source/cycle identity; a stale confirmation rolls back business and reconciliation writes. Request-bound replay and source-preserving refunds retain the earlier F1/F2 guarantees without restoring the superseded per-level credit cost. The packet records current tests and remaining acceptance. This is an implementation receipt, not a new owner decision, a completed release, a provider action or permission to enable sales; BANDED-release remains the activation row.
+
 ### November 20 launch QA and reviewer credential handling (D-200)
+
 
 Official `LAUNCH-live-qa` unblock `6d6f9138c`, GPT-6.1 Sol · 67c6, checked through D-370 on `aec141720`. [Reset run 44709862016](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44709862016) succeeded on `f759d63de`. [Deploy run 44757175398](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44757175398) passed rollout and readiness checks. The canonical readiness endpoint served `73be7b313`, matching the release in session report `cd01bb1af` for the two demo sign-ins. This evidence supplements the earlier failed reset in #1381. Both runs predate the release-time credential path. [PR #1382](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1382) merged at `38b9a44e6`. Its [push workflow](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44758926866) validated pipeline fixtures and skipped the rollout and readiness steps.
 
@@ -891,3 +896,37 @@ existing K branch/PR is modeled. This diagnostic is not a live claim and
 does not waive D-134 review/fix/landing dependency gates or current holders.
 
 
+### November 21 accepted-price carrier absorption (D-200, D-367)
+
+Official UNBLOCK `GPT-6.1 Sol · 8817`, claim `e2f84a1ec`, checked main
+`dc555447a`, the current instructions, D-219/D-221/D-366–D-371, prior block
+`227e11c15`, merged #1336 (`86a0c62d`) and #1363 (`0facc460`), and unchanged
+product #1269 (`7e1d3649`). D-367 (6) explicitly places the accepted-price
+guard inside `BANDED-spend`; the current pricing page and banded packet agree.
+The still-active D-132-item3 row and its D-366-only routing are stale, not a
+second implementation mandate or a new owner question.
+
+Withdraw only that duplicate registration from the active queue. Do not
+mark its source shipped or mark BANDED-spend done. Transfer its necessary
+shared/create/preview/rollback test companion paths to the existing
+BANDED-spend carrier, retaining that row's priority, lane, branch, tier and
+prerequisites. Redirect the actual SKIPPY-fix and D-174-held-ask-reconfirm
+output edges to BANDED-spend; keep all other prerequisites and holds.
+Their green PRs still cannot land before the required output exists.
+The three affected current row stamps advance to checked D-371.
+
+Preserve #1269, reviewer 630a's findings, b53c's `d1300293` F1/F2 repairs and
+all prior markers as source/evidence, never an inherited pass. Reuse must
+fit the D-219/D-367 banded mapping and actual balances and prove atomic
+confirmation/charge equality, reconciliation rollback, same-key reconfirmation
+and user/request-bound replay on current main. The old null-band policy,
+level-to-credit fixtures and standalone FIX/LAND instructions are superseded;
+ASK_LEVEL_COST stays off. D-370 removes review/Fixed rituals, not required CI.
+
+Current handoff: [historical guard packet §14](plans/D-132-item3-accepted-price.md#14-november-21-d-367-absorption-into-banded-spend)
+and [banded packet §8](plans/PRICING-banded-checkout.md#8-one-accepted-price-implementation-carrier-d-367-6).
+The obsolete fixed-id test pin is replaced by actual-picker refusal/landing
+cases for both consumers under the production no-review policy. No runtime,
+gate, price, legal, login, refund, flag, activation or production change;
+no new decision ID or product-completion claim. BANDED-release still owns
+TEST-site purchase proof, authorized activation and exact-release acceptance.
