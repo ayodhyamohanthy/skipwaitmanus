@@ -977,6 +977,48 @@ gate, price, legal, login, refund, flag, activation or production change;
 no new decision ID or product-completion claim. BANDED-release still owns
 TEST-site purchase proof, authorized activation and exact-release acceptance.
 
+### November 21 admin-money synthetic capture unblock (D-200)
+
+Official UNBLOCK `GPT-6.1 Sol · 8817`, lock `cfa336993`, checked main
+`180dd268b`, current instructions and D-332/D-344/D-346/D-349/D-366–D-371,
+prior block `acf42760a`, and unchanged draft #1365 / `4a110136`.
+Retained CI 44639531167/job135966841047 proves the bounded capture failure:
+six route/viewport cases pass; catalog dry-run GET502 fails at both widths.
+No failed job/test was rerun. The current harness has no catalog network
+fixture. This does not establish a live provider outage or source completion.
+
+The existing release acceptance carrier may repair that harness through its
+normal eligible picker stage, with `e2e/release-captures.e2e.ts` explicitly
+owned. Scope prerequisite #1414 merged `180dd268b` on green CI44896819165
+before this ruling. Keep merged gate #1246 and its differing unpublished
+local work untouched; D-314/D-370 permit an isolated shared-file repair,
+not a takeover, new serialization edge or review/Fixed ritual.
+
+Only the local seeded-admin admin-money catalog capture may fulfill the
+exact catalog-sync GET with a deterministic synthetic test plan validated
+by the current `catalogSyncDryRunSchema`/banded contracts. Show meaningful
+extras/excluded explanations. Never intercept apply/POST or unrelated
+requests as successful, alter auth/backend/provider behavior, inject page
+state, weaken the global page-error/5xx checks or accept an error/sign-in
+page as the loaded catalog. No live provider calls or money actions.
+
+The bounded contract is [split packet, Admin-money capture unblock](plans/D-048-phase-3-split.md#admin-money-capture-unblock-contract-november-21-d-200).
+Keep the actual four-route/eight-image current-head capture proof, behavior
+tests, required CI, protected landing, canonical identity/readiness/admin
+acceptance and 24-hour Sentry release watch. The prior 48 synthetic captures
+are history, not live proof. R stays todo, checked to D-371; K's R dependency
+and D-370 owner park until BANDED-release stay. No new task or decision ID,
+source/capture/production acceptance, pricing/refund/sales/flag change,
+gate waiver or other-holder change is created by this ruling.
+
+Takeover `01f283ff2`, `GPT-6.1 Sol · 2286`, rechecked the existing ruling on
+main `be9d67e87` through D-371. The retained job still records exactly two
+catalog GET failures and six passing captures; the current capture harness
+has no catalog interception. Preserve #1415's prepared contract and #1365's
+source/acceptance history while merging both sides of current-main docs.
+This takeover supplies no source fix, fresh image, live acceptance or new
+owner instruction. The protected docs landing releases only the routing block.
+
 ### November 21 referral-review email retry handoff (D-200, D-212, D-350, D-370)
 
 Official unblock `a61ffaff3` by GPT-6.1 Sol · 64c5. Main `d382bb902` and decisions through D-371 checked. The D-255 owner question was answered by D-350. PR #1341 supplied additive migration 0122, and its [production verification](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44615462269) passed. The migration file is byte-identical on main and the [retry PR #874](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/874).
