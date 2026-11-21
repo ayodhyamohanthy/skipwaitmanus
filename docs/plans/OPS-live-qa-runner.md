@@ -85,4 +85,5 @@ One line per row (D-134): `<id>: in progress — <who> — <date> — branch <b>
 
 - Registered by Claude Code (session `ccr-f3a4e037-1voydq`) on 2026-11-21 under D-373. Nothing built yet.
 - D-374 (2), 2026-11-21: the owner adds the two plaintext secrets (section 4, step 1). No session sets them or asks for their values. Steps 2 and 3 are any session's once `OPS-reviewer-plaintext-reset` lands.
+- OPS-reviewer-plaintext-reset: landed through #1457 (merge `2186b0ba`) — Claude Code · e969 — 2026-11-21. Live acceptance, one real reset with both demo sign-ins on that exact release, waits for the owner's two secrets (D-374 (2), section 4 step 1). The first `OPS-live-qa-runner` run is that proof.
 - OPS-live-qa-runner: in progress — Claude Code · e969 — 2026-11-21 — branch agent/queue/ops-live-qa-runner
