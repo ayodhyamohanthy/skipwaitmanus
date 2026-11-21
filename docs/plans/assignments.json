@@ -8393,6 +8393,28 @@
       ],
       "note": "D-368 routing, D-048-retire.md §3c. Repair only the released Goal form's native hiring-now required-link parity; walk-ins stay optional, D-364 paste/blur completion and existing server/work-email gates stay unchanged. Carry forward #1297's missing-link regression, keep the legacy controls and prove blank blocks and valid link publishes in intercepted browser tests at 1280/390. No Kit deletion, route/release toggle, API, sign-in or payment change. Protected current-head CI and canonical web acceptance are required before retirement. This is the goal-build follow-up, not a reopening of the original build/release.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "PICKER-snapshot-scope",
+      "title": "A marker write compares only its own task's refs and judges a moved main by content, so other agents' activity never starves a claim",
+      "row": "D-085",
+      "packet": "docs/plans/PICKER-snapshot-scope.md",
+      "tier": 2,
+      "lane": "picker-snapshot-scope",
+      "branch": "agent/queue/picker-snapshot-scope",
+      "status": "todo",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "docs/plans/PICKER-authoritative-ref-refresh.md",
+        "docs/plans/assignments.json",
+        "docs/BUILD_CONTINUITY.md",
+        "AGENTS.md"
+      ],
+      "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324). Implementation is already open as PR #1421 by Claude Code · d891 on this branch with auto-merge on; it marks this row done when it lands. Appended last (FIFO) so no session is handed it first."
     }
   ]
 }
