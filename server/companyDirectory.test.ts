@@ -88,7 +88,7 @@ describe("company directory availability", () => {
     const directory = createCompanyDirectory(source({ companies: [acme], domains, candidates, allocated: { 4242: 1 } }));
     const serialized = JSON.stringify([await directory.list(), await directory.get("acme")]);
     expect(serialized).not.toMatch(/4242|4343|userId|referrerId|capacity|allocated|paused|suspended|referrerCount|openToReferrals|openCount/);
-    expect(serialized).not.toMatch(/"(?:count|referrers|names?)"/);
+    expect(serialized).not.toMatch(/"(?:count|referrers|referrerNames?)"/);
     expect(Object.keys((await directory.list()).companies[0]!).sort()).toEqual(["blurb", "domains", "functions", "industry", "initials", "location", "name", "slug"]);
     expect(Object.keys((await directory.get("acme"))!).sort()).toEqual(["blurb", "domains", "functions", "industry", "initials", "location", "name", "referrerPresence", "slug"]);
   });
