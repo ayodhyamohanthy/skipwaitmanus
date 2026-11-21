@@ -138,6 +138,6 @@ function CompanyJobsContent({ company, onPickJob, onPasteJobLink }: CompanyJobsP
       <GoalField label="Job function" htmlFor={`${id}-function`}><select id={`${id}-function`} className={SELECT_CLASS} value={filters.function} onChange={event => changeFilter("function", event.target.value)}><option value="">All functions</option>{Object.keys(facets?.functions ?? {}).sort().map(value => <option key={value} value={value}>{value}</option>)}</select></GoalField>
     </div> : null}
     <div aria-live="polite">{body}</div>
-    <p className="mt-4 text-g-meta text-g-ink-3">Have another role in mind?{onPasteJobLink ? <GoalButton variant="ghost" flush className="ml-1" onClick={onPasteJobLink}>Paste a job link</GoalButton> : <> <Link href="/ask" className={`inline-flex min-h-11 items-center ${TEXT_LINK}`}>Paste a job link</Link></>}</p>
+    <p className="mt-4 text-g-meta text-g-ink-3">Have another role in mind?{onPasteJobLink ? <GoalButton variant="ghost" flush className="ml-1" onClick={() => onPasteJobLink()}>Paste a job link</GoalButton> : <> <Link href="/ask" className={`inline-flex min-h-11 items-center ${TEXT_LINK}`}>Paste a job link</Link></>}</p>
   </section>;
 }
