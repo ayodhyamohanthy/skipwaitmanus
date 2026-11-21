@@ -26,6 +26,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Public repo (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
 - Banded quote, spend and refund contract (sales off): [packet](plans/PRICING-banded-checkout.md).
+- Skippy remains off: its [repair packet](plans/SKIPPY-fix.md) binds confirmation to the existing banded allocation, checks the employer before resume work and restricts agents to an explicit account allowlist. Server test proof does not replace the required QA-schema/browser acceptance.
 
 ## Working with the owner
 

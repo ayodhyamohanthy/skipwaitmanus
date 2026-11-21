@@ -35,6 +35,12 @@ An in-product assistant, like Sentry Seer: it asks, shows an approve or deny car
 | 6 | Agents send with ask-every-time | every send needs the seeker's approval; cap; audit; referrer sees "sent via the seeker's assistant" | End to end with screenshots | Packet written: SKIPPY-6 (`docs/plans/SKIPPY-next.md`). Waits for SKIPPY-fix |
 | 7 | Opt-in auto-send within limits | limits enforced; revoke stops sends at once; never buys credits | End to end with screenshots | Rulings written; packet after SKIPPY-6 (SKIPPY-7) |
 
+## Repair contract (SKIPPY-fix, November 21, 2026)
+
+The server repair checks the employer through the normal job-link preview before resume work. When banded sales are enabled, the quote comes from `previewBandedAskCost`; confirmation binds the displayed job level, coverage and exact allocation source/cycle to the existing create transaction. A changed quote or transaction mismatch requires another explicit confirmation with the same idempotency key. Numeric success copy uses only returned `chargedCost`; legacy results without that field make no numeric charge claim. New requests emit `company_referral.created` plus the Skippy event; replays emit neither.
+
+Seeker agents require both `SKIPPIE_AGENT_ENABLED` and an explicit `SKIPPIE_AGENT_USER_IDS` allowlist; blank allows nobody. The account-session guard checks the signed-in account, and the key guard checks the grant owner before status or usage. The Worker forwards the key to the container. These are server implementation changes, not live proof or activation. The packet's QA-schema and 1280/390 browser acceptance remains unverified.
+
 ## Pre-launch checklist (before ANY public seeker-facing launch)
 - [ ] Trademark and name-clearance search for "Skippy" (it is also a known food brand; a "Skipper" app and others exist in AI assistants).
 - [ ] Confirm the model provider's data terms (resumes and notes). D-204 picks Azure OpenAI on the Microsoft for Startups credits (no training on prompts to confirm), with AWS Bedrock as the fallback; switching is config only.
