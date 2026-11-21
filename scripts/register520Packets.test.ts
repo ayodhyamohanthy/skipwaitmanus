@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -12,8 +13,6 @@ const d203Start = decisions.indexOf("\n| D-203 |", d202Start);
 const d202 = d202Start >= 0 && d203Start > d202Start ? decisions.slice(d202Start, d203Start) : "";
 const decisionSync = read("docs/plans/PICKER-decision-sync.md");
 const skippyFix = read("docs/plans/SKIPPY-fix.md");
-const assignmentData = JSON.parse(read("docs/plans/assignments.json")) as { tasks: Array<{ id: string; dependsOn?: string[] }> };
-const skippyFixTask = assignmentData.tasks.find(task => task.id === "SKIPPY-fix");
 
 describe("REGISTER-520 packet contracts", () => {
   it("lets any capable session re-sync D-202 work under the newer D-200 rule", () => {
@@ -37,7 +36,41 @@ describe("REGISTER-520 packet contracts", () => {
     expect(skippyFix).toMatch(/same database transaction.*before any debit/i);
     expect(skippyFix).toMatch(/price may change between the fresh quote and the database transaction/i);
     expect(skippyFix).not.toMatch(/no change to credits, prices or the ask transaction/i);
-    expect(skippyFixTask?.dependsOn).toContain("D-132-item3");
+  });
+
+  it("holds accepted-price consumers until the banded guard lands, then offers their green PRs", () => {
+    const env = { ...process.env };
+    delete env.SKIPWAIT_LEGACY_REVIEW_RULES;
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+      import { pickNextTask } from "./scripts/nextTaskCore.mjs";
+      import { readFileSync } from "node:fs";
+      const { tasks } = JSON.parse(readFileSync("docs/plans/assignments.json", "utf8"));
+      const now = Date.parse("2026-11-21T00:00:00Z");
+      const sha = "a".repeat(40);
+      const outcomes = ["SKIPPY-fix", "D-174-held-ask-reconfirm"].map(id => {
+        const consumer = tasks.find(task => task.id === id);
+        if (!consumer) throw new Error("Missing accepted-price consumer: " + id);
+        const pick = guardDone => pickNextTask({
+          tasks: tasks.map(task => ({ ...task,
+            status: task.id === id || (task.id === "BANDED-spend" && !guardDone) ? "todo" : "done",
+          })),
+          only: id,
+          mainCi: { state: "green", sha },
+          branches: new Map([[consumer.branch, { tipMs: now - 3 * 3_600_000, tipSha: sha, merged: false, work: true, markers: [] }]]),
+          openPrs: new Map([[consumer.branch, "https://github.com/example/project/pull/1"]]),
+          prCi: new Map([[consumer.branch, { state: "green", sha }]]),
+          mergedHeads: new Map(), reports: [], register: [], claimant: "Queue fixture · routing", now,
+        });
+        return [id, pick(false).kind, pick(true).kind];
+      });
+      console.log(JSON.stringify(outcomes));
+    `], { cwd: root, env, encoding: "utf8" });
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual([
+      ["SKIPPY-fix", "ineligible", "land"],
+      ["D-174-held-ask-reconfirm", "ineligible", "land"],
+    ]);
   });
 
   it("makes S-6 audit events replay-safe and keeps the normal ask schema", () => {

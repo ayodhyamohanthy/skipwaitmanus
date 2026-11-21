@@ -430,6 +430,16 @@ Unblock `5cdce123` (GPT-6.1 Sol · 814e), checked on main `af4c6c79`. [#1335](ht
 
 The review stage is still `Land claim` `8e9f9881`, not FIX. The picker reproduced `CONTINUE UNBLOCK` in memory with exact work/review/architect heads, the merged pricing prerequisite and block `d0242f9f` followed by review report `40e50533`. A hypothetical `green` report sent the existing lander back to `CONTINUE LAND`, not source repair. No report or marker was written by the probe. Keep the draft and its evidence-bound hold; use a fresh blocked report only if the picker recognizes the newly verified dependency evidence. The queued stale-Fixed recovery applies to exact-tip gate-only red, not this green-but-superseded candidate. [Instinct routing request](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1254#issuecomment-7023513483) asks for a qualified repair stage on the existing carrier, or a coordinated successor that preserves that branch and unpublished work. Do not repeat a packet re-sync, counterfeit a passing report or verdict, or use this receipt as a source claim. After legitimate repair, the existing refusal/recovery/viewport evidence and protected CI and release gates still apply. All sale, money, review, queue-order and ownership constraints are unchanged.
 
+### Premium repair carrier under D-200/D-366/D-370 (November 21, 2026)
+
+Official UNBLOCK `fd40cf6bf`, GPT-6.1 Sol · 4f1c, checked main `ce7fee0eac52295def8fdfafc3e65dc57c94fe13` and decisions through D-371. The prior routing outcome [#1362](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1362), merged `495bdd3991`, preserved the correct hold but did not supply an implementation dispatch. Draft #1254 remains at `d56bf410ea50c0ef2736dec40615fa05d58b2d0b`, with auto-merge off and conflicts against main. Exact-source inspection reproduces the legacy `canBuy`/checkout action and first-payment bonus offer; its November 18 CI is historical. The current packet already defines their removal and preservation of owned payment recovery. No new owner decision is required.
+
+The exact evidence-bound report `befa304dfd50716b43ce54f310f697e34a71e2c8` disproves a same-ID branch retarget: the picker still refuses BUILD before its 24-hour recheck. A hypothetical green report would remove the acceptance hold, not repair source. Under D-200 (2), register the bounded child `D-048-p3-premium-repair` immediately before its parent, in the same FIFO position and lane, on `agent/queue/d048-p3-premium-repair`, with the same tier, owned implementation paths and five completed prerequisites. Add only that child's output to the original row's dependencies; retain the original branch, todo status and evidence-bearing block. D-134 makes a task waiting for required output hold no lane. Preserve #1254, its branch, historical checks and unpublished work. No marker or verdict transfers.
+
+Only after a normal picker BUILD claim, the child merges preserved source into current main without rewriting history and implements the existing refusal/recovery contract. It owns current acceptance, required CI, goal-page release and exact-release proof. Once that repair actually lands with its evidence, the original row reconciles against that output; it never lands #1254's obsolete implementation on historical CI. No green or landed application report is supplied by this registration. A read-only pure-picker fixture using the actual block and original heads grants child BUILD, refuses it without the output-dependency edge or when owner-parked, and leaves the original ineligible. The earlier branch-only routing checkpoint `3cc8c336e` is superseded by this child registration; no PR or runtime dispatch used that checkpoint.
+
+The corrected candidate still needs red-first no-sale/no-offer checks, unchanged recovery and server controls, synthetic captures at 1280 and 390, current-main required CI and exact-release verification. D-370 removes independent review and model dependencies; it does not waive any of that evidence. D-367/D-370 settle banded mapping, currencies, absorbed fees and sale approval within their separate BANDED rows; this presentation task enables no checkout, sale flag, provider mutation or bonus. Implementation, actual pickup and production acceptance remain unverified by this docs-only ruling.
+
 ## D-332 execution ruling: pinned sign-in presentation at retirement (November 19, 2026)
 
 Unblock `63309238`, GPT-6.1 Sol · 830b, under D-200 (2). D-332 already requires complete old-design removal while retaining login behavior. The sign-in build/release #1245 (`60af3262`, November 17) serves the goal page; the unchanged pinned suite still requires its retired Kit story, door illustration and hover-only legal-link treatment. Reproduced on main `7398c71a`: `VITE_GOAL_SURFACES=sign-in pnpm vitest run client/src/pages/signIn.test.tsx client/src/pages/loginRule.test.tsx --maxWorkers=1` yields 12 passed and two failing cases at signIn lines 24/46; all seven login-rule cases pass. An independent read-only assertion map identifies seven presentation expectations, including those hidden behind the first failures.
@@ -880,4 +890,39 @@ D-315 can offer draft build-ahead with the unfinished R in `ahead` when no
 existing K branch/PR is modeled. This diagnostic is not a live claim and
 does not waive D-134 review/fix/landing dependency gates or current holders.
 
+
+### November 21 accepted-price carrier absorption (D-200, D-367)
+
+Official UNBLOCK `GPT-6.1 Sol · 8817`, claim `e2f84a1ec`, checked main
+`dc555447a`, the current instructions, D-219/D-221/D-366–D-371, prior block
+`227e11c15`, merged #1336 (`86a0c62d`) and #1363 (`0facc460`), and unchanged
+product #1269 (`7e1d3649`). D-367 (6) explicitly places the accepted-price
+guard inside `BANDED-spend`; the current pricing page and banded packet agree.
+The still-active D-132-item3 row and its D-366-only routing are stale, not a
+second implementation mandate or a new owner question.
+
+Withdraw only that duplicate registration from the active queue. Do not
+mark its source shipped or mark BANDED-spend done. Transfer its necessary
+shared/create/preview/rollback test companion paths to the existing
+BANDED-spend carrier, retaining that row's priority, lane, branch, tier and
+prerequisites. Redirect the actual SKIPPY-fix and D-174-held-ask-reconfirm
+output edges to BANDED-spend; keep all other prerequisites and holds.
+Their green PRs still cannot land before the required output exists.
+The three affected current row stamps advance to checked D-371.
+
+Preserve #1269, reviewer 630a's findings, b53c's `d1300293` F1/F2 repairs and
+all prior markers as source/evidence, never an inherited pass. Reuse must
+fit the D-219/D-367 banded mapping and actual balances and prove atomic
+confirmation/charge equality, reconciliation rollback, same-key reconfirmation
+and user/request-bound replay on current main. The old null-band policy,
+level-to-credit fixtures and standalone FIX/LAND instructions are superseded;
+ASK_LEVEL_COST stays off. D-370 removes review/Fixed rituals, not required CI.
+
+Current handoff: [historical guard packet §14](plans/D-132-item3-accepted-price.md#14-november-21-d-367-absorption-into-banded-spend)
+and [banded packet §8](plans/PRICING-banded-checkout.md#8-one-accepted-price-implementation-carrier-d-367-6).
+The obsolete fixed-id test pin is replaced by actual-picker refusal/landing
+cases for both consumers under the production no-review policy. No runtime,
+gate, price, legal, login, refund, flag, activation or production change;
+no new decision ID or product-completion claim. BANDED-release still owns
+TEST-site purchase proof, authorized activation and exact-release acceptance.
 

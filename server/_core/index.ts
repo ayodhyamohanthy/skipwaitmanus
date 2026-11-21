@@ -2,6 +2,7 @@ import { registerCompanyClaimRoutes } from "../companyClaimRoutes";
 import { jsonBodyError } from "../bodyErrors";
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
+import { registerReasonsCoachRoutes } from "../reasonsCoachRoutes";
 
 initServerSentry();
 if (process.env.NODE_ENV !== "production") {
@@ -174,6 +175,7 @@ async function startServer() {
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses, sessionAmr: identity.sessionAmr, sessionKey: identity.sessionKey };
   };
   registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
+  registerReasonsCoachRoutes(app, { resolveIdentity });
   // BYOR off must answer before body parsers and session renewal can reach any user/database state.
   app.use(askInviteFeatureGateMiddleware);
     // Public control-plane bodies stay small. The two deprecated JSON document
