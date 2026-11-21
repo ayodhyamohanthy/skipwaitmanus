@@ -203,7 +203,7 @@ pnpm dev              # Express+Vite on :3000 (dev sign-in widget appears)
 pnpm check            # tsc --noEmit
 pnpm test             # vitest (unit + component + route regressions)
 pnpm build            # client PWA + server bundle -> dist/
-./scripts/sync-check.sh   # repo sync guard (run after work sessions)
+./scripts/sync-check.sh   # two-way clone sync (D-373): push committed branch work, fast-forward main, delete merged branches; --install-timer runs it every 15 min on a Mac
 ```
 
 ## Plan and inspect before edits
@@ -337,6 +337,7 @@ every endpoint here; record the active boundary and its source of truth.
 | Seeker Skippy (`/api/skippie/state`, `/api/skippie/turn`; `SKIPPIE_SEEKER_ENABLED` + account allowlist, off) | `server/skippieSeeker.ts`, `server/skippieSeekerDeps.ts`, `server/skippieSeekerCost.ts`, `server/skippieSeekerRoutes.ts`; employer preview before resume, confirmed banded allocation passed to the existing create transaction, source/cycle/coverage changes require confirmation again with the same idempotency key, success uses returned charge only; new requests emit the standard referral-created audit, replays emit neither creation event. QA-schema/browser proof remains required before activation. |
 | tRPC API | `server/routers.ts`, `server/_core/context.ts`; Zod edge validation and canonical identity context |
 | Banded referral quote and spend (`GET /api/company-referrals/quote`, request creation/first visibility; `BANDED_SALES_ENABLED`, default off) | `shared/acceptedAskCost.ts`, `server/bandedSpend.ts`, `server/db.ts`; included at the request level -> calendar free allowance -> purchased at that level, outside-band free only. Wallet then level-row locks; stale source/cycle confirmation -> 409 with transaction rollback; replay reads user/request-bound debits. Refund recovery reads durable banded sources independently of sales. TEST-site proof and activation belong to BANDED-release. |
+| Old waiting-request consent (`POST /api/company-referrals/:requestId/reconfirm`; `ASK_RECONFIRM_ENABLED = false`) | `shared/askReconfirm.ts`, `server/db.ts`, `server/privateReferralRoutes.ts`, `client/src/components/requests/ReconfirmRequest.tsx`; request lock -> once-only `reconfirm_requested` event/notice -> owner-only `reconfirmed` event -> existing delivery retry. Over 30 days, no consent means no delivery spend/allocation; confirmation lasts until delivery. My Requests reads its own `awaitingReconfirm` flag. No migration, new email, amount change or expiry-clock removal. |
 | Persistence and migrations | `drizzle/schema.ts`, `drizzle/00xx_*.sql`, `server/schemaReconcile.ts`; contract/migration first, forward-compatible boot reconciliation |
 | Container/runtime deploy | `wrangler.jsonc`, `src/worker.ts`, `.github/workflows/deploy-api.yml`; serialized rollout, canonical route + exact-SHA readiness |
 | Pages deploy | `.github/workflows/deploy-pages.yml`; same compatible source state as API, production visual verification |

@@ -43,6 +43,9 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
 
 ## Go-to-market (D-102, changeable)
+
+Old waiting requests have a default-off reconfirmation safeguard (`ASK_RECONFIRM_ENABLED`, D-193). Before an eligible delivery spends anything, an unconfirmed request older than 30 days receives one in-app confirmation notice and stays waiting or held. Its owner can confirm from My Requests, retry safely, or withdraw through the conversation. Confirmation uses durable events and the existing first-visibility charge; it changes no amount, expiry clock or email rule. QA and activation remain separate from implementation.
+
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
 - Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.

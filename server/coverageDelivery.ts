@@ -107,6 +107,7 @@ export type CoverageDeliveryOutcome =
   | { outcome: "held"; requestId: number; seekerUserId: number; companyDomain: string }
   | { outcome: "waiting"; requestId: number; returnedToWaiting: boolean }
   | { outcome: "blocked"; requestId: number }
+  | { outcome: "awaiting_reconfirm"; requestId: number }
   | { outcome: "settled"; requestId: number };
 
 /** What one hand-off (a new employee's enrollment) delivered, held or stepped past. */

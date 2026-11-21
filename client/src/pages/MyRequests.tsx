@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { AskInviteSheet } from "@/components/requests/AskInviteSheet";
+import { ReconfirmRequest } from "@/components/requests/ReconfirmRequest";
 import {
   GoalAppShell,
   GoalButton,
@@ -107,6 +108,7 @@ function AskRow({ request, nowMs, getToken, onInviteChanged }: { request: Referr
           <span className="col-span-2 mt-1 min-w-0 text-g-meta text-g-ink-3">{askNextLine(request, nowMs, company.name)}</span>
         </Link>
         <StatusHelpDisclosure request={request} />
+        <ReconfirmRequest request={request} getToken={getToken} onChanged={onInviteChanged} />
         {BYOR_LINK && (waitingForInvite || request.askInvite?.state === "claimed" || request.askInvite?.state === "delivered") ? (
           <AskInviteSheet requestId={request.id} companyName={company.name} roleTitle={request.title || "Referral request"} waitingForInvite={waitingForInvite} invite={request.askInvite} getToken={getToken} onChanged={onInviteChanged} />
         ) : null}

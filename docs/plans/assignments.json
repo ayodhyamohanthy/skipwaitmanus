@@ -54,6 +54,25 @@
       "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
     },
     {
+      "id": "REL-plans-signed-out-token",
+      "title": "Release repair: signed-out /plans never asks WorkOS for a token, so live verification passes again and the landing hold lifts (incident #1439)",
+      "row": "D-212",
+      "packet": "docs/plans/REL-plans-signed-out-token.md",
+      "tier": 1,
+      "lane": "release-repair",
+      "branch": "agent/queue/rel-plans-signed-out-token",
+      "status": "todo",
+      "syncedTo": "D-374",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/plans/bandedSales.ts",
+        "client/src/components/plans/bandedSales.test.tsx",
+        "docs/plans/REL-plans-signed-out-token.md"
+      ],
+      "note": "D-212 release repair, handed out first: releases 9aeffb7c, 3d474982 and 5e7a3212 failed live verification only on page /plans, a console HTTP 400 from WorkOS user_management/authenticate during a signed-out visit, because useBandedSales awaits getToken() for every visitor. Fix: look up the bearer token only when signed in; red-first tests for zero token lookups signed out and Bearer kept signed in. Lands on green required CI (D-370); the next verified release closes the open incidents by itself.\nFixes incident: #1439\nFixes release: 5e7a32126079204a8b3af4c1b6dcbc7585839c02",
+      "epic": "D-212"
+    },
+    {
       "id": "PROCESS-no-review-no-model",
       "title": "Green required CI alone lands every pull request and no picker or CI rule reads a model name (D-370)",
       "row": "D-212",
@@ -222,18 +241,18 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/sync-clone-guard",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-373",
       "dependsOn": [],
       "owns": [
         "scripts/sync-check.sh",
         "scripts/sync-clone.mjs",
+        "scripts/syncCloneCore.mjs",
         "scripts/syncClone.test.ts",
-        "package.json",
         "docs/plans/BRANCH-HYGIENE.md",
         "AGENTS.md"
       ],
-      "note": "D-373 (5). Build docs/plans/BRANCH-HYGIENE.md section SYNC-clone-guard. Uses BRANCH-HYGIENE-1's classifier for deletes; never pushes main, never force-pushes, never commits, stashes or resets anyone's work. Lands on green required CI (D-370).",
+      "note": "D-373 (5), owner Nov 21 (\"Make sure the repo is upto date automatically sync\"; \"Yes, push and land it\"). Built by Claude Code (sessions ccr-f3a4e037-1voydq and Claude Code · a71e): scripts/sync-clone.mjs with pure rules in scripts/syncCloneCore.mjs; scripts/sync-check.sh runs it; --install-timer makes it automatic every 15 minutes on a Mac. 19 tests (4 against throwaway repositories), green locally and in CI; a mutation removing the private-branch and never-force rules fails 3. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work.",
       "epic": "D-212"
     },
     {
@@ -6472,7 +6491,7 @@
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-086.count",
@@ -6481,7 +6500,7 @@
         "D-090-BYOR",
         "D-048-p3-live-review-find"
       ],
-      "note": "D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: remove the bonus sentence from the demand line (demandBonusLine() in CompanyDemandLine; the one neutral, sourced bonus fact line on the company page belongs to D-099-bonus-line), then release under packet sections 5.4 and 8. D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
       "owns": [
         "shared/companyDemand.ts (switch only)",
         "AGENTS.md",
@@ -6962,7 +6981,7 @@
         "docs/DECISIONS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: keep the sourced figures, admin entry and report path the company-page fact line needs; drop the public /bonuses and /bonuses/:slug pages and their sitemap entries. Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
     },
     {
       "id": "D-099-bonus-line",
@@ -6986,7 +7005,7 @@
         "client/src/pages/explore/",
         "client/src/pages/explore.bonusLine.test.tsx"
       ],
-      "note": "D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory. It also waits for D-048-F-primitives, which owns GoalListRow.tsx first."
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: one neutral, sourced fact line on the company page (/explore/:slug) only, with no line in the /explore list and no link to a bonus page; never a headline or a reason to refer. D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory. It also waits for D-048-F-primitives, which owns GoalListRow.tsx first."
     },
     {
       "id": "PICKER-land-exact-head",

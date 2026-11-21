@@ -42,7 +42,7 @@ Limits to state plainly when asked: work-email verification confirms control of 
 | matched to employees at that company | connections, hook-ups, a way around the process | The employer's process is the route, not the obstacle. |
 | the employee decides, can always pass | get referred, unlock a referral, skip the queue | No outcome is promised (D-006). |
 | what you pay for: a verified, private request | the cost of a referral, price per referral, extra referrals | See open question 6.1. |
-| referrers are never paid | referrers earn, rewards for referring, your company already pays you a bonus | D-055; the bonus-led pitch is rejected in `docs/GROWTH_STRATEGY.md`. |
+| referrers are never paid | referrers earn, rewards for referring, your company already pays you a bonus | D-055; the bonus-led pitch is rejected in `docs/GROWTH_STRATEGY.md`. An employer's own published bonus may appear only as one neutral, sourced fact line on that company's page, never as a headline, title, button, subject line or reason to refer (D-374). |
 | their company's official referral process | fast-track, backdoor, we submit you | SkipWait never submits anything to an employer. |
 | an introduction, never a promise | your odds, boost your chances, land the job | Outcome language sells what nobody controls. |
 

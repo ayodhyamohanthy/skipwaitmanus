@@ -84,3 +84,4 @@ A session with secret access may do steps 1 to 3 instead, with `gh secret set` r
 One line per row (D-134): `<id>: in progress — <who> — <date> — branch <b>` when it starts, `<id>: done — <sha>` when it is on `main` with its live proof.
 
 - Registered by Claude Code (session `ccr-f3a4e037-1voydq`) on 2026-11-21 under D-373. Nothing built yet.
+- D-374 (2), 2026-11-21: the owner adds the two plaintext secrets (section 4, step 1). No session sets them or asks for their values. Steps 2 and 3 are any session's once `OPS-reviewer-plaintext-reset` lands.

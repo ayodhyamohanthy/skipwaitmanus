@@ -1,4 +1,7 @@
 import { setRetryAfter } from "./retryAfter";
+import { ASK_RECONFIRM_ENABLED, askReconfirmBodySchema, askReconfirmParamsSchema, askReconfirmResponseSchema } from "../shared/askReconfirm";
+import { ASK_RECONFIRM_ERROR } from "../shared/moneyCopy";
+import { AskReconfirmError, reconfirmWaitingAsk } from "./db";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
@@ -102,6 +105,7 @@ export type PrivateReferralRouteDeps = {
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  reconfirmWaitingAsk?: typeof reconfirmWaitingAsk;
   /** Safe BYOR status projection only; omitted while the server feature flag is off. */
   listAskInvitesForRequests?: (userId: number, requestIds: number[]) => Promise<Map<number, AskInviteMine>>;
   hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
@@ -1290,6 +1294,23 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json(result);
     } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
   });
+  app.post("/api/company-referrals/:requestId/reconfirm", async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!ASK_RECONFIRM_ENABLED) return res.status(409).json({ code: "not_available_yet", error: "Request confirmation is not available yet. Nothing has changed." });
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to confirm your referral request" });
+      const params = askReconfirmParamsSchema.safeParse(req.params);
+      if (!params.success || !askReconfirmBodySchema.safeParse(req.body ?? {}).success) return res.status(400).json({ error: "Use the Confirm control on your referral request" });
+      const result = await (deps.reconfirmWaitingAsk ?? reconfirmWaitingAsk)(identity.account.id, params.data.requestId);
+      return res.json(askReconfirmResponseSchema.parse(result));
+    } catch (error) {
+      if (error instanceof AskReconfirmError) return res.status(error.reason === "missing" ? 404 : 409).json({ error: error.message });
+      captureServerError(error, { area: "ask_reconfirm" });
+      return res.status(500).json({ error: ASK_RECONFIRM_ERROR });
+    }
+  });
+
   app.post("/api/company-referrals/:requestId/withdraw", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
