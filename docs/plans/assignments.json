@@ -3070,13 +3070,13 @@
       "packet": "docs/plans/seeker-passwords.md",
       "tier": 1,
       "lane": "sign-in",
-      "branch": "agent/claude/seeker-signin-finish",
+      "branch": "agent/queue/seeker-passwords-integration",
       "status": "todo",
-      "syncedTo": "D-363",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-057-session-gate"
       ],
-      "note": "D-163/D-080 prerequisite met: D-057-session-gate is done. D-350 confirmed the five production WorkOS dashboard steps, satisfying D-336; no repeated owner confirmation is pending. Existing carrier is draft PR #324, agent/claude/seeker-signin-finish at f50db639. The GitHub review on bcff1742 is historical; picker PASS 09b0a667 by Gemini · b7c1 names f50db639 exactly and must not be omitted from provenance. Neither review nor historical green CI certifies a future current-main integration. The code still has the Oct 22 SEEKER_CODE_VERIFY_UNTIL placeholder. A legitimately assigned implementation/fix session must merge current main without rewriting history, preserve the released goal sign-in (D-354), integrate password fields and contracts there, set the actual release-plus-24-hours cutoff, and complete auth/identity/privacy tests, independent review of the changed Tier 1 composition, required exact-head CI and exact-release/browser proof. No implementation, cutoff, setting or review marker is changed by this docs-only unblock. Existing dirty worktrees stay untouched; inspect ownership and use an isolated checkout. Status, branch, order and dependencies remain unchanged."
+      "note": "Technical routing under D-200: take BUILD on this same row from current main through the picker, then merge preserved PR #324 source (agent/claude/seeker-signin-finish at f50db639) without rewriting history. That draft and historical PASS 09b0a667 stay intact, but the conflicting carrier with an expired cutoff is not a landing candidate. Leave all unpublished worktrees untouched. D-057 is done; D-350 confirms the WorkOS/default-mailer setup. Apply D-354 to the released Goal auth flow, verify current auth/identity/privacy contracts and the actual release-plus-24-hours cutoff, then require exact-head CI and canonical/browser proof. D-370 removes independent review; no login or mail-cost decision is pending. This routing change does not implement, approve or deploy passwords. Status, FIFO position, lane, tier and dependencies stay unchanged."
     },
     {
       "id": "D-048-doctrine-benefit-copy",
@@ -7066,20 +7066,20 @@
       "lane": "i18n-mount",
       "branch": "agent/queue/d093-mount",
       "status": "todo",
-      "syncedTo": "D-333",
+      "syncedTo": "D-370",
       "epic": "D-093-language",
       "dependsOn": [
-        "D-093.picker",
-        "D-222-referral-count-shell"
+        "D-093.picker"
       ],
       "owns": [
         "client/src/pages/GoalLandingV9.tsx (switch only)",
         "client/src/components/appShell.language.test.tsx",
         "design/goal-ui/captures/language/**",
         "client/src/components/AppShell.tsx",
+        "client/src/components/goal/GoalShell.tsx",
         "client/src/components/goal/GoalAppShell.tsx"
       ],
-      "note": "D-093 packet §5.5. Waits for D-222-referral-count-shell (and through it PRICING-banded-oct25), which own AppShell.tsx. GoalLandingV9 and GoalAppShell get switch-only consent mounts (C7). The Sign in link and referrer sign-in links stay unchanged. Nov 9 temporary D-057 handoff (packet §0b.8c): only client/src/components/AppShell.tsx, client/src/components/goal/GoalAppShell.tsx (switch only) are temporarily serialized to D-057 for its code_required navigation repair. This row retains its original branch, code, other paths, status, findings and all owner/product holds. These paths return through a separately reviewed registry restoration after D-057 is landed, before this row resumes runtime work; first normally merge D-057/current main and preserve both changes. No dependency or blanket takeover. See §0b.8c for conditional entry, stale coordinator hold qualification and unpublished-work limits. AppShell.tsx and GoalAppShell.tsx Returned by the D-057 §0b.8c registry restoration (D-333 (7)): merge current main, including the D-057 result, and keep both changes before any runtime work on the returned file."
+      "note": "D-093 packet §5.5. Depends on D-093.picker. AppShell.tsx is shared with D-222-referral-count-shell; GoalShell.tsx is shared with D-222-referral-count-shell and D-344-shell-referral-words. D-314 says shared-file overlap is not an output dependency or build hold, so the second lander merges main and keeps both changes. GoalLandingV9 mounts consent; GoalAppShell mounts consent and offers the signed-out top-bar picker without changing its account identity/initials behavior (C7). The Sign in link and referrer sign-in links stay unchanged. Nov 9 temporary D-057 handoff (packet §0b.8c): AppShell.tsx and GoalAppShell.tsx were temporarily serialized to D-057 for its code_required navigation repair; D-333 (7) returned them. Merge current main and preserve both changes. GoalShell.tsx is added for the responsive top-bar picker slot; its existing navigation, credits and account presentation stay unchanged."
     },
     {
       "id": "D-048-R7-prep",
@@ -7585,12 +7585,12 @@
       "tier": 1,
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-composer",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [
         "D-174-seeker-journey-build.door-neutral"
       ],
-      "note": "November 20 composer-only re-sync through D-370: packet section 6.2 replaces this row's older instructions. Preserve no-referrer request creation and honest server-driven pool/delivery status (D-360/D-363), D-364 link completion, current quote/accepted-cost/idempotency controls and all expiry/money clauses. askCostLine open:null; no expectedCoverage or directory availability gate. Legacy D-132 flags stay off; D-367 mapping is settled, BANDED-* owns pricing activation. Required CI, captures and exact-release checks; no review/model/coordinator dependency. Runtime task remains todo; docs re-sync is not implementation or release acceptance.",
+      "note": "Completed PR #1401, merge 0ee387d5f81cdb1a288b509bb145530fd6d87e45. Final PR CI44801592838 and main CI44802248564 pass every required check; Pages44802248475 succeeded and canonical web meta/actual composer were verified on that SHA at 1280/390 with no horizontal overflow. Compatible unchanged API e8e161a06 is ready and direct origin closed. Local affected 146/146 pass; 16 synthetic plus two live captures and full evidence in docs/evidence/D-174-composer-neutral. Cost uses open:null, no expectedCoverage/availability gate, parsed delivered/pool copy/events, typed inert watch/topUp; money amounts, expiry/refund tails, quote guards, idempotency, drafts and post/sign-in handoffs preserved. D-371 checked; flags remain off. Full redundant local gate stopped after two unchanged Git-fixture timeouts; successful full-suite proof is exact CI, not a claimed green local run. No live request, upload, notification or payment was created.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",

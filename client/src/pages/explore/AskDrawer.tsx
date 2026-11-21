@@ -87,8 +87,8 @@ export function AskDrawer(props: AskDrawerProps) {
   };
   const footer = sent ? (
     <div className="flex flex-wrap items-center justify-end gap-2 max-gdesk:grid max-gdesk:grid-cols-[1fr_2fr]">
-      <GoalButton variant="ghost" touch="large" onClick={props.onAnother}>Ask at another company</GoalButton>
-      <GoalButton asChild variant="primary" touch="large"><Link href={sent.trackHref}>Track this ask</Link></GoalButton>
+      <GoalButton variant="ghost" touch="large" onClick={props.onAnother}>New request</GoalButton>
+      <GoalButton asChild variant="primary" touch="large"><Link href={sent.trackHref}>Track this request</Link></GoalButton>
     </div>
   ) : (
     <>
@@ -119,7 +119,7 @@ export function AskDrawer(props: AskDrawerProps) {
   );
 
   return (
-    <GoalDrawer open={props.open} onOpenChange={props.onOpenChange} title={sent ? "Ask sent" : "Ask for a referral"} context={props.context ?? undefined} closeLabel="Close" footer={footer}>
+    <GoalDrawer open={props.open} onOpenChange={props.onOpenChange} title={sent ? "Referral request sent" : "Request a referral"} context={props.context ?? undefined} closeLabel="Close" footer={footer}>
       {sent ? (
         <div className="grid gap-2" role="status">
           <p className="text-g-heading text-g-ink">Referral request sent to {sent.company}.</p>

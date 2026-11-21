@@ -17,10 +17,10 @@ function harness(seed?: CatalogSiteState, options: FakeCatalogOptions = {}, over
   return { fake, activity, record, reportError, deps, dryRun };
 }
 
-/** A site where the family, the pack items and the INR pack prices already exist. */
+/** A site where the family, the extra-referral items and their INR prices already exist. */
 function partlySynced(): CatalogSiteState {
   const synced = syncedSiteState();
-  return { families: synced.families, items: synced.items.filter(item => item.id.startsWith("skipwait_pack_")), itemPrices: synced.itemPrices.filter(price => price.id.startsWith("skipwait_pack_") && price.id.endsWith("-INR")) };
+  return { families: synced.families, items: synced.items.filter(item => item.id.startsWith("skipwait_referral_")), itemPrices: synced.itemPrices.filter(price => price.id.startsWith("skipwait_referral_") && price.id.endsWith("-INR")) };
 }
 
 const actionIds = (dryRun: CatalogSyncDryRun) => dryRun.toCreate.map(action => action.params.id);
@@ -29,7 +29,7 @@ describe("applyCatalogSync", () => {
   it("refuses a stale plan hash before any write and records the refusal", async () => {
     const { fake, deps, dryRun, activity } = harness(partlySynced());
     const reviewed = await dryRun();
-    fake.state.itemPrices.push({ id: "skipwait_pack_5-USD", name: "skipwait_pack_5-USD", item_id: "skipwait_pack_5", item_type: "charge", status: "active", currency_code: "USD", price: 500, pricing_model: "per_unit" });
+    fake.state.itemPrices.push({ id: "skipwait_referral_early-USD", name: "skipwait_referral_early-USD", item_id: "skipwait_referral_early", item_type: "charge", status: "active", currency_code: "USD", price: 100, pricing_model: "per_unit" });
     const result = await applyCatalogSync({ planHash: reviewed.planHash, confirmSite: "skipwait" }, deps);
     const fresh = await dryRun();
     expect(result).toEqual({ status: "refused", code: "stale_plan", currentHash: fresh.planHash, message: expect.stringMatching(/changed/) });
@@ -58,7 +58,7 @@ describe("applyCatalogSync", () => {
 
     const after = await dryRun();
     expect(after.toCreate).toEqual([]);
-    expect(after.counts).toMatchObject({ correct: 26, mismatched: 0, blocked: 0 });
+    expect(after.counts).toMatchObject({ correct: 14, mismatched: 0, blocked: 0 });
     activity.length = 0;
     const again = await applyCatalogSync({ planHash: after.planHash, confirmSite: "skipwait" }, deps);
     expect(again).toMatchObject({ status: "done", report: { outcome: "nothing_to_do", created: [], notAttempted: [], failed: null, stoppedReason: null } });
@@ -69,7 +69,7 @@ describe("applyCatalogSync", () => {
   it("stops at the first provider error and reports what was created, what failed and what was not attempted", async () => {
     const probe = harness();
     const reviewedIds = actionIds(await probe.dryRun());
-    const firstNinety = reviewedIds.find(id => /_90d-/.test(id)) ?? "";
+    const firstNinety = reviewedIds.find(id => /_monthly-/.test(id)) ?? "";
     const refusal = new ChargebeeApiError(400, "invalid_request", "param_wrong_value", "period_unit : The billing frequency is not configured");
     const { fake, deps, dryRun, reportError, activity } = harness(undefined, { failCreate: call => (call.id === firstNinety ? refusal : undefined) });
     const reviewed = await dryRun();
@@ -96,13 +96,13 @@ describe("applyCatalogSync", () => {
   });
 
   it("stops as verification_mismatch when Chargebee answers a create with a different object", async () => {
-    const { fake, deps, dryRun } = harness(partlySynced(), { answerItemPrice: created => (created.id === "skipwait_pack_25-USD" ? { ...created, price: 2100 } : created) });
+    const { fake, deps, dryRun } = harness(partlySynced(), { answerItemPrice: created => (created.id === "skipwait_referral_mid-USD" ? { ...created, price: 401 } : created) });
     const reviewed = await dryRun();
     const result = await applyCatalogSync({ planHash: reviewed.planHash, confirmSite: "skipwait" }, deps);
     if (result.status !== "done") throw new Error(`unexpected ${result.status}`);
     expect(result.report).toMatchObject({ outcome: "partial", stoppedReason: "verification_mismatch", failed: null });
-    expect(result.report.created.at(-1)).toEqual({ kind: "item_price", id: "skipwait_pack_25-USD", diffs: [{ field: "price", expected: 2200, actual: 2100 }] });
-    expect(fake.creates().at(-1)).toBe("skipwait_pack_25-USD");
+    expect(result.report.created.at(-1)).toEqual({ kind: "item_price", id: "skipwait_referral_mid-USD", diffs: [{ field: "price", expected: 400, actual: 401 }] });
+    expect(fake.creates().at(-1)).toBe("skipwait_referral_mid-USD");
     expect(result.report.created.length + result.report.notAttempted.length).toBe(reviewed.toCreate.length);
   });
 
@@ -127,8 +127,8 @@ describe("applyCatalogSync", () => {
       expect(entry.actorUserId).toBe(7);
       expect(entry.metadata).toMatchObject({ site: "skipwait", environment: "live", planHash: reviewed.planHash });
     }
-    const pack = activity.find(entry => entry.resourceId === "skipwait_pack_25-USD");
-    expect(pack).toMatchObject({ outcome: "success", resourceType: "chargebee_item_price", metadata: expect.objectContaining({ currency: "USD", amount: 2200, pricingModel: "per_unit" }) });
+    const pack = activity.find(entry => entry.resourceId === "skipwait_referral_mid-USD");
+    expect(pack).toMatchObject({ outcome: "success", resourceType: "chargebee_item_price", metadata: expect.objectContaining({ currency: "USD", amount: 400, pricingModel: "per_unit" }) });
     expect(JSON.stringify(activity)).not.toMatch(/apiKey|secret/i);
 
     const noStart = harness(partlySynced(), {}, { record: vi.fn(async () => { throw new Error("db down"); }) });
