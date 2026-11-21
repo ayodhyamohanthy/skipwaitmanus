@@ -1041,3 +1041,49 @@ separate requirements, tracked in the packet; this receipt grants no gate waiver
 existing money line, expiry clock, source permission, schema or activation
 changes. This records implementation of D-193, not a new owner decision or
 production-completion claim.
+
+### November 21 banded fulfillment persistence prerequisite (D-200, D-223, D-367, D-370)
+
+Official `BANDED-grants` takeover `c8bc301e9`, GPT-6.1 Sol · cfad, checked
+main `d9e28de10` through D-374 and preserved the prior holder's `93154537b`
+claim, `8f03fbf3b` handoff and closed unmerged [#1432](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1432).
+That inspection of checkout #1411 and spend #1419 found no durable extra-referral
+owner/cart intent: optional unawaited activity follows provider-page creation.
+Purchased debits record level/source without the supplying invoice purchase.
+An aggregate balance cannot establish an invoice's unused entitlement.
+
+Register `BANDED-grants-intents-migration` immediately before its parent and
+add only that parent's dependency. Its [packet](plans/BANDED-grants-intents-migration.md)
+defines an initially empty site-scoped immutable checkout-intent table,
+unique checkout/page/initial-invoice bindings, real-MySQL application/replay
+checks and production migration/checksum acceptance. Number 0124 remains
+provisional until its assigned session checks main and open allocations.
+Schema/readiness and dependent runtime land only after that prerequisite is
+verified, following #1395's migration-first route.
+
+The existing grants row then persists intent before provider-page creation,
+validates paid evidence against its immutable quote and uses the same intent
+for webhook/return/hourly recovery. Keyed invoice/level grants and provenance
+on purchased debits/reversals prevent a refund consuming a later purchase or
+withdrawal restoring revoked entitlement. Included cycles retain their
+site/subscription/confirmed-term/level identity; the free calendar allowance
+stays separate. Founding operations preserve counter-before-membership locks,
+never oversell or recycle an issued sequence, and park ungrantable late payments
+for existing review/refund handling without inventing a price.
+
+Publish this registration on a separate docs branch. Retarget only the unfinished
+`BANDED-grants` row to fresh `agent/queue/banded-grants-fulfillment`, preserving
+its ID, FIFO position, lane, tier, todo status and existing dependencies, with
+the migration output added. Preserve the original branch and both holders'
+claims; no marker or verdict transfers. A merged docs carrier would otherwise
+make the picker hide unfinished fulfillment as done. A new normal picker claim
+is required before runtime work on the fresh carrier.
+
+This decomposes decided fulfillment without reopening completed checkout/spend
+or adding an owner decision. D-372 grants only another session's bounded picker
+repair; D-373/D-374 change QA/clone/bonus rules, not this money contract. This
+registration supplies no SQL, runtime, grant, provider/payment/refund execution,
+sales activation or production mutation. BANDED-release retains TEST-site
+purchase/refund/recovery/international-card proof and activation. D-212's live
+release hold still governs landing; actual implementation and acceptance remain
+open in the packets.
