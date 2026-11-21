@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTableColumns, getTableName, SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import {
-  askCosts, askWorkItems, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants,
+  askCosts, askWorkItems, bandedReferralBalances, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants,
   profiles, promoCreditGrants, referralAttachments, referralDocumentAccessGrants,
   referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries,
   referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, users, workItems,
@@ -13,7 +13,7 @@ import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import {
   companyReferralFingerprint, createCompanyReferralRequest, getUnclaimedCompanyReferralPreview,
-  tryDeliverWaitingAsk,
+  tryDeliverWaitingAsk, previewBandedAskCost, refundLedgerSpendTx,
   type CreateCompanyReferralInput,
 } from "./db";
 import { PlanLimitError } from "./planGates";
@@ -39,7 +39,7 @@ const URL_ = "https://careers.acme.com/jobs/123";
 const PITCH = "I shipped the approvals redesign this role describes.";
 
 type Row = Record<string, unknown>;
-const TABLES = [askCosts, askWorkItems, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, users, workItems];
+const TABLES = [bandedReferralBalances, askCosts, askWorkItems, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, users, workItems];
 const TABLE_BY_NAME = new Map(TABLES.map(table => [getTableName(table), table]));
 const COLUMNS_BY_NAME = new Map(TABLES.map(table => [getTableName(table), Object.keys(getTableColumns(table))]));
 
@@ -267,7 +267,11 @@ function fixtureDatabase() {
     },
   });
   const api = { select, update, insert };
-  return { ...api, transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(api) };
+  return { ...api, transaction: async (cb: (tx: unknown) => Promise<unknown>) => {
+    const before = structuredClone({ rows, sequence });
+    try { return await cb(api); }
+    catch (error) { rows = before.rows; sequence = before.sequence; throw error; }
+  } };
 }
 
 const piece = (id: number, userId: number, over: Row = {}): Row => ({ id, userId, title: `Piece ${id}`, kind: "project", source: null, url: `https://example.com/work/${id}`, pinned: false, visibleOnProfile: true, updatedAt: new Date(NOW - DAY), ...over });
@@ -282,7 +286,7 @@ const wallet = (plan = "free"): Row => ({
 function seed(plan = "momentum") {
   rows = {
     users: [{ id: SEEKER, name: "Sam Seeker", email: "sam@example.com", suspended: false, canonicalPersonId: null }, { id: STRANGER, name: "Nina Other", email: "nina@example.com", suspended: false, canonicalPersonId: null }, { id: REFERRER, name: "Maya Chen", email: "maya@acme.com", suspended: false, canonicalPersonId: null }],
-    canonicalPeople: [],
+    canonicalPeople: [], companyCoverageInvitations: [],
     profiles: [referrerProfile(REFERRER)],
     jobs: [],
     tokenBalances: [wallet(plan)],
@@ -305,6 +309,155 @@ function seed(plan = "momentum") {
   };
   sequence = {};
 }
+
+describe("BANDED-spend real create transaction", () => {
+  const expiresAt = new Date(NOW + DAY);
+  const balance = (includedRemaining = 2, purchasedRemaining = 2): Row => ({ id: 1, userId: SEEKER, level: "early", includedRemaining, purchasedRemaining, includedCycleKey: "paid-cycle-one", includedExpiresAt: expiresAt });
+  const expectedCost = (bucket: "included" | "free" | "purchased", cycleKey: string | null) => ({ units: 1 as const, band: "early" as const, source: [{ bucket, units: 1 as const, cycleKey }] });
+  beforeEach(() => {
+    vi.stubEnv("BANDED_SALES_ENABLED", "true");
+    vi.stubEnv("ASK_LEVEL_COST", "false");
+    seed("early_to_mid");
+    rows.tokenBalances[0].subscriptionCurrentTermStart = new Date(NOW - DAY);
+    rows.bandedReferralBalances = [balance()];
+  });
+  it("spends included at the request level before free and purchased", async () => {
+    await send();
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(1);
+    expect(rows.bandedReferralBalances[0].purchasedRemaining).toBe(2);
+    expect(rows.tokenBalances[0]).toMatchObject({ plan: "early_to_mid", monthlyCreditsRemaining: 3 });
+  });
+  it("spends free before purchased when included is exhausted", async () => {
+    rows.bandedReferralBalances = [balance(0)];
+    await send();
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    expect(rows.bandedReferralBalances[0].purchasedRemaining).toBe(2);
+  });
+  it("spends purchased only at the matching level after free is exhausted", async () => {
+    rows.bandedReferralBalances = [balance(0)];
+    rows.tokenBalances[0].monthlyCreditsRemaining = 0;
+    await send();
+    expect(rows.bandedReferralBalances[0].purchasedRemaining).toBe(1);
+    expect(rows.tokenBalances[0].balance).toBe(0);
+  });
+  it("outside the plan band uses only free, even with another level's balances", async () => {
+    await send({ targetRoleUrl: "https://careers.acme.com/jobs/senior-engineer" });
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    expect(rows.bandedReferralBalances[0]).toMatchObject({ includedRemaining: 2, purchasedRemaining: 2 });
+  });
+  it("refuses outside-band requests without free allowance and rolls everything back", async () => {
+    rows.tokenBalances[0].monthlyCreditsRemaining = 0;
+    rows.tokenBalances[0].balance = 50;
+    const before = structuredClone({ rows, sequence });
+    await expect(send({ targetRoleUrl: "https://careers.acme.com/jobs/senior-engineer" })).rejects.toThrow();
+    expect({ rows, sequence }).toEqual(before);
+  });
+  it("expired included referrals are unavailable", async () => {
+    rows.bandedReferralBalances[0].includedExpiresAt = new Date(NOW);
+    await send();
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(2);
+  });
+  it("never spends another seeker's level balances", async () => {
+    rows.bandedReferralBalances[0].userId = STRANGER;
+    await send();
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(2);
+  });
+  it("rejects a changed source with no writes, and accepts same-key reconfirmation", async () => {
+    const before = structuredClone({ rows, sequence });
+    await expect(send({ expectedCost: expectedCost("free", currentMonthlyCycleKey(new Date(NOW))) })).rejects.toMatchObject({ code: "ask_price_changed" });
+    expect({ rows, sequence }).toEqual(before);
+    const result = await send();
+    expect(result).toMatchObject({ replayed: false, chargedCost: { units: 1, band: "early", source: [{ bucket: "included", units: 1 }] } });
+  });
+  it("replays the original request charge after the live source changes", async () => {
+    const first = await send();
+    rows.bandedReferralBalances[0].includedRemaining = 0;
+    const before = structuredClone({ rows, sequence });
+    const replay = await send();
+    expect(replay).toMatchObject({ replayed: true, chargedCost: first.chargedCost });
+    expect({ rows, sequence }).toEqual(before);
+  });
+  it("waiting requests spend nothing", async () => {
+    rows.profiles = [];
+    await send();
+    expect(rows.tokenTransactions.filter(row => row.kind === "credit_spend")).toEqual([]);
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(2);
+  });
+  it("F1: refuses across calendar rollover atomically, then reconfirms with the same key", async () => {
+    rows.bandedReferralBalances = [balance(0)];
+    rows.tokenBalances[0].monthlyCycleKey = "2026-09";
+    const before = structuredClone({ rows, sequence });
+    await expect(send({ expectedCost: expectedCost("free", "2026-09") })).rejects.toMatchObject({ code: "ask_price_changed" });
+    expect({ rows, sequence }).toEqual(before);
+    const expected = expectedCost("free", "2026-10");
+    const first = await send({ expectedCost: expected });
+    expect(first.chargedCost).toEqual(expected);
+    expect(rows.tokenTransactions.filter(row => row.kind === "plan_grant")).toHaveLength(1);
+    expect(rows.tokenBalances[0]).toMatchObject({ plan: "early_to_mid", monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 2 });
+    await send({ expectedCost: expected });
+    expect(rows.tokenTransactions.filter(row => row.kind === "credit_spend")).toHaveLength(1);
+  });
+  it("F2: replay reads only this user's request-bound debit despite a matching client key elsewhere", async () => {
+    const first = await send();
+    rows.tokenTransactions.unshift({ id: 999, userId: STRANGER, role: "job_seeker", kind: "credit_spend", tokenCount: -1, source: "banded:purchased:executive", sourceCycleKey: null, referenceType: "referral_request", referenceId: `${first.requestId}#1`, idempotencyKey: "pinned-key-0001#1" });
+    rows.tokenTransactions.unshift({ id: 998, userId: SEEKER, role: "job_seeker", kind: "credit_spend", tokenCount: -1, source: "banded:purchased:executive", sourceCycleKey: null, referenceType: "referral_request", referenceId: "123456#1", idempotencyKey: "pinned-key-0001#1" });
+    expect((await send()).chargedCost).toEqual(first.chargedCost);
+  });
+  it("the preview shows exactly the source create spends", async () => {
+    const quote = await previewBandedAskCost(SEEKER, URL_);
+    expect(quote).toMatchObject({ level: 2, cost: 1, shortfall: 0, coverageStatus: "covered", acceptedCost: { band: "early", units: 1 } });
+    expect((await send({ expectedCost: quote.acceptedCost })).chargedCost).toEqual(quote.acceptedCost);
+  });
+  it("a changed included cycle needs explicit confirmation even when its counts match", async () => {
+    const quote = await previewBandedAskCost(SEEKER, URL_);
+    rows.bandedReferralBalances[0].includedCycleKey = "paid-cycle-two";
+    const before = structuredClone({ rows, sequence });
+    await expect(send({ expectedCost: quote.acceptedCost })).rejects.toMatchObject({ code: "ask_price_changed" });
+    expect({ rows, sequence }).toEqual(before);
+  });
+  it("a quoted send cannot fall back to legacy billing after the switch goes off", async () => {
+    const quote = await previewBandedAskCost(SEEKER, URL_);
+    vi.stubEnv("BANDED_SALES_ENABLED", "false");
+    const before = structuredClone({ rows, sequence });
+    await expect(send({ expectedCost: quote.acceptedCost })).rejects.toMatchObject({ code: "not_on_sale" });
+    expect({ rows, sequence }).toEqual(before);
+  });
+  it("waiting quote becomes a 409 when coverage opens; no request or debit is committed", async () => {
+    rows.profiles = [];
+    const quote = await previewBandedAskCost(SEEKER, URL_);
+    expect(quote).toMatchObject({ cost: 0, coverageStatus: "waiting_for_company_coverage", acceptedCost: { units: 0, source: [] } });
+    rows.profiles = [referrerProfile(REFERRER)];
+    const before = structuredClone({ rows, sequence });
+    await expect(send({ expectedCost: quote.acceptedCost })).rejects.toMatchObject({ code: "ask_price_changed" });
+    expect({ rows, sequence }).toEqual(before);
+  });
+  it.each(["included", "purchased"] as const)("refunds %s to its original level once, even with sales off", async source => {
+    if (source === "purchased") {
+      rows.bandedReferralBalances = [balance(0)];
+      rows.tokenBalances[0].monthlyCreditsRemaining = 0;
+    }
+    const first = await send();
+    vi.stubEnv("BANDED_SALES_ENABLED", "false");
+    const db = fixtureDatabase();
+    const refund = () => db.transaction(async tx => refundLedgerSpendTx(tx, { userId: SEEKER, requestId: first.requestId, kind: "withdrawal_refund", wallet: rows.tokenBalances[0] as Parameters<typeof refundLedgerSpendTx>[1]["wallet"], now: new Date(NOW) }));
+    expect(await refund()).toMatchObject({ returned: 1 });
+    expect(await refund()).toMatchObject({ returned: 0 });
+    expect(rows.bandedReferralBalances[0]).toMatchObject(source === "included" ? { includedRemaining: 2 } : { purchasedRemaining: 2 });
+    expect(rows.tokenBalances[0].balance).toBe(0);
+    expect(rows.tokenTransactions.filter(row => row.kind === "withdrawal_refund")).toHaveLength(1);
+  });
+  it("does not restore an included referral into a different paid cycle", async () => {
+    const first = await send();
+    rows.bandedReferralBalances[0].includedCycleKey = "next-paid-cycle";
+    const db = fixtureDatabase();
+    const result = await db.transaction(async tx => refundLedgerSpendTx(tx, { userId: SEEKER, requestId: first.requestId, kind: "withdrawal_refund", wallet: rows.tokenBalances[0] as Parameters<typeof refundLedgerSpendTx>[1]["wallet"], now: new Date(NOW) }));
+    expect(result).toMatchObject({ returned: 0 });
+    expect(rows.bandedReferralBalances[0].includedRemaining).toBe(1);
+    expect(rows.tokenTransactions.filter(row => row.kind === "withdrawal_refund")[0]).toMatchObject({ tokenCount: 0 });
+  });
+});
 
 beforeEach(() => {
   vi.useFakeTimers();

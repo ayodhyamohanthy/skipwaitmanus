@@ -55,3 +55,5 @@ export function employerSponsorshipEnabled(env: BillingEnv = process.env): boole
 export function freeCreditsRequireCardValidation(env: BillingEnv = process.env): boolean {
   return flag(env, "FREE_CREDITS_REQUIRE_CARD_VALIDATION");
 }
+/** D-367: only BANDED-release enables the new billing path after TEST-site acceptance. */
+export function bandedSalesEnabled(): boolean { return process.env.BANDED_SALES_ENABLED === "true"; }
