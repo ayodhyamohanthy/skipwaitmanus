@@ -278,8 +278,8 @@
       "tier": 1,
       "lane": "banded-checkout",
       "branch": "agent/queue/banded-checkout",
-      "status": "todo",
-      "syncedTo": "D-370",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-schema",
         "BANDED-catalog-sync"
@@ -294,7 +294,7 @@
         "src/worker.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "PR #1411: banded plan and extra-referral checkout behind BANDED_SALES_ENABLED (exact 'true', same reader rule as BANDED-spend; off answers 409 not_on_sale before sign-in, a read or a provider call). Founding place reserved under the counter row lock; hosted pages keyed by the checkout idempotency key; extras inside the member's band with the volume discount as a fixed amount. Grants, UI and release remain their own rows. Completion is carried in this PR; required CI and the exact-release check are the acceptance gates."
     },
     {
       "id": "BANDED-grants",
