@@ -6155,7 +6155,7 @@
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
       "status": "todo",
-      "syncedTo": "D-359",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-174-job-catalog",
         "REL-review-email-retry-schema"
@@ -6181,7 +6181,7 @@
         "server/emailDelivery.ts",
         "server/emailDelivery*.test.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys). Nov 18 execution split: REL-review-email-retry-schema lands and production-verifies only the existing additive 0122 SQL first. The Fixed marker on PR874 does not prove that schema output; this row resumes landing only after the prerequisite is done. Existing runtime repair, history, Fixed binding, CI and first-live-job acceptance stay unchanged."
+      "note": "D-350 resumed this row. The schema prerequisite applied and verified migration 0122 in production. The Nov 21 ruling records the local test failures and their baseline evidence. Continue PR #874 with a current-main merge, fresh required CI including MySQL retry coverage, and protected auto-merge under D-370. Keep the exact applied SQL. Confirm canonical release identity and the first successful review-delivery-retry run after deployment."
     },
     {
       "id": "REL-heartbeats",
