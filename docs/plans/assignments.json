@@ -8104,6 +8104,24 @@
       "note": "PR #1393: explicit main/agent tracking-ref fetch/prune, pre-marker snapshot comparison, bounded full-state retries with stable session identity, fail-closed unavailable/shallow history. Non-force pushes retain the documented recheck-to-push multi-ref race. Independent local bare-origin regressions replace unrecovered diagnostic fixtures under the packet's D-200 technical amendment; no external implementation used. D-370 removes model/review dependencies. Completion is carried in this PR; exact required CI, protected merge and released read-only CLI proof remain the acceptance gates. Evidence and local timeout/incomplete-run limitations are in the packet Status."
     },
     {
+      "id": "PICKER-snapshot-scope",
+      "title": "A marker write compares only its own task's refs and judges a moved main by content, so other agents' activity never starves a claim",
+      "row": "D-085",
+      "packet": "docs/plans/PICKER-snapshot-scope.md",
+      "tier": 2,
+      "lane": "picker-snapshot-scope",
+      "branch": "agent/queue/picker-snapshot-scope",
+      "status": "done",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-snapshot-scope.md"
+      ],
+      "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324): the pre-write check compared every task's refs and main, so any heartbeat, claim, push or landing during the GitHub reads aborted every claim. Now scoped to the write's task refs, report log, landing slot and fix-main locks; main by the task's row, dependencies, decision sync and landed state. Red-first CLI tests; all picker suites pass. Completion is carried in this PR; required CI is the landing gate."
+    },
+    {
       "id": "PICKER-cli-output-drain",
       "title": "Drain complete picker CLI output to pipes without losing NEXT or changing exit meanings",
       "row": "D-085",
