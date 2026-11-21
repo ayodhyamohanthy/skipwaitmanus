@@ -238,7 +238,7 @@
       "lane": "banded-schema",
       "branch": "agent/queue/banded-schema",
       "status": "todo",
-      "syncedTo": "D-370",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-schema-migration"
       ],
