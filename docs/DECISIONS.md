@@ -891,3 +891,38 @@ existing K branch/PR is modeled. This diagnostic is not a live claim and
 does not waive D-134 review/fix/landing dependency gates or current holders.
 
 
+### November 21 accepted-price carrier absorption (D-200, D-367)
+
+Official UNBLOCK `GPT-6.1 Sol · 8817`, claim `e2f84a1ec`, checked main
+`dc555447a`, the current instructions, D-219/D-221/D-366–D-371, prior block
+`227e11c15`, merged #1336 (`86a0c62d`) and #1363 (`0facc460`), and unchanged
+product #1269 (`7e1d3649`). D-367 (6) explicitly places the accepted-price
+guard inside `BANDED-spend`; the current pricing page and banded packet agree.
+The still-active D-132-item3 row and its D-366-only routing are stale, not a
+second implementation mandate or a new owner question.
+
+Withdraw only that duplicate registration from the active queue. Do not
+mark its source shipped or mark BANDED-spend done. Transfer its necessary
+shared/create/preview/rollback test companion paths to the existing
+BANDED-spend carrier, retaining that row's priority, lane, branch, tier and
+prerequisites. Redirect the actual SKIPPY-fix and D-174-held-ask-reconfirm
+output edges to BANDED-spend; keep all other prerequisites and holds.
+Their green PRs still cannot land before the required output exists.
+The three affected current row stamps advance to checked D-371.
+
+Preserve #1269, reviewer 630a's findings, b53c's `d1300293` F1/F2 repairs and
+all prior markers as source/evidence, never an inherited pass. Reuse must
+fit the D-219/D-367 banded mapping and actual balances and prove atomic
+confirmation/charge equality, reconciliation rollback, same-key reconfirmation
+and user/request-bound replay on current main. The old null-band policy,
+level-to-credit fixtures and standalone FIX/LAND instructions are superseded;
+ASK_LEVEL_COST stays off. D-370 removes review/Fixed rituals, not required CI.
+
+Current handoff: [historical guard packet §14](plans/D-132-item3-accepted-price.md#14-november-21-d-367-absorption-into-banded-spend)
+and [banded packet §8](plans/PRICING-banded-checkout.md#8-one-accepted-price-implementation-carrier-d-367-6).
+The obsolete fixed-id test pin is replaced by actual-picker refusal/landing
+cases for both consumers under the production no-review policy. No runtime,
+gate, price, legal, login, refund, flag, activation or production change;
+no new decision ID or product-completion claim. BANDED-release still owns
+TEST-site purchase proof, authorized activation and exact-release acceptance.
+

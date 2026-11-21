@@ -328,7 +328,7 @@
       "lane": "banded-spend",
       "branch": "agent/queue/banded-spend",
       "status": "todo",
-      "syncedTo": "D-370",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-levels",
         "BANDED-schema"
@@ -336,10 +336,20 @@
       "owns": [
         "server/creditLedger.ts",
         "server/planGates.ts",
-        "server/privateReferralRoutes.ts"
+        "server/privateReferralRoutes.ts",
+        "shared/acceptedAskCost.ts",
+        "shared/acceptedAskCost.test.ts",
+        "server/db.ts",
+        "server/_core/index.ts (switch only)",
+        "server/askQuoteWiring.test.ts",
+        "server/askCreateFixtureDb.ts",
+        "server/askCreateFixtureDb.test.ts",
+        "server/db.askPriceGuard.test.ts",
+        "server/askQuoteRoute.test.ts",
+        "server/privateReferralRoutes.integration.test.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "D-219/D-367/D-370: this is the sole implementation carrier for banded spend and the accepted-price invariant formerly queued as D-132-item3. Re-scope any reusable PR1269/7e1d3649 source and reviewer630a/b53c F1/F2 repairs against current main; the old PR and markers are historical evidence, not a FIX/LAND route or inherited approval. Preserve atomic confirmation/charge equality, rollback, same-key reconfirm and request-bound replay; do not restore ASK_LEVEL_COST or the obsolete band-null policy. See PRICING-banded-checkout.md section 8 and D-132-item3-accepted-price.md section 14. Added companion paths carry that existing guard work; no source implementation, sale, price, flag or production acceptance is claimed by this routing amendment."
     },
     {
       "id": "BANDED-ui",
@@ -950,43 +960,6 @@
         "scripts/designTokenAuditCore.mjs",
         "scripts/designTokenAudit.test.ts",
         "design/goal-ui/captures/dark-mode/**"
-      ]
-    },
-    {
-      "id": "D-132-item3",
-      "title": "Atomic accepted-price precondition: a covered request is charged exactly the accepted cost (units, band, spend source) or answers 409 ask_price_changed with nothing written (D-221 re-scope; no D-219 mapping)",
-      "row": "D-132",
-      "packet": "docs/plans/D-132-item3-accepted-price.md",
-      "tier": 1,
-      "lane": "money-core",
-      "branch": "agent/queue/d132-item3",
-      "status": "todo",
-      "syncedTo": "D-366",
-      "dependsOn": [
-        "D-132-audit",
-        "D-090-BYOR",
-        "P0-referral-access-availability"
-      ],
-      "note": "D-221 model-independent accepted-price guard only: expectedCost={units,band,source}, band null until owner settles D-219 mapping; no old per-level price, new spending order or sales activation. Current product carrier PR1269/7e1d3649 is implemented but NOT landable. Nov19 UNBLOCK GPT-6.1 Sol · 814e re-syncs the packet to D-366 (7), main6f7f6811, under D-200; see docs/plans/D-132-item3-accepted-price.md section13 and dated register ruling. Real source-fixture correction required: replace new LEVEL3_URL/ASK_LEVEL_COST policy cases with deterministic model-independent counts while preserving real-create multi-unit split, units mismatch and full rollback/reconfirm/replay assertions. Keep explicitly dormant coverage precedence and unchanged quote/legacy compatibility tests. Preserve reviewer630a F1/F2 fixes from b53c/d1300293; existing Fixed is stale after7b896177/7e1d3649, so a marker-only cure is insufficient. Eligible official FIX holder must do the actual correction/current-main integration, record its own fresh head-bound Fixed and verification, then required CI/protected auto-merge; no impersonation or gate/status-only allowance change. This is contract sync for the fix stage, not source completion, verdict, done status or permission to land current7e1d3649. Canonical production readiness/identity/Sentry remain required because quote preview reconciles wallets even with no new confirmation caller. Add only docs/DECISIONS.md to owns for this D-200 ruling: CI44566540332 correctly refused that path because an UNBLOCK marker is not a Claim/Takeover/Fix scope exemption. No fake marker, alternate-branch escape or scope-gate change. No pricing/flag/refund/legal/login/consumer activation or dependency/other-holder change; real-money QA remains forbidden.",
-      "owns": [
-        "docs/DECISIONS.md",
-        "docs/plans/D-193-journey-foundations.md",
-        "docs/plans/PRICING-banded-checkout.md",
-        "docs/plans/SKIPPY-fix.md",
-        "scripts/register520Packets.test.ts",
-        "shared/acceptedAskCost.ts",
-        "shared/acceptedAskCost.test.ts",
-        "server/creditLedger.ts",
-        "server/planGates.ts",
-        "server/db.ts",
-        "server/privateReferralRoutes.ts",
-        "server/_core/index.ts (switch only)",
-        "server/askQuoteWiring.test.ts",
-        "server/askCreateFixtureDb.ts",
-        "server/askCreateFixtureDb.test.ts",
-        "server/db.askPriceGuard.test.ts",
-        "server/askQuoteRoute.test.ts",
-        "server/privateReferralRoutes.integration.test.ts"
       ]
     },
     {
@@ -5554,12 +5527,12 @@
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-fix",
       "status": "todo",
-      "syncedTo": "D-352",
+      "syncedTo": "D-371",
       "dependsOn": [
-        "D-132-item3",
+        "BANDED-spend",
         "SKIPPY-fix.s1-ssrf"
       ],
-      "note": "D-201: steps 1, 2, 4 and 5 landed Oct 22 with no independent review and no queue row. S-3 reuses D-132-item3's shared expectedCost/AskPriceChangedError guard; this task waits for that row rather than duplicating or overlapping its transaction work. All flags stay off until SKIPPY-fix lands with its proof. The owner asked to work on Skippy (Oct 23), so it remains ordered after the live regressions and the two picker fixes. D-221 (Oct 26): keeps its D-132-item3 dependency (S-3 binds to item 3's accepted-price precondition; pinned by scripts/register520Packets.test.ts). D-132-item3's re-scope delivers that model-independent precondition against the D-219 quote first, so the S-1 SSRF fix waits only on that step. S-2 and S-3 state the cost per D-219 (one referral of the request's level, spend source shown); no D-132 level-credit model. Oct 28 (D-132-item3 packet revision 2, decided under D-200; changeable): S-1 (the SSRF fix, server/skippieSeekerDeps.ts only, no DB guard) moves to SKIPPY-fix.s1-ssrf so it is not held behind the guard and its D-090-BYOR wait; this row keeps S-2 to S-6 and the live proof, and waits for both. No flag changes (D-201). D-352 (Nov 16): out of the launch set (owner: \"skippy also we can push later\"). Skippy stays switched off in production at launch (D-201), so this row follows the launch set."
+      "note": "D-201/D-219/D-221: S-2 and S-3 state referral counts and spend source, never the superseded per-level credit price. Under D-367 (6), BANDED-spend now owns the shared atomic accepted-price guard; this row's former D-132-item3 output dependency is redirected there rather than duplicated or removed. Reuse its current quote/confirmation/charged-cost contract; the old packet and PR1269 remain historical evidence, not an implementation or approval to inherit. SKIPPY-fix.s1-ssrf remains the separate no-network SSRF prerequisite, with its existing evidence preserved. D-352 keeps Skippy outside the launch set and its flags off; no source, release, historical merged-state or completion claim changes in this docs-only routing correction."
     },
     {
       "id": "D-048-p3-skippy",
@@ -7365,15 +7338,15 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-held-ask-reconfirm",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
         "D-132-audit",
         "D-090-BYOR",
-        "D-132-item3"
+        "BANDED-spend"
       ],
-      "note": "D-193 packet section 5.3 and ruling (5): builds D-061's never-built reconfirm-before-spend without its closure, in deliverWaitingAskTx (every delivery path). Transition events, no migration; in-app notice only (no D-060 email exists yet). ASK_RECONFIRM_ENABLED stays false until QA; D-174-expiry-clock-removal waits for this row. D-197: also waits for D-132-audit (both own server/db.ts, server/privateReferralRoutes.ts and shared/moneyCopy.ts; the money-core audit goes first, D-146). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost. Oct 28 (D-132-item3 re-scope): also waits for D-132-item3, which owns the same server/db.ts and server/privateReferralRoutes.ts and lands the accepted-price guard first; it already waits for D-090-BYOR, so no new wait beyond that row.",
+      "note": "D-193 section 5.3 and ruling (5): reconfirm before spending on every deliverWaitingAskTx path, never close the waiting request. Transition events, no migration; in-app notice only; ASK_RECONFIRM_ENABLED stays false until QA and expiry-clock removal still waits for this row. Existing post-copy, postmerge, audit and BYOR prerequisites remain. D-367 (6) moves the shared accepted-price guard into BANDED-spend, so the former D-132-item3 output dependency is redirected there. Reuse the current banded quote/spend contract after that output lands; the job-level mapping is D-367, never the superseded per-level credit cost or old band-null assumption. This changes routing only, not delivery, reconfirmation, money, flags or release acceptance.",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts",
