@@ -263,7 +263,7 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/sync-auto-push",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-375",
       "dependsOn": [],
       "owns": [
@@ -276,7 +276,7 @@
         "docs/plans/BRANCH-HYGIENE.md",
         "AGENTS.md"
       ],
-      "note": "D-375, owner Nov 21 (\"Make sure local build is pushing to repo without manually pushing to GitHub\"). Built by Claude Code (session ccr-d3ee9f32-69o0tx) on top of SYNC-clone-guard. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work, never opens or merges a pull request.",
+      "note": "D-375, owner Nov 21 (\"Make sure local build is pushing to repo without manually pushing to GitHub\"; \"Yes, land both\"). Built by Claude Code (session ccr-d3ee9f32-69o0tx) on top of SYNC-clone-guard: post-commit hook (--install-hook) runs sync-clone --current in the background; local main's own commits are saved on sync/main-<sha8>; the picker's --claim runs --auto-setup (hook, plus the timer on macOS), never in CI, tests or a cloud container, never over another tool's hook, never after an opt-out. 28/28 tests in scripts/syncClone.test.ts (the 6 new process tests fail on the old script); scripts/ suite 1659/1659. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work, never opens or merges a pull request.",
       "epic": "D-212"
     },
     {
