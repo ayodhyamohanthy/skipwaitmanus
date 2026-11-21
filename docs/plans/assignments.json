@@ -221,7 +221,7 @@
       "packet": "docs/plans/BRANCH-HYGIENE.md",
       "tier": 2,
       "lane": "repo-hygiene",
-      "branch": "ccr-f3a4e037-1voydq",
+      "branch": "agent/queue/sync-clone-guard",
       "status": "todo",
       "syncedTo": "D-373",
       "dependsOn": [],
@@ -233,7 +233,7 @@
         "docs/plans/BRANCH-HYGIENE.md",
         "AGENTS.md"
       ],
-      "note": "D-373 (5), owner Nov 21 (\"Make sure the repo is upto date automatically sync\"). Being built by Claude Code (session ccr-f3a4e037-1voydq): this row uses that session branch so its code pull request passes the D-166 queue gate (the session can push only that branch). The code is written and tested (scripts/sync-clone.mjs with pure rules in scripts/syncCloneCore.mjs; 19 tests, 4 against throwaway repositories; a mutation check fails 3); it lands in the next pull request from this branch, which sets this row to done. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work.",
+      "note": "D-373 (5), owner Nov 21 (\"Make sure the repo is upto date automatically sync\"). The code is written and tested; land it. Claude Code (session ccr-f3a4e037-1voydq) built it in commit 74bc8f40b, which is in main history via #1443, but that session can push only its own branch, which the D-166 queue gate refuses for code. On this row branch, restore it with: git checkout 74bc8f40b -- scripts/sync-clone.mjs scripts/syncCloneCore.mjs scripts/syncClone.test.ts scripts/sync-check.sh AGENTS.md; then run LANG=en_US.UTF-8 pnpm vitest run scripts/syncClone.test.ts (19 tests, 4 against throwaway repositories), set this row done and open the pull request with auto-merge. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work.",
       "epic": "D-212"
     },
     {
