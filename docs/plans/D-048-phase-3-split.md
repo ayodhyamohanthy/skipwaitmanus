@@ -33,7 +33,11 @@ The older #1209/D-341 dependency proposal was superseded before landing. Its
 original finding and proposal remain in the decision register's history;
 this carrier records the actual outcome instead of imposing that proposal
 or another review on current work. D-370 governs required-CI landing.
-See the Status receipt below for source, CI, deployment and verification limits.
+The row stays `todo` for current-release signed-in `/profile` and `/work`
+acceptance. An eligible follow-up uses a clean current-main carrier for that
+remaining check; it never rebuilds the switch or lands the preserved release
+branch again. See the Status receipt below for source, CI, deployment and
+verification limits.
 
 ## Why the rollout was serial
 All D-048 rows shared the lane `design`, and the picker allows one open pull request per lane, so phase 3 could only move one page at a time. Lanes are free strings: splitting the lane is a data change. What makes parallel work unsafe is a short list of shared files, which one foundation chain now owns: the route table (`client/src/App.tsx`, all 87 routes on one line), the app shell, `client/src/components/goal/**`, the goal boundary test's allowlist, tokens and kit files.
@@ -263,6 +267,17 @@ Releases follow the owner's sequence: landing (/), seeker home (/explore), compa
 ### Admin-money capture repair scope registration (November 21)
 
 `D-048-R-admin-money` also declares `e2e/release-captures.e2e.ts` for the capture-only synthetic catalog GET fixture identified by report `acf42760a` / CI 44639531167, and `docs/DECISIONS.md` for the bounded D-200 capture-block ruling. Publish these declarations on main before that ruling because scope-check reads main's owns. This registration supplies no fixture, source approval or capture/live acceptance; status, decision stamp, dependencies, other holders and every money/auth/provider/release gate remain unchanged.
+
+## Profile release ruling scope (November 21, D-200)
+
+`D-048-R-profile` also declares `docs/DECISIONS.md` for its picker-assigned
+unblock ruling and historical D-341 reconciliation on #1209. CI
+[44901226896](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44901226896)
+passed the compiler, all three unit shards and aggregate, build and journeys;
+its scope step alone refused that path. Land this declaration before the
+ruling because scope-check reads main's owns. This amendment preserves status,
+decision stamp, dependencies, runtime scope and all acceptance requirements;
+it supplies no new release or signed-in acceptance.
 
 ## Status
 The D-048 rows share the plan row "D-048", so nobody edits that row: each task writes one line, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live, in the Status section of the packet its task row names (here only for rows whose packet is this file; the picker prints which) (D-134). The CEO rolls the plan row up.

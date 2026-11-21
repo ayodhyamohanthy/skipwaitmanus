@@ -327,7 +327,7 @@
       "tier": 1,
       "lane": "banded-spend",
       "branch": "agent/queue/banded-spend",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-levels",
@@ -1938,7 +1938,7 @@
       "tier": 1,
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
-      "status": "done",
+      "status": "todo",
       "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-profile",
@@ -1954,9 +1954,10 @@
         "design/goal-ui/captures/profile/**",
         "client/src/test/goalPagesBoundary.test.ts",
         "client/src/components/profile/profileVisibility.ts",
-        "client/src/components/profile/VisibilityOptions.tsx (switch only)"
+        "client/src/components/profile/VisibilityOptions.tsx (switch only)",
+        "docs/DECISIONS.md"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review. November 21 reconciliation: PR #1201 merged November 17 at e13c0a2c279278582ec1daffb1db2c4b2bd3b6a0 after final-head CI 44025206857; Pages deployment 44025739404 succeeded. D-344-shell-referral-words supplied the wording fix through #1222. The old #1209/D-341 proposal is superseded, not a new release or a dependency on the remaining D-222 count work. See the packet Status and the D-200 execution receipt in docs/DECISIONS.md; no runtime change.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review. November 21 reconciliation: PR #1201 merged November 17 at e13c0a2c279278582ec1daffb1db2c4b2bd3b6a0 after final-head CI 44025206857; Pages deployment 44025739404 succeeded. D-344-shell-referral-words supplied the wording fix through #1222. The old #1209/D-341 proposal is superseded, not a new release or a dependency on the remaining D-222 count work. Status stays todo because fresh signed-in /profile and /work acceptance is unverified. Do not rebuild the switch or land the preserved release branch again; finish that bounded acceptance through a clean current-main carrier after an eligible picker assignment. D-370 replaces the historical review requirement. See the packet Status and the D-200 execution receipt in docs/DECISIONS.md; no runtime change.",
       "epic": "D-048-p3"
     },
     {
