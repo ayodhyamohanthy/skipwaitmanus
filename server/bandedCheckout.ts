@@ -26,9 +26,12 @@ export const BANDED_RESERVATION_TTL_MS = 6 * 60 * 60 * 1000;
 export const BANDED_REPLAY_WINDOW_MS = 25 * 60 * 1000;
 const PROBE_TIMEOUT_MS = 15_000;
 
-/** BANDED_SALES_ENABLED: off unless exactly "true". The release row turns it on after TEST-site QA. */
+/**
+ * BANDED_SALES_ENABLED: on only for the exact value "true", the same rule as the spend path's reader
+ * (server/billingSettings.ts), so checkout and spend can never disagree. BANDED-release turns it on.
+ */
 export function bandedSalesEnabled(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
-  return (env.BANDED_SALES_ENABLED ?? "").trim().toLowerCase() === "true";
+  return env.BANDED_SALES_ENABLED === "true";
 }
 
 export type BandedSite = "test" | "live";

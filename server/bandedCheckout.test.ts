@@ -18,6 +18,7 @@ import {
   type BandedCheckoutDeps,
 } from "./bandedCheckout";
 import { fakeBandedDeps, KEY, NOW, runtime } from "./bandedCheckout.fixtures";
+import { bandedSalesEnabled as spendSalesEnabled } from "./billingSettings";
 
 const customer = { email: "member@example.com", firstName: "Sam", lastName: "Lee" };
 const urls = { redirectUrl: "https://skipwait.me/plans?payment=pending", cancelUrl: "https://skipwait.me/plans?payment=cancelled" };
@@ -30,10 +31,19 @@ function untouched(deps: BandedCheckoutDeps) {
 }
 
 describe("banded sales switch", () => {
-  it("is off unless BANDED_SALES_ENABLED is exactly true (case and spaces ignored)", () => {
+  it("is on only for the exact value true, as BANDED-spend reads it", () => {
     expect(bandedSalesEnabled({})).toBe(false);
-    for (const value of ["", "false", "1", "yes", "on", "truee"]) expect(bandedSalesEnabled({ BANDED_SALES_ENABLED: value })).toBe(false);
-    for (const value of ["true", " TRUE ", "True"]) expect(bandedSalesEnabled({ BANDED_SALES_ENABLED: value })).toBe(true);
+    for (const value of ["", "false", "1", "yes", "on", "truee", " TRUE ", "True", "TRUE", " true"]) expect(bandedSalesEnabled({ BANDED_SALES_ENABLED: value })).toBe(false);
+    expect(bandedSalesEnabled({ BANDED_SALES_ENABLED: "true" })).toBe(true);
+  });
+
+  it("answers exactly as the spend path's reader for every value, so checkout and spend never disagree", () => {
+    for (const value of [undefined, "", "true", "TRUE", " true ", "True", "false", "1"]) {
+      if (value === undefined) vi.stubEnv("BANDED_SALES_ENABLED", undefined as unknown as string);
+      else vi.stubEnv("BANDED_SALES_ENABLED", value);
+      expect(bandedSalesEnabled(), String(value)).toBe(spendSalesEnabled());
+    }
+    vi.unstubAllEnvs();
   });
 });
 
