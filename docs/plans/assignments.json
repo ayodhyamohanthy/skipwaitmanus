@@ -2507,6 +2507,8 @@
         "D-048-p3-admin-money"
       ],
       "owns": [
+        "docs/DECISIONS.md",
+        "e2e/release-captures.e2e.ts",
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)",
         "client/src/pages/AdminPaymentsReview.tsx",
