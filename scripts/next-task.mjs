@@ -36,7 +36,7 @@ import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
-import { autoLandCandidates, autoLandHold, runAutoLand } from "./autoLand.mjs";
+import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
 
@@ -264,22 +264,34 @@ async function githubWrite(repo, method, path, body) {
     body: JSON.stringify(graphql ? { query: path, variables: body } : body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`GitHub ${graphql ? "GraphQL" : path} answered ${res.status}`);
+  // The status travels with the error: a 403 from GraphQL is the cloud proxy's refusal, which has a REST route (D-376).
+  if (!res.ok) throw Object.assign(new Error(`GitHub ${graphql ? "GraphQL" : path} answered ${res.status}`), { status: res.status });
   if (graphql && Array.isArray(json.errors) && json.errors.length) throw new Error(`GraphQL: ${String(json.errors[0]?.message ?? "error").slice(0, 120)}`);
   return json;
 }
 
-/** PICKER-auto-land (D-371): land every green, in-sync task pull request the board shows; never while main is red. */
-async function autoLandFrom({ doc, mainCi, openPrs, prCi, board }) {
+/**
+ * PICKER-auto-land (D-371): land every green, in-sync task pull request the board shows; never while main is red,
+ * and while the live release is red only its registered fix (D-376). Where GraphQL is refused (Claude Code cloud
+ * sessions), the ready and auto-merge steps use the proxy's REST routes (PICKER-auto-land-cloud, D-373 (4)).
+ */
+async function autoLandFrom({ doc, mainCi, openPrs, prCi, board, release }) {
   const hold = autoLandHold({ mainCi, openPrs });
   if (hold) { console.log(`auto-land: held (${hold})`); return []; }
-  const candidates = autoLandCandidates({ rows: board, tasks: doc.tasks, prCi });
+  const releaseLine = releaseHoldLine(release);
+  if (releaseLine) console.log(`auto-land: ${releaseLine}`);
+  const candidates = autoLandCandidates({ rows: board, tasks: doc.tasks, prCi, release });
   if (!candidates.length) { console.log("auto-land: no green task pull request waiting"); return []; }
+  const rest = route => githubWrite(doc.repo, route.method, route.path, route.body);
   return runAutoLand(candidates, {
     readPull: number => github(doc.repo, `/pulls/${number}`),
-    markReady: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){clientMutationId}}", { id }),
+    markReady: graphqlOrRest(
+      id => githubWrite(doc.repo, "POST", "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){clientMutationId}}", { id }),
+      (_id, number) => rest(CLOUD_ROUTES.ready(number))),
     updateBranch: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/update-branch`, { expected_head_sha: sha }),
-    enableAutoMerge: id => githubWrite(doc.repo, "POST", "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}", { id }),
+    enableAutoMerge: graphqlOrRest(
+      id => githubWrite(doc.repo, "POST", "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}", { id }),
+      (_id, number) => rest(CLOUD_ROUTES.autoMerge(number))),
     mergeNow: (number, sha) => githubWrite(doc.repo, "PUT", `/pulls/${number}/merge`, { merge_method: "merge", sha }),
     log: line => console.log(line),
   });
@@ -783,9 +795,9 @@ async function runCommand(args) {
     return;
   }
   if (args.autoLand) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports } = await state();
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register });
-    await autoLandFrom({ doc, mainCi, openPrs, prCi, board });
+    await autoLandFrom({ doc, mainCi, openPrs, prCi, board, release });
     return;
   }
   if (args.status) {
@@ -853,7 +865,7 @@ async function runCommand(args) {
     // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
     // PICKER-auto-land (D-371): every claim first lands the green, in-sync task pull requests the board shows.
-    if (args.claim && attempt === 1) await autoLandFrom({ doc, mainCi, openPrs, prCi, board });
+    if (args.claim && attempt === 1) await autoLandFrom({ doc, mainCi, openPrs, prCi, board, release });
     if (pick.kind === "ceo") pick.board = board;
     // D-358: the short board, so the assignment below survives an agent's output cap; --status prints the full one.
     else console.log(renderBoardSummary(board));

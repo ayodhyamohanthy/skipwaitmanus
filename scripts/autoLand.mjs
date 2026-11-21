@@ -9,7 +9,12 @@
  * with the Actions token would not trigger the deploy workflows.
  *
  * Pure parts take plain data; `runAutoLand` takes its I/O as functions so every path is testable.
+ *
+ * PICKER-auto-land-cloud (D-373 (4), D-376): where the session's proxy refuses GraphQL (HTTP 403, as in Claude Code
+ * cloud sessions), marking ready and turning auto-merge on use the proxy's REST routes instead (`graphqlOrRest`,
+ * `CLOUD_ROUTES`), always with a merge commit. While the live release is red, only a registered release fix lands.
  */
+import { releaseFixTasks, releaseLandingHold } from "./nextTaskCore.mjs";
 
 const PR_NUMBER = /\/pull\/([1-9][0-9]*)$/;
 
@@ -26,11 +31,15 @@ export function prNumberOf(url) {
  * Board rows that may land now, with the branch and the CI-green head the board saw.
  * `rows` are statusBoard rows; `tasks` the task list; `prCi` maps a branch to its CI state ({ state, sha }).
  */
-export function autoLandCandidates({ rows, tasks, prCi }) {
+export function autoLandCandidates({ rows, tasks, prCi, release = null }) {
   const byId = new Map((tasks ?? []).map(task => [task.id, task]));
+  // D-212/D-376: a red live release holds every landing except its registered fix. Unknown adds no hold.
+  const hold = releaseLandingHold(release);
+  const fixes = hold ? new Set(releaseFixTasks(tasks ?? [], hold)) : null;
   const out = [];
   for (const row of rows ?? []) {
     if (row?.state !== "pr-green" || row?.health !== "green") continue;
+    if (fixes && !fixes.has(row.id)) continue;
     const number = prNumberOf(row.pr);
     const task = byId.get(row.id);
     if (!number || !task || task.status === "done" || task.status === "owner") continue;
@@ -48,10 +57,37 @@ export function autoLandHold({ mainCi, openPrs }) {
   return null;
 }
 
+/** One line for a red live release, or null: only its registered fix may land (D-212, D-376). */
+export function releaseHoldLine(release) {
+  const hold = releaseLandingHold(release);
+  return hold ? `live release ${hold.sha.slice(0, 8)} is red on light${hold.lights.length > 1 ? "s" : ""} ${hold.lights.join(", ")}; only a registered release fix lands (D-212, D-376)` : null;
+}
+
+/** The proxy's REST routes for the two GraphQL-only steps (D-373 (4)); auto-merge always uses a merge commit. */
+export const CLOUD_ROUTES = Object.freeze({
+  ready: number => ({ method: "POST", path: `/pulls/${number}/ccr/ready_for_review`, body: {} }),
+  autoMerge: number => ({ method: "PUT", path: `/pulls/${number}/ccr/auto_merge`, body: { merge_method: "merge" } }),
+});
+
+/**
+ * Try the GraphQL step; when the proxy refuses GraphQL (an error whose `status` is 403), take the REST route once.
+ * Any other GraphQL error is passed on unchanged, and a failed REST route says both what was refused and what failed.
+ */
+export function graphqlOrRest(graphql, rest) {
+  return async (...args) => {
+    try { return await graphql(...args); }
+    catch (error) {
+      if (error?.status !== 403) throw error;
+      try { return await rest(...args); }
+      catch (restError) { throw new Error(`GraphQL refused (403); REST route failed: ${restError instanceof Error ? restError.message : String(restError)}`); }
+    }
+  };
+}
+
 /**
  * Land each candidate. `io` supplies:
  *   readPull(number) -> { state, draft, merged, head: { ref, sha }, node_id, mergeable_state, auto_merge }
- *   markReady(nodeId), updateBranch(number, expectedSha), enableAutoMerge(nodeId), log(line)
+ *   markReady(nodeId, number), updateBranch(number, expectedSha), enableAutoMerge(nodeId, number), log(line)
  * Returns one result per candidate: { id, number, outcome, detail? }. A failure never stops the next candidate.
  */
 export async function runAutoLand(candidates, io) {
@@ -68,10 +104,10 @@ export async function runAutoLand(candidates, io) {
         results.push({ ...result, outcome: "skipped", detail: `draft and its holder was active under ${DRAFT_QUIET_HOURS} h ago` }); continue;
       }
       const steps = [];
-      if (pr.draft) { await io.markReady(pr.node_id); steps.push("ready"); }
+      if (pr.draft) { await io.markReady(pr.node_id, c.number); steps.push("ready"); }
       if (pr.mergeable_state === "behind") { await io.updateBranch(c.number, c.sha); steps.push("updated with main"); }
       if (!pr.auto_merge) {
-        try { await io.enableAutoMerge(pr.node_id); steps.push("auto-merge on"); }
+        try { await io.enableAutoMerge(pr.node_id, c.number); steps.push("auto-merge on"); }
         catch (error) {
           // Where GraphQL is unavailable, a non-draft PR already clean against main merges now over REST, same checks.
           if (pr.draft || pr.mergeable_state !== "clean" || !io.mergeNow) throw error;
