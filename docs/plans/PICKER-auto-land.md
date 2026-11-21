@@ -66,3 +66,7 @@ Tests: 3 new ones failed on the earlier code, and now 11/11 pass. The `scripts/`
 **Tests** (red first, `scripts/autoLand.test.ts`, injected I/O): a red live release holds every candidate except a registered release fix, and an unreadable or green release adds no hold; GraphQL 403 then the REST route succeeds, for both ready and auto-merge; GraphQL 403 then the REST route fails, which gives an error line and the next candidate still runs; a non-403 GraphQL error does not try the REST route; the merge method is always a merge commit.
 
 **Done means:** green required CI on the pull request; one real `node scripts/next-task.mjs --auto-land` run from a Claude Code cloud session that turns auto-merge on, or marks a quiet draft ready, on a real green task PR, with its output pasted in the pull request.
+
+## Status
+One line per task (D-134).
+- PICKER-auto-land-cloud: in progress — Claude Code · e969 — 2026-11-21 — branch agent/queue/picker-auto-land-cloud
