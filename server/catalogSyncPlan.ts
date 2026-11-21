@@ -2,7 +2,6 @@
 // writes. The dry run it returns is what the admin page shows, and its planHash
 // pins exactly what an apply would create (D-069).
 import { createHash } from "node:crypto";
-import type { CatalogPrice } from "../shared/billingCatalog";
 import type { CatalogSyncAction, CatalogSyncDiff, CatalogSyncDryRun, ItemPriceSpec } from "../shared/catalogSync";
 import { itemPriceMatches } from "./billingAvailability";
 import type { DesiredCatalogEntry } from "./catalogSyncDesired";
@@ -80,7 +79,8 @@ export function priceDiffs(price: ProviderItemPrice, spec: ItemPriceSpec): Catal
   return diffs;
 }
 
-function termOf(price: CatalogPrice): CatalogSyncDryRun["correct"][number]["term"] {
+function termOf(price: DesiredCatalogEntry["price"]): CatalogSyncDryRun["correct"][number]["term"] {
+  if (price.kind === "banded_plan") return "monthly";
   if (price.kind !== "plan") return "one_time";
   if (price.interval === "yearly") return "yearly";
   if (price.interval === "90d") return "90d";
@@ -206,7 +206,9 @@ export function planCatalogSync(input: {
         price: entry.spec.price,
         term: termOf(entry.price),
         diffs,
-        sellableNow: itemPriceMatches(existing, entry.price),
+        sellableNow: entry.price.kind === "banded_plan" || entry.price.kind === "banded_referral"
+          ? false
+          : itemPriceMatches(existing, entry.price),
       });
     }
   }

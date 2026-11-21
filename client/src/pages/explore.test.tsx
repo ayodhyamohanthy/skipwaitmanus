@@ -239,7 +239,7 @@ describe("Find a referral directory", () => {
     await screen.findByTestId("goal-directory-summary");
     expect(screen.getByRole("link", { name: "Wipro" }).getAttribute("aria-current")).toBe("true");
     const drawer = await screen.findByTestId("goal-drawer");
-    expect(within(drawer).getByRole("heading", { name: "Ask for a referral" })).toBeTruthy();
+    expect(within(drawer).getByRole("heading", { name: "Request a referral" })).toBeTruthy();
     expect(within(drawer).getByText("Wipro")).toBeTruthy();
     fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByTestId("goal-drawer")).toBeNull());
@@ -670,7 +670,7 @@ describe("Goal redesign of the find surfaces", () => {
     fireEvent.change(within(drawer).getByPlaceholderText(/One result/), { target: { value: "Led a checkout redesign that cut drop-off 18%." } });
     fireEvent.change(within(drawer).getByPlaceholderText(/Another result/), { target: { value: "Shipped a design system used by 40 teams." } });
     fireEvent.change(within(drawer).getByPlaceholderText(/A third reason/), { target: { value: "Built the onboarding flow end to end." } });
-    fireEvent.click(within(drawer).getByRole("button", { name: "Send ask" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     await waitFor(() => expect(within(screen.getByTestId("goal-drawer")).getByText("Referral request sent to Wipro.")).toBeTruthy());
     fireEvent.click(within(screen.getByTestId("goal-drawer")).getByRole("button", { name: /Close/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Ask for a referral" }));

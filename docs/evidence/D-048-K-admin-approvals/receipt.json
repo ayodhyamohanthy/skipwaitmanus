@@ -1,0 +1,84 @@
+{
+  "checkedAt": "2026-11-20T17:43:31.719Z",
+  "expectedSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+  "signedOut": true,
+  "businessMutations": 0,
+  "results": [
+    {
+      "name": "queue",
+      "path": "/admin/approvals",
+      "width": 1280,
+      "status": 200,
+      "webSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+      "overflow": 0,
+      "signInButtons": 1,
+      "goalPages": 1,
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "rejectedMutations": [],
+      "privateRequests": [],
+      "failedResponses": [],
+      "file": "queue-signed-out-1280.png"
+    },
+    {
+      "name": "queue",
+      "path": "/admin/approvals",
+      "width": 390,
+      "status": 200,
+      "webSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+      "overflow": 0,
+      "signInButtons": 1,
+      "goalPages": 1,
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "rejectedMutations": [],
+      "privateRequests": [],
+      "failedResponses": [],
+      "file": "queue-signed-out-390.png"
+    },
+    {
+      "name": "record",
+      "path": "/admin/approvals/referral_request/501",
+      "width": 1280,
+      "status": 200,
+      "webSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+      "overflow": 0,
+      "signInButtons": 1,
+      "goalPages": 1,
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "rejectedMutations": [],
+      "privateRequests": [],
+      "failedResponses": [],
+      "file": "record-signed-out-1280.png"
+    },
+    {
+      "name": "record",
+      "path": "/admin/approvals/referral_request/501",
+      "width": 390,
+      "status": 200,
+      "webSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+      "overflow": 0,
+      "signInButtons": 1,
+      "goalPages": 1,
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "rejectedMutations": [],
+      "privateRequests": [],
+      "failedResponses": [],
+      "file": "record-signed-out-390.png"
+    }
+  ]
+}
