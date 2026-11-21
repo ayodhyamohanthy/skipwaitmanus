@@ -6616,15 +6616,14 @@
       "lane": "security-hsts",
       "branch": "agent/queue/d100-hsts-preload",
       "status": "todo",
-      "syncedTo": "D-227",
-      "dependsOn": [
-        "D-100.csp-release"
-      ],
-      "note": "D-223 subtask of D-100. Same file as the CSP rows, so after them.",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "note": "D-223 subtask of D-100. November 21 technical ruling under D-200/D-223/D-309/D-314 removes the CSP-release edge whose sole reason was the shared filename; dormant HSTS consumes no CSP acceptance output. Integrate current main into PR #1367, preserve both header changes, require green composed-head CI and exact-release verification. HSTS_PRELOAD stays false; activation and domain submission remain owner-only. CSP release remains todo with D-350's 48-hour collection/enforcement acceptance; inferred picker completion is not that evidence.",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts",
-        "server/securityHeaders.test.ts"
+        "server/securityHeaders.test.ts",
+        "docs/DECISIONS.md"
       ]
     },
     {

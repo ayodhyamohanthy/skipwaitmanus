@@ -399,6 +399,44 @@ Status, 2026-10-22: D-141 implemented behind `SKIPPIE_AGENT_ENABLED` (off in pro
 
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
+### November 21 dormant HSTS dependency correction (D-200, D-223, D-309, D-314)
+
+Official unblock `73969c971`, `GPT-6.1 Sol · 6f6c`, checked main
+`534c03e02a53637992ad09deb564b6580caa7b1a` and decisions through D-371.
+The registered `D-100.hsts-preload` dependency on `D-100.csp-release` says
+only “Same file as the CSP rows, so after them.” D-223 permits dependencies
+only on required output; D-309/D-314 remove shared-file serialization.
+D-223's historical CSP-to-HSTS order and D-314's retained same-family edges
+explain why this specific edge still needs an explicit correction; it was
+not already removed by the general parallel-development ruling.
+D-350 changes CSP reporting, collection and enforcement acceptance, without
+making that output a prerequisite for dormant HSTS preparation. The two
+switches are independent. This is a technical execution ruling inside those
+existing decisions, not a new owner decision or an acceptance verdict.
+
+Remove only that file-ordering dependency and advance the HSTS row's
+`syncedTo` to D-371. Preserve its todo status, branch, tier, owns, lane and
+FIFO position. The packet now states the independent preparation contract.
+Once this amendment lands, the normal picker holder integrates current main
+into [PR #1367](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1367),
+keeps both CSP and HSTS changes in the shared files, proves the unchanged
+six-month HTTPS header and absent plain-HTTP header, and obtains green
+required CI on the composed head before protected auto-merge. Historical
+[CI 44686090704](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44686090704)
+is green on `0b73492d01fc5a9ff55bfc551215f0d1e9d956d9`; it is not current-main
+integration or release proof. `HSTS_PRELOAD` remains false. Turning it on and
+submitting the domain remain owner-only.
+
+`D-100.csp-release` stays todo: merged reporting-only #1225 and the picker's
+inferred done state do not prove its 48-hour report inspection, captures or
+deployed enforcement. `CSP_ENFORCED` is still false on inspected main. Retain
+D-350's complete collection and exact-release obligations; D-370 supersedes
+only the packet's independent-review wording. This ruling neither enables CSP
+nor marks it accepted, and changes no runtime, settings, secrets, schema,
+dependency package, payment or production state. Report the routing outcome
+before landing this docs amendment; implementation and live acceptance remain
+separate work through their legitimate picker claims.
+
 ### November 20 banded catalog execution receipt (D-219/D-367/D-370)
 
 `BANDED-catalog-sync` implements the existing pricing decisions, not a new price or sale permission: catalog provisioning derives six monthly plan prices and eight per-level extra-referral prices from `shared/planFamily.ts`, using the shared `bandedCatalog` IDs/validated amounts. The existing admin dry-run/apply path keeps its reviewed hash, create-only operations, failure stops and audit trail; paused packs, passes and human sessions are excluded rather than recreated. Senior to Executive can be provisioned while its application-only checkout gate remains separate. Monthly metadata is catalog-only and does not register a new price in the legacy checkout resolver. No provider apply or sale activation occurs in this row; protected required CI and exact-release acceptance remain, then BANDED-release supplies its TEST-site proof and authorized admin apply under D-370 (6). Source/test evidence and known verification limits live in the packet Status section.
