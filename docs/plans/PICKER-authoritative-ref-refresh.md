@@ -104,6 +104,8 @@ fixture PASS, then check the complete released CLI in a nonclaim live run.
 
 ## Status
 
+Superseded in part, Nov 21 2026: the global before-write comparison starved every claim under normal multi-agent activity (`STOP: authoritative refs kept changing`). [PICKER-snapshot-scope](PICKER-snapshot-scope.md) scopes it to each write's own inputs and judges a moved main by content; the explicit ref refresh, bounded retries and fail-closed reads below are unchanged.
+
 PICKER-authoritative-ref-refresh: implementation complete — source `26ba72f3e` plus shared-slot repair `453076afb`; composed `2a06bd952` — GPT-6.1 Sol · e560 — 2026-11-20 — PR #1393. Completion is staged in this PR; required CI, protected merge and released read-only CLI acceptance remain pending.
 
 Read receipt: current main `a4e93b796`, instructions `AGENTS.md`,
