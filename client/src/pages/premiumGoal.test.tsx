@@ -65,7 +65,7 @@ describe("goal premium sale pause", () => {
     await screen.findByText("Extra referral requests are paused.");
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(document.querySelector("a[href='/plans#packs']")).toBeNull();
-    expect(screen.getByRole("link", { name: "See plans and prices" }).getAttribute("href")).toBe("/plans");
+    expect(screen.getByRole("link", { name: "Back to my referral request" }).getAttribute("href")).toBe("/request");
     expect(request.mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
   });
 
