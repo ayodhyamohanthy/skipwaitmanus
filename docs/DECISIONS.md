@@ -1014,3 +1014,41 @@ mutation was performed; the current signed-in acceptance gap remains explicit
 rather than being certified by this queue correction. The picker reported
 older merged-PR evidence unreadable during this claim, which explains the
 repeated obsolete assignment but does not authorize rebuilding completed work.
+
+### November 21 banded fulfillment persistence prerequisite (D-200, D-223, D-367, D-370)
+
+Official `BANDED-grants` claim `93154537b`, GPT-6.1 Sol · 8aac, inspected
+checkout #1411 and spend #1419 on main `83ecb3bab`, then checked current main
+`e8b1bc83d` through D-371. Extra-referral checkout has no durable owner/cart
+intent: `bandedCheckoutRoutes.ts` records only optional unawaited activity
+after creating its provider page. `bandedSpend.ts` records level/source but no
+supplying purchase; `bandedReferralBalances.purchasedRemaining` aggregates
+purchases. These boundaries cannot establish recoverable checkout ownership
+or an invoice's own unused referrals. Crediting from that activity or revoking
+`min(aggregate balance, invoice grant)` would not meet the existing payments bar.
+
+Register `BANDED-grants-intents-migration` immediately before its parent and
+add only that parent's dependency. The [migration packet](plans/BANDED-grants-intents-migration.md)
+defines an initially empty, site-scoped immutable checkout-intent table,
+unique checkout/page/initial-invoice bindings, real-MySQL application/replay
+checks and production migration/checksum acceptance. Number 0124 is provisional
+until the assigned migration session checks current main and open allocations.
+Keep schema/readiness and all runtime consumers off main until that prerequisite
+is verified, following #1395's migration-first route.
+
+The existing grants row then persists intent before provider-page creation,
+validates paid evidence against the stored quote, and uses the same intent for
+webhook/return/hourly recovery. Purchase attribution uses keyed invoice/level
+ledger grants plus provenance on purchased debits and reversals; refunds never
+take a later purchase or resurrect revoked entitlement on withdrawal. Included
+cycles stay keyed by site/subscription/confirmed term/level, with the free
+calendar allowance separate. Preserve founding counter-before-membership locks;
+never oversell or recycle an issued sequence. An ungrantable late payment parks
+for existing review/refund handling without an invented price.
+
+This is decomposition of decided fulfillment, not a new owner decision or a
+reopening of completed checkout/spend rows. It supplies no SQL, runtime code,
+grant, provider call, payment, refund execution, sale activation or production
+mutation. `BANDED-grants` remains unfinished; `BANDED-release` retains TEST-site
+purchase/refund/recovery proof and activation. The exact bounded contracts,
+consumer targets, remaining implementation and verification are in the packet.

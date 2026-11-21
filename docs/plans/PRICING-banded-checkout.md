@@ -28,7 +28,8 @@ The banded plans will let a seeker buy one of three plans (Early to Mid, Mid to 
 | BANDED-schema | 1 | Dormant storage contract: banded plan ids in seeker plan fields, per-user per-level balances, and bounded founding counters with unique issued sequences. Boot validates the deployed schema with read-only queries. | BANDED-schema-migration |
 | BANDED-catalog-sync | 1 | `server/catalogSyncDesired.ts` generated from `shared/planFamily.ts`: one monthly item price per plan per currency and one extra-referral item price per level per currency. Dry run lists them; apply stays owner-only (D-069). | BANDED-levels |
 | BANDED-checkout | 1 | Server routes behind `BANDED_SALES_ENABLED`: plan checkout (hosted page, INR/USD by the D-122 price book), extra-referral cart (only levels inside the buyer's band; volume discount computed from `VOLUME_DISCOUNTS`), founding cap reserved atomically at checkout creation and released if it expires unpaid, by-application refusal, cap-full refusal. Zod at the edge, idempotency key per checkout. | BANDED-schema, BANDED-catalog-sync |
-| BANDED-grants | 1 | Webhook-confirmed subscription term grants each level's included referrals for the cycle (no carry-forward); a paid extra-referral invoice credits purchased referrals at that level once; refunds and cancellations take back only what is unspent; the hourly recovery finds a paid checkout with no grant; the daily money check reconciles both. | BANDED-schema, BANDED-checkout |
+| BANDED-grants-intents-migration | 1 | Additive durable owner/cart intent prerequisite, real-MySQL uniqueness/replay proof and production migration/checksum acceptance before dependent runtime. [Packet](BANDED-grants-intents-migration.md). | BANDED-checkout |
+| BANDED-grants | 1 | Webhook-confirmed subscription term grants each level's included referrals for the cycle (no carry-forward); a paid extra-referral invoice credits purchased referrals at that level once; refunds and cancellations take back only what is unspent; the hourly recovery finds a paid checkout with no grant; the daily money check reconciles both. Includes durable checkout binding and purchase-attributed spend/reversal integration (section 9). | BANDED-schema, BANDED-checkout, BANDED-grants-intents-migration |
 | BANDED-spend | 1 | Sending a request at level X spends the plan's included X referral, then the free allowance, then a purchased X referral; outside the plan's band only the free allowance. The quote states the level, the source and whether it is covered before send, and the charge equals the quote (re-sync the D-132-item3 guard to this model). | BANDED-levels, BANDED-schema |
 | BANDED-ui | 1 | `/plans` buttons go live from the server's availability answer: buy a plan, buy extra referrals inside your band, the cap-full and by-application states, the balance by level. Goal UI only (`DESIGN.md`), captures at 1280 and 390. | BANDED-checkout |
 | BANDED-release | 1 | Owner steps, then the switch: catalog-sync dry run and apply on the live site; Razorpay international payments on (for USD); test-site QA matrix INR and USD (plan, extra referrals, refund, recovery, cap reservation) with captures; set `BANDED_SALES_ENABLED=true`; live verification without paying. | every row above |
@@ -38,7 +39,8 @@ The banded plans will let a seeker buy one of three plans (Early to Mid, Mid to 
 - BANDED-schema: `drizzle/schema.ts`, `server/schemaReconcile.ts` and its banded metadata validator, the stored-plan unions in `shared/billingCatalog.ts`, and their schema, billing and MySQL contract tests. The migration lives in the prerequisite row.
 - BANDED-catalog-sync: `server/catalogSyncDesired.ts` and its test; companion provisioning contract `shared/bandedCatalog.ts` and test, the `monthly` term in `shared/catalogSync.ts`, `server/catalogSyncPlan.ts` and its test, plus the existing apply/admin-route/provider-adapter tests. The runtime billing resolver, checkout, grant, spend and sales switches are unchanged.
 - BANDED-checkout: new `server/bandedCheckout.ts` and test, `shared/subscriptionManagement.ts`, `server/chargebeeRoutes.ts`, `.env.example`, `src/worker.ts`.
-- BANDED-grants: `server/creditCycles.ts`, `server/dailyMoneyCheck.ts`, `server/paymentWebhooks.ts`, the `applyChargebeeSubscriptionEvent` area of `server/db.ts`.
+- BANDED-grants-intents-migration: exact additive SQL and real-MySQL test named in its packet; migration-only production acceptance before runtime.
+- BANDED-grants: existing grant/cycle/audit boundaries `server/creditCycles.ts`, `server/dailyMoneyCheck.ts`, `server/paymentWebhooks.ts` and the subscription/payment/refund/audit areas of `server/db.ts`. Necessary consumer targets, inspected and added November 21: `shared/bandedGrants.ts` + contract test (new), `server/bandedGrants.ts` + transaction tests (new), `server/bandedGrantStore.ts` + tests (new), `server/bandedCheckout.ts`, `server/bandedCheckoutStore.ts`, `server/bandedCheckoutRoutes.ts` and their existing tests, `server/chargebee.ts`, `server/chargebeeRoutes.ts`, `server/chargebeeSubscriptionApi.ts`, `server/chargebeePendingReconcile.ts` and their parser/route/recovery tests, `server/bandedSpend.ts` and existing `server/db.askCostStored.test.ts` / `e2e/banded-spend.e2e.ts` for purchase attribution and request reversal, new `e2e/banded-grants.e2e.ts`, matching `drizzle/schema.ts` and `server/schemaReconcile.ts` metadata/readiness tests after the migration, `server/_core/index.ts` wiring only, and affected operating-map receipts in AGENTS/BRIEF/PRD. Runtime work publishes exact export signatures and the bounded edit plan before editing; this declaration itself implements none of those consumers.
 - BANDED-spend: `server/creditLedger.ts`, `server/planGates.ts`, the quote/create transaction in `server/db.ts` and `server/privateReferralRoutes.ts`; shared accepted-cost contract/tests, production preview registration (`server/_core/index.ts`, switch only), and the quote, rollback-fixture, create-guard and route-integration tests formerly listed by `D-132-item3`. These companion paths transfer the existing invariant, not an old price or an activation.
 - BANDED-ui: `client/src/pages/PlansV2.tsx`, `client/src/pages/PlansV2Connected.tsx`, `client/src/components/plans/**`.
 
@@ -71,6 +73,33 @@ Each row lands on green required CI (D-370 supersedes D-352's review requirement
 - Re-scope reused contracts and tests to the actual banded balances and D-367 mapping. Neither the obsolete always-null band nor `ASK_LEVEL_COST=true` is an acceptable production pricing policy. Preserve meaningful allocation-identity/rollback regressions without treating a synthetic test count as an approved price; no helper-only test substitutes for the real transaction. Do not copy old source wholesale or inherit its prior CI/Fixed receipt.
 - `SKIPPY-fix` and `D-174-held-ask-reconfirm` now depend on this output, replacing their old `D-132-item3` edge. Their other dependencies, flags, scope and historical evidence remain. This routing amendment neither reopens a merged implementation nor certifies its compatibility with an unbuilt guard.
 - An actual picker-assigned builder still implements and proves the complete row on current main, including existing money/auth/referral controls, required CI and canonical release evidence. Sales remain off until BANDED-release. This documentation changes no runtime API, price, balance, refund, waiting-delivery rule or activation.
+
+## 9. Fulfillment persistence and purchase attribution (November 21, D-200/D-223)
+
+Before runtime grants land, `BANDED-grants-intents-migration` supplies a durable
+immutable owner/site/priced-cart intent table and verifies its production
+migration/checksum. [Its packet](BANDED-grants-intents-migration.md) defines
+the storage, recovery, invoice uniqueness and runtime consumer contract.
+Existing checkout #1411 has only a best-effort activity record for extras;
+its helper does not establish a recoverable purchase contract. Existing spend
+#1419 tracks the level/source but no supplying purchase. Neither merged row is
+reopened or marked incomplete by this missing fulfillment integration.
+
+The grants implementation owns that integration: persist/bind intent before
+and after provider page creation, use the same intent in webhook/return/hourly
+recovery, validate payment amount/currency/lines against its immutable quote,
+and attribute purchased debits/reversals to keyed invoice/level purchase rows.
+Do not infer a purchase's unspent balance from the aggregate alone. Provider
+refund then request withdrawal cannot resurrect revoked entitlement or consume
+a later purchase. Included cycles remain per site/subscription/term/level;
+free calendar allowance remains separate. Preserve counter-before-membership
+locking, never recycle issued founding sequences, and park an ungrantable
+late payment for review/refund without overselling or inventing a price.
+
+Migration-first is the only new dependency. BANDED-release still supplies
+TEST-site purchase/replay/refund/recovery and international-card acceptance,
+then the authorized activation. No sale switch, price, refund right, provider
+configuration, login or production mutation occurs in this registration.
 
 ## Status
 
