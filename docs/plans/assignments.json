@@ -1938,7 +1938,7 @@
       "tier": 1,
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-profile",
