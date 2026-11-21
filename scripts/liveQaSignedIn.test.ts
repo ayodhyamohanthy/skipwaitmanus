@@ -94,7 +94,8 @@ describe("constants", () => {
     const envNames = [...SOURCE.matchAll(/process\.env\.([A-Z_]+)/g)].map(m => m[1]);
     expect([...new Set(envNames)].sort()).toEqual(["GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "LIVE_QA_ROLES", "LIVE_QA_TRIGGER", "REVIEWER_REFERRER_PASSWORD", "REVIEWER_SEEKER_PASSWORD"]);
     expect(SOURCE).not.toMatch(/process\.argv\[[2-9]\]/);
-    expect(SOURCE).not.toMatch(/https?:\/\/(?!skipwait\.me")/);
+    // Any URL in the source is skipwait.me itself, ending there (not skipwait.me.evil.example).
+    expect(SOURCE).not.toMatch(/https?:\/\/(?!skipwait\.me(?:["'`\s)/]|$))/m);
   });
   it("uses only the two public demo accounts, never admin", () => {
     expect(ACCOUNTS).toEqual({
@@ -255,6 +256,6 @@ describe("workflow", () => {
     expect(WORKFLOW).toMatch(/name: live-qa-\$\{\{ steps\.qa\.outputs\.web_sha \|\| github\.run_id \}\}/);
     expect(WORKFLOW).toContain("retention-days: 14");
     expect(WORKFLOW).not.toContain("REVIEWER_ALLOW_ADMIN");
-    expect(WORKFLOW).not.toMatch(/https?:\/\/(?!skipwait\.me)/);
+    expect(WORKFLOW).not.toMatch(/https?:\/\/(?!skipwait\.me(?:["'`\s)/]|$))/m);
   });
 });
