@@ -20,6 +20,25 @@ by `DEVICE-SIGNIN-passkeys` in the current assignments register, not unowned;
 this correction does not edit or transfer that file. The split's existing
 behavior, independent review, auth holds and separate release checks still apply.
 
+## Profile release routing reconciled (November 21, D-344/D-370)
+
+`D-048-R-profile` was released by [PR #1201](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1201),
+merged November 17 at `e13c0a2c279278582ec1daffb1db2c4b2bd3b6a0`.
+D-344 (4) routed its shared-shell wording/mobile-unit finding to
+`D-344-shell-referral-words`, delivered by #1222. That dependency and the
+completed profile build remain unchanged. The remaining D-222 count/ledger
+work does not hold this already-merged release.
+
+The older #1209/D-341 dependency proposal was superseded before landing. Its
+original finding and proposal remain in the decision register's history;
+this carrier records the actual outcome instead of imposing that proposal
+or another review on current work. D-370 governs required-CI landing.
+The row stays `todo` for current-release signed-in `/profile` and `/work`
+acceptance. An eligible follow-up uses a clean current-main carrier for that
+remaining check; it never rebuilds the switch or lands the preserved release
+branch again. See the Status receipt below for source, CI, deployment and
+verification limits.
+
 ## Why the rollout was serial
 All D-048 rows shared the lane `design`, and the picker allows one open pull request per lane, so phase 3 could only move one page at a time. Lanes are free strings: splitting the lane is a data change. What makes parallel work unsafe is a short list of shared files, which one foundation chain now owns: the route table (`client/src/App.tsx`, all 87 routes on one line), the app shell, `client/src/components/goal/**`, the goal boundary test's allowlist, tokens and kit files.
 
@@ -249,8 +268,21 @@ Releases follow the owner's sequence: landing (/), seeker home (/explore), compa
 
 `D-048-R-admin-money` also declares `e2e/release-captures.e2e.ts` for the capture-only synthetic catalog GET fixture identified by report `acf42760a` / CI 44639531167, and `docs/DECISIONS.md` for the bounded D-200 capture-block ruling. Publish these declarations on main before that ruling because scope-check reads main's owns. This registration supplies no fixture, source approval or capture/live acceptance; status, decision stamp, dependencies, other holders and every money/auth/provider/release gate remain unchanged.
 
+## Profile release ruling scope (November 21, D-200)
+
+`D-048-R-profile` also declares `docs/DECISIONS.md` for its picker-assigned
+unblock ruling and historical D-341 reconciliation on #1209. CI
+[44901226896](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44901226896)
+passed the compiler, all three unit shards and aggregate, build and journeys;
+its scope step alone refused that path. Land this declaration before the
+ruling because scope-check reads main's owns. This amendment preserves status,
+decision stamp, dependencies, runtime scope and all acceptance requirements;
+it supplies no new release or signed-in acceptance.
+
 ## Status
 The D-048 rows share the plan row "D-048", so nobody edits that row: each task writes one line, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is live, in the Status section of the packet its task row names (here only for rows whose packet is this file; the picker prints which) (D-134). The CEO rolls the plan row up.
+
+- D-048-R-profile: merged and deployed; stale queue block reconciled — `GPT-6.1 Sol · 8aac` — 2026-11-21. [PR #1201](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1201) merged November 17 as `e13c0a2c279278582ec1daffb1db2c4b2bd3b6a0`; final head `81965c95b` passed [CI 44025206857](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44025206857), and [Pages 44025739404](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44025739404) passed its live-commit check. D-344's wording fix #1222 and the release are ancestors of canonical web `dc555447a4fd2b522d5d703d27dabedd09004703`; `/profile` and `/work` returned 200 with that identity on November 21. Current main `beb06227c` retains `profile` in `RELEASED`. Fresh profileGoal/profileWork/profileSetup/goalSurfaces/appShell/goalComposites/loginRule/nextTaskCompactBoard: 8 files, 126 tests passed; 393 queue rows validate, with only this row changed. Historical capture and implementation records below remain. **Current signed-in browser acceptance: UNVERIFIED by this reconciliation**; the GETs prove serving and release identity only. No runtime or production mutation. Read receipt: BRIEF, AGENTS, PRD, BUILD_CONTINUITY, collaboration/delegation, build-plan process, BUGFREE_GATE, this packet, D-341's unlanded proposal, D-344 and register through D-371 checked; prior reports and actual #1201/#1209 states inspected. D-341/#1209's dependency proposal is superseded by D-344, while D-222 keeps its separate count/ledger work.
 - D-048-R-public-profile: review — GPT-6.1 Sol · 630a — 2026-11-18 — [PR #1252](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1252), inherited source `73b2a663`, validated integration `dc2050e3`, current-main merge `fd261540` (`3b378f22`, process-only delta). Exact-list conflict preserves both `home-signed-in` and `public-profile`; both packet histories remain. Preflight read BRIEF, PRD, AGENTS, BUILD_CONTINUITY, COLLABORATION, DELEGATION, split, DESIGN, doctrine, prior PR evidence and decisions through D-359. No page drift since build `c52166cb`; no redesign, API, privacy-rule, money, migration, provider or settings change. Local TypeScript, 8 focused files / 125 tests, production build/postbuild, token/migration/deploy audits and 5-path scope check passed. [CI 44279258862](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44279258862) on `dc2050e3`: required checks green, 7,749 tests passed / 18 skipped, 8/8 E2E; capture job was canceled during Chromium installation as the next merge was pushed, not a product-test failure. Default production preview (no surface override) inspected in Chromium at 1280/390: public, private, missing, error/retry and owner/link-only states, 10 captures, no overflow or page errors; private page has no name/work data, owner link-only has noindex, loaded states have one black commit. Synthetic intercepted APIs only; no real account or live mutation. Full local suite not rerun; exact final-head CI and protected landing/live readback remain pending. Computed Tier 2 under D-352; no independent pass claimed.
 - D-048-R-public-profile: done on merge — Claude Code · 1176 — 2026-11-17 — branch agent/queue/d048-r-public-profile. `public-profile` is added to `RELEASED` and its exact-list pin, so `/p/:handle` renders the goal page in production once this lands. Red first: the pin failed 1 of 6 with the id added before `RELEASED` had it, then 6/6. No kit drift: nothing touched `PublicProfile.tsx` or `goal/public-profile/**` since the build landed (#1162, `c52166cb`). Default mode: 22 files, 163 tests pass (the goal suite, `profileWork`, `client/src/lib`); goal boundary, page contract, split and coverage 79/79. With `VITE_GOAL_SURFACES=public-profile`: 159 of 163 pass; the 4 failures are the kit-markup cases of `profileWork.test.tsx` "PublicProfile page" (kit copy such as "WHO CAN SEE THIS" and "Ask for a referral at Wipro"; the goal page's one commit is "Explore companies" to the same `/explore`), which `D-048-K-public-profile` ports, while the 16 goal tests cover link-only noindex, privacy, owner visibility and preview. `pnpm check` 0, `pnpm build` 0, token audit OK. Captures at 1280 and 390: the CI release-captures job (`/p/release-capture`, visitor), D-346 (6). Computed tier is 2 (client and docs paths only), so no review is required (D-352).
 - D-048-R-home-signed-in: live, authenticated acceptance UNVERIFIED — source `789c4ead`, [PR #1255](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1255), merge `0dc1b07d` — Codex GPT-6 · 2295 takeover — 2026-11-17. Main `4c96615c`, entry docs, this packet, D-048-marketing, DESIGN and decisions through D-356 read. Build #1157 (`59e14ce8`, source `1ef8289f`) already supplied the router; prior release history `87f58fdb`/`3b8217ac` was only Claude Code · f25b's claim/status. Adds `home-signed-in` to RELEASED and its exact-list/production pin: seekers to `/explore`, server-verified referrers (including work-email step-up sessions) to `/referrer-home`, failed access checks retain retry (L6). The only Home drift since the build, `d9268e35`, changes public copy absent from this router. No API, schema, environment, provider, auth-method or dependency change.

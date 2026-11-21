@@ -90,7 +90,9 @@ describe("default banded plans payment recovery (D-042)", () => {
     renderDefaultPlans();
     expect(screen.getByRole("heading", { name: "Choose your referrers." })).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
+    // BANDED-ui: the page also reads the banded offer (a GET that decides what may be sold).
+    expect(fetchMock.mock.calls.every(([url, init]) => ["/api/plans/catalog", "/api/chargebee/banded/offer"].some(path => String(url).startsWith(path)) && (init?.method ?? "GET") === "GET")).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("subscription-recovery"))).toBe(false);
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toEqual([]);
     expect(readPendingCheckout()).toEqual(pending);
   });
