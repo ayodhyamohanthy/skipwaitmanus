@@ -99,24 +99,89 @@ function refreshAuthoritativeRefs() {
   return trackingRefs();
 }
 
-function captureDecisionRefs(tasks, refs) {
+function captureDecisionRefs(tasks, refs, register) {
   const names = new Set(["main", REPORTS, LAND_SLOT, ...(LIST_REF.startsWith("origin/") ? [LIST_REF.slice(7)] : []),
     ...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))])]);
   const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
   const includes = name => names.has(name) || (name.startsWith("agent/") && slugs.some(slug => name.endsWith(slug))) || name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-");
   const selected = new Map([...refs].filter(([name]) => includes(name)));
   if (!selected.has("main") || tryGit("rev-list", "--count", ...new Set(selected.values())) === null) fail("STOP: authoritative history is incomplete; fetch full origin main and agent history before running again", 2);
-  decisionRefs = { includes, refs: selected };
+  decisionRefs = { includes, refs: selected, tasks, register };
 }
 
-function requireCurrentRefs() {
+/**
+ * PICKER-snapshot-scope (owner, Nov 21 2026: "all agents should be able to get work"): the inputs one
+ * write depends on. Before, every write compared every task's refs and main, so any other agent's
+ * heartbeat, claim, push or landing during the GitHub reads invalidated every claim, and busy hours
+ * ended in "STOP: authoritative refs kept changing". Now a write compares its own task's work, review,
+ * architect and heartbeat refs (and any agent ref ending in its slug), the shared report log and
+ * landing slot, red-main fix locks and the refs it names. Main is compared by content: see
+ * mainInputsUnchanged. Non-force pushes still give first-push-wins on the written ref itself.
+ */
+function writeScopeOf(rows, extra = []) {
+  const tasks = rows.filter(t => typeof t?.branch === "string");
+  const names = new Set([REPORTS, LAND_SLOT, ...extra.filter(Boolean)]);
+  for (const t of tasks) for (const name of [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]) names.add(name);
+  if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main") names.add(LIST_REF.slice(7));
+  const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
+  return {
+    taskIds: tasks.map(t => t.id),
+    includes: name => names.has(name) || (name.startsWith("agent/") && slugs.some(slug => name.endsWith(slug)))
+      || name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-"),
+  };
+}
+// A landing-slot lease names its task by id only; its full row comes from the decision's own task list.
+const scopeOfPick = pick => {
+  const task = pick.task && (pick.task.branch ? pick.task : decisionRefs?.tasks.find(t => t.id === pick.task.id));
+  return writeScopeOf(task ? [task] : [], [pick.work, pick.lock]);
+};
+
+/**
+ * PICKER-snapshot-scope: main moved since the decision. The write stands only when this task's own
+ * row, its dependencies' rows and its decision sync are unchanged on current main, and its branch has
+ * not since reached main (landed). Returns the current main sha, or null to reread and pick again.
+ */
+function mainInputsUnchanged(scope) {
+  if (tryGit("fetch", "-q", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main") === null) return null;
+  const current = tryGit("rev-parse", "refs/remotes/origin/main");
+  const raw = current && tryGit("show", `${current}:${LIST}`);
+  const registerRaw = current && tryGit("show", `${current}:${REGISTER}`);
+  if (!raw || !registerRaw) return null;
+  let tasks, register;
+  try { tasks = JSON.parse(raw).tasks; register = parseDecisionRegister(registerRaw); } catch { return null; }
+  if (!Array.isArray(tasks)) return null;
+  const before = new Map(decisionRefs.tasks.map(t => [t.id, t])), after = new Map(tasks.map(t => [t.id, t]));
+  const same = id => before.has(id) && JSON.stringify(before.get(id)) === JSON.stringify(after.get(id) ?? null);
+  const decidedMain = decisionRefs.refs.get("main");
+  for (const id of scope.taskIds) {
+    const task = before.get(id);
+    if (!task || !same(id) || !(task.dependsOn ?? []).every(same)) return null;
+    if (outOfSyncOf({ task }, decisionRefs.register) !== outOfSyncOf({ task: after.get(id) }, register)) return null;
+    const tip = decisionRefs.refs.get(task.branch);
+    if (tip && tryGit("merge-base", "--is-ancestor", tip, decidedMain) === null && tryGit("merge-base", "--is-ancestor", tip, current) !== null) return null;
+  }
+  return current;
+}
+
+function requireCurrentRefs(scope = null) {
   if (!decisionRefs) fail("STOP: no authoritative decision snapshot; no marker written", 2);
-  const same = refs => {
-    const selected = new Map([...refs].filter(([name]) => decisionRefs.includes(name)));
-    return selected.size === decisionRefs.refs.size && [...selected].every(([name, sha]) => decisionRefs.refs.get(name) === sha);
+  // Without a scope every decision ref must match (the pre-scope behaviour); with one, only the write's own.
+  const relevant = name => decisionRefs.includes(name) && (!scope || name === "main" || scope.includes(name));
+  // Main is judged by content for a task's write on the default task list; a red-main fix lock stays exact.
+  const mainByContent = Boolean(scope) && scope.taskIds.length > 0 && LIST_REF === "origin/main";
+  const differs = (refs, skipMain) => {
+    const selected = map => [...map].filter(([name]) => relevant(name) && !(skipMain && name === "main"));
+    const now = new Map(selected(refs)), then = selected(decisionRefs.refs);
+    return now.size !== then.length || then.some(([name, sha]) => now.get(name) !== sha);
   };
   const remote = refsFrom(tryGit("ls-remote", "--heads", "origin", ...refPatterns), "refs/heads/");
-  if (!same(remote) || !same(trackingRefs())) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  if (differs(remote, mainByContent)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  if (mainByContent && remote.get("main") !== decisionRefs.refs.get("main")) {
+    const current = remote.has("main") ? mainInputsUnchanged(scope) : null;
+    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+    decisionRefs.refs.set("main", current);
+  }
+  if (differs(trackingRefs(), false)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
 }
 
 /**
@@ -390,9 +455,9 @@ const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main
  * commit, or null when another agent got there first; any other refusal
  * (auth, a ruleset, the network) stops the run with git's own words.
  */
-function pushMarker(branch, parent, subject, body) {
+function pushMarker(branch, parent, subject, body, scope = null) {
   const sha = git("commit-tree", `${parent}^{tree}`, "-p", parent, "-m", subject, ...(body ? ["-m", body] : []));
-  requireCurrentRefs();
+  requireCurrentRefs(scope);
   const res = spawnSync("git", ["push", "-q", "origin", `${sha}:refs/heads/${branch}`], { encoding: "utf8", env: GIT_ENV });
   if (res.status === 0) {
     if (tryGit("update-ref", originRef(branch), sha) === null) fail(`STOP: pushed ${branch}, but its tracking ref could not be refreshed; fetch origin before running again`, 2);
@@ -409,6 +474,7 @@ function pushMarker(branch, parent, subject, body) {
  * Returns false when another agent took it first.
  */
 function keepClaim(pick, who, branches, provenanceBody) {
+  const scope = scopeOfPick(pick);
   const all = [...(branches.get(pick.work || pick.task?.branch)?.markers ?? []), ...(branches.get(pick.lock)?.markers ?? [])];
   const external = all.some(m => m.id === pick.task?.id && markerReferences(m.body).external);
   const leasePreview = leaseFor(pick, branches, Date.now());
@@ -426,7 +492,7 @@ function keepClaim(pick, who, branches, provenanceBody) {
     if (!othersFresh && (slot.holder !== who || slot.quiet)) {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
       try {
-        const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
+        const took = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody, scope);
         if (!took) return false;
       } catch (error) {
         // A contested shared slot never retries on top of its new holder or writes a side lease.
@@ -438,7 +504,7 @@ function keepClaim(pick, who, branches, provenanceBody) {
   const lease = leaseFor(pick, branches, Date.now());
   const subject = markerSubject(lease.verb, lease.id, who);
   let parent = base(lease.ref);
-  let sha = pushMarker(lease.ref, parent, subject, lease.verb === "Heartbeat" ? undefined : provenanceBody);
+  let sha = pushMarker(lease.ref, parent, subject, lease.verb === "Heartbeat" ? undefined : provenanceBody, scope);
   if (!sha && lease.retry) {
     // Reread ownership as well as the destination tip before retrying a side heartbeat.
     refreshAuthoritativeRefs();
@@ -468,7 +534,7 @@ async function state({ withRelease = false } = {}) {
   try { register = parseDecisionRegister(registerRaw); } catch (e) { fail(`${e.message}; fix the register before any work is picked`); }
   const errors = validateAssignments(doc, p => tryGit("cat-file", "-e", `${LIST_REF}:${p}`) !== null, register);
   if (errors.length) fail(`${LIST} is invalid; tell Claude Code:\n- ${errors.join("\n- ")}`);
-  captureDecisionRefs(doc.tasks, refreshedRefs);
+  captureDecisionRefs(doc.tasks, refreshedRefs, register);
   // D-085: every GitHub read is known or unknown; an unknown one stops the picker instead of looking like "nothing there".
   let mainCi = { state: "unknown" }, openPrs = null, mergedHeads = null, closedFirst = null;
   const prCi = new Map();
@@ -561,25 +627,26 @@ function claim(pick, who, branches, provenanceBody) {
   // D-370: no model dependency; a task's external-route history no longer limits who may claim it.
   if (MODEL_ROUTES_ENFORCED && !provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
   const origin = () => git("rev-parse", "origin/main");
+  const scope = scopeOfPick(pick);
   switch (pick.kind) {
-    case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody));
+    case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody, scope));
     case "takeover":
-    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody));
+    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
     case "land": {
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
-      const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody);
+      const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody, scope);
       if (!tookSlot) return false;
       if (pick.tier1) {
-        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who), provenanceBody));
+        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who), provenanceBody, scope));
       }
-      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody));
+      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
     }
-    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody));
+    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
     case "architect":
-    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who)));
-    case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who)));
-    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody));
-    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody));
+    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
+    case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who), undefined, scope));
+    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
+    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
     case "continue": return keepClaim(pick, who, branches, provenanceBody);
     default: return false;
   }
@@ -662,7 +729,7 @@ async function runCommand(args) {
       if (args.verdict && (!model || [...result.builders, ...result.fixers].includes(model))) fail("external reviewer also built or fixed this work");
     }
     const reviewParent = packetHead ? lock.tipSha : tip(lockName);
-    if (!pushMarker(lockName, reviewParent, subject, body || undefined)) fail(`could not push ${lockName}: it moved; fetch and run again`);
+    if (!pushMarker(lockName, reviewParent, subject, body || undefined, writeScopeOf([task], [lockName]))) fail(`could not push ${lockName}: it moved; fetch and run again`);
     console.log(`Recorded on ${lockName}: ${subject}${reviewed ? ` (reviewed ${reviewed})` : ""}${fixedAt ? ` (fixed ${fixedAt})` : ""}`);
     if (fixedAt) console.log("The PR's review-gate result was computed before this marker: re-run its failed checks (or push a merge of main) so CI re-evaluates the gate on this head.");
     return;
@@ -674,7 +741,7 @@ async function runCommand(args) {
     if (err) fail(err);
     const subject = markerSubject("Landed", task.id, args.as);
     const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
-    if (!pushMarker(LAND_SLOT, parent, subject)) fail(`could not push ${LAND_SLOT}: it moved; fetch and run again`);
+    if (!pushMarker(LAND_SLOT, parent, subject, undefined, writeScopeOf([task]))) fail(`could not push ${LAND_SLOT}: it moved; fetch and run again`);
     console.log(`Released landing slot ${LAND_SLOT}: ${subject}`);
     return;
   }
@@ -708,7 +775,7 @@ async function runCommand(args) {
     const note = sanitizeNote(args.note);
     const subject = markerSubject("Report", task.id, args.as, args.report);
     const body = args.report === "blocked" ? blockedReportBody(note, blockEvidenceFor(blockInput)) : note;
-    const sha = pushMarker(REPORTS, base(REPORTS), subject, body);
+    const sha = pushMarker(REPORTS, base(REPORTS), subject, body, writeScopeOf([task]));
     if (!sha) {
       refreshAuthoritativeRefs();
       throw new RefSnapshotChanged("report push rejected; authoritative snapshot changed");

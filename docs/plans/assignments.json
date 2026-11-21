@@ -278,8 +278,8 @@
       "tier": 1,
       "lane": "banded-checkout",
       "branch": "agent/queue/banded-checkout",
-      "status": "todo",
-      "syncedTo": "D-370",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-schema",
         "BANDED-catalog-sync"
@@ -294,7 +294,7 @@
         "src/worker.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "PR #1411: banded plan and extra-referral checkout behind BANDED_SALES_ENABLED (exact 'true', same reader rule as BANDED-spend; off answers 409 not_on_sale before sign-in, a read or a provider call). Founding place reserved under the counter row lock; hosted pages keyed by the checkout idempotency key; extras inside the member's band with the volume discount as a fixed amount. Grants, UI and release remain their own rows. Completion is carried in this PR; required CI and the exact-release check are the acceptance gates."
     },
     {
       "id": "BANDED-grants",
@@ -327,7 +327,7 @@
       "tier": 1,
       "lane": "banded-spend",
       "branch": "agent/queue/banded-spend",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-371",
       "dependsOn": [
         "BANDED-levels",
@@ -679,8 +679,8 @@
       "tier": 2,
       "lane": "gate-captures",
       "branch": "agent/queue/gate-release-captures",
-      "status": "todo",
-      "syncedTo": "D-346",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
@@ -689,7 +689,7 @@
         "scripts/releaseCaptures.test.ts",
         "scripts/ciMarkerSkip.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 4. Shares ci.yml with GATE-merge-queue under D-314."
+      "note": "Delivered in PR #1246 at c17d3f7a6; CI 44035387946 passed required checks and all four 1280/390 capture jobs with uploaded artifacts. November 21 reconciliation checked through D-371 and 80/80 current planner/CI contract tests. Individual page acceptance remains with its release row; no rebuild is needed."
     },
     {
       "id": "GATE-unit-shards",
@@ -999,8 +999,8 @@
       "tier": 1,
       "lane": "d048-release-inbox",
       "branch": "agent/queue/d048-r-inbox",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-inbox",
         "D-344-shell-referral-words"
@@ -1015,7 +1015,7 @@
         "design/goal-ui/captures/inbox/**",
         "client/src/test/goalPagesBoundary.test.ts"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"inbox\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=inbox); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-inbox's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Pre-acceptance privacy preserved (D-019(e)). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-338 (Nov 16): the review finding on PR #1196 (the /inbox shell count says credits) can only be fixed in GoalShell.tsx, which D-222-referral-count-shell owns; this row now depends on it, so no fix is handed out that its owns cannot carry. Once D-222 lands, merge main into PR #1196 and re-review. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-inbox, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): the shell finding on PR #1196 is fixed by D-344-shell-referral-words, which has no pricing dependency. This row now waits on that row instead of D-222-referral-count-shell. D-349 (launch mode): done by D-048-p3-inbox's pull request, which turns the page on as it lands. A separate PR from this row is needed only if that build has already landed with the page switched off.",
+      "note": "D-048-p3-inbox built the goal inbox. PR #1196 released inbox in RELEASED and its test pin (merge 4af408441), covering /inbox and the /thread list alias. The shell wording dependency is complete (#1416). The later retirement #1278 verified both canonical routes on web 8d4232b4 and ready API ac2eb04b (release verify run 44362721356). The release needs no further build.",
       "epic": "D-048-p3"
     },
     {
@@ -1939,7 +1939,7 @@
       "lane": "d048-release-profile",
       "branch": "agent/queue/d048-r-profile",
       "status": "todo",
-      "syncedTo": "D-344",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-p3-profile",
         "D-344-shell-referral-words"
@@ -1954,9 +1954,10 @@
         "design/goal-ui/captures/profile/**",
         "client/src/test/goalPagesBoundary.test.ts",
         "client/src/components/profile/profileVisibility.ts",
-        "client/src/components/profile/VisibilityOptions.tsx (switch only)"
+        "client/src/components/profile/VisibilityOptions.tsx (switch only)",
+        "docs/DECISIONS.md"
       ],
-      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review.",
+      "note": "Per-surface release row (D-317) replacing this surface's share of the never-registered R1-R8 waves in docs/plans/D-048-phase-3-split.md lines 142-149, so it never waits for a slower sibling. Change: add \"profile\" to the RELEASED block of client/src/lib/goalSurfaces.ts and to the exact-list assertion in client/src/lib/goalSurfaces.test.ts; nothing else. Gates before landing, none waived: QA on the preview at current main with the id on (VITE_GOAL_SURFACES=profile); captures at 1280 and 390 of every route the id owns; kit-drift content check of the kit page since D-048-p3-profile's landing (port any drift first, as R4 did); behaviour tests re-run with the id on; an independent Tier 1 review by a model that neither built the page nor this row (D-151). Visibility controls behave as on the kit page (privacy). Report the captures to the owner. If two release rows land close together, the second merges main: both ids stay in the list. D-332 (recorded Nov 11 on PR #1164 as D-324, renumbered Nov 13): moved from the end of the list to directly after its build row. Releasing a built page is that row's unfinished acceptance, which the owner's FIFO order puts first; scope, owns, dependencies and every gate above are unchanged. D-344 (2) (Nov 16): fix-in-place. This row also owns its page's files from D-048-p3-profile, so an independent-review finding on the page is fixed on this row's own pull request, with no separate register ruling. A finding in a file outside these owns (for example the shared shell) is still routed to that file's row, as D-338 did. The tier, the switch, the gates and the independent review are unchanged. D-344 (4): review finding F1 on PR #1201 (the shell credit wording and the bare phone number) is fixed by D-344-shell-referral-words. Once that lands, merge main and re-review. November 21 reconciliation: PR #1201 merged November 17 at e13c0a2c279278582ec1daffb1db2c4b2bd3b6a0 after final-head CI 44025206857; Pages deployment 44025739404 succeeded. D-344-shell-referral-words supplied the wording fix through #1222. The old #1209/D-341 proposal is superseded, not a new release or a dependency on the remaining D-222 count work. Status stays todo because fresh signed-in /profile and /work acceptance is unverified. Do not rebuild the switch or land the preserved release branch again; finish that bounded acceptance through a clean current-main carrier after an eligible picker assignment. D-370 replaces the historical review requirement. See the packet Status and the D-200 execution receipt in docs/DECISIONS.md; no runtime change.",
       "epic": "D-048-p3"
     },
     {
@@ -6154,7 +6155,7 @@
       "lane": "notifications",
       "branch": "agent/queue/rel-review-email-retry",
       "status": "todo",
-      "syncedTo": "D-359",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-174-job-catalog",
         "REL-review-email-retry-schema"
@@ -6180,7 +6181,7 @@
         "server/emailDelivery.ts",
         "server/emailDelivery*.test.ts"
       ],
-      "note": "D-350: unparked. Under D-344 (8), the needed server/db.ts claim hunk may join this row's owns if no open row owns it. The persisted alert-state migration goes through the normal migration gate (reviewed SQL, production migration verified before the dependent code deploys). Nov 18 execution split: REL-review-email-retry-schema lands and production-verifies only the existing additive 0122 SQL first. The Fixed marker on PR874 does not prove that schema output; this row resumes landing only after the prerequisite is done. Existing runtime repair, history, Fixed binding, CI and first-live-job acceptance stay unchanged."
+      "note": "D-350 resumed this row. The schema prerequisite applied and verified migration 0122 in production. The Nov 21 ruling records the local test failures and their baseline evidence. Continue PR #874 with a current-main merge, fresh required CI including MySQL retry coverage, and protected auto-merge under D-370. Keep the exact applied SQL. Confirm canonical release identity and the first successful review-delivery-retry run after deployment."
     },
     {
       "id": "REL-heartbeats",
@@ -6615,15 +6616,14 @@
       "lane": "security-hsts",
       "branch": "agent/queue/d100-hsts-preload",
       "status": "todo",
-      "syncedTo": "D-227",
-      "dependsOn": [
-        "D-100.csp-release"
-      ],
-      "note": "D-223 subtask of D-100. Same file as the CSP rows, so after them.",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "note": "D-223 subtask of D-100. November 21 technical ruling under D-200/D-223/D-309/D-314 removes the CSP-release edge whose sole reason was the shared filename; dormant HSTS consumes no CSP acceptance output. Integrate current main into PR #1367, preserve both header changes, require green composed-head CI and exact-release verification. HSTS_PRELOAD stays false; activation and domain submission remain owner-only. CSP release remains todo with D-350's 48-hour collection/enforcement acceptance; inferred picker completion is not that evidence.",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts",
-        "server/securityHeaders.test.ts"
+        "server/securityHeaders.test.ts",
+        "docs/DECISIONS.md"
       ]
     },
     {
@@ -8392,6 +8392,52 @@
       ],
       "note": "D-368 routing, D-048-retire.md §3c. Repair only the released Goal form's native hiring-now required-link parity; walk-ins stay optional, D-364 paste/blur completion and existing server/work-email gates stay unchanged. Carry forward #1297's missing-link regression, keep the legacy controls and prove blank blocks and valid link publishes in intercepted browser tests at 1280/390. No Kit deletion, route/release toggle, API, sign-in or payment change. Protected current-head CI and canonical web acceptance are required before retirement. This is the goal-build follow-up, not a reopening of the original build/release.",
       "epic": "D-048-p3"
+    },
+    {
+      "id": "PICKER-snapshot-scope",
+      "title": "A marker write compares only its own task's refs and judges a moved main by content, so other agents' activity never starves a claim",
+      "row": "D-085",
+      "packet": "docs/plans/PICKER-snapshot-scope.md",
+      "tier": 2,
+      "lane": "picker-snapshot-scope",
+      "branch": "agent/queue/picker-snapshot-scope",
+      "status": "done",
+      "syncedTo": "D-371",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "docs/plans/PICKER-authoritative-ref-refresh.md",
+        "docs/plans/assignments.json",
+        "docs/BUILD_CONTINUITY.md",
+        "AGENTS.md"
+      ],
+      "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324): the pre-write check compared every task's refs and main, so any heartbeat, claim, push or landing during the GitHub reads aborted every claim. Now scoped to the write's task refs, report log, landing slot and fix-main locks; main by the task's row, dependencies, decision sync and landed state. PR #1421 (registered by #1422); red-first CLI tests; all picker suites pass. Completion is carried in this PR; required CI is the landing gate."
+    },
+    {
+      "id": "PICKER-report-append-snapshot",
+      "title": "Append a guarded task report after verified unrelated native reports without accepting stale same-task inputs",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-report-append-snapshot.md",
+      "tier": 2,
+      "lane": "picker-report-append",
+      "branch": "agent/queue/picker-report-append-snapshot-8817",
+      "status": "todo",
+      "syncedTo": "D-372",
+      "dependsOn": [
+        "PICKER-snapshot-scope"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-report-append-snapshot.md",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "docs/plans/assignments.json",
+        "docs/DECISIONS.md"
+      ],
+      "epic": "D-212",
+      "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
     }
   ]
 }
