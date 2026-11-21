@@ -420,18 +420,39 @@
       "note": "PR #1411: banded plan and extra-referral checkout behind BANDED_SALES_ENABLED (exact 'true', same reader rule as BANDED-spend; off answers 409 not_on_sale before sign-in, a read or a provider call). Founding place reserved under the counter row lock; hosted pages keyed by the checkout idempotency key; extras inside the member's band with the volume discount as a fixed amount. Grants, UI and release remain their own rows. Completion is carried in this PR; required CI and the exact-release check are the acceptance gates."
     },
     {
+      "id": "BANDED-grants-intents-migration",
+      "title": "Persist immutable banded checkout ownership and priced carts before fulfillment; apply and verify the additive intent migration first",
+      "row": "PRICING",
+      "packet": "docs/plans/BANDED-grants-intents-migration.md",
+      "tier": 1,
+      "lane": "banded-grants-intents",
+      "branch": "agent/queue/banded-grants-intents-migration",
+      "status": "todo",
+      "syncedTo": "D-374",
+      "dependsOn": [
+        "BANDED-checkout"
+      ],
+      "owns": [
+        "drizzle/deploy/0124_banded_checkout_intents.sql",
+        "e2e/banded-grants-intents.e2e.ts"
+      ],
+      "epic": "BANDED-release",
+      "note": "D-200/D-223 migration-first prerequisite of the existing BANDED-grants contract. Packet defines one empty durable checkout-intent table; no runtime or sales change. Verify 0124 remains free before implementation; production migration/checksum evidence precedes dependent schema/readiness/fulfillment. Purchased-lot attribution reuses the ledger under the consumer contract."
+    },
+    {
       "id": "BANDED-grants",
       "title": "Webhook-confirmed plan terms grant included referrals per level per cycle; paid extra referrals credit once; refunds take back only unspent; recovery and the daily money check cover both",
       "row": "PRICING",
       "packet": "docs/plans/PRICING-banded-checkout.md",
       "tier": 1,
       "lane": "banded-grants",
-      "branch": "agent/queue/banded-grants",
+      "branch": "agent/queue/banded-grants-fulfillment",
       "status": "todo",
-      "syncedTo": "D-370",
+      "syncedTo": "D-374",
       "dependsOn": [
         "BANDED-schema",
-        "BANDED-checkout"
+        "BANDED-checkout",
+        "BANDED-grants-intents-migration"
       ],
       "owns": [
         "server/creditCycles.ts",
@@ -440,7 +461,7 @@
         "server/db.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "D-219/D-367 fulfillment, sales off. The preserved agent/queue/banded-grants branch and closed unmerged #1432 contain prerequisite documentation only, not runtime grants. Use this fresh carrier after a normal picker assignment; no claim or verdict transfers. BANDED-grants-intents-migration supplies verified durable ownership/cart storage first. Implement packet section 9: immutable intent before provider call, shared webhook/return/hourly recovery, invoice-attributed purchases/debits/refunds and daily reconciliation. No activation or legacy scalar crediting."
     },
     {
       "id": "BANDED-spend",
