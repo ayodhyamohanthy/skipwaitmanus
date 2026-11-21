@@ -13,6 +13,7 @@ import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKi
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
 import { recordWebhookUnauthorized } from "./webhookAuthAlarm";
+import { registerBandedCheckoutRoutes, type BandedRouteDeps } from "./bandedCheckoutRoutes";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -61,6 +62,8 @@ type Deps = {
   createCardValidationPage?: (input: { userId: number; email?: string | null; name?: string | null; origin: string }) => Promise<{ url: string }>;
   /** D-079: a failure to create that page reaches the owner at once (validation is broken until fixed). */
   alertCardValidationPageError?: (error: unknown) => Promise<unknown>;
+  /** BANDED-checkout (D-367): banded plan and extra-referral checkout, behind BANDED_SALES_ENABLED (off). */
+  banded?: Omit<BandedRouteDeps, "resolveIdentity" | "recordActivity">;
 };
 
 /** What a recipient reads when a gift (always a retired Pro/Max gift) is claimed. */
@@ -86,6 +89,8 @@ function isChargebeeNotConfigured(error: unknown): boolean {
 
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  // Always registered, so a switched-off route answers 409 not_on_sale rather than falling through.
+  registerBandedCheckoutRoutes(app, { ...deps.banded, resolveIdentity: deps.resolveIdentity, recordActivity: deps.recordActivity });
   // D-055: referrers never pay (shared/referrerPurchases.ts, switched off, not deleted).
   // Answered before any availability probe, provider call or intent row.
   const refuseReferrerPurchase = (res: Response, actorUserId: number, action: "billing.credit_checkout_refused" | "billing.subscription_checkout_refused") => {
