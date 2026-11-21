@@ -9,19 +9,20 @@
  * Timestamps come from the application, never MySQL NOW() (AGENTS invariant 5).
  */
 import { and, count, eq, gt, inArray, lte, or } from "drizzle-orm";
-import type { drizzle } from "drizzle-orm/mysql2";
+import type { MySql2Database } from "drizzle-orm/mysql2";
 import { bandedFoundingCounters, bandedFoundingMemberships, subscriptionCheckoutIntents, tokenBalances } from "../drizzle/schema";
 import { PLAN_FAMILY, PLAN_FAMILY_IDS, planFamilyEntry, type PlanFamilyId } from "../shared/planFamily";
 import type { BandedCheckoutDeps, BandedMembership, BandedSite, FoundingReservation } from "./bandedCheckout";
 import type { BandedSubscriptionIntentInput } from "./bandedCheckoutRoutes";
 
-type Db = ReturnType<typeof drizzle>;
+/** Any mysql2 Drizzle database: the server's pool, or one connection in the MySQL proof. */
+type Db = MySql2Database<Record<string, unknown>>;
 
 function inconsistent(site: BandedSite, planId: PlanFamilyId): Error {
   return new Error(`Founding counter for ${site}/${planId} is lower than its reservations; refusing to sell until it is reconciled`);
 }
 
-export async function reserveFoundingPlace(db: Db, input: { site: BandedSite; planId: PlanFamilyId; userId: number; checkoutIntentId: string; now: Date; expiresAt: Date }): Promise<FoundingReservation> {
+export async function reserveFoundingPlace(db: Db, input: { site: BandedSite; planId: PlanFamilyId; userId: number; checkoutIntentId: string; now: Date; expiresAt: Date; replayNotBefore: Date }): Promise<FoundingReservation> {
   const cap = planFamilyEntry(input.planId).foundingCap;
   const counterKey = and(eq(bandedFoundingCounters.site, input.site), eq(bandedFoundingCounters.planId, input.planId));
   return db.transaction(async tx => {
@@ -30,7 +31,9 @@ export async function reserveFoundingPlace(db: Db, input: { site: BandedSite; pl
     const [existing] = await tx.select().from(bandedFoundingMemberships)
       .where(and(eq(bandedFoundingMemberships.site, input.site), eq(bandedFoundingMemberships.checkoutIntentId, input.checkoutIntentId))).limit(1).for("update");
     if (existing) {
-      const live = existing.status === "reserved" && existing.planId === input.planId && existing.userId === input.userId && existing.expiresAt.getTime() > input.now.getTime();
+      // The same checkout only while the provider would still replay its page; later the key counts as used.
+      const live = existing.status === "reserved" && existing.planId === input.planId && existing.userId === input.userId
+        && existing.expiresAt.getTime() > input.now.getTime() && existing.createdAt.getTime() >= input.replayNotBefore.getTime();
       return { status: live ? "existing" : "key_used" };
     }
     // Free expired reservations, and the same person's earlier unpaid one for this plan:

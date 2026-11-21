@@ -33,7 +33,7 @@ describe("banded plan hosted page", () => {
     expect(form.get("customer[email]")).toBe("member@example.com");
     expect(form.get("redirect_url")).toBe(urls.redirectUrl);
     expect(form.get("cancel_url")).toBe(urls.cancelUrl);
-    expect([...form.keys()].some(key => key.includes("discount") || key.includes("coupon"))).toBe(false);
+    expect(Array.from(form.keys()).some(key => key.includes("discount") || key.includes("coupon"))).toBe(false);
   });
 
   it("leaves the billing country to the buyer on the global book", async () => {
@@ -68,7 +68,7 @@ describe("banded extra-referral hosted page", () => {
   it("sends no discount entry when the cart earns none", async () => {
     const seen = stubProvider();
     await createBandedReferralPage(credentials, { lines: [{ itemPriceId: "skipwait_referral_early-USD", quantity: 4 }], currency: "USD", discountAmount: 0, checkoutIntentId: "br_abc", idempotencyKey: "br_abc", billingCountry: "INTL", ...urls });
-    expect([...seen[0].form.keys()].some(key => key.startsWith("discounts"))).toBe(false);
+    expect(Array.from(seen[0].form.keys()).some(key => key.startsWith("discounts"))).toBe(false);
   });
 
   it("refuses to build a page with no lines, a bad quantity or a negative discount", async () => {

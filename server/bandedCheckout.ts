@@ -22,6 +22,8 @@ import { retrieveItemPrice, type CheckoutCustomer, type HostedPageResult, type P
 
 /** A reservation outlives the provider page (3 hours) twice over; an unpaid one is then released. */
 export const BANDED_RESERVATION_TTL_MS = 6 * 60 * 60 * 1000;
+/** Chargebee replays a key's first answer for 30 minutes; a replay older than this is a new checkout, not the same one. */
+export const BANDED_REPLAY_WINDOW_MS = 25 * 60 * 1000;
 const PROBE_TIMEOUT_MS = 15_000;
 
 /** BANDED_SALES_ENABLED: off unless exactly "true". The release row turns it on after TEST-site QA. */
@@ -42,7 +44,7 @@ export type BandedCheckoutDeps = {
   lookupItemPrice?: (credentials: { site: string; apiKey: string }, itemPriceId: string) => Promise<ProviderItemPrice | null>;
   probeTimeoutMs?: number;
   membership: (userId: number) => Promise<BandedMembership>;
-  reserveFoundingPlace: (input: { site: BandedSite; planId: PlanFamilyId; userId: number; checkoutIntentId: string; now: Date; expiresAt: Date }) => Promise<FoundingReservation>;
+  reserveFoundingPlace: (input: { site: BandedSite; planId: PlanFamilyId; userId: number; checkoutIntentId: string; now: Date; expiresAt: Date; replayNotBefore: Date }) => Promise<FoundingReservation>;
   releaseFoundingPlace: (input: { site: BandedSite; checkoutIntentId: string; now: Date }) => Promise<{ released: boolean }>;
   foundingPlacesLeft: (site: BandedSite, now: Date) => Promise<Record<PlanFamilyId, number>>;
   createPlanPage?: typeof createBandedPlanPage;
@@ -123,7 +125,7 @@ export async function startBandedPlanCheckout(input: { userId: number; request: 
   const site = credentials.environment;
   const now = (deps.now ?? (() => new Date()))();
   const checkoutIntentId = bandedCheckoutIntentId("plan", site, userId, request.idempotencyKey);
-  const reservation = await deps.reserveFoundingPlace({ site, planId: request.planId, userId, checkoutIntentId, now, expiresAt: new Date(now.getTime() + BANDED_RESERVATION_TTL_MS) });
+  const reservation = await deps.reserveFoundingPlace({ site, planId: request.planId, userId, checkoutIntentId, now, expiresAt: new Date(now.getTime() + BANDED_RESERVATION_TTL_MS), replayNotBefore: new Date(now.getTime() - BANDED_REPLAY_WINDOW_MS) });
   // D-367 (5): a full band stops selling; the regular price is the owner's to set, never invented here.
   if (reservation.status === "full") return refuse(409, BANDED_REFUSALS.foundingFull, `Founding places for ${entry.label} are taken. ${NOTHING_CHARGED}`);
   if (reservation.status === "key_used") return refuse(409, BANDED_REFUSALS.checkoutKeyUsed, `This checkout was already started. Start a new one; nothing has been charged.`);
