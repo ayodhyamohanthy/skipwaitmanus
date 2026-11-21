@@ -26,6 +26,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Public repo (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
 - Banded quote, spend and refund contract (sales off): [packet](plans/PRICING-banded-checkout.md).
+- Old waiting requests: D-193's reconfirmation safeguard is built behind `ASK_RECONFIRM_ENABLED = false`; activation remains separate. When enabled, requests older than 30 days need their owner's confirmation before first-visibility spending. One in-app notice, no new email or closure; existing money rules remain.
 
 ## Working with the owner
 

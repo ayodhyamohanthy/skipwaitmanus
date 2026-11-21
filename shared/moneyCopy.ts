@@ -166,3 +166,9 @@ export function askCostLanding(levelCost: boolean): { stepBody: string; waitBody
  * the plan family goes live.
  */
 export const PAID_PLANS_SENTENCE = "Extra credits when you need them; paid plans arrive soon.";
+
+/** D-193: an old waiting request needs the seeker's consent before first visibility. */
+export const ASK_RECONFIRM_PROMPT = "Still want this referral request sent? Confirm to send it.";
+export const ASK_RECONFIRM_COST = "Your existing request cost applies when a verified employee can see it. You can still withdraw from the conversation.";
+export const ASK_RECONFIRM_ERROR = "We couldn’t confirm this referral request. Try again; if it was already confirmed, it won’t be sent twice.";
+export const ASK_RECONFIRM_NOTICE_TITLE = "Confirm your waiting referral request";
