@@ -256,6 +256,30 @@
       "epic": "D-212"
     },
     {
+      "id": "SYNC-auto-push",
+      "title": "Local work reaches GitHub without anyone pushing it: a post-commit hook pushes every commit to its own branch, local main's own commits are saved on a sync/main branch, and the picker installs the hook (and the Mac timer) by itself (D-375)",
+      "row": "D-212",
+      "packet": "docs/plans/BRANCH-HYGIENE.md",
+      "tier": 2,
+      "lane": "repo-hygiene",
+      "branch": "agent/queue/sync-auto-push",
+      "status": "todo",
+      "syncedTo": "D-375",
+      "dependsOn": [],
+      "owns": [
+        "scripts/sync-check.sh",
+        "scripts/sync-clone.mjs",
+        "scripts/syncCloneCore.mjs",
+        "scripts/syncCloneSetup.mjs",
+        "scripts/syncClone.test.ts",
+        "scripts/next-task.mjs",
+        "docs/plans/BRANCH-HYGIENE.md",
+        "AGENTS.md"
+      ],
+      "note": "D-375, owner Nov 21 (\"Make sure local build is pushing to repo without manually pushing to GitHub\"). Built by Claude Code (session ccr-d3ee9f32-69o0tx) on top of SYNC-clone-guard. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work, never opens or merges a pull request.",
+      "epic": "D-212"
+    },
+    {
       "id": "BRANCH-HYGIENE-2",
       "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-205)",
       "row": "D-205",
