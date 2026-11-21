@@ -29,7 +29,7 @@ concurrency:
 # ──────────────────────────────────────────────
 
 permissions:
-  contents: write
+  contents: read
   issues: write
   # The release gate reads the CI runs of this commit (P1-deploy-green-gate, #748).
   actions: read
@@ -144,31 +144,11 @@ jobs:
           done
           echo "SYNC FAILED: live site does not carry the pushed commit"; exit 1
 
-      - name: Append sync log
-        if: always()
-        run: bash scripts/append-sync-log.sh "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}"
-
-      - name: Commit sync log back to main
+      - name: Record sync status in workflow summary
         if: always()
         run: |
-          git config user.name "sync-bot"
-          git config user.email "sync-bot@skipwait.me"
-          git add docs/SYNC_LOG.md
-          if git diff --cached --quiet; then
-            echo "no sync log change to commit"
-            exit 0
-          fi
-          git commit -m "Sync log: ${{ github.workflow }} ${{ github.sha }} ${{ job.status }} [skip ci]"
-          # The API and Pages workflows push the log concurrently; rebase-retry
-          # so a simultaneous push cannot fail the job (non-fatal if it still fails).
-          for attempt in 1 2 3 4 5; do
-            if git push origin HEAD:main 2>/dev/null; then echo "sync log pushed"; exit 0; fi
-            echo "push attempt $attempt collided — rebasing and retrying"
-            git fetch origin main --quiet
-            git rebase origin/main --autostash 2>/dev/null || git rebase --abort 2>/dev/null || true
-            sleep 5
-          done
-          echo "sync log push failed after retries (non-fatal)"; exit 0
+          printf '### %s\n- commit: `%s`\n- status: `%s`\n' \
+            "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify sync status
         if: always()

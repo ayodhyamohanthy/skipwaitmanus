@@ -61,7 +61,7 @@
       "tier": 1,
       "lane": "release-repair",
       "branch": "agent/queue/rel-plans-signed-out-token",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-374",
       "dependsOn": [],
       "owns": [
@@ -69,7 +69,7 @@
         "client/src/components/plans/bandedSales.test.tsx",
         "docs/plans/REL-plans-signed-out-token.md"
       ],
-      "note": "D-212 release repair, handed out first: releases 9aeffb7c, 3d474982 and 5e7a3212 failed live verification only on page /plans, a console HTTP 400 from WorkOS user_management/authenticate during a signed-out visit, because useBandedSales awaits getToken() for every visitor. Fix: look up the bearer token only when signed in; red-first tests for zero token lookups signed out and Bearer kept signed in. Lands on green required CI (D-370); the next verified release closes the open incidents by itself.\nFixes incident: #1439\nFixes release: 5e7a32126079204a8b3af4c1b6dcbc7585839c02",
+      "note": "Completed 2026-11-21: Claude Code · a71e implemented PR #1450, merged7076b65b5; exact-head CI44929805413, mainCI44930122007 and Web44930122059 green. Live verification44930649777 passed page /plans loads clean (35 responses), web7076b65b/API95f681f7 expected unchanged, readiness and all smoke checks; closed incidents1430/1436/1439/1446. GPT-6.1 Sol · 80ec inspected the run and recorded acceptance after its delayed official claim, preserving the landed implementation. Signed-out offer reads skip getToken; signed-in bearer/cookie and checkout tests retained. No server, price or sales-switch change.\nFixes incident: #1439\nFixes release: 5e7a32126079204a8b3af4c1b6dcbc7585839c02",
       "epic": "D-212"
     },
     {
@@ -222,7 +222,7 @@
       "lane": "picker-auto-land",
       "branch": "agent/queue/picker-auto-land-cloud",
       "status": "todo",
-      "syncedTo": "D-373",
+      "syncedTo": "D-376",
       "dependsOn": [],
       "owns": [
         "scripts/next-task.mjs",
@@ -230,7 +230,7 @@
         "scripts/autoLand.test.ts",
         "docs/plans/PICKER-auto-land.md"
       ],
-      "note": "D-373 (4). Build docs/plans/PICKER-auto-land.md section 7. Lands on green required CI (D-370).",
+      "note": "D-373 (4). Build docs/plans/PICKER-auto-land.md section 7. Lands on green required CI (D-370). D-376: also release-aware: while the live release is red, auto-land touches only a registered release fix (packet section 7).",
       "epic": "D-212"
     },
     {
@@ -253,6 +253,30 @@
         "AGENTS.md"
       ],
       "note": "D-373 (5), owner Nov 21 (\"Make sure the repo is upto date automatically sync\"; \"Yes, push and land it\"). Built by Claude Code (sessions ccr-f3a4e037-1voydq and Claude Code · a71e): scripts/sync-clone.mjs with pure rules in scripts/syncCloneCore.mjs; scripts/sync-check.sh runs it; --install-timer makes it automatic every 15 minutes on a Mac. 19 tests (4 against throwaway repositories), green locally and in CI; a mutation removing the private-branch and never-force rules fails 3. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work.",
+      "epic": "D-212"
+    },
+    {
+      "id": "SYNC-auto-push",
+      "title": "Local work reaches GitHub without anyone pushing it: a post-commit hook pushes every commit to its own branch, local main's own commits are saved on a sync/main branch, and the picker installs the hook (and the Mac timer) by itself (D-375)",
+      "row": "D-212",
+      "packet": "docs/plans/BRANCH-HYGIENE.md",
+      "tier": 2,
+      "lane": "repo-hygiene",
+      "branch": "agent/queue/sync-auto-push",
+      "status": "done",
+      "syncedTo": "D-375",
+      "dependsOn": [],
+      "owns": [
+        "scripts/sync-check.sh",
+        "scripts/sync-clone.mjs",
+        "scripts/syncCloneCore.mjs",
+        "scripts/syncCloneSetup.mjs",
+        "scripts/syncClone.test.ts",
+        "scripts/next-task.mjs",
+        "docs/plans/BRANCH-HYGIENE.md",
+        "AGENTS.md"
+      ],
+      "note": "D-375, owner Nov 21 (\"Make sure local build is pushing to repo without manually pushing to GitHub\"; \"Yes, land both\"). Built by Claude Code (session ccr-d3ee9f32-69o0tx) on top of SYNC-clone-guard: post-commit hook (--install-hook) runs sync-clone --current in the background; local main's own commits are saved on sync/main-<sha8>; the picker's --claim runs --auto-setup (hook, plus the timer on macOS), never in CI, tests or a cloud container, never over another tool's hook, never after an opt-out. 28/28 tests in scripts/syncClone.test.ts (the 6 new process tests fail on the old script); scripts/ suite 1659/1659. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work, never opens or merges a pull request.",
       "epic": "D-212"
     },
     {
@@ -420,18 +444,39 @@
       "note": "PR #1411: banded plan and extra-referral checkout behind BANDED_SALES_ENABLED (exact 'true', same reader rule as BANDED-spend; off answers 409 not_on_sale before sign-in, a read or a provider call). Founding place reserved under the counter row lock; hosted pages keyed by the checkout idempotency key; extras inside the member's band with the volume discount as a fixed amount. Grants, UI and release remain their own rows. Completion is carried in this PR; required CI and the exact-release check are the acceptance gates."
     },
     {
+      "id": "BANDED-grants-intents-migration",
+      "title": "Persist immutable banded checkout ownership and priced carts before fulfillment; apply and verify the additive intent migration first",
+      "row": "PRICING",
+      "packet": "docs/plans/BANDED-grants-intents-migration.md",
+      "tier": 1,
+      "lane": "banded-grants-intents",
+      "branch": "agent/queue/banded-grants-intents-migration",
+      "status": "todo",
+      "syncedTo": "D-374",
+      "dependsOn": [
+        "BANDED-checkout"
+      ],
+      "owns": [
+        "drizzle/deploy/0124_banded_checkout_intents.sql",
+        "e2e/banded-grants-intents.e2e.ts"
+      ],
+      "epic": "BANDED-release",
+      "note": "D-200/D-223 migration-first prerequisite of the existing BANDED-grants contract. Packet defines one empty durable checkout-intent table; no runtime or sales change. Verify 0124 remains free before implementation; production migration/checksum evidence precedes dependent schema/readiness/fulfillment. Purchased-lot attribution reuses the ledger under the consumer contract."
+    },
+    {
       "id": "BANDED-grants",
       "title": "Webhook-confirmed plan terms grant included referrals per level per cycle; paid extra referrals credit once; refunds take back only unspent; recovery and the daily money check cover both",
       "row": "PRICING",
       "packet": "docs/plans/PRICING-banded-checkout.md",
       "tier": 1,
       "lane": "banded-grants",
-      "branch": "agent/queue/banded-grants",
+      "branch": "agent/queue/banded-grants-fulfillment",
       "status": "todo",
-      "syncedTo": "D-370",
+      "syncedTo": "D-374",
       "dependsOn": [
         "BANDED-schema",
-        "BANDED-checkout"
+        "BANDED-checkout",
+        "BANDED-grants-intents-migration"
       ],
       "owns": [
         "server/creditCycles.ts",
@@ -440,7 +485,7 @@
         "server/db.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "D-219/D-367 fulfillment, sales off. The preserved agent/queue/banded-grants branch and closed unmerged #1432 contain prerequisite documentation only, not runtime grants. Use this fresh carrier after a normal picker assignment; no claim or verdict transfers. BANDED-grants-intents-migration supplies verified durable ownership/cart storage first. Implement packet section 9: immutable intent before provider call, shared webhook/return/hourly recovery, invoice-attributed purchases/debits/refunds and daily reconciliation. No activation or legacy scalar crediting."
     },
     {
       "id": "BANDED-spend",

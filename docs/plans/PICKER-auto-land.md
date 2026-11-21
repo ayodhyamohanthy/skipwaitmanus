@@ -61,7 +61,12 @@ Tests: 3 new ones failed on the earlier code, and now 11/11 pass. The `scripts/`
   - auto-merge: `PUT /repos/{owner}/{repo}/pulls/{number}/ccr/auto_merge` with the merge-commit method (never squash or rebase).
 - Any other GraphQL error, or a failed REST route, is reported on that PR's line, and the next candidate still runs (section 2). The existing clean-and-ready REST merge fallback (section 6) stays as the last resort.
 - Nothing else changes: the same candidates, the same holds (red main, unreadable PRs), the same draft quiet time.
+- **Release hold (D-376).** `autoLandHold` also takes the live release that `state({ withRelease: true })` reads. While `releaseLandingHold(release)` returns a hold (a red light 4 to 7 on the exact released SHA), auto-land touches no pull request except one whose row is a registered release fix: the `Fixes release: <sha>` / `Fixes incident: #<n>` note that `releaseFixTasks` reads. An unreadable release adds no hold, as in the picker. `--claim` and `--auto-land` both read the release before auto-land runs.
 
-**Tests** (red first, `scripts/autoLand.test.ts`, injected I/O): GraphQL 403 then the REST route succeeds, for both ready and auto-merge; GraphQL 403 then the REST route fails, which gives an error line and the next candidate still runs; a non-403 GraphQL error does not try the REST route; the merge method is always a merge commit.
+**Tests** (red first, `scripts/autoLand.test.ts`, injected I/O): a red live release holds every candidate except a registered release fix, and an unreadable or green release adds no hold; GraphQL 403 then the REST route succeeds, for both ready and auto-merge; GraphQL 403 then the REST route fails, which gives an error line and the next candidate still runs; a non-403 GraphQL error does not try the REST route; the merge method is always a merge commit.
 
 **Done means:** green required CI on the pull request; one real `node scripts/next-task.mjs --auto-land` run from a Claude Code cloud session that turns auto-merge on, or marks a quiet draft ready, on a real green task PR, with its output pasted in the pull request.
+
+## Status
+One line per task (D-134).
+- PICKER-auto-land-cloud: in progress — Claude Code · e969 — 2026-11-21 — branch agent/queue/picker-auto-land-cloud
