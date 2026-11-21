@@ -679,8 +679,8 @@
       "tier": 2,
       "lane": "gate-captures",
       "branch": "agent/queue/gate-release-captures",
-      "status": "todo",
-      "syncedTo": "D-346",
+      "status": "done",
+      "syncedTo": "D-371",
       "dependsOn": [],
       "owns": [
         ".github/workflows/ci.yml",
@@ -689,7 +689,7 @@
         "scripts/releaseCaptures.test.ts",
         "scripts/ciMarkerSkip.test.ts"
       ],
-      "note": "Build docs/plans/D-344-unblock.md row 4. Shares ci.yml with GATE-merge-queue under D-314."
+      "note": "Delivered in PR #1246 at c17d3f7a6; CI 44035387946 passed required checks and all four 1280/390 capture jobs with uploaded artifacts. November 21 reconciliation checked through D-371 and 80/80 current planner/CI contract tests. Individual page acceptance remains with its release row; no rebuild is needed."
     },
     {
       "id": "GATE-unit-shards",
