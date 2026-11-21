@@ -8435,6 +8435,30 @@
         "AGENTS.md"
       ],
       "note": "Owner, Nov 21: 'all agents should be able to get work'. Fixes 'STOP: authoritative refs kept changing' (D-321 (11), D-324): the pre-write check compared every task's refs and main, so any heartbeat, claim, push or landing during the GitHub reads aborted every claim. Now scoped to the write's task refs, report log, landing slot and fix-main locks; main by the task's row, dependencies, decision sync and landed state. PR #1421 (registered by #1422); red-first CLI tests; all picker suites pass. Completion is carried in this PR; required CI is the landing gate."
+    },
+    {
+      "id": "PICKER-report-append-snapshot",
+      "title": "Append a guarded task report after verified unrelated native reports without accepting stale same-task inputs",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-report-append-snapshot.md",
+      "tier": 2,
+      "lane": "picker-report-append",
+      "branch": "agent/queue/picker-report-append-snapshot-8817",
+      "status": "todo",
+      "syncedTo": "D-372",
+      "dependsOn": [
+        "PICKER-snapshot-scope"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-report-append-snapshot.md",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "docs/plans/assignments.json",
+        "docs/DECISIONS.md"
+      ],
+      "epic": "D-212",
+      "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
     }
   ]
 }
