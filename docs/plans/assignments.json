@@ -1304,9 +1304,9 @@
       "packet": "docs/plans/D-048-money.md",
       "tier": 1,
       "lane": "d048-premium",
-      "branch": "agent/queue/d048-p3-premium",
+      "branch": "agent/queue/d048-p3-premium-repair",
       "status": "todo",
-      "syncedTo": "D-366",
+      "syncedTo": "D-371",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -1314,7 +1314,7 @@
         "D-048-F-goal-check",
         "PRICING-banded-oct25"
       ],
-      "note": "D-366 re-sync (Nov 19, GPT-6.1 Sol · c120): docs/plans/D-048-money.md's Premium current execution contract supersedes the legacy-checkout/bonus parity instructions. PR #1254 at d56bf410 still needs its legacy canBuy and first-payment-offer branch/tests repaired; historical green CI and the prior Fixed/merge receipt do not prove D-366 acceptance. Offer no new legacy single-request/pack/pass checkout or five-referral first-payment bonus, including under stale flags/catalog/offer fields; preserve server-confirmed historical balances and already-started seeker/referrer recovery, deadlines, sequential retries and account-race protection. Data/API/payment/provider modules and every pricing/cost/sale switch remain read-only. D-366's banded-checkout build and activation require their own implementation, test-site QA and unresolved owner mapping/fee/currency/post-cap decisions; this presentation row enables none. D-364 has no new job-link field here; D-365 forbids restoring the proprietor name/personal mailbox. PRICING-banded-oct25 remains a dependency (#666 is merged). D-349 releases the corrected goal page and completes R-premium with its build once current acceptance and required exact-head CI pass; retain all released ids. Use normal picker stages, D-344/D-352 path-based review and protected auto-merge/live verification. Prior review and bound Fixed remain historical evidence only for their inspected diff, not a new verdict or approval of a future source repair. Status/order/branch/owns/dependencies unchanged.",
+      "note": "Nov 21 D-200 routing ruling: same task on a clean repair carrier, preserving FIFO position, status, lane, tier, owns and dependencies. Only after the official picker grants BUILD, merge preserved draft #1254 source d56bf410ea50c0ef2736dec40615fa05d58b2d0b into current main without rewriting history. Keep its original branch and unpublished checkouts untouched, draft and auto-merge off; old claim/Fixed/landing markers do not transfer. docs/plans/D-048-money.md owns the D-366 contract: no new legacy single-request/pack/pass checkout or first-payment bonus even with stale flags/catalog/offer fields; preserve server-confirmed historical balances and already-started seeker/referrer recovery, 15-second deadlines, sequential retries and account/unmount isolation. Checkout/provider/data/API modules and pricing/cost/sale switches remain read-only. D-367/D-370 settle separate banded sale decisions; BANDED-release owns TEST-site QA and activation, not this presentation row. D-364 adds no input here; D-365 prevents restoring proprietor identity. #666 is merged. D-349 releases the corrected goal page and completes R-premium after current acceptance, captures and green required CI; retain every released id. D-370 requires no independent review or model gate. Clear only the obsolete routing hold after this registration lands; source repair and production acceptance remain unverified. Prior receipts are historical only.",
       "epic": "D-048-p3",
       "owns": [
         "client/src/pages/Premium.tsx (switch only)",
