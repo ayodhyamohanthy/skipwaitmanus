@@ -167,9 +167,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/premium",
-      markup: CREDIT_PACKS_ON_SALE
-        ? `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See plans and credits</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`
-        : `<main data-skipwait-snapshot="premium"><h1>Credit packs are paused.</h1><p>We are updating our plans. Any credits already in your account still work. ${REFERRER_MONEY_SENTENCE}</p><p><a href="/plans">See plans and prices</a> · <a href="/pricing">See all prices</a> · <a href="/support">Support</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="premium"><h1>Get more referral requests.</h1><p>Extra referral requests are paused. Referral requests already in your account still work.</p><h2>Your next step</h2><p><a href="/request">Back to my referral request</a></p><p>${REFERRER_MONEY_SENTENCE}</p><p><a href="/support">Contact Support</a> · <a href="/refunds">Refund policy</a> · <a href="/terms">Terms</a></p></main>`,
     },
     {
       route: "/plans",
