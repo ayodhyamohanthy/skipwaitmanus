@@ -4,7 +4,7 @@ import { Link, useSearch } from "wouter";
 import { BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
-import { GoalSeekerSignIn } from "@/components/goal/GoalSeekerSignIn";
+import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { cn } from "@/lib/utils";
@@ -112,7 +112,7 @@ const INTENT_COPY: Readonly<Record<Intent, { goal: string; sub: string; kicker: 
 
 /** Goal-UI sign-in (doctrine: opens with the goal, one commit per step, ink on
  *  white, no kit colours). The functional cores stay shared: SeekerSignIn
- *  (social + email code) and ReferrerOtpSignIn (work-email OTP), restyled by
+ *  (social + email password) and ReferrerOtpSignIn (work-email OTP), restyled by
  *  their `goal` prop. Intent switch keeps both paths one tap away. */
 export default function GoalSignIn() {
   const search = useSearch();
@@ -148,10 +148,10 @@ export default function GoalSignIn() {
         <div className="mt-6 rounded-[10px] border border-g-hairline p-5 gdesk:p-6">
           {intent === "referrer"
             ? <div data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
-            : <GoalSeekerSignIn returnTo={seekerReturnTo} />}
+            : <SeekerSignIn returnTo={seekerReturnTo} goal />}
         </div>
         <p className="mt-5 text-[13px] leading-[1.6] text-g-ink-3">
-          {intent === "referrer" ? "Work email only. We never use personal email or social logins for referrers." : "New to skipwait.me? Enter your email and we will create your account."}
+          {intent === "referrer" ? "Work email only. We never use personal email or social logins for referrers." : "New to skipwait.me? Create an account with your email, then set a password from the emailed link."}
         </p>
         {intent === "seeker" && <PasskeyManagementLink />}
         <p className="mt-6 border-t border-g-hairline pt-5 text-[13px] leading-[1.6] text-g-ink-3">

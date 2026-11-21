@@ -61,6 +61,8 @@ describe("F1: query-only navigation back from passkey management", () => {
     expect(screen.queryByRole("heading", { name: "Get referred." })).toBeNull();
     // The D-095 email-first goal form: the email field is on the page, not behind a toggle.
     expect(screen.getByLabelText("Email address")).toBeTruthy();
+    expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("current-password");
+    expect(screen.queryByRole("button", { name: "Send sign-in code" })).toBeNull();
   });
 });
 

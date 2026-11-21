@@ -92,13 +92,13 @@ describe("goal /sign-in: the retired route", () => {
 });
 
 describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
-  it("opens with the goal line and one next step whose only commit sends the email code", () => {
+  it("opens with the goal line and one next step whose only commit signs in with a password", () => {
     stubFetch({ "/api/auth/passkey/availability": { status: 200, body: { enabled: false } } });
     stubLocation();
     const { container } = render(<SignIn />);
     assertGoalPage(container, SIGN_IN_PAGE);
     expect(container.querySelector('[data-skipwait-screen="sign-in"]')).not.toBeNull();
-    expect(primary(container)?.textContent).toBe("Send sign-in code");
+    expect(primary(container)?.textContent).toBe("Sign in");
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("false");
   });
@@ -110,7 +110,7 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     const form = screen.getByTestId("seeker-sign-in");
     expect(form.querySelectorAll<HTMLElement>("input, button")[0]).toBe(screen.getByLabelText("Email address"));
     for (const provider of ["Google", "Microsoft", "GitHub", "LinkedIn", "Slack"]) expect(screen.getByRole("button", { name: `Continue with ${provider}` })).toBeTruthy();
-    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(document.querySelector("input[type=password]")?.getAttribute("autocomplete")).toBe("current-password");
     fireEvent.click(screen.getByRole("button", { name: "Continue with GitHub" }));
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
     expect(assign).not.toHaveBeenCalledWith(expect.stringContaining("authkit.app"));
@@ -131,41 +131,40 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Email address"));
   });
 
-  it("sends and verifies the six-digit code against the email-code routes, then lands on /explore", async () => {
+  it("posts personal email and password against the password route, then lands on /explore", async () => {
     const { calls } = stubFetch({
       "/api/auth/passkey/availability": { status: 200, body: { enabled: false } },
-      "/api/auth/workos/email-code/send": { status: 200, body: { sent: true } },
-      "/api/auth/workos/email-code/verify": { status: 200, body: { signedIn: true } },
+      "/api/auth/password/sign-in": { status: 200, body: { ok: true, step: "signed_in", redirectTo: "/explore" } },
     });
     const assign = stubLocation();
     const { container } = render(<SignIn />);
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Example.com " } });
-    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
-    const code = await screen.findByLabelText("Six-digit code");
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "my-password-1" } });
     assertGoalPage(container, SIGN_IN_PAGE);
     expect(primary(container)?.textContent).toBe("Sign in");
-    fireEvent.change(code, { target: { value: "12a3456" } });
-    fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
+    expect(screen.queryByLabelText("Six-digit code")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in", exact: true }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
     expect(calls.filter(call => call.method === "POST")).toEqual([
-      { url: "/api/auth/workos/email-code/send", method: "POST", body: { email: "asha@example.com" } },
-      { url: "/api/auth/workos/email-code/verify", method: "POST", body: { email: "asha@example.com", code: "123456" } },
+      { url: "/api/auth/password/sign-in", method: "POST", body: { email: "asha@example.com", password: "my-password-1", returnTo: "/explore" } },
     ]);
+    expect(calls.some(call => call.url.includes("email-code"))).toBe(false);
   });
 
-  it("shows the server's own words on a refused send, plain words on a network failure, and keeps the typed email", async () => {
+  it("shows a rate refusal with recovery and a network failure, keeping the typed email", async () => {
     stubFetch({
       "/api/auth/passkey/availability": { status: 200, body: { enabled: false } },
-      "/api/auth/workos/email-code/send": [{ status: 429, body: { error: "Too many codes. Try again in a few minutes." } }, "network"],
+      "/api/auth/password/sign-in": [{ status: 429, body: { ok: false, code: "rate_limited", message: "Too many attempts.", retryAfterSeconds: 900 } }, "network"],
     });
     stubLocation();
     const { container } = render(<SignIn />);
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "asha@example.com" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Too many codes. Try again in a few minutes.");
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "my-password-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in", exact: true }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Try again in 15 minutes");
     assertGoalPage(container, SIGN_IN_PAGE);
-    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not reach SkipWait. Check your connection and try again."));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in", exact: true }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We couldn't reach skipwait.me. Check your connection and try again."));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("asha@example.com");
   });
 
@@ -287,7 +286,7 @@ describe("goal /sign-in: referrer (work-email code only, D-030/D-057)", () => {
 });
 
 describe("goal /forgot-password", () => {
-  it("asks for the account email under the goal line, then gives the neutral answer with the 1-hour line", async () => {
+  it("asks for the account email under the set/reset goal, then gives a neutral answer without inventing a lifetime", async () => {
     const { calls } = stubFetch({ "/api/auth/password/forgot": { status: 200, body: { ok: true } } });
     const { container } = render(<ForgotPassword />);
     assertGoalPage(container, FORGOT_PAGE);
@@ -296,7 +295,9 @@ describe("goal /forgot-password", () => {
     fireEvent.change(screen.getByLabelText("Account email"), { target: { value: " asha@example.com " } });
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Check your email" })).toBeTruthy();
-    expect(document.body.textContent).toContain("If an account exists for asha@example.com, a reset link is on its way. It works for 1 hour, once.");
+    expect(document.body.textContent).toContain("If an account exists for asha@example.com, a reset link is on its way. Use the newest email.");
+    expect(document.body.textContent).not.toMatch(/1 hour|one hour/i);
+    expect(document.body.textContent).toContain("No email after a few minutes? Create an account with the same address; it joins your existing account.");
     assertGoalPage(container, FORGOT_PAGE);
     expect(primary(container)?.closest("a")?.getAttribute("href")).toBe("/sign-in");
     expect(calls).toEqual([{ url: "/api/auth/password/forgot", method: "POST", body: { email: "asha@example.com" } }]);
@@ -305,14 +306,14 @@ describe("goal /forgot-password", () => {
   });
 
   it("shows a 429 in the server's words, a network failure in plain words, and keeps the typed email", async () => {
-    stubFetch({ "/api/auth/password/forgot": [{ status: 429, body: { error: "Too many requests. Try again later." } }, "network"] });
+    stubFetch({ "/api/auth/password/forgot": [{ status: 429, body: { ok: false, code: "rate_limited", message: "Too many requests. Try again later.", retryAfterSeconds: 120 } }, "network"] });
     const { container } = render(<ForgotPassword />);
     fireEvent.change(screen.getByLabelText("Account email"), { target: { value: "asha@example.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Too many requests. Try again later.");
+    expect((await screen.findByRole("alert")).textContent).toContain("Too many attempts. Try again in 2 minutes.");
     assertGoalPage(container, FORGOT_PAGE);
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not reach SkipWait. Check your connection and try again."));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We couldn't reach skipwait.me. Check your connection and try again."));
     expect((screen.getByLabelText("Account email") as HTMLInputElement).value).toBe("asha@example.com");
     expect(screen.queryByRole("heading", { name: "Check your email" })).toBeNull();
   });
@@ -340,23 +341,25 @@ describe("goal /reset-password", () => {
     expect(calls).toEqual([]);
   });
 
-  it("checking state: shows a status line and no next step (exempt from the one-commit contract while the link is checked)", () => {
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => { /* never settles */ })));
-    window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123");
-    const { container } = render(<ResetPassword />);
-    expect(screen.getByRole("status").textContent).toContain("Checking this link");
-    expect(container.querySelectorAll("h1")).toHaveLength(1);
-    expect(primary(container)).toBeNull();
+  it("reads the link once, removes its token immediately, and shows the form without a GET or loading request", () => {
+    const { calls } = stubFetch({});
+    window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123&returnTo=%2Finbox#private");
+    const { container, rerender } = render(<ResetPassword />);
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe("/reset-password");
+    expect(screen.getByLabelText("New password")).toBeTruthy();
+    expect(screen.queryByText("Checking this link…")).toBeNull();
+    expect(document.body.innerHTML).not.toContain("tok-fixture-123");
+    assertGoalPage(container, RESET_PAGE);
+    rerender(<ResetPassword />);
+    expect(screen.getByLabelText("New password")).toBeTruthy();
+    expect(calls).toEqual([]);
   });
 
-  it("a valid link sets a new password with the server's three rules, and the done panel claims no session", async () => {
-    const { calls } = stubFetch({
-      "/api/auth/password/reset/verify": { status: 200, body: { valid: true } },
-      "/api/auth/password/reset/confirm": { status: 200, body: { ok: true } },
-    });
-    window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123");
+  it.each([true, false])("a valid link submits the three password rules and reports signedIn=%s honestly", async signedIn => {
+    const { calls } = stubFetch({ "/api/auth/password/reset/confirm": { status: 200, body: { ok: true, signedIn, redirectTo: "/inbox" } } });
+    window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123&returnTo=%2Finbox");
     const { container } = render(<ResetPassword />);
-    const password = await screen.findByLabelText("New password");
+    const password = screen.getByLabelText("New password");
     assertGoalPage(container, RESET_PAGE);
     expect(primary(container)?.textContent).toBe("Update password");
     fireEvent.change(password, { target: { value: "longer-pass-1" } });
@@ -365,40 +368,40 @@ describe("goal /reset-password", () => {
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Reset complete" })).toBeTruthy();
     assertGoalPage(container, RESET_PAGE);
-    expect(document.body.textContent).not.toMatch(/you're signed in|you are signed in/i);
-    expect(document.body.textContent).toContain("Every device signed in to this account was signed out for safety.");
-    expect(primary(container)?.closest("a")?.getAttribute("href")).toBe("/sign-in");
-    expect(calls.map(call => call.url)).toEqual(["/api/auth/password/reset/verify?token=tok-fixture-123", "/api/auth/password/reset/confirm"]);
-    expect(calls[1].body).toEqual({ token: "tok-fixture-123", password: "longer-pass-1", confirm: "longer-pass-1" });
+    if (signedIn) expect(document.body.textContent).toContain("You are signed in on this device. Other sessions were signed out for safety.");
+    else {
+      expect(document.body.textContent).not.toMatch(/you're signed in|you are signed in/i);
+      expect(document.body.textContent).toContain("Every device signed in to this account was signed out for safety.");
+    }
+    expect(primary(container)?.closest("a")?.getAttribute("href")).toBe(signedIn ? "/inbox" : "/sign-in?returnTo=%2Finbox");
+    expect(calls).toEqual([{ url: "/api/auth/password/reset/confirm", method: "POST", body: { token: "tok-fixture-123", password: "longer-pass-1", confirm: "longer-pass-1", returnTo: "/inbox" } }]);
     expect(document.body.innerHTML).not.toContain("tok-fixture-123");
+    expect(document.body.innerHTML).not.toContain("longer-pass-1");
   });
 
-  it("keeps the commit inert until the three rules pass", async () => {
-    const { calls } = stubFetch({ "/api/auth/password/reset/verify": { status: 200, body: { valid: true } } });
+  it("keeps the commit inert until the three rules pass without sending the token", () => {
+    const { calls } = stubFetch({});
     window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123");
     render(<ResetPassword />);
-    fireEvent.change(await screen.findByLabelText("New password"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "short" } });
     const commit = screen.getByRole("button", { name: "Update password" });
     expect(commit.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(commit);
-    expect(calls.map(call => call.url)).toEqual(["/api/auth/password/reset/verify?token=tok-fixture-123"]);
+    expect(calls).toEqual([]);
   });
 
-  it("an invalid link, and a confirm refused as consumed, both land on the request-a-new-link panel in the server's words", async () => {
-    stubFetch({ "/api/auth/password/reset/verify": { status: 200, body: { valid: false } } });
-    window.history.replaceState({}, "", "/reset-password?token=tok-old");
+  it("a malformed token and an expired confirm both give the new-link panel, retaining server words", async () => {
+    const firstCalls = stubFetch({}).calls;
+    window.history.replaceState({}, "", "/reset-password?token=short");
     const first = render(<ResetPassword />);
-    expect(await screen.findByRole("heading", { level: 2, name: "This link has expired or was already used" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "This link has expired or was already used" })).toBeTruthy();
     assertGoalPage(first.container, RESET_PAGE);
+    expect(firstCalls).toEqual([]);
     first.unmount();
-    vi.unstubAllGlobals();
-    stubFetch({
-      "/api/auth/password/reset/verify": { status: 200, body: { valid: true } },
-      "/api/auth/password/reset/confirm": { status: 400, body: { error: "This link was already used. Request a new one.", code: "consumed" } },
-    });
-    window.history.replaceState({}, "", "/reset-password?token=tok-used");
+    stubFetch({ "/api/auth/password/reset/confirm": { status: 400, body: { ok: false, code: "expired", message: "This link was already used. Request a new one." } } });
+    window.history.replaceState({}, "", "/reset-password?token=tok-used-fixture");
     const { container } = render(<ResetPassword />);
-    fireEvent.change(await screen.findByLabelText("New password"), { target: { value: "longer-pass-1" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "longer-pass-1" } });
     fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "longer-pass-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
     expect(await screen.findByRole("heading", { level: 2, name: "This link has expired or was already used" })).toBeTruthy();
@@ -406,34 +409,35 @@ describe("goal /reset-password", () => {
     assertGoalPage(container, RESET_PAGE);
   });
 
-  it("a 429 or network failure on confirm keeps the form with the reason and a retry", async () => {
-    stubFetch({
-      "/api/auth/password/reset/verify": { status: 200, body: { valid: true } },
-      "/api/auth/password/reset/confirm": [{ status: 429, body: { error: "Too many requests. Try again later." } }, "network"],
-    });
+  it("a rate or network failure on confirm keeps the form and a retry without falsely expiring the link", async () => {
+    stubFetch({ "/api/auth/password/reset/confirm": [{ status: 429, body: { ok: false, code: "rate_limited", message: "Too many requests.", retryAfterSeconds: 120 } }, "network"] });
     window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123");
     const { container } = render(<ResetPassword />);
-    fireEvent.change(await screen.findByLabelText("New password"), { target: { value: "longer-pass-1" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "longer-pass-1" } });
     fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "longer-pass-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Too many requests. Try again later.");
+    expect((await screen.findByRole("alert")).textContent).toContain("Too many attempts. Try again in 2 minutes.");
     assertGoalPage(container, RESET_PAGE);
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not reach SkipWait. Check your connection and try again."));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We couldn't reach skipwait.me. Check your connection and try again."));
     expect(screen.getByLabelText("New password")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "This link has expired or was already used" })).toBeNull();
   });
 
-  it("a network failure while checking the link offers a retry instead of calling the link expired", async () => {
-    stubFetch({ "/api/auth/password/reset/verify": ["network", { status: 200, body: { valid: true } }] });
+  it.each(["https://evil.example/x", "/reset-password"])('refuses malformed successful redirect "%s" and offers retry without claiming completion', async redirectTo => {
+    stubFetch({ "/api/auth/password/reset/confirm": { status: 200, body: { ok: true, signedIn: true, redirectTo } } });
     window.history.replaceState({}, "", "/reset-password?token=tok-fixture-123");
     const { container } = render(<ResetPassword />);
-    expect(await screen.findByRole("heading", { level: 2, name: "We could not check this link" })).toBeTruthy();
-    expect(screen.queryByText(/expired/)).toBeNull();
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "longer-pass-1" } });
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "longer-pass-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update password" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Reset complete" })).toBeNull();
     assertGoalPage(container, RESET_PAGE);
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByLabelText("New password")).toBeTruthy();
+    expect(screen.getByLabelText("New password")).toBeTruthy();
   });
 });
+
 
 describe("goal /reviewer-sign-in (demo accounts, behind REVIEWER_LOGIN_ENABLED)", () => {
   it("is noindex, names the accounts as demo data, and its one commit posts the reviewer route", async () => {

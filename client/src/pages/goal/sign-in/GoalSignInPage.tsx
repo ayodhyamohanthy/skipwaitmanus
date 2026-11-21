@@ -2,7 +2,7 @@
 // November 11 correction). Opens with one goal line, keeps D-033's choice of
 // side, and puts the chosen side's sign-in in the one "Your next step" block.
 // FOUNDER-LOCKED login rule (D-030 as amended by D-049/D-057): job seekers use
-// a personal email code, a social provider or a saved passkey (GoalSeekerForm);
+// a personal email and password, a social provider or a saved passkey (GoalSeekerForm);
 // referrers use the work-email code only (GoalReferrerCodeForm), never personal
 // email, social or passkey. Return targets are the kit page's, unchanged.
 import { Check, ShieldCheck, Sparkles } from "lucide-react";
@@ -14,6 +14,8 @@ import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { cn } from "@/lib/utils";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
+import { safeSignInReturnTo } from "@shared/authReturnTo";
+import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY, USE_PASSWORD_SIGN_IN_REASON, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
 import { GoalReferrerCodeForm } from "./GoalReferrerCodeForm";
 import { GoalAuthFrame } from "./GoalAuthFrame";
 import { GoalPasskeyManageLink, GoalSeekerForm, SEEKER_EMAIL_FIELD_ID } from "./GoalSeekerForm";
@@ -53,8 +55,11 @@ export default function GoalSignInPage() {
   const referrerReturnTo = safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.referrer);
   // D-095: a seeker returns to a purchase only with one-tap pay on; /admin and passkey management always return.
   const seekerReturnTo = ONE_TAP_PAY_SIGNIN || requestedReturnTo?.startsWith("/admin") || requestedReturnTo === "/sign-in?passkeys=manage"
-    ? safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.seeker)
+    ? safeSignInReturnTo(requestedReturnTo, window.location.origin) ?? INTENT_RETURN_TO.seeker
     : INTENT_RETURN_TO.seeker;
+  const reason = searchParam("reason");
+  const reasonCopy = intent === "referrer" && reason === USE_WORK_EMAIL_CODE_REASON ? PASSWORD_AUTH_COPY.use_work_email_code
+    : intent === "seeker" && reason === USE_PASSWORD_SIGN_IN_REASON ? USE_PASSWORD_SIGN_IN_COPY : "";
   const copy = COPY[intent];
 
   return (
@@ -66,6 +71,7 @@ export default function GoalSignInPage() {
       skip={intent === "seeker" ? { label: "Continue with email", onActivate: () => document.getElementById(SEEKER_EMAIL_FIELD_ID)?.focus() } : undefined}
     >
       <BetaNoticeLine tone="goal" />
+      {reasonCopy && <p role="status" className="mt-4 text-g-meta text-g-ink-2">{reasonCopy}</p>}
       <div role="group" aria-label="I am here to" className="mt-6 grid grid-cols-2 gap-3">
         {SIDES.map(({ id, title, sub, Icon }) => {
           const selected = intent === id;
