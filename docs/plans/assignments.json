@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-20",
+  "updated": "2026-11-21",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -149,6 +149,109 @@
       "epic": "D-212"
     },
     {
+      "id": "OPS-reviewer-plaintext-reset",
+      "title": "The reviewer reset derives both demo password hashes from two plaintext repository secrets, so one secret pair serves the release and the signed-in QA runner (D-373)",
+      "row": "D-212",
+      "packet": "docs/plans/OPS-live-qa-runner.md",
+      "tier": 1,
+      "lane": "ops-deploy-secrets",
+      "branch": "agent/queue/ops-reviewer-plaintext-reset",
+      "status": "todo",
+      "syncedTo": "D-373",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/deploy-api.yml",
+        ".github/workflows/reviewer-qa-passwords.yml",
+        "scripts/build-deploy-secrets.mjs",
+        "scripts/buildDeploySecrets.test.ts",
+        "server/cloudflareContainerRelease.test.ts",
+        "server/configContract.test.ts",
+        ".env.example",
+        "docs/plans/OPS-live-qa-runner.md",
+        "docs/plans/OPS-deploy-secrets-file.md"
+      ],
+      "note": "D-373 (3). Build docs/plans/OPS-live-qa-runner.md section 2. Backward compatible: with both plaintext secrets set the reset derives the hashes inside the runner; with neither it uses the existing hash secrets; one without the other fails before any production step. Lands on green required CI (D-370). Done needs one real reset on main and both demo sign-ins on that exact release, proven by OPS-live-qa-runner's run or a sanitized receipt; that also closes OPS-reviewer-credential-transport's pending live check.",
+      "epic": "D-212"
+    },
+    {
+      "id": "OPS-live-qa-runner",
+      "title": "Signed-in live QA runs in GitHub Actions: after every release and on demand it signs in as the demo seeker and referrer from repository secrets and captures their routes at 1280 and 390, so no session needs the passwords (D-373)",
+      "row": "D-212",
+      "packet": "docs/plans/OPS-live-qa-runner.md",
+      "tier": 1,
+      "lane": "live-qa-runner",
+      "branch": "agent/queue/ops-live-qa-runner",
+      "status": "todo",
+      "syncedTo": "D-373",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/live-qa.yml",
+        "scripts/live-qa-signed-in.mjs",
+        "scripts/liveQaSignedIn.test.ts",
+        "docs/plans/OPS-live-qa-runner.md",
+        "AGENTS.md"
+      ],
+      "note": "D-373 (3). Build docs/plans/OPS-live-qa-runner.md section 3. Origin fixed to https://skipwait.me; demo seeker and referrer only, never admin; navigation only, no state change, no money; plaintext only in the two repository secrets and masked. Builds and lands without the secrets (tests use fixtures); its live proof is the first run after the secrets exist. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-auto-land-cloud",
+      "title": "Auto-land works from every session: where GitHub GraphQL is blocked, the picker marks drafts ready and turns auto-merge on through the session's REST routes (D-373)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-auto-land.md",
+      "tier": 2,
+      "lane": "picker-auto-land",
+      "branch": "agent/queue/picker-auto-land-cloud",
+      "status": "todo",
+      "syncedTo": "D-373",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/autoLand.mjs",
+        "scripts/autoLand.test.ts",
+        "docs/plans/PICKER-auto-land.md"
+      ],
+      "note": "D-373 (4). Build docs/plans/PICKER-auto-land.md section 7. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "SYNC-clone-guard",
+      "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
+      "row": "D-212",
+      "packet": "docs/plans/BRANCH-HYGIENE.md",
+      "tier": 2,
+      "lane": "repo-hygiene",
+      "branch": "agent/queue/sync-clone-guard",
+      "status": "todo",
+      "syncedTo": "D-373",
+      "dependsOn": [],
+      "owns": [
+        "scripts/sync-check.sh",
+        "scripts/sync-clone.mjs",
+        "scripts/syncClone.test.ts",
+        "package.json",
+        "docs/plans/BRANCH-HYGIENE.md",
+        "AGENTS.md"
+      ],
+      "note": "D-373 (5). Build docs/plans/BRANCH-HYGIENE.md section SYNC-clone-guard. Uses BRANCH-HYGIENE-1's classifier for deletes; never pushes main, never force-pushes, never commits, stashes or resets anyone's work. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "BRANCH-HYGIENE-2",
+      "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-205)",
+      "row": "D-205",
+      "packet": "docs/plans/BRANCH-HYGIENE.md",
+      "tier": 2,
+      "lane": "picker",
+      "branch": "agent/queue/branch-hygiene-picker-wiring",
+      "status": "todo",
+      "syncedTo": "D-373",
+      "dependsOn": [
+        "BRANCH-HYGIENE-1"
+      ],
+      "note": "Released by D-350 (1) and D-373 (5): build the BRANCH-HYGIENE-2 section of docs/plans/BRANCH-HYGIENE.md as written and delete its held banner in the same pull request. Skip a bullet already on main: open pull requests are read page by page since PICKER-open-pr-pagination, and landing goes through GitHub auto-merge under D-370/D-371, so the landing-step bullet deletes the task's branches after the auto-merge instead of printing a fast-forward. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch, a dirty worktree, unmerged work, main, agent/reports/log, the landing slot or any branch of a task that is not done. Its first branch, agent/queue/branch-hygiene-picker, merged only the parking change (#812), which is why the board read it as done. Lands on green required CI (D-370)."
+    },
+    {
       "id": "LAUNCH-live-qa",
       "title": "Signed-in, no-money live QA of the current release, captures at 1280 and 390, BUGFREE_GATE sections 1-4 updated",
       "row": "LAUNCH",
@@ -157,9 +260,10 @@
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa",
       "status": "todo",
-      "syncedTo": "D-370",
+      "syncedTo": "D-373",
       "dependsOn": [
-        "OPS-deploy-secrets-file"
+        "OPS-deploy-secrets-file",
+        "OPS-live-qa-runner"
       ],
       "owns": [
         "docs/BUGFREE_GATE.md",
@@ -167,7 +271,7 @@
         "docs/DECISIONS.md",
         "docs/plans/OPS-deploy-secrets-file.md"
       ],
-      "note": "D-059/D-369/D-370: use the approved reviewer demo accounts for no-money QA. The LAUNCH packet records the successful reset, the verified API release and the separate signed-in report. Finish the documented acceptance on the current release with sanitized 1280/390 evidence and E2E. A future reviewer reset uses OPS-reviewer-credential-transport. Keep #710 draft and the row todo until acceptance. Preserve the D-214 account exclusions, payment restrictions and untested transition gaps."
+      "note": "D-373 (3): the signed-in evidence comes from OPS-live-qa-runner's run on the current release (run link, artifact, summary of both demo sign-ins and every captured route at 1280 and 390), plus one full e2e journeys run (D-353 (4)) and docs/BUGFREE_GATE.md sections 1-4 updated with the exact web/API release. Until the runner lands, a session that holds the current plaintext and has a browser may still run the packet steps by hand. Never post a password, hash, cookie or raw authenticated response. Keep the D-214 account exclusions and payment restrictions; unexecuted transitions are recorded as gaps. File each defect as its own row."
     },
     {
       "id": "LAUNCH-qa-fixes",
@@ -930,7 +1034,7 @@
       "status": "done",
       "syncedTo": "D-231",
       "dependsOn": [],
-      "note": "Code lands through #758 (built by Claude Code · da74; review fixes 83119df8, fb344ff8, a46ea06c, c8ed44bd). Landing authorizes no cleanup: under the retention hold on #758 (Oct 27, restated Oct 28) nobody runs --apply or --local and no real-origin dry run is performed; docs/plans/branch-retention.json is an interlock, not permission, so the backlog run stays a separate step for the owner or coordinator, and BRANCH-HYGIENE-2 must not wire --apply into the picker's landing step before that release. Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done."
+      "note": "Code landed through #758 (built by Claude Code · da74; review fixes 83119df8, fb344ff8, a46ea06c, c8ed44bd). D-373 (5): the retention hold on #758 no longer stops safe deletes; --apply and --local delete only branches that are done and merged under D-205 (1)-(3). Never delete main, agent/reports/log, the landing slot, unmerged work or any branch of a task that is not done."
     },
     {
       "id": "D-048-dark-mode",
@@ -5912,21 +6016,6 @@
       "epic": "D-048-p3"
     },
     {
-      "id": "BRANCH-HYGIENE-2",
-      "title": "The picker deletes merged local branches on every run, and its landing step deletes the task's branches after the live check (D-205)",
-      "row": "D-205",
-      "packet": "docs/plans/BRANCH-HYGIENE.md",
-      "tier": 2,
-      "lane": "picker",
-      "branch": "agent/queue/branch-hygiene-picker",
-      "status": "todo",
-      "syncedTo": "D-350",
-      "dependsOn": [
-        "BRANCH-HYGIENE-1"
-      ],
-      "note": "Not buildable while the retention hold stands (D-232): its two wiring bullets run --local on every picker run and wire --apply into the landing step, which this row's sibling BRANCH-HYGIENE-1 note and the packet's status line forbid until the coordinator or the owner releases the cleanup run. Nothing is built and no branch is touched; the read-only note is not shipped alone. When the release comes, build the packet section as written and remove its held banner. Uses BRANCH-HYGIENE-1's pure classifier. Safe delete only (git branch -d); never the checked-out branch, another worktree's branch or a dirty worktree. Notes, never blocking. D-350: released. Build the packet section exactly: safe delete only (git branch -d), never the checked-out branch, another worktree's branch or a dirty worktree."
-    },
-    {
       "id": "SKIPPY-redteam",
       "title": "Skippy prompt-injection red-team suite in CI: resume, job page, note, admin tool output, agent drafts (pre-launch checklist, D-140)",
       "row": "D-201",
@@ -6220,9 +6309,9 @@
       "packet": "docs/plans/REL-production-watch.md",
       "tier": 2,
       "lane": "deploy-workflows",
-      "branch": "agent/queue/rel-rollback-skew",
+      "branch": "agent/queue/rel-rollback-drill",
       "status": "todo",
-      "syncedTo": "D-350",
+      "syncedTo": "D-373",
       "dependsOn": [
         "REL-release-verify"
       ],
@@ -6234,7 +6323,7 @@
         "scripts/rollbackTarget.test.ts",
         "scripts/requireGreenRelease.test.ts"
       ],
-      "note": "D-212 packet docs/plans/REL-production-watch.md; item 1 built by Hark · 44b1 on agent/queue/rel-rollback-skew (PR #876, draft, head 9a2d193f) and stands. D-248: the item 2 block clears by adding scripts/requireGreenRelease.test.ts to owns, because the three #751 pins at :542 (options are exactly `- api`), :551 (jobs are exactly [recovery-gate, recover-api]) and :569 (exactly three GITHUB_TOKEN steps) describe this row's own file rollback.yml but live in a test file another row owns. Those pins are extended to the api/all/web option set, the rollback-web job and its token step, never loosened or deleted, and scripts/require-green-release.mjs is NOT widened: the web leg runs this row's scripts/rollbackTarget.mjs web-gate (already built, accepts web/all and reuses ciVerdict/releaseRuns by import), so a target: all dispatch reaches each leg's gate as its own system and TARGETS/contextProblem and the release path stay byte-identical. The phantom reservation is released instead of waited on: P1-release-gate-strict-compare's code is on main (fecf0d3b) and only its item 5 observation remains, so it drops its two-file owns and this row gains no dependsOn edge - waiting there would park a buildable row behind a row that may never read done. The web leg takes job-level concurrency group deploy-pages, keeping rollback.yml's workflow-level group deploy-api pin true. Build item 2 on the same branch, never a takeover; item 3 (production drill, both run links) and the status: \"done\" landing commit are still owed; a draft PR cannot be merged, so a LAND hand-out on #876 before item 2 is a red report, never a forced merge. D-350: unparked, including item 3's production rollback drill (no real users yet, owner Nov 16). Record both run links."
+      "note": "D-373 (6): items 1 and 2 landed in PR #876 (code 2e5d9a21), which is why the board read the old branch as done. The one remaining item is 3: run the production web rollback-and-forward drill through rollback.yml (web to the previous release, then forward to the current main release) and record both run links with the canonical exact-SHA readbacks in docs/plans/REL-production-watch.md. D-350 (1) authorizes the drill while there are no users. No source change is expected; a defect the drill finds becomes its own row. Lands on green required CI (D-370)."
     },
     {
       "id": "REL-self-heal",
@@ -6383,7 +6472,7 @@
       "tier": 1,
       "lane": "demand",
       "branch": "agent/queue/d086-demand-list",
-      "status": "owner",
+      "status": "todo",
       "syncedTo": "D-366",
       "dependsOn": [
         "D-086.count",
@@ -6392,7 +6481,7 @@
         "D-090-BYOR",
         "D-048-p3-live-review-find"
       ],
-      "note": "D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: remove the bonus sentence from the demand line (demandBonusLine() in CompanyDemandLine; the one neutral, sourced bonus fact line on the company page belongs to D-099-bonus-line), then release under packet sections 5.4 and 8. D-366 (7) re-sync: release held for the owner's decision on the company detail's employer-bonus line versus D-323 (4). Both company-demand switches stay false; green CI, merged build rows and this docs re-sync are not activation authority. Record the owner's decision in DECISIONS.md, re-sync this row and route any necessary copy repair before preview/privacy acceptance and required exact-head CI (packet §§5.4, 8). D-227's distinct-person, coverage-neutral counts, k-anonymity, admin-only moderation and runtime liveness are unchanged. No new dependency, ordering, ownership, legal, login, money or runtime change.",
       "owns": [
         "shared/companyDemand.ts (switch only)",
         "AGENTS.md",
@@ -6470,14 +6559,14 @@
       "packet": "docs/plans/D-100-security-audit.md",
       "tier": 2,
       "lane": "security-csp-release",
-      "branch": "agent/queue/d100-csp-release",
+      "branch": "agent/queue/d100-csp-enforce-release",
       "status": "todo",
-      "syncedTo": "D-353",
+      "syncedTo": "D-373",
       "dependsOn": [
         "D-100.csp-enforce",
         "D-090-BYOR"
       ],
-      "note": "D-350 authorizes page report-uri /api/csp-report, then 48 hours of collected reports with zero legitimate blocked sources, then CSP enforcement with 1280/390 captures. No separate CEO sign-off (D-347); computed Tier 1 paths still need independent review under D-352/D-353. This row remains todo through the reporting deployment and collection; do not mark it done from a preparatory PR. D-350 explicitly routes functions/_middleware.ts here despite D-099-bonus-pages owning an unrelated route-list switch in that file; preserve both on integration (D-314). The scope amendment and packet synchronization land first because scope-check reads owns from origin/main. PR #924 originally held claim markers only; green CI on that empty candidate was not release evidence.",
+      "note": "D-373 (6): the reporting step is done: #1225 (9d6543b3) added report-uri /api/csp-report to the Report-Only policy, live since Nov 17 07:02 UTC, which is why the board read the old branch as done. Remaining, in order: (1) read the collected reports for at least 48 hours and list every blocked source; (2) allow-list each legitimate one, or record that there is none; (3) set CSP_ENFORCED = true; (4) 1280/390 captures of the enforced release and exact-release verification. functions/_middleware.ts is shared with D-099-bonus-pages; keep both changes (D-314). Lands on green required CI (D-370).",
       "epic": "D-100",
       "owns": [
         "server/securityHeaders.ts",
@@ -6873,7 +6962,7 @@
         "docs/DECISIONS.md",
         "docs/KIT_V4_BUILD_PLAN.md"
       ],
-      "note": "Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: keep the sourced figures, admin entry and report path the company-page fact line needs; drop the public /bonuses and /bonuses/:slug pages and their sitemap entries. Oct 23 owns reconciliation (coordinator): this row and D-048-p3-admin both switch client/src/pages/AdminOverview.tsx; the goal redesign lands first (whole-app mandate) and this row reconciles its bonus sections on top of the goal switch at activation (D-167 one-owner-per-file). D-163 packet (CEO): the owner's order is ideas 2 (BYOR), 1 (request-inbox link), 3 (this), after the demand list (D-089 (3), D-099); D-162 waived the demand-list gate for BYOR only, so this waits for all three. Figures are admin-entered from the employer's own domain only, stored in employer currency, stale after 365 days; one black commit to the referrer (supply, D-087); every route 404 while BONUS_PAGES_ENABLED is off. Tier 1 because it adds a migration (next free number at landing). It also waits for D-048-F-flags and D-048-F-routes, which own App.tsx and .env.example first (CEO, Oct 23). D-219/D-221 (Oct 26): cost lines follow the frozen banded model (one referral of the request's level band, spend source shown before sending; the L1-L10 to band mapping is open), never the superseded D-132 per-level credit cost."
     },
     {
       "id": "D-099-bonus-line",
@@ -6897,7 +6986,7 @@
         "client/src/pages/explore/",
         "client/src/pages/explore.bonusLine.test.tsx"
       ],
-      "note": "D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory. It also waits for D-048-F-primitives, which owns GoalListRow.tsx first."
+      "note": "D-374 (4), owner Nov 21: \"Drop the bonus lead\". Re-sync to D-374: one neutral, sourced fact line on the company page (/explore/:slug) only, with no line in the /explore list and no link to a bonus page; never a headline or a reason to refer. D-163 packet §5.5: the line goes into the pages D-048-p3-live-review-find redesigns, so it waits for that row as well as slice A. A failed bonus fetch shows no line and never blocks the directory. It also waits for D-048-F-primitives, which owns GoalListRow.tsx first."
     },
     {
       "id": "PICKER-land-exact-head",
@@ -7259,11 +7348,9 @@
       "lane": "deploy-workflows",
       "branch": "agent/queue/sync-log-off-main",
       "status": "todo",
-      "syncedTo": "D-263",
-      "dependsOn": [
-        "REL-rollback-skew"
-      ],
-      "note": "D-263 packet docs/plans/SYNC-LOG-off-main.md: the Web deploy records its result in the run summary (as deploy-api.yml does), never a push to main; deploy-pages.yml drops contents: write; sync-guard.yml and design-gate.yml retire (D-212 (7)). Tier 2 (deploy workflow). Waits for REL-rollback-skew only because both own deploy-pages.yml.",
+      "syncedTo": "D-373",
+      "dependsOn": [],
+      "note": "D-263 packet docs/plans/SYNC-LOG-off-main.md: the Web deploy records its result in the run summary (as deploy-api.yml does), never a push to main; deploy-pages.yml drops contents: write; sync-guard.yml and design-gate.yml retire (D-212 (7)). Tier 2 (deploy workflow). D-373 (6): the REL-rollback-skew edge is removed (D-370 (2) removed D-314 (3)'s reason, and the remaining drill changes no file); integrate main into #1378 and land on green required CI.",
       "owns": [
         ".github/workflows/deploy-pages.yml",
         ".github/workflows/sync-guard.yml",
@@ -7486,8 +7573,8 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/picker-qa-stage",
-      "status": "todo",
-      "syncedTo": "D-309",
+      "status": "done",
+      "syncedTo": "D-373",
       "dependsOn": [
         "GATE-e2e-journeys",
         "GATE-tier-floor",
@@ -7503,7 +7590,7 @@
         "scripts/nextTask.test.ts",
         "docs/QA-CHECKLIST.md"
       ],
-      "note": " D-272: also waits for FIX-device-signin, whose closure lands the live-registry first-pick de-pin of scripts/nextTask.test.ts that this row owns."
+      "note": "Retired by D-373 (6), nothing built: D-370 (2)-(3) removed the Tier 1 review and the model exclusion this packet is built on. QA is a machine check: D-346 (6)'s CI captures (GATE-release-captures) for a pull request and OPS-live-qa-runner for the live release."
     },
     {
       "id": "REL-synthetic-journeys",
