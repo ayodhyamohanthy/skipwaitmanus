@@ -456,12 +456,12 @@ describe("goal employer billing money-copy integrity (rule 1a)", () => {
     expect(displayStrings(displayFiles[0])).toMatch(/Employers never buy referrals/);
   });
 
-  it("the pack values are the kit page's own numbers, never retyped", () => {
-    const kitSource = readFileSync("client/src/pages/EmployerBilling.tsx", "utf8");
-    const kitPacks = Array.from(kitSource.matchAll(/id: "(starter|growth|scale)", credits: (\d+), priceInr: (\d+), amountInPaise: (\d+)/g))
-      .map(match => ({ id: match[1], adds: Number(match[2]), priceInr: Number(match[3]), amountInPaise: Number(match[4]) }));
-    expect(kitPacks).toHaveLength(3);
-    expect(UNLOCK_PACKS.map(pack => ({ id: pack.id, adds: pack.adds, priceInr: pack.priceInr, amountInPaise: pack.amountInPaise }))).toEqual(kitPacks);
+  it("keeps the released employer top-up pack values", () => {
+    expect(UNLOCK_PACKS.map(pack => ({ id: pack.id, adds: pack.adds, priceInr: pack.priceInr, amountInPaise: pack.amountInPaise }))).toEqual([
+      { id: "starter", adds: 10, priceInr: 29, amountInPaise: 2900 },
+      { id: "growth", adds: 50, priceInr: 129, amountInPaise: 12900 },
+      { id: "scale", adds: 200, priceInr: 399, amountInPaise: 39900 },
+    ]);
   });
 
   it("the rupee label comes from the pack table, so a price change cannot drift", () => {

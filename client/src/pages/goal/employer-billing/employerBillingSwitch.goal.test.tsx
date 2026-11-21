@@ -1,20 +1,21 @@
 // @vitest-environment jsdom
-// D-048-p3-employer-billing switch: /employer/billing renders the goal page only
-// when goalSurfaceOn("employer-billing") is true; with the flag off the kit page
-// stays exactly as it is (one switch line in client/src/pages/EmployerBilling.tsx,
-// the D-048 split method). The goal page's own states are pinned by
-// employerBilling.goal.test.tsx; the kit page has no test file of its own, so the
-// flag-off half of this file is the parity pin for the untouched kit surface.
+// D-048-K-employer-billing: the released /employer/billing route stays goal-only
+// without consulting a surface switch. Goal behavior is pinned in
+// employerBilling.goal.test.tsx; this entrypoint test prevents the Kit fallback
+// from becoming reachable again.
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import EmployerBilling from "../../EmployerBilling";
 
-const { flag } = vi.hoisted(() => ({ flag: { on: false, asked: [] as string[] } }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
-// Signed in, so the goal half reaches its billing render; SignInButton is not
-// mocked (see employerBilling.goal.test.tsx — the gate calls openSignIn instead).
+beforeAll(async () => { await import("./GoalEmployerBilling"); }, 60_000);
+afterAll(() => vi.resetModules());
+
+const { goalSurfaceOn } = vi.hoisted(() => ({ goalSurfaceOn: vi.fn() }));
+vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn }));
+// Signed in so the real goal billing module reaches its normal read state. The
+// detailed money-boundary suite keeps Razorpay and every mutation intercepted.
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: true, openSignIn: vi.fn() }),
   useUser: () => ({ user: null }),
@@ -34,29 +35,21 @@ const serve = () => vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL
   return json({});
 }) as never);
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = false; flag.asked = []; });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); goalSurfaceOn.mockClear(); });
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 
-describe("/employer/billing switch (D-048-p3-employer-billing)", () => {
-  it("renders the goal page when the goal flag is on", async () => {
-    serve(); flag.on = true;
-    const { container } = renderPage(<EmployerBilling />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Control what you spend." })).toBeTruthy();
-    expect(container.querySelector("[data-goal-page='employer']")).toBeTruthy();
-    expect(flag.asked).toContain("employer-billing");
-  });
-
-  it("keeps the kit page, untouched, when the goal flag is off", async () => {
+describe("/employer/billing retirement (D-048-K-employer-billing)", () => {
+  it("renders the released goal page without consulting a surface switch", async () => {
     serve();
     const { container } = renderPage(<EmployerBilling />);
-    await waitFor(() => expect(container.querySelector("[data-skipwait-screen='employer-billing']")).toBeTruthy());
-    expect(container.querySelector("[data-goal-page]")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Credits and billing." })).toBeTruthy();
-    // The kit page's three per-pack "Buy" buttons: the goal page replaces them
-    // with one commit, so this is the parity pin that the kit is untouched.
-    expect(screen.getAllByRole("button", { name: "Buy" })).toHaveLength(3);
-    expect(screen.getByText("Buy a pack, unlock talent, or sponsor a role to get started.")).toBeTruthy();
-    expect(flag.asked).toContain("employer-billing");
+    expect(await screen.findByRole("heading", { level: 1, name: "Control what you spend." })).toBeTruthy();
+    const goalPage = container.querySelector("[data-goal-page='employer']");
+    expect(goalPage).toBeTruthy();
+    expect(container.querySelectorAll("[data-skipwait-screen='employer-billing']")).toHaveLength(1);
+    expect(goalPage).toBe(container.querySelector("[data-skipwait-screen='employer-billing']"));
+    expect(goalSurfaceOn).not.toHaveBeenCalled();
+    expect(container.querySelectorAll("[data-testid='goal-button']")).toHaveLength(1);
+    expect(container.querySelector("button button, a button, button a")).toBeNull();
   });
 });
