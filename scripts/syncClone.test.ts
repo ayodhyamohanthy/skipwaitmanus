@@ -1,13 +1,17 @@
 // @vitest-environment node
 // SYNC-clone-guard (D-373 (5), D-205): one command keeps a clone and GitHub in sync, and nothing else moves.
+// SYNC-auto-push (D-375): the post-commit hook pushes each commit by itself, local main's own commits are saved on
+// a sync/main-<sha> branch, and --auto-setup installs the hook wherever sessions claim work.
 // The pure rules first, then the script as a process against throwaway git repositories, so every push,
 // fast-forward, refusal and untouched worktree is proven without touching GitHub.
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { NEVER_PUSH, PRIVATE_PREFIXES, addedLines, exitCodeOf, findSensitive, planBranch, planMain } from "./syncCloneCore.mjs";
+import {
+  HOOK_MARKER, NEVER_PUSH, PRIVATE_PREFIXES, addedLines, autoSetupAllowed, exitCodeOf, findSensitive, hookScript, planBranch, planHook, planMain, sideBranchForMain,
+} from "./syncCloneCore.mjs";
 
 const root = path.resolve(__dirname, "..");
 const SCRIPT = path.join(root, "scripts/sync-clone.mjs");
@@ -84,6 +88,42 @@ describe("findSensitive and addedLines", () => {
     expect(exitCodeOf({ reports: [], dirty: [], failures: [] })).toBe(0);
     expect(exitCodeOf({ reports: ["x"], dirty: [], failures: [] })).toBe(1);
     expect(exitCodeOf({ reports: [], dirty: [], failures: ["x"] })).toBe(1);
+  });
+});
+
+describe("SYNC-auto-push rules", () => {
+  it("names the side branch for local main's own commits after the first one, and refuses malformed input", () => {
+    expect(sideBranchForMain(sha("c"))).toBe("sync/main-cccccccc");
+    expect(() => sideBranchForMain("main")).toThrow(/full 40-character SHA/);
+  });
+  it("installs the hook only where no other tool owns it, and removes only its own", () => {
+    const ours = `#!/bin/sh\n${HOOK_MARKER}\n`;
+    expect(planHook({ existing: null, hooksPathSet: false, install: true })).toEqual({ action: "write", reason: "installed" });
+    expect(planHook({ existing: ours, hooksPathSet: false, install: true })).toEqual({ action: "write", reason: "refreshed" });
+    expect(planHook({ existing: "#!/bin/sh\nlint\n", hooksPathSet: false, install: true })).toMatchObject({ action: "report", reason: expect.stringContaining("left in place") });
+    expect(planHook({ existing: null, hooksPathSet: true, install: true })).toMatchObject({ action: "report", reason: expect.stringContaining("core.hooksPath") });
+    expect(planHook({ existing: ours, hooksPathSet: false, install: false }).action).toBe("remove");
+    expect(planHook({ existing: "#!/bin/sh\nlint\n", hooksPathSet: false, install: false }).action).toBe("none");
+    expect(planHook({ existing: null, hooksPathSet: false, install: false }).action).toBe("none");
+  });
+  it("writes a hook that is valid sh, quotes its paths, runs in the background and skips rebases", () => {
+    const text = hookScript({ node: "/opt/node's/bin/node", scripts: ["/a b/scripts/sync-clone.mjs"] });
+    expect(text.startsWith("#!/bin/sh\n")).toBe(true);
+    expect(text).toContain(HOOK_MARKER);
+    expect(text).toContain(`node='/opt/node'\\''s/bin/node'`);
+    expect(text).toContain("'/a b/scripts/sync-clone.mjs'");
+    expect(text).toContain("rebase-merge rebase-apply sequencer");
+    expect(text).toMatch(/nohup "\$node" "\$script" --current --timestamps .*&\n/);
+    expect(spawnSync("sh", ["-n"], { input: text }).status).toBe(0);
+    expect(() => hookScript({ node: "", scripts: [] })).toThrow();
+  });
+  it("lets --auto-setup install only in a local clone nobody opted out of", () => {
+    expect(autoSetupAllowed({ env: {}, optedOut: false }).allowed).toBe(true);
+    for (const env of [{ CI: "true" }, { GITHUB_ACTIONS: "true" }, { VITEST: "true" }, { CLAUDE_CODE_REMOTE: "true" }, { SKIPWAIT_AUTO_SYNC: "off" }]) {
+      expect(autoSetupAllowed({ env, optedOut: false }).allowed).toBe(false);
+    }
+    expect(autoSetupAllowed({ env: {}, optedOut: true })).toEqual({ allowed: false, reason: "opted out" });
+    expect(autoSetupAllowed({ env: { CI: "false" }, optedOut: false }).allowed).toBe(true);
   });
 });
 
@@ -169,13 +209,22 @@ describe("sync-clone.mjs as a process", () => {
     expect(out).toContain("not fully in sync");
   }, 60_000);
 
-  it("never pushes a local main with commits of its own", () => {
+  it("never pushes a local main with commits of its own, and saves those commits on a sync/main branch", () => {
     const f = fixture();
     const originMain = git(f.origin, "rev-parse", "refs/heads/main");
-    commit(f.clone, "local-only.txt", "x\n");
+    const first = commit(f.clone, "local-only.txt", "x\n");
     const { out } = run(f.clone);
     expect(git(f.origin, "rev-parse", "refs/heads/main")).toBe(originMain);
     expect(out).toContain("left for you: main: local main has commits that are not on origin/main");
+    const side = `sync/main-${first.slice(0, 8)}`;
+    expect(remoteTip(f.origin, side)).toBe(git(f.clone, "rev-parse", "main"));
+    expect(out).toContain(`left for you: main: its 1 local commit(s) are saved on origin as ${side}`);
+    // A later commit on the same local main moves the same side branch forward; a rerun reports it saved.
+    commit(f.clone, "local-two.txt", "y\n");
+    expect(run(f.clone).out).toContain(`pushed ${side} (ahead of origin)`);
+    expect(remoteTip(f.origin, side)).toBe(git(f.clone, "rev-parse", "main"));
+    expect(run(f.clone).out).toContain(`its 2 local commit(s) are already saved on origin as ${side}`);
+    expect(git(f.origin, "rev-parse", "refs/heads/main")).toBe(originMain);
   }, 60_000);
 
   it("refuses unknown arguments and runs only inside a git clone", () => {
@@ -184,4 +233,135 @@ describe("sync-clone.mjs as a process", () => {
     expect(run(dir).out).toContain("run this inside a git clone");
     expect(run(dir, "--force").out).toContain("unknown argument --force");
   });
+});
+
+/** A plain origin and one clone of it, for the hook and --current runs. */
+function simple() {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "sync-auto-"));
+  const origin = path.join(dir, "origin.git"), clone = path.join(dir, "clone");
+  git(dir, "init", "-q", "--bare", "-b", "main", origin);
+  git(dir, "clone", "-q", origin, clone);
+  commit(clone, "a.txt", "1\n");
+  git(clone, "push", "-q", "origin", "HEAD:main");
+  return { dir, origin, clone };
+}
+// The hook runs in the foreground under test, so each commit returns only after its push finished.
+const HOOK_ENV = { ...ENV, SKIPWAIT_SYNC_FOREGROUND: "1" };
+const commitWithHook = (cwd: string, file: string, text: string) => {
+  writeFileSync(path.join(cwd, file), text);
+  execFileSync("git", ["add", file], { cwd, env: HOOK_ENV });
+  execFileSync("git", ["commit", "-q", "-m", file], { cwd, env: HOOK_ENV });
+  return git(cwd, "rev-parse", "HEAD");
+};
+const hookFile = (clone: string) => path.join(clone, ".git", "hooks", "post-commit");
+
+describe("SYNC-auto-push as a process", () => {
+  it("--install-hook: each commit on a branch reaches origin by itself, and main's commits go to a side branch", () => {
+    const f = simple();
+    const r = run(f.clone, "--install-hook");
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("auto-push on");
+    expect(readFileSync(hookFile(f.clone), "utf8")).toContain(HOOK_MARKER);
+    git(f.clone, "checkout", "-q", "-b", "agent/queue/feature");
+    const one = commitWithHook(f.clone, "f1.txt", "1\n");
+    expect(remoteTip(f.origin, "agent/queue/feature")).toBe(one);
+    expect(git(f.clone, "rev-parse", "--abbrev-ref", "agent/queue/feature@{upstream}")).toBe("origin/agent/queue/feature");
+    const two = commitWithHook(f.clone, "f2.txt", "2\n");
+    expect(remoteTip(f.origin, "agent/queue/feature")).toBe(two);
+    // On main: origin's main never moves; the commits are saved as sync/main-<first>.
+    git(f.clone, "checkout", "-q", "main");
+    const originMain = remoteTip(f.origin, "main");
+    const first = commitWithHook(f.clone, "m1.txt", "1\n");
+    const second = commitWithHook(f.clone, "m2.txt", "2\n");
+    expect(remoteTip(f.origin, "main")).toBe(originMain);
+    expect(remoteTip(f.origin, `sync/main-${first.slice(0, 8)}`)).toBe(second);
+    expect(readFileSync(path.join(f.clone, ".git", "skipwait-sync-clone.log"), "utf8")).toContain(`pushed sync/main-${first.slice(0, 8)}`);
+  }, 60_000);
+
+  it("the hook skips a rebase in progress, honours SKIPWAIT_AUTO_SYNC=off and never pushes a private branch or a likely secret", () => {
+    const f = simple();
+    run(f.clone, "--install-hook");
+    git(f.clone, "checkout", "-q", "-b", "agent/queue/busy");
+    mkdirSync(path.join(f.clone, ".git", "rebase-merge"));
+    commitWithHook(f.clone, "r.txt", "r\n");
+    expect(remoteTip(f.origin, "agent/queue/busy")).toBeNull();
+    rmdirSync(path.join(f.clone, ".git", "rebase-merge"));
+    writeFileSync(path.join(f.clone, "o.txt"), "o\n");
+    execFileSync("git", ["add", "o.txt"], { cwd: f.clone, env: HOOK_ENV });
+    execFileSync("git", ["commit", "-q", "-m", "o"], { cwd: f.clone, env: { ...HOOK_ENV, SKIPWAIT_AUTO_SYNC: "off" } });
+    expect(remoteTip(f.origin, "agent/queue/busy")).toBeNull();
+    git(f.clone, "checkout", "-q", "-b", "wip/mine");
+    commitWithHook(f.clone, "w.txt", "w\n");
+    expect(remoteTip(f.origin, "wip/mine")).toBeNull();
+    git(f.clone, "checkout", "-q", "-b", "agent/queue/leaky", "main");
+    commitWithHook(f.clone, ".env.production", "KEY=x\n");
+    expect(remoteTip(f.origin, "agent/queue/leaky")).toBeNull();
+    const log = readFileSync(path.join(f.clone, ".git", "skipwait-sync-clone.log"), "utf8");
+    expect(log).toContain("agent/queue/leaky: not pushed, possible secret: .env.production (sensitive file name)");
+    expect(log).not.toContain("KEY=x");
+  }, 60_000);
+
+  it("--current pushes only the checked-out branch, never forces and says why it left a branch alone", () => {
+    const f = simple();
+    git(f.clone, "checkout", "-q", "-b", "agent/queue/other"); commit(f.clone, "x.txt", "x\n");
+    git(f.clone, "checkout", "-q", "-b", "agent/queue/here", "main"); const here = commit(f.clone, "h.txt", "h\n");
+    let r = run(f.clone, "--current");
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("pushed agent/queue/here (never pushed)");
+    expect(remoteTip(f.origin, "agent/queue/here")).toBe(here);
+    expect(remoteTip(f.origin, "agent/queue/other")).toBeNull();
+    expect(run(f.clone, "--current").out).toContain("agent/queue/here: in sync");
+    // origin moves on: the next local commit is reported, never forced over it.
+    const elsewhere = path.join(f.dir, "elsewhere");
+    git(f.dir, "clone", "-q", "-b", "agent/queue/here", f.origin, elsewhere);
+    commit(elsewhere, "e.txt", "e\n"); git(elsewhere, "push", "-q", "origin", "agent/queue/here");
+    const theirs = remoteTip(f.origin, "agent/queue/here");
+    commit(f.clone, "h2.txt", "h2\n");
+    r = run(f.clone, "--current");
+    expect(r.code).toBe(1);
+    expect(r.out).toContain("origin has commits this branch lacks");
+    expect(remoteTip(f.origin, "agent/queue/here")).toBe(theirs);
+    // A merged branch whose origin branch was deleted is not re-published by the next commit.
+    git(elsewhere, "push", "-q", "origin", "--delete", "agent/queue/here");
+    expect(run(f.clone, "--current").out).toContain("its origin branch was deleted");
+    expect(remoteTip(f.origin, "agent/queue/here")).toBeNull();
+  }, 60_000);
+
+  it("--install-hook never replaces another tool's hook, and --uninstall-hook removes only its own", () => {
+    const f = simple();
+    writeFileSync(hookFile(f.clone), "#!/bin/sh\necho lint\n", { mode: 0o755 });
+    const r = run(f.clone, "--install-hook");
+    expect(r.code).toBe(1);
+    expect(r.out).toContain("left in place");
+    expect(readFileSync(hookFile(f.clone), "utf8")).toBe("#!/bin/sh\necho lint\n");
+    expect(run(f.clone, "--uninstall-hook").out).toContain("belongs to another tool");
+    expect(readFileSync(hookFile(f.clone), "utf8")).toBe("#!/bin/sh\necho lint\n");
+    const g = simple();
+    run(g.clone, "--install-hook");
+    expect(run(g.clone, "--uninstall-hook").out).toContain("auto-push hook removed");
+    expect(existsSync(hookFile(g.clone))).toBe(false);
+  }, 60_000);
+
+  // On macOS --auto-setup also loads a real LaunchAgent, which a test must never do.
+  it.skipIf(process.platform === "darwin")("--auto-setup installs the hook once, then stays silent, and does nothing in CI, tests, cloud sessions or after an opt-out", () => {
+    const local: Record<string, string | undefined> = { ...ENV };
+    for (const name of ["CI", "GITHUB_ACTIONS", "VITEST", "CLAUDE_CODE_REMOTE", "SKIPWAIT_AUTO_SYNC"]) delete local[name];
+    const auto = (cwd: string, env: Record<string, string | undefined>) => {
+      const r = spawnSync(process.execPath, [SCRIPT, "--auto-setup"], { cwd, encoding: "utf8", env });
+      return { code: r.status, out: `${r.stdout}${r.stderr}` };
+    };
+    const f = simple();
+    for (const extra of [{ CI: "true" }, { VITEST: "true" }, { CLAUDE_CODE_REMOTE: "true" }, { SKIPWAIT_AUTO_SYNC: "off" }]) {
+      expect(auto(f.clone, { ...local, ...extra })).toEqual({ code: 0, out: "" });
+    }
+    git(f.clone, "config", "skipwait.autoSync", "false");
+    expect(auto(f.clone, local)).toEqual({ code: 0, out: "" });
+    expect(existsSync(hookFile(f.clone))).toBe(false);
+    git(f.clone, "config", "--unset", "skipwait.autoSync");
+    const first = auto(f.clone, local);
+    expect(first.code).toBe(0);
+    expect(first.out).toContain("auto-push on");
+    expect(readFileSync(hookFile(f.clone), "utf8")).toContain(HOOK_MARKER);
+    expect(auto(f.clone, local)).toEqual({ code: 0, out: "" });
+  }, 60_000);
 });

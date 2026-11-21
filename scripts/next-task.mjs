@@ -33,7 +33,7 @@ import {
   mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
 import { autoLandCandidates, autoLandHold, runAutoLand } from "./autoLand.mjs";
@@ -694,9 +694,21 @@ function requireSynced(doc, branches, who) {
   fail("your own work is not on origin yet (the MUST PUSH lines above); push it, then run this again", 3);
 }
 
+/**
+ * SYNC-auto-push (D-375): a clone where sessions claim work pushes every commit on its own. Installs the
+ * post-commit hook (and the 15-minute timer on macOS) when missing; silent when in place, in CI, a test run, a
+ * cloud container or after an opt-out. It never stops the picker: any failure is one printed line.
+ */
+function autoSyncSetup() {
+  const run = spawnSync(process.execPath, [fileURLToPath(new URL("./sync-clone.mjs", import.meta.url)), "--auto-setup"], { encoding: "utf8", timeout: 30_000 });
+  const lines = `${run.stdout ?? ""}${run.status === 0 || run.status === 1 ? "" : run.stderr ?? ""}`.trim();
+  if (lines) console.log(`AUTO-PUSH (D-375): ${lines.split("\n").join("\n  ")}\n`);
+}
+
 async function main() {
   const args = argsOf(process.argv.slice(2));
   if (args.claim) {
+    autoSyncSetup();
     const who = sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4));
     if (who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
     args.claim = who;

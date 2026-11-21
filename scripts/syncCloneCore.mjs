@@ -121,3 +121,83 @@ export function addedLines(diff) {
 export function exitCodeOf({ reports, dirty, failures }) {
   return reports.length || dirty.length || failures.length ? 1 : 0;
 }
+
+/**
+ * SYNC-auto-push (D-375): where local `main`'s own commits are saved on origin. `main` itself is never pushed
+ * (D-082); the commits go to a branch named after the first commit origin/main lacks, so later commits on the
+ * same local `main` fast-forward the same branch.
+ * @param {string} firstLocalSha the oldest commit of `origin/main..main`
+ */
+export function sideBranchForMain(firstLocalSha) {
+  return `sync/main-${sha(firstLocalSha, "first local main commit").slice(0, 8)}`;
+}
+
+/** The line that marks the post-commit hook this tool writes; a hook without it belongs to someone else. */
+export const HOOK_MARKER = "# skipwait sync-clone post-commit hook (SYNC-auto-push, D-375)";
+
+/**
+ * What --install-hook / --uninstall-hook does with the clone's post-commit hook.
+ * @param {{ existing: string|null, hooksPathSet: boolean, install: boolean }} facts
+ *   `existing`: the current hook file's text or null. `hooksPathSet`: `core.hooksPath` is configured, so another
+ *   tool owns the hooks folder (it may be a tracked folder; this tool never writes into it).
+ * @returns {{ action: "write"|"remove"|"none"|"report", reason: string }}
+ */
+export function planHook({ existing, hooksPathSet, install }) {
+  const ours = typeof existing === "string" && existing.includes(HOOK_MARKER);
+  if (!install) {
+    if (existing === null) return { action: "none", reason: "no post-commit hook" };
+    return ours ? { action: "remove", reason: "removed" } : { action: "none", reason: "the post-commit hook belongs to another tool and was left in place" };
+  }
+  if (hooksPathSet) return { action: "report", reason: "core.hooksPath is set, so another tool owns this clone's hooks; add `node scripts/sync-clone.mjs --current` to its post-commit hook" };
+  if (existing === null) return { action: "write", reason: "installed" };
+  if (ours) return { action: "write", reason: "refreshed" };
+  return { action: "report", reason: "a post-commit hook from another tool exists and was left in place; add `node scripts/sync-clone.mjs --current &` to it" };
+}
+
+const shq = text => `'${String(text).replace(/'/g, `'\\''`)}'`;
+
+/**
+ * The post-commit hook. It pushes the commit just made with `sync-clone.mjs --current` in the background, so a
+ * commit never waits on the network, and skips the commits a rebase or a multi-commit cherry-pick replays.
+ * @param {{ node: string, scripts: string[] }} where the node binary and candidate sync-clone.mjs paths, first that exists wins
+ */
+export function hookScript({ node, scripts }) {
+  if (typeof node !== "string" || !node || !Array.isArray(scripts) || !scripts.length) throw new Error("hookScript: node and at least one script path are required");
+  return `#!/bin/sh
+${HOOK_MARKER}
+# Pushes the commit just made to its own branch on origin: never main, never force, never a likely secret.
+# Local main's own commits go to a sync/main-<sha> branch instead. Off for one commit: SKIPWAIT_AUTO_SYNC=off.
+# Remove: node scripts/sync-clone.mjs --uninstall-hook. Log: <git dir>/skipwait-sync-clone.log.
+[ "\${SKIPWAIT_AUTO_SYNC:-on}" = "off" ] && exit 0
+unset GIT_INDEX_FILE
+here=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+for busy in rebase-merge rebase-apply sequencer; do [ -e "$here/$busy" ] && exit 0; done
+script=
+for candidate in ${scripts.map(shq).join(" ")} "$(git rev-parse --show-toplevel)/scripts/sync-clone.mjs"; do
+  [ -f "$candidate" ] && { script=$candidate; break; }
+done
+[ -n "$script" ] || exit 0
+node=${shq(node)}
+[ -x "$node" ] || node=$(command -v node) || exit 0
+log="$(git rev-parse --git-common-dir)/skipwait-sync-clone.log"
+if [ "\${SKIPWAIT_SYNC_FOREGROUND:-}" = "1" ]; then "$node" "$script" --current --timestamps >>"$log" 2>&1; exit 0; fi
+nohup "$node" "$script" --current --timestamps >>"$log" 2>&1 </dev/null &
+exit 0
+`;
+}
+
+/**
+ * Whether --auto-setup (run by the picker on every --claim) may install the hook and timer in this clone.
+ * Never in CI, a test run or a Claude Code cloud container (discarded after the session; it pushes its own
+ * branch), and never once a person opted out.
+ * @param {{ env: Record<string, string|undefined>, optedOut: boolean }} facts `optedOut`: `git config skipwait.autoSync false`
+ * @returns {{ allowed: boolean, reason: string }}
+ */
+export function autoSetupAllowed({ env, optedOut }) {
+  const on = name => Boolean(env[name]) && env[name] !== "false" && env[name] !== "0";
+  if (on("CI") || on("GITHUB_ACTIONS")) return { allowed: false, reason: "CI" };
+  if (on("VITEST")) return { allowed: false, reason: "a test run" };
+  if (env.CLAUDE_CODE_REMOTE === "true") return { allowed: false, reason: "a cloud session container" };
+  if (env.SKIPWAIT_AUTO_SYNC === "off" || optedOut) return { allowed: false, reason: "opted out" };
+  return { allowed: true, reason: "local clone" };
+}
