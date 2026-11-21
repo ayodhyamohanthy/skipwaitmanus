@@ -22,9 +22,7 @@ const ROUTES = {
   payments: { route: "/admin/payments", screen: "admin-payments", signedOutScreen: "admin-payments-sign-in" },
   catalog: { route: "/admin/catalog-sync", screen: "admin-catalog-sync", signedOutScreen: "admin-catalog-sync-sign-in" },
   recovery: { route: "/admin/token-recovery", screen: "admin-token-recovery", signedOutScreen: "admin-token-recovery-sign-in" },
-  // Packet §10 assigns /admin/money-check's styling to this row, but the path is
-  // not in owns: it still renders the kit page and has no goal screen id.
-  "money-check": { route: "/admin/money-check", screen: null, signedOutScreen: null },
+  "money-check": { route: "/admin/money-check", screen: "admin-money-check", signedOutScreen: "admin-money-check-sign-in" },
 };
 
 const fixtureFiles = (await readdir(fixturesDir)).filter(name => name.endsWith(".json")).sort();
@@ -60,6 +58,7 @@ try {
       const page = await context.newPage();
       const errors = [];
       const unmatched = new Set();
+      const routeCalls = new Map();
       page.on("pageerror", e => errors.push(`pageerror: ${String(e).slice(0, 200)}`));
       page.on("console", m => { if (m.type() === "error") errors.push(m.text().slice(0, 200)); });
       await page.route("https://**", r => r.abort());
@@ -72,9 +71,17 @@ try {
           const body = procedures.map(p => ({ result: { data: { json: p === "auth.me" ? signedIn : null } } }));
           return json(200, url.searchParams.get("batch") ? body : body[0]);
         }
+        if (method === "POST" && url.pathname === "/api/account/signup-language") return r.fulfill({ status: 204, body: "" });
+        if (method === "POST" && url.pathname === "/api/csp-report") return r.fulfill({ status: 204, body: "" });
         if (url.pathname === "/api/dev-auth/session") return json(200, signedIn ? { signedIn: true, account: signedIn } : { signedIn: false });
-        const hit = (fixture.routes || []).find(item => (item.method || "GET").toUpperCase() === method && (item.match === "prefix" ? url.pathname.startsWith(item.path) : url.pathname === item.path));
+        const hit = (fixture.routes || []).find((item, index) => {
+          const matches = (item.method || "GET").toUpperCase() === method && (item.match === "prefix" ? url.pathname.startsWith(item.path) : url.pathname === item.path);
+          const calls = routeCalls.get(index) || 0;
+          return matches && (item.maxCalls === undefined || calls < item.maxCalls);
+        });
         if (hit) {
+          const hitIndex = fixture.routes.indexOf(hit);
+          routeCalls.set(hitIndex, (routeCalls.get(hitIndex) || 0) + 1);
           if (hit.abort) return r.abort();
           if (hit.delayMs) await new Promise(resolve => setTimeout(resolve, hit.delayMs));
           return json(hit.status || 200, hit.body ?? {});
@@ -84,8 +91,7 @@ try {
       });
       await page.goto(BASE + spec.route, { waitUntil: "domcontentloaded", timeout: 45000 });
       await page.evaluate(() => document.fonts && document.fonts.ready);
-      if (screen) await page.waitForSelector(`[data-skipwait-screen="${screen}"]`, { timeout: 60000 });
-      else await page.waitForSelector("h1", { timeout: 60000 });
+      await page.waitForSelector(`[data-skipwait-screen="${screen}"]`, { timeout: 60000 });
       for (const action of fixture.actions || []) {
         if (action.click) await page.locator(action.click).first().click();
         else if (action.fill) await page.locator(action.fill[0]).first().fill(action.fill[1]);
@@ -112,7 +118,7 @@ try {
       const file = `${state}-${width}.png`;
       await page.screenshot({ path: new URL(file, out).pathname, fullPage: true, animations: "disabled" });
       const result = {
-        file, route: spec.route, screen: screen ?? "kit-page (outside owns)",
+        file, route: spec.route, screen,
         persona: signedIn ? "synthetic admin" : "signed out",
         fixture: { api: (fixture.routes || []).map(item => `${item.method || "GET"} ${item.path} -> ${item.status || 200}`), actions: (fixture.actions || []).map(action => JSON.stringify(action)) },
         viewport: { width, height, dpr },
