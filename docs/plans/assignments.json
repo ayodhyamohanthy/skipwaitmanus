@@ -61,7 +61,7 @@
       "tier": 1,
       "lane": "release-repair",
       "branch": "agent/queue/rel-plans-signed-out-token",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-374",
       "dependsOn": [],
       "owns": [
@@ -69,7 +69,7 @@
         "client/src/components/plans/bandedSales.test.tsx",
         "docs/plans/REL-plans-signed-out-token.md"
       ],
-      "note": "D-212 release repair, handed out first: releases 9aeffb7c, 3d474982 and 5e7a3212 failed live verification only on page /plans, a console HTTP 400 from WorkOS user_management/authenticate during a signed-out visit, because useBandedSales awaits getToken() for every visitor. Fix: look up the bearer token only when signed in; red-first tests for zero token lookups signed out and Bearer kept signed in. Lands on green required CI (D-370); the next verified release closes the open incidents by itself.\nFixes incident: #1439\nFixes release: 5e7a32126079204a8b3af4c1b6dcbc7585839c02",
+      "note": "Completed 2026-11-21: Claude Code · a71e implemented PR #1450, merged7076b65b5; exact-head CI44929805413, mainCI44930122007 and Web44930122059 green. Live verification44930649777 passed page /plans loads clean (35 responses), web7076b65b/API95f681f7 expected unchanged, readiness and all smoke checks; closed incidents1430/1436/1439/1446. GPT-6.1 Sol · 80ec inspected the run and recorded acceptance after its delayed official claim, preserving the landed implementation. Signed-out offer reads skip getToken; signed-in bearer/cookie and checkout tests retained. No server, price or sales-switch change.\nFixes incident: #1439\nFixes release: 5e7a32126079204a8b3af4c1b6dcbc7585839c02",
       "epic": "D-212"
     },
     {
