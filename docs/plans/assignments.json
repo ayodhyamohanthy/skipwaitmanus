@@ -222,18 +222,18 @@
       "tier": 2,
       "lane": "repo-hygiene",
       "branch": "agent/queue/sync-clone-guard",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-373",
       "dependsOn": [],
       "owns": [
         "scripts/sync-check.sh",
         "scripts/sync-clone.mjs",
+        "scripts/syncCloneCore.mjs",
         "scripts/syncClone.test.ts",
-        "package.json",
         "docs/plans/BRANCH-HYGIENE.md",
         "AGENTS.md"
       ],
-      "note": "D-373 (5). Build docs/plans/BRANCH-HYGIENE.md section SYNC-clone-guard. Uses BRANCH-HYGIENE-1's classifier for deletes; never pushes main, never force-pushes, never commits, stashes or resets anyone's work. Lands on green required CI (D-370).",
+      "note": "D-373 (5), owner Nov 21 (\"Make sure the repo is upto date automatically sync\"). Built by Claude Code (session ccr-f3a4e037-1voydq) and landed by the pull request that sets this status: scripts/sync-clone.mjs with pure rules in scripts/syncCloneCore.mjs; scripts/sync-check.sh now runs it; --install-timer makes it automatic every 15 minutes on a Mac. 19 tests (4 run the script against throwaway repositories); a mutation check removing the private-branch and never-force rules fails 3 of them. Never pushes main, never forces, never publishes local/, private/ or wip/ branches or a likely secret, never touches uncommitted work.",
       "epic": "D-212"
     },
     {
