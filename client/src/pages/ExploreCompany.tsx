@@ -33,6 +33,8 @@ import { ASK_COST_SENTENCE, MONEY_SENTENCE } from "@shared/moneyCopy";
 import { COMPANY_SIGNAL_COPY } from "@shared/companySignalCopy";
 import { AskDrawer } from "./explore/AskDrawer";
 import { useAskComposer } from "./explore/useAskComposer";
+import { COMPANY_JOBS_ENABLED } from "./explore/companyJobsApi";
+import { CompanyJobs } from "./explore/CompanyJobs";
 
 const EYEBROW = "text-[11px] font-semibold uppercase tracking-[0.14em] text-g-ink-3";
 
@@ -221,6 +223,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
             setDrawerOpen(true);
           }}
         />
+        {COMPANY_JOBS_ENABLED ? <CompanyJobs company={company} onPasteJobLink={openHeroAsk} /> : null}
 
         <section className="mt-10" aria-label="Before you ask">
           <h2 className={EYEBROW}>Before you ask</h2>
