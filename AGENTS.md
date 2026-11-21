@@ -203,7 +203,7 @@ pnpm dev              # Express+Vite on :3000 (dev sign-in widget appears)
 pnpm check            # tsc --noEmit
 pnpm test             # vitest (unit + component + route regressions)
 pnpm build            # client PWA + server bundle -> dist/
-./scripts/sync-check.sh   # repo sync guard (run after work sessions)
+./scripts/sync-check.sh   # two-way clone sync (D-373): push committed branch work, fast-forward main, delete merged branches; --install-timer runs it every 15 min on a Mac
 ```
 
 ## Plan and inspect before edits
