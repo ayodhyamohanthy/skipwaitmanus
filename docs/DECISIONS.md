@@ -1017,3 +1017,26 @@ mutation was performed; the current signed-in acceptance gap remains explicit
 rather than being certified by this queue correction. The picker reported
 older merged-PR evidence unreadable during this claim, which explains the
 repeated obsolete assignment but does not authorize rebuilding completed work.
+
+### November 21 D-193 reconfirmation implementation receipt (no new ruling)
+
+Official BUILD `D-174-held-ask-reconfirm`, GPT-6.1 Sol · 73d7,
+implements the existing §5.3 contract on `agent/queue/d174-held-ask-reconfirm`.
+Claim `07ee139d7` and composition `067dbe46a` were checked through D-371,
+including the November 21 dependency correction to the landed BANDED-spend.
+The default-off guard records durable consent events with distinct request
+revisions under the request lock before delivery spending or allocation.
+Only the owning seeker may confirm; retries use the existing delivery key.
+The own-request payload and My Requests control expose pending consent and
+recoverable errors. Copy is additive, in-app notice only, no new email.
+
+Red-first delivery tests reproduced the prior charge without consent; client
+tests reproduced the absent control. The candidate's 180 coverage, stored-cost,
+money-check, invitation and reconfirmation tests pass, as do six client cases,
+TypeScript, build, tokens, migration lint and deployment-trigger checks.
+Full-suite CI, current-main integration and visual/release acceptance remain
+separate requirements, tracked in the packet; this receipt grants no gate waiver.
+`ASK_RECONFIRM_ENABLED` stays false. No amount, charge point, refund, price,
+existing money line, expiry clock, source permission, schema or activation
+changes. This records implementation of D-193, not a new owner decision or
+production-completion claim.

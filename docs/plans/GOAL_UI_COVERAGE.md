@@ -169,7 +169,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
-- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`, `requests/ReconfirmRequest.tsx` (new goal-native control owned by `D-174-held-ask-reconfirm`, D-193; page redesign ownership unchanged)
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
 - `pages/PlansV2.tsx` (row `BANDED-ui`, D-367): `plans/BandedExtraReferrals.tsx`, `plans/BandedPlanAction.tsx`
