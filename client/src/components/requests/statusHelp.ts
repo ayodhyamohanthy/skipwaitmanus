@@ -10,7 +10,7 @@
 // catalogue's approval are accepted (packet §4.9-4.10).
 import { askView } from "./askView";
 
-export const STATUS_HELP_ENABLED = false;
+export const STATUS_HELP_ENABLED = true;
 
 export type WaitingHelpKey = "available_for_review" | "waiting_for_coverage" | "default";
 export type StatusHelpKey =

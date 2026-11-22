@@ -127,8 +127,13 @@ afterEach(() => {
 });
 
 describe("the switch (packet T0)", () => {
-  it("ships false: no preview request, no line, and the drawer keeps today's link check", async () => {
-    expect(JOB_LINK_PREFILL_ENABLED).toBe(false);
+  // The release row D-094-ai-in-ui turns it on (packet §6.4); switching it back off must restore today's drawer.
+  it("is switched on by the D-094 release", () => {
+    expect(JOB_LINK_PREFILL_ENABLED).toBe(true);
+  });
+
+  it("off: no preview request, no line, and the drawer keeps today's link check", async () => {
+    setJobLinkPrefillForTests(false);
     const fetchMock = stub();
     const drawer = await openDoorDrawer();
     fillLink(drawer, "https://boards.greenhouse.io/wipro/jobs/42");

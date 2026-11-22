@@ -11,8 +11,9 @@ import { STATUS_HELP, STATUS_HELP_ENABLED, statusHelpFor, statusHelpKeyFor, type
 const source = (overrides: Partial<StatusHelpSource> = {}): StatusHelpSource => ({ status: "pending", referrerId: null, queueStatus: null, ...overrides });
 
 describe("status help catalogue (D-094 item 3)", () => {
-  it("ships switched off", () => {
-    expect(STATUS_HELP_ENABLED).toBe(false);
+  // The release row D-094-ai-in-ui turns it on (packet §6.4); the off path stays pinned in myRequests.statusHelp.test.tsx.
+  it("is switched on by the D-094 release", () => {
+    expect(STATUS_HELP_ENABLED).toBe(true);
   });
 
   it("has an entry for every askView label the seeker can see", () => {
