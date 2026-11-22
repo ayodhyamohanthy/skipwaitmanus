@@ -136,7 +136,7 @@ export function isAskPost(request: Request): boolean {
 export async function sendAsk(page: Page): Promise<{ body: Record<string, unknown>; status: number }> {
   const posted = page.waitForRequest(isAskPost);
   const answered = page.waitForResponse(response => isAskPost(response.request()));
-  await page.getByRole("button", { name: "Send ask" }).click();
+  await page.getByRole("button", { name: "Send referral request" }).click();
   const body = JSON.parse((await posted).postData() ?? "{}") as Record<string, unknown>;
   const response = await answered;
   return { body, status: response.status() };

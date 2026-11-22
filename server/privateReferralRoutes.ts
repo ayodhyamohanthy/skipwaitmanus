@@ -1,4 +1,7 @@
 import { setRetryAfter } from "./retryAfter";
+import { ASK_RECONFIRM_ENABLED, askReconfirmBodySchema, askReconfirmParamsSchema, askReconfirmResponseSchema } from "../shared/askReconfirm";
+import { ASK_RECONFIRM_ERROR } from "../shared/moneyCopy";
+import { AskReconfirmError, reconfirmWaitingAsk } from "./db";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
@@ -29,7 +32,11 @@ import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDire
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds } from "../shared/askWorkItems";
-import { CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, PlanLimitError } from "./planGates";
+import { AskPriceChangedError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, PlanLimitError, ReferralPricingUnavailableError } from "./planGates";
+import { InsufficientCreditsError } from "./creditLedger";
+import { acceptedAskCostSchema, bandedAskQuoteSchema, type AcceptedAskCost, type BandedAskQuote } from "../shared/acceptedAskCost";
+import { bandedSalesEnabled } from "./billingSettings";
+import { previewBandedAskCost as defaultBandedAskQuote } from "./db";
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
@@ -77,7 +84,7 @@ export type PrivateReferralRouteDeps = {
   revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
   getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus; inviteCode?: string | null } | undefined>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; replayed?: boolean }>;
+  createCompanyReferralRequest: (userId: number, input: { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; chargedCost?: AcceptedAskCost; replayed?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -98,6 +105,7 @@ export type PrivateReferralRouteDeps = {
   getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  reconfirmWaitingAsk?: typeof reconfirmWaitingAsk;
   /** Safe BYOR status projection only; omitted while the server feature flag is off. */
   listAskInvitesForRequests?: (userId: number, requestIds: number[]) => Promise<Map<number, AskInviteMine>>;
   hasEverCreatedReferralRequest?: (userId: number) => Promise<boolean>;
@@ -172,6 +180,7 @@ export type PrivateReferralRouteDeps = {
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
   getCreditSummary?: (userId: number, role: "job_seeker" | "referrer") => Promise<unknown>;
+  previewBandedAskCost?: (userId: number, targetRoleUrl: string) => Promise<BandedAskQuote>;
   /** D-079: provider-truth card-validation re-read on the return path (webhook lag); fail-open, alerts inside. */
   reconcileCardValidation?: (userId: number) => Promise<unknown>;
   listCreditLedger?: (userId: number, role: "job_seeker" | "referrer", limit: number) => Promise<CreditLedgerEntry[]>;
@@ -745,6 +754,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to see what this ask costs" });
       const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
       if (!url || !isValidTargetRoleUrl(url)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      if (bandedSalesEnabled()) {
+        const quote = bandedAskQuoteSchema.parse(await (deps.previewBandedAskCost ?? defaultBandedAskQuote)(identity.account.id, normalizeTargetRoleUrl(url)));
+        res.set("Cache-Control", "private, no-store");
+        return res.json(quote);
+      }
       const level = assignJobLevel({ url: normalizeTargetRoleUrl(url) }).level;
       const cost = askLevelCostEnabled() ? creditsForLevel(level) : 1;
       const summary = (await deps.getCreditSummary?.(identity.account.id, "job_seeker")) as { totalAvailable?: unknown } | undefined;
@@ -752,7 +766,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (totalAvailable === null) return res.status(500).json({ error: "We could not load your referral credits" });
       res.set("Cache-Control", "private, no-store");
       res.json({ level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) });
-    } catch { res.status(500).json({ error: "We could not price this ask" }); }
+    } catch (error) {
+      captureServerError(error, { area: "referral_quote" });
+      res.status(500).json({ error: "We could not load the referral cost. Try again." });
+    }
   });
   app.post("/api/company-referrals", async (req, res) => {
     let actorUserId: number | undefined;
@@ -760,6 +777,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
       actorUserId = identity.account.id;
+      const expectedCost = req.body?.expectedCost === undefined ? undefined : acceptedAskCostSchema.safeParse(req.body.expectedCost);
+      if (expectedCost && !expectedCost.success) return res.status(400).json({ error: "Review the referral cost and try again" });
       const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug, expectedCoverage } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; expectedCoverage?: string };
       // Optional seeker-confirmed function; absent means the server infers it from the job link.
       const chosenFunction = askJobFunctionInputSchema.safeParse(req.body?.jobFunction);
@@ -801,7 +820,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const pinnedWork = askWorkItemIdsSchema.safeParse(req.body?.workItemIds ?? []);
       if (!pinnedWork.success) return res.status(400).json({ error: "Pin work from your showcase, or send the ask without it." });
       const pinnedWorkIds = dedupeAskWorkItemIds(pinnedWork.data);
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}) });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(expectedCost?.success ? { expectedCost: expectedCost.data } : {}), ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}) });
       // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
       // the ask is already committed, each send has a durable claim/lease row, and every
       // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
@@ -816,6 +835,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(result.replayed ? 200 : 201).json({ ...withParsedJobFunction(result), ...(lifetimeRequestCount ? { lifetimeRequestCount } : {}) });
     } catch (error) {
       // Plan open-ask cap: refused before any side effect, with the slots payload the kit nudge reads.
+      if (error instanceof ReferralPricingUnavailableError) return res.status(409).json({ code: error.code, error: error.message });
+      if (error instanceof InsufficientCreditsError) return res.status(402).json({ code: error.code, error: "Your balance has no referral requests available at this level. Review Plans before sending." });
       if (error instanceof OpenAskSlotCapError) {
         record({ actorUserId, action: "company_referral.slot_cap_reached", outcome: "denied", resourceType: "referral_request", metadata: { open: error.slots.open, cap: error.slots.cap, plan: error.slots.plan } });
         return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
@@ -827,6 +848,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       }
       // D-132 item 3: composed as free-waiting but coverage opened up - nothing
       // was created or charged; the composer re-prices and the seeker re-sends.
+      if (error instanceof AskPriceChangedError) {
+        record({ actorUserId, action: "company_referral.price_changed", outcome: "denied", resourceType: "referral_request", metadata: { units: error.currentCost.units, band: error.currentCost.band, source: error.currentCost.source[0]?.bucket ?? "none" } });
+        return res.status(409).json({ code: error.code, error: error.message, currentCost: error.currentCost });
+      }
       if (error instanceof CoverageOpenedUpError) {
         record({ actorUserId, action: "company_referral.coverage_changed", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain });
         return res.status(409).json({ error: error.message, code: error.code, companyDomain: error.companyDomain });
@@ -1269,6 +1294,23 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json(result);
     } catch (error) { if (error instanceof BlockCheckUnavailableError) return referralUnavailable(res); res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
   });
+  app.post("/api/company-referrals/:requestId/reconfirm", async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!ASK_RECONFIRM_ENABLED) return res.status(409).json({ code: "not_available_yet", error: "Request confirmation is not available yet. Nothing has changed." });
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to confirm your referral request" });
+      const params = askReconfirmParamsSchema.safeParse(req.params);
+      if (!params.success || !askReconfirmBodySchema.safeParse(req.body ?? {}).success) return res.status(400).json({ error: "Use the Confirm control on your referral request" });
+      const result = await (deps.reconfirmWaitingAsk ?? reconfirmWaitingAsk)(identity.account.id, params.data.requestId);
+      return res.json(askReconfirmResponseSchema.parse(result));
+    } catch (error) {
+      if (error instanceof AskReconfirmError) return res.status(error.reason === "missing" ? 404 : 409).json({ error: error.message });
+      captureServerError(error, { area: "ask_reconfirm" });
+      return res.status(500).json({ error: ASK_RECONFIRM_ERROR });
+    }
+  });
+
   app.post("/api/company-referrals/:requestId/withdraw", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);

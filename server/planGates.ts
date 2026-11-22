@@ -10,6 +10,20 @@ import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlem
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { ASK_TTL_MS } from "../shared/referral";
 import { assignedAskNotHeldCondition } from "./heldAsk";
+import type { AcceptedAskCost } from "../shared/acceptedAskCost";
+
+export class AskPriceChangedError extends Error {
+  readonly code = "ask_price_changed";
+  constructor(readonly currentCost: AcceptedAskCost) {
+    super("Your referral balance changed. Nothing was sent or charged. Review the current cost and confirm again.");
+    this.name = "AskPriceChangedError";
+  }
+}
+
+export class ReferralPricingUnavailableError extends Error {
+  readonly code = "not_on_sale";
+  constructor() { super("Referral pricing is unavailable. Nothing was sent or charged. Refresh before trying again."); this.name = "ReferralPricingUnavailableError"; }
+}
 
 /**
  * The caller's open asks: pending and unexpired. Mirrors the expiry rules (D-061):

@@ -25,6 +25,7 @@ export type GoalShellProps = {
   /** D-222: referrer routes show a person's count without a plan/purchase link. */
   referralCountLinked?: boolean;
   account: { initials: string; menu?: ReactNode };
+  languagePicker?: ReactNode;
   alertsHref: string;
   /** Designer review (W0): signed-out visitors get no bell — /alerts is a dead end without sign-in. */
   showAlerts?: boolean;
@@ -112,7 +113,7 @@ function AccountSlot({ account }: { account: GoalShellProps["account"] }) {
   return account.menu ? <>{account.menu}</> : <Avatar initials={account.initials} />;
 }
 
-export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referralCountLinked = true, account, alertsHref, showAlerts = true, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
+export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referralCountLinked = true, account, languagePicker, alertsHref, showAlerts = true, giveReferralHref = referrerSignInHref(), hideBottomBar = false, drawer, children }: GoalShellProps) {
   const items = goalNavFor(verifiedReferrer);
   const balanceError = credits?.state === "error";
   return (
@@ -167,6 +168,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, referr
         </span>
         <h1 className="max-gdesk:hidden text-g-meta text-g-ink-3">{pageTitle}</h1>
         <span className="ml-auto flex items-center gap-2">
+          {languagePicker}
           <BetaBadge tone="goal" />
           <span className="max-gdesk:hidden"><CreditsPill credits={credits} linked={referralCountLinked} /></span>
           <span className="gdesk:hidden"><CreditsPill credits={credits} compact linked={referralCountLinked} /></span>

@@ -1,0 +1,74 @@
+name: Live QA (signed in)
+
+# OPS-live-qa-runner (D-373 (3), docs/plans/OPS-live-qa-runner.md section 3): signs in as the demo seeker and referrer on
+# https://skipwait.me only, captures their routes at 1280 and 390, and uploads the screenshots and summary. Navigation
+# only: no click, no form, no money, never /admin. The two passwords come from repository secrets the owner sets once
+# (section 4), reach the script only through env, and are masked first. Never runs on push or pull_request.
+on:
+  workflow_dispatch:
+    inputs:
+      roles:
+        description: "Which demo accounts to check"
+        required: false
+        type: choice
+        options: [both, seeker, referrer]
+        default: both
+  workflow_run:
+    workflows: ["Deploy API (Cloudflare Containers)", "Deploy Web (Cloudflare Pages)"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-qa
+  cancel-in-progress: false
+
+jobs:
+  live-qa:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Mask the demo passwords
+        env:
+          SEEKER: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
+          REFERRER: ${{ secrets.REVIEWER_REFERRER_PASSWORD }}
+        shell: bash
+        run: |
+          for value in "$SEEKER" "$REFERRER"; do
+            if [ -n "$value" ]; then echo "::add-mask::$value"; fi
+          done
+      - name: Sign in and capture
+        id: qa
+        env:
+          REVIEWER_SEEKER_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
+          REVIEWER_REFERRER_PASSWORD: ${{ secrets.REVIEWER_REFERRER_PASSWORD }}
+          LIVE_QA_ROLES: ${{ inputs.roles || 'both' }}
+          LIVE_QA_TRIGGER: ${{ github.event_name }}
+        run: node scripts/live-qa-signed-in.mjs
+      - name: Upload screenshots and summary
+        if: ${{ always() && hashFiles('live-qa/summary.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-qa-${{ steps.qa.outputs.web_sha || github.run_id }}
+          path: live-qa/
+          retention-days: 14

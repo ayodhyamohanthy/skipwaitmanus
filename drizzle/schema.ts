@@ -1,4 +1,5 @@
-import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import { bigint, boolean, check, customType, index, int, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const canonicalPeople = mysqlTable("canonicalPeople", {
@@ -787,8 +788,8 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // from subscription activation alone.
   lastPaidAt: timestamp("lastPaidAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
-  // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
-  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
+  // 0091 appended the Oct 14 plans; 0123 appends dormant D-367 banded ids.
+  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge", "early_to_mid", "mid_to_senior", "senior_to_executive"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),
@@ -1019,8 +1020,8 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
-  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0090 added the kit plans, 0091 the Oct 14 2026 plans.
-  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).notNull(),
+  // Stored ids retain 0090/0091 ordering; 0123 appends dormant D-367 banded ids.
+  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge", "early_to_mid", "mid_to_senior", "senior_to_executive"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
@@ -1416,3 +1417,57 @@ export const referrerStepUps = mysqlTable("referrerStepUps", {
   revokedReason: mysqlEnum("revokedReason", ["superseded", "logout"]),
   createdAt: timestamp("createdAt").notNull(),
 }, table => [uniqueIndex("referrer_step_ups_challenge_unique").on(table.challengeIdHash), index("referrer_step_ups_proof_idx").on(table.userId, table.sessionKeyHash, table.purpose, table.verifiedAt)]);
+
+// BANDED-schema (D-367): storage only. Included referrals belong to one paid
+// cycle; purchased referrals never acquire that cycle's expiry. No reader yet.
+export const bandedReferralBalances = mysqlTable("bandedReferralBalances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  level: mysqlEnum("level", ["early", "mid", "senior", "executive"]).notNull(),
+  includedRemaining: int("includedRemaining", { unsigned: true }).default(0).notNull(),
+  includedCycleKey: varchar("includedCycleKey", { length: 128 }),
+  includedExpiresAt: timestamp("includedExpiresAt"),
+  purchasedRemaining: int("purchasedRemaining", { unsigned: true }).default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  uniqueIndex("banded_balances_user_level_unique").on(table.userId, table.level),
+  check("banded_balances_included_cycle", sql`${table.includedRemaining} = 0 OR (${table.includedCycleKey} IS NOT NULL AND ${table.includedExpiresAt} IS NOT NULL)`),
+]);
+
+// Counts are separate for Chargebee TEST and LIVE. Checkout/grants must lock
+// this row and update it in the same transaction as its membership row.
+export const bandedFoundingCounters = mysqlTable("bandedFoundingCounters", {
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  planId: mysqlEnum("planId", ["early_to_mid", "mid_to_senior", "senior_to_executive"]).notNull(),
+  issuedCount: int("issuedCount", { unsigned: true }).default(0).notNull(),
+  reservedCount: int("reservedCount", { unsigned: true }).default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  primaryKey({ columns: [table.site, table.planId] }),
+  check("banded_founding_counter_cap", sql`${table.issuedCount} + ${table.reservedCount} <= CASE ${table.planId} WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END`),
+]);
+
+// Only a reservation can be released. An issued row is retained through lapse,
+// cancellation and account deletion; it must never reopen a founding place.
+export const bandedFoundingMemberships = mysqlTable("bandedFoundingMemberships", {
+  id: int("id").autoincrement().primaryKey(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  planId: mysqlEnum("planId", ["early_to_mid", "mid_to_senior", "senior_to_executive"]).notNull(),
+  userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+  checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  status: mysqlEnum("status", ["reserved", "issued", "released"]).default("reserved").notNull(),
+  issuedSequence: int("issuedSequence", { unsigned: true }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  issuedAt: timestamp("issuedAt"),
+  releasedAt: timestamp("releasedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  uniqueIndex("banded_founding_checkout_unique").on(table.site, table.checkoutIntentId),
+  uniqueIndex("banded_founding_subscription_unique").on(table.site, table.subscriptionId),
+  uniqueIndex("banded_founding_sequence_unique").on(table.site, table.planId, table.issuedSequence),
+  index("banded_founding_expiry_idx").on(table.status, table.expiresAt),
+  foreignKey({ name: "banded_founding_counter_fk", columns: [table.site, table.planId], foreignColumns: [bandedFoundingCounters.site, bandedFoundingCounters.planId] }),
+  check("banded_founding_sequence_cap", sql`${table.issuedSequence} IS NULL OR ${table.issuedSequence} BETWEEN 1 AND CASE ${table.planId} WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END`),
+  check("banded_founding_state", sql`(${table.status} = 'reserved' AND ${table.issuedSequence} IS NULL AND ${table.issuedAt} IS NULL AND ${table.releasedAt} IS NULL) OR (${table.status} = 'issued' AND ${table.issuedSequence} IS NOT NULL AND ${table.issuedAt} IS NOT NULL AND ${table.releasedAt} IS NULL) OR (${table.status} = 'released' AND ${table.issuedSequence} IS NULL AND ${table.issuedAt} IS NULL AND ${table.releasedAt} IS NOT NULL)`),
+]);

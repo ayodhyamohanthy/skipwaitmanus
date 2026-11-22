@@ -2,9 +2,12 @@
 // /invite, /suggest-company, /for-companies, admin Companies).
 //
 // The server owns the directory (tables `companies` + `companyDomains`).
-// Availability is derived on read and exposed only as a boolean: responses
-// never carry referrer counts, ids or names. Every client and server
-// boundary parses with these schemas; nothing else defines a company shape.
+// Referrer availability is backend routing (D-176): it is derived on read and
+// leaves the server only on the admin view, never on a public response. The
+// single-company public response may carry one presence fact (D-360 (5)/D-363):
+// whether any verified referrer has joined at the company. Responses never
+// carry referrer counts, ids or names. Every client and server boundary parses
+// with these schemas; nothing else defines a company shape.
 import { z } from "zod";
 import { isCorporateEmailDomain } from "./const";
 
@@ -39,22 +42,36 @@ export const publicCompanySchema = z.object({
   blurb: label(240),
   /** Verified-email domains, primary first. Used by /verify to match the work email. */
   domains: z.array(companyDomainSchema).min(1),
-  /** At least one verified, unpaused, unsuspended referrer with free capacity. */
-  openToReferrals: z.boolean(),
+  /**
+   * Retired from public responses (D-174 public-payload, D-176): the server no
+   * longer sends it. Optional for one release so older readers and fixtures
+   * still parse (expand-then-contract); the admin view declares it itself.
+   */
+  openToReferrals: z.boolean().optional(),
+  /**
+   * Whether any verified referrer has joined at this company (D-360 (5)/D-363);
+   * never availability: a paused or full referrer still counts. Sent only by
+   * GET /api/companies/:slug, never on the list or search. Absent means unknown.
+   */
+  referrerPresence: z.enum(["present", "none"]).optional(),
 });
 export type PublicCompany = z.infer<typeof publicCompanySchema>;
+export type ReferrerPresence = NonNullable<PublicCompany["referrerPresence"]>;
 
 export const companyDirectoryResponseSchema = z.object({
   companies: z.array(publicCompanySchema),
-  openCount: z.number().int().nonnegative(),
-}).refine(value => value.openCount === value.companies.filter(company => company.openToReferrals).length, "openCount must equal the open companies listed");
+  /** Retired with openToReferrals (D-174 public-payload): no longer sent, optional for one release. */
+  openCount: z.number().int().nonnegative().optional(),
+});
 export type CompanyDirectoryResponse = z.infer<typeof companyDirectoryResponseSchema>;
 
 export const companyDetailResponseSchema = z.object({ company: publicCompanySchema });
 export type CompanyDetailResponse = z.infer<typeof companyDetailResponseSchema>;
 
-/** Admin view adds the record identity and the listing status. */
-export const adminCompanySchema = publicCompanySchema.extend({
+/** Admin view adds the record identity, the listing status and the company's routing availability. */
+export const adminCompanySchema = publicCompanySchema.omit({ referrerPresence: true }).extend({
+  /** At least one verified, unpaused, unsuspended referrer with free capacity (D-062). Admin and internal readers only. */
+  openToReferrals: z.boolean(),
   id: z.number().int().positive(),
   status: z.enum(companyStatuses),
   sortOrder: z.number().int(),
@@ -158,7 +175,7 @@ export const discoveredCompanySchema = z.strictObject({
 export type DiscoveredCompany = z.infer<typeof discoveredCompanySchema>;
 
 export const companySearchResponseSchema = z.object({
-  companies: z.array(publicCompanySchema.omit({ openToReferrals: true }).strict()).max(10),
+  companies: z.array(publicCompanySchema.omit({ openToReferrals: true, referrerPresence: true }).strict()).max(10),
   /** Worldwide candidates the directory does not hold (deduped by domain). Absent when discovery is off. */
   discovered: z.array(discoveredCompanySchema).max(10).optional(),
   /** Present whenever discovery ran: "degraded" means the discovery portion is incomplete (rate limit, budget, saturation or an upstream failure) and the answer must not be publicly cached; directory results are unaffected either way. */

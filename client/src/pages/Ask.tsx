@@ -36,6 +36,7 @@ import { completeTargetRoleUrl, jobLinkFitsCompany, isValidTargetRoleUrl } from 
 import { WHY_ME_MAX } from "@shared/whyMe";
 import { domainBelongsToCompany, isSafePreview, jobLinkPrefillEnabled } from "./explore/jobLinkPrefill";
 import { JobLinkFromPosting } from "./explore/JobLinkFromPosting";
+import { ReasonsCoach } from "./explore/ReasonsCoach";
 import { useAskComposer } from "./explore/useAskComposer";
 
 const PLACEHOLDERS = [
@@ -234,6 +235,7 @@ function AskFields({ composer, company, companies }: { composer: Composer; compa
           <GoalReasonInput key={index} index={index} value={reason} max={WHY_ME_MAX} placeholder={PLACEHOLDERS[index]} onChange={value => composer.onReasonChange(index, value)} />
         ))}
         {composer.reasonsError ? <p role="alert" className="text-g-meta text-g-ink">{composer.reasonsError}</p> : null}
+        <ReasonsCoach reasons={composer.reasons} signedIn={composer.signedIn} companyName={company?.name} />
       </fieldset>
 
       <PinnedWorkPicker work={composer.work} />

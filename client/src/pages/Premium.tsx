@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -11,20 +11,25 @@ import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
 import { applySeo } from "@/lib/seo";
 import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
 import { REFERRERS_NEVER_PAY, REFERRER_PURCHASES_ENABLED } from "@shared/referrerPurchases";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import { LEGACY_PREMIUM_PACKS as packs, premiumMoney as money } from "@/lib/premiumPurchase";
 
-type Pack = { id: "skipwait_token_1-INR" | "skipwait_token_1-USD"; price: number; currency: PaymentRoute };
+const GoalPremium = lazy(() => import("./goal/premium/GoalPremium"));
+
+export default function Premium() {
+  return goalSurfaceOn("premium") ? <Suspense fallback={null}><GoalPremium /></Suspense> : <KitPremium />;
+}
+
 type PendingCheckout = { hostedPageId: string; role: TokenRole };
 type RecoveryState = "checking" | "pending" | "credited" | "requires_review";
 
-const packs: Pack[] = [{ id: "skipwait_token_1-INR", price: 99, currency: "INR" }, { id: "skipwait_token_1-USD", price: 1, currency: "USD" }];
 const pendingCheckoutStorageKey = "skipwait.pending-chargebee-checkout";
 
-function money(value: number, route: PaymentRoute) { return route === "INR" ? `₹${value.toLocaleString("en-IN")}` : `$${value.toLocaleString("en-US")}`; }
 function savePendingCheckout(checkout: PendingCheckout) { if (typeof window !== "undefined") window.sessionStorage.setItem(pendingCheckoutStorageKey, JSON.stringify(checkout)); }
 function readPendingCheckout(role: TokenRole): PendingCheckout | undefined { try { const value = typeof window === "undefined" ? null : window.sessionStorage.getItem(pendingCheckoutStorageKey); const parsed = value ? JSON.parse(value) as PendingCheckout : undefined; return parsed?.role === role && typeof parsed.hostedPageId === "string" && parsed.hostedPageId.length > 0 ? parsed : undefined; } catch { return undefined; } }
 function clearPendingCheckout() { if (typeof window !== "undefined") window.sessionStorage.removeItem(pendingCheckoutStorageKey); }
 
-export default function Premium() {
+function KitPremium() {
   const role: TokenRole = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
   // D-055: referrers never pay, so the referrer role gets no checkout here (shared/referrerPurchases.ts).
   const referrerPurchasesOff = role === "referrer" && !REFERRER_PURCHASES_ENABLED;
