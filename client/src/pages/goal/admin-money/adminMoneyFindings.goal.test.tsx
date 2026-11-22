@@ -86,8 +86,17 @@ const DRY_RUN = {
   correct: [],
   mismatched: [{ itemPriceId: "pack-early-usd", currencyCode: "USD", price: 449, term: "one_time", diffs: [{ field: "price", expected: 449, actual: 499 }], sellableNow: true }],
   blocked: [{ itemPriceId: "pack-senior-inr", currencyCode: "INR", price: 129900, term: "one_time", reason: "Archived item price with the same id" }],
-  extras: [], excluded: [],
-  counts: { desired: 4, correct: 0, mismatched: 1, blocked: 1, toCreate: 2, itemPricesToCreate: 1, extras: 0, excluded: 0 },
+  extras: [{ kind: "item_price", id: "legacy-extra-price", status: "active", note: "Not in the sold catalog" }],
+  excluded: [{ itemPriceId: "legacy-excluded-price", reason: "Excluded from the active catalog" }],
+  counts: { desired: 4, correct: 0, mismatched: 1, blocked: 1, toCreate: 2, itemPricesToCreate: 1, extras: 1, excluded: 1 },
+};
+
+const PARTIAL_REPORT = {
+  outcome: "partial", site: "skipwait-test", environment: "test", planHash: HASH,
+  created: [{ kind: "item", id: "plan-mid", diffs: [{ field: "name", expected: "Mid plan item", actual: "Mid plan" }] }],
+  failed: { kind: "item_price", id: "plan-mid-inr-monthly", httpStatus: 503, apiErrorCode: "provider_unavailable", errorCode: "timeout", message: "The provider did not confirm this price." },
+  notAttempted: [{ kind: "item_price", id: "plan-senior-inr-monthly" }],
+  stoppedReason: "provider_error",
 };
 
 describe("F2: goal /admin/catalog-sync shows what apply would do before it can run", () => {
@@ -124,6 +133,18 @@ describe("F2: goal /admin/catalog-sync shows what apply would do before it can r
     expect(blocked.textContent).toContain("Archived item price with the same id");
   });
 
+  it("explains every extra as left alone and every excluded price as never created", async () => {
+    render(<GoalAdminCatalogSync />);
+    const extras = await screen.findByRole("region", { name: "Extra objects left alone" });
+    expect(extras.textContent).toContain("legacy-extra-price");
+    expect(extras.textContent).toContain("Item price");
+    expect(extras.textContent).toContain("active");
+    expect(extras.textContent).toContain("Not in the sold catalog");
+    const excluded = screen.getByRole("region", { name: "Excluded prices" });
+    expect(excluded.textContent).toContain("legacy-excluded-price");
+    expect(excluded.textContent).toContain("Excluded from the active catalog");
+  });
+
   it("keeps the typed-site confirmation and sends nothing before it", async () => {
     render(<GoalAdminCatalogSync />);
     await screen.findByRole("region", { name: "Objects to create" });
@@ -142,6 +163,51 @@ describe("F2: goal /admin/catalog-sync shows what apply would do before it can r
     expect(screen.getByText("No existing price differs from the catalog.")).toBeTruthy();
     expect(screen.getByText("Nothing is blocked.")).toBeTruthy();
     assertGoalPage(container, CATALOG_PAGE);
+  });
+
+  it("shows all partial-apply details and requires a deliberate dry-run read before another apply", async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === "POST" ? reply(PARTIAL_REPORT) : reply(DRY_RUN));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<GoalAdminCatalogSync />);
+    await screen.findByRole("region", { name: "Objects to create" });
+    fireEvent.change(screen.getByLabelText("Type the site to confirm"), { target: { value: "skipwait-test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply the catalog plan" }));
+
+    const result = await screen.findByRole("region", { name: "Apply result" });
+    expect(result.textContent).toContain("Sync partial");
+    expect(result.textContent).toContain("plan-mid");
+    expect(result.textContent).toContain("name: expected Mid plan item, provider returned Mid plan");
+    expect(result.textContent).toContain("plan-mid-inr-monthly");
+    expect(result.textContent).toContain("The provider did not confirm this price.");
+    expect(result.textContent).toContain("plan-senior-inr-monthly");
+    expect(screen.queryByRole("button", { name: "Apply the catalog plan" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Run the dry run again" }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === undefined)).toHaveLength(2));
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    expect(screen.queryByRole("region", { name: "Apply result" })).toBeNull();
+    expect((screen.getByLabelText("Type the site to confirm") as HTMLInputElement).value).toBe("");
+  });
+
+  it("keeps the previous report visible when the deliberate dry-run refresh fails", async () => {
+    let reads = 0;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return reply(PARTIAL_REPORT);
+      reads += 1;
+      return reads === 1 ? reply(DRY_RUN) : reply({ error: "Catalog unavailable" }, false, 503);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<GoalAdminCatalogSync />);
+    await screen.findByRole("region", { name: "Objects to create" });
+    fireEvent.change(screen.getByLabelText("Type the site to confirm"), { target: { value: "skipwait-test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply the catalog plan" }));
+    const result = await screen.findByRole("region", { name: "Apply result" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run the dry run again" }));
+    expect(await screen.findByText("Catalog unavailable")).toBeTruthy();
+    expect(result.textContent).toContain("plan-mid-inr-monthly");
+    expect(screen.queryByRole("button", { name: "Apply the catalog plan" })).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
   });
 });
 

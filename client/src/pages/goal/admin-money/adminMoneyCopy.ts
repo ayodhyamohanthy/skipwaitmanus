@@ -4,6 +4,7 @@ export const MONEY_DOORS = [
   { href: "/admin/payments", label: "Payment reviews" },
   { href: "/admin/catalog-sync", label: "Catalog sync" },
   { href: "/admin/token-recovery", label: "Token recovery" },
+  { href: "/admin/money-check", label: "Money check" },
 ] as const;
 
 export type MoneyDoor = (typeof MONEY_DOORS)[number]["href"];
@@ -15,6 +16,7 @@ export const MONEY_PAGE_BODY: Record<MoneyDoor, string> = {
   "/admin/payments": "The flagged discrepancy comes first. Every decision keeps its server call, its confirm step and its audit trail.",
   "/admin/catalog-sync": "Read the dry run, then apply the same plan by typing the site. Nothing is changed until you confirm.",
   "/admin/token-recovery": "Resolve a real payment or support case with a reasoned, audited grant. A support reference and your confirmation are required.",
+  "/admin/money-check": "Run the read-only integrity check, see whether its owner alert reached the inbox, and preview abandoned checkouts before you explicitly close them.",
 };
 
 // Catalog dry-run count keys arrive as the server's field names; the admin
