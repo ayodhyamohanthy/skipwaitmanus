@@ -12,6 +12,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { catalogSyncApplyResponseSchema, catalogSyncDryRunSchema, type CatalogSyncApplyResponse, type CatalogSyncDryRun } from "@shared/catalogSync";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
 import { MONEY_GOAL_LINE, catalogCountLabel } from "./adminMoneyCopy";
+import { GoalCatalogApplyResult } from "./GoalCatalogApplyResult";
 import { GoalCatalogPlanDetails } from "./GoalCatalogPlanDetails";
 
 export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
@@ -20,7 +21,6 @@ const DRY_RUN_PATH = "/api/admin/billing/catalog-sync";
 const APPLY_PATH = "/api/admin/billing/catalog-sync/apply";
 const LOAD_FALLBACK = "We could not read the Chargebee catalog.";
 const APPLY_FALLBACK = "We could not run the catalog sync.";
-
 export default function GoalAdminCatalogSync() {
   const { isSignedIn, getToken, openSignIn } = useAuth();
   const [dryRun, setDryRun] = useState<CatalogSyncDryRun | null>(null);
@@ -30,6 +30,7 @@ export default function GoalAdminCatalogSync() {
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [report, setReport] = useState<CatalogSyncApplyResponse | null>(null);
+  const [applyAttempted, setApplyAttempted] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -45,6 +46,7 @@ export default function GoalAdminCatalogSync() {
       setDryRun(parsed.data);
       setReport(null);
       setTypedSite("");
+      setApplyAttempted(false);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : LOAD_FALLBACK);
     } finally {
@@ -59,7 +61,8 @@ export default function GoalAdminCatalogSync() {
 
   const apply = async () => {
     // Same typed-site condition as AdminCatalogSync.tsx:289 (disabled button).
-    if (!dryRun || typedSite !== dryRun.site) return;
+    if (!dryRun || typedSite !== dryRun.site || applying || applyAttempted) return;
+    setApplyAttempted(true);
     setApplying(true);
     setApplyError("");
     try {
@@ -79,12 +82,12 @@ export default function GoalAdminCatalogSync() {
       }
       const parsed = catalogSyncApplyResponseSchema.safeParse(payload);
       if (!parsed.success) {
-        setApplyError("The apply report was not readable. Check the Chargebee dashboard before trying again.");
+        setApplyError("The apply outcome could not be confirmed. Check the Chargebee dashboard, then run the dry run again.");
         return;
       }
       setReport(parsed.data);
     } catch (applyFailure) {
-      setApplyError(applyFailure instanceof Error ? applyFailure.message : APPLY_FALLBACK);
+      setApplyError(applyFailure instanceof Error ? `${applyFailure.message} The outcome could not be confirmed. Check the Chargebee dashboard, then run the dry run again.` : `${APPLY_FALLBACK} The outcome could not be confirmed. Check the Chargebee dashboard, then run the dry run again.`);
     } finally {
       setApplying(false);
     }
@@ -103,16 +106,24 @@ export default function GoalAdminCatalogSync() {
 
   const counts = dryRun ? Object.entries(dryRun.counts) : [];
   const ready = Boolean(dryRun) && typedSite === dryRun?.site;
+  const refreshRequired = applyAttempted || report !== null;
 
   return (
     <AdminMoneyGoalFrame screen="admin-catalog-sync" current="/admin/catalog-sync">
       <AdminMoneyHeading current="/admin/catalog-sync" />
-      {!dryRun ? (
-        <GoalNextStep reason={error ? "The catalog did not answer. Reload the dry run before applying anything." : "Read the dry run first: it classifies the configured site against the sold catalog and changes nothing."}>
-          <GoalButton variant="primary" className="mt-3" busy={loading} busyLabel="Reading the dry run…" onClick={() => { void load(); }}>{error ? "Reload the dry run" : "Read the dry run"}</GoalButton>
-        </GoalNextStep>
-      ) : null}
-      {error ? <GoalErrorState className="mt-6" title={error} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
+      <GoalNextStep reason={refreshRequired ? "The apply attempt has ended. Read a fresh dry run before another apply; this button only reads the catalog." : error ? "The catalog did not answer. Read the dry run again before applying anything." : dryRun ? `Apply the ${dryRun.toCreate.length} object${dryRun.toCreate.length === 1 ? "" : "s"} listed above on the ${dryRun.environment} site. Existing prices are never changed.` : "Read the dry run first: it classifies the configured site against the sold catalog and changes nothing."}>
+        {refreshRequired || !dryRun ? (
+          <GoalButton variant="primary" className="mt-3" busy={loading || applying} busyLabel={applying ? "Applying…" : "Reading the dry run…"} onClick={() => { void load(); }}>{refreshRequired ? "Run the dry run again" : error ? "Reload the dry run" : "Read the dry run"}</GoalButton>
+        ) : (
+          <>
+            <label className="mt-3 block text-g-label text-g-ink">Type the site to confirm
+              <input aria-label="Type the site to confirm" value={typedSite} onChange={event => setTypedSite(event.target.value)} placeholder={dryRun.site} className="mt-2 block w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink" />
+            </label>
+            <GoalButton variant="primary" className="mt-4" busy={applying} busyLabel="Applying…" disabledReason={ready && !loading ? undefined : `Type ${dryRun.site} to confirm`} onClick={() => { void apply(); }}>Apply the catalog plan</GoalButton>
+          </>
+        )}
+      </GoalNextStep>
+      {error ? <GoalErrorState className="mt-6" title={error} body={dryRun ? "The previous dry run and result remain visible; this failed read did not return a fresh plan." : undefined} retry={{ label: "Try again", onClick: () => { void load(); } }} /> : null}
       {loading ? <GoalSkeletonRows density="queue" count={3} className="mt-6 py-3" /> : null}
       {!loading && !error && !dryRun ? <GoalEmptyState title="No dry run yet." body="A dry run classifies the configured site against the sold catalog. Nothing is changed by reading it." /> : null}
       {dryRun ? (
@@ -137,21 +148,8 @@ export default function GoalAdminCatalogSync() {
       ) : null}
       {/* Every object the apply would create, every mismatch and every blocked price, before the typed-site confirm (review F2). */}
       {dryRun ? <GoalCatalogPlanDetails dryRun={dryRun} /> : null}
-      {report ? (
-        <section role="status" className="mt-6 border border-g-hairline bg-g-surface p-4">
-          <GoalStatus status={report.outcome === "applied" ? "accepted" : report.outcome === "failed" ? "expired" : "waiting"} label={`Sync ${report.outcome.replaceAll("_", " ")}`} />
-          <p className="mt-2 text-g-meta text-g-ink-2">{report.created.length} created · {report.failed ? "the provider refused one object" : "no provider failure"}. Check the Chargebee dashboard before acting again.</p>
-        </section>
-      ) : null}
-      {dryRun ? (
-        <GoalNextStep reason={`Apply the same plan you just read: it creates the ${dryRun.toCreate.length} object${dryRun.toCreate.length === 1 ? "" : "s"} listed above on the ${dryRun.environment} site and cannot change an existing price. Type the site exactly to confirm; nothing changes before that.`}>
-          <label className="mt-3 block text-g-label text-g-ink">Type the site to confirm
-            <input aria-label="Type the site to confirm" value={typedSite} onChange={event => setTypedSite(event.target.value)} placeholder={dryRun.site} className="mt-2 block w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body text-g-ink" />
-          </label>
-          {applyError ? <p role="alert" className="mt-3 text-g-meta text-g-crimson">{applyError}</p> : null}
-          <GoalButton variant="primary" className="mt-4" busy={applying} busyLabel="Applying…" disabledReason={ready ? undefined : `Type ${dryRun.site} to confirm`} onClick={() => { void apply(); }}>Apply the catalog plan</GoalButton>
-        </GoalNextStep>
-      ) : null}
+      {report ? <GoalCatalogApplyResult report={report} /> : null}
+      {applyError ? <p role="alert" className="mt-6 border border-g-hairline bg-g-surface p-4 text-g-meta text-g-ink">{applyError}</p> : null}
     </AdminMoneyGoalFrame>
   );
 }

@@ -285,7 +285,7 @@ Inner: h-4 w-40 rounded bg-slate-100
 
 ## 11. Design Gate Compliance
 
-Rules enforced by CI (`.github/workflows/design-gate.yml`):
+The following are design review rules, not automated enforcement. CI (`.github/workflows/ci.yml`) enforces design tokens through `scripts/design-token-audit.mjs`; the advisory-only `design-gate.yml` workflow is retired.
 1. ❌ No kicker-above-heading labels
 2. ❌ No functional text < 11px
 3. ❌ No gray-on-tint contrast failures

@@ -39,6 +39,10 @@ Measured on origin on Nov 21: about four updates to these refs every ten minutes
    - Unreadable or shallow history still stops with no write.
    - The documented recheck-to-push race is not closed; no atomic multi-ref protocol is added.
 
+## Report append follow-up (D-372)
+
+The report command has a narrower late-parent refresh in [PICKER-report-append-snapshot](PICKER-report-append-snapshot.md): only a proven fast-forward of empty native reports for other task IDs may update its captured log parent before the ordinary final guard and non-force append. Same-task, unknown, file-changing, merge, rewritten or unreadable deltas still cause refusal/reread; a created log still invalidates the original snapshot. Claim and other marker write policies remain unchanged. This does not add an atomic multi-ref protocol or widen the approved one-task bootstrap exception.
+
 ## Tests (`scripts/nextTaskAuthoritativeRefs.test.ts`)
 
 Red first: the first two cases below reproduced the exact STOP on unchanged source.

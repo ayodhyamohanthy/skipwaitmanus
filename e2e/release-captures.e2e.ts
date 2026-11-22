@@ -20,6 +20,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BrowserContext, Page } from "playwright/test";
 import { capturePlan, VIEWPORTS } from "../scripts/release-captures.mjs";
+import { CATALOG_SYNC_CAPTURE_PATH, CATALOG_SYNC_CAPTURE_PLAN } from "./catalogSyncCapturePlan";
 import { devSignIn, expect, test } from "./fixtures";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -74,7 +75,20 @@ for (const viewport of VIEWPORTS as readonly Viewport[]) {
         const context: BrowserContext = await newContext();
         if (shot.persona === "seeker") await devSignIn(context, "Release Capture Seeker");
         if (shot.persona === "admin") await context.addCookies([{ name: "app_session_id", value: seededAdminCookie(), url: baseURL! }]);
-        await capture(await context.newPage(), shot, viewport);
+        // D-048-R-admin-money capture contract: only this surface's catalog route gets the synthetic TEST-site
+        // plan, and only for the exact GET. POST/apply and every other request keep their real behaviour, and the
+        // page-error/5xx check in ./fixtures stays as it is.
+        const catalogShot = shot.id === "admin-money" && shot.pattern === "/admin/catalog-sync";
+        if (catalogShot) {
+          await context.route(url => url.pathname === CATALOG_SYNC_CAPTURE_PATH, route =>
+            route.request().method() === "GET"
+              ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(CATALOG_SYNC_CAPTURE_PLAN) })
+              : route.fallback());
+        }
+        const page = await context.newPage();
+        await capture(page, shot, viewport);
+        // The capture must show the loaded plan, not an error or sign-in page.
+        if (catalogShot) await expect(page.getByRole("heading", { name: CATALOG_SYNC_CAPTURE_PLAN.site })).toBeVisible();
       });
     }
   });

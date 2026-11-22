@@ -10,7 +10,7 @@ import { z } from "zod";
 const CLI = fileURLToPath(new URL("./next-task.mjs", import.meta.url));
 const ME = "Fixture · refs", OTHER = "Fixture · holder";
 const A = "agent/queue/a";
-interface Mutation { ref?: string; sha?: string; unavailable?: boolean; repeat?: boolean; }
+interface Mutation { ref?: string; sha?: string; unavailable?: boolean; repeat?: boolean; subject?: string; }
 interface RunOptions { args?: string[]; mutation?: Mutation; reject?: string; rejectAs?: string; }
 
 function fixture(mainOnly = true) {
@@ -74,7 +74,7 @@ globalThis.fetch = async input => {
       if (m.unavailable) renameSync(setup.remote, setup.remote + '.offline');
       else if (m.repeat) {
         const current = exec('git', ['--git-dir', setup.remote, 'rev-parse', '--verify', 'refs/heads/' + m.ref], { encoding: 'utf8', stdio: 'pipe' }).trim();
-        const next = exec('git', ['--git-dir', setup.remote, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit-tree', current + '^{tree}', '-p', current, '-m', 'Fixture snapshot moved'], { encoding: 'utf8' }).trim();
+        const next = exec('git', ['--git-dir', setup.remote, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit-tree', current + '^{tree}', '-p', current, '-m', m.subject ?? 'Fixture snapshot moved'], { encoding: 'utf8' }).trim();
         exec('git', ['--git-dir', setup.remote, 'update-ref', 'refs/heads/' + m.ref, next]);
       } else exec('git', ['--git-dir', setup.remote, 'update-ref', ...(m.sha ? ['refs/heads/' + m.ref, m.sha] : ['-d', 'refs/heads/' + m.ref])]);
       record(setup.mutations, m);
@@ -195,6 +195,75 @@ describe("authoritative refs in the real picker CLI", () => {
     expect(result.status, output(result)).toBe(0);
     expect(f.git("log", "-1", "--format=%s", f.remoteTip("agent/reports/log"))).toBe(`Report A: green — ${ME}`);
     expect(f.pushes()).toHaveLength(2);
+  }));
+
+  it("report append keeps unrelated native reports without restarting the full snapshot", () => check(f => {
+    f.marker(A, `Claim A: ${ME}`);
+    const ref = "agent/reports/log";
+    const initial = f.marker(ref, `Report W: green — ${OTHER}`, f.head, true);
+    const result = f.run({ args: ["--report", "review", "--task", "A", "--as", ME, "--note", "fixture proof"],
+      mutation: { ref, repeat: true, subject: `Report W: green — ${OTHER}` } });
+    expect(result.status, output(result)).toBe(0);
+    const tip = f.remoteTip(ref), parent = f.git("rev-parse", `${tip}^`);
+    expect(f.git("log", "-1", "--format=%s", tip)).toBe(`Report A: review — ${ME}`);
+    expect(f.git("log", "-1", "--format=%s", parent)).toBe(`Report W: green — ${OTHER}`);
+    expect(f.git("merge-base", "--is-ancestor", initial, parent)).toBe("");
+    expect(f.git("rev-list", "--count", `${initial}..${parent}`)).toBe("1");
+    expect(result.stderr).not.toContain("snapshot changed");
+    expect(f.pushes()).toHaveLength(1);
+  }));
+
+  it("report append still stops for repeated same-task report changes", () => check(f => {
+    f.marker(A, `Claim A: ${ME}`);
+    f.marker("agent/reports/log", `Report W: green — ${OTHER}`, f.head, true);
+    const result = f.run({ args: ["--report", "review", "--task", "A", "--as", ME],
+      mutation: { ref: "agent/reports/log", repeat: true, subject: `Report A: green — ${OTHER}` } });
+    expect(result.status, output(result)).toBe(2);
+    expect(result.stderr).toContain("STOP: authoritative refs kept changing");
+    expect(spawnSync("test", ["-f", f.attempts]).status).toBe(1);
+  }));
+
+  it.each(["Fixture snapshot moved", `Heartbeat W: ${OTHER}`])("report append rereads unknown/non-report history: %s", subject => check(f => {
+    f.marker(A, `Claim A: ${ME}`);
+    f.marker("agent/reports/log", `Report W: green — ${OTHER}`, f.head, true);
+    const result = f.run({ args: ["--report", "review", "--task", "A", "--as", ME],
+      mutation: { ref: "agent/reports/log", repeat: true, subject } });
+    expect(result.status, output(result)).toBe(2);
+    expect(result.stderr).toContain("STOP: authoritative refs kept changing");
+    expect(spawnSync("test", ["-f", f.attempts]).status).toBe(1);
+  }));
+
+  it.each(["file-changing", "merge", "rewritten"])("report append fully rereads %s history before appending", kind => check(f => {
+    f.marker(A, `Claim A: ${ME}`);
+    const ref = "agent/reports/log", subject = `Report W: green — ${OTHER}`;
+    const initial = f.marker(ref, subject, f.head, true);
+    let next: string;
+    if (kind === "file-changing") {
+      const blob = f.git("hash-object", "-w", "--stdin");
+      const tree = execFileSync("git", ["mktree"], { cwd: f.work, encoding: "utf8", input: `100644 blob ${blob}\tunexpected.txt\n` }).trim();
+      next = f.git("commit-tree", tree, "-p", initial, "-m", subject);
+      f.git("push", "-q", "origin", `${next}:refs/heads/fixture-next`);
+    } else if (kind === "merge") {
+      const peer = f.marker("fixture-peer", subject);
+      next = f.git("commit-tree", `${initial}^{tree}`, "-p", initial, "-p", peer, "-m", subject);
+      f.git("push", "-q", "origin", `${next}:refs/heads/fixture-next`);
+    } else next = f.marker("fixture-next", subject);
+    const result = f.run({ args: ["--report", "review", "--task", "A", "--as", ME], mutation: { ref, sha: next } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stderr).toContain("snapshot changed");
+    expect(f.git("rev-parse", `${f.remoteTip(ref)}^`)).toBe(next);
+    expect(f.pushes()).toHaveLength(1);
+  }));
+
+  it("report append rereads a newly created report log", () => check(f => {
+    f.marker(A, `Claim A: ${ME}`);
+    const next = f.marker("fixture-next", `Report W: green — ${OTHER}`);
+    const result = f.run({ args: ["--report", "review", "--task", "A", "--as", ME],
+      mutation: { ref: "agent/reports/log", sha: next } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stderr).toContain("snapshot changed");
+    expect(f.git("rev-parse", `${f.remoteTip("agent/reports/log")}^`)).toBe(next);
+    expect(f.pushes()).toHaveLength(1);
   }));
 
   it("refreshes a rejected side heartbeat against its actual remote parent", () => check(f => {

@@ -85,4 +85,21 @@ describe("Cloudflare container acceptance", () => {
     expect(resetWorkflow).toContain("REVIEWER_REFERRER_PASSWORD_HASH");
     expect(resetWorkflow).not.toContain("same two hashes");
   });
+  // OPS-reviewer-plaintext-reset (D-373 (3)): the plaintext pair rides the same reset-only expressions as the hashes.
+  it.each(["reviewer-reset-preflight", "migrate-db", "deploy"])("passes the plaintext pair to %s only on a reset, through env", name => {
+    const source = job(workflow, name);
+    expect(source).toContain("REVIEWER_SEEKER_PASSWORD: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_SEEKER_PASSWORD || '' }}");
+    expect(source).toContain("REVIEWER_REFERRER_PASSWORD: ${{ inputs.reset_reviewer_passwords == true && secrets.REVIEWER_REFERRER_PASSWORD || '' }}");
+  });
+  it("never puts a plaintext reviewer secret in a command, an input or anywhere but a reset-gated env", () => {
+    expect(workflow).not.toMatch(/run:[^\n]*REVIEWER_(?:SEEKER|REFERRER)_PASSWORD\b/);
+    expect(workflow).not.toMatch(/inputs\.reviewer_(?:seeker|referrer)_password/);
+    const uses = workflow.match(/secrets\.REVIEWER_(?:SEEKER|REFERRER)_PASSWORD\b/g) ?? [];
+    const gated = workflow.match(/inputs\.reset_reviewer_passwords == true && secrets\.REVIEWER_(?:SEEKER|REFERRER)_PASSWORD \|\| ''/g) ?? [];
+    expect(uses.length).toBeGreaterThan(0);
+    expect(gated.length).toBe(uses.length);
+    expect(envExample).toMatch(/^REVIEWER_SEEKER_PASSWORD=$/m);
+    expect(envExample).toMatch(/^REVIEWER_REFERRER_PASSWORD=$/m);
+    expect(resetWorkflow).toContain("REVIEWER_SEEKER_PASSWORD and REVIEWER_REFERRER_PASSWORD");
+  });
 });

@@ -44,11 +44,12 @@ const companies: PublicCompany[] = [
   { slug: "tcs", name: "TCS", initials: "TC", industry: "IT", location: "Mumbai", functions: ["engineering"], blurb: "b", domains: ["tcs.com"], openToReferrals: false },
 ] as never;
 
-function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number } = {}) {
+function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number; allowed?: ReadonlySet<number> } = {}) {
   const { store, grants, drafts, events } = fakeStore();
   const app = express(); app.use(express.json());
   registerSeekerAgentRoutes(app, {
     enabled: () => opts.enabled ?? true,
+    allowedUserIds: () => opts.allowed ?? new Set([7, 8]),
     resolveIdentity: async () => (opts.userId ? { account: { id: opts.userId } } : undefined),
     store,
     listCompanies: async () => companies,
@@ -77,6 +78,67 @@ describe("seeker agents (Skippy step 5)", () => {
     expect((await request(app).post("/api/seeker/agents").send({ name: "x" })).status).toBe(404);
     expect((await request(app).get("/api/agent/v1/me")).status).toBe(404);
     expect((await request(app).post("/api/agent/v1/drafts").send(DRAFT)).status).toBe(404);
+  });
+
+  it("allowlist denies every seeker-agent route for an existing grant owner", async () => {
+    const allowed = new Set([7, 8]);
+    const { app, grants, drafts, events } = makeApp({ userId: 8, allowed });
+    await grantKey(app);
+    const id = grants[0].id;
+    const beforeEvents = events.length;
+    allowed.delete(8);
+    const responses = await Promise.all([
+      request(app).get("/api/seeker/agents"),
+      request(app).post("/api/seeker/agents").send({ name: "another" }),
+      request(app).post(`/api/seeker/agents/${id}/revoke`),
+      request(app).post("/api/seeker/agents/pause-all"),
+      request(app).post("/api/seeker/agents/resume-all"),
+      request(app).get(`/api/seeker/agents/${id}/drafts`),
+      request(app).get(`/api/seeker/agents/${id}/events`),
+    ]);
+    expect(responses.map(response => response.status)).toEqual([404, 404, 404, 404, 404, 404, 404]);
+    expect(grants).toHaveLength(1);
+    expect(grants[0].revokedAt).toBeNull();
+    expect(drafts).toEqual([]);
+    expect(events).toHaveLength(beforeEvents);
+  });
+
+  it("allowlist denies a valid key on every agent route without touching its usage", async () => {
+    const allowed = new Set([7, 8]);
+    const { app, grants, drafts, events } = makeApp({ userId: 8, allowed });
+    const key = await grantKey(app);
+    const beforeEvents = events.length;
+    allowed.delete(8);
+    const auth = `Bearer ${key}`;
+    const responses = await Promise.all([
+      request(app).get("/api/agent/v1/me").set("Authorization", auth),
+      request(app).get("/api/agent/v1/companies").set("Authorization", auth),
+      request(app).get("/api/agent/v1/prices").set("Authorization", auth),
+      request(app).get("/api/agent/v1/drafts").set("Authorization", auth),
+      request(app).post("/api/agent/v1/drafts").set("Authorization", auth).send(DRAFT),
+    ]);
+    expect(responses.map(response => response.status)).toEqual([404, 404, 404, 404, 404]);
+    expect(grants[0].lastUsedAt).toBeNull();
+    expect(drafts).toEqual([]);
+    expect(events).toHaveLength(beforeEvents);
+  });
+
+  it("allowlist denies an expired or revoked key owner before exposing grant status", async () => {
+    const allowed = new Set([8]);
+    const { app, grants } = makeApp({ userId: 8, allowed });
+    const key = await grantKey(app);
+    allowed.clear();
+    grants[0].revokedAt = new Date();
+    grants[0].expiresAt = new Date(0);
+    const response = await request(app).get("/api/agent/v1/me").set("Authorization", `Bearer ${key}`);
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "Not found" });
+  });
+
+  it("an empty allowlist grants access to nobody", async () => {
+    const { app } = makeApp({ userId: 7, allowed: new Set() });
+    expect((await request(app).get("/api/seeker/agents")).status).toBe(404);
+    expect((await request(app).post("/api/seeker/agents").send({ name: "hidden" })).status).toBe(404);
   });
 
   it("shows the key exactly once, never in the list view", async () => {
