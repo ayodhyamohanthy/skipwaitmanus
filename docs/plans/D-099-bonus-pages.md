@@ -1,12 +1,12 @@
 # Packet D-099: public referral-bonus pages, one per company, every figure sourced (loop L5)
 
-> **D-374 (owner, Nov 21): "Drop the bonus lead".** SkipWait never leads with an employer's referral bonus. Slice A keeps the sourced figures, admin entry and report path and drops the public `/bonuses` and `/bonuses/:slug` pages and their sitemap entries. Slice B keeps one neutral, sourced fact line on the company page (`/explore/:slug`) only, with no `/explore` list line and no link to a bonus page. The re-sync rewrites sections 1, 5.4, 5.5 and 7 to this.
+> **D-374 (owner, Nov 21): "Drop the bonus lead".** SkipWait never leads with an employer's referral bonus. Slice A keeps the sourced figures, admin entry and report path and drops the public `/bonuses` and `/bonuses/:slug` pages and their sitemap entries. Slice B keeps one neutral, sourced fact line on the company page (`/explore/:slug`) only, with no `/explore` list line and no link to a bonus page. Re-synced to D-378 on 2026-11-22: sections 1, 4 (rulings 6, 7, 8, 10), 5.3 (sitemap), 5.4, 5.5, 6, 7, 8 and 9 now follow D-374. Where older wording below still mentions `/bonuses` pages, the sitemap or a directory line, D-374 wins.
 
 > Read `docs/BRIEF.md` first, then this packet. You need nothing else unless a section below names it. Never open `server/db.ts` or `server/privateReferralRoutes.ts` whole; this packet needs neither.
 
 | Field | Value |
 |---|---|
-| Queue rows | `D-099-bonus-pages` (slice A: data, admin, public pages, sitemap; Tier 1 because it adds a migration) and `D-099-bonus-line` (slice B: one line on `/explore` and `/explore/:slug`; Tier 2). There is no §3b row: status goes in this packet's Status section (D-134). |
+| Queue rows | `D-099-bonus-pages` (slice A: data, admin entry and the report path; no public pages and no sitemap entries (D-374); Tier 1 because it adds a migration) and `D-099-bonus-line` (slice B: one neutral, sourced fact line on `/explore/:slug` only (D-374); Tier 2). There is no §3b row: status goes in this packet's Status section (D-134). |
 | Decisions | D-099 (the spec), D-087 (L5 rules), D-089 (3) (build order 2, 1, 3, after the demand list), D-102 (every number is real), D-055 and D-063 (referrers are never paid by skipwait.me), D-097 (behind a flag), D-150 and the doctrine (one next step, one black commit), D-153 (plain intent first), D-149 (c) (money lines from `shared/moneyCopy.ts`), D-031 (no paid tools), D-068 and D-088 (docs and fullstack in the same push), D-163 |
 | Size | A: L (four commits); B: S (one commit) |
 | Implementer | any model; A gets an independent Tier 1 review by a model other than its builder (D-151) |
@@ -15,7 +15,7 @@
 | Verified against | `main` `06323e5c` on 2026-10-23 (CEO, Claude Code · e11c) |
 
 ## 1. Goal
-Someone searches "<Company> referral bonus" and lands on `skipwait.me/bonuses/<company>`. They see the bonus the employer itself publishes, with its source and the date we checked it. They also see one plain next step: an employee is asked to refer people there (referrer supply is the bottleneck, D-087), and a seeker can ask for a referral. Every figure is real and sourced, or the page says plainly that the employer has published none. skipwait.me never pays it and never says or implies it does.
+Someone looking at a company page (`/explore/:slug`) can see, at most, one neutral fact line about the employer's own published referral programme: the figure, its source, the date we checked it, and that skipwait.me never pays referrers (D-374, D-055, D-087, D-323 (4)). SkipWait never leads with an employer's bonus and never offers it as a reason to refer: no `/bonuses` pages, no sitemap entries, no line in the `/explore` list, no title, heading, button, email subject, push or share text built on it. Every figure is real and sourced; with no checked figure there is no line at all.
 
 ## 2. Binding rules (quoted)
 - D-099: "One crawlable page per company at /bonuses/{company}: mono figure, source and checked date, line that the employer sets and pays it and skipwait.me never does (D-055/D-063), seeker and referrer CTAs; index at /bonuses; "Report a wrong figure" on every page; directory and company pages gain a "Referral bonus: figure, source" line. Companies with no published figure show an honest "Not published" state; employer-published figures only at launch; employer currency only."
@@ -45,11 +45,11 @@ Someone searches "<Company> referral bonus" and lands on `skipwait.me/bonuses/<c
 3. **One current figure per company.** Store the amount in the currency's minor units, in the employer's currency (ISO 4217, no conversion). It may be marked "up to", with an optional plain-text scope note of at most 120 characters (for example "Engineering roles in India"). History lives in the activity log, not in a second table.
 4. **Freshness.** A figure whose `checkedAt` is more than 365 days before now is treated as not published on every public surface; the admin list marks it "stale". Compute this in the app, never with MySQL `NOW()`.
 5. **Formatting.** `Intl.NumberFormat` with `style: "currency"` and the stored currency, with locale `en-IN` for INR and `en-US` otherwise, and `maximumFractionDigits: 0` when the minor part is zero. The minor-unit divisor is the currency's default fraction digits (`resolvedOptions().maximumFractionDigits` of a plain currency formatter). So INR `5000000` shows "₹50,000", USD `200000` "$2,000" and JPY `100000` "¥100,000".
-6. **The next step on a bonus page is the referrer's.** There is one black commit, "Refer people at {Company}", to `referrerSignInHref()` (`client/src/lib/referrerSignIn.ts:7`; its default return, `/referrer-setup`, is the right first stop for a new referrer; never `SignInButton`, D-030). The seeker's "Ask for a referral at {Company}" is a ghost link to `/explore/{slug}`. Why: L5 pulls search traffic from employees looking up their own bonus, and verified employees are the supply the product lacks (D-087).
-7. **Reports need sign-in,** like every report route today. Allow 5 per person per 24 hours, then one neutral 429 "You have sent several reports today. Thank you; we will look at them." A signed-out visitor sees "Sign in to report a wrong figure" (to `/sign-in?returnTo=<this page>`). Reasons: `figure_changed`, `source_gone`, `not_this_company`, `new_source` (the only reason offered on a "Not published" page), `other`. An optional note of at most 280 characters and an optional suggested `https:` source URL.
-8. **Crawlable to the same standard as `/explore/:slug`.** Client-rendered with `applySeo` (title, description, canonical) and listed in the dynamic sitemap only while the server flag is on and only for companies with a published, fresh figure. `/bonuses` is listed while the flag is on. Do not add them to `shared/publicRoutes.ts` or `SITEMAP_STATIC_ROUTES` (those are prerendered and listed even while off). `functions/_middleware.ts` lists both patterns. With the client flag off, both routes render the app's existing not-found page.
+6. **No call to action rides on a bonus (D-374).** The fact line carries no button and no link to a bonus page; it never asks anyone to refer because of a bonus. The company page keeps its own existing next step, unchanged.
+7. **Reports need sign-in,** like every report route today. Allow 5 per person per 24 hours, then one neutral 429 "You have sent several reports today. Thank you; we will look at them." A signed-out visitor sees "Sign in to report a wrong figure" (to `/sign-in?returnTo=<this page>`). The report link sits on the company-page fact line (slice B) and returns to `/explore/{slug}`. Reasons: `figure_changed`, `source_gone`, `not_this_company`, `other`. An optional note of at most 280 characters and an optional suggested `https:` source URL.
+8. **No public bonus pages (D-374).** There is no `/bonuses` or `/bonuses/:slug` route, no `applySeo` page, no sitemap entry and no `functions/_middleware.ts` pattern for them. The only public surface is the one fact line on `/explore/:slug` (slice B).
 9. **Flags, both off by default:** server `BONUS_PAGES_ENABLED`, where every new route answers 404 when off, and client `VITE_BONUS_PAGES`. Declare both in `.env.example`, forward the server key in `src/worker.ts`, and make the config contract test pass (FND-5).
-10. **No new analytics infrastructure (D-031).** Measures: figures published (count), reports filed and resolved (DB), `/bonuses*` page views and the referrer sign-in starts from them (Umami, consent-gated, by path), and referrers verified at a bonus-page company within 30 days (DB, aggregate only). Activity rows: `admin.company_bonus.upserted`, `admin.company_bonus.withdrawn`, `company_bonus.report_filed`, `admin.company_bonus_report.decided`. Never write the reporter's note into the activity log.
+10. **No new analytics infrastructure (D-031).** Measures: figures published (count), reports filed and resolved (DB), and the fact line's report-link opens (Umami, consent-gated, by path). Activity rows: `admin.company_bonus.upserted`, `admin.company_bonus.withdrawn`, `company_bonus.report_filed`, `admin.company_bonus_report.decided`. Never write the reporter's note into the activity log.
 
 ## 5. Target behaviour (testable)
 ### 5.1 Data (slice A)
@@ -82,26 +82,10 @@ Zod schemas, strict, so unknown keys fail.
 
 - **Admin gating** copies `requireAdmin` from `companyDirectoryRoutes.ts:63-73`, and it is checked before any read.
 - **Public payloads come from an allow-list:** no `id`, `updatedByUserId`, `status`, report data or counts of reports.
-- **Sitemap.** `shared/sitemap.ts` gains `bonusSitemapEntries(origin, list)` (`/bonuses` plus `/bonuses/<encoded slug>`). `server/sitemapRoutes.ts` appends them only while the flag is on. `functions/sitemap.xml.ts` fetches `/api/company-bonuses` and treats a 404 as "none".
+- **No sitemap entries (D-374).** `shared/sitemap.ts`, `server/sitemapRoutes.ts` and `functions/sitemap.xml.ts` are not changed by this packet.
 
-### 5.4 Client (slice A)
-- **Routes.** `client/src/App.tsx` gains `/bonuses`, `/bonuses/:slug` and `/admin/bonuses`. `functions/_middleware.ts` gains `/bonuses` and `/bonuses/:slug`. `client/src/lib/flags.ts` gains `BONUS_PAGES` from `VITE_BONUS_PAGES`.
-- **`/bonuses/:slug`** (`client/src/pages/BonusCompany.tsx`). It uses React Query (no `useEffect` fetching) and the goal primitives only (`client/src/components/goal/`), at 1280 and 390.
-  - Goal line h1: "{Company} referral bonus".
-  - Published: the figure in `GoalNum`, then "Source: {sourceHost} · checked {d MMM yyyy}" (the source is a link with `rel="nofollow noopener noreferrer"`, `target="_blank"`), then the scope note if set, then the honesty line.
-  - Not published: "{Company} has not published a referral bonus we could check.", then the honesty line.
-  - "Your next step" block: the black "Refer people at {Company}" plus a ghost "Ask for a referral at {Company}".
-  - Footer link "Report a wrong figure" (on a not-published page: "Know where {Company} publishes it? Tell us"). It opens the report form (ruling 7).
-  - `applySeo`:
-    - title "{Company} referral bonus";
-    - description "{figure} referral bonus at {Company}, from {sourceHost}, checked {date}." when published, else "{Company} has not published a referral bonus we could check.";
-    - path `/bonuses/{slug}`.
-  - States: loading, unknown company (the not-found page), error and offline with a retry, each explicit.
-- **`/bonuses`** (`client/src/pages/Bonuses.tsx`).
-  - Goal line h1: "Find a company's referral bonus."
-  - The list of published companies, each row a link to its page, with the figure in `GoalNum` and the source host.
-  - The count line "{N} companies with a checked figure." uses the real N, which may be 0. When N is 0: "No company figures are checked yet." Below: "Don't see your company? It has not published a figure we could check."
-  - The same next-step block with no company named: black "Refer people at your company", ghost "Ask for a referral".
+### 5.4 Client (slice A): admin entry only (D-374)
+- **Routes.** `client/src/App.tsx` gains `/admin/bonuses` only. No `/bonuses` or `/bonuses/:slug` route, page, `applySeo` call or middleware pattern. `client/src/lib/flags.ts` gains `BONUS_PAGES` from `VITE_BONUS_PAGES` (it gates the slice B fact line).
 - **`/admin/bonuses`** (`client/src/pages/AdminBonuses.tsx`) is modelled on `AdminPartners.tsx`:
   - a company list with figure, `stale` and open reports;
   - an edit form for the upsert, showing the server's 400 message under the field;
@@ -109,19 +93,20 @@ Zod schemas, strict, so unknown keys fail.
   - the open reports with Fixed/Dismissed;
   - the denied state on 401/403.
   - Add one link in the admin navigation (`client/src/pages/AdminOverview.tsx`).
-- **Copy constants.** Add `REFERRAL_BONUS_HONESTY` to `shared/moneyCopy.ts`, with the PRD text verbatim (§2). Pages import it, never retype it (D-149 (c)).
+- **Report form** (`client/src/components/bonus/ReportBonusFigure.tsx`): ruling 7's form, opened from the slice B fact line; signed out it shows "Sign in to report a wrong figure" to `/sign-in?returnTo=/explore/{slug}`.
+- **Copy constants.** Add `REFERRAL_BONUS_HONESTY` to `shared/moneyCopy.ts`, with the PRD text verbatim (§2). The fact line imports it, never retypes it (D-149 (c)).
 
-### 5.5 Slice B: the directory and company line
-- **Directory.** Only while `BONUS_PAGES` is on and a published, fresh figure exists, add one line in the directory row: "Referral bonus: {figure} · {sourceHost}". It goes in the row's `fn` slot (`GoalListRow.tsx:92`) or a new grid area, whichever the redesigned row from D-048-p3-live-review-find has.
-- **Company page.** Add the same line under its functions line, linking to `/bonuses/{slug}`. With no figure, the company page shows "Referral bonus: not published" linking to the bonus page; the directory shows nothing.
+### 5.5 Slice B: one fact line on the company page (D-374)
+- **Company page only.** Only while `BONUS_PAGES` is on and a published, fresh figure exists, `/explore/:slug` shows one neutral line under its functions line: "{Company}'s own referral programme: {figure} · source {sourceHost} · checked {d MMM yyyy}", then `REFERRAL_BONUS_HONESTY`, then a plain "Report a wrong figure" link (ruling 7). No button, no link to a bonus page, no "Refer" or "Ask" wording tied to the figure.
+- **Nothing elsewhere.** No line in the `/explore` list, no "not published" line on the company page (no figure means no line), and no title, heading, meta description, share text or email built on the bonus.
 - **Data.** One `GET /api/company-bonuses` through React Query, mapped by slug. A failed or 404 fetch shows no line and never blocks or errors the page.
 
 ## 6. Steps (one commit each)
 - A1: contracts, formatter and rules (`shared/referralBonus.ts`) with their tests; `REFERRAL_BONUS_HONESTY`.
-- A2: the migration, `drizzle/schema.ts`, `server/schemaReconcile.ts`, `server/referralBonusStore.ts`, `server/referralBonusRoutes.ts` and its registration, the flag, `.env.example` and `src/worker.ts`, the sitemap (both builders) and the middleware patterns, with route tests.
-- A3: `/bonuses` and `/bonuses/:slug`, the report form and the flag, with client tests and captures at 1280 and 390 (fictional fixtures only).
+- A2: the migration, `drizzle/schema.ts`, `server/schemaReconcile.ts`, `server/referralBonusStore.ts`, `server/referralBonusRoutes.ts` and its registration, the flag, `.env.example` and `src/worker.ts`, with route tests. No sitemap or middleware change (D-374).
+- A3: the report form component and the client flag, with client tests (fictional fixtures only). No public pages (D-374).
 - A4: `/admin/bonuses` plus the admin nav link, client tests, and docs (§9).
-- B1: the line on `/explore` and `/explore/:slug`, client tests, captures.
+- B1: the one fact line on `/explore/:slug` only, client tests, captures at 1280 and 390.
 
 ## 7. Tests to write first (red before the code)
 1. `shared/referralBonus.test.ts`:
@@ -136,33 +121,26 @@ Zod schemas, strict, so unknown keys fail.
    - admin routes answer 401 and 403 before any store call;
    - the upsert refuses a source on another domain with the plain message; withdraw hides the figure from both public routes;
    - reports: 401 signed out, 400 on a bad body, the 6th in 24 h answers 429; an activity row is written for each mutation and carries no note text.
-3. `shared/sitemap` test: bonus entries only for published, fresh figures, slugs URL-encoded. `server/sitemapRoutes` includes them only with the flag on. `functions/sitemap.xml.ts` tolerates a 404.
+3. D-374 guards: `client/src/App.tsx` has no `/bonuses` route, `functions/_middleware.ts` no bonus pattern, and the sitemap builders emit no bonus entry with the flag on or off.
 4. The existing `scripts/seoRouteCoverage.test.ts`, migration lint, schema reconcile contract and config contract tests pass with the new routes, tables and keys (they fail first if you forget one).
-5. `client/src/pages/bonusCompany.test.tsx` and `bonuses.test.tsx`:
-   - loading, error and offline with retry;
-   - published (figure, source link attributes, checked date, honesty line from the constant);
-   - not published;
-   - exactly one black commit, going to `referrerSignInHref`, plus the ghost seeker link;
-   - the signed-out report link, and the signed-in form posts, shows success and shows the 429 message;
-   - flag off renders the not-found page;
-   - N = 0 copy on the index.
+5. `client/src/components/bonus/reportBonusFigure.test.tsx`: the signed-out link to `/sign-in?returnTo=/explore/{slug}`; the signed-in form posts, shows success and shows the 429 message; reasons exclude `new_source`.
 6. `client/src/pages/adminBonuses.test.tsx`: the denied state, the list, the 400 message shown under the field, withdraw with confirm, a report decision.
-7. Slice B: the line shows only with the flag on and a fresh figure; a failed fetch shows nothing and the page still renders; "not published" only on the company page.
+7. Slice B: the company-page line shows only with the flag on and a fresh figure, with the honesty line and the report link and no button or bonus-page link; nothing renders without a figure; the `/explore` list never shows a bonus line; a failed fetch shows nothing and the page still renders.
 
 ## 8. Edge cases
 - A company renamed or hidden after a figure was entered: hidden means 404 everywhere, and the figure stays in admin.
 - A company with several domains: any of them may host the source.
 - A figure edited twice in one minute: the last write wins, and there are two activity rows.
 - A report about a figure later withdrawn: it stays decidable in admin.
-- A slug with characters that need encoding: the sitemap encodes it, and the client route decodes it once.
+- A slug with characters that need encoding: the report link's `returnTo` encodes it once.
 
 ## 9. Definition of done
 - [ ] Every §7 test was red first and is green now, and no existing assertion was weakened.
 - [ ] Gate on your commit merged with the latest `origin/main` (`docs/BRIEF.md` "How to ship"); `node scripts/scope-check.mjs <task-id>` is clean.
 - [ ] Slice A: an independent Tier 1 review passed (D-151); findings fixed red-first.
-- [ ] Both flags off in production. A QA pass with them on, on a test environment, covers: an admin enters a figure for a fictional company → the public page, the index and the sitemap show it → a report → an admin decision → withdraw → the not-published state.
-- [ ] Docs in the same push: this Status section; `docs/plans/assignments.json`; the `AGENTS.md` living-map row (add "Referral-bonus pages (`/api/company-bonuses*`, `/api/admin/company-bonuses*`, `/bonuses*`)"); the `docs/PRD.md` roadmap row; the `docs/DECISIONS.md` D-099 sync cell; plan §5 (the migration number).
-- [ ] Live after landing: API `verify-live-release.sh` CONVERGED, web `git-commit` meta matches, and `/bonuses` shows the not-found page while the flag is off.
+- [ ] Both flags off in production. A QA pass with them on, on a test environment, covers: an admin enters a figure for a fictional company → its company page shows the one fact line (and the `/explore` list does not) → a report → an admin decision → withdraw → the line disappears.
+- [ ] Docs in the same push: this Status section; `docs/plans/assignments.json`; the `AGENTS.md` living-map row (add "Referral-bonus fact line (`/api/company-bonuses*`, `/api/admin/company-bonuses*`, one line on `/explore/:slug`)"); the `docs/PRD.md` roadmap row; the `docs/DECISIONS.md` D-099 sync cell; plan §5 (the migration number).
+- [ ] Live after landing: API `verify-live-release.sh` CONVERGED, web `git-commit` meta matches, and `/bonuses` still answers the not-found page (no route exists).
 
 ## 10. Review checklist (for the independent reviewer of slice A)
 1. Prove every public route answers 404 while the server flag is off, by a request in a test, not by reading code.
@@ -183,3 +161,4 @@ Zod schemas, strict, so unknown keys fail.
 Two rows share this packet (D-134); each writes its own line.
 - D-099-bonus-pages: todo; waits for `D-090-BYOR`, `D-089-request-inbox`, `D-086-demand-list`, `D-048-F-flags` and `D-048-F-routes`.
 - D-099-bonus-line: todo; waits for `D-099-bonus-pages`, `D-048-p3-live-review-find` and `D-048-F-primitives`.
+- D-099-bonus-pages and D-099-bonus-line: re-synced to D-378 — Claude Code · e969 — 2026-11-22. Entries naming them since D-227: D-219 and D-221 (pricing re-sync lists; this packet has no credit or price wording, and its honesty line agrees), D-366 (7) (the bonus hold) and D-374 (the owner's answer). Slice A keeps data, admin entry and the report path and drops the public pages and sitemap. Slice B is one neutral, sourced fact line on `/explore/:slug` only. Dependencies are unchanged.
