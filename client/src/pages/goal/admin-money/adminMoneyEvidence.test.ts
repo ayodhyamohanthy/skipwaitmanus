@@ -36,12 +36,8 @@ const ROUTES: Record<string, string> = {
 };
 const routeOf = (state: string) => ROUTES[state.startsWith("money-check") ? "money-check" : state.split("-")[0]];
 
-// /admin/money-check is the one capture this row cannot move yet: packet §10
-// assigns its styling here, but assignments.json omits AdminMoneyCheck.tsx from
-// owns, so it still renders the kit page (0 next step, 0 black commit). Every
-// other state is a moved goal page and must show exactly one of each.
 const PINNED: Record<string, { nextStepBlocks: number; primaryCommits: number }> = Object.fromEntries(
-  fixtures.map(fixture => [fixture.state, fixture.state === "money-check-default" ? { nextStepBlocks: 0, primaryCommits: 0 } : { nextStepBlocks: 1, primaryCommits: 1 }]),
+  fixtures.map(fixture => [fixture.state, { nextStepBlocks: 1, primaryCommits: 1 }]),
 );
 
 describe("admin-money capture evidence", () => {
@@ -72,7 +68,6 @@ describe("admin-money capture evidence", () => {
       expect(result.horizontalOverflowPx, "no horizontal overflow").toBe(0);
       expect(result.unmatchedApi, "every API call was mocked").toEqual([]);
       expect({ nextStepBlocks: result.nextStepBlocks, primaryCommits: result.primaryCommits }, `${state} goal contract`).toEqual(PINNED[state]);
-      if (state === "money-check-default") return;
       expect(result.h1, "one goal line").toEqual(["Keep the money truthful."]);
     },
   );

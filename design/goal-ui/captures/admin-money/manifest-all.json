@@ -1,5 +1,5 @@
 {
-  "source": "129188d5a8256aba503d5bde2a659411291caefc",
+  "source": "44813d31eac7fef36dbb36aded98d0c43f269649",
   "sourceTreeDirty": false,
   "build": "VITE_GOAL_SURFACES=admin-money (local vite dev server, every /api call mocked in the browser)",
   "command": "node design/goal-ui/captures/admin-money/capture.mjs",
@@ -131,9 +131,78 @@
       ]
     },
     {
+      "file": "money-check-alert-failed-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-closed-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/close-abandoned -> 200",
+          "POST /api/admin/money-check/close-abandoned -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Preview what would close\"}",
+          "{\"waitFor\":\"text=Close these 3 pages\"}",
+          "{\"click\":\"text=Close these 3 pages\"}",
+          "{\"waitFor\":\"text=Closed 3 checkout pages\"}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
       "file": "money-check-default-390.png",
       "route": "/admin/money-check",
-      "screen": "kit-page (outside owns)",
+      "screen": "admin-money-check",
       "persona": "synthetic admin",
       "fixture": {
         "api": [
@@ -151,14 +220,215 @@
       },
       "horizontalOverflowPx": 0,
       "h1": [
-        "Money check"
+        "Keep the money truthful."
       ],
-      "nextStepBlocks": 0,
-      "primaryCommits": 0,
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
       "nestedButtons": 0,
       "unmatchedApi": [],
       "consoleErrors": [
         "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-empty-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/run -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Run money check now\"}",
+          "{\"waitFor\":\"text=All clear. Nothing to flag.\"}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-preview-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/close-abandoned -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Preview what would close\"}",
+          "{\"waitFor\":\"text=Close these 3 pages\"}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-run-error-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/run -> 503"
+        ],
+        "actions": [
+          "{\"click\":\"text=Run money check now\"}",
+          "{\"waitFor\":\"text=The money check could not run.\"}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+      ]
+    },
+    {
+      "file": "money-check-run-result-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/run -> 200",
+          "GET /api/admin/money-check/status -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Run money check now\"}",
+          "{\"waitFor\":\"text=Synthetic ledger mismatch. No customer data.\"}"
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-sign-in-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-status-error-390.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 503"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+        "[API Query Error] Error: Owner-alert status unavailable\n    at queryFn (http://localhost:5199/src/pages/goal/admin-money/GoalAdminMoneyCheck.tsx?t=1795124024843:35:31)"
       ]
     },
     {
@@ -639,9 +909,78 @@
       ]
     },
     {
+      "file": "money-check-alert-failed-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-closed-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/close-abandoned -> 200",
+          "POST /api/admin/money-check/close-abandoned -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Preview what would close\"}",
+          "{\"waitFor\":\"text=Close these 3 pages\"}",
+          "{\"click\":\"text=Close these 3 pages\"}",
+          "{\"waitFor\":\"text=Closed 3 checkout pages\"}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
       "file": "money-check-default-1280.png",
       "route": "/admin/money-check",
-      "screen": "kit-page (outside owns)",
+      "screen": "admin-money-check",
       "persona": "synthetic admin",
       "fixture": {
         "api": [
@@ -659,14 +998,215 @@
       },
       "horizontalOverflowPx": 0,
       "h1": [
-        "Money check"
+        "Keep the money truthful."
       ],
-      "nextStepBlocks": 0,
-      "primaryCommits": 0,
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
       "nestedButtons": 0,
       "unmatchedApi": [],
       "consoleErrors": [
         "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-empty-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/run -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Run money check now\"}",
+          "{\"waitFor\":\"text=All clear. Nothing to flag.\"}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-preview-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/close-abandoned -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Preview what would close\"}",
+          "{\"waitFor\":\"text=Close these 3 pages\"}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-run-error-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/run -> 503"
+        ],
+        "actions": [
+          "{\"click\":\"text=Run money check now\"}",
+          "{\"waitFor\":\"text=The money check could not run.\"}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+      ]
+    },
+    {
+      "file": "money-check-run-result-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 200",
+          "POST /api/admin/money-check/run -> 200",
+          "GET /api/admin/money-check/status -> 200"
+        ],
+        "actions": [
+          "{\"click\":\"text=Run money check now\"}",
+          "{\"waitFor\":\"text=Synthetic ledger mismatch. No customer data.\"}"
+        ]
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-sign-in-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check-sign-in",
+      "persona": "signed out",
+      "fixture": {
+        "api": [],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "money-check-status-error-1280.png",
+      "route": "/admin/money-check",
+      "screen": "admin-money-check",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/notifications -> 200",
+          "GET /api/credits/summary -> 200",
+          "GET /api/account/preferences -> 200",
+          "GET /api/admin/money-check/status -> 503"
+        ],
+        "actions": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Keep the money truthful."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+        "[API Query Error] Error: Owner-alert status unavailable\n    at queryFn (http://localhost:5199/src/pages/goal/admin-money/GoalAdminMoneyCheck.tsx?t=1795124024843:35:31)"
       ]
     },
     {

@@ -1,5 +1,5 @@
 // The money-ops goal frame (D-048-p3-admin-money, D-048-admin.md §3). It
-// fetches nothing itself and never changes a money action: the three pages
+// fetches nothing itself and never changes a money action: the money-ops pages
 // below own their own state and their exact server calls. The admin goal frame
 // (pages/goal/admin) is read-only for this row, so this is its money-ops twin.
 import type { ReactNode } from "react";

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminPaymentsReview from "../../AdminPaymentsReview";
 import AdminCatalogSync from "../../AdminCatalogSync";
 import AdminTokenRecovery from "../../AdminTokenRecovery";
+import AdminMoneyCheck from "../../AdminMoneyCheck";
 
 const { flag } = vi.hoisted(() => ({ flag: { on: false, asked: [] as string[] } }));
 vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
@@ -30,6 +31,7 @@ describe("admin-money switch (D-048-p3-admin-money)", () => {
     ["/admin/payments", AdminPaymentsReview, "Keep the money truthful."] as const,
     ["/admin/catalog-sync", AdminCatalogSync, "Keep the money truthful."] as const,
     ["/admin/token-recovery", AdminTokenRecovery, "Keep the money truthful."] as const,
+    ["/admin/money-check", AdminMoneyCheck, "Keep the money truthful."] as const,
   ])("%s renders the goal page when the goal flag is on", async (_route, Page, goalLine) => {
     flag.on = true;
     const { container } = renderPage(<Page />);
@@ -42,6 +44,7 @@ describe("admin-money switch (D-048-p3-admin-money)", () => {
     ["/admin/payments", AdminPaymentsReview] as const,
     ["/admin/catalog-sync", AdminCatalogSync] as const,
     ["/admin/token-recovery", AdminTokenRecovery] as const,
+    ["/admin/money-check", AdminMoneyCheck] as const,
   ])("%s keeps the kit page when the goal flag is off", async (_route, Page) => {
     const { container } = renderPage(<Page />);
     await waitFor(() => expect(container.querySelector("[data-skipwait-screen], h1")).toBeTruthy());
