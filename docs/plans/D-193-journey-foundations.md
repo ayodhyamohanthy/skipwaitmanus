@@ -151,26 +151,26 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 - **Done when:** tests pass, the independent review passes, and an admin-verified Ashby or Lever source syncs on the deployed release with QA's switch on (paste one `/api/companies/<slug>/jobs` response).
 
 ### 5.8 `D-174-ask-from-job` (Tier 1, M; money path)
-- **Waits for:** `D-174-job-catalog`, `D-048-fix-post-copy`, `D-132-audit` (the quote and charge it changes) and `D-174-held-ask-reconfirm` (`server/db.ts`).
+- **Waits for:** `D-174-job-catalog`, `D-048-fix-post-copy`, `D-132-audit` (done) and `D-174-held-ask-reconfirm` (`server/db.ts`). The banded quote and spend guard it builds on (`BANDED-spend`) is on `main`.
 - **Do:**
   - Define one Zod schema for the `POST /api/company-referrals` body in `shared/companyReferralRequest.ts`, covering every field the route reads today, with an optional `catalogJobId`. Unknown fields are refused.
   - When `catalogJobId` is present, `createCompanyReferralRequest`:
     - Loads the open catalog job and binds the company from its source **before** any URL-domain resolution, so an apply link on `boards.greenhouse.io` never hits `CompanyLinkMismatchError`.
     - Writes the request's job row from the catalog job: `title`, `location`, the snippet as `description`, and the apply link as `targetRoleUrl`.
   - When `opportunityId` is present, copy the post's `roleTitle` and `location` the same way.
-  - **Quote equals charge (D-132):** one helper builds the job row, and both `createCompanyReferralRequest` and `GET /api/company-referrals/quote` use it. The quote route accepts `catalogJobId` and `opportunityId`, so both price the same fields. With `ASK_LEVEL_COST` off, every request still costs 1 credit.
-  - Credit rules are otherwise unchanged: the same spend points and the same idempotency key.
+  - **Quote equals charge (D-219, D-367; re-synced from D-132 on 2026-11-22):** one helper builds the job row, and both `createCompanyReferralRequest` and `GET /api/company-referrals/quote` use it. The quote route accepts `catalogJobId` and `opportunityId`, so the banded quote's `AcceptedAskCost` and the charge (`spendBandedReferralTx`) price the same level (`assignJobLevel` on the same fields). The send passes the quote's `expectedCost`, and a drift answers `AskPriceChangedError` (`BANDED-spend`'s guard). Never build the superseded D-132 per-level credit cost; its `ASK_LEVEL_COST` flags stay off.
+  - Referral spending is otherwise unchanged: the same spend points and the same idempotency key.
 - **Tests (red first):**
   - `shared/companyReferralRequest.test.ts`: the schema refuses unknown fields.
   - `server/askFromJob.test.ts`:
     - A catalog job at a company with no available referrer creates a waiting request bound to that company.
     - A `catalogJobId` from another company is refused.
     - A closed catalog job is refused with a plain message.
-    - With `ASK_LEVEL_COST` on, the quote for `catalogJobId` equals the stored `askCosts.creditCost`, and the same holds for `opportunityId`.
+    - With `BANDED_SALES_ENABLED` on, the quote's `acceptedCost` for `catalogJobId` equals the charged cost for the same job (`sameAcceptedAskCost`), and the same holds for `opportunityId`.
   - Every existing send and quote test stays green.
 - **Owns:** `shared/companyReferralRequest.ts`, `shared/companyReferralRequest.test.ts`, `server/privateReferralRoutes.ts`, `server/db.ts`, `server/askFromJob.test.ts`.
 - **Done when:** tests pass and the independent review passes. The journey UI uses it (§6).
-- **Stop if:** `D-132-audit`'s quote contract cannot take the job fields without changing `askPriceAtCreate` or `assignJobLevel`.
+- **Stop if:** the banded quote route cannot take the job fields without changing `assignJobLevel` or the banded spend guard.
 
 ### 5.9 `D-174-pool-nudges` (Tier 1, M)
 - **Waits for:** `D-174-ask-from-job` (`server/db.ts`, `server/privateReferralRoutes.ts`) and, through it, `D-174-job-catalog` (`shared/scheduledJobs.ts`).
