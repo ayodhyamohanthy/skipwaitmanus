@@ -6121,12 +6121,13 @@
       "tier": 1,
       "lane": "skippy-seeker",
       "branch": "agent/queue/skippy-purchase",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "todo",
+      "syncedTo": "D-378",
       "dependsOn": [
-        "SKIPPY-fix"
+        "SKIPPY-fix",
+        "BANDED-grants"
       ],
-      "note": "Packs only (D-146). Extract the kit-pack arm of POST /api/chargebee/checkout so Skippy and /plans run one function. SKIPPIE_PURCHASE_ENABLED stays off in production until SKIPPY-stepup lands (D-140 fresh re-login). Never a real payment. D-221 (Oct 26): re-scope before any build. The legacy credit packs this row would sell in the chat are paused (D-219 (6)); the money card is re-specified for per-level extra referrals through the banded checkout once it exists."
+      "note": "Packs only (D-146). Extract the kit-pack arm of POST /api/chargebee/checkout so Skippy and /plans run one function. SKIPPIE_PURCHASE_ENABLED stays off in production until SKIPPY-stepup lands (D-140 fresh re-login). Never a real payment. D-221 (Oct 26): re-scope before any build. The legacy credit packs this row would sell in the chat are paused (D-219 (6)); the money card is re-specified for per-level extra referrals through the banded checkout once it exists. D-366 re-sync (2026-11-22): extra referrals through the banded checkout's shared function, never packs; packet section rewritten, waits for BANDED-grants."
     },
     {
       "id": "D-174-seeker-journey-build.search",
@@ -6173,12 +6174,12 @@
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-agent-send",
       "status": "todo",
-      "syncedTo": "D-308",
+      "syncedTo": "D-378",
       "dependsOn": [
         "SKIPPY-fix",
         "D-178.grant"
       ],
-      "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>. D-221 (Oct 26): limits, re-quote and the shortfall path are stated in D-219 terms (referral level and spend source; a shortfall links to the banded extra referrals once sold, never to paused packs), with referral wording (D-180)."
+      "note": "D-141, D-142. One additive migration at the next free number at landing (0108 is reserved for ROW20-CD), recorded in plan §5. The ask goes through db.createCompanyReferralRequest with selectedCompany and idempotency key agent-draft-<id>. D-221 (Oct 26): limits, re-quote and the shortfall path are stated in D-219 terms (referral level and spend source; a shortfall links to the banded extra referrals once sold, never to paused packs), with referral wording (D-180). D-366 re-sync (2026-11-22): referrals, never credits, in user-facing text."
     },
     {
       "id": "D-166-founder-decisions-sync",
@@ -7574,14 +7575,14 @@
       "lane": "d174-ask",
       "branch": "agent/queue/d174-ask-from-job",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-378",
       "dependsOn": [
         "D-174-job-catalog",
         "D-048-fix-post-copy",
         "D-132-audit",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "D-193 packet section 5.8. The quote and the charge build the job row with one helper, so they price the same fields (D-132). With ASK_LEVEL_COST off every request still costs 1 credit.",
+      "note": "D-193 packet section 5.8. The quote and the charge build the job row with one helper, so they price the same fields (D-132). With ASK_LEVEL_COST off every request still costs 1 credit. D-366 re-sync (2026-11-22): banded quote equals charge (AcceptedAskCost + expectedCost), never D-132 per-level credits.",
       "epic": "D-174",
       "owns": [
         "shared/companyReferralRequest.ts",
@@ -7844,13 +7845,13 @@
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-job-ask",
       "status": "todo",
-      "syncedTo": "D-281",
+      "syncedTo": "D-378",
       "dependsOn": [
         "D-174-ask-from-job",
         "D-174-seeker-journey-build.jobs-list",
         "D-174-seeker-journey-build.composer-neutral"
       ],
-      "note": "Packet section 6.6: money path (quote equals charge, D-193 section 5.8); jobSelection mirrors postSelection after D-174-fix-post-binding; credit rules unchanged.",
+      "note": "Packet section 6.6: money path (quote equals charge, D-193 section 5.8); jobSelection mirrors postSelection after D-174-fix-post-binding; credit rules unchanged. D-366 re-sync (2026-11-22): banded quote equals charge (AcceptedAskCost + expectedCost), never D-132 per-level credits.",
       "epic": "D-174-seeker-journey-build",
       "owns": [
         "client/src/pages/explore/useAskComposer.tsx",
