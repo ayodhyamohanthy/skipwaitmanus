@@ -7321,17 +7321,18 @@
       "lane": "ai",
       "branch": "agent/claude/d094-ai-in-ui",
       "status": "todo",
-      "syncedTo": "D-279",
+      "syncedTo": "D-379",
       "dependsOn": [
         "D-094-ai-in-ui.job-link",
         "D-094-ai-in-ui.status-help",
         "D-094-ai-in-ui.coach"
       ],
-      "note": "D-264 (packet docs/plans/D-094-ai-in-ui.md §14): the D-223 release row of three pieces (job-link, status-help, coach). It flips JOB_LINK_PREFILL_ENABLED and STATUS_HELP_ENABLED only, after QA on the preview, captures at 1280 and 390, a review and the CEO's sign-off; STATUS_HELP_ENABLED also needs the catalogue and localisation acceptance (packet §4.9-4.10). REASONS_COACH_ENABLED is never set here: switching the coach on is the owner question in packet §13, after the §12 enablement gates.",
+      "note": "D-264 (packet docs/plans/D-094-ai-in-ui.md §14): the D-223 release row of three pieces (job-link, status-help, coach). It flips JOB_LINK_PREFILL_ENABLED and STATUS_HELP_ENABLED only, after QA on the preview, captures at 1280 and 390, a review and the CEO's sign-off; STATUS_HELP_ENABLED also needs the catalogue and localisation acceptance (packet §4.9-4.10). REASONS_COACH_ENABLED is never set here: switching the coach on is the owner question in packet §13, after the §12 enablement gates. D-379 (2026-11-22): before release, make the waiting-for-coverage help state the 90-day close (red-first test); no indefinite-wait promise.",
       "epic": "D-094",
       "owns": [
         "client/src/pages/explore/jobLinkPrefill.ts (switch only)",
-        "client/src/components/requests/statusHelp.ts (switch only)"
+        "client/src/components/requests/statusHelp.ts",
+        "client/src/components/requests/statusHelp.test.ts"
       ]
     },
     {
@@ -7477,7 +7478,7 @@
         "D-166-journey-decisions-sync",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs)."
+      "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs). D-379: in the same PR, remove the 90-day sentence from the waiting-for-coverage status help (client/src/components/requests/statusHelp.ts)."
     },
     {
       "id": "D-174-fix-post-binding",
