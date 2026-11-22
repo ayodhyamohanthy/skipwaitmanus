@@ -1,0 +1,26 @@
+preview careers.wipro.com -> wipro.com
+drawer-role-line@1280: line="From the posting: Senior Product Designer at Wipro" sendAriaDisabled=null pageErrors=0
+preview careers.neutrinos.com -> neutrinos.com
+drawer-mismatch-line@1280: line="This posting looks like Neutrinos’, not Wipro’s." sendAriaDisabled=true pageErrors=0
+preview boards.greenhouse.io -> neutrinos.com
+drawer-hosted-mismatch-line@1280: line="This posting looks like Neutrinos’, not Wipro’s." sendAriaDisabled=true pageErrors=0
+preview boards.greenhouse.io -> wipro.com
+ask-hosted-link@1280: line="From the posting: Data Engineer at Wipro" pageErrors=0
+preview careers.acme.example -> acme.example
+send careers.acme.example: 201 queueStatus=?
+preview careers.wipro.com -> wipro.com
+send careers.wipro.com: 201 queueStatus=?
+my-asks-help-open@1280: disclosures=2 opened=#0 aria-expanded=true pageErrors=0
+preview careers.wipro.com -> wipro.com
+drawer-role-line@390: line="From the posting: Senior Product Designer at Wipro" sendAriaDisabled=null pageErrors=0
+preview careers.neutrinos.com -> neutrinos.com
+drawer-mismatch-line@390: line="This posting looks like Neutrinos’, not Wipro’s." sendAriaDisabled=true pageErrors=0
+preview boards.greenhouse.io -> neutrinos.com
+drawer-hosted-mismatch-line@390: line="This posting looks like Neutrinos’, not Wipro’s." sendAriaDisabled=true pageErrors=0
+preview boards.greenhouse.io -> wipro.com
+ask-hosted-link@390: line="From the posting: Data Engineer at Wipro" pageErrors=0
+preview careers.acme.example -> acme.example
+send careers.acme.example: 201 queueStatus=?
+preview careers.wipro.com -> wipro.com
+send careers.wipro.com: 201 queueStatus=?
+my-asks-help-open@390: disclosures=2 opened=#0 aria-expanded=true pageErrors=0
