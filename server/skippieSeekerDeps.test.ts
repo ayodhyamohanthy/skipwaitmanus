@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as deps from "./skippieSeekerDeps";
 import type { fetchPublicJobLink } from "./jobLinkPreview";
 
-vi.mock("./db", () => ({}));
+const quoteDb = vi.hoisted(() => ({ wallet: vi.fn(async () => ({ totalAvailable: 3 })), banded: vi.fn() }));
+vi.mock("./db", () => ({ getTokenWallet: quoteDb.wallet, previewBandedAskCost: quoteDb.banded }));
 vi.mock("./_core/llm", () => ({ invokeLLM: vi.fn() }));
 
 type SafeReader = typeof fetchPublicJobLink;
@@ -11,7 +12,35 @@ const readJob = (deps as unknown as {
 }).fetchJobText;
 const description = "Build reliable public referral tools with clear ownership and good tests. ".repeat(3);
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
+
+describe("Skippy authoritative quote dependency", () => {
+  it("uses the banded quote for the authenticated seeker and normalized link", async () => {
+    vi.stubEnv("BANDED_SALES_ENABLED", "true");
+    const quote = { level: 5, cost: 1, totalAvailable: 2, shortfall: 0, coverageStatus: "covered", acceptedCost: { units: 1, band: "senior", source: [{ bucket: "free", units: 1, cycleKey: "2026-11" }] } };
+    quoteDb.banded.mockResolvedValueOnce(quote);
+    expect(await deps.createSkippieSeekerDeps().getQuote(7, "careers.acme.com/jobs/123")).toEqual(quote);
+    expect(quoteDb.banded).toHaveBeenCalledExactlyOnceWith(7, "https://careers.acme.com/jobs/123");
+    expect(quoteDb.wallet).not.toHaveBeenCalled();
+  });
+
+  it("keeps the legacy quote shape while banded sales are off", async () => {
+    vi.stubEnv("BANDED_SALES_ENABLED", "false");
+    vi.stubEnv("ASK_LEVEL_COST", "false");
+    const quote = await deps.createSkippieSeekerDeps().getQuote(8, "https://careers.acme.com/jobs/123");
+    expect(quote).toMatchObject({ cost: 1, totalAvailable: 3, shortfall: 0 });
+    expect(quote.acceptedCost).toBeUndefined();
+    expect(quoteDb.wallet).toHaveBeenCalledExactlyOnceWith(8, "job_seeker");
+    expect(quoteDb.banded).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to a legacy wallet if the authoritative quote fails", async () => {
+    vi.stubEnv("BANDED_SALES_ENABLED", "true");
+    quoteDb.banded.mockRejectedValueOnce(new Error("quote unavailable"));
+    await expect(deps.createSkippieSeekerDeps().getQuote(7, "https://careers.acme.com/jobs/123")).rejects.toThrow("quote unavailable");
+    expect(quoteDb.wallet).not.toHaveBeenCalled();
+  });
+});
 
 describe("Skippy job text uses the bounded public fetcher", () => {
   it("uses the safe-reader result, strips markup, and never calls global fetch", async () => {
