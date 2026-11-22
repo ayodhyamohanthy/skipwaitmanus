@@ -4,12 +4,16 @@
  * existing free gateway; with no key configured the deterministic rules run
  * instead (D-138). Everything the model or a document returns is data (D-140).
  */
-import { fetchPublicJobLink } from "./jobLinkPreview";
+import { fetchPublicJobLink, previewJobLink } from "./jobLinkPreview";
 import { unzipSync, strFromU8 } from "fflate";
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { buildSimpleDocx } from "../shared/docxSimple";
+import { bandedAskQuoteSchema } from "../shared/acceptedAskCost";
+import { normalizeTargetRoleUrl } from "../shared/referralUrl";
+import { bandedSalesEnabled } from "./billingSettings";
+import { skippieQuoteSchema } from "./skippieSeekerCost";
 import * as db from "./db";
 import { rulesAnalyzeFit, type FitDraft, type OwnedResume, type SkippieQuote, type SkippieSeekerDeps } from "./skippieSeeker";
 
@@ -127,6 +131,7 @@ export function createSkippieSeekerDeps(overrides: {
   const storagePut = overrides.storagePut;
   const storageGetBytes = overrides.storageGetBytes;
   return {
+    previewJob: url => previewJobLink(url, db.resolveEmployerDomainFromTargetUrl),
     fetchJobText,
     extractResumeText: async (attachment: OwnedResume) => {
       if (!storageGetBytes || !attachment.fileKey) return null;
@@ -139,12 +144,12 @@ export function createSkippieSeekerDeps(overrides: {
     },
     analyzeFit,
     getQuote: async (userId: number, targetRoleUrl: string): Promise<SkippieQuote> => {
-      // The same math as GET /api/company-referrals/quote, kept in lockstep.
-      const level = assignJobLevel({ url: targetRoleUrl }).level;
+      const url = normalizeTargetRoleUrl(targetRoleUrl);
+      if (bandedSalesEnabled()) return bandedAskQuoteSchema.parse(await db.previewBandedAskCost(userId, url));
+      const level = assignJobLevel({ url }).level;
       const cost = process.env.ASK_LEVEL_COST === "true" ? creditsForLevel(level) : 1;
-      const summary = (await db.getTokenWallet(userId, "job_seeker")) as { totalAvailable?: unknown };
-      const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : 0;
-      return { level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) };
+      const summary = await db.getTokenWallet(userId, "job_seeker");
+      return skippieQuoteSchema.parse({ level, cost, totalAvailable: summary.totalAvailable, shortfall: Math.max(0, cost - summary.totalAvailable) });
     },
     getOwnedResume: async (userId, attachmentId) => {
       try { return await db.getOwnedResumeAttachmentForPitch(userId, attachmentId); } catch { return undefined; }

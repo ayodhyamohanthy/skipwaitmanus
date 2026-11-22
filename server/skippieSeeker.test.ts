@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import type { AcceptedAskCost } from "../shared/acceptedAskCost";
+import { AskPriceChangedError, CoverageOpenedUpError, ReferralPricingUnavailableError } from "./planGates";
 import {
   SKIPPIE_SEEKER_DAILY_CAP,
   advanceSkippieSeeker,
@@ -34,6 +36,7 @@ const quoteOk: SkippieQuote = { level: 5, cost: 1, totalAvailable: 3, shortfall:
 function makeDeps(overrides: Partial<SkippieSeekerDeps> = {}) {
   const calls = { createAsk: [] as unknown[][], analyzeFit: 0, extractResumeText: 0, fetchJobText: 0 };
   const deps: SkippieSeekerDeps = {
+    previewJob: vi.fn(async url => ({ canonicalUrl: url, status: "fresh", employerConfidence: "direct-domain", companyDomain: "acme.com", reason: "Company identified from the job link.", recoveryAction: "Continue to your resume." })),
     fetchJobText: vi.fn(async () => { calls.fetchJobText++; return JOB; }),
     extractResumeText: vi.fn(async () => { calls.extractResumeText++; return RESUME; }),
     analyzeFit: vi.fn(async (input: { resumeText: string; jobText: string }) => { calls.analyzeFit++; return rulesAnalyzeFit(input); }),
@@ -106,13 +109,53 @@ describe("seeker Skippy happy path", () => {
   });
 });
 
+describe("employer validation at link entry", () => {
+  it("keeps an unresolved link at job_link before reading job or resume text", async () => {
+    const previewJob = vi.fn<SkippieSeekerDeps["previewJob"]>().mockResolvedValue({
+      canonicalUrl: "https://jobs.example.test/opening",
+      status: "fresh",
+      employerConfidence: "ambiguous",
+      reason: "We could not safely identify one company from this hosted job link.",
+      recoveryAction: "Confirm the company domain before continuing.",
+    });
+    const { deps, calls } = makeDeps({ previewJob });
+    const out = await advanceSkippieSeeker(7, newSkippieSession(), { kind: "text", text: "https://jobs.example.test/opening" }, deps);
+    expect(previewJob).toHaveBeenCalledExactlyOnceWith("https://jobs.example.test/opening");
+    expect(out.session.step).toBe("job_link");
+    expect(out.session.companyDomain).toBeUndefined();
+    expect(out.replies.join(" ")).toContain("We could not safely identify one company");
+    expect(out.replies.join(" ")).toContain("Confirm the company domain before continuing.");
+    expect(out.replies.join(" ")).toContain("company's own careers site");
+    expect(calls.fetchJobText).toBe(0);
+    expect(calls.extractResumeText).toBe(0);
+    expect(calls.createAsk).toHaveLength(0);
+  });
+
+  it("stores the identified company before moving to the resume", async () => {
+    const { deps } = makeDeps();
+    const out = await advanceSkippieSeeker(7, newSkippieSession(), { kind: "text", text: "careers.acme.com/jobs/123" }, deps);
+    expect(deps.previewJob).toHaveBeenCalledExactlyOnceWith("https://careers.acme.com/jobs/123");
+    expect(out.session.step).toBe("resume");
+    expect(out.session.companyDomain).toBe("acme.com");
+    expect(out.session.targetRoleUrl).toBe("https://careers.acme.com/jobs/123");
+  });
+
+  it("does not read job text after an unavailable employer preview", async () => {
+    const previewJob = vi.fn<SkippieSeekerDeps["previewJob"]>().mockRejectedValue(new Error("preview unavailable"));
+    const { deps, calls } = makeDeps({ previewJob });
+    await expect(advanceSkippieSeeker(7, newSkippieSession(), { kind: "text", text: "https://careers.acme.com/jobs/123" }, deps)).rejects.toThrow("preview unavailable");
+    expect(calls.fetchJobText).toBe(0);
+    expect(calls.createAsk).toHaveLength(0);
+  });
+});
+
 describe("cost and credit rules", () => {
   it("quotes the live price and refuses drift: cost comes from getQuote, never hardcoded", async () => {
     const levelQuote: SkippieQuote = { level: 7, cost: 7, totalAvailable: 10, shortfall: 0 };
     const getQuote = vi.fn(async () => levelQuote);
     const { deps, calls } = makeDeps({ getQuote });
     const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
-    expect(replies.join("\n")).toContain("costs 7 credits");
+    expect(replies.join("\n")).toContain("uses 7 referrals");
     expect(calls.createAsk).toHaveLength(1);
     expect(session.quote?.cost).toBe(7);
   });
@@ -137,6 +180,110 @@ describe("cost and credit rules", () => {
     expect(blob).toContain("cost you nothing");
     expect(blob).toContain("held");
     expect(blob).not.toContain("One credit was used");
+  });
+});
+
+const includedCost: AcceptedAskCost = { units: 1, band: "senior", source: [{ bucket: "included", units: 1, cycleKey: "included-cycle-a" }] };
+const purchasedCost: AcceptedAskCost = { units: 1, band: "senior", source: [{ bucket: "purchased", units: 1, cycleKey: null }] };
+const emptyCost: AcceptedAskCost = { units: 0, band: "senior", source: [] };
+const bandedQuote = (acceptedCost: AcceptedAskCost = includedCost): SkippieQuote => ({ level: 5, cost: 1, totalAvailable: 3, shortfall: 0, coverageStatus: "covered", acceptedCost });
+
+describe("banded referral confirmation", () => {
+  it("requires confirmation again when the source changes at the same cost", async () => {
+    const fresh = bandedQuote(purchasedCost);
+    const getQuote = vi.fn<SkippieSeekerDeps["getQuote"]>().mockResolvedValueOnce(bandedQuote()).mockResolvedValue(fresh);
+    const { deps, calls } = makeDeps({ getQuote });
+    const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(calls.createAsk).toHaveLength(0);
+    expect(session.step).toBe("quote");
+    expect(session.quote).toEqual(fresh);
+    expect(replies.join(" ")).toContain("confirm again");
+    expect(replies.join(" ")).toContain("purchased");
+    expect(replies.join(" ")).not.toMatch(/\bcredits?\b/i);
+  });
+
+  it("binds the allocation cycle and displayed job level as well as the count", async () => {
+    for (const fresh of [bandedQuote({ ...includedCost, source: [{ bucket: "included", units: 1, cycleKey: "included-cycle-b" }] }), { ...bandedQuote(), level: 6 }]) {
+      const getQuote = vi.fn<SkippieSeekerDeps["getQuote"]>().mockResolvedValueOnce(bandedQuote()).mockResolvedValue(fresh);
+      const { deps, calls } = makeDeps({ getQuote });
+      const { session } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+      expect(calls.createAsk).toHaveLength(0);
+      expect(session.step).toBe("quote");
+      expect(session.quote).toEqual(fresh);
+    }
+  });
+
+  it("passes the confirmed allocation unchanged to create and uses the actual charged source", async () => {
+    const createAsk = vi.fn<SkippieSeekerDeps["createAsk"]>().mockResolvedValue({ requestId: 501, companyDomain: "acme.com", coverageStatus: "covered", notifiedEmployees: 2, chargedCost: purchasedCost });
+    const { deps } = makeDeps({ getQuote: vi.fn(async () => bandedQuote()), createAsk });
+    const { session, replies } = await drive(7, newSkippieSession(() => "confirmed-key"), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(createAsk).toHaveBeenCalledExactlyOnceWith(7, expect.objectContaining({ expectedCost: includedCost, idempotencyKey: "confirmed-key" }));
+    expect(session.step).toBe("done");
+    expect(replies.join(" ")).toContain("1 Senior referral");
+    expect(replies.at(-1)).toContain("purchased");
+    expect(replies.at(-1)).not.toContain("included");
+    expect(replies.join(" ")).not.toMatch(/\bcredits?\b/i);
+  });
+
+  it("re-quotes a transaction mismatch and sends only after another confirmation with the same key", async () => {
+    const fresh = bandedQuote(purchasedCost);
+    const getQuote = vi.fn<SkippieSeekerDeps["getQuote"]>().mockResolvedValueOnce(bandedQuote()).mockResolvedValueOnce(bandedQuote()).mockResolvedValue(fresh);
+    const createAsk = vi.fn<SkippieSeekerDeps["createAsk"]>().mockRejectedValueOnce(new AskPriceChangedError(purchasedCost)).mockResolvedValue({ requestId: 501, companyDomain: "acme.com", coverageStatus: "covered", notifiedEmployees: 1, chargedCost: purchasedCost });
+    const { deps } = makeDeps({ getQuote, createAsk });
+    const first = await drive(7, newSkippieSession(() => "retry-key"), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(first.session.step).toBe("quote");
+    expect(first.session.quote).toEqual(fresh);
+    expect(first.session.createdRequestId).toBeUndefined();
+    expect(first.replies.at(-2)).toContain("Nothing was sent or charged");
+    expect(first.replies.join(" ")).toContain("confirm again");
+    const second = await advanceSkippieSeeker(7, first.session, { kind: "confirm_send", send: true }, deps);
+    expect(second.session.step).toBe("done");
+    expect(createAsk.mock.calls.map(([, input]) => input.idempotencyKey)).toEqual(["retry-key", "retry-key"]);
+    expect(createAsk.mock.calls[1][1].expectedCost).toEqual(purchasedCost);
+  });
+
+  it("does not send an unfunded covered quote even when the allocation is zero", async () => {
+    const unfunded: SkippieQuote = { ...bandedQuote(emptyCost), totalAvailable: 0, shortfall: 1 };
+    const { deps, calls } = makeDeps({ getQuote: vi.fn(async () => unfunded) });
+    const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(calls.createAsk).toHaveLength(0);
+    expect(session.step).toBe("quote");
+    expect(replies.join(" ")).toContain("Nothing was sent");
+  });
+
+  it("passes the waiting expectation and records no charge for an uncovered company", async () => {
+    const waiting: SkippieQuote = { ...bandedQuote(emptyCost), cost: 0, totalAvailable: 0, coverageStatus: "waiting_for_company_coverage" };
+    const createAsk = vi.fn<SkippieSeekerDeps["createAsk"]>().mockResolvedValue({ requestId: 777, companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", notifiedEmployees: 0 });
+    const { deps } = makeDeps({ getQuote: vi.fn(async () => waiting), createAsk });
+    const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(createAsk).toHaveBeenCalledExactlyOnceWith(7, expect.objectContaining({ expectedCost: emptyCost, expectedCoverage: "waiting_for_company_coverage" }));
+    expect(session.step).toBe("done");
+    expect(replies.at(-1)).toContain("Nothing was used");
+    expect(replies.at(-1)).not.toMatch(/\bcredits?\b/i);
+  });
+
+  it("re-quotes when coverage opens inside creation before allowing a second confirmation", async () => {
+    const waiting: SkippieQuote = { ...bandedQuote(emptyCost), cost: 0, totalAvailable: 0, coverageStatus: "waiting_for_company_coverage" };
+    const getQuote = vi.fn<SkippieSeekerDeps["getQuote"]>().mockResolvedValueOnce(waiting).mockResolvedValueOnce(waiting).mockResolvedValue(bandedQuote());
+    const createAsk = vi.fn<SkippieSeekerDeps["createAsk"]>().mockRejectedValue(new CoverageOpenedUpError("acme.com"));
+    const { deps } = makeDeps({ getQuote, createAsk });
+    const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(session.step).toBe("quote");
+    expect(session.quote).toEqual(bandedQuote());
+    expect(session.createdRequestId).toBeUndefined();
+    expect(replies.join(" ")).toContain("confirm again");
+    expect(replies.join(" ")).not.toContain("cost in credits");
+  });
+
+  it("never falls back to legacy create after banded pricing becomes unavailable", async () => {
+    const createAsk = vi.fn<SkippieSeekerDeps["createAsk"]>().mockRejectedValue(new ReferralPricingUnavailableError());
+    const { deps } = makeDeps({ getQuote: vi.fn(async () => bandedQuote()), createAsk });
+    const { session, replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
+    expect(createAsk).toHaveBeenCalledTimes(1);
+    expect(createAsk.mock.calls[0][1].expectedCost).toEqual(includedCost);
+    expect(session.step).toBe("quote");
+    expect(session.createdRequestId).toBeUndefined();
+    expect(replies.join(" ")).toContain("unavailable");
   });
 });
 
@@ -364,7 +511,7 @@ describe("flow guards", () => {
     const { deps } = makeDeps();
     const { replies } = await drive(7, newSkippieSession(), [...toFit, { kind: "submit_note", text: NOTE }, { kind: "confirm_send", send: true }], deps);
     const blob = replies.join("\n");
-    expect(blob).toContain("Asked");
+    expect(blob).toContain("Requested");
     expect(blob).not.toMatch(/you('re| are) referred|will refer you|guaranteed/i);
   });
   it("rules analysis never invents a note when nothing matches", () => {

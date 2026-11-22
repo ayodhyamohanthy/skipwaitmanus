@@ -5,6 +5,8 @@
  */
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
+import { parseSkippieAllowedIds } from "./skippieAllowList";
+import { captureServerError } from "./sentry";
 import {
   SKIPPIE_SEEKER_DAILY_CAP,
   SKIPPIE_SEEKER_GLOBAL_DAILY_CAP,
@@ -118,19 +120,21 @@ export function registerSkippieSeekerRoutes(app: Express, deps: SkippieSeekerRou
       sessions.set(userId, out.session);
       if (sessions.size > 1000) sessions.clear(); // sessions are disposable; a cleared one just restarts
       deps.recordActivity({ actorUserId: userId, action: "skippie_seeker.turn", outcome: "success", resourceType: "skippie", metadata: { kind: turn.kind, step: out.session.step } });
-      if (out.session.createdRequestId && out.session.createdRequestId !== before.createdRequestId) {
+      if (out.session.createdRequestId && out.session.createdRequestId !== before.createdRequestId && !out.session.replayed) {
+        deps.recordActivity({ actorUserId: userId, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: out.session.createdRequestId, companyDomain: out.session.companyDomain, metadata: { attachmentCount: 1, pinnedWorkCount: 0, notifiedEmployees: out.session.notifiedEmployees, creditReserved: out.session.coverageStatus !== "waiting_for_company_coverage", coverageStatus: out.session.coverageStatus ?? "covered", fastTrack: false, fromPost: false, firstLook: false, jobFunctionChosen: false, via: "skippy" } });
         deps.recordActivity({ actorUserId: userId, action: "skippie_seeker.ask_created", outcome: "success", resourceType: "referral_request", resourceId: out.session.createdRequestId, companyDomain: out.session.companyDomain, metadata: { coverageStatus: out.session.coverageStatus ?? "covered", via: "skippy", noteSha256: out.session.noteSha256 } });
         deps.afterCreate?.(req, userId, { requestId: out.session.createdRequestId, companyDomain: out.session.companyDomain ?? "", replayed: out.session.replayed });
       }
       res.json({ replies: out.replies, session: publicSession(out.session) });
     } catch (error) {
+      captureServerError(error, { area: "skippie_seeker_turn", kind: turn.kind });
       deps.recordActivity({ actorUserId: userId, action: "skippie_seeker.turn", outcome: "failure", resourceType: "skippie", metadata: { kind: turn.kind } });
-      res.status(500).json({ error: "Skippy hit a snag. Nothing was sent or charged - try again." });
+      res.status(500).json({ error: "Skippy could not confirm the result. Check My requests and your referral balance before retrying this request." });
     }
   });
 }
 
 /** Env parsing kept in one place for the wiring in _core/index.ts. */
 export function skippieSeekerAllowedIds(env: NodeJS.ProcessEnv = process.env): ReadonlySet<number> {
-  return new Set((env.SKIPPIE_SEEKER_USER_IDS ?? "").split(",").map(v => Number(v.trim())).filter(v => Number.isInteger(v) && v > 0));
+  return parseSkippieAllowedIds(env.SKIPPIE_SEEKER_USER_IDS);
 }

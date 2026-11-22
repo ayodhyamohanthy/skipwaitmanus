@@ -68,6 +68,7 @@ export type SeekerAgentStore = {
 
 export type SeekerAgentRouteDeps = {
   enabled: () => boolean;
+  allowedUserIds: () => ReadonlySet<number>;
   resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
   store: SeekerAgentStore;
   /** Live company directory (public view only). */
@@ -133,6 +134,7 @@ async function authenticateAgent(req: Request, deps: SeekerAgentRouteDeps, nowMs
   if (!AGENT_KEY_PATTERN.test(key)) return { ok: false, status: 401, error: AGENT_ERROR.badKey };
   const grant = await deps.store.findGrantByKeyHash(hashKey(key));
   if (!grant) return { ok: false, status: 401, error: AGENT_ERROR.badKey };
+  if (!deps.allowedUserIds().has(grant.userId)) return { ok: false, status: 404, error: "Not found" };
   if (grant.revokedAt) return { ok: false, status: 401, error: AGENT_ERROR.revoked, grant };
   if (grant.expiresAt.getTime() <= nowMs) return { ok: false, status: 401, error: AGENT_ERROR.expired, grant };
   if (await deps.store.isPaused(grant.userId)) return { ok: false, status: 403, error: AGENT_ERROR.paused, grant };
@@ -253,6 +255,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
   const seekerGuard = async (req: Request, res: Response): Promise<number | undefined> => {
     const identity = await deps.resolveIdentity(req);
     if (!identity) { noStore(res).status(401).json({ error: "Sign in to continue" }); return undefined; }
+    if (!deps.allowedUserIds().has(identity.account.id)) { noStore(res).status(404).json({ error: "Not found" }); return undefined; }
     return identity.account.id;
   };
 

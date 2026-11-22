@@ -12,6 +12,11 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "../shared/referralUrl";
+import type { JobLinkPreview } from "./jobLinkPreview";
+import { acceptedAskCostSchema, type AcceptedAskCost } from "../shared/acceptedAskCost";
+import { AskPriceChangedError, CoverageOpenedUpError, ReferralPricingUnavailableError } from "./planGates";
+import { chargedReferralLine, quoteLine, sameSkippieQuote, skippieQuoteSchema, type SkippieQuote } from "./skippieSeekerCost";
+export type { SkippieQuote } from "./skippieSeekerCost";
 
 export const SKIPPIE_SEEKER_DAILY_CAP = 20;
 export const SKIPPIE_SEEKER_GLOBAL_DAILY_CAP = 500;
@@ -20,7 +25,6 @@ export const SKIPPIE_JOB_TEXT_MAX = 20000;
 export const SKIPPIE_RESUME_TEXT_MAX = 40000;
 export const SKIPPIE_NOTE_MAX = 1400;
 
-export type SkippieQuote = { level: number; cost: number; totalAvailable: number; shortfall: number };
 export type OwnedResume = { id: number; fileName: string; fileKey?: string; mimeType?: string };
 export type ResumeFact = { id: string; text: string; source: string };
 export type FitDraft = {
@@ -31,11 +35,12 @@ export type FitDraft = {
   suggestedNote: string;
   noteFactIds: string[];
 };
-export type CreateAskInput = { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string };
-export type CreateAskResult = { requestId: number; companyDomain: string; coverageStatus?: "covered" | "waiting_for_company_coverage"; replayed?: boolean };
+export type CreateAskInput = { targetRoleUrl: string; attachmentIds: number[]; personalPitch: string; idempotencyKey: string; expectedCost?: AcceptedAskCost; expectedCoverage?: "waiting_for_company_coverage" };
+export type CreateAskResult = { requestId: number; companyDomain: string; coverageStatus?: "covered" | "waiting_for_company_coverage"; replayed?: boolean; chargedCost?: AcceptedAskCost; notifiedEmployees?: number };
 
 export type SkippieSeekerDeps = {
   now?: () => number;
+  previewJob: (url: string) => Promise<JobLinkPreview>;
   /** Read the job page text; null when the page cannot be fetched. */
   fetchJobText: (url: string) => Promise<string | null>;
   /** Read the seeker's own resume as text; null when the format cannot be read. */
@@ -99,6 +104,7 @@ export type SkippieSession = {
   companyDomain?: string;
   coverageStatus?: "covered" | "waiting_for_company_coverage";
   replayed?: boolean;
+  notifiedEmployees?: number;
 };
 
 export function newSkippieSession(rand: () => string = () => randomBytes(24).toString("base64url")): SkippieSession {
@@ -202,12 +208,6 @@ function sha256(text: string): string {
 
 type Out = { session: SkippieSession; replies: string[] };
 
-function quoteLine(quote: SkippieQuote): string {
-  return quote.shortfall > 0
-    ? `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Add ${quote.shortfall} more on /plans first - Skippy never takes a payment.`
-    : `This ask costs ${quote.cost} credit${quote.cost === 1 ? "" : "s"}. You have ${quote.totalAvailable}. Send it?`;
-}
-
 function fitReplies(session: SkippieSession): string[] {
   const replies: string[] = [];
   const reqs = session.requirements ?? [];
@@ -233,7 +233,7 @@ async function runFitAnalysis(userId: number, session: SkippieSession, deps: Ski
 }
 
 async function quoteStep(userId: number, session: SkippieSession, deps: SkippieSeekerDeps): Promise<SkippieSession> {
-  const quote = await deps.getQuote(userId, session.targetRoleUrl!);
+  const quote = skippieQuoteSchema.parse(await deps.getQuote(userId, session.targetRoleUrl!));
   return { ...session, step: "quote", quote };
 }
 
@@ -248,8 +248,12 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
       if (input.kind !== "text") return say("Paste the link to the job you want a referral for.");
       const raw = input.text.trim().slice(0, 2048);
       if (!isValidTargetRoleUrl(raw)) return say(TARGET_ROLE_URL_ERROR);
-      session.targetRoleUrl = normalizeTargetRoleUrl(raw);
+      const targetRoleUrl = normalizeTargetRoleUrl(raw);
+      const preview = await deps.previewJob(targetRoleUrl);
+      if (!preview.companyDomain) return say(preview.reason, preview.recoveryAction, "Paste the job link from the company's own careers site.");
+      session.targetRoleUrl = targetRoleUrl;
       session.submittedUrl = raw;
+      session.companyDomain = preview.companyDomain;
       const pageText = (await deps.fetchJobText(session.targetRoleUrl).catch(() => null))?.slice(0, SKIPPIE_JOB_TEXT_MAX);
       if (pageText && pageText.trim().length >= 80) {
         session.jobText = pageText;
@@ -388,28 +392,41 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
         session.step = "fit";
         return say("No problem - nothing was sent and nothing was spent. You can keep editing your note.");
       }
-      if (input.kind !== "confirm_send") return say(session.quote?.shortfall ? "Add credits on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your ask, or "not yet" to keep editing.');
+      if (input.kind !== "confirm_send") return say(session.quote?.shortfall ? "Add referrals on /plans first - Skippy never takes a payment." : 'Say "Send it" to send your referral request, or "not yet" to keep editing.');
       if (!session.note) return say("Write your note to the referrer first - the final words are yours.");
       if (!session.noteSha256 || session.noteSha256 !== sha256(session.note)) return say("Your note changed since you confirmed it. Confirm the final words again before sending.");
-      // Price is live, never hardcoded: quote again at send time and refuse drift.
-      const fresh = await deps.getQuote(userId, session.targetRoleUrl!);
+      // Keep the confirmed allocation until the fresh quote has been compared.
+      const confirmed = session.quote;
+      const fresh = skippieQuoteSchema.parse(await deps.getQuote(userId, session.targetRoleUrl!));
       session.quote = fresh;
-      if (fresh.shortfall > 0) return say(`This ask costs ${fresh.cost} credit${fresh.cost === 1 ? "" : "s"} and you have ${fresh.totalAvailable}. Nothing was sent and nothing was charged. Add credits on /plans first.`);
+      if (fresh.shortfall > 0) return say("Nothing was sent and nothing was charged.", quoteLine(fresh));
+      if (!sameSkippieQuote(confirmed, fresh)) return say("Your referral cost or allowance changed. Nothing was sent or charged. Review it and confirm again.", quoteLine(fresh));
       let result: CreateAskResult;
       try {
-        result = await deps.createAsk(userId, { targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey });
+        result = await deps.createAsk(userId, {
+          targetRoleUrl: session.targetRoleUrl!, attachmentIds: [session.attachmentId!], personalPitch: session.note, idempotencyKey: session.idempotencyKey,
+          ...(confirmed?.acceptedCost ? { expectedCost: confirmed.acceptedCost } : {}),
+          ...(confirmed?.coverageStatus === "waiting_for_company_coverage" ? { expectedCoverage: "waiting_for_company_coverage" as const } : {}),
+        });
       } catch (error) {
-        return say(`The ask could not be sent: ${error instanceof Error ? error.message : "please try again"}. Nothing was charged.`);
+        if (error instanceof AskPriceChangedError || error instanceof CoverageOpenedUpError) {
+          session.quote = skippieQuoteSchema.parse(await deps.getQuote(userId, session.targetRoleUrl!));
+          return say("Your referral cost or availability changed. Nothing was sent or charged. Review it and confirm again.", quoteLine(session.quote));
+        }
+        if (error instanceof ReferralPricingUnavailableError) return say(error.message);
+        throw error;
       }
       session.createdRequestId = result.requestId;
       session.companyDomain = result.companyDomain;
       session.coverageStatus = result.coverageStatus ?? "covered";
       session.replayed = Boolean(result.replayed);
+      session.notifiedEmployees = result.notifiedEmployees;
       session.step = "done";
       if (session.coverageStatus === "waiting_for_company_coverage") {
-        return say(`Your ask is saved for ${result.companyDomain}. No employee there is open on skipwait.me yet, so it cost you nothing: it's held (never shown, never charged) until a verified employee can see it - your credit is only used at that moment. We'll tell you when that happens. Track it under My asks.`);
+        return say(`Your referral request is saved for ${result.companyDomain}. No referrers yet. It cost you nothing: it's held until a verified employee can see it. Nothing was used now; one referral is used when it reaches them. We'll tell you when that happens. Track it under My requests.`);
       }
-      return say(`Asked - your request is with verified employees at ${result.companyDomain}. One credit was used, exactly the cost you confirmed. If nobody picks it up you can withdraw it for the credit back. Track it under My asks.`);
+      const chargedCost = result.chargedCost ? acceptedAskCostSchema.parse(result.chargedCost) : undefined;
+      return say(`Requested - your request is with verified employees at ${result.companyDomain}. ${chargedReferralLine(chargedCost)} If nobody picks it up you can withdraw it; any return follows your referral allowance. Track it under My requests.`);
     }
 
     case "done": {
