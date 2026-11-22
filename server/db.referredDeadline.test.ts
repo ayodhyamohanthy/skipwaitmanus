@@ -33,12 +33,17 @@ const acceptedAsk = (over: { referrerId?: number | null; status?: string } = {})
 });
 
 beforeEach(() => {
+  // The routes read the real clock, and the fixture's dates are fixed (REFERRAL_TIMERS_SINCE). Without a pinned clock
+  // the "while accepted" scenario aged out of the 30-day document window (DOCUMENT_GRANT_TTL_MS) on 2026-11-22T01:00Z
+  // and every CI run went red. Pin "now" one day after acceptance: inside the 5-day deadline and the document window.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(ACCEPTED_AT + DAY_MS);
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(store.db);
   resetStore(acceptedAsk());
 });
-afterEach(() => { vi.unstubAllEnvs(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 const getDocument = (server: express.Express, user: number) => request(server).get(`/api/documents/${RESUME_ID}`).set("x-test-user", String(user));
 const getDetail = (server: express.Express, user: number) => request(server).get(`/api/company-referrals/${REQUEST_ID}`).set("x-test-user", String(user));

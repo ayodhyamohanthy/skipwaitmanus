@@ -35,4 +35,12 @@ Green required CI on the pull request, landed, the Web deploy green. Then the ne
 
 ## Status
 
-- REL-plans-signed-out-token: todo — registered 2026-11-21 by Claude Code; nothing built yet.
+- REL-plans-signed-out-token: done — implementation by Claude Code · a71e in [PR #1450](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1450), merged as `7076b65b5478c6532f05b855b363b54bcbc4d6c7` on 2026-11-21. Red first: the new signed-out test failed because the offer read sent an `Authorization` header (`expected true to be false`); the signed-in control passed. Plans components 12 files / 133 tests and plans pages 7 files / 71 tests passed; `tsc --noEmit` and the design-token audit were clean. [Exact-head PR CI](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44929805413), [main CI](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44930122007), [Web deploy](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44930122059) and [live release verification](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44930649777) all passed.
+
+### Acceptance receipt — GPT-6.1 Sol · 80ec, 2026-11-21
+
+- Read current main `7076b65b5478c6532f05b855b363b54bcbc4d6c7`, `AGENTS.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, the build gates, this packet and decisions through D-374. The unfinished goal was a clean signed-out plans visit, restoring release verification without changing sign-in or checkout behavior.
+- The official claim `bf4ec5592` completed after another session had shipped the repair. Merged current main into that claim branch and preserved the implementation. This follow-up changes only this packet and the task's completion record in `docs/plans/assignments.json`.
+- Inspected the actual verification log: `PASS page /plans loads clean — 35 responses`; `RELEASE VERIFIED: web 7076b65b, API 95f681f7`. The API SHA is its expected unchanged release, not an API deployment of this client-only repair. Readiness and every other smoke check passed.
+- The same run closed incidents #1430, #1436, #1439 and #1446; the subsequent open-incident read returned an empty list. No payment, provider setting, credential or sales switch changed.
+- Local pre-change control: all 35 existing `bandedSales.test.tsx` tests passed with `--maxWorkers=1 --pool=threads`. The initial fork run timed out before any tests started. A separate local browser observation also timed out; it supplies no additional browser evidence. Release acceptance comes from the inspected Actions smoke run above.

@@ -595,6 +595,8 @@ const stageMarkers = (info, id) => (info?.markers ?? []).filter(m => m.verb !== 
 const lastBy = (markers, verbs) => [...markers].reverse().find(m => verbs.includes(m.verb)) ?? null;
 const everyone = (markers, verbs) => [...new Set(markers.filter(m => verbs.includes(m.verb)).map(m => m.who))];
 const holderOf = (info, id) => (info ? lastBy(stageMarkers(info, id), ["Claim", "Takeover"])?.who ?? null : null);
+/** D-378: every session that took this task's unblock lock; their report clears an evidence-backed block. */
+const unblockersOf = (arch, id) => everyone(stageMarkers(arch, id), ["Unblock"]);
 
 function latestFindings(lock, id) {
   const marker = stageMarkers(lock, id).at(-1);
@@ -660,8 +662,10 @@ const reportsByTask = reports => {
  * that neither raised a block still open on the task nor holds the task, so nobody rules on their own
  * question or their own work. A standing block carries `blockers` (every session whose block is still open)
  * and `newer`: the reports after it that did not clear it, oldest first, for the board and the unblock step (D-162).
+ * A block that carries D-346 evidence ignores an unrelated session's report, but `unblockers` (the sessions that
+ * took the task's unblock lock) clear it with the report the UNBLOCK hand-out tells them to send (D-378).
  */
-const standingReport = (reports, holder) => {
+const standingReport = (reports, holder, unblockers = []) => {
   let latest = null, block = null, blockers = [], newer = [];
   for (let i = reports.length - 1; i >= 0; i--) {
     const r = reports[i];
@@ -671,7 +675,7 @@ const standingReport = (reports, holder) => {
       if (!blockers.includes(r.who)) blockers.push(r.who);
       continue;
     }
-    if (block?.evidence && r.status !== "green" && r.status !== "landed") {
+    if (block?.evidence && r.status !== "green" && r.status !== "landed" && !unblockers.includes(r.who)) {
       newer.push(r);
       continue;
     }
@@ -763,7 +767,7 @@ function blockHasNewEvidence(report, evidence, now) {
 export function blockedReportError(input) {
   const { task, reports = [], branches, now } = input;
   const owner = holderOf(branches.get(workBranchOf(task, branches) ?? task.branch), task.id);
-  const report = standingReport(reports.filter(row => row.id === task.id), owner);
+  const report = standingReport(reports.filter(row => row.id === task.id), owner, unblockersOf(branches.get(architectLockOf(task)), task.id));
   if (report?.status !== "blocked" || blockHasNewEvidence(report, blockEvidenceFor(input), now)) return null;
   return `already reported; nothing changed since ${new Date(report.at).toISOString()}`;
 }
@@ -795,7 +799,8 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       && (!info || (work === task.branch && info.markerOnly === true && info.markers.every(m => m.id === id)));
     const landed = landedBefore || continuity;
     const owner = holderOf(info, id);
-    let said = standingReport(byTask.get(id) ?? [], owner);
+    const unblockers = unblockersOf(arch, id);
+    let said = standingReport(byTask.get(id) ?? [], owner, unblockers);
     // A red report older than a green CI run on the pull request no longer holds anything.
     if (said?.status === "red" && pr && ci.state === "green" && ci.at && ci.at > said.at) said = null;
     const lockMarkers = stageMarkers(lock, id);
@@ -808,7 +813,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
     const gateClear = factsOnTip && facts.gateClear === true;
     return {
       task, at, work, info, lockName, lock, archName, arch: arch && !arch.merged ? arch : null,
-      slug: slugOf(task.branch), owner, pr, ci: ci.state, said, blockWaitingForEvidence,
+      slug: slugOf(task.branch), owner, pr, ci: ci.state, said, blockWaitingForEvidence, unblockers,
       ciSha: ci.sha ?? null, ciRunId: ci.runId ?? null, tipSha: info?.tipSha ?? null,
       builders: everyone(stageMarkers(info, id), ["Claim", "Takeover"]),
       reviewers: everyone(lockMarkers, ["Review claim"]), fixers: everyone(lockMarkers, ["Fix claim", "Fixed"]),
@@ -1521,7 +1526,7 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFact
       ...(pr && state !== "done" ? { behindMain: Number.isSafeInteger(behind) && behind >= 0 ? behind : null } : {}),
       holder: archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null,
       quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
-      pr, review, report: state === "done" ? null : standingReport(byTask.get(task.id) ?? [], v.owner),
+      pr, review, report: state === "done" ? null : standingReport(byTask.get(task.id) ?? [], v.owner, v.unblockers),
       // Who holds the current review stage (reviewer, fixer or lander) or the unblock: a restarted session reads its name here.
       stage: review ? v.stageHolder : v.open && v.unblocker ? v.unblocker : null,
     };
@@ -1559,8 +1564,8 @@ export function releaseLandingHold(release) {
   return red.length ? { sha: release.sha, lights: red.map(l => l.number), incidents: release.incidents ?? [] } : null;
 }
 
-// Only an explicit association in the authoritative main registry grants repair priority.
-function releaseFixTasks(tasks, hold) {
+// Only an explicit association in the authoritative main registry grants repair priority (auto-land reads it too, D-376).
+export function releaseFixTasks(tasks, hold) {
   if (!hold) return [];
   return tasks.filter(task => {
     const note = String(task.note ?? "");
