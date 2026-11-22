@@ -221,7 +221,7 @@
       "tier": 2,
       "lane": "picker-auto-land",
       "branch": "agent/queue/picker-auto-land-cloud",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-376",
       "dependsOn": [],
       "owns": [
@@ -230,7 +230,7 @@
         "scripts/autoLand.test.ts",
         "docs/plans/PICKER-auto-land.md"
       ],
-      "note": "D-373 (4). Build docs/plans/PICKER-auto-land.md section 7. Lands on green required CI (D-370). D-376: also release-aware: while the live release is red, auto-land touches only a registered release fix (packet section 7).",
+      "note": "D-373 (4). Build docs/plans/PICKER-auto-land.md section 7. Lands on green required CI (D-370). D-376: also release-aware: while the live release is red, auto-land touches only a registered release fix (packet section 7). Done: landed through #1455; live cloud --auto-land marked #1378 ready and turned auto-merge on over the REST routes (packet Status).",
       "epic": "D-212"
     },
     {
