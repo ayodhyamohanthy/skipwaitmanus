@@ -47,7 +47,8 @@ export type StatusHelpSource = {
 export const STATUS_HELP: Readonly<Record<StatusHelpKey, StatusHelp>> = {
   "waiting:waiting_for_coverage": {
     title: "Waiting for a verified employee",
-    body: "No verified employee at this company can see it yet. It stays private until one joins; then the oldest waiting requests reach them first.",
+    // D-379: the legacy 90-day close still runs (D-363 (4)); D-174-expiry-clock-removal removes the last sentence.
+    body: "No verified employee at this company can see it yet. It stays private while it waits; when one joins, the oldest waiting requests reach them first. If none joins within 90 days, it closes, and you can send it again while you are under your limit.",
   },
   "waiting:available_for_review": {
     title: "With the company's verified employees",
