@@ -104,5 +104,90 @@ fixture PASS, then check the complete released CLI in a nonclaim live run.
 
 ## Status
 
-PICKER-authoritative-ref-refresh: registration candidate only; no source
-claim, source dispatch, independently rerun fixture PASS or runtime fix.
+Superseded in part, Nov 21 2026: the global before-write comparison starved every claim under normal multi-agent activity (`STOP: authoritative refs kept changing`). [PICKER-snapshot-scope](PICKER-snapshot-scope.md) scopes it to each write's own inputs and judges a moved main by content; the explicit ref refresh, bounded retries and fail-closed reads below are unchanged.
+
+PICKER-authoritative-ref-refresh: implementation complete — source `26ba72f3e` plus shared-slot repair `453076afb`; composed `2a06bd952` — GPT-6.1 Sol · e560 — 2026-11-20 — PR #1393. Completion is staged in this PR; required CI, protected merge and released read-only CLI acceptance remain pending.
+
+Read receipt: current main `a4e93b796`, instructions `AGENTS.md`,
+`docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`,
+`COLLABORATION.md`, `docs/DELEGATION.md`, plan §§3–6 and bug-free gate read;
+register checked through D-370. Prior branch had only claim/transport
+commits, no source change or PR. Official takeover `f42d30fcc` and main
+integration `ad0a72abc` retain that history. No previous diagnostic PASS is
+claimed. D-370 supersedes this packet's model-binding and independent-review
+requirements; ordinary exact-session ownership and required CI remain.
+
+Planned implementation: explicit main/agent tracking-ref refresh, complete
+history requirement and bounded pre-write snapshot invalidation in
+`scripts/next-task.mjs`; local bare-origin/mock-provider regression tests in
+`scripts/nextTaskAuthoritativeRefs.test.ts`. No dependency, deployed
+application, schema, configuration, eligibility or lease change. All proof
+pending; recheck/push still has the documented multi-ref race window.
+
+2026-11-20 technical execution amendment under D-200 (2): the original
+November 11 diagnostic fixtures could not be recovered in targeted local
+Git history/reflog/worktree and temporary-directory searches. Replace only
+the fixture-recovery prerequisite above with independently authored local
+bare-origin/mock-GitHub CLI reproductions; these are new tests, never the
+original diagnostic or its implementation. All required behavior and
+red-first acceptance remain. The first run on unchanged CLI `def7e4558`
+produced 12 failures and 2 passing controls (14 cases); the report-marker
+fixture syntax is being corrected before final qualification. No runtime
+source was changed before this amendment. D-370 removes the historical
+model-binding/reviewer requirements; unique session claims, all tests,
+required CI and protected merging still apply. Original evidence remains
+unverified. No atomic multi-ref protocol is authorized or claimed.
+
+Implementation checkpoint, 2026-11-20: explicit fetch destinations/pruning
+refresh main and nested agent tracking refs without changing clone config;
+before every marker push, relevant work/review/architect/heartbeat/landing/
+report refs are compared with origin. Changed snapshots rerun the command
+at most three times using one session identity. Report and side-heartbeat
+push races reread complete state. Shallow or unreadable history/ref reads
+STOP before writing. Pushes remain non-force; the recheck-to-push race is
+not atomic or eliminated.
+
+Validation: independently authored actual-CLI bare-origin fixtures first
+failed 12/14 on unchanged source. Final 17/17 pass in the broader tooling
+run, including main-only and normal clone controls, deleted/new/mid-read
+refs, report/heartbeat retries, bounded churn, unavailable origin and
+shallow history. Existing requested-task CLI suite passes 8/8; compiler,
+syntax, whitespace, token audit, migration lint and deploy-trigger checks
+pass. Scope checker declares no owns and therefore performs no comparison;
+manual diff contains only the CLI, new test and this packet Status. The
+broader scripts suite is still running and has a separate 400-commit
+classification-fixture timeout; no full-suite PASS or deployment is claimed.
+Required CI, current-main integration and released-CLI live read remain.
+
+PR #1393 at composed `7ee3c821e`, CI run `44780963644`: compiler,
+production build, two test shards and end-to-end journeys pass. Shard 1
+found a real shared-slot compatibility regression: a competing landing-slot
+write during heartbeat reads must stop without writing a side lease. The
+CLI now returns the existing lost-claim result for that shared-slot
+snapshot change; own side-heartbeat retry still rereads state. Unchanged
+heartbeat-slot tests pass 5/5 and requested-task CLI tests pass 8/8 after
+repair. Local rerun totals 27 passed / 3 failed: both dual-invocation clone
+controls and churn case hit the unchanged 20-second test timeout (they had
+passed in the earlier 17/17 run). No assertion or timeout was weakened.
+Local production build exits 0. The superseded broader scripts run and
+integrated quality-gate run were stopped incomplete after the concrete CI
+finding; their timeouts remain recorded, not converted to PASS. Fresh
+required CI on the follow-up commit remains the landing gate.
+
+Final integration: main `dc1ce93f7` merged without conflict as `2a06bd952`;
+no newer decision than D-370 and no intervening picker-source change.
+Registry completion/status stamp is the only additional path, required by
+the assignment's final step. Optional read-only source check returned no
+findings and ran no tests; no independent-review dependency is introduced.
+Source-head CI `44783339644` was cancelled when the newer integration was
+pushed, not passed. Final status commit gets fresh required CI. This is a
+tooling-only change, so no new product deployment is requested or claimed.
+
+CI `44784254683` on `aa6ccc43b`: compiler, production build, end-to-end
+journeys and shards 1/2 pass. Shard 3 found one new-test setup defect: rival
+and picker heartbeat commits could be byte-identical within the same
+second, so no rejected push occurred. Fixture markers now include their
+source ref in the body, making the competing commit distinct regardless
+of clock speed. Parent/retry-count assertions are unchanged. The isolated
+rejected-heartbeat case passes after correction; no runtime change or test
+weakening. Fresh composed-head required CI remains pending.

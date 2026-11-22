@@ -24,6 +24,14 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/settings/, "Settings"],
   [/^\/help/, "Help and safety"],
   [/^\/referrer-home/, "Refer"],
+  // LAUNCH-qa-fixes (D-371): routes that fell back to "skipwait.me" in live QA.
+  [/^\/referrer\/impact/, "Your impact"],
+  [/^\/invite/, "Invite"],
+  [/^\/messages/, "Messages"],
+  [/^\/support/, "Support"],
+  [/^\/premium/, "Premium"],
+  [/^\/agents/, "Assistants"],
+  [/^\/work/, "Your work"],
 ];
 
 export function shellPageTitle(path: string): string {

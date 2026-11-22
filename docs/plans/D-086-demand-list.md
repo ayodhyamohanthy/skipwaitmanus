@@ -1,5 +1,7 @@
 # Packet D-086: the demand list (public counts of people asking for a referral, loop L1)
 
+> **D-374 (owner, Nov 21): the bonus question is decided: "Drop the bonus lead".** The re-sync removes the bonus sentence from the demand line (`demandBonusLine()` in `CompanyDemandLine`); the one neutral, sourced bonus fact line on the company page belongs to `D-099-bonus-line`. The release then follows sections 5.4 and 8. The D-366 hold note below is history.
+
 > **Current release state (D-366, Nov 19): both demand switches stay off.** D-366 reserves the conflict between the employer-bonus sentence in the demand UI and D-323's no-bonus-led positioning for the owner. The re-sync records the hold; it does not choose public copy, approve a preview with the old copy, or authorize activation. Use §5.4 and §8 for the release. The original registration, proposals and reviews below are historical where they conflict with those sections.
 >
 > **Original packet:** [PR #776](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/776) and the subsequent registry adoption are complete. Revision 3 corrected a factual handoff gap: there is no client company-create form, so `D-086.admit` is read-only and listing goes through the authenticated admin API. The original dispositions are in §12.
