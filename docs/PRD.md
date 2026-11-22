@@ -43,6 +43,9 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
 
 ## Go-to-market (D-102, changeable)
+
+Old waiting requests have a default-off reconfirmation safeguard (`ASK_RECONFIRM_ENABLED`, D-193). Before an eligible delivery spends anything, an unconfirmed request older than 30 days receives one in-app confirmation notice and stays waiting or held. Its owner can confirm from My Requests, retry safely, or withdraw through the conversation. Confirmation uses durable events and the existing first-visibility charge; it changes no amount, expiry clock or email rule. QA and activation remain separate from implementation.
+
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
 - Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.
@@ -61,6 +64,10 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing
+The admin catalog sync prepares the D-367 plan and per-level extra-referral prices in INR/USD from the frozen family. Its create-only, hash-confirmed apply does not enable checkout or sales; BANDED-release owns test-site acceptance and activation (D-370).
+
+BANDED-spend adds the dormant quote/charge contract: included at the request's level, then the monthly free allowance, then purchased at that level; outside-band requests use only free allowance. Stale source or cycle confirmations return 409 without a committed request or charge. The sales switch starts off; implementation acceptance and activation are separate.
+
 One source of truth: [`docs/PRICING.md`](PRICING.md) (D-219, owner freeze Oct 25: banded seeker plans Early to Mid, Mid to Senior and Senior to Executive with per-level extra referrals; 3 free referrals a month at any level with a verified card; legacy packs paused; passes off). The D-132 credit-dropdown model and the D-152 plan names are superseded. Decisions are recorded in `docs/DECISIONS.md` before anything is built on them. Writing rule (D-153, frozen): intent reaches users faster anywhere - every page says plainly what users can do, what they get and what it costs, and promises only what works today.
 
 ## Group Plan bulk purchase - approved build direction (Oct 31)

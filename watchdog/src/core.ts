@@ -3,7 +3,7 @@
 // the alert text. No I/O here: watchdog/src/index.ts does the fetches, KV and
 // delivery. Alerts carry probe names, status codes and times only (packet rule 3).
 
-export type ProbeName = "home" | "ready" | "latency" | "catalog" | "signin-google" | "otp-send" | "email-code-send";
+export type ProbeName = "home" | "ready" | "latency" | "jobs" | "catalog" | "signin-google" | "otp-send" | "email-code-send";
 
 export interface ProbeSpec {
   readonly name: ProbeName;
@@ -20,6 +20,7 @@ export const PROBES: readonly ProbeSpec[] = [
   { name: "home", method: "GET", path: "/", redirect: "follow" },
   { name: "ready", method: "GET", path: "/api/health/ready", redirect: "follow" },
   { name: "latency", method: "GET", path: "/api/health/latency", redirect: "follow" },
+  { name: "jobs", method: "GET", path: "/api/health/jobs", redirect: "follow" },
   { name: "catalog", method: "GET", path: "/api/plans/catalog", redirect: "follow" },
   // No login_hint and no fresh=1, so the route builds the URL locally and calls no provider.
   { name: "signin-google", method: "GET", path: "/api/auth/workos/sign-in?provider=google", redirect: "manual" },
@@ -107,6 +108,10 @@ export function evaluateProbe(spec: ProbeSpec, fetched: Fetched, baseUrl: string
     case "latency": {
       const pass = fetched.status === 200 && typeof asJson?.dbRoundTripMs === "number";
       return outcome(pass, pass ? code : asJson ? (fetched.status === 200 ? `${code} no db` : code) : badBody(false));
+    }
+    case "jobs": {
+      const pass = fetched.status === 200 && asJson?.ok === true;
+      return outcome(pass, pass ? code : asJson ? (fetched.status === 200 ? `${code} body` : code) : badBody(false));
     }
     case "catalog": {
       const pass = fetched.status === 200 && asJson !== null;

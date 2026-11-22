@@ -1,6 +1,17 @@
 // D-083: what the queue picker prints for each decision. Pure: the same pick
 // and context always print the same steps, which scripts/nextTask.test.ts pins.
-import { epicSummaries, slugOf } from "./nextTaskCore.mjs";
+import { epicSummaries, releaseLandingHold, slugOf } from "./nextTaskCore.mjs";
+
+export function renderReleaseLights(release) {
+  return [
+    "LIVE RELEASE — seven lights (D-212)",
+    `Web SHA: ${release.sha ?? "unknown"} · API SHA: ${release.apiSha ?? "unknown"}`,
+    ...release.lights.map(l => `${l.number}. ${l.label}: ${l.state} — ${l.detail}`),
+    releaseLandingHold(release) ? "Confirmed red: landings only are held except registered incident/release fixes; branch work continues."
+      : "No confirmed live-release landing hold; unknown is not green and never holds work by itself.",
+    "",
+  ].join("\n");
+}
 
 const CMD = "node scripts/next-task.mjs";
 const land = [
@@ -125,9 +136,13 @@ const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : step
 const architectSteps = (pick, who, claimed) => steps([
   `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
-  "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
-  `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
-  `Land it like any docs change (D-082: pull request, every check green on that exact commit). ${keepAlive(who)}`,
+  ...(pick.packetFindingsCommit ? [
+    `Address the recorded packet findings (verdict ${pick.packetFindingsCommit.slice(0, 8)}) on ${pick.lock} and push your correction. Then run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` to bind the fix to the published packet head. Required CI and the existing review gate decide whether it can land.`,
+  ] : [
+    "Write the packet in docs/plans/ exactly as docs/DELEGATION.md describes (goal, binding rules quoted, current behaviour verified in code with file:line, rulings, files in and out of scope, red-first tests, definition of done, review checklist, stop-and-ask). Any session records its rulings as register entries marked \"decided under D-200\" (D-200: no model holds the pen alone). A choice that changes an owner decision (prices, plan contents, legal text, live money, the login rule, referrer fairness) goes to the owner as `--report blocked` with the question; any other gap gets a stated, changeable assumption in the packet (D-109).",
+    `In the same pull request update docs/plans/assignments.json: a packet-only task (its note says so: its work is the rows it adds) gets "status": "done" and its rows are added exactly as its packet's list gives them (the D-048 split, or the packet the CEO wrote); any other task gets its "packet", "status": "todo" and "syncedTo" set to the newest entry in docs/DECISIONS.md (its last row), so the next \`${CMD}\` hands it to a builder (D-134, D-202).`,
+  ]),
+  `${pick.packetFindingsCommit ? "Re-run required CI on the exact corrected head. Another session lands the packet when eligible (D-190)." : "Land it like any docs change (D-082: pull request, every check green on that exact commit)."} ${keepAlive(who)}`,
   report(pick.task, who),
 ]);
 
@@ -362,6 +377,7 @@ function pickText(pick, { who, date, claimed, register = null, requestedTask = n
 export function renderPick(pick, context) {
   const base = renderPickLegacy(pick, context);
   // D-324: work goes on while main is red; landings do not.
-  const text = pick.mainRedNote ? base + "\nmain is red right now (D-324): do this work on its own branch as usual, but land nothing and merge nothing into main until main's CI is green again. Merge origin/main into your branch once it is.\n" : base;
+  let text = pick.mainRedNote ? base + "\nmain is red right now (D-324): do this work on its own branch as usual, but land nothing and merge nothing into main until main's CI is green again. Merge origin/main into your branch once it is.\n" : base;
+  if (pick.releaseHold) text += `\nLive release ${pick.releaseHold.sha.slice(0, 8)} has red lights ${pick.releaseHold.lights.join(", ")}: landings only are held (D-212), not builds, fixes or packets. ${pick.releaseFix ? "This row is a registered repair. Revert the causal commit first only if evidence proves a code-only release caused the incident; never blindly revert schema or money changes. Every required CI, ownership and release gate still applies (D-370); no review is required." : "Work on your own branch and push it, but do not follow any landing instruction above until the release recovers. Only its explicitly registered repair may land."}\n`;
   return pick.provenanceRoute ? text + `\nExternal model route: ${pick.provenanceRoute}. Keep your actual operator/session name. Preserve --provenance on claims/reclaims and add --execution for a completed exact-head verdict/fix. Read docs/MODEL_PROVENANCE.md; route qualification alone is not execution evidence.\n` : text;
 }

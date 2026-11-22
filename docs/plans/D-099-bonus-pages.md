@@ -1,5 +1,7 @@
 # Packet D-099: public referral-bonus pages, one per company, every figure sourced (loop L5)
 
+> **D-374 (owner, Nov 21): "Drop the bonus lead".** SkipWait never leads with an employer's referral bonus. Slice A keeps the sourced figures, admin entry and report path and drops the public `/bonuses` and `/bonuses/:slug` pages and their sitemap entries. Slice B keeps one neutral, sourced fact line on the company page (`/explore/:slug`) only, with no `/explore` list line and no link to a bonus page. The re-sync rewrites sections 1, 5.4, 5.5 and 7 to this.
+
 > Read `docs/BRIEF.md` first, then this packet. You need nothing else unless a section below names it. Never open `server/db.ts` or `server/privateReferralRoutes.ts` whole; this packet needs neither.
 
 | Field | Value |

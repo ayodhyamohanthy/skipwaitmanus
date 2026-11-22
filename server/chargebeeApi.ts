@@ -44,11 +44,14 @@ export type ChargebeeRequest = {
   form?: URLSearchParams;
   query?: URLSearchParams;
   timeoutMs?: number;
+  /** Sent as `chargebee-idempotency-key` (max 100 chars): Chargebee replays the first answer for 30 minutes. */
+  idempotencyKey?: string;
 };
 
 /** Sends one request and parses the 2xx body with `schema`; anything else throws ChargebeeApiError. */
 export async function chargebeeRequest<T>(credentials: ChargebeeCredentials, request: ChargebeeRequest, schema: z.ZodType<T>): Promise<T> {
   if (!credentials.apiKey || !credentials.site) throw new Error("Chargebee API key/site is not configured");
+  if (request.idempotencyKey !== undefined && (request.idempotencyKey.length === 0 || request.idempotencyKey.length > 100)) throw new Error("Chargebee idempotency key must be 1-100 characters");
   const search = request.query ? request.query.toString() : "";
   const query = search ? `?${search}` : "";
   const response = await fetch(`https://${credentials.site}.chargebee.com/api/v2${request.path}${query}`, {
@@ -56,6 +59,7 @@ export async function chargebeeRequest<T>(credentials: ChargebeeCredentials, req
     headers: {
       Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:`).toString("base64")}`,
       ...(request.form ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      ...(request.idempotencyKey ? { "chargebee-idempotency-key": request.idempotencyKey } : {}),
     },
     body: request.form,
     signal: AbortSignal.timeout(request.timeoutMs ?? 15_000),
