@@ -19,10 +19,12 @@ This release makes two provider swaps, both code-complete and provider-gated:
 
 Why: ZeptoMail is pay-per-credit with no monthly minimum (10,000 credits ≈ $1–1.25 as of writing), which suits the current volume far better than a fixed monthly plan. Billing alerts and review notices together stay well under a few hundred credits/month at launch scale.
 
-## 2. WorkOS AuthKit (sign-in)
+## 2. WorkOS (sign-in, hosted on skipwait.me)
+
+Seekers never see a hosted WorkOS (authkit.app) page (D-030, D-049): every "Sign in" opens skipwait.me's `/sign-in`; social buttons go straight to the provider through `/api/auth/workos/sign-in?provider=…`, and email + password runs server-side through WorkOS User Management. There is no six-digit code for seekers (D-078): sign-up and an unconfirmed address get an emailed link that sets the password on `/reset-password`. Only the administrator flow (`/api/auth/workos/admin`) still uses the hosted page.
 
 1. Create a [WorkOS](https://workos.com/) project; AuthKit is free up to 1M monthly active users.
-2. In the AuthKit configuration, set the redirect URI to `https://skipwait.me/api/auth/workos/callback` (and your staging URL if desired).
+2. Set the redirect URI to `https://skipwait.me/api/auth/workos/callback` (and your staging URL if desired).
 3. Collect: **Client ID**, **API key**, and set a **cookie password** (a 32+ char random string) for session sealing.
 4. Environment variables:
    - `WORKOS_CLIENT_ID`
@@ -30,8 +32,10 @@ Why: ZeptoMail is pay-per-credit with no monthly minimum (10,000 credits ≈ $1�
    - `WORKOS_COOKIE_PASSWORD`
    - `WORKOS_REDIRECT_URI=https://skipwait.me/api/auth/workos/callback` (optional; this is the default)
    - `WORKOS_POST_SIGNIN_PATH=/` (optional)
-   - `VITE_WORKOS_ENABLED=true` (client build flag — routes `startLogin()` to AuthKit)
-5. AuthKit verifies the sign-in email itself; verified addresses enroll in the employee pool through the existing verified-email endpoint. Enrollment of a *separate* company address uses the new server-owned OTP, delivered via ZeptoMail. (This AuthKit-verified enrollment path predates D-030: under D-030 as amended by D-049/D-057, referrer sign-in and verification use the work-email code only — never a personal email, social login or password.)
+   - `PUBLIC_BASE_URL=https://skipwait.me` — the origin of every emailed password link
+   - `VITE_WORKOS_ENABLED` is still set by `deploy-pages.yml` but no client code reads it: `startLogin()` always opens skipwait.me's `/sign-in`.
+5. Dashboard steps before the seeker-password release (owner only; plan §6 has the current list): Email + Password on (the admin's hosted methods kept); Password reset URL = `https://skipwait.me/reset-password`; WorkOS's own **Email verification** and **Password reset** emails switched **off** (SkipWait sends the links itself through ZeptoMail, D-078 ruling 6, one email per link, at most 3 per address per hour), with no custom email provider configured; no required MFA and no Radar email/SMS challenge for seekers; the Google connection confirmed.
+6. Referrers never use WorkOS to sign in: their sign-in and verification are the work-email code only (D-030 as amended by D-049/D-057). A verified referrer's work email is refused on the social callback and never reaches WorkOS from sign-up or reset.
 
 ## 3. What changed in the code
 

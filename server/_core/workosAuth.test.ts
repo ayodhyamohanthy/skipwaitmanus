@@ -9,6 +9,7 @@ const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
 const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
+const standings = vi.hoisted(() => ({ byEmail: new Map<string, string>(), referrerDomains: new Set<string>(), calls: [] as Array<[string, string | undefined]> }));
 const hosted = vi.hoisted(() => ({ list: vi.fn(async () => ({ data: [{ id: "session_live", status: "active" }] })), revoke: vi.fn(async () => {}) }));
 vi.mock("../db", () => ({
   upsertUser: vi.fn(),
@@ -51,7 +52,7 @@ async function buildApp(env: Record<string, string | undefined>) {
   Object.entries(env).forEach(([key, value]) => { if (value === undefined) delete process.env[key]; else process.env[key] = value; });
   const { createWorkosAuthRoutesRegistrar } = await import("./workosAuth");
   const app = express();
-  registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined });
+  registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined, password: { emailStanding: async (email, lookup) => { standings.calls.push([email, lookup?.workosUserId]); const exact = standings.byEmail.get(email.trim().toLowerCase()); if (!exact && lookup?.rule !== "social" && standings.referrerDomains.has(email.trim().toLowerCase().split("@")[1] ?? "")) return "referrer_work_email"; return (exact ?? "unknown") as never; } } });
   registrarFactory.registrar(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
@@ -99,25 +100,38 @@ describe("role-aware WorkOS sign-in entries", () => {
     restore();
   });
 
-  it("keeps general sign-in and sign-up open without a login hint", { timeout: 20000 }, async () => {
+  it("a provider-less or unknown-provider start never reaches hosted AuthKit (D-030, D-049)", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
-    const signIn = await request(app).get("/api/auth/workos/sign-in");
-    expect(signIn.status).toBe(302);
-    const signInCall = authUrl.mock.calls.at(-1)?.[0] as { screenHint?: string; loginHint?: string };
-    expect(signInCall.screenHint).toBe("sign-in");
-    expect(signInCall.loginHint).toBeUndefined();
-    const signUp = await request(app).get("/api/auth/workos/sign-up");
-    expect(signUp.status).toBe(302);
-    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up" }));
-    restore();
+    try {
+      for (const route of ["sign-in", "sign-up"]) {
+        for (const provider of [undefined, "AppleOAuth", "apple", "authkit", "constructor", "__proto__", "toString"]) {
+          authUrl.mockClear();
+          const response = await request(app).get(`/api/auth/workos/${route}`).query(provider === undefined ? { returnTo: "/plans" } : { returnTo: "/plans", provider });
+          expect(response.status, `${route} provider=${String(provider)}`).toBe(302);
+          expect(response.headers.location).toBe("/sign-in?returnTo=%2Fplans");
+          expect(response.headers["cache-control"]).toBe("no-store");
+          expect(response.headers["set-cookie"]).toBeUndefined();
+          expect(authUrl).not.toHaveBeenCalled();
+        }
+      }
+      expect((await request(app).get("/api/auth/workos/sign-in")).headers.location).toBe("/sign-in");
+      for (const unsafe of ["https://evil.example/plans", "//evil.example", "/api/auth/workos/sign-in", "/sign-in"]) {
+        expect((await request(app).get("/api/auth/workos/sign-in").query({ returnTo: unsafe })).headers.location).toBe("/sign-in");
+      }
+      const google = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/plans", provider: "google" });
+      expect(google.status).toBe(302);
+      expect(google.headers.location).toContain("https://api.workos.com/user_management/authorize");
+      expect(authUrl).toHaveBeenCalledTimes(1);
+      expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ provider: "GoogleOAuth" }));
+    } finally { restore(); }
   });
 
-  it("forwards a valid typed email as the AuthKit login hint and drops anything else", { timeout: 20000 }, async () => {
+  it("forwards a valid typed email as the provider login hint and drops anything else", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
-    await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "  Asha@Example.com " });
+    await request(app).get("/api/auth/workos/sign-in").query({ provider: "google", login_hint: "  Asha@Example.com " });
     expect((authUrl.mock.calls.at(-1)?.[0] as { loginHint?: string }).loginHint).toBe("asha@example.com");
     for (const bad of ["not-an-email", `${"a".repeat(320)}@example.com`, "a b@example.com"]) {
-      await request(app).get("/api/auth/workos/sign-in").query({ login_hint: bad });
+      await request(app).get("/api/auth/workos/sign-in").query({ provider: "google", login_hint: bad });
       expect((authUrl.mock.calls.at(-1)?.[0] as { loginHint?: string }).loginHint).toBeUndefined();
     }
     restore();
@@ -131,7 +145,7 @@ describe("state-bound authentication return", () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
       const agent = request.agent(app);
-      const entry = await agent.get("/api/auth/workos/sign-in").set("Cookie", "app_session_id=existing-session").query({ returnTo });
+      const entry = await agent.get("/api/auth/workos/sign-in").set("Cookie", "app_session_id=existing-session").query({ returnTo, provider: "google" });
       const state = authUrl.mock.calls.at(-1)![0].state;
       expect(entry.headers["set-cookie"][0]).toContain("HttpOnly");
       expect(entry.headers["set-cookie"][0]).toContain("SameSite=Lax");
@@ -155,7 +169,7 @@ describe("state-bound authentication return", () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
       const agent = request.agent(app);
-      await agent.get("/api/auth/workos/sign-up").query({ returnTo });
+      await agent.get("/api/auth/workos/sign-up").query({ returnTo, provider: "google" });
       const state = authUrl.mock.calls.at(-1)![0].state;
       const callback = await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
       expect(callback.status).toBe(302);
@@ -166,7 +180,7 @@ describe("state-bound authentication return", () => {
   it.each(["missing", "mismatched", "tampered", "expired", "raw-return"]) ("rejects %s state binding before contacting the provider", async failure => {
     const { app, restore } = await buildApp(baseEnv);
     try {
-      const entry = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/premium?role=referrer" });
+      const entry = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/premium?role=referrer", provider: "google" });
       let state = authUrl.mock.calls.at(-1)![0].state;
       let cookie = entry.headers["set-cookie"][0].split(";")[0];
       if (failure === "mismatched") state = "wrong-state";
@@ -182,9 +196,13 @@ describe("state-bound authentication return", () => {
   it("retains the admin destination and exact-email check", async () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
+      // The administrator plane keeps its own exact-email gate; it is not a seeker sign-in, so a founder whose
+      // admin address is also a verified work email still reaches /admin.
+      standings.byEmail.set(baseEnv.SKIPWAIT_ADMIN_EMAIL, "referrer_work_email");
       authenticate.mockResolvedValueOnce({ user: { id: "user_admin", email: baseEnv.SKIPWAIT_ADMIN_EMAIL, firstName: "Admin", lastName: "User" } });
       const allowed = await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin", returnTo: "/premium" });
       expect(allowed.headers.location).toBe("/admin/users");
+      standings.byEmail.clear();
       expect((await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin" })).status).toBe(403);
     } finally { restore(); }
   });
@@ -200,7 +218,7 @@ describe("canonical WorkOS callback session", () => {
 
   async function signIn(app: import("express").Express) {
     const agent = request.agent(app);
-    await agent.get("/api/auth/workos/sign-in").query({ returnTo: "/premium" });
+    await agent.get("/api/auth/workos/sign-in").query({ returnTo: "/premium", provider: "google" });
     const state = authUrl.mock.calls.at(-1)![0].state;
     return agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
   }
@@ -215,6 +233,99 @@ describe("canonical WorkOS callback session", () => {
       await signIn(app);
       expect(resolveLoginIdentity.mock.calls.at(-1)![0].emailVerified).toBe(false);
     } finally { restore(); }
+  });
+
+  // S-11: an email's local part next to a company name rebuilds the address (P0-referrer-exposure), so a new
+  // account takes no name from the email when WorkOS has none.
+  it("a WorkOS user with no first or last name creates an unnamed account, never one named after the email", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      for (const names of [{}, { firstName: null, lastName: null }, { firstName: "", lastName: "" }]) {
+        authenticate.mockResolvedValueOnce({ user: { id: "user_noname", email: "asha.k@corp.example", emailVerified: true, ...names } } as never);
+        const callback = await signIn(app);
+        expect(callback.status).toBe(302);
+        expect(resolveLoginIdentity.mock.calls.at(-1)![0]).toEqual(expect.objectContaining({ subject: "user_noname", name: null }));
+        const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+        expect(JSON.stringify(decodeJwt(cookie.slice("app_session_id=".length)))).not.toContain("asha.k");
+      }
+      authenticate.mockResolvedValueOnce({ user: { id: "user_named", email: "asha.k@corp.example", emailVerified: true, firstName: "Asha", lastName: null } } as never);
+      await signIn(app);
+      expect(resolveLoginIdentity.mock.calls.at(-1)![0]).toEqual(expect.objectContaining({ name: "Asha" }));
+    } finally { restore(); }
+  });
+
+  // D-078 ruling 4 (S-4, minimal part): a referrer's verified work email never gets a session from a social
+  // provider; the callback sends them to the work-email code instead, before the resolver writes anything.
+  it("refuses a referrer's verified work email with the work-email-code step and no session", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      standings.byEmail.set("asha@wipro.com", "referrer_work_email");
+      authenticate.mockResolvedValueOnce({ user: { id: "user_ref", email: "Asha@Wipro.com", emailVerified: true, firstName: "Asha", lastName: "K" } } as never);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/sign-in?intent=referrer&reason=use_work_email_code");
+      expect(callback.headers["cache-control"]).toBe("no-store");
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => /^(app_session_id|workos_session)=[^;]/.test(value))).toBe(false);
+      expect(resolveLoginIdentity).not.toHaveBeenCalled();
+      expect(standings.calls.at(-1)).toEqual(["Asha@Wipro.com", "user_ref"]);
+    } finally { standings.byEmail.clear(); standings.calls = []; restore(); }
+  });
+
+  // Review F1 (callback half): with Email + Password on in WorkOS, someone could finish the hosted AuthKit page with
+  // a password and come back through this callback, skipping the workos_password witness (D-078 ruling 5). A
+  // seeker callback only accepts a social provider's sign-in; a password, magic code or passkey is sent to
+  // SkipWait's own password sign-in instead, before the resolver writes anything.
+  it.each(["Password", "MagicAuth", "Passkey"])("refuses a %s sign-in that comes back through the callback", async method => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      authenticate.mockResolvedValueOnce({ user: { id: "user_pw", email: "asha@gmail.com", emailVerified: true, firstName: "Asha", lastName: "K" }, authenticationMethod: method } as never);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/sign-in?reason=use_password_sign_in");
+      expect(callback.headers["cache-control"]).toBe("no-store");
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => /^(app_session_id|workos_session)=[^;]/.test(value))).toBe(false);
+      expect(resolveLoginIdentity).not.toHaveBeenCalled();
+    } finally { standings.calls = []; restore(); }
+  });
+
+  it("a social provider's sign-in still signs in through the callback", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      for (const method of ["GoogleOAuth", "LinkedInOAuth", "SlackOAuth", undefined]) {
+        authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "test@example.com", emailVerified: true, firstName: "Test", lastName: "User" }, ...(method ? { authenticationMethod: method } : {}) } as never);
+        const callback = await signIn(app);
+        expect(callback.status, String(method)).toBe(302);
+        expect(callback.headers.location, String(method)).toBe("/premium");
+        expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(true);
+      }
+    } finally { standings.calls = []; restore(); }
+  });
+
+  // D-081: the verified-referrer-domain rule is for the password paths only. Social sign-in keeps the exact-email
+  // rule, so a seeker's own Google account at a company with referrers on SkipWait still signs in.
+  it("a social sign-in at a verified referrer domain is not refused unless the exact address is a referrer's", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      standings.referrerDomains.add("wipro.com");
+      authenticate.mockResolvedValueOnce({ user: { id: "user_wipro_seeker", email: "asha@wipro.com", emailVerified: true, firstName: "Asha", lastName: "K" }, authenticationMethod: "GoogleOAuth" } as never);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/premium");
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(true);
+    } finally { standings.referrerDomains.clear(); standings.calls = []; restore(); }
+  });
+
+  it("a standing lookup failure fails closed: no session", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      standings.byEmail.set("test@example.com", "throw");
+      const original = standings.byEmail.get.bind(standings.byEmail);
+      vi.spyOn(standings.byEmail, "get").mockImplementation(key => { if (original(key) === "throw") throw new Error("Database unavailable"); return original(key); });
+      const callback = await signIn(app);
+      expect(callback.status).toBe(502);
+      expect(resolveLoginIdentity).not.toHaveBeenCalled();
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(false);
+    } finally { vi.restoreAllMocks(); standings.byEmail.clear(); standings.calls = []; restore(); }
   });
 
   it("mints the session for the canonical account, not the provider openId", async () => {
@@ -319,14 +430,21 @@ describe("canonical WorkOS callback session", () => {
     } finally { restore(); }
   });
 
-  it("starts a listed social provider and falls back to AuthKit for anything else", { timeout: 20000 }, async () => {
+  it("starts a listed social provider and sends anything else to the skipwait.me sign-in", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
+    authUrl.mockClear();
     const providerFor = async (provider: string) => { await request(app).get("/api/auth/workos/sign-in").query({ provider }); return (authUrl.mock.calls.at(-1)?.[0] as { provider?: string; screenHint?: string }); };
     expect((await providerFor("google")).provider).toBe("GoogleOAuth");
     expect((await providerFor("microsoft")).provider).toBe("MicrosoftOAuth");
     expect((await providerFor("github")).provider).toBe("GitHubOAuth");
-    const unknown = await providerFor("AppleOAuth");
-    expect(unknown.provider).toBe("authkit"); expect(unknown.screenHint).toBe("sign-in");
+    expect((await providerFor("linkedin")).provider).toBe("LinkedInOAuth");
+    expect((await providerFor("slack")).provider).toBe("SlackOAuth");
+    expect(authUrl.mock.calls.every(([options]) => (options as { screenHint?: string }).screenHint === undefined)).toBe(true);
+    const callsBefore = authUrl.mock.calls.length;
+    const unknown = await request(app).get("/api/auth/workos/sign-in").query({ provider: "AppleOAuth" });
+    expect(unknown.status).toBe(302);
+    expect(unknown.headers.location).toBe("/sign-in");
+    expect(authUrl.mock.calls.length).toBe(callsBefore);
     restore();
   });
 });

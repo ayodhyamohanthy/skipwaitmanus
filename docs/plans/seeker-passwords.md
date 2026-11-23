@@ -16,6 +16,15 @@
 
 ## Status
 
+- **November 23 implementation completion — Gemini 3.8 Flash · 36d4:**
+  - Preserved historical PR #324 / `f50db639` implementation while cleanly integrating with latest `main` (`9be773683`).
+  - Integrated seeker password auth and link-based sign-up into released Goal auth surfaces (`GoalSignInPage`, `GoalSeekerForm`) under D-354 (3).
+  - Retired the 6-digit seeker email code (`POST /api/auth/workos/email-code/send` returns 410 Gone, `SEEKER_CODE_VERIFY_UNTIL` set to landing time + 24 hours: `2026-11-25T00:00:00Z`).
+  - Merged telemetry scrubbing for Sentry and Clarity adhering to FND-4 `:token` sanitization.
+  - Verified with full test suite: all 21 password/auth test files (247 tests) pass, `pnpm check` (0 errors), `node scripts/design-token-audit.mjs` (0 errors), `bash scripts/lint-deploy-migrations.sh` (0 errors), `pnpm build` (clean 0 errors).
+
+- **November 21 implementation takeover — GPT-6.1 Sol · b0e7:** official picker takeover `06dd68283`, current main `be9d67e87` integrated without rewriting history. Read BRIEF, PRD, AGENTS, BUILD_CONTINUITY, COLLABORATION, this packet, current Goal auth and preserved PR #324 source/reviews; checked D-350/D-354/D-366–D-372. D-372 applies only to another queue repair and changes no password acceptance. Prior published integration has status/docs only; its other checkout contains an unfinished merge and remains untouched. Preserve `f50db639` history while adapting password/link sign-up and reset to released Goal pages, current identity/session and telemetry contracts, confirmed WorkOS default mailer and a real code-retirement window. No migration or dependency is planned. Tests, exact-head CI, browser and production acceptance remain pending; no password release is claimed.
+
 - **November 21 routing ruling — GPT-6.1 Sol · f734, unblock `9ca037dde`:** the same `seeker-passwords` row now names `agent/queue/seeker-passwords-integration`. Its task ID, FIFO position, lane, tier, status and D-057 dependency do not change. Repeated unblock-only handoffs on the unchanged source carrier return LAND, not integration work. Start the new carrier only after the official picker grants BUILD. Keep PR #324 draft and preserve its branch, reviews, source and unpublished checkouts. No Fix/Fixed, verdict or participation marker transfers.
 - **No owner decision is pending:** D-078 chooses link-only sign-up; D-057 is done; D-350 confirms the production WorkOS steps, including the default mail provider. D-370 removes independent review, not required CI or security and release verification. Passwords are not a launch blocker (D-366 (4)).
 - **Read receipt:** main `3199920e4`, instructions and packet read through D-371; prior ruling [#1316](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1316), block `06b9b52ae` and [current scope handoff](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/324#issuecomment-7049129908) inspected. Source `f50db639` retains PASS `09b0a667` and the expired October 22 cutoff. The read-only merge preview reports 25 conflicts. This ruling changes docs/routing only; implementation, pickup and production acceptance are not yet verified.
@@ -70,7 +79,7 @@ Seekers sign in only on skipwait.me, never on an authkit.app page. They use Goog
 8. **Copy for code-only seekers** (appendix §A5, row 3):
    - the password form says "Signed in with a code before? Use Forgot password to set one. It's the same account.";
    - `/forgot-password` is titled "Set or reset your password";
-   - the sent state adds "No email after a few minutes? Create an account with the same address; it joins your existing account.";
+   - the sent state adds "No email after a few minutes? Create an account with the same address; it joins your existing account." (as built, reworded in the screenshot pass so it agrees with the line above: "No email after a few minutes, and nothing in spam? Create an account with the same address and we'll email you a link to set a password.");
    - keep D-063 wording.
 
 ## 4. Historical implementation evidence (not current-main or release acceptance)

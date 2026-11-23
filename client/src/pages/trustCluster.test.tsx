@@ -86,12 +86,14 @@ describe("Trust cluster", () => {
     expect(screen.queryByRole("button", { name: /Thank your referrer/ })).toBeNull();
   });
 
-  it("offers intent choice on the goal design, never a password form", () => {
+  it("offers intent choice on the goal design, never a password form for referrers", () => {
     render(<SignIn />);
     expect(screen.getByRole("heading", { name: "Sign in to find or give a referral." })).toBeTruthy();
-    expect(screen.queryByLabelText(/Password/)).toBeNull();
-    expect(screen.queryByText(/Forgot password/)).toBeNull();
+    expect(screen.getByLabelText(/Password/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
+    expect(screen.queryByLabelText(/Password/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
     expect(screen.getByText("Sign in with your company email. A one-time code proves where you work.")).toBeTruthy();
   });
 });
