@@ -178,8 +178,3 @@ export function demandLine(demand: PublicDemand, companyName: string): string | 
 export function demandHelpLine(companyName: string): string {
   return `Work at ${companyName}? Verify your work email to help.`;
 }
-
-/** Informational only: no figure (those come from D-099 with a source), no guarantee (D-055, D-088). */
-export function demandBonusLine(companyName: string): string {
-  return `If ${companyName} pays employees a referral bonus, ${companyName} sets and pays it under its own rules. skipwait.me never pays referrers.`;
-}

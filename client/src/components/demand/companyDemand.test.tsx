@@ -14,7 +14,6 @@ import {
   DEMAND_LIST_HEADING,
   DEMAND_UNLISTED_EMPLOYEE_LINE,
   DEMAND_UNLISTED_SEEKER_LINE,
-  demandBonusLine,
   demandCountLine,
   demandFewLine,
   demandHelpLine,
@@ -135,16 +134,13 @@ describe("CompanyDemandLine", () => {
     expect(flag.events).toEqual(["demand_help_clicked"]);
   });
 
-  it("the bonus line names the employer's own programme truthfully", async () => {
+  it("renders no bonus line (D-374: drop the bonus lead)", async () => {
     flag.publicOn = true;
     respond(200, detail({ state: "count", people: 12 }));
     renderInRouter(<CompanyDemandLine {...lineProps} />);
-    const bonus = await screen.findByTestId("demand-bonus-line");
-    expect(bonus.textContent).toBe(demandBonusLine(COMPANY));
-    expect(bonus.textContent).toContain("skipwait.me never pays referrers");
-    expect(bonus.textContent).not.toMatch(/[0-9]/);
-    expect(bonus.textContent).not.toMatch(/[$€£₹]/);
-    expect(bonus.textContent).not.toMatch(/guarantee/i);
+    await screen.findByTestId("company-demand-line");
+    expect(screen.queryByTestId("demand-bonus-line")).toBeNull();
+    expect(screen.queryByText(/bonus/i)).toBeNull();
   });
 
   it("carries no black commit and none of the retired wording", async () => {

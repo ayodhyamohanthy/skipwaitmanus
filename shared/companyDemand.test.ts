@@ -24,7 +24,6 @@ import {
   companyDemandListResponseSchema,
   countDemandPeople,
   countUnlistedDemand,
-  demandBonusLine,
   demandCountLine,
   demandFewLine,
   demandHelpLine,
@@ -267,10 +266,8 @@ describe("copy", () => {
     expect(demandLine({ state: "count", people: 3 }, "Acme")).toBe("3 people are asking for a referral at Acme.");
   });
 
-  it("invites employees to verify and never promises a payout", () => {
+  it("invites employees to verify", () => {
     expect(demandHelpLine("Acme")).toBe("Work at Acme? Verify your work email to help.");
-    expect(demandBonusLine("Acme")).toBe("If Acme pays employees a referral bonus, Acme sets and pays it under its own rules. skipwait.me never pays referrers.");
-    expect(demandBonusLine("Acme")).not.toMatch(/\d|[$₹€£]|guarantee/i);
   });
 
   it("says what the list covers and what an unlisted company can do", () => {
@@ -279,7 +276,7 @@ describe("copy", () => {
   });
 
   it("uses referral words only: no credit, no noun ask, no availability framing", () => {
-    const lines = [demandCountLine("Acme", 20), demandFewLine("Acme"), demandHelpLine("Acme"), demandBonusLine("Acme"), DEMAND_UNLISTED_SEEKER_LINE, DEMAND_UNLISTED_EMPLOYEE_LINE];
+    const lines = [demandCountLine("Acme", 20), demandFewLine("Acme"), demandHelpLine("Acme"), DEMAND_UNLISTED_SEEKER_LINE, DEMAND_UNLISTED_EMPLOYEE_LINE];
     for (const line of lines) {
       expect(line).not.toMatch(/credit/i);
       expect(line).not.toMatch(/\b(an?|the|my|your) ask\b/i);
