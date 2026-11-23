@@ -1,17 +1,11 @@
-// Email + password sign-in and skipwait.me-issued password reset: the one
-// contract for /api/auth/password/* (server/passwordAuthRoutes.ts,
-// server/passwordResetRoutes.ts) and the kit pages that call them
-// (client/src/pages/SignIn.tsx, ForgotPassword.tsx, ResetPassword.tsx).
-// Requests are strict objects; every response is parsed with these schemas on
-// both sides, so nothing else defines these shapes.
+// Seeker email + password on skipwait.me (D-049): the one contract for /api/auth/password/*
+// (server/_core/passwordSignIn.ts, server/passwordResetRoutes.ts) and the pages that call them
+// (client/src/components/SeekerSignIn.tsx, ForgotPassword.tsx, ResetPassword.tsx). Requests are strict
+// objects; every response is parsed with these schemas on both sides, so nothing else defines these shapes.
+// Seekers only: no request carries an intent (referrers sign in with a work-email code, D-030), and nothing
+// continues on the hosted WorkOS page. No six-digit code anywhere (D-049): an address WorkOS has not verified gets
+// an emailed link that sets the password on /reset-password, which also proves the inbox (D-078 ruling 2).
 import { z } from "zod";
-
-export const SIGN_IN_INTENTS = ["seeker", "referrer"] as const;
-export const signInIntentSchema = z.enum(SIGN_IN_INTENTS);
-export type SignInIntent = z.infer<typeof signInIntentSchema>;
-
-/** Where each intent lands after sign-in: the job search, or referrer setup (work-email verification). */
-export const INTENT_RETURN_TO: Readonly<Record<SignInIntent, string>> = { seeker: "/explore", referrer: "/referrer-setup" };
 
 export const EMAIL_MAX = 320;
 export const PASSWORD_MAX = 256;
@@ -20,38 +14,54 @@ export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const emailSchema = z.string().trim().toLowerCase().max(EMAIL_MAX).regex(EMAIL_PATTERN);
 /** Passwords are never trimmed or normalised: what the person typed is what WorkOS checks. */
-const signInPasswordSchema = z.string().min(1).max(PASSWORD_MAX);
+const passwordSchema = z.string().min(1).max(PASSWORD_MAX);
+const returnToSchema = z.string().max(RETURN_TO_MAX).optional();
 
 /** A same-origin app path: no scheme, no protocol-relative `//`, no API path. */
 export const appPathSchema = z.string().max(RETURN_TO_MAX).regex(/^\/(?![/\\])(?!api\/)[^\s\\]*$/);
-/** The hosted AuthKit continuation (server/_core/workosAuth.ts sign-in start route). */
-export const hostedSignInPathSchema = z.string().max(4096).regex(/^\/api\/auth\/workos\/sign-in(?:\?[^\s\\]*)?$/);
 
-export const passwordSignInRequestSchema = z.strictObject({
-  email: emailSchema,
-  password: signInPasswordSchema,
-  intent: signInIntentSchema.optional(),
-  returnTo: z.string().max(RETURN_TO_MAX).optional(),
-});
+export const passwordSignInRequestSchema = z.strictObject({ email: emailSchema, password: passwordSchema, returnTo: returnToSchema });
 export type PasswordSignInRequest = z.infer<typeof passwordSignInRequestSchema>;
+/** Sign-up takes only the email (D-078 ruling 2): the person sets the password from the emailed link. */
+export const passwordSignUpRequestSchema = z.strictObject({ email: emailSchema });
+export type PasswordSignUpRequest = z.infer<typeof passwordSignUpRequestSchema>;
+export const passwordForgotRequestSchema = z.strictObject({ email: emailSchema });
 
-/** Why a correct sign-in still has to finish on hosted AuthKit. */
-export const HOSTED_REASONS = ["verify_email", "two_step", "organization", "extra_check"] as const;
-export const hostedReasonSchema = z.enum(HOSTED_REASONS);
-export type HostedReason = z.infer<typeof hostedReasonSchema>;
+/** WorkOS reset tokens are opaque; this bounds the length and keeps them to URL-safe characters. */
+export const resetTokenSchema = z.string().min(8).max(4096).regex(/^[A-Za-z0-9._~+/=-]+$/);
+export const passwordResetConfirmRequestSchema = z.strictObject({
+  token: resetTokenSchema,
+  password: z.string().max(PASSWORD_MAX),
+  confirm: z.string().max(PASSWORD_MAX),
+});
+
+/** Sign-in and sign-up answer with the next step: signed in, or check your email for a link that sets the password. */
+export const passwordStepSchema = z.discriminatedUnion("step", [
+  z.strictObject({ ok: z.literal(true), step: z.literal("signed_in"), redirectTo: appPathSchema }),
+  z.strictObject({ ok: z.literal(true), step: z.literal("check_email") }),
+]);
+export type PasswordStep = z.infer<typeof passwordStepSchema>;
+export const passwordForgotAcceptedSchema = z.strictObject({ ok: z.literal(true) });
+export const passwordResetConfirmSuccessSchema = z.strictObject({
+  ok: z.literal(true),
+  /** True when this browser now holds a fresh session; false when the person signs in again themselves. */
+  signedIn: z.boolean(),
+  redirectTo: appPathSchema,
+});
+export type PasswordResetConfirmSuccess = z.infer<typeof passwordResetConfirmSuccessSchema>;
 
 export const PASSWORD_AUTH_ERROR_CODES = [
   "invalid_input",
   "invalid_credentials",
-  "continue_hosted",
-  "password_sign_in_unavailable",
-  "account_review",
-  "account_inactive",
+  "expired",
+  "weak_password",
   "rate_limited",
   "forbidden_origin",
-  "weak_password",
-  "expired",
-  "consumed",
+  "account_review",
+  "account_inactive",
+  "use_work_email_code",
+  "use_another_method",
+  "password_sign_in_unavailable",
   "temporarily_unavailable",
 ] as const;
 export const passwordAuthErrorCodeSchema = z.enum(PASSWORD_AUTH_ERROR_CODES);
@@ -61,41 +71,42 @@ export const passwordAuthErrorSchema = z.strictObject({
   ok: z.literal(false),
   code: passwordAuthErrorCodeSchema,
   message: z.string().min(1).max(300),
-  reason: hostedReasonSchema.optional(),
-  redirectTo: hostedSignInPathSchema.optional(),
   retryAfterSeconds: z.number().int().positive().max(86_400).optional(),
 });
 export type PasswordAuthError = z.infer<typeof passwordAuthErrorSchema>;
 
-export const passwordSignInSuccessSchema = z.strictObject({ ok: z.literal(true), redirectTo: appPathSchema });
-export type PasswordSignInSuccess = z.infer<typeof passwordSignInSuccessSchema>;
+/** One copy deck for every error code; the server sends it and the pages render it. */
+export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>> = {
+  invalid_input: "Enter a valid email address and password.",
+  invalid_credentials: "That email and password don't match. Try again, or reset your password.",
+  expired: "This link has expired. Ask for a new one.",
+  weak_password: "Choose a stronger password: at least 10 characters with a number or symbol, and not one used on other sites.",
+  rate_limited: "Too many attempts. Wait a few minutes and try again.",
+  forbidden_origin: "This request did not come from skipwait.me. Refresh the page and try again.",
+  account_review: "This account needs a quick review before it can sign in. Contact support@skipwait.me.",
+  account_inactive: "This account is not active. Contact support@skipwait.me.",
+  use_work_email_code: "Work emails at companies on skipwait.me sign in with a work-email code under Give a referral. Use a personal email for a password.",
+  use_another_method: "This account needs a different sign-in method. Continue with Google, Microsoft or GitHub, or contact support@skipwait.me.",
+  password_sign_in_unavailable: "Email and password sign-in isn't available right now. Continue with Google, Microsoft or GitHub.",
+  temporarily_unavailable: "We couldn't reach the sign-in service. Try again in a moment.",
+};
 
-export const passwordAvailabilitySchema = z.strictObject({ passwordSignIn: z.boolean() });
-export type PasswordAvailability = z.infer<typeof passwordAvailabilitySchema>;
+/**
+ * Where a social sign-in with a referrer's verified work email lands instead of a session (D-078 ruling 4): the
+ * referrer side of /sign-in, which shows PASSWORD_AUTH_COPY.use_work_email_code. Referrers sign in with a code only.
+ */
+export const USE_WORK_EMAIL_CODE_REASON = "use_work_email_code";
+export const USE_WORK_EMAIL_CODE_PATH = `/sign-in?intent=referrer&reason=${USE_WORK_EMAIL_CODE_REASON}`;
 
-export const passwordForgotRequestSchema = z.strictObject({ email: emailSchema });
-export const passwordForgotAcceptedSchema = z.strictObject({ ok: z.literal(true) });
+/**
+ * Where a password, magic code or passkey finished on WorkOS's hosted page lands instead of a session (security
+ * review F1): seeker passwords count only through SkipWait's own password sign-in, which checks the witness.
+ */
+export const USE_PASSWORD_SIGN_IN_REASON = "use_password_sign_in";
+export const USE_PASSWORD_SIGN_IN_PATH = `/sign-in?reason=${USE_PASSWORD_SIGN_IN_REASON}`;
+export const USE_PASSWORD_SIGN_IN_COPY = "To sign in with your email and password, use Continue with email on this page.";
 
-/** Reset tokens are compact JWS strings issued by server/passwordResetRoutes.ts. */
-export const resetTokenSchema = z.string().min(16).max(4096).regex(/^[A-Za-z0-9_.-]+$/);
-export const passwordResetCheckRequestSchema = z.strictObject({ token: resetTokenSchema });
-export const passwordResetCheckResponseSchema = z.strictObject({ status: z.enum(["valid", "expired"]) });
-export type PasswordResetCheckResponse = z.infer<typeof passwordResetCheckResponseSchema>;
-
-export const passwordResetConfirmRequestSchema = z.strictObject({
-  token: resetTokenSchema,
-  password: z.string().max(PASSWORD_MAX),
-  confirm: z.string().max(PASSWORD_MAX),
-});
-export const passwordResetConfirmSuccessSchema = z.strictObject({
-  ok: z.literal(true),
-  /** True when this browser now holds a fresh session; false when sign-in must finish on hosted AuthKit. */
-  signedIn: z.boolean(),
-  redirectTo: z.union([appPathSchema, hostedSignInPathSchema]),
-});
-export type PasswordResetConfirmSuccess = z.infer<typeof passwordResetConfirmSuccessSchema>;
-
-/** Kit reset rules (app/src/routes/reset-password.tsx); the server enforces the same three. */
+/** Kit rules for setting a password (sign-up and reset only, never sign-in); the server enforces the same three. */
 export function passwordPolicyChecks(password: string, confirm: string): ReadonlyArray<{ readonly label: string; readonly passed: boolean }> {
   return [
     { label: "At least 10 characters", passed: password.length >= 10 },
@@ -110,38 +121,6 @@ export function passwordPolicyError(password: string, confirm: string): string |
   if (password !== confirm) return "Passwords do not match";
   return undefined;
 }
-
-/** Hosted AuthKit start URL. Parameter order is stable so callers and tests agree. */
-export function hostedSignInPath(input: { readonly returnTo: string; readonly email?: string; readonly provider?: "google" }): string {
-  const params = new URLSearchParams({ returnTo: input.returnTo });
-  if (input.provider) params.set("provider", input.provider);
-  const hint = input.email?.trim().toLowerCase() ?? "";
-  if (hint && hint.length <= EMAIL_MAX && EMAIL_PATTERN.test(hint)) params.set("login_hint", hint);
-  return `/api/auth/workos/sign-in?${params}`;
-}
-
-/** One copy deck for every error code; the server sends it and the pages render it. */
-export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>> = {
-  invalid_input: "Enter your email address and password.",
-  invalid_credentials: "That email and password don't match. Try again or reset your password.",
-  continue_hosted: "Finish signing in on the next secure screen.",
-  password_sign_in_unavailable: "Password sign-in isn't available right now. Continue with email on the secure sign-in screen.",
-  account_review: "This account needs a quick review before it can sign in. Contact support@skipwait.me.",
-  account_inactive: "This account is not active. Contact support@skipwait.me.",
-  rate_limited: "Too many attempts. Wait a few minutes and try again.",
-  forbidden_origin: "This request did not come from skipwait.me. Refresh the page and try again.",
-  weak_password: "Choose a stronger password. This one is too common or has appeared in a data breach.",
-  expired: "This link has expired. Request a new one.",
-  consumed: "This link was already used. Request a new one.",
-  temporarily_unavailable: "We couldn't reach the sign-in service. Try again in a moment.",
-};
-
-export const HOSTED_REASON_COPY: Readonly<Record<HostedReason, string>> = {
-  verify_email: "Confirm your email to finish signing in. We'll send a code on the next secure screen.",
-  two_step: "Your account uses two-step verification. Finish signing in on the next secure screen.",
-  organization: "Your organization manages sign-in for this email. Continue on the next secure screen.",
-  extra_check: "We need one more check to keep your account safe. Continue on the next secure screen.",
-};
 
 /** Whole minutes to show for a retry-after, never zero. */
 export function retryMinutes(retryAfterSeconds: number | undefined): number {

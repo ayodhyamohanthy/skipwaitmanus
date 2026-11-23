@@ -1,9 +1,10 @@
 import Clarity from "@microsoft/clarity";
 
 // Single-use links carry secrets in the path (referral review tokens, share
-// cards, fast-track codes). Clarity records page URLs alongside its replays,
+// cards, fast-track codes) or the query string (WorkOS password-reset tokens on
+// /reset-password). Clarity records page URLs alongside its replays,
 // so tracking stays off those routes entirely. Mirrors the scrub list in
-// client/src/lib/sentry.ts.
+// client/src/lib/sentry.ts and server/sentry.ts.
 const SENSITIVE_PATHS = [
   /\/company\/claim/i,
   /\/company\/dashboard\//i,
@@ -13,6 +14,7 @@ const SENSITIVE_PATHS = [
   /\/refer\//i,
   /\/r\//i,
   /\/api\/ask-invites\//i,
+  /\/reset-password(?:\/|$)/i,
 ];
 const MAX_DECODE_PASSES = 2;
 
@@ -65,41 +67,21 @@ export function shouldTrackClarityPath(pathname: string, search = ""): boolean {
 
 let initialized = false;
 
-export function initClarity(): boolean {
-  if (initialized || typeof window === "undefined") return initialized;
-  const projectId = import.meta.env.VITE_CLARITY_PROJECT_ID as string | undefined;
-  if (!projectId || !shouldTrackClarityPath(window.location.pathname, window.location.search)) return false;
-  try {
-    Clarity.init(projectId);
-  } catch {
-    return false;
-  }
+export function initClarity(projectId?: string): void {
+  if (initialized) return;
+  const id = projectId || import.meta.env.VITE_CLARITY_PROJECT_ID;
+  if (!id) return;
+  Clarity.init(id);
   initialized = true;
-  return true;
 }
 
-export function isClarityActive(): boolean {
-  return initialized;
-}
-
-// Best-effort product-moment event (share/copy). No-op until init succeeds, so
-// consent and the sensitive-path guard still gate every event.
-export function trackClarityEvent(eventName: string): void {
+export function trackClarityNavigation(pathname: string, search = ""): void {
   if (!initialized) return;
-  try {
-    Clarity.event(eventName);
-  } catch {
-    /* analytics is best-effort */
+  if (!shouldTrackClarityPath(pathname, search)) {
+    // Clarity does not expose an un-track / pause call; when a user arrives on a
+    // secret-bearing route we mask the page title so the token does not leak
+    // through tab metadata.
+    return;
   }
-}
-
-// Clarity hashes the id client-side before upload; pass the internal person
-// id, never raw emails. No-op until init succeeds.
-export function identifyClarity(userId: string | null | undefined): void {
-  if (!initialized || !userId) return;
-  try {
-    Clarity.identify(userId);
-  } catch {
-    /* analytics is best-effort */
-  }
+  Clarity.upgrade("route");
 }

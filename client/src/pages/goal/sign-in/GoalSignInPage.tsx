@@ -12,8 +12,10 @@ import { BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { ONE_TAP_PAY_SIGNIN } from "@/lib/oneTap";
 import { safeReturnTo } from "@/lib/referrerSignIn";
+import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { cn } from "@/lib/utils";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
+import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY, USE_PASSWORD_SIGN_IN_REASON, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
 import { GoalReferrerCodeForm } from "./GoalReferrerCodeForm";
 import { GoalAuthFrame } from "./GoalAuthFrame";
 import { GoalPasskeyManageLink, GoalSeekerForm, SEEKER_EMAIL_FIELD_ID } from "./GoalSeekerForm";
@@ -51,10 +53,14 @@ export default function GoalSignInPage() {
   const [intent, setIntent] = useState<Intent>(() => (searchParam("intent") === "referrer" ? "referrer" : "seeker"));
   const requestedReturnTo = searchParam("returnTo");
   const referrerReturnTo = safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.referrer);
+  const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
   // D-095: a seeker returns to a purchase only with one-tap pay on; /admin and passkey management always return.
   const seekerReturnTo = ONE_TAP_PAY_SIGNIN || requestedReturnTo?.startsWith("/admin") || requestedReturnTo === "/sign-in?passkeys=manage"
-    ? safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.seeker)
+    ? safeSignInReturnTo(requestedReturnTo, origin) ?? INTENT_RETURN_TO.seeker
     : INTENT_RETURN_TO.seeker;
+  const reason = searchParam("reason");
+  const workEmailRefused = intent === "referrer" && reason === USE_WORK_EMAIL_CODE_REASON;
+  const passwordElsewhere = intent === "seeker" && reason === USE_PASSWORD_SIGN_IN_REASON;
   const copy = COPY[intent];
 
   return (
@@ -90,6 +96,8 @@ export default function GoalSignInPage() {
       </div>
       <div className="mt-6">
         <GoalNextStep reason={copy.reason}>
+          {workEmailRefused ? <p role="status" className="mt-2 text-g-meta text-g-crimson">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}
+          {passwordElsewhere ? <p role="status" className="mt-2 text-g-meta text-g-crimson">{USE_PASSWORD_SIGN_IN_COPY}</p> : null}
           {intent === "referrer"
             ? <div data-testid="referrer-work-email-otp" className="mt-4"><GoalReferrerCodeForm onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
             : <GoalSeekerForm returnTo={seekerReturnTo} />}
