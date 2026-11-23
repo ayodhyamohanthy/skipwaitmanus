@@ -187,3 +187,4 @@ Every row merged through its own pull request with the evidence block (`docs/DEL
 - Oct 24: direction recorded (#606). No code.
 - Nov 1: contract-design draft by Claude Opus 5.5 · 7bf0 on `agent/architect/d178-agent-portal` (`dd3e6e7b`), not adoptable at the time.
 - `D-178-agent-portal-access`: packet adopted — Hark · 7eeb — 2026-11-07 — branch `agent/architect/d178-agent-portal`; rulings recorded as D-290; rows `D-178.gate`, `D-178.grant`, `D-178.read`, `D-178.screen`, `D-178.release` registered; `SKIPPY-6` now depends on `D-178.grant` and waits for its re-sync to R1.
+- D-178.gate: in progress — DeepSeek V4.1 Flash · de61 — 2026-11-24 — branch agent/queue/d178-gate
