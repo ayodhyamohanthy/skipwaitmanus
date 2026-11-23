@@ -222,8 +222,16 @@ const BILLING_FIELDS = [
   { selector: "#billing_address-line1", value: "1 QA Street" },
   { selector: "#billing_address-city", value: "Seattle" },
   { selector: "#billing_address-zip", value: "98101" },
-  { selector: "#billing_address-state", value: "WA" },
 ] as const;
+
+/** Country first, then its dependent state list: the state select is empty until a country is chosen. */
+async function fillBilling(page: import("playwright").Page): Promise<void> {
+  for (const field of BILLING_FIELDS) await page.locator(field.selector).fill(field.value).catch(() => undefined);
+  await page.locator("#billing_address-country").selectOption("US").catch(() => undefined);
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
+  const state = page.locator("#billing_address-state");
+  await state.selectOption("WA").catch(async () => { await state.selectOption({ label: "Washington" }).catch(() => undefined); });
+}
 
 /** Pay the hosted page with the international test card and prove the provider recorded it. */
 export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card: { brand: string; number: string }): Promise<{ filled: string[]; finalUrl: string }> {
@@ -244,8 +252,7 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       }
       // The billing-address step comes before the payment method; fill it and continue.
       if (await page.locator("#billing_address-line1").count()) {
-        for (const field of BILLING_FIELDS) await page.locator(field.selector).fill(field.value).catch(() => undefined);
-        await page.locator("#billing_address-country").selectOption("US").catch(() => undefined);
+        await fillBilling(page);
         await deps.screenshot(page, "03-billing-filled");
         const next = page.locator("#submit-btn, button[type=\"submit\"]").first();
         await next.click({ timeout: NAV_TIMEOUT_MS });
