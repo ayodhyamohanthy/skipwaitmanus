@@ -126,6 +126,8 @@ export function createSkippieCardStore(options: { now?: () => number; newId?: ()
 export type SkippieMoneyCardView = {
   id: string;
   level: number;
+  /** The referral level's display name, from the one shared mapping. */
+  levelName: string;
   quantity: number;
   currency: "INR" | "USD";
   unitAmount: number;
@@ -140,6 +142,7 @@ export function moneyCardView(card: SkippieMoneyCard): SkippieMoneyCardView {
   return {
     id: card.id,
     level: card.level,
+    levelName: LEVEL_DISPLAY_NAME[referralLevelForJobLevel(asJobLevel(card.level))],
     quantity: card.quantity,
     currency: card.currency,
     unitAmount: card.unitAmount,

@@ -59,6 +59,7 @@ import { publicOutboundOrigin } from "./authPostGuard";
 import { registerSkippieSeekerRoutes, skippieSeekerAllowedIds } from "../skippieSeekerRoutes";
 import { parseSkippieAllowedIds } from "../skippieAllowList";
 import { createSkippieSeekerDeps } from "../skippieSeekerDeps";
+import { createSkippieCardStore } from "../skippieMoneyCards";
 import { createSkippieAdminDeps } from "../skippieAdminDeps";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { employerSponsorshipEnabled } from "../billingSettings";
@@ -239,11 +240,18 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, skippie: { enabled: () => process.env.SKIPPIE_ADMIN_ENABLED === "true", deps: () => createSkippieAdminDeps() } }); // Worker cron tick + admin job status
   // Seeker Skippy (D-136..D-142, step 2): ask-only chat. Off unless SKIPPIE_SEEKER_ENABLED=true,
   // and then only for the account ids in SKIPPIE_SEEKER_USER_IDS (the test seeker).
+  // SKIPPY-3: one money-card store per process, shared by the chat turns and the approve route,
+  // and the same banded checkout wiring the Chargebee routes use.
+  const skippieMoneyCards = createSkippieCardStore();
+  const bandedCheckout = bandedCheckoutStore(db.getDb);
   registerSkippieSeekerRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
     enabled: () => process.env.SKIPPIE_SEEKER_ENABLED === "true",
     allowedUserIds: () => skippieSeekerAllowedIds(),
+    moneyCards: skippieMoneyCards,
+    bandedCheckout: () => bandedCheckout.checkout,
+    purchaseEnabled: () => process.env.SKIPPIE_PURCHASE_ENABLED === "true",
     deps: () => {
       // The storagePut selection above is a union of three backends with slightly different
       // signatures (dbStoragePut takes no content type and returns no URL). Adapt once here.
@@ -251,6 +259,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       return createSkippieSeekerDeps({
         storagePut: async (key, data, contentType) => { const stored = await put(key, Buffer.from(data), contentType); return { key: stored.key, url: stored.url ?? "" }; },
         storageGetBytes: async key => { const bytes = await storageGetBytes(key); if (!bytes) throw new Error("Stored file is missing."); return bytes; },
+        moneyCards: skippieMoneyCards,
       });
     },
     listOwnedResumes: userId => db.listOwnedResumeAttachments(userId),
@@ -325,7 +334,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
     // BANDED-checkout (D-367): routes answer 409 not_on_sale until BANDED_SALES_ENABLED is true.
-    banded: bandedCheckoutStore(db.getDb),
+    banded: bandedCheckout,
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,

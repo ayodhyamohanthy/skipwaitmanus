@@ -72,7 +72,7 @@ describe("Skippy step 3: buying extra referrals in the chat", () => {
 
   it("says nothing was charged when the payment is cancelled", async () => {
     const d = deps();
-    const out = await advanceSkippieSeeker(7, quoteSession({ moneyCard: { id: "card-1", level: 5, quantity: 1, currency: "INR", unitAmount: 39900, subtotal: 39900, discountPct: 0, discount: 0, total: 39900, expiresAt: new Date(NOW).toISOString() } }), { kind: "confirm_referrals", outcome: "cancelled" }, d);
+    const out = await advanceSkippieSeeker(7, quoteSession({ moneyCard: { id: "card-1", level: 5, levelName: "Senior", quantity: 1, currency: "INR", unitAmount: 39900, subtotal: 39900, discountPct: 0, discount: 0, total: 39900, expiresAt: new Date(NOW).toISOString() } }), { kind: "confirm_referrals", outcome: "cancelled" }, d);
     expect(out.session.step).toBe("quote");
     expect(out.session.moneyCard).toBeUndefined();
     expect(out.replies.join(" ")).toBe("Payment didn't go through. Nothing was charged.");
