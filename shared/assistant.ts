@@ -1,18 +1,20 @@
 /**
  * Assistant access (kit screens 22 / 23 / 24 / 26).
  * Assistants, API tokens, developer apps and assistant approvals.
- * Access follows the plan entitlement (shared/planEntitlements.ts): the Land
- * tier (Focus, Sprint, Concierge) only; the retired Max no longer carries it (D-067).
+ * D-178.gate (D-290 R2): agent access is the Skippy agent switch plus the
+ * account allow-list, never a plan. The plan readout below still describes the
+ * seeker's wallet; it no longer opens or closes agent access.
  * Timestamps and expiries are computed in JavaScript, never DB NOW().
  */
 import { z } from "zod";
 import { CATALOG_TIERS, ENTITLED_PLAN_IDS, type PlanEntitlements } from "./planEntitlements";
 
 /**
- * Every server refusal of an assistant action without the entitlement (MCP and OAuth clients show
- * it too). Nothing sells Land until the 30/90-day passes go on sale (D-046), so it names no upgrade.
+ * Every server refusal of an assistant action without agent access (the session routes show it).
+ * D-178.gate (D-290 R2): the gate is the switch and the allow-list, never a plan, so the copy names
+ * no plan and no upgrade. The constant keeps its name so the existing error class and callers stay put.
  */
-export const ASSISTANT_PLAN_REQUIRED_MESSAGE = "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.";
+export const ASSISTANT_PLAN_REQUIRED_MESSAGE = "Agent access is not open for this account.";
 
 /** The assistant gates' line while /plans sells no Land (D-067 removed Max; the passes are not on sale yet). */
 export const LAND_NOT_ON_SALE_LINE = "Land is not on sale yet. It arrives with the 30 and 90-day passes.";
