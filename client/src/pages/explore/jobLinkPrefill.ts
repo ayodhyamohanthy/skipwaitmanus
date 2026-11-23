@@ -9,7 +9,7 @@ import { z } from "zod";
 import type { PublicCompany } from "@shared/companies";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "@shared/referralUrl";
 
-export const JOB_LINK_PREFILL_ENABLED = false;
+export const JOB_LINK_PREFILL_ENABLED = true;
 
 let testOverride: boolean | null = null;
 /** The packet's test seam: production reads the constant above, the release row flips it. */
