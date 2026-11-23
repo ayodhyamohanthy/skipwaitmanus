@@ -127,6 +127,17 @@ export function sessionKeyFromWorkosClaims(payload: Record<string, unknown>): st
   return typeof payload.sid === "string" && /^session_[A-Za-z0-9]+$/.test(payload.sid) ? `workos:${payload.sid}` : undefined;
 }
 
+/** D-140 / D-382: interactive authentication timestamp from WorkOS Bearer token (auth_time or fallback to iat). */
+export function authTimeFromWorkosClaims(payload: Record<string, unknown>): number | undefined {
+  if (typeof payload.auth_time === "number" && Number.isSafeInteger(payload.auth_time) && payload.auth_time > 0) {
+    return payload.auth_time;
+  }
+  if (typeof payload.iat === "number" && Number.isSafeInteger(payload.iat) && payload.iat > 0) {
+    return payload.iat;
+  }
+  return undefined;
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
@@ -144,7 +155,8 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   const cached = workosIdentityCache.get(cacheKey);
   // D-057: the Bearer identity is keyed by this token's own sid; it never carries the amr claim.
   const sessionKey = sessionKeyFromWorkosClaims(payload);
-  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing }, ...(sessionKey ? { sessionKey } : {}) };
+  const authTime = authTimeFromWorkosClaims(payload);
+  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing }, ...(sessionKey ? { sessionKey } : {}), ...(authTime ? { authTime } : {}) };
   const workos = new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
   const user = await workos.userManagement.getUser(sub);
   if (user.id !== sub) return undefined;
@@ -155,7 +167,7 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
-  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [], ...(authTime ? { authTime } : {}) };
   if (workosIdentityCache.size >= WORKOS_IDENTITY_CACHE_MAX) workosIdentityCache.clear();
   workosIdentityCache.set(cacheKey, { identity, expiresAt: Date.now() + WORKOS_IDENTITY_CACHE_TTL_MS });
   return sessionKey ? { ...identity, sessionKey } : identity;

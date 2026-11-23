@@ -75,7 +75,7 @@ export async function completeWorkosLogin(req: Request, res: Response, input: Co
   if (input.sealedSession) res.cookie("workos_session", input.sealedSession, { ...getSessionCookieOptions(req), maxAge: APP_SESSION_MAX_AGE_MS });
   const hostedSid = hostedSessionIdFromAccessToken(input.accessToken);
   const { sdk } = await import("./sdk");
-  const token = await sdk.createSessionToken(account.openId, { name: account.name || name, ...(hostedSid ? { sid: hostedSid } : {}) });
+  const token = await sdk.createSessionToken(account.openId, { name: account.name || name, ...(hostedSid ? { sid: hostedSid } : {}), authTime: Math.floor(Date.now() / 1000) });
   res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: APP_SESSION_MAX_AGE_MS });
   // A hosted (WorkOS-hosted) session is linked so the next hosted sign-in from a
   // different typed email can end it first; fail-soft, the app session stands.
