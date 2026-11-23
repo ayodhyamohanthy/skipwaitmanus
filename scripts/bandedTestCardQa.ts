@@ -215,6 +215,16 @@ export type CardRunDeps = {
   log: (line: string) => void;
 };
 
+/** The hosted page's own billing-address step, by the ids its form renders. */
+const BILLING_FIELDS = [
+  { selector: "#billing_address-first_name", value: "SkipWait" },
+  { selector: "#billing_address-last_name", value: "QA" },
+  { selector: "#billing_address-line1", value: "1 QA Street" },
+  { selector: "#billing_address-city", value: "Seattle" },
+  { selector: "#billing_address-zip", value: "98101" },
+  { selector: "#billing_address-state", value: "WA" },
+] as const;
+
 /** Pay the hosted page with the international test card and prove the provider recorded it. */
 export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card: { brand: string; number: string }): Promise<{ filled: string[]; finalUrl: string }> {
   const browser = await deps.launch();
@@ -225,12 +235,22 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       // The hosted page is a client-rendered app: wait for its form before looking for fields.
       await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
       await deps.screenshot(page, "01-hosted-page");
-      // A subscription page opens on its cart first; the card form is one step further.
+      // A subscription page opens on its cart first; the card form is two steps further.
       const proceed = page.locator('button:has-text("Proceed To Checkout"), button:has-text("Proceed to Checkout"), button:has-text("Proceed")').first();
       if (await proceed.count()) {
         await proceed.click({ timeout: NAV_TIMEOUT_MS });
         await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
         await deps.screenshot(page, "02-checkout-step");
+      }
+      // The billing-address step comes before the payment method; fill it and continue.
+      if (await page.locator("#billing_address-line1").count()) {
+        for (const field of BILLING_FIELDS) await page.locator(field.selector).fill(field.value).catch(() => undefined);
+        await page.locator("#billing_address-country").selectOption("US").catch(() => undefined);
+        await deps.screenshot(page, "03-billing-filled");
+        const next = page.locator("#submit-btn, button[type=\"submit\"]").first();
+        await next.click({ timeout: NAV_TIMEOUT_MS });
+        await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
+        await deps.screenshot(page, "04-payment-step");
       }
       await page.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const filled: string[] = [];
@@ -243,17 +263,17 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
         const inputs = await page.locator("input").count();
         throw new Error(`the hosted page showed no card-number field (title "${await page.title()}", ${inputs} inputs); banded-qa/hosted-page.html records what it did show`);
       }
-      await deps.screenshot(page, "03-card-filled");
+      await deps.screenshot(page, "05-card-filled");
       const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
       await submit.click({ timeout: NAV_TIMEOUT_MS });
       // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
       const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
       if (await success.count()) {
-        await deps.screenshot(page, "04-3ds");
+        await deps.screenshot(page, "06-3ds");
         await success.click({ timeout: NAV_TIMEOUT_MS });
       }
       await page.waitForLoadState("domcontentloaded", { timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
-      await deps.screenshot(page, "05-after-payment");
+      await deps.screenshot(page, "07-after-payment");
       return { filled, finalUrl: page.url() };
     } catch (error) {
       // The hosted page is provider-owned: keep what it actually showed so a failure is diagnosable from the artifact.
