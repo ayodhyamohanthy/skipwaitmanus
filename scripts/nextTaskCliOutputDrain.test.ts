@@ -112,7 +112,7 @@ globalThis.fetch = async (input, options = {}) => {
   const runFile = (args: string[] = [], mode: Mode = "green"): Result => {
     const file = path.join(dir, `capture-${++capture}.out`), fd = openSync(file, "w");
     try {
-      const result = spawnSync(process.execPath, ["--import", mock, CLI, ...args], { cwd: work, env: env(mode), stdio: ["ignore", fd, "pipe"] });
+      const result = spawnSync(process.execPath, ["--import", mock, CLI, ...args], { cwd: work, env: env(mode), stdio: ["ignore", fd, "pipe"], timeout: 15_000, killSignal: "SIGKILL" });
       return { status: result.status, signal: result.signal, stdout: readFileSync(file), stderr: Buffer.from(result.stderr ?? []) };
     } finally { closeSync(fd); }
   };
@@ -160,7 +160,7 @@ function expectedReadOnly(f: Fixture, mainCi: { state: string }) {
   const common = { tasks: f.tasks, branches: new Map(), openPrs: new Map(), mergedHeads: new Map(), reports: [], now, register: f.register };
   const board = statusBoard(common);
   const pick = pickNextTask({ ...common, mainCi, claimant: null, avoid: new Set() });
-  return Buffer.from(`${renderBoardSummary(board)}\n${renderPick(pick, { who: "<your session name>", date: "2026-11-24", claimed: false, register: f.register })}\n`);
+  return Buffer.from(`${renderBoardSummary(board)}\n${renderPick(pick, { who: "<your session name>", date: new Date().toLocaleDateString("en-CA"), claimed: false, register: f.register })}\n`);
 }
 function expectedBoard(f: Fixture) {
   return renderBoardSummary(statusBoard({ tasks: f.tasks, branches: new Map(), openPrs: new Map(), mergedHeads: new Map(), reports: [], now: Date.now(), register: f.register }));
@@ -259,7 +259,7 @@ describe("actual picker CLI output drain", () => {
     await inFixture("done", async f => {
       const before = f.refs();
       const result = spawnSync(process.execPath, ["--import", f.mock, CLI], {
-        cwd: f.work, encoding: "utf8", env: { ...f.env(), NEXT_TASK_LIST_REF: "origin/bad..ref" },
+        cwd: f.work, encoding: "utf8", env: { ...f.env(), NEXT_TASK_LIST_REF: "origin/bad..ref" }, timeout: 15_000, killSignal: "SIGKILL",
       });
       expect(result.status).toBe(2);
       expect(result.stdout).toBe("");
@@ -291,7 +291,7 @@ describe("actual picker CLI output drain", () => {
           resolve({ status, stdout: Buffer.alloc(0), stderr: Buffer.concat(stderr), signal });
         });
       });
-      expect(result.status).not.toBe(0);
+      expect(result.status).toBe(1);
       expect(result.stderr.toString()).toMatch(/EPIPE|broken pipe|write/i);
       expect(f.refs()).toBe(before);
     });
