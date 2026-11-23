@@ -209,11 +209,11 @@ describe("actual picker CLI output drain", () => {
       f.git("checkout", "-q", "-b", BRANCH, `origin/${BRANCH}`);
       f.git("commit", "--allow-empty", "-m", "local ahead");
       f.git("checkout", "-q", "main");
-      const before = f.refs(), result = await f.runPipe(["--claim", WHO, "--task", "A"], "green");
+      const before = f.refs(), top = f.git("rev-parse", "--show-toplevel"), result = await f.runPipe(["--claim", WHO, "--task", "A"], "green");
       expect(result.status, result.stderr.toString()).toBe(3);
       expect(result.stderr.length).toBe(0);
       expect(result.stdout.length).toBeGreaterThan(64 * 1024);
-      expect(result.stdout.toString()).toContain(`- MUST PUSH: ${BRANCH} has 1 commit not on origin: git -C ${f.work} push origin ${BRANCH}`);
+      expect(result.stdout.toString()).toContain(`- MUST PUSH: ${BRANCH} has 1 commit not on origin: git -C ${top} push origin ${BRANCH}`);
       expect(result.stdout.toString().trimEnd().endsWith("Nothing new was claimed.")).toBe(true);
       expect(f.refs()).toBe(before);
     });
