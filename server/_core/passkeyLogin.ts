@@ -247,7 +247,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
       }
       if (account.suspended) return res.status(403).json({ error: "We could not complete sign-in." });
-      const token = await sdk.createSessionToken(stored.openId, { name: account.name ?? undefined });
+      const token = await sdk.createSessionToken(stored.openId, { name: account.name ?? undefined, authTime: Math.floor(Date.now() / 1000) });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       res.json({ signedIn: true, role: account.role });
     } catch (err) {

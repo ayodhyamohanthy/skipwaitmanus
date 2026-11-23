@@ -6173,6 +6173,7 @@
         "server/_core/sessionStepUp.ts",
         "server/_core/sessionStepUp.test.ts",
         "server/_core/sdk.session.test.ts",
+        "server/_core/workosAuth.test.ts",
         "docs/plans/SKIPPY-stepup.md"
       ],
       "note": "Packet written in docs/plans/SKIPPY-stepup.md under D-382 (D-140, D-200). Interactive sign-in timestamp carried on cookie JWT and WorkOS Bearer token; survives renewal without being refreshed; assertFreshInteractiveSession gate (15-min limit); WorkOS prompt=login and maxAge; referrer sign-in untouched; login-rule pins green."

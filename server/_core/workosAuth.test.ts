@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { SignJWT, decodeJwt } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HOSTED_LINK_COOKIE } from "./hostedAccountSwitch";
+import { HOSTED_LINK_COOKIE, signHostedLink } from "./hostedAccountSwitch";
 
 const authUrl = vi.fn();
 const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" } }));
@@ -446,5 +446,45 @@ describe("canonical WorkOS callback session", () => {
     expect(unknown.headers.location).toBe("/sign-in");
     expect(authUrl.mock.calls.length).toBe(callsBefore);
     restore();
+  });
+
+  it("forces interactive provider sign-in and revokes the linked session on step_up=1 or fresh=1 (D-140 / D-382)", async () => {
+    const { app, restore } = await buildApp({ ...baseEnv });
+    try {
+      const linkedCookie = await signHostedLink({ uid: "user_test", sid: "session_live" }, new TextEncoder().encode(baseEnv.WORKOS_COOKIE_PASSWORD));
+      expect(linkedCookie).not.toBeNull();
+
+      authUrl.mockClear();
+      hosted.revoke.mockClear();
+      await request(app).get("/api/auth/workos/sign-in").query({ provider: "google", step_up: "1" }).set("Cookie", `${HOSTED_LINK_COOKIE}=${linkedCookie}`);
+      const stepUpCall = authUrl.mock.calls.at(-1)?.[0] as { prompt?: string; maxAge?: number };
+      expect(stepUpCall.prompt).toBe("login");
+      expect(stepUpCall.maxAge).toBe(900);
+      expect(hosted.revoke).toHaveBeenCalledWith({ sessionId: "session_live" });
+
+      authUrl.mockClear();
+      hosted.revoke.mockClear();
+      await request(app).get("/api/auth/workos/sign-in").query({ provider: "google", fresh: "1" }).set("Cookie", `${HOSTED_LINK_COOKIE}=${linkedCookie}`);
+      const freshCall = authUrl.mock.calls.at(-1)?.[0] as { prompt?: string; maxAge?: number };
+      expect(freshCall.prompt).toBe("login");
+      expect(freshCall.maxAge).toBe(900);
+      expect(hosted.revoke).toHaveBeenCalledWith({ sessionId: "session_live" });
+
+      authUrl.mockClear();
+      hosted.revoke.mockClear();
+      await request(app).get("/api/auth/workos/sign-in").query({ provider: "google" });
+      const normalCall = authUrl.mock.calls.at(-1)?.[0] as { prompt?: string; maxAge?: number };
+      expect(normalCall.prompt).toBeUndefined();
+      expect(normalCall.maxAge).toBeUndefined();
+      expect(hosted.revoke).not.toHaveBeenCalled();
+
+      authUrl.mockClear();
+      const providerless = await request(app).get("/api/auth/workos/sign-in").query({ fresh: "1" });
+      expect(providerless.status).toBe(302);
+      expect(providerless.headers.location).toBe("/sign-in");
+      expect(authUrl).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
   });
 });
