@@ -30,6 +30,8 @@ export type DevIdentity = {
   sessionAmr?: "work_email_otp";
   /** D-057-session-gate §0b.2: `workos:<sid>` or `app:<ssid>`, from the verified credential only. */
   sessionKey?: string;
+  /** D-140 / D-382: Unix epoch seconds of interactive authentication; undefined when legacy or absent. */
+  authTime?: number;
 };
 
 function readSessionToken(req: Request): string | undefined {
@@ -86,7 +88,14 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
     const primaryEmail = emailField(account.email);
     // D-057: the session's own claim and key, copied from the verified cookie only (never the openId or subject).
     const sessionKey = session.sid ? `workos:${session.sid}` : session.ssid ? `app:${session.ssid}` : undefined;
-    return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [], ...(session.amr ? { sessionAmr: session.amr } : {}), ...(sessionKey ? { sessionKey } : {}) };
+    return {
+      account,
+      primaryEmail,
+      emailAddresses: primaryEmail ? [primaryEmail] : [],
+      ...(session.amr ? { sessionAmr: session.amr } : {}),
+      ...(sessionKey ? { sessionKey } : {}),
+      ...(session.authTime ? { authTime: session.authTime } : {}),
+    };
   } catch {
     return undefined;
   }

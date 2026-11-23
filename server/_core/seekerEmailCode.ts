@@ -48,7 +48,7 @@ export function registerSeekerEmailCodeRoutes(app: Express, deps: Deps = {}) {
       const openId = `emailcode_${email}`;
       const account = await resolveLoginIdentity({ provider: "email_code", subject: email, openId, email, emailVerified: true, name: email.split("@")[0], loginMethod: "email_code" });
       if (account.suspended) return res.status(403).json({ error: "We could not complete sign-in. Contact support@skipwait.me." });
-      const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email });
+      const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email, authTime: Math.floor(Date.now() / 1000) });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       res.json({ signedIn: true });
     } catch (error) {

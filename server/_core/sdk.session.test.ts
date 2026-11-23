@@ -63,3 +63,59 @@ describe("renewal keeps sid, amr and ssid (§0b.2)", () => {
     expect(session?.ssid).toBe(ssid);
   });
 });
+
+describe("the interactive authentication timestamp (auth_time) (D-140 / D-382)", () => {
+  it("defaults authTime to current Unix timestamp on new interactive session", async () => {
+    const before = Math.floor(Date.now() / 1000);
+    const token = await sdk.createSessionToken("user-1");
+    const after = Math.floor(Date.now() / 1000);
+    const session = await sdk.verifySession(token);
+    expect(typeof session?.authTime).toBe("number");
+    expect(session!.authTime).toBeGreaterThanOrEqual(before);
+    expect(session!.authTime).toBeLessThanOrEqual(after);
+  });
+
+  it("accepts and preserves an explicit authTime", async () => {
+    const explicit = 1700000000;
+    const token = await sdk.createSessionToken("user-1", { authTime: explicit });
+    const session = await sdk.verifySession(token);
+    expect(session?.authTime).toBe(explicit);
+  });
+
+  it("reads back only positive safe integers", async () => {
+    expect((await sdk.verifySession(await forged({ auth_time: "not-a-number" })))?.authTime).toBeUndefined();
+    expect((await sdk.verifySession(await forged({ auth_time: -500 })))?.authTime).toBeUndefined();
+    expect((await sdk.verifySession(await forged({ auth_time: 0 })))?.authTime).toBeUndefined();
+    expect((await sdk.verifySession(await forged({ auth_time: 1.5 })))?.authTime).toBeUndefined();
+    expect((await sdk.verifySession(await forged({})))?.authTime).toBeUndefined();
+  });
+
+  it("preserves original authTime across session renewal while refreshing iat", async () => {
+    const originalAuthTime = 1690000000;
+    const twoDaysAgo = 2 * 86_400;
+    // Old session from 2 days ago with originalAuthTime
+    const oldToken = await forged({ auth_time: originalAuthTime }, twoDaysAgo);
+    const renewedToken = await sdk.renewSessionIfDue(oldToken);
+    expect(renewedToken).toBeTruthy();
+
+    const renewedSession = await sdk.verifySession(renewedToken);
+    expect(renewedSession?.authTime).toBe(originalAuthTime);
+
+    // Verify iat is refreshed (current second)
+    const [, p] = renewedToken!.split(".");
+    const payload = JSON.parse(Buffer.from(p, "base64url").toString());
+    const now = Math.floor(Date.now() / 1000);
+    expect(payload.iat).toBeGreaterThanOrEqual(now - 2);
+    expect(payload.auth_time).toBe(originalAuthTime);
+  });
+
+  it("preserves absence of authTime across renewal for legacy tokens", async () => {
+    // Old legacy token with no auth_time
+    const oldLegacyToken = await forged({}, 2 * 86_400);
+    const renewedToken = await sdk.renewSessionIfDue(oldLegacyToken);
+    expect(renewedToken).toBeTruthy();
+
+    const renewedSession = await sdk.verifySession(renewedToken);
+    expect(renewedSession?.authTime).toBeUndefined();
+  });
+});
