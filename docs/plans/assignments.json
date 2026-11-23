@@ -306,7 +306,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/branch-hygiene-picker-wiring",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-373",
       "dependsOn": [
         "BRANCH-HYGIENE-1"
