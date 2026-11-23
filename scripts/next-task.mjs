@@ -39,6 +39,7 @@ import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.
 import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
+import { classifyLocal } from "./branchHygieneCore.mjs";
 
 // Cloud sandboxes reach GitHub only through HTTPS_PROXY, which Node's fetch
 // ignores unless NODE_USE_ENV_PROXY=1 (Node >= 22.21); without it the CI read
@@ -92,10 +93,54 @@ function trackingRefs() {
   return refsFrom(tryGit("for-each-ref", "--format=%(objectname)%09%(refname)", ...refPatterns.map(ref => ref.replace("refs/heads/", "refs/remotes/origin/").replace(/\/\*$/, ""))), "refs/remotes/origin/");
 }
 
+/**
+ * BRANCH-HYGIENE-2 (D-205): on every run, the picker deletes local branches whose upstream is gone
+ * and whose tip is in origin/main, using safe delete (`git branch -d`). Never touches checked-out,
+ * dirty or unmerged branches. Prints one line for deletions and notes for what was kept. Never blocks a pick.
+ */
+export function runLocalCleanup({ tryGit, log = console.log, err = console.error } = {}) {
+  try {
+    const listed = tryGit("worktree", "list", "--porcelain");
+    if (!listed) return { deleted: [], kept: [], failed: [] };
+    const worktrees = new Map();
+    for (const block of listed.split("\n\n")) {
+      const path = /^worktree (.+)$/m.exec(block)?.[1];
+      const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1];
+      if (path && branch) worktrees.set(branch, path);
+    }
+    const forEach = tryGit("for-each-ref", "--format=%(refname:strip=2)%09%(objectname)%09%(upstream:track)", "refs/heads");
+    if (!forEach) return { deleted: [], kept: [], failed: [] };
+    const branches = forEach.split("\n").filter(Boolean).map(line => {
+      const [name, sha, track = ""] = line.split("\t");
+      return { name, sha, upstreamGone: track.includes("gone"), inMain: tryGit("merge-base", "--is-ancestor", sha, "refs/remotes/origin/main") !== null, worktree: worktrees.get(name) ?? null };
+    });
+    const rows = classifyLocal({ local: branches });
+    const doomed = rows.filter(r => r.action === "delete");
+    const deleted = [], failed = [];
+    for (const r of doomed) {
+      if (tryGit("branch", "-d", r.name) !== null) deleted.push(r.name);
+      else failed.push(r.name);
+    }
+    const kept = rows.filter(r => r.action === "keep");
+    if (deleted.length > 0) {
+      log(`LOCAL: deleted ${deleted.length} of ${doomed.length} merged local branches whose upstream is gone`);
+    }
+    for (const name of failed) err(`branch-cleanup: ${name}: git branch -d refused`);
+    for (const r of kept.filter(r => r.reason === "checked-out" || r.reason === "unmerged-local")) {
+      if (r.reason === "checked-out") log(`LOCAL: ${r.name} is merged into main but checked out in ${worktrees.get(r.name)} (kept)`);
+      else if (r.reason === "unmerged-local") log(`LOCAL: ${r.name} upstream is gone but commits are not in main (kept)`);
+    }
+    return { deleted, kept, failed };
+  } catch (error) {
+    return { deleted: [], kept: [], failed: [], error };
+  }
+}
+
 function refreshAuthoritativeRefs() {
   // Explicit destinations update and prune tracking refs even in a main-only clone; config stays untouched.
   if (tryGit("-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs) === null) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
   if (tryGit("rev-parse", "--is-shallow-repository") !== "false") fail("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+  runLocalCleanup({ tryGit, log: console.log, err: console.error });
   return trackingRefs();
 }
 
@@ -375,8 +420,9 @@ function localState() {
     const dirty = worktrees.has(branch) && Boolean(tryGit("-C", path, "status", "--porcelain"));
     if (!unpushed && !dirty) continue;
     const onOrigin = tryGit("rev-parse", "--verify", "-q", `refs/remotes/origin/${branch}`) !== null;
+    const merged = tryGit("merge-base", "--is-ancestor", branch, "refs/remotes/origin/main") !== null;
     // ahead: commits only this clone has; null means the branch itself is missing from origin with commits on it.
-    local.push({ branch, ahead: onOrigin ? unpushed : (unpushed ? null : 0), dirty, path });
+    local.push({ branch, ahead: onOrigin ? unpushed : (unpushed ? null : 0), dirty, path, merged });
   }
   const mainBehind = tryGit("rev-parse", "--verify", "-q", "refs/heads/main") ? Number(tryGit("rev-list", "--count", "main..origin/main") ?? 0) : 0;
   return { local, mainBehind };

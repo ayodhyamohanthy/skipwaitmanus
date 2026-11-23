@@ -814,11 +814,11 @@ describe("markers and printed steps", () => {
     expect(land1).toContain("LAND M");
     expect(land1).toContain("re-run the full gate");
     expect(land1).toContain("gh pr merge <number> --merge");
-    expect(land1).toContain("never --admin, --squash or --rebase");
+    expect(land1).toContain("never `--admin`, `--squash` or `--rebase`");
     expect(land1).toContain("node scripts/branch-cleanup.mjs --apply --only <task id>");
     const fixMain = renderPick({ kind: "fix-main", sha: "c".repeat(40), url: "https://ci/run/2", lock: "agent/queue/fix-main-cccccccc", parent: null, from: null }, ctx);
     expect(fixMain).toContain("gh pr merge <number> --merge");
-    expect(fixMain).toContain("never --admin, --squash or --rebase");
+    expect(fixMain).toContain("never `--admin`, `--squash` or `--rebase`");
     expect(fixMain).toContain("node scripts/branch-cleanup.mjs --apply --only <task id>");
     // D-074: a Tier 1 landing checks that nothing was pushed after the pass verdict.
     expect(land1).toContain("was never reviewed (D-074)");
