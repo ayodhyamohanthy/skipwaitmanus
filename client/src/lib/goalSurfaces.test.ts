@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("goalSurfaces flag module", () => {
   it("releases only what RELEASED lists", () => {
-    expect(releasedGoalSurfaces()).toEqual(["home",  "home-signed-in",  "referrer",  "referrer-home",  "invite",  "post-opportunity",  "admin",  "admin-money",  "admin-approvals",  "admin-ops",  "admin-people",  "alerts",  "assistants",  "conversation",  "developers",  "discovery",  "email-review",  "employer",  "employer-billing",  "employer-talent",  "for-companies",  "inbox",  "landed",  "links",  "messages",  "onboarding",  "plans",  "policy",  "pricing",  "profile",  "settings",  "share",  "start",  "suggest-company",  "support",  "system",  "verify",  "sign-in",  "public-profile",  "premium"]);
+    expect(releasedGoalSurfaces()).toEqual(["home",  "home-signed-in",  "referrer",  "referrer-home",  "invite",  "post-opportunity",  "admin",  "admin-money",  "admin-approvals",  "admin-ops",  "admin-people",  "alerts",  "assistants",  "conversation",  "developers",  "discovery",  "email-review",  "employer",  "employer-billing",  "employer-talent",  "for-companies",  "inbox",  "landed",  "links",  "messages",  "onboarding",  "plans",  "policy",  "pricing",  "profile",  "settings",  "share",  "start",  "suggest-company",  "support",  "system",  "verify",  "sign-in",  "public-profile",  "premium",  "skippy"]);
     for (const id of releasedGoalSurfaces()) {
       expect(goalSurfaceIds()).toContain(id);
     }
@@ -59,7 +59,8 @@ describe("goalSurfaces flag module", () => {
     expect(goalSurfaceDecision("home", "production", "")).toBe(true);
     expect(goalSurfaceDecision("home-signed-in", "production", "")).toBe(true);
     expect(goalSurfaceDecision("inbox", "production", "")).toBe(true);
-    expect(goalSurfaceDecision("skippy", "production", "")).toBe(false);
+    expect(goalSurfaceDecision("skippy", "production", "")).toBe(true);
+    expect(goalSurfaceDecision("queue", "production", "")).toBe(false);
     // deploy-pages.yml must never pass the retired landing flags or
     // VITE_GOAL_SURFACES (D-097: production truth in code).
     const workflow = readFileSync(join(__dirname, "..", "..", "..", ".github", "workflows", "deploy-pages.yml"), "utf8");
