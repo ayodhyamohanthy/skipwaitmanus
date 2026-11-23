@@ -330,4 +330,4 @@ None. The requirements follow directly from founder decisions D-140, D-030, D-04
 
 ## Status
 
-`SKIPPY-stepup`: in progress — Gemini 3.8 Flash · 9904 — 2026-11-23 — branch agent/queue/skippy-stepup
+`SKIPPY-stepup`: review — agent/queue/skippy-stepup — 67013b24588c1f2ff1bcf72faf7c76036ca8f8aa
