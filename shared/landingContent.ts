@@ -20,7 +20,7 @@ const FIRST_PACK_USD = firstPackClaim("USD") ?? "our smallest pack";
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
 
-export const LANDING_TITLE = "Private job referrals from verified employees";
+export const LANDING_TITLE = "Request a job referral from a verified employee";
 /**
  * The hero headline, one line per row; the page breaks between them and adds the brand dot after the last.
  * D-063: asking is free only for a monthly allowance, so the headline never says "free".
@@ -109,21 +109,21 @@ export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
  * reveal failsafe paints the snapshot, and painting the old design is the bug.
  */
 export const GOAL_LANDING_H1 = "Nobody reads the pile.";
-export const GOAL_LANDING_HERO_LEAD = "Mass applications meet software, not people. Here, one verified employee at the company you want to join reads your ask - and can open a private conversation. No commissions, no outcome promises.";
+export const GOAL_LANDING_HERO_LEAD = "Mass applications meet software, not people. skipwait.me matches your referral request to verified employees at the company you want to join. They read it privately and decide for themselves. Nobody is paid to say yes.";
 export const GOAL_LANDING_QUOTE_LEAD = "A referral is an introduction,";
 export const GOAL_LANDING_QUOTE_REST = "never a promise of an interview or a job.";
 export const GOAL_LANDING_QUOTE = `${GOAL_LANDING_QUOTE_LEAD} ${GOAL_LANDING_QUOTE_REST}`;
 export const GOAL_LANDING_EMPLOYEE_H2 = "Be the way in for someone good.";
-export const GOAL_LANDING_EMPLOYEE_LEAD = "Review asks when it feels right and open a door you believe in. Referring is always free - and referrers are never paid, so every yes stays genuine.";
+export const GOAL_LANDING_EMPLOYEE_LEAD = "Review requests when it feels right, and refer only people you believe in, through your company's own referral process. Referrers are never paid, so every yes stays genuine.";
 export const GOAL_LANDING_EXPLORE_NOTE = "Explore before signing in.";
 export const GOAL_LANDING_BAND_H2 = "Past the pile, into a conversation.";
-export const GOAL_LANDING_BAND_LEAD = "A verified employee inside the company picks your ask and opens a private conversation - so you arrive as a person, not one more application in the pile.";
+export const GOAL_LANDING_BAND_LEAD = "A verified employee inside the company chooses your request and opens a private conversation - so you arrive as a person, not one more application in the pile.";
 export const GOAL_LANDING_COMPARE_H2 = "Mass applying vs a referral.";
 export const GOAL_LANDING_COMPARE_ROWS: ReadonlyArray<readonly [label: string, mass: string, referral: string]> = [
-  ["Where you land", "One more application in a pile, screened by software before any person.", "One ask, read by a verified employee inside the company."],
-  ["Your effort", "The same form, re-filled for every posting, hearing nothing back.", "One thoughtful ask with your resume and a short note - not another form."],
+  ["Where you land", "One more application in a pile, screened by software before any person.", "One request, read by a verified employee inside the company."],
+  ["Your effort", "The same form, re-filled for every posting, hearing nothing back.", "One thoughtful request with your resume and a short note - not another form."],
   ["Your wait", "39-55 days average hiring time for job-board and career-site candidates.", "About 29 days average hiring time for referred candidates."],
-  ["Your odds", "One of every applicant in the pile.", "Referrals are about 7% of candidates and convert at nearly 40%."],
+  ["The numbers", "One of every applicant in the pile.", "Referrals are about 7% of candidates and convert at nearly 40%."],
 ];
 export const GOAL_LANDING_FIGURES_TEXT = "Figures: Jobvite, “4 Reasons to Invest in Employee Referrals” - jobvite.com - Employer-side averages, not a promise for any one person.";
 export const GOAL_LANDING_FIGURES_HREF = "https://www.jobvite.com/blog/4-reasons-to-invest-in-employee-referrals/";
@@ -132,19 +132,26 @@ export const GOAL_LANDING_TRUST_H2_PARTS: readonly [string, string] = ["Real ins
 export const GOAL_LANDING_TRUST_H2 = GOAL_LANDING_TRUST_H2_PARTS.join(" ");
 export const GOAL_LANDING_FAIR_H2 = "What never changes";
 
+export const GOAL_LANDING_FAIR_NO_SALE = "Nobody can buy a referral. You send a request; a verified employee decides on their own, and can always pass.";
+export const GOAL_LANDING_FAIR_EMPLOYER_PROCESS = "The employer's process, every time. Before accepting, a referrer confirms they will refer only through their company's official process and accept nothing in return.";
+
+export const GOAL_LANDING_KICKER = "Verified referral matching";
+export const GOAL_LANDING_FOOTER_BLURB = "A warmer way in. Verified employees, private requests, their decision. skipwait.me is in beta.";
+export const GOAL_LANDING_COMPARE_COLUMN = "One request on skipwait.me";
+
 /** The three hero steps the goal landing renders; the cost body follows the D-132 flag. */
 export function goalLandingSteps(costCopy: { stepBody: string }): Array<{ title: string; body: string }> {
   return [
-    { title: "Pick where you want in", body: "See the companies with verified employees inside, and the roles you can ask about." },
-    { title: "Ask with the cost up front", body: costCopy.stepBody },
-    { title: "A yes opens a conversation", body: "An accepted ask opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
+    { title: "Pick where you want in", body: "See the companies with verified employees inside, and the roles you can request a referral for." },
+    { title: "Request with the cost up front", body: costCopy.stepBody },
+    { title: "A yes opens a conversation", body: "An accepted request opens a private conversation. A referral is an introduction, never a promise of an interview or a job." },
   ];
 }
 
 /** The trust cards; the spend wording follows the D-132 flag. */
 export function goalLandingTrust(costCopy: { waitBody: string }): Array<{ title: string; body: string; blue: boolean }> {
   return [
-    { title: "A real insider reads you", body: "Every referrer proves their company email before they can see a single ask.", blue: true },
+    { title: "A real insider reads you", body: "Every referrer proves their company email before they can see a single request.", blue: true },
     { title: "Private until it counts", body: "Your name stays private until a referrer chooses to open the conversation.", blue: false },
     { title: "Nothing spent while it waits", body: costCopy.waitBody, blue: false },
   ];
@@ -154,6 +161,8 @@ export function goalLandingTrust(costCopy: { waitBody: string }): Array<{ title:
 export function goalLandingFairRules(costCopy: { fairRule: string }): string[] {
   return [
     REFERRING_FREE_LINE,
+    GOAL_LANDING_FAIR_NO_SALE,
+    GOAL_LANDING_FAIR_EMPLOYER_PROCESS,
     costCopy.fairRule,
     "No outcome promises: a referral is an introduction, not an interview or a job.",
     "Private by default: your name stays hidden until a referrer accepts.",

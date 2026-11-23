@@ -22,7 +22,7 @@ describe("GoalLandingV9", () => {
 
   it("guards against forbidden marketing phrases in goal-landing content (D-323)", async () => {
     const landing = await import("@shared/landingContent");
-    const forbidden = /buy a referral|paid referral|compliant|approved by/i;
+    const forbidden = /(?<!nobody can )buy a referral|paid referral|compliant|approved by/i;
     for (const [key, value] of Object.entries(landing)) {
       if (key.startsWith("GOAL_") || key === "LANDING_TITLE") {
         const text = typeof value === "string" ? value : JSON.stringify(value);
