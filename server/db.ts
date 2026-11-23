@@ -1967,7 +1967,22 @@ export async function resolveAskJobContext(db: any, input: AskJobResolutionInput
     if (!opportunity || !opportunity.isActive || isOpportunityExpired(opportunity.expiresAt, nowMs)) {
       throw new Error("This opening is no longer available. Refresh the company page and choose again.");
     }
-    const companyDomain = opportunity.companyDomain.trim().toLowerCase();
+    const opportunityDomain = opportunity.companyDomain.trim().toLowerCase();
+    let companyDomain = opportunityDomain;
+    if (input.targetRoleUrl) {
+      const resolvedDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+      const confirmedDomain = input.confirmedCompanyDomain ? directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`) : undefined;
+      if (resolvedDomain && confirmedDomain && resolvedDomain !== confirmedDomain) {
+        throw new Error("The confirmed company domain does not match this job link.");
+      }
+      const targetUrlDomain = resolvedDomain ?? confirmedDomain;
+      if (targetUrlDomain && targetUrlDomain.toLowerCase() !== opportunityDomain) {
+        throw new Error("This opening is no longer available. Refresh the company page and choose again.");
+      }
+      if (targetUrlDomain) {
+        companyDomain = targetUrlDomain.toLowerCase();
+      }
+    }
     if (input.selectedCompany) {
       const allowed = input.selectedCompany.domains.map((d: string) => d.trim().toLowerCase());
       if (!allowed.includes(companyDomain)) {
@@ -1979,7 +1994,7 @@ export async function resolveAskJobContext(db: any, input: AskJobResolutionInput
         throw new Error("The confirmed company domain does not match this job link.");
       }
     }
-    const targetRoleUrl = opportunity.targetRoleUrl ?? input.targetRoleUrl ?? "";
+    const targetRoleUrl = input.targetRoleUrl ?? opportunity.targetRoleUrl ?? "";
     const decided = resolveAskJobFunction({
       explicit: input.jobFunction,
       targetRoleUrl: input.submittedTargetRoleUrl ?? targetRoleUrl,
@@ -2085,7 +2100,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
   const jobRow = context.jobRow;
   const level = context.level;
   const compensation = input.compensation?.trim().slice(0, 80) || null;
-  const fingerprint = companyReferralFingerprint({ ...input, targetRoleUrl }, companyDomain);
+  const fingerprint = companyReferralFingerprint(input, companyDomain);
   const realDb = db ?? (await getDb());
   if (!realDb) throw new Error("Database unavailable");
   if (input.opportunityId && (input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
