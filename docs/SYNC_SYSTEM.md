@@ -14,11 +14,11 @@ GitHub main
 Deploy API (server/**) ──► builds container ──► wrangler deploy ──► /api/health reports commitSha
   │                                                                    ▲
   └── Verify: sleep 600s (let warm instance sleep) → wake → compare SHA ┘
-        OK → append docs/SYNC_LOG.md, notify   FAIL → job fails + rollback.yml available
+        OK → record run summary, notify   FAIL → job fails + rollback.yml available
 
 Deploy Web (client/**) ──► Vite build (VITE_GIT_COMMIT_SHA) ──► Pages deploy
   └── Verify: grep <meta name="git-commit"> on skipwait.me == pushed SHA
-        OK → append docs/SYNC_LOG.md, notify
+        OK → record run summary, notify
 ```
 
 ## Self-verification endpoints
@@ -34,7 +34,7 @@ Cloudflare Containers with `sleepAfter=10m` recycle the instance only after 10 m
 
 ## Audit trail
 
-`docs/SYNC_LOG.md` — one row per deploy attempt (timestamp, workflow, commit, status). Appended by CI (`if: always()`), so failures are recorded too. Since Oct 20 the D-082 ruleset refuses the deploy bot's push of this log to `main` (GitHub allows no Actions bypass on a personal repo), so the file stops growing; the GitHub Actions run history is the deploy log until the log moves off `main` (task SYNC-LOG-off-main).
+Each deploy records its workflow, commit and job status in its GitHub Actions run summary (`GITHUB_STEP_SUMMARY`). The summary step uses `always()` so failures are recorded too; the API workflow omits pushes classified as skipped. No deploy-log commit or push to `main` is attempted. `docs/SYNC_LOG.md` is frozen history: it stopped growing on October 20, 2026 when the D-082 ruleset refused the bot's push. The run history and summaries are the machine audit trail.
 
 ## Rollback
 
@@ -48,7 +48,7 @@ Each deploy posts a ✅/❌ comment to the repo's first issue (non-fatal if none
 ## Extending to another system (e.g. Vercel)
 
 1. Add an entry to `scripts/sync-manifest.json` (`"enabled": true`).
-2. Create `deploy-vercel.yml` mirroring deploy-pages.yml (build + deploy + verify SHA + append log).
+2. Create `deploy-vercel.yml` mirroring deploy-pages.yml (build + deploy + verify SHA + record the run summary).
 3. Add the new workflow path to the extension-point banner in deploy-api.yml.
 
 ## Secrets used (Cloudflare vault / Actions secrets)

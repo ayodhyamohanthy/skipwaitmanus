@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "productionFlag": false,
+  "sourceHead": "d514aa883763e1c1fca23af3fd5dfa32750273f6",
+  "ciRun": 44918233505,
+  "inspected": true,
+  "checks": [
+    "no horizontal overflow",
+    "phone target at least 44px",
+    "confirmation and error overlay hit-tests",
+    "failed confirmation then successful retry"
+  ],
+  "files": [
+    {
+      "file": "after/awaiting-1280.png",
+      "width": 1280,
+      "height": 926,
+      "sha256": "79ce0e8fbfe3f43026e990a1bd4f7ff42977436c3831064d40f141879f9887c8"
+    },
+    {
+      "file": "after/awaiting-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "f50db31f8f67ae10a7ee90cd2ab7ae77dd0695b11add99f149413a2813cef2b5"
+    },
+    {
+      "file": "after/error-1280.png",
+      "width": 1280,
+      "height": 974,
+      "sha256": "240afa79da6f257d991bd83c5a117c829e71cfc2596cbd1d7918ac662447ef5d"
+    },
+    {
+      "file": "after/error-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "efc015a30b093ac844c0b12b2a00de46653e299c6fb47d1cfc89c44b4be14253"
+    }
+  ]
+}

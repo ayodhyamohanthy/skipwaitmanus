@@ -21,6 +21,8 @@ Every release is treated as a **quality-gated production change**, not merely a 
 
 The release owner must run the full sequential Vitest suite, TypeScript checking, and a production build. Changed user-facing pages must also receive desktop and 375×812 mobile visual review. New or changed HTTP routes require positive, unauthenticated, unauthorized, and invalid-input tests. Private-resource routes must include an ownership or exact-company negative test.
 
+A test whose fixture uses fixed dates while the code under test reads the real clock must pin the clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`, restored after each test). Otherwise it passes until real time leaves the fixture's window and then fails on every pull request, as `server/db.referredDeadline.test.ts` did from 2026-11-22T01:00Z (fixed in #1456).
+
 ## Operations Monitoring Rules
 
 Runtime monitoring prioritizes material request failures, payment fulfillment anomalies, private-document upload failures, work-email enrollment errors, employer-resolution failures, and administrator recovery actions. Logs and administrator alerts must never include resume bytes, target-role URLs, OTPs, payment details, authentication secrets, or other private user content. Alerts describe only the minimum safe routing and status metadata needed to diagnose a fault.

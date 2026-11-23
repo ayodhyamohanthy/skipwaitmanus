@@ -10,6 +10,7 @@ describe("shellPageTitle", () => {
     ["/support", "Support"],
     ["/premium", "Premium"],
     ["/agents", "Assistants"],
+    ["/work", "Your work"],
   ])("names %s", (path, title) => {
     expect(shellPageTitle(path)).toBe(title);
   });

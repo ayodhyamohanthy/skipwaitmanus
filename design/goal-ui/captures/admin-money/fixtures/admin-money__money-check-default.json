@@ -1,8 +1,6 @@
 {
   "signedIn": {
     "id": 1,
-    "name": "Ops Admin",
-    "email": "ops-admin@example.com",
     "role": "admin"
   },
   "routes": [
@@ -29,9 +27,11 @@
       "path": "/api/admin/money-check/status",
       "status": 200,
       "body": {
-        "lastRunAt": null,
-        "consecutiveFailures": 0,
-        "alertEnabled": false
+        "latestOutcome": null,
+        "latestAt": null,
+        "lastSuccessAt": null,
+        "failuresLast7Days": 0,
+        "ownerNotReached": false
       }
     },
     {

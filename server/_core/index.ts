@@ -57,6 +57,7 @@ import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
 import { dispatchReferralReviewDeliveries } from "../referralReviewDispatch";
 import { publicOutboundOrigin } from "./authPostGuard";
 import { registerSkippieSeekerRoutes, skippieSeekerAllowedIds } from "../skippieSeekerRoutes";
+import { parseSkippieAllowedIds } from "../skippieAllowList";
 import { createSkippieSeekerDeps } from "../skippieSeekerDeps";
 import { createSkippieAdminDeps } from "../skippieAdminDeps";
 import { registerEmployerRoutes } from "../employerRoutes";
@@ -270,7 +271,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // tokens, assistant approvals and the developer app console.
   registerAssistantRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   // Skippy step 5 (D-141): seeker agents, draft-only. Off unless SKIPPIE_AGENT_ENABLED.
-  registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
+  registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", allowedUserIds: () => parseSkippieAllowedIds(process.env.SKIPPIE_AGENT_USER_IDS), resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
   // MCP endpoint for connected assistants (read tools plus propose_ask, which only creates a pending approval) (bearer-token auth, skipwait.me/api/mcp).
   registerMcpRoutes(app, {
     verifyBearer: db.verifyAssistantBearer,

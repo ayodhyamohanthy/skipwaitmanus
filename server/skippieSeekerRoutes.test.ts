@@ -9,12 +9,13 @@ const JOB = "Senior Backend Engineer at Acme\nRequirements\n- Node.js experience
 
 function makeSkippieDeps(overrides: Partial<SkippieSeekerDeps> = {}): SkippieSeekerDeps {
   return {
+    previewJob: vi.fn(async url => ({ canonicalUrl: url, status: "fresh", employerConfidence: "direct-domain", companyDomain: "acme.com", reason: "Company identified from the job link.", recoveryAction: "Continue to your resume." })),
     fetchJobText: vi.fn(async () => JOB),
     extractResumeText: vi.fn(async () => RESUME),
     analyzeFit: vi.fn(async input => rulesAnalyzeFit(input)),
     getQuote: vi.fn(async () => ({ level: 5, cost: 1, totalAvailable: 3, shortfall: 0 })),
     getOwnedResume: vi.fn(async (_u, id) => (id === 11 ? { id: 11, fileName: "a.pdf", fileKey: "k/11", mimeType: "application/pdf" } : undefined)),
-    createAsk: vi.fn(async () => ({ requestId: 42, companyDomain: "acme.com", coverageStatus: "covered" as const })),
+    createAsk: vi.fn(async () => ({ requestId: 42, companyDomain: "acme.com", coverageStatus: "covered" as const, notifiedEmployees: 2 })),
     saveTailoredResume: vi.fn(async () => ({ id: 12, fileName: "t.docx" })),
     ...overrides,
   };
@@ -98,16 +99,23 @@ describe("seeker Skippy routes: end to end through HTTP", () => {
     const created = recorded.find(r => r.action === "skippie_seeker.ask_created");
     expect(created?.resourceId).toBe(42);
     expect((created?.metadata as Record<string, unknown>).via).toBe("skippy");
+    const standard = recorded.find(row => row.action === "company_referral.created");
+    expect(standard).toMatchObject({ actorUserId: 7, resourceId: 42, companyDomain: "acme.com", metadata: { attachmentCount: 1, pinnedWorkCount: 0, notifiedEmployees: 2, creditReserved: true, coverageStatus: "covered", fastTrack: false, fromPost: false, firstLook: false, jobFunctionChosen: false, via: "skippy" } });
+    await post(app, { kind: "confirm_send", send: true });
+    expect(recorded.filter(row => row.action === "company_referral.created")).toHaveLength(1);
+    expect(recorded.filter(row => row.action === "skippie_seeker.ask_created")).toHaveLength(1);
   });
   it("replaying the same Send does not create a second ask (fixed idempotency key)", async () => {
     const deps = makeSkippieDeps({ createAsk: vi.fn(async () => ({ requestId: 42, companyDomain: "acme.com", coverageStatus: "covered" as const, replayed: true })) });
-    const { app } = setup({ deps });
+    const { app, recorded, afterCreate } = setup({ deps });
     await post(app, { kind: "text", text: "https://careers.acme.com/jobs/123" });
     await post(app, { kind: "choose_resume", attachmentId: 11 });
     await post(app, { kind: "consent", allow: false });
     await post(app, { kind: "submit_note", text: "My own note." });
     await post(app, { kind: "confirm_send", send: true });
     expect((deps.createAsk as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
+    expect(recorded.filter(row => row.action === "company_referral.created" || row.action === "skippie_seeker.ask_created")).toEqual([]);
+    expect(afterCreate).not.toHaveBeenCalled();
   });
 });
 

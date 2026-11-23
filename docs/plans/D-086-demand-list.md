@@ -1,5 +1,7 @@
 # Packet D-086: the demand list (public counts of people asking for a referral, loop L1)
 
+> **D-374 (owner, Nov 21): the bonus question is decided: "Drop the bonus lead".** The re-sync removes the bonus sentence from the demand line (`demandBonusLine()` in `CompanyDemandLine`); the one neutral, sourced bonus fact line on the company page belongs to `D-099-bonus-line`. The release then follows sections 5.4 and 8. The D-366 hold note below is history.
+
 > **Current release state (D-366, Nov 19): both demand switches stay off.** D-366 reserves the conflict between the employer-bonus sentence in the demand UI and D-323's no-bonus-led positioning for the owner. The re-sync records the hold; it does not choose public copy, approve a preview with the old copy, or authorize activation. Use §5.4 and §8 for the release. The original registration, proposals and reviews below are historical where they conflict with those sections.
 >
 > **Original packet:** [PR #776](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/776) and the subsequent registry adoption are complete. Revision 3 corrected a factual handoff gap: there is no client company-create form, so `D-086.admit` is read-only and listing goes through the authenticated admin API. The original dispositions are in §12.
@@ -132,7 +134,7 @@ Three outcomes:
    - **Few:** "A few people are asking for a referral at {Company}." (D-086 (2), D-162.)
    - **None:** nothing renders. Do not imply anything about past demand or promise change notifications (D-153).
    - **Employee help** (a plain link, never a black commit): "Work at {Company}? Verify your work email to help." It links to `referrerSignInHref()`. It does not say "see these requests", because D-062 hands a new referrer at most their capacity.
-   - **Employer-bonus copy is held (D-323, D-366 (7)).** The implemented company detail currently has an employer-specific bonus sentence with a SkipWait no-payout disclaimer. Treat it as a source fact, not release wording. Do not replace it with the old PRD's unsourced "Most companies pay" claim. The owner decides whether the detail may mention an employer bonus at all (§8); D-099's own positioning and release gates are unchanged.
+   - **No bonus sentence (D-374, owner, Nov 21: "Drop the bonus lead").** The demand line carries no employer-bonus sentence. Before release, remove `demandBonusLine()` from `CompanyDemandLine` (and its export from `shared/companyDemand.ts` once nothing imports it), with a red-first test that the rendered demand line contains no "bonus" text. The one neutral, sourced bonus fact line on the company page belongs to `D-099-bonus-line`, never to this row.
    - **List heading on `/explore`:** "Companies in our directory where people are asking for a referral". Each entry links to `/explore/:slug`.
    - **Under the list, for unlisted companies (F1):**
      - "Your company isn't listed? Request a referral with a job link from its careers site." The link goes to `/ask`, the existing path.
@@ -250,13 +252,13 @@ Stop and report a contract, test or scope conflict before acting on it. Only the
 - **Proof:** captures at 1280 and 390 from fictional fixtures (team rule 8) of count, few, none, the list with its unlisted lines, and the switch off, under `design/goal-ui/captures/demand/`.
 - **Owns:** `client/src/pages/Explore.tsx (switch only)`, `client/src/pages/ExploreCompany.tsx (switch only)`, `client/src/pages/explore.demandMount.test.tsx`, `design/goal-ui/captures/demand/**`.
 
-### 5.4 `D-086-demand-list`: release held for the owner's positioning decision (D-366 (7))
+### 5.4 `D-086-demand-list`: release (the copy question was decided by D-374)
 
-- **Current state:** Both `COMPANY_DEMAND_ADMIN_ENABLED` and `COMPANY_DEMAND_PUBLIC_ENABLED` stay `false`. Do not implement a copy change, flip either switch, or infer approval from green CI, the older packet, or already-merged implementation. §8 names the decision that clears this hold. The owner decision must be recorded in `docs/DECISIONS.md` before the packet or runtime follows it.
-- **After the decision is recorded:** Re-sync this row to the recorded direction. If it requires client copy or tests outside this row's switch-only runtime scope, route that change through the picker and finish it before the release. Keep the existing count, UI, mount, BYOR and Find dependencies. `D-086.admit` is merged but is not a prerequisite for the public mount.
+- **Current state:** Both `COMPANY_DEMAND_ADMIN_ENABLED` and `COMPANY_DEMAND_PUBLIC_ENABLED` stay `false` until this row's release. D-374 decided §8's question ("Drop the bonus lead"), and this row was re-synced to it on 2026-11-22.
+- **Copy repair first (same row):** remove the bonus sentence (§4 ruling 8, last-but-three bullet) in `client/src/components/demand/CompanyDemandLine.tsx` and `shared/companyDemand.ts`, with red-first tests in their existing test files, before either switch flips. These files are in this row's `owns` since the D-374 re-sync. D-227's counts, k-anonymity, `few`/`count` contract and moderation stay unchanged. Keep the existing count, UI, mount, BYOR and Find dependencies. `D-086.admit` is merged but is not a prerequisite for the public mount.
 - **Before activation:** Verify the approved copy in a test environment with synthetic data, with 1280/390 captures. Confirm that public payloads expose only listed-company slugs, names and the `none`/`few`/`count` contract; `few` never discloses an exact number, `count` starts at three, and there are no totals, identities or source domains. Check that the admin route requires an admin and returns `private, no-store` when enabled. Preserve the legal text, work-email help link, and coverage-neutral read. Apply the current path-computed D-352 review gate and exact required CI; no separate coordinator dependency (D-345).
 - **Release, once eligible:** Use the protected runtime release path. Record the system map and update the PRD and build plan to the authorized behavior with the release. Verify the exact deployed release and desktop/phone rendering. Public proof uses sanitized response shape/status, not a dump of demand values or admin data.
-- **Owns:** `shared/companyDemand.ts (switch only)`, `AGENTS.md`, `docs/PRD.md`, `docs/KIT_V4_BUILD_PLAN.md`.
+- **Owns:** `shared/companyDemand.ts` (the switches and removing `demandBonusLine`), `client/src/components/demand/CompanyDemandLine.tsx`, their existing tests, `AGENTS.md`, `docs/PRD.md`, `docs/KIT_V4_BUILD_PLAN.md`.
 
 ### 5.5 `D-086.admit` (Tier 2: read-only admin view of the admission queue; S)
 - **Waits for:**
@@ -287,13 +289,16 @@ Stop and report a contract, test or scope conflict before acting on it. Only the
 ## 7. Privacy and legal text (F4)
 The legal text stays as it is. An aggregate count with no identity or request content contradicts none of the live lines in §3.10, so there is no separate approval gate. The Tier 1 reviews of `D-086.count` and the release row check payload and copy against those lines. A real contradiction goes to the owner under the standing legal-text rule (plan §6).
 
-## 8. Owner decision before release (D-366 (7))
+## 8. Owner decision before release (D-366 (7)) — decided by D-374
+
+**Decided (D-374, owner, Nov 21 2026: "Drop the bonus lead").** The recommendation below was adopted: no bonus language in the demand line. The question and recommendation stay as history.
+
 
 May the company-page demand line mention an employer's referral bonus, or should the invitation use only verified matching, discretion and the employer's own referral process? The old component displays a bonus sentence near the work-email invitation even though skipwait.me never pays employees (D-055). D-323 (4) rules out a bonus-led pitch; D-366 assigns the conflict to the owner. No wording is selected by this packet.
 
 **Recommendation: omit bonus language from demand acquisition copy (8/10).** The seeker needs a request to reach a verified employee, not a promise of paid attention; the employee needs to know they can decide under company policy. The strongest argument for retaining a narrowly factual disclaimer is that it may answer a genuine employee question and clarify who funds any employer programme. Put that explanation in the employer-rules context only if approved. This is an evidence-backed positioning recommendation (D-323 and `docs/POSITIONING.md` §§2–5), not a measured conversion lift. Any later copy-only change should be checked against work-email verification completion and reports of annoyance, using existing consent-respecting measurement. No price, payout, privacy or legal change is proposed.
 
-The release stays at `owner` with both switches off until a recorded owner decision resolves the wording. After that decision and any required copy repair, apply §5.4. The D-099 decisions and rows stay separate.
+History: the release waited at `owner` with both switches off until D-374 recorded the decision. Now apply §5.4: the copy repair, then the release. The D-099 decisions and rows stay separate.
 
 ## 9. Historical registry adoption delta
 
@@ -427,6 +432,8 @@ Baseline tests show the cited sources behave as cited; they do not prove the fea
 
 ## Status
 
+
+- `D-086-demand-list`: re-synced to D-378 — Claude Code · e969 — 2026-11-22. Only D-374 names this row after its D-366 stamp. The packet now follows it: no bonus sentence in the demand line; the copy repair (`demandBonusLine()` out of `CompanyDemandLine`) comes first in this release row, whose `owns` now includes `client/src/components/demand/CompanyDemandLine.tsx`; then the §5.4 release with D-227's counts, k-anonymity and moderation unchanged. Both switches stay off until that release.
 - `D-086-demand-list`: re-synced to D-366 on `agent/architect/d086-demand-list` (claim `ee5337def`, GPT-6.1 Sol · 8642, Nov 20). The four implementation PRs have merged with both switches off; see the current read receipt. The release row is parked at `owner` for §8's specific positioning decision. No draft release, copy approval, runtime work or production deployment comes from this re-sync.
 - Validation: the real picker and assignment validator accepted all 377 rows. With dependencies satisfied in a local projection, the old row offered re-sync and the updated row was ineligible because it waits for the owner. Only the parent row's status, stamp and note change; both switch declarations are unchanged and false. The five-file local run passed 252 tests and timed out on one unchanged picker verdict integration case (`scripts/nextTask.test.ts:1664`, 20-second limit); an isolated rerun hit the same timeout. No test or limit changed; this is not a green local suite. Required exact-head CI remains the merge gate for the docs PR.
 

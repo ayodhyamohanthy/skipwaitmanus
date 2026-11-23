@@ -85,7 +85,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/settings` | `pages/Settings` | `D-048-p3-settings` | D-048-p3-settings: to be added by its lane packet |
 | `/referrer` | `pages/Referrer` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
 | `/referrer/impact` | `pages/ReferrerImpact` | `D-048-p3-referrer` | D-048-p3-referrer: todo |
-| `/premium` | `pages/Premium` | `D-048-p3-premium` | D-048-p3-premium: to be added by its lane packet |
+| `/premium` | `pages/Premium` → `pages/goal/premium/GoalPremium` | `D-048-p3-premium` | Goal implementation on the task branch; selected-total, pause, referrer and recovery parity verified; draft review and release proof remain required. |
 | `/plans` | `?` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/billing` | `pages/Billing` | `D-048-p3-plans` | D-048-p3-plans: to be added by its lane packet |
 | `/privacy` | `pages/TrustPrivacy` | `D-048-p3-policy` | D-048-p3-policy: to be added by its lane packet |
@@ -165,13 +165,15 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/DeveloperConsole.tsx`: `developers/AppDetails.tsx`, `developers/RegisterAppForm.tsx`
 - `pages/EmployerDashboard.tsx`: `employer/EmployerFrame.tsx`, `employer/EmployerOverview.tsx`
 - `pages/Explore.tsx` and `pages/ExploreCompany.tsx` (components mounted by row `D-086.mount`, page redesign still `D-048-p3-live-review-find`): `demand/CompanyDemandLine.tsx`, `demand/CompanyDemandList.tsx`
+- `pages/ExploreCompany.tsx` (child build `D-174-seeker-journey-build.jobs-list`, switch off; page doctrine acceptance remains `D-048-p3-live-review-find`): `pages/explore/CompanyJobs.tsx`, using Goal fields, secondary actions and neutral sourced rows. No availability inference or feature activation.
 - `pages/Home.tsx`: `VisualJourney.tsx`
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`
 - `pages/Messages.tsx`: `FollowButton.tsx`, `messages/ReferrerRuleCard.tsx`
-- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`
+- `pages/MyRequests.tsx`: `requests/AskInviteSheet.tsx`, `requests/ReconfirmRequest.tsx` (new goal-native control owned by `D-174-held-ask-reconfirm`, D-193; page redesign ownership unchanged)
 - `pages/OpportunityWall.tsx`: `PartnerModuleCard.tsx`, `ZeroActivityShareCard.tsx`
 - `pages/Plans.tsx`: `plans/PendingCheckoutReturn.tsx`, `plans/PlanCards.tsx`, `plans/PlansCredits.tsx`, `plans/PlansKitSections.tsx`, `plans/PlansReference.tsx`, `plans/UpgradeMoments.tsx`
+- `pages/PlansV2.tsx` (row `BANDED-ui`, D-367): `plans/BandedExtraReferrals.tsx`, `plans/BandedPlanAction.tsx`
 - `pages/PostOpportunity.tsx`: `opportunities/MyOpenings.tsx`
 - `pages/Profile.tsx`: `profile/PrivacyControls.tsx`, `profile/ProfileForm.tsx`
 - `pages/PublicProfile.tsx`: `profile/PublicWorkGrid.tsx`
@@ -260,5 +262,5 @@ The split's row text now names them, so their lane packet writer adds them:
 - D-048-F-goal-check: todo; waits for D-048-F-primitives.
 - D-048-F-shell-parts: done — `fb98c70a` (Nov 13, D-333 (2) Tier 2 landing). AccountMenu, NotificationBell, BetaNotice and CookieConsent are on goal tokens with behaviour pinned (`client/src/components/shellParts.goal.test.tsx`, 31 assertions; every existing suite kept) and no colour literal left. Current `main` merged at `fb98c70a` with both conflicts resolved keeping both sides: this row's goal-styled menu entries, plus D-057 §0b.8c's `code_required` referrer navigation in `AccountMenu.tsx`. Every required check is green on that exact head (typecheck, unit + component + route tests, production build, e2e journeys). Two calls were never this row's to make and stay reported, not widened: (1) `GoalButton` in the consent banner needs `client/src/components/goal/goalBoundary.test.ts` (`MOVED_SURFACES`, owned by D-048-F-flags / D-048-p3-assistants / D-090-BYOR), and its `primary` variant would also break `GoalLanding.test.tsx`'s document-wide one-primary count, so the banner's actions carry the GoalButton recipe in tokens; (2) the 390px duplicate chrome (GoalShell.tsx renders its own Alerts bell beside the phone slot's menu bell, and the menu element renders twice) lives in GoalShell.tsx / index.css, neither in this row's owns.
 - D-048-F-coverage: done — landed `f9ee7ef8` (test) with the catalogue line it found missing (`referrer-home/ShareImpactCard.tsx` on the `pages/ReferrerHome.tsx` row); CI green, no deploy due (scripts + docs only).
-- D-048-p3-skippy: todo; waits for the foundation rows and REGISTER-520.
+- D-048-p3-skippy: review — agent/queue/d048-skippy — 20e997cc3
 - D-048-p3-agents: done — landed `157447ab` — the goal body (`pages/goal/assistants/GoalSeekerAgents.tsx`, #563) behind the shared `assistants` surface (flag off), kit page kept as the fallback; `client/src/pages/seekerAgents.test.tsx` pins the switch, every D-141 control and the not-enabled/error/signed-out/offline states. **Not moved:** no captures are delivered and §1.6/§1.7 are not claimed; the capture `owns` amendment rides #777, and the goal-contract and draft-only-copy defects are routed to `D-048-p3-assistants`, which owns `client/src/pages/goal/assistants/**`. **Landing (Oct 29):** the reviewed head `28106b84` carried an independent pass; `main` `5a13c7e3` merged into it with no conflict hunk; the packet was checked against D-225–D-232 and none affects this row; the code landed as `157447ab` through draft PR #778 (`/agents` renders the kit page in production until the `assistants` surface is released).

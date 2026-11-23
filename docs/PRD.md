@@ -19,7 +19,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 
 ## Happiness measures (count-only, weekly three-count report)
 - Seeker: asks answered within 5 days vs expired.
-- Referrer: second action within 30 days; median time to first action.
+- Referrer: second action within 30 days; median time to first action. `REL-review-email-retry` (PR #874, loop L4) repairs missed review-email recovery with a five-attempt cap and durable owner notices; migration, required CI and live first-run acceptance remain pending.
 - Annoyance: report-as-annoying taps; per idea opened / acted / annoying counts.
 
 ## Roadmap (status board)
@@ -43,6 +43,9 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 Free aggregate-only company dashboard, behind COMPANY_CLAIM_ENABLED and VITE_COMPANY_CLAIM (off). No per-person data or account-role changes. Same-account, single-use email link. Current-month aggregates hidden below 3 referrers or answered asks. See docs/DECISIONS.md D-107. QA and delivery verification required before enablement.
 
 ## Go-to-market (D-102, changeable)
+
+Old waiting requests have a default-off reconfirmation safeguard (`ASK_RECONFIRM_ENABLED`, D-193). Before an eligible delivery spends anything, an unconfirmed request older than 30 days receives one in-app confirmation notice and stays waiting or held. Its owner can confirm from My Requests, retry safely, or withdraw through the conversation. Confirmation uses durable events and the existing first-visibility charge; it changes no amount, expiry clock or email rule. QA and activation remain separate from implementation.
+
 - Basic referrer participation stays free. Seekers search for a company, see its job listings where available, and request a referral. Availability is internal routing only (D-176), never a browse status, label, chip or open-first grouping. After sending, explain whether the request reached verified employees or is waiting in the company's pool (D-176); exact wording follows terminology review.
 - No fake counters, countdowns or "only N spots". Every number is from the DB and may be zero.
 - Story (D-323): a trust and matching product, never "paid referrals". All marketing wording, and the answer to "does this fit my employer's referral rules?", come from `docs/POSITIONING.md`; the landing and guide wording is queued as `STORY-trust-landing` and `STORY-employer-rules-answer`.
@@ -58,6 +61,7 @@ Skippy is a chat front door to what the product already does. It asks, shows an 
 - **Approvals:** cards inside Skippie. Money cards show exact amount, currency and undo cost, one-use, short expiry, fresh re-login, payment through Chargebee checkout only. Text in user data is never an instruction (D-140).
 - **Seeker agents:** seeker-granted, scoped, limited, expiring (7 days default, 30 max), revocable, hashed key shown once, ask-me-every-time by default, never buy credits, audit log (D-141). Referrers see "sent via the seeker's assistant" (D-142).
 - **Build order and proof:** Step 1 admin read-only. Step 2 seeker ask-only (flag on only for the test seeker). Step 3 in-chat plan or credit choice via Chargebee. Step 4 admin approval cards. Step 5 agents draft-only. Step 6 agents send with ask-every-time. Step 7 opt-in auto-send within limits. Each step ships behind a flag that stays off in prod until proven with screenshots or test output. Nothing live-money until test payments pass. Step 5 is built behind `SKIPPIE_AGENT_ENABLED` (off in prod): the seeker grants an agent on `/agents` (scope, limits, seven days by default, capped at 30, instant revoke, pause-all), the key is shown once and stored hashed, the agent can look up companies/prices and draft asks only (no send, no purchases, lower call caps than people), and every call lands in the seeker-readable audit log. **Status (D-201, Oct 23):** steps 1, 2, 4 and 5 are on `main`, all flags off. No flag goes on in production until SKIPPY-fix (S-1 SSRF, S-2 to S-6) lands with its live proof. Step 3 sells credit packs only (D-146), with a one-use money card and a fresh sign-in (SKIPPY-stepup). In step 6 an agent may only request a send and the seeker approves each one; referrers see "Sent via the seeker's assistant" on agent asks.
+- **Repair contract (SKIPPY-fix, flags off):** employer validation happens before resume work. Banded quote confirmation binds job level, coverage and the exact allowance source/cycle to the existing create transaction; a mismatch asks for confirmation again, and the success line uses only the returned charge. Agents additionally require an explicit account allowlist. New requests emit the standard referral-created audit; retries do not repeat it. These server repairs do not establish the separate QA-schema/browser proof or authorize activation.
 - **Before any seeker-facing launch:** confirm provider data terms, set the global spend cap, pass the red-team injection test, founder sees a demo on the live URL, run a trademark and name-clearance search for "Skippy" (also a known food brand).
 
 ## Pricing

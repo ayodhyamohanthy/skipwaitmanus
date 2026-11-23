@@ -25,7 +25,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Design (D-120, D-150).** Every screen, landing to admin, is redesigned to the goal doctrine, UI and UX (goal line, one next step, one black commit), never the old layout in black (`design/goal-ui/DOCTRINE.md`); until one moves, keep its tokens.
 - **Public repo (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
-- Banded quote, spend and refund contract (sales off): [packet](plans/PRICING-banded-checkout.md).
+- Off: [banded](plans/PRICING-banded-checkout.md); [D-193](plans/D-193-journey-foundations.md).
 
 ## Working with the owner
 
@@ -35,14 +35,14 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 
 ## How to pick work
 - **`build`, `resume`, `continue`, `next` (D-225):** follow [the preflight](BUILD_CONTINUITY.md): fetch main, read current instructions/decisions and prior repo-only outcome, check goal/ownership; run `node scripts/next-task.mjs --claim "<your model name>"`, do only its task. Use its session-tagged name, never another's. Newer decisions beat packets: `--report blocked` with the ID; named work waits for packet `re-sync (D-nnn)` (D-202). `docs/plans/assignments.json` order: red main; own unfinished work (unowned pending above it first); unowned pending; new work. Red/blocked work holds lane/dependents; unmet dependencies hold landing only (D-315); red main holds landings (D-324). No push or `--heartbeat` for 2 hours frees a claim. `--report` to CEO on stop, landing, PR or blocker; `--status` shows the board. See `docs/DELEGATION.md` §4a.
-- D-074: use your `docs/plans/` packet and only its named paths. Every PR, Tier 1 included, lands on green required CI alone; no independent review and no model-name rule (D-370, superseding D-352). D-235: one packet at a time; after handoff, preflight/pick without new `build`. Push every commit and before stopping. D-311 model routes no longer hold work (D-370).
+- D-074: use your `docs/plans/` packet and only its named paths. Every PR lands on green required CI alone (auto-merge on); no review or model-name rule (D-370, D-373). D-235: one packet at a time; after handoff, preflight/pick without new `build`. Push every commit and before stopping. Test passwords stay in repo secrets; signed-in QA runs in Actions (D-373).
 
 ## How to ship
 - Stack: Express, React, TypeScript, Azure MySQL (Drizzle), Tailwind, React Query; Cloudflare Containers and Pages; pnpm 10, Node 22+.
 - Branch or worktree per lane; never force-push, rewrite history, `git reset --hard` a shared tree or commit others' files. Failing test first for logic. Zod at every boundary, shared contracts in `shared/`, no `any`. Every query checks the signed-in owner and company scope (MySQL has no RLS), with a cross-user test. Compute times in the app, never compare MySQL `NOW()` with `Date.now()`. Logs and Sentry carry no tokens, query strings, personal data or single-use links. No new dependency without the owner. Declare env keys in `.env.example`; server secrets need the `src/worker.ts` passthrough.
 - Gate, on your commit merged with latest `origin/main`: `pnpm check`; `node scripts/design-token-audit.mjs`; `bash scripts/lint-deploy-migrations.sh`; `node scripts/check-deploy-triggers.mjs`; `LANG=en_US.UTF-8 pnpm vitest run`; `pnpm build`.
 - **Green before `main` (D-082/D-370).** Integrate current main; land through protected PR auto-merge (merge commit) with exact required CI and main CI green. Only main's fix lands while it is red. No independent review, landing slot, direct main push or bypass. Docs-only changes use focused checks and required CI; moving main alone needs no full local re-gate. Never weaken a test or use `--no-verify`.
-- **Release proof.** Deploys are path-filtered and wait for target main CI before migrations/uploads. Red, cancelled, skipped, missing, unreadable or superseded evidence refuses release. Retry and deliberate older-target recovery: [`docs/DEPLOY.md`](DEPLOY.md). Verify canonical web/API against each surface's expected deployed SHA, readiness and active revision; inspect changed UI at 1280/390. A green workflow that skipped rollout is not deployment proof. Mark done only with the applicable exact-release evidence.
+- **Release proof.** Deploys are path-filtered and wait for target main CI before migrations/uploads. Red, missing, skipped or superseded evidence refuses release. Retry/recovery: [`docs/DEPLOY.md`](DEPLOY.md). Verify web/API against expected deployed SHA, readiness and active revision; inspect changed UI at 1280/390. Clean task branches after live check (`node scripts/branch-cleanup.mjs --apply --only <id>`). Mark done only with exact release evidence.
 - Migrations: the next free number on `main` (`drizzle/deploy/`) and in plan §5; never destructive; schema-dependent code lands only after its migration is verified.
 - Owner actions: plan §6. System map: `AGENTS.md`.
 

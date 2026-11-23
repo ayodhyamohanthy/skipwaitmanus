@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { CSP_ENFORCED, CSP_POLICY, contentSecurityPolicyHeader, globalSecurityHeaders } from "./securityHeaders";
+import { CSP_ENFORCED, CSP_POLICY, contentSecurityPolicyHeader, globalSecurityHeaders, strictTransportSecurityValue } from "./securityHeaders";
 
 describe("global security headers", () => {
   it("removes server fingerprinting and returns baseline browser protection headers", async () => {
@@ -39,6 +39,25 @@ describe("global security headers", () => {
     app.post("/api/other", (_req, res) => res.status(201).end());
     expect((await request(app).get("/api/csp-report")).status).toBe(404);
     expect((await request(app).post("/api/other")).status).toBe(201);
+  });
+
+  describe("HSTS preload preparation (D-100.hsts-preload)", () => {
+    it("preserves the existing HTTPS policy and sends no HSTS on plain HTTP", async () => {
+      const app = express();
+      app.set("trust proxy", "loopback");
+      app.use(globalSecurityHeaders);
+      app.get("/health", (_req, res) => res.json({ ok: true }));
+
+      const https = await request(app).get("/health").set("X-Forwarded-Proto", "https");
+      expect(https.headers["strict-transport-security"]).toBe("max-age=15552000; includeSubDomains");
+
+      const http = await request(app).get("/health");
+      expect(http.headers["strict-transport-security"]).toBeUndefined();
+    });
+
+    it("opts into both a two-year max-age and the preload directive together", () => {
+      expect(strictTransportSecurityValue(true)).toBe("max-age=63072000; includeSubDomains; preload");
+    });
   });
 
   describe("enforcing CSP behind CSP_ENFORCED (D-100.csp-enforce)", () => {
