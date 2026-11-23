@@ -8,6 +8,7 @@ import { DESIRED_INDEXES } from "../server/schemaReconcile";
 import { PLAN_FAMILY, PLAN_FAMILY_IDS } from "../shared/planFamily";
 
 const migration = readFileSync(new URL("../drizzle/deploy/0123_banded_plans.sql", import.meta.url), "utf8");
+const intentsMigration = readFileSync(new URL("../drizzle/deploy/0124_banded_checkout_intents.sql", import.meta.url), "utf8");
 // Immutable 0091 storage order. Never derive the pre-migration fixture from
 // current unions: that would let a future ordinal regression rewrite its oracle.
 const oldWalletPlans = ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
@@ -38,6 +39,7 @@ async function withDatabase(run: (fixture: Fixture) => Promise<void>) {
     for (const plan of oldWalletPlans) await db.execute("INSERT INTO tokenBalances (plan) VALUES (?)", [plan]);
     for (const plan of oldIntentPlans) await db.execute("INSERT INTO subscriptionCheckoutIntents (plan) VALUES (?)", [plan]);
     await db.query(migration);
+    await db.query(intentsMigration);
     await run({ db, connect: () => mysql.createConnection({ ...options, database }) });
   } finally {
     try { if (db) await db.end(); }
@@ -144,6 +146,7 @@ test("migration replay does not reset a balance, a reservation count or an issue
     await db.execute("UPDATE bandedFoundingCounters SET issuedCount=1,reservedCount=2 WHERE site='test' AND planId='mid_to_senior'");
     await db.execute("INSERT INTO bandedFoundingMemberships (site,planId,userId,checkoutIntentId,status,issuedSequence,expiresAt,issuedAt) VALUES ('test','mid_to_senior',1,'replay-issued','issued',1,'2026-12-20 00:00:00','2026-11-20 00:00:00')");
     await db.query(migration);
+    await db.query(intentsMigration);
     expect(await count(db, "SELECT purchasedRemaining AS n FROM bandedReferralBalances WHERE userId=1 AND level='senior'")).toBe(9);
     expect(await count(db, "SELECT issuedCount+reservedCount AS n FROM bandedFoundingCounters WHERE site='test' AND planId='mid_to_senior'")).toBe(3);
     expect(await count(db, "SELECT issuedSequence AS n FROM bandedFoundingMemberships WHERE checkoutIntentId='replay-issued'")).toBe(1);

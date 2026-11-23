@@ -20,7 +20,8 @@ import { sendTransactionalEmail } from "./emailDelivery";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { PENDING_MAX_AGE_MS } from "./chargebeePendingReconcile";
-import { askCosts, employerPaymentFulfillments, giftSubscriptionFulfillments, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, subscriptionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { askCosts, bandedCheckoutIntents, bandedFoundingCounters, bandedFoundingMemberships, bandedReferralBalances, employerPaymentFulfillments, giftSubscriptionFulfillments, operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, subscriptionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { PLAN_FAMILY } from "../shared/planFamily";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, referredDueAtMs, referredExtensionOperationKey } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
 import { currentChargebeeSite } from "./chargebeeApi";
@@ -130,6 +131,8 @@ export type DailyMoneyCheckDeps = {
   readProviderReceiptsSince?: (since: Date, providerPayments: readonly ProviderPaymentForRecon[]) => Promise<ProviderReceiptRead>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
+  /** BANDED-grants: compare per-level balances, lot grants, debits/reversals/revocations, founding counts and intents. */
+  listBandedFindings?: (nowMs: number, limit: number) => Promise<string[]>;
 };
 
 async function listCreditedPayments(afterId: number, limit: number): Promise<CreditedPaymentRow[]> {
@@ -627,6 +630,157 @@ async function sendMoneyCheckEmail(input: { subject: string; text: string }): Pr
   }
 }
 
+/**
+ * BANDED-grants (D-367): verify per-level balances against ledger lots,
+ * duplicate grants, paid unfulfilled intents, and founding counter integrity.
+ */
+export async function listBandedMoneyCheckFindings(nowMs: number, limit: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const findings: string[] = [];
+
+  // 1. Invalid founding counts and cap checks
+  const counters = await db.select().from(bandedFoundingCounters);
+  for (const counter of counters) {
+    const entry = PLAN_FAMILY.find(p => p.id === counter.planId);
+    if (!entry) continue;
+    if (counter.issuedCount + counter.reservedCount > entry.foundingCap) {
+      findings.push(`banded_founding_cap_exceeded: ${counter.site}/${counter.planId} has ${counter.issuedCount} issued + ${counter.reservedCount} reserved exceeding cap ${entry.foundingCap}`);
+    }
+    const issuedMemberships = await db
+      .select({ id: bandedFoundingMemberships.id })
+      .from(bandedFoundingMemberships)
+      .where(and(
+        eq(bandedFoundingMemberships.site, counter.site),
+        eq(bandedFoundingMemberships.planId, counter.planId),
+        eq(bandedFoundingMemberships.status, "issued")
+      ));
+    if (issuedMemberships.length !== counter.issuedCount) {
+      findings.push(`banded_founding_issued_count_mismatch: ${counter.site}/${counter.planId} counter has ${counter.issuedCount} issued but memberships table has ${issuedMemberships.length}`);
+    }
+  }
+
+  // 2. Paid unfulfilled banded intents (e.g. pending for > 24 hours with invoiceId or subscriptionId)
+  const staleBandedCutoff = new Date(nowMs - DAY_MS);
+  const unfulfilledIntents = await db
+    .select({ id: bandedCheckoutIntents.id, checkoutIntentId: bandedCheckoutIntents.checkoutIntentId, site: bandedCheckoutIntents.site, status: bandedCheckoutIntents.status, invoiceId: bandedCheckoutIntents.invoiceId })
+    .from(bandedCheckoutIntents)
+    .where(and(
+      inArray(bandedCheckoutIntents.status, ["creating", "pending"]),
+      isNotNull(bandedCheckoutIntents.invoiceId),
+      lt(bandedCheckoutIntents.createdAt, staleBandedCutoff)
+    ))
+    .limit(limit);
+  for (const intent of unfulfilledIntents) {
+    findings.push(`banded_paid_unfulfilled_intent: intent #${intent.id} (${intent.site}/${intent.checkoutIntentId}, invoice ${intent.invoiceId}) is ${intent.status} despite invoice bound over a day ago`);
+  }
+
+  // 3. Duplicate invoice/term grants
+  const purchases = await db
+    .select({
+      referenceId: tokenTransactions.referenceId,
+    })
+    .from(tokenTransactions)
+    .where(and(
+      eq(tokenTransactions.referenceType, "chargebee_invoice"),
+      eq(tokenTransactions.kind, "purchase")
+    ))
+    .limit(limit * 2);
+  const purchaseCounts = new Map<string, number>();
+  for (const p of purchases) {
+    if (p.referenceId) {
+      purchaseCounts.set(p.referenceId, (purchaseCounts.get(p.referenceId) ?? 0) + 1);
+    }
+  }
+  for (const [refId, cnt] of Array.from(purchaseCounts.entries())) {
+    if (cnt > 1) {
+      findings.push(`banded_duplicate_grant: invoice ${refId} has ${cnt} purchase ledger rows`);
+    }
+  }
+
+  const terms = await db
+    .select({
+      idempotencyKey: tokenTransactions.idempotencyKey,
+    })
+    .from(tokenTransactions)
+    .where(and(
+      eq(tokenTransactions.referenceType, "subscription_term"),
+      eq(tokenTransactions.kind, "plan_grant")
+    ))
+    .limit(limit * 2);
+  const termCounts = new Map<string, number>();
+  for (const t of terms) {
+    if (t.idempotencyKey) {
+      termCounts.set(t.idempotencyKey, (termCounts.get(t.idempotencyKey) ?? 0) + 1);
+    }
+  }
+  for (const [key, cnt] of Array.from(termCounts.entries())) {
+    if (cnt > 1) {
+      findings.push(`banded_duplicate_grant: subscription term ${key} has ${cnt} plan_grant ledger rows`);
+    }
+  }
+
+  // 4. Per-level balance reconciliation against ledger lots
+  const balances = await db.select().from(bandedReferralBalances).limit(MONEY_CHECK_BATCH);
+  for (const balance of balances) {
+    const purchases = await db
+      .select({ id: tokenTransactions.id, tokenCount: tokenTransactions.tokenCount })
+      .from(tokenTransactions)
+      .where(and(
+        eq(tokenTransactions.userId, balance.userId),
+        eq(tokenTransactions.role, "job_seeker"),
+        eq(tokenTransactions.kind, "purchase"),
+        eq(tokenTransactions.source, `banded:purchased:${balance.level}`)
+      ));
+    const totalGranted = purchases.reduce((sum, p) => sum + p.tokenCount, 0);
+
+    const purchaseIds = purchases.map(p => p.id);
+    let totalSpent = 0;
+    let totalRefunded = 0;
+    if (purchaseIds.length > 0) {
+      const debits = await db
+        .select({ id: tokenTransactions.id, tokenCount: tokenTransactions.tokenCount })
+        .from(tokenTransactions)
+        .where(and(
+          eq(tokenTransactions.userId, balance.userId),
+          eq(tokenTransactions.role, "job_seeker"),
+          eq(tokenTransactions.kind, "credit_spend"),
+          inArray(tokenTransactions.creditGrantId, purchaseIds)
+        ));
+      const debitIds = debits.map(d => d.id);
+      let reversedDebits = 0;
+      if (debitIds.length > 0) {
+        const reversals = await db
+          .select({ count: count() })
+          .from(tokenTransactions)
+          .where(and(
+            eq(tokenTransactions.userId, balance.userId),
+            inArray(tokenTransactions.reversesTransactionId, debitIds)
+          ));
+        reversedDebits = reversals[0]?.count ?? 0;
+      }
+      totalSpent = debits.length - reversedDebits;
+
+      const refunds = await db
+        .select({ tokenCount: tokenTransactions.tokenCount })
+        .from(tokenTransactions)
+        .where(and(
+          eq(tokenTransactions.userId, balance.userId),
+          eq(tokenTransactions.kind, "withdrawal_refund"),
+          inArray(tokenTransactions.creditGrantId, purchaseIds)
+        ));
+      totalRefunded = refunds.reduce((sum, r) => sum + Math.abs(r.tokenCount), 0);
+    }
+
+    const expectedPurchased = Math.max(0, totalGranted - totalSpent - totalRefunded);
+    if (balance.purchasedRemaining !== expectedPurchased) {
+      findings.push(`banded_purchased_balance_mismatch: user #${balance.userId} level ${balance.level} has balance ${balance.purchasedRemaining} but ledger expects ${expectedPurchased}`);
+    }
+  }
+
+  return findings.slice(0, limit);
+}
+
 const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   auditWallets: getFullCreditLedgerAudit,
   listCreditedPayments,
@@ -643,6 +797,7 @@ const defaultMoneyCheckDeps: DailyMoneyCheckDeps = {
   listRefundsAfterPickup,
   listReferredPastDeadline,
   countWebhookUnauthorizedSince,
+  listBandedFindings: listBandedMoneyCheckFindings,
   listProviderPaymentsSince: (since: Date, until: Date) => listRecentPayments(currentChargebeeSite(), { since, until }),
   readProviderReceiptsSince: listReceiptsPaidSince,
   sendEmail: sendMoneyCheckEmail,
@@ -746,6 +901,12 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = defaultMoneyCh
     // D-212: a webhook refused for its secret means refund, card-validation and renewal events may be refused too.
     const refusedWebhooks = deps.countWebhookUnauthorizedSince ? await deps.countWebhookUnauthorizedSince(new Date(nowMs - DAY_MS)) : 0;
     if (refusedWebhooks > 0) findings.push(`webhook_unauthorized_24h: ${refusedWebhooks} Chargebee webhook ${refusedWebhooks === 1 ? "delivery was" : "deliveries were"} refused for a bad or missing secret in the last 24 hours; if the webhook secret drifted, refund, card-validation and renewal events are being refused too (compare the Chargebee webhook settings with CHARGEBEE_WEBHOOK_SECRET)`);
+
+    // BANDED-grants (D-367): verify per-level balances against ledger lots, duplicate grants, paid unfulfilled intents, and founding counter integrity.
+    if (deps.listBandedFindings) {
+      const banded = await deps.listBandedFindings(nowMs, FINDINGS_PREVIEW_LIMIT);
+      findings.push(...banded);
+    }
 
     // D-100.provider-recon: read Chargebee's recent payments and compare them with our
     // receipts. Nothing is written; an unreachable provider is a visible finding, never a
