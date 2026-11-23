@@ -12,10 +12,12 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "../shared/referralUrl";
+import type { BillingRegion } from "../shared/billingRegion";
 import type { JobLinkPreview } from "./jobLinkPreview";
 import { acceptedAskCostSchema, type AcceptedAskCost } from "../shared/acceptedAskCost";
 import { AskPriceChangedError, CoverageOpenedUpError, ReferralPricingUnavailableError } from "./planGates";
 import { chargedReferralLine, quoteLine, sameSkippieQuote, skippieQuoteSchema, type SkippieQuote } from "./skippieSeekerCost";
+import { MONEY_CARD_UNDO_LINE, moneyCardLine, moneyCardView, type SkippieMoneyCard, type SkippieMoneyCardView } from "./skippieMoneyCards";
 export type { SkippieQuote } from "./skippieSeekerCost";
 
 export const SKIPPIE_SEEKER_DAILY_CAP = 20;
@@ -51,6 +53,10 @@ export type SkippieSeekerDeps = {
   getOwnedResume: (userId: number, attachmentId: number) => Promise<OwnedResume | undefined>;
   createAsk: (userId: number, input: CreateAskInput) => Promise<CreateAskResult>;
   saveTailoredResume: (userId: number, input: { text: string; basedOnAttachmentId: number }) => Promise<OwnedResume>;
+  /** SKIPPY-3: GET /api/chargebee/banded/offer's answer; no card is sold while extra referrals are off sale. */
+  getBandedOffer: () => Promise<{ onSale: boolean }>;
+  /** SKIPPY-3: one-use money card for the quote's own level and shortfall (server/skippieMoneyCards.ts). */
+  createMoneyCard: (input: { userId: number; level: number; quantity: number; billingCountry: BillingRegion }) => SkippieMoneyCard;
 };
 
 export type SkippieTurn =
@@ -65,6 +71,8 @@ export type SkippieTurn =
   | { kind: "tailor_build" }
   | { kind: "tailor_approve"; approve: boolean }
   | { kind: "confirm_send"; send: boolean }
+  | { kind: "buy_referrals"; billingCountry: BillingRegion }
+  | { kind: "confirm_referrals"; outcome: "pending" | "cancelled" }
   | { kind: "restart" };
 
 export type SkippieStep =
@@ -99,6 +107,8 @@ export type SkippieSession = {
   noteSha256?: string;
   noteFlags?: string[];
   quote?: SkippieQuote;
+  /** SKIPPY-3: the one-use card the seeker may approve; cleared whenever the quote is refreshed. */
+  moneyCard?: SkippieMoneyCardView;
   tailor?: { additions: Array<{ skill: string; confirmed: boolean | null }>; generatedText?: string };
   createdRequestId?: number;
   companyDomain?: string;
@@ -234,7 +244,8 @@ async function runFitAnalysis(userId: number, session: SkippieSession, deps: Ski
 
 async function quoteStep(userId: number, session: SkippieSession, deps: SkippieSeekerDeps): Promise<SkippieSession> {
   const quote = skippieQuoteSchema.parse(await deps.getQuote(userId, session.targetRoleUrl!));
-  return { ...session, step: "quote", quote };
+  // A fresh quote invalidates any card built from the previous one.
+  return { ...session, step: "quote", quote, moneyCard: undefined };
 }
 
 export async function advanceSkippieSeeker(userId: number, current: SkippieSession, input: SkippieTurn, deps: SkippieSeekerDeps): Promise<Out> {
@@ -378,6 +389,27 @@ export async function advanceSkippieSeeker(userId: number, current: SkippieSessi
     }
 
     case "quote": {
+      if (input.kind === "buy_referrals") {
+        if (!session.quote || session.quote.shortfall <= 0) return say("You have enough referrals for this request. Send it when you're ready.");
+        // No card is offered while extra referrals are off sale (or the offer cannot be read).
+        const offer = await deps.getBandedOffer().catch(() => ({ onSale: false }));
+        if (!offer.onSale) return say("Extra referrals are not on sale yet. Nothing has been charged. You can see the plans on /plans.");
+        const card = deps.createMoneyCard({ userId, level: session.quote.level, quantity: session.quote.shortfall, billingCountry: input.billingCountry });
+        session.moneyCard = moneyCardView(card);
+        return say(moneyCardLine(card), MONEY_CARD_UNDO_LINE);
+      }
+      if (input.kind === "confirm_referrals") {
+        if (input.outcome === "cancelled") {
+          session.moneyCard = undefined;
+          return say("Payment didn't go through. Nothing was charged.");
+        }
+        // The webhook-confirmed referrals may not have arrived yet; re-quote and keep the seeker here.
+        const fresh = skippieQuoteSchema.parse(await deps.getQuote(userId, session.targetRoleUrl!));
+        session.quote = fresh;
+        session.moneyCard = undefined;
+        if (fresh.shortfall > 0) return say("We're still confirming your payment. Nothing more is charged. Check again in a moment.");
+        return say("Your extra referrals are in. Nothing more to pay.", quoteLine(fresh));
+      }
       if (input.kind === "submit_note") {
         const note = input.text.trim().slice(0, SKIPPIE_NOTE_MAX);
         if (note.length < 4) return say("Write a short note first.");

@@ -14,7 +14,7 @@ import type { Express, Request } from "express";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { PLAN_FAMILY, type PlanFamilyId } from "../shared/planFamily";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
-import { BANDED_REFUSALS, bandedOfferResponseSchema, bandedPlanCheckoutRequestSchema, bandedReferralCheckoutRequestSchema } from "../shared/subscriptionManagement";
+import { BANDED_REFUSALS, bandedOfferResponseSchema, bandedPlanCheckoutRequestSchema, bandedReferralCheckoutRequestSchema, type BandedReferralCheckoutRequest } from "../shared/subscriptionManagement";
 import { BANDED_NOT_ON_SALE, bandedRuntime, bandedSalesEnabled, startBandedPlanCheckout, startBandedReferralCheckout, type BandedCheckoutDeps, type BandedRefusal } from "./bandedCheckout";
 import type { ChargebeeIdentity } from "./chargebeeRoutes";
 
@@ -37,6 +37,9 @@ function customerOf(identity: ChargebeeIdentity) {
   const [firstName, ...rest] = (identity.account.name ?? "").trim().split(/\s+/);
   return { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: firstName || undefined, lastName: rest.join(" ") || undefined };
 }
+
+/** The provider customer fields every banded checkout sends; shared with Skippy's money card. */
+export { customerOf };
 
 function refusalBody(refusal: BandedRefusal): { error: string; code?: string } {
   return refusal.code ? { code: refusal.code, error: refusal.error } : { error: refusal.error };

@@ -17,6 +17,8 @@ function makeSkippieDeps(overrides: Partial<SkippieSeekerDeps> = {}): SkippieSee
     getOwnedResume: vi.fn(async (_u, id) => (id === 11 ? { id: 11, fileName: "a.pdf", fileKey: "k/11", mimeType: "application/pdf" } : undefined)),
     createAsk: vi.fn(async () => ({ requestId: 42, companyDomain: "acme.com", coverageStatus: "covered" as const, notifiedEmployees: 2 })),
     saveTailoredResume: vi.fn(async () => ({ id: 12, fileName: "t.docx" })),
+    getBandedOffer: vi.fn(async () => ({ onSale: false })),
+    createMoneyCard: vi.fn(() => { throw new Error("no money card in this test"); }),
     ...overrides,
   };
 }

@@ -16,10 +16,16 @@
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { currencyForRegion, type BillingRegion } from "../shared/billingRegion";
-import { LEVEL_DISPLAY_NAME, referralLevelForJobLevel } from "../shared/planFamily";
+import { LEVEL_DISPLAY_NAME, referralLevelForJobLevel, type JobLevelNumber } from "../shared/planFamily";
 import { bandedReferralQuote, bandedReferralCheckoutRequestSchema, type BandedReferralCheckoutRequest } from "../shared/subscriptionManagement";
 
 export const SKIPPIE_CARD_TTL_MS = 10 * 60_000;
+
+/** The quote's level is a validated 1-10 job level; this narrows it for the one shared mapping. */
+function asJobLevel(level: number): JobLevelNumber {
+  if (!Number.isInteger(level) || level < 1 || level > 10) throw new Error(`unknown job level: ${String(level)}`);
+  return level as JobLevelNumber;
+}
 
 export type SkippieMoneyCard = {
   id: string;
@@ -55,7 +61,7 @@ export type BuildMoneyCardInput = {
 /** The card's amounts are the frozen banded quote for its own cart and price book. */
 export function buildSkippieMoneyCard(input: BuildMoneyCardInput): SkippieMoneyCard {
   const currency = currencyForRegion(input.billingCountry);
-  const quote = bandedReferralQuote([{ level: referralLevelForJobLevel(input.level), quantity: input.quantity }], currency);
+  const quote = bandedReferralQuote([{ level: referralLevelForJobLevel(asJobLevel(input.level)), quantity: input.quantity }], currency);
   const line = quote.lines[0];
   return {
     id: input.id,
@@ -157,7 +163,7 @@ export function formatMinor(amountMinor: number, currency: string): string {
 
 /** The card's own line: level, number of referrals, exact total, discount and currency. */
 export function moneyCardLine(card: SkippieMoneyCard): string {
-  const level = LEVEL_DISPLAY_NAME[referralLevelForJobLevel(card.level)];
+  const level = LEVEL_DISPLAY_NAME[referralLevelForJobLevel(asJobLevel(card.level))];
   const referrals = `${card.quantity} ${level} referral${card.quantity === 1 ? "" : "s"}`;
   const discount = card.discount > 0 ? ` (${formatMinor(card.discount, card.currency)} off ${formatMinor(card.subtotal, card.currency)})` : "";
   return `${referrals} for ${formatMinor(card.total, card.currency)}${discount}. Payment happens on Chargebee's secure page.`;
@@ -201,7 +207,7 @@ export async function approveSkippieMoneyCard(input: { card: SkippieMoneyCard | 
   }
   if (!deps.markUsed(card.id, now)) return { ok: false, status: 409, code: "card_used", error: `This card was already used. ${NOTHING_CHARGED}` };
   const request = bandedReferralCheckoutRequestSchema.parse({
-    items: [{ level: referralLevelForJobLevel(card.level), quantity: card.quantity }],
+    items: [{ level: referralLevelForJobLevel(asJobLevel(card.level)), quantity: card.quantity }],
     billingCountry: card.billingCountry,
     idempotencyKey: card.idempotencyKey,
   });
