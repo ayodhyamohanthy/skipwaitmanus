@@ -297,6 +297,14 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
     } catch (error) {
       // The hosted page is provider-owned: keep what it actually showed so a failure is diagnosable from the artifact.
       await writeFile(path.join(OUTPUT_DIR, "hosted-page.html"), await page.content().catch(() => "")).catch(() => undefined);
+      // The payment form lives in a child frame; its markup is not part of page.content().
+      let index = 0;
+      for (const frame of page.frames()) {
+        if (frame === page.mainFrame()) continue;
+        const html = await frame.content().catch(() => "");
+        if (html) await writeFile(path.join(OUTPUT_DIR, `frame-${index}-${new URL(frame.url()).hostname.replace(/\./g, "-")}.html`), html).catch(() => undefined);
+        index += 1;
+      }
       await deps.screenshot(page, "99-failure").catch(() => undefined);
       throw error;
     }
