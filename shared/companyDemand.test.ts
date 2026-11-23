@@ -266,8 +266,11 @@ describe("copy", () => {
     expect(demandLine({ state: "count", people: 3 }, "Acme")).toBe("3 people are asking for a referral at Acme.");
   });
 
-  it("invites employees to verify", () => {
+  it("invites employees to verify without bonus language (D-374)", () => {
     expect(demandHelpLine("Acme")).toBe("Work at Acme? Verify your work email to help.");
+    expect(demandHelpLine("Acme")).not.toMatch(/bonus/i);
+    expect(demandHelpLine("Acme")).not.toMatch(/credit/i);
+    expect(demandHelpLine("Acme")).not.toMatch(/payout/i);
   });
 
   it("says what the list covers and what an unlisted company can do", () => {

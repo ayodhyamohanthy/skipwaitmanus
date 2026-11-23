@@ -138,9 +138,13 @@ describe("CompanyDemandLine", () => {
     flag.publicOn = true;
     respond(200, detail({ state: "count", people: 12 }));
     renderInRouter(<CompanyDemandLine {...lineProps} />);
-    await screen.findByTestId("company-demand-line");
+    const line = await screen.findByTestId("company-demand-line");
     expect(screen.queryByTestId("demand-bonus-line")).toBeNull();
     expect(screen.queryByText(/bonus/i)).toBeNull();
+    expect(screen.queryByText(/referral bonus/i)).toBeNull();
+    expect(screen.queryByText(/skipwait\.me never pays/i)).toBeNull();
+    expect(within(line).queryByText(/bonus/i)).toBeNull();
+    expect(line.children.length).toBe(2);
   });
 
   it("carries no black commit and none of the retired wording", async () => {

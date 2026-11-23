@@ -63,6 +63,7 @@ for (const width of [1280, 390]) {
       if (url.pathname === "/api/companies/example-works") return json({ company: { ...COMPANY, ...(presence ? { referrerPresence: presence } : {}) } });
       if (url.pathname === "/api/companies/example-works/jobs") return failJobs ? json({ error: "Synthetic unavailable source" }, 503) : json(catalog);
       if (url.pathname === "/api/companies/example-works/opportunities") return json({ opportunities: [{ id: 91, companyDomain: "example.com", kind: "hiring_now", roleTitle: "Employee-shared software role", targetRoleUrl: "https://careers.example.com/employee-role", location: "Remote", compensation: null, walkInAt: null, walkInEndsAt: null, postedAt: "2026-11-19T09:00:00.000Z", expiresAt: "2026-12-19T09:00:00.000Z", poster: { kind: "anonymous" } }] });
+      if (url.pathname === "/api/company-demand/example-works") return json({ demand: { state: "none" } });
       unexpected.push(`${request.method()} ${url.pathname}`);
       return json({ error: "Unregistered synthetic read" }, 501);
     });
