@@ -66,7 +66,7 @@ describe("Skippy step 3: buying extra referrals in the chat", () => {
     expect(text).toContain("1 Senior referral");
     expect(text).toContain("₹");
     expect(text).toMatch(/Chargebee's secure page/);
-    expect(text).toContain("skipwait.me/refunds");
+    expect(text).toMatch(/refund policy/);
     expect(text).not.toMatch(/credit/i);
   });
 

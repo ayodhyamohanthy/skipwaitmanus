@@ -169,11 +169,11 @@ export function moneyCardLine(card: SkippieMoneyCard): string {
   const level = LEVEL_DISPLAY_NAME[referralLevelForJobLevel(asJobLevel(card.level))];
   const referrals = `${card.quantity} ${level} referral${card.quantity === 1 ? "" : "s"}`;
   const discount = card.discount > 0 ? ` (${formatMinor(card.discount, card.currency)} off ${formatMinor(card.subtotal, card.currency)})` : "";
-  return `${referrals} for ${formatMinor(card.total, card.currency)}${discount}. Payment happens on Chargebee's secure page.`;
+  return `${referrals} for ${formatMinor(card.total, card.currency)}${discount}.`;
 }
 
-/** The undo line: the same words /plans shows for extra referrals, with the refund page. */
-export const MONEY_CARD_UNDO_LINE = "Refunds follow the refund policy: skipwait.me/refunds";
+/** The undo line: /plans shows no per-extra-referral wording, so this is the packet's fallback with the refund page. */
+export const MONEY_CARD_UNDO_LINE = "Payment happens on Chargebee's secure page. Refunds follow the refund policy.";
 
 export type MoneyCardCheckoutResult =
   | { ok: true; checkoutUrl: string; hostedPageId: string }

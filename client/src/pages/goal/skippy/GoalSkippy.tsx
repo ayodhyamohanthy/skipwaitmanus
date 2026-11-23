@@ -203,6 +203,9 @@ export default function GoalSkippy() {
       if (!response.ok || !data.checkoutUrl) throw new Error(data.error ?? "We could not open the secure checkout. Nothing has been charged.");
       openChargebeeCheckout(data.checkoutUrl);
     } catch (e) {
+      // The card is spent server-side even when the provider refuses, so drop it here and
+      // show the plain refusal with the /plans route; a new card is one click away.
+      setSession(prev => (prev ? { ...prev, moneyCard: undefined } : prev));
       setError(e instanceof Error ? e.message : "We could not open the secure checkout. Nothing has been charged.");
     } finally {
       setBusy(false);
