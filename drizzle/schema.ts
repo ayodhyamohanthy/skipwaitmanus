@@ -1,4 +1,4 @@
-import { bigint, boolean, check, customType, index, int, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import { bigint, boolean, check, customType, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
@@ -1470,4 +1470,37 @@ export const bandedFoundingMemberships = mysqlTable("bandedFoundingMemberships",
   foreignKey({ name: "banded_founding_counter_fk", columns: [table.site, table.planId], foreignColumns: [bandedFoundingCounters.site, bandedFoundingCounters.planId] }),
   check("banded_founding_sequence_cap", sql`${table.issuedSequence} IS NULL OR ${table.issuedSequence} BETWEEN 1 AND CASE ${table.planId} WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END`),
   check("banded_founding_state", sql`(${table.status} = 'reserved' AND ${table.issuedSequence} IS NULL AND ${table.issuedAt} IS NULL AND ${table.releasedAt} IS NULL) OR (${table.status} = 'issued' AND ${table.issuedSequence} IS NOT NULL AND ${table.issuedAt} IS NOT NULL AND ${table.releasedAt} IS NULL) OR (${table.status} = 'released' AND ${table.issuedSequence} IS NULL AND ${table.issuedAt} IS NULL AND ${table.releasedAt} IS NOT NULL)`),
+]);
+
+// 0124: BANDED-grants-intents-migration: durable checkout ownership before fulfillment.
+export const bandedCheckoutIntents = mysqlTable("bandedCheckoutIntents", {
+  id: int("id").autoincrement().primaryKey(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
+  userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+  kind: mysqlEnum("kind", ["plan", "referral"]).notNull(),
+  planId: mysqlEnum("planId", ["early_to_mid", "mid_to_senior", "senior_to_executive"]),
+  billingRoute: mysqlEnum("billingRoute", ["IN", "INTL"]).notNull(),
+  currency: mysqlEnum("currency", ["INR", "USD"]).notNull(),
+  expectedTotal: int("expectedTotal", { unsigned: true }).notNull(),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+  cart: json("cart").notNull(),
+  hostedPageId: varchar("hostedPageId", { length: 128 }),
+  invoiceId: varchar("invoiceId", { length: 128 }),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  status: mysqlEnum("status", ["creating", "pending", "fulfilled", "requires_review", "cancelled"]).default("creating").notNull(),
+  failureReason: varchar("failureReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  replayDeadline: timestamp("replayDeadline").notNull(),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  fulfilledAt: timestamp("fulfilledAt"),
+}, table => [
+  uniqueIndex("banded_intents_checkout_unique").on(table.site, table.checkoutIntentId),
+  uniqueIndex("banded_intents_hosted_page_unique").on(table.site, table.hostedPageId),
+  uniqueIndex("banded_intents_invoice_unique").on(table.site, table.invoiceId),
+  index("banded_intents_reconcile_idx").on(table.status, table.lastCheckedAt, table.createdAt),
+  index("banded_intents_recovery_idx").on(table.userId, table.site, table.createdAt),
+  check("banded_intents_expected_total_positive", sql`${table.expectedTotal} > 0`),
 ]);

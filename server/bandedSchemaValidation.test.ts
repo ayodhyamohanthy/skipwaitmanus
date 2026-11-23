@@ -9,6 +9,7 @@ const checks = [
   ["bandedFoundingCounters", "banded_founding_counter_cap"],
   ["bandedFoundingMemberships", "banded_founding_sequence_cap"],
   ["bandedFoundingMemberships", "banded_founding_state"],
+  ["bandedCheckoutIntents", "banded_intents_expected_total_positive"],
 ] as const;
 const columns = () => [
   { TABLE_NAME: "tokenBalances", COLUMN_NAME: "plan", COLUMN_TYPE: walletEnum, IS_NULLABLE: "NO", COLUMN_DEFAULT: "free" },

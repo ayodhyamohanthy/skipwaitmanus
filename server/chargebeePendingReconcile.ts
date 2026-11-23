@@ -13,7 +13,7 @@
 // the administrator is alerted, exactly like the webhook and credit-recovery.
 // Unpaid pending rows are normal (abandoned checkouts) and are only re-checked.
 import { and, asc, eq, gt, isNull, lt, like, or } from "drizzle-orm";
-import { paymentFulfillments } from "../drizzle/schema";
+import { bandedCheckoutIntents, paymentFulfillments } from "../drizzle/schema";
 import { retrieveChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 import { applyChargebeeSubscriptionEvent, fulfillChargebeePayment, getDb, listPendingSubscriptionCheckoutIntents, markChargebeePaymentForReview, markSubscriptionCheckoutIntentCancelled, markSubscriptionCheckoutIntentReview } from "./db";
@@ -61,13 +61,31 @@ export async function listPendingChargebeePayments(olderThan: Date, newerThan: D
     ))
     .orderBy(asc(paymentFulfillments.createdAt), asc(paymentFulfillments.id))
     .limit(limit);
-  return rows.flatMap(row => row.hostedPageId && row.checkoutIntentId ? [{ id: row.id, hostedPageId: row.hostedPageId, checkoutIntentId: row.checkoutIntentId, amount: row.amount, currency: row.currency }] : []);
+  const packPayments = rows.flatMap(row => row.hostedPageId && row.checkoutIntentId ? [{ id: row.id, hostedPageId: row.hostedPageId, checkoutIntentId: row.checkoutIntentId, amount: row.amount, currency: row.currency }] : []);
+  if (packPayments.length >= limit) return packPayments;
+
+  const remainingLimit = limit - packPayments.length;
+  const bandedRows = await db.select({ id: bandedCheckoutIntents.id, hostedPageId: bandedCheckoutIntents.hostedPageId, checkoutIntentId: bandedCheckoutIntents.checkoutIntentId, amount: bandedCheckoutIntents.expectedTotal, currency: bandedCheckoutIntents.currency })
+    .from(bandedCheckoutIntents)
+    .where(and(
+      eq(bandedCheckoutIntents.kind, "referral"),
+      eq(bandedCheckoutIntents.status, "pending"),
+      lt(bandedCheckoutIntents.createdAt, olderThan),
+      gt(bandedCheckoutIntents.createdAt, newerThan),
+      or(isNull(bandedCheckoutIntents.lastCheckedAt), lt(bandedCheckoutIntents.lastCheckedAt, recheckBefore)),
+    ))
+    .orderBy(asc(bandedCheckoutIntents.createdAt), asc(bandedCheckoutIntents.id))
+    .limit(remainingLimit);
+
+  const bandedPayments = bandedRows.flatMap(row => row.hostedPageId && row.checkoutIntentId ? [{ id: row.id, hostedPageId: row.hostedPageId, checkoutIntentId: row.checkoutIntentId, amount: row.amount, currency: row.currency }] : []);
+  return [...packPayments, ...bandedPayments];
 }
 
 async function touchPending(paymentId: number, checkedAt: Date) {
   const db = await getDb();
   if (!db) throw new JobRunStoreUnavailableError();
   await db.update(paymentFulfillments).set({ lastCheckedAt: checkedAt }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "pending")));
+  await db.update(bandedCheckoutIntents).set({ lastCheckedAt: checkedAt }).where(and(eq(bandedCheckoutIntents.id, paymentId), eq(bandedCheckoutIntents.status, "pending")));
 }
 
 async function retrieveFromConfiguredSite(hostedPageId: string): Promise<ReconciledHostedPage | undefined> {
