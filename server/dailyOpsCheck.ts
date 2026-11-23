@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, gte, inArray, lt, lte, or } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { jobRuns, operationalActivityLogs, referralRequests, referralReviewDeliveries } from "../drizzle/schema";
 import { JOB_RUN_MAX_ATTEMPTS } from "../shared/scheduledJobs";
@@ -18,12 +18,13 @@ const OWNER_COPY_EMAIL = "ayodhya@mail.instinct.com";
 const ALL_CLEAR_EMAIL = { subject: "skipwait.me daily ops check · all clear", text: "All clear: no ops invariants failed." };
 
 const purgeMetadataSchema = z.strictObject({ consumed: z.number().int().nonnegative(), expiredUnused: z.number().int().nonnegative() });
+const databaseNowSchema = z.tuple([z.array(z.object({ now: z.coerce.date() })).length(1), z.array(z.unknown())]);
 type FindingSample = { count: number; rowIds: string[] };
 type PurgeCounts = { consumed: number; expiredUnused: number; logIds: number[] };
 
 export type DailyOpsCheckDeps = {
   reviewEmails: (now: Date) => Promise<FindingSample>;
-  requests: (now: Date) => Promise<{ last24Hours: number; last7Days: number }>;
+  requests: () => Promise<{ last24Hours: number; last7Days: number }>;
   exhaustedJobs: (now: Date) => Promise<FindingSample>;
   purgeCounts: (since: Date, now: Date) => Promise<PurgeCounts>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
@@ -47,12 +48,18 @@ async function readReviewEmails(now: Date): Promise<FindingSample> {
   return { count: Number(total?.count ?? 0), rowIds: rows.map(row => `#${row.id}`) };
 }
 
-async function readRequests(now: Date): Promise<{ last24Hours: number; last7Days: number }> {
+async function readRequests(): Promise<{ last24Hours: number; last7Days: number }> {
   const db = await requireDb();
-  const dayAgo = new Date(now.getTime() - DAY_MS);
-  const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
-  const [last24Hours] = await db.select({ count: count() }).from(referralRequests).where(and(gte(referralRequests.createdAt, dayAgo), lte(referralRequests.createdAt, now)));
-  const [last7Days] = await db.select({ count: count() }).from(referralRequests).where(and(gte(referralRequests.createdAt, weekAgo), lte(referralRequests.createdAt, now)));
+  let databaseNow: Date;
+  try {
+    databaseNow = databaseNowSchema.parse(await db.execute(sql`SELECT NOW() AS now`))[0][0].now;
+  } catch {
+    throw new Error("The database clock could not be read");
+  }
+  const dayAgo = new Date(databaseNow.getTime() - DAY_MS);
+  const weekAgo = new Date(databaseNow.getTime() - 7 * DAY_MS);
+  const [last24Hours] = await db.select({ count: count() }).from(referralRequests).where(and(gte(referralRequests.createdAt, dayAgo), lte(referralRequests.createdAt, databaseNow)));
+  const [last7Days] = await db.select({ count: count() }).from(referralRequests).where(and(gte(referralRequests.createdAt, weekAgo), lte(referralRequests.createdAt, databaseNow)));
   return { last24Hours: Number(last24Hours?.count ?? 0), last7Days: Number(last7Days?.count ?? 0) };
 }
 
@@ -115,7 +122,7 @@ export function createDailyOpsCheck(overrides: Partial<DailyOpsCheckDeps> = {}) 
     const now = new Date(nowMs);
     const since = new Date(nowMs - DAY_MS);
     const [reviewEmails, requests, exhaustedJobs, purgeCounts] = await Promise.all([
-      deps.reviewEmails(now), deps.requests(now), deps.exhaustedJobs(now), deps.purgeCounts(since, now),
+      deps.reviewEmails(now), deps.requests(), deps.exhaustedJobs(now), deps.purgeCounts(since, now),
     ]);
     const findings: string[] = [];
     if (reviewEmails.count > 0) findings.push(`review_email_stuck ${JSON.stringify({ count: reviewEmails.count, rowIds: reviewEmails.rowIds })}`);

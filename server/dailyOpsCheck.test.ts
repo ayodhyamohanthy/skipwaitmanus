@@ -26,9 +26,11 @@ const NOW = Date.parse("2026-11-24T12:00:00.000Z");
 const MONDAY = Date.parse("2026-11-23T12:00:00.000Z");
 const SEEKER = 7;
 const REFERRER = 2;
+const GHOST_REFERRER = 999;
 const JOB_ID = 11;
 const store = createInMemoryDrizzle();
 const dialect = new MySqlDialect();
+const fixture = { databaseClockSkewMs: 0, failActivityInsert: false };
 
 function withDefaults(table: MySqlTable, values: Row): Row {
   const row = { ...values };
@@ -40,10 +42,13 @@ function withDefaults(table: MySqlTable, values: Row): Row {
   return row;
 }
 
-function fixtureDb() {
-  return new Proxy(store.db, {
+function fixtureDb(base: typeof store.db = store.db) {
+  return new Proxy(base, {
     get(target, prop, receiver) {
       if (prop === "insert") return (table: MySqlTable) => {
+        if (table === operationalActivityLogs && fixture.failActivityInsert) {
+          return { values: () => { throw new Error("synthetic activity insert failure"); } };
+        }
         const inner = target.insert(table);
         return { values: (input: Row | readonly Row[]) => {
           const rows = (Array.isArray(input) ? input : [input]) as readonly Row[];
@@ -51,9 +56,9 @@ function fixtureDb() {
           return { onDuplicateKeyUpdate: (config: Parameters<typeof query.onDuplicateKeyUpdate>[0]) => query.onDuplicateKeyUpdate(config), then: query.then.bind(query) };
         } };
       };
-      // The OTP writer's rate-limit statements are raw SQL; code selection still reads the real fixture rows.
       if (prop === "execute") return async (query: SQL) => {
         const text = dialect.sqlToQuery(query).sql.toLowerCase();
+        if (text.includes("select now() as now")) return [[{ now: new Date(Date.now() + fixture.databaseClockSkewMs) }], []];
         if (text.includes("select id, codehash")) {
           const rows = store.rows(workEmailOtpCodes).filter(row => row.consumedAt === null)
             .sort((a, b) => Date.parse(String(b.createdAt)) - Date.parse(String(a.createdAt)) || Number(b.id) - Number(a.id))
@@ -64,7 +69,10 @@ function fixtureDb() {
         if (text.includes("select hitcount")) return [[{ hitCount: 1 }], []];
         return [{ affectedRows: 1, insertId: 0 }, []];
       };
-      if (prop === "transaction") return async <T>(run: (tx: typeof target) => Promise<T>) => run(receiver as typeof target);
+      if (prop === "transaction") return async <T>(run: (tx: typeof target) => Promise<T>) => {
+        if (typeof target.transaction !== "function") return run(receiver as typeof target);
+        return target.transaction(async tx => run(fixtureDb(tx as typeof store.db) as typeof target));
+      };
       return Reflect.get(target, prop, receiver);
     },
   });
@@ -76,14 +84,15 @@ const employee = (id: number, userId: number): Row => full(profiles, { id, userI
 
 type Email = { subject: string; text: string };
 async function runOps(at = NOW, sendEmail: (input: Email) => Promise<boolean> = async () => true) {
+  vi.setSystemTime(at);
   const emails: Email[] = [];
   const output = await createDailyOpsCheck({ sendEmail: async input => { emails.push(input); return sendEmail(input); } })({ nowMs: at, windowKey: "2026-11-24T12:00Z" });
   return { emails, output };
 }
 
-async function newAsk(at = NOW): Promise<number> {
+async function newAsk(at = NOW, referrerId = REFERRER): Promise<number> {
   vi.setSystemTime(at);
-  return (await createReferralRequest(SEEKER, { jobId: JOB_ID, referrerId: REFERRER, personalPitch: "Synthetic private pitch" })).id;
+  return (await createReferralRequest(SEEKER, { jobId: JOB_ID, referrerId, personalPitch: "Synthetic private pitch" })).id;
 }
 
 async function reviewDelivery(status: "failed" | "unknown" | "sent", attempts = 1, at = NOW) {
@@ -92,14 +101,17 @@ async function reviewDelivery(status: "failed" | "unknown" | "sent", attempts = 
     referralRequestId: requestId, referrerId: REFERRER, linkToken: `token-${requestId}`.padEnd(48, "x"), expiresAt: new Date(at + 6 * DAY), grantVersion: 1,
   }));
   expect(await prepareReferrerReviewEmailNotifications(requestId)).toHaveLength(1);
+  let deliveryId: number | undefined;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     vi.setSystemTime(at + (attempt - 1) * 10 * 60_000);
     const claim = await claimReferralReviewDelivery(requestId, REFERRER, "email", `lease-${attempt}`);
     if (!claim) throw new Error("Fixture delivery was not claimable");
+    deliveryId = claim.id;
     expect(await completeReferralReviewDelivery(claim.id, `lease-${attempt}`, status === "sent" ? { status } : { status, error: "synthetic delivery failure" })).toEqual({ recorded: true });
   }
   vi.setSystemTime(NOW);
-  return requestId;
+  if (deliveryId === undefined) throw new Error("Fixture delivery was not claimed");
+  return deliveryId;
 }
 
 async function failedJobRuns(at: number, attempts: number, succeeds = false) {
@@ -134,10 +146,12 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  fixture.databaseClockSkewMs = 0;
+  fixture.failActivityInsert = false;
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDb());
   store.reset([
-    [users, [person(SEEKER, "seeker@example.com"), person(REFERRER, "referrer@acme.com")]],
+    [users, [person(SEEKER, "seeker@example.com"), person(REFERRER, "referrer@acme.com"), person(GHOST_REFERRER, "ghost@example.com")]],
     [profiles, [employee(31, REFERRER)]],
     [jobs, [full(jobs, { id: JOB_ID, company: "acme.com", title: "Synthetic role", targetRoleUrl: "https://careers.acme.com/jobs/11" })]],
     [userBlocks, []],
@@ -147,6 +161,7 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); 
 
 describe("daily ops invariants", () => {
   it("finds exhausted and overdue review emails, not fresh or sent rows, and emails counts and ids only", async () => {
+    await newAsk(NOW, GHOST_REFERRER);
     const exhausted = await reviewDelivery("failed", 5);
     const overdue = await reviewDelivery("unknown", 1, NOW - 3 * HOUR);
     await reviewDelivery("failed", 1);
@@ -176,6 +191,13 @@ describe("daily ops invariants", () => {
     expect((await runOps()).emails).toEqual([]);
   });
 
+  it("uses the database clock for database-generated request timestamps", async () => {
+    for (let index = 0; index < 21; index += 1) await newAsk(NOW - 25 * HOUR - index * 6 * HOUR);
+    await newAsk(NOW + HOUR);
+    fixture.databaseClockSkewMs = 2 * HOUR;
+    expect((await runOps()).emails).toEqual([]);
+  });
+
   it.each([
     [3, 0, true], [2, 0, false], [3, 25 * HOUR, false],
   ] as const)("reports only recently exhausted job runs: attempts %i, age %i", async (attempts, age, alerts) => {
@@ -201,6 +223,18 @@ describe("daily ops invariants", () => {
     const { emails } = await runOps();
     expect(emails).toHaveLength(alerts ? 1 : 0);
     if (alerts) expect(emails[0].text).toContain("work_email_codes_unused");
+  });
+
+  it("rolls back the purge when its count telemetry cannot be written", async () => {
+    const service = createWorkEmailOtpService({ now: () => Date.now(), sendEmail: async () => ({ sent: true, reason: "sent" }) });
+    vi.setSystemTime(NOW - 2 * HOUR);
+    expect(await service.sendCode("rollback@acme.com", { ip: "203.0.113.10" })).toEqual({ sent: true, reason: "sent" });
+    vi.setSystemTime(NOW);
+    const tables = [workEmailOtpCodes, workEmailOtpReceipts, workEmailOtpRateLimits, operationalActivityLogs];
+    const before = tables.map(table => store.rows(table));
+    fixture.failActivityInsert = true;
+    await expect(createWorkEmailOtpPurgeJob()({ nowMs: NOW, windowKey: "2026-11-24T11:00Z" })).rejects.toThrow("synthetic activity insert failure");
+    expect(tables.map(table => store.rows(table))).toEqual(before);
   });
 
   it("ignores purge telemetry outside the last 24 hours", async () => {
