@@ -15,7 +15,7 @@
 // rate-limit window is dead the moment it ends.
 import { and, asc, eq, inArray, isNotNull, lte, notLike, or } from "drizzle-orm";
 import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
-import { getDb } from "./db";
+import { getDb, recordOperationalActivity } from "./db";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 import { WORK_EMAIL_FINGERPRINT_PREFIX, workEmailStorageKeys } from "./workEmailKey";
@@ -34,10 +34,12 @@ export async function purgeWorkEmailOtpRows(now: Date, limit: number = WORK_EMAI
   const batch = Math.max(1, Math.min(Math.floor(limit), WORK_EMAIL_PURGE_BATCH));
   const graceBefore = new Date(now.getTime() - RECEIPT_REPLAY_GRACE_MS);
 
-  const codeIds = await db.select({ id: workEmailOtpCodes.id }).from(workEmailOtpCodes)
+  const codeRows = await db.select({ id: workEmailOtpCodes.id, consumedAt: workEmailOtpCodes.consumedAt, expiresAt: workEmailOtpCodes.expiresAt }).from(workEmailOtpCodes)
     .where(or(isNotNull(workEmailOtpCodes.consumedAt), lte(workEmailOtpCodes.expiresAt, now)))
     .orderBy(asc(workEmailOtpCodes.id)).limit(batch);
-  const deletedCodes = codeIds.length ? affectedRows(await db.delete(workEmailOtpCodes).where(inArray(workEmailOtpCodes.id, codeIds.map(row => row.id)))) : 0;
+  const consumed = codeRows.filter(row => row.consumedAt != null).length;
+  const expiredUnused = codeRows.filter(row => row.consumedAt == null && row.expiresAt != null && row.expiresAt <= now).length;
+  const deletedCodes = codeRows.length ? affectedRows(await db.delete(workEmailOtpCodes).where(inArray(workEmailOtpCodes.id, codeRows.map(row => row.id)))) : 0;
 
   const receiptIds = await db.select({ id: workEmailOtpReceipts.id }).from(workEmailOtpReceipts)
     .where(or(and(isNotNull(workEmailOtpReceipts.usedAt), lte(workEmailOtpReceipts.usedAt, graceBefore)), lte(workEmailOtpReceipts.expiresAt, graceBefore)))
@@ -70,6 +72,7 @@ export async function purgeWorkEmailOtpRows(now: Date, limit: number = WORK_EMAI
     if (affectedRows(written) === 1) rewrittenReceipts += 1;
   }
 
+  await recordOperationalActivity({ action: "work_email_otp.purged", outcome: "success", resourceType: "work_email_otp_purge", resourceId: now.toISOString(), metadata: { consumed, expiredUnused } });
   return { deletedCodes, deletedReceipts, deletedRateLimits, rewrittenCodes, rewrittenReceipts };
 }
 
