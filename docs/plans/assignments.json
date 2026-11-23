@@ -6106,7 +6106,7 @@
       "tier": 2,
       "lane": "skippy-redteam",
       "branch": "agent/queue/skippy-redteam",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
