@@ -38,12 +38,22 @@ export const INTERNATIONAL_TEST_CARDS = Object.freeze([
 export const OUTPUT_DIR = "banded-qa";
 const NAV_TIMEOUT_MS = 45_000;
 
-export type Mode = "probe" | "card";
+/** The live origin the handshake runs against. Deliberately not configurable, as in scripts/live-qa-signed-in.mjs. */
+export const PRODUCTION_ORIGIN = "https://skipwait.me";
+
+/** The public demo seeker (server/_core/reviewerLogin.ts) and the repository secret holding its password. */
+export const DEMO_SEEKER_EMAIL = "seeker@reviewer.skipwait.me";
+export const DEMO_PASSWORD_ENV = "REVIEWER_SEEKER_PASSWORD";
+
+/** The plan the handshake buys up to the hosted page. */
+export const HANDSHAKE_PLAN_LABEL = "Early to Mid";
+
+export type Mode = "probe" | "card" | "handshake";
 
 export function parseMode(value: string | undefined): Mode {
   const mode = value || "probe";
-  if (mode === "probe" || mode === "card") return mode;
-  throw new Error(`mode must be probe or card, not "${mode}"`);
+  if (mode === "probe" || mode === "card" || mode === "handshake") return mode;
+  throw new Error(`mode must be probe, card or handshake, not "${mode}"`);
 }
 
 /** The API key, or a plain refusal. The value is never returned in an error message. */
@@ -53,9 +63,10 @@ export function apiKeyOf(env: NodeJS.ProcessEnv): string {
   return key.trim();
 }
 
-/** Every line this runner prints passes through here, so a key can never reach a log or the step summary. */
-export function redactor(secret: string): (line: string) => string {
-  return line => (secret ? line.split(secret).join("[redacted]") : line);
+/** Every line this runner prints passes through here, so a key or password can never reach a log or the step summary. */
+export function redactor(...secrets: string[]): (line: string) => string {
+  const present = secrets.filter(secret => secret.length > 0);
+  return line => present.reduce((text, secret) => text.split(secret).join("[redacted]"), line);
 }
 
 /** The card the run pays with: the first runbook card, overridable only by index for a retry. */
@@ -201,6 +212,71 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
   }
 }
 
+export type HandshakeProof = {
+  offerOnSale: boolean;
+  plansCaptured: string[];
+  sidewaysAt390: boolean;
+  buyLabel: string;
+  checkoutUrl: string;
+  hostedPageHost: string;
+  hostedPageTitle: string;
+  paid: false;
+};
+
+/** The live offer must be on sale before the handshake means anything. */
+export async function readLiveOffer(): Promise<{ onSale: boolean }> {
+  const response = await fetch(`${PRODUCTION_ORIGIN}/api/chargebee/banded/offer`, { signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) throw new Error(`the live offer answered ${response.status}`);
+  const body = (await response.json()) as { onSale?: unknown };
+  return { onSale: body.onSale === true };
+}
+
+/**
+ * Sign in as the demo seeker on the live site, capture /plans at 1280 and 390, then click Buy and stop on the
+ * provider's hosted page. Nothing is paid: the checkout intent and its founding reservation expire unpaid.
+ */
+export async function handshake(deps: CardRunDeps, password: string): Promise<HandshakeProof> {
+  const offer = await readLiveOffer();
+  if (!offer.onSale) throw new Error("the live offer is not on sale yet: activate BANDED_SALES_ENABLED first");
+  const browser = await deps.launch();
+  try {
+    const page = await browser.newPage();
+    const signedIn = await page.context().request.post(`${PRODUCTION_ORIGIN}/api/auth/reviewer/sign-in`, {
+      data: { email: DEMO_SEEKER_EMAIL, password }, failOnStatusCode: false, maxRedirects: 0,
+    });
+    if (signedIn.status() !== 200) throw new Error(`the demo seeker sign-in answered ${signedIn.status()}`);
+    const plansCaptured: string[] = [];
+    let sidewaysAt390 = false;
+    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${PRODUCTION_ORIGIN}/plans`, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
+      const name = `plans-${viewport.width}`;
+      await deps.screenshot(page, name);
+      plansCaptured.push(`${name}.png`);
+      if (viewport.width === 390) sidewaysAt390 = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`${PRODUCTION_ORIGIN}/plans`, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+    const card = page.getByRole("region", { name: HANDSHAKE_PLAN_LABEL });
+    const buy = card.getByRole("button", { name: /^Buy / });
+    const buyLabel = (await buy.textContent())?.trim() ?? "";
+    if (!buyLabel) throw new Error(`no Buy button inside the ${HANDSHAKE_PLAN_LABEL} card`);
+    await buy.click({ timeout: NAV_TIMEOUT_MS });
+    await page.waitForURL(url => !url.toString().startsWith(PRODUCTION_ORIGIN), { timeout: NAV_TIMEOUT_MS });
+    await deps.screenshot(page, "hosted-page-handshake");
+    const checkoutUrl = page.url();
+    const hostedPageHost = new URL(checkoutUrl).hostname;
+    if (!/\.chargebee\.com$/.test(hostedPageHost)) throw new Error(`Buy opened ${hostedPageHost}, not a Chargebee hosted page`);
+    return {
+      offerOnSale: true, plansCaptured, sidewaysAt390, buyLabel, checkoutUrl, hostedPageHost,
+      hostedPageTitle: await page.title(), paid: false,
+    };
+  } finally {
+    await browser.close();
+  }
+}
+
 export type Summary = {
   site: string;
   mode: Mode;
@@ -209,6 +285,7 @@ export type Summary = {
   probe: ProbeResult | null;
   card: { brand: string; last4: string } | null;
   proof: CardProof | null;
+  handshake: HandshakeProof | null;
   cancelled: boolean;
   ok: boolean;
   reason: string;
@@ -228,6 +305,14 @@ export function markdownOf(summary: Summary): string {
     `| Subscription | ${summary.proof ? `\`${summary.proof.subscriptionId}\` (${summary.proof.subscriptionStatus}, ${summary.proof.currencyCode})` : "none"} |`,
     `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus})` : "none"} |`,
     `| QA subscription cancelled | ${summary.cancelled ? "yes" : "no"} |`,
+    ...(summary.handshake ? [
+      `| Live offer | onSale: ${summary.handshake.offerOnSale} |`,
+      `| /plans captures | ${summary.handshake.plansCaptured.join(", ")} |`,
+      `| Sideways scroll at 390 | ${summary.handshake.sidewaysAt390 ? "yes" : "no"} |`,
+      `| Buy button | ${summary.handshake.buyLabel} |`,
+      `| Hosted page | ${summary.handshake.hostedPageHost} (${summary.handshake.hostedPageTitle}) |`,
+      `| Paid | ${summary.handshake.paid ? "yes" : "no (closed before payment)"} |`,
+    ] : []),
     `| Result | ${summary.ok ? "PASS" : `FAIL: ${summary.reason}`} |`,
   ];
   return ["### Banded TEST-site international-card QA", "", "| Check | Value |", "|---|---|", ...rows, ""].join("\n");
@@ -235,14 +320,41 @@ export function markdownOf(summary: Summary): string {
 
 async function main(): Promise<number> {
   const mode = parseMode(process.argv[2]);
-  const key = apiKeyOf(process.env);
-  const redact = redactor(key);
+  const password = mode === "handshake" ? (process.env[DEMO_PASSWORD_ENV] ?? "") : "";
+  const key = mode === "handshake" ? "" : apiKeyOf(process.env);
+  const redact = redactor(key, password);
   const log = (line: string) => console.log(redact(line));
   const credentials: Credentials = { site: SITE, apiKey: key };
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, card: null, proof: null, cancelled: false, ok: false, reason: "" };
+  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, card: null, proof: null, handshake: null, cancelled: false, ok: false, reason: "" };
   try {
+    if (mode === "handshake") {
+      if (!password) throw new Error(`${DEMO_PASSWORD_ENV} is not set: the demo seeker password lives in the repository secret of that name`);
+      summary.handshake = await handshake({
+        launch: async () => {
+          const { chromium } = await import("playwright");
+          const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
+          return {
+            newPage: async () => {
+              const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+              return context.newPage();
+            },
+            close: () => browser.close(),
+          };
+        },
+        screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
+        log,
+      }, password);
+      log(`handshake: ${summary.handshake.buyLabel} opened ${summary.handshake.hostedPageHost} without paying`);
+      summary.ok = true;
+      summary.reason = "live offer on sale, /plans captured at 1280 and 390, Buy opened the hosted page without paying";
+      await writeFile(path.join(OUTPUT_DIR, "summary.json"), JSON.stringify(summary, null, 2));
+      const handshakeMarkdown = markdownOf(summary);
+      console.log(handshakeMarkdown);
+      if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${handshakeMarkdown}\n`);
+      return 0;
+    }
     summary.probe = await probe(credentials);
     log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
     if (mode === "probe") {

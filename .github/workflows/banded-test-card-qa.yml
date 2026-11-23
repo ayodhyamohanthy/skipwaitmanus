@@ -9,10 +9,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe = read-only catalog check; card = pay a USD hosted page with the international test card"
+        description: "probe = read-only catalog check; card = pay a USD hosted page with the international test card; handshake = live /plans captures and Buy up to the hosted page without paying"
         required: true
         type: choice
-        options: [probe, card]
+        options: [probe, card, handshake]
         default: probe
 
 permissions:
@@ -52,9 +52,20 @@ jobs:
             exit 1
           fi
           echo "::add-mask::$QA_KEY"
+      - name: Mask the demo seeker password
+        env:
+          DEMO_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
+        shell: bash
+        run: |
+          if [ "${{ inputs.mode }}" = "handshake" ] && [ -z "$DEMO_PASSWORD" ]; then
+            echo "::error::REVIEWER_SEEKER_PASSWORD is not set; the live handshake cannot sign in"
+            exit 1
+          fi
+          if [ -n "$DEMO_PASSWORD" ]; then echo "::add-mask::$DEMO_PASSWORD"; fi
       - name: Run the TEST-site QA
         env:
           QA_CHARGEBEE_TEST_API_KEY: ${{ secrets.QA_CHARGEBEE_TEST_API_KEY }}
+          REVIEWER_SEEKER_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
         run: pnpm exec tsx scripts/bandedTestCardQa.ts "${{ inputs.mode }}"
       - name: Upload the evidence
         if: always()
