@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertGoalPage } from "@/test/goalPageContract";
 
+let authState = { isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => "t"), openSignIn: vi.fn() };
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => "t"), openSignIn: vi.fn() }),
+  useAuth: () => authState,
 }));
 vi.mock("@/lib/resumeUpload", () => ({
   validateResumeFile: () => "",
   uploadResume: vi.fn(async () => ({ id: 55, fileName: "new.pdf" })),
 }));
 
-import Skippy from "./Skippy";
+import Skippy, { GOAL_PAGE } from "./Skippy";
 
 type Handler = (body: Record<string, unknown>) => { status?: number; json: unknown };
 
@@ -26,8 +28,12 @@ function mockFetch(handler: Handler) {
 const QUOTE = { level: 5, cost: 1, totalAvailable: 2, shortfall: 0 };
 const fullSession = { step: "quote", note: "My own note.", quote: QUOTE, jobSource: "link", requirements: [], facts: [], matches: [], gaps: [] };
 
-describe("Skippy page", () => {
-  beforeEach(() => { vi.unstubAllGlobals(); });
+describe("Skippy page (legacy fallback)", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    vi.stubEnv("VITE_GOAL_SURFACES", "");
+    authState = { isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => "t"), openSignIn: vi.fn() };
+  });
   afterEach(() => { cleanup(); });
 
   it("starts the flow with a job link and shows replies in the chat", async () => {
@@ -90,5 +96,67 @@ describe("Skippy page", () => {
     fireEvent.change(await screen.findByLabelText("Job link"), { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect((await screen.findByRole("alert")).textContent).toContain("too thin");
+  });
+});
+
+describe("Skippy goal page (VITE_GOAL_SURFACES=skippy)", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    vi.stubEnv("VITE_GOAL_SURFACES", "skippy");
+    authState = { isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => "t"), openSignIn: vi.fn() };
+  });
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("exports GOAL_PAGE contract with goalLine 'Get your ask ready.'", () => {
+    expect(GOAL_PAGE).toBeDefined();
+    expect(GOAL_PAGE.goalLine).toBe("Get your ask ready.");
+  });
+
+  it("renders signed out goal state and satisfies assertGoalPage", async () => {
+    authState = { isSignedIn: false, isLoaded: true, getToken: vi.fn(async () => "t"), openSignIn: vi.fn() };
+    const { container } = render(<Skippy />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Get your ask ready.");
+    assertGoalPage(container, GOAL_PAGE);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(authState.openSignIn).toHaveBeenCalled();
+  });
+
+  it("renders job_link step and satisfies assertGoalPage with Send primary button", async () => {
+    const fetchMock = mockFetch(body => ({ json: { replies: ["Reading it now…", "Job post read."], session: { step: "resume", jobSource: "link", requirements: ["x"] } } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<Skippy />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Get your ask ready.");
+    fireEvent.change(screen.getByLabelText("Job link"), { target: { value: "https://jobs.acme.com/1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Job post read.");
+  });
+
+  it("renders quote step with referral wording (no 'credits') and satisfies assertGoalPage", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: fullSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: fullSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByText(/1 referral/);
+    expect(container.textContent).not.toMatch(/\bcredit(s)?\b/i);
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("button", { name: "Send it" })).toHaveAttribute("data-g-primary", "true");
+  });
+
+  it("renders done step and satisfies assertGoalPage", async () => {
+    const doneSession = { ...fullSession, step: "done", createdRequestId: 42, coverageStatus: "covered" };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: doneSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: doneSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByText(/Your ask is with verified employees/);
+    assertGoalPage(container, GOAL_PAGE);
   });
 });
