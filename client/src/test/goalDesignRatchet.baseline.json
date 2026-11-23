@@ -1,0 +1,301 @@
+{
+  "measuredOn": "main 2d8abf469, 2026-11-24",
+  "decision": "D-332",
+  "released": [
+    "home",
+    "home-signed-in",
+    "referrer",
+    "referrer-home",
+    "invite",
+    "post-opportunity",
+    "admin",
+    "admin-money",
+    "admin-approvals",
+    "admin-ops",
+    "admin-people",
+    "alerts",
+    "assistants",
+    "conversation",
+    "developers",
+    "discovery",
+    "email-review",
+    "employer",
+    "employer-billing",
+    "employer-talent",
+    "for-companies",
+    "inbox",
+    "landed",
+    "links",
+    "messages",
+    "onboarding",
+    "plans",
+    "policy",
+    "pricing",
+    "profile",
+    "settings",
+    "share",
+    "start",
+    "suggest-company",
+    "support",
+    "system",
+    "verify",
+    "sign-in",
+    "public-profile",
+    "premium",
+    "skippy"
+  ],
+  "allow": [
+    {
+      "file": "client/src/components/SeekerSignIn.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/VisualJourney.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/alerts/SavedAlerts.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/employer/EmployerFrame.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/employer/EmployerOverview.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/plans/BillingPanels.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/plans/PendingCheckoutReturn.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/plans/PlanCards.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/plans/PlansCredits.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/plans/PlansKitSections.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/plans/PlansReference.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/profile/PublicWorkGrid.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/referrer-home/ShareImpactCard.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/referrer/ClaimedReview.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/requests/RequestStates.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/seeker-sign-in/CheckEmailStep.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/seeker-sign-in/PasswordForm.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/settings/AccountPanels.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/settings/BlockedPeople.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/settings/PrivacyPanels.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/settings/RegionPanel.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/settings/TalentConsentPanel.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/settings/settingsUi.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/thread/ThreadDecisionPanels.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/components/thread/ThreadModal.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/lib/goalSurfaces.test.ts",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/AdminCatalogSync.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/AdminMoneyCheck.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/AdminPaymentsReview.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/AdminPrivacyRequests.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/AdminTokenRecovery.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/AdminUsers.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/EmployerBilling.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/EmployerDashboard.tsx",
+      "kitImport": true,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/EmployerOpportunities.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/Home.tsx",
+      "kitImport": true,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/Plans.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/PostOpportunity.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/Premium.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/Skippy.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/TalentDiscovery.tsx",
+      "kitImport": false,
+      "surfaceSwitch": true,
+      "decision": "D-332"
+    },
+    {
+      "file": "client/src/pages/TrustPrivacy.tsx",
+      "kitImport": true,
+      "surfaceSwitch": false,
+      "decision": "D-332"
+    }
+  ]
+}
