@@ -470,8 +470,8 @@
       "tier": 1,
       "lane": "banded-grants-intents",
       "branch": "agent/queue/banded-grants-intents-migration",
-      "status": "todo",
-      "syncedTo": "D-374",
+      "status": "done",
+      "syncedTo": "D-381",
       "dependsOn": [
         "BANDED-checkout"
       ],
@@ -480,7 +480,7 @@
         "e2e/banded-grants-intents.e2e.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-200/D-223 migration-first prerequisite of the existing BANDED-grants contract. Packet defines one empty durable checkout-intent table; no runtime or sales change. Verify 0124 remains free before implementation; production migration/checksum evidence precedes dependent schema/readiness/fulfillment. Purchased-lot attribution reuses the ledger under the consumer contract."
+      "note": "Completed PR #1468 at 9be773683: additive migration 0124_banded_checkout_intents.sql deployed empty table with real-MySQL apply/replay checks in e2e/banded-grants-intents.e2e.ts. Prerequisite verified; parent BANDED-grants unblocked for fulfillment."
     },
     {
       "id": "BANDED-grants",
@@ -491,7 +491,7 @@
       "lane": "banded-grants",
       "branch": "agent/queue/banded-grants-fulfillment",
       "status": "todo",
-      "syncedTo": "D-374",
+      "syncedTo": "D-381",
       "dependsOn": [
         "BANDED-schema",
         "BANDED-checkout",
@@ -504,7 +504,7 @@
         "server/db.ts"
       ],
       "epic": "BANDED-release",
-      "note": "D-219/D-367 fulfillment, sales off. The preserved agent/queue/banded-grants branch and closed unmerged #1432 contain prerequisite documentation only, not runtime grants. Use this fresh carrier after a normal picker assignment; no claim or verdict transfers. BANDED-grants-intents-migration supplies verified durable ownership/cart storage first. Implement packet section 9: immutable intent before provider call, shared webhook/return/hourly recovery, invoice-attributed purchases/debits/refunds and daily reconciliation. No activation or legacy scalar crediting."
+      "note": "D-219/D-367 fulfillment, sales off. D-381 clears standing block after prerequisite migration PR #1468 merged (9be773683). The preserved agent/queue/banded-grants branch and closed unmerged #1432 contain prerequisite documentation only, not runtime grants. Use this fresh carrier after a normal picker assignment; no claim or verdict transfers. Implement packet section 9: immutable intent before provider call, shared webhook/return/hourly recovery, invoice-attributed purchases/debits/refunds and daily reconciliation. No activation or legacy scalar crediting."
     },
     {
       "id": "BANDED-spend",
