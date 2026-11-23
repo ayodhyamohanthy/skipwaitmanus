@@ -1,0 +1,1714 @@
+{
+  "expectedSha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+  "capturedAt": "2026-11-23T18:40:29.268Z",
+  "canonical": {
+    "pages": {
+      "status": 200,
+      "metaSha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+      "headers": {
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a5f24a35b8f249f3-SIN",
+        "connection": "keep-alive",
+        "content-encoding": "br",
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "content-type": "text/html; charset=utf-8",
+        "date": "Mon, 23 Nov 2026 18:38:16 GMT",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "permissions-policy": "camera=(), microphone=(), geolocation=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=t1wAXYlN6KZF0%2B68sLobQSihiwqsce8HADnPs%2F7kPni%2BH%2Fv%2FNcYcw1SCHwbdfR5EqCsoOeKqGZrGVImkNEZfoaEWkgQM1BW%2BWsxahyyGI0e1IMCZisEE45LyGOu1Ew%3D%3D\"}]}",
+        "server": "cloudflare",
+        "strict-transport-security": "max-age=15552000; includeSubDomains",
+        "transfer-encoding": "chunked",
+        "vary": "accept-encoding",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      }
+    },
+    "api": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "state": "ready",
+        "service": "skipwait-api",
+        "commitSha": "f66ae9b388ee018939f78f15002868a2859d4ecd"
+      },
+      "headers": {
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "cache-control": "no-store",
+        "cf-ray": "a5f24a388e0f49f3-SIN",
+        "connection": "keep-alive",
+        "content-encoding": "br",
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; report-uri /api/csp-report",
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 23 Nov 2026 18:38:16 GMT",
+        "etag": "W/\"6b-uTiko91gsJ37jl18MgysFWcnoCY\"",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "permissions-policy": "camera=(), microphone=(), geolocation=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=CJJMvA7d2HTlGxlF5hM0aJ8Ccc%2FlwAYpqJnHZ3DAtGCD4iG6pOu43hp9cSxuM9V80OAMNfrWVy1mCaVsWLZdTUfy7m2h8%2B%2BFCTlgcDAViDm2G6AJ1W110yy8tduEFA%3D%3D\"}]}",
+        "server": "cloudflare",
+        "server-timing": "app;dur=1",
+        "strict-transport-security": "max-age=15552000; includeSubDomains",
+        "transfer-encoding": "chunked",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      }
+    }
+  },
+  "productionWrites": "none: CSP reports and external telemetry writes were fulfilled locally; canonical document, asset and read-only API requests used production",
+  "results": [
+    {
+      "path": "/",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Nobody reads the pile."
+        ],
+        "h1Count": 1,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "home-1280.png",
+      "imageSha256": "17ea03e04bb84d6f11e839a8dfef17dbdfac3a5dc93324524fea6de7e0ec88d8",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 5140
+      }
+    },
+    {
+      "path": "/messages",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Your chats."
+        ],
+        "h1Count": 1,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/arrow-left-DsKoJwAp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Messages-CGocAINK.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "messages-1280.png",
+      "imageSha256": "2bf853bd520e4eb3b97ce79ce979efd60c2f4faa0400e649b0e912fb04d0eb6a",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "path": "/plans",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Plans and credits — skipwait.me",
+        "h1": [
+          "Plans",
+          "Choose your referrers."
+        ],
+        "h1Count": 2,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/alerts-BcdseBD7.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/paymentRoute-dIlHh46T.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/format-DMdEcScW.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/referrerPurchases-GfDwbiWC.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planFamily-Cu1162oX.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/pause-C7DMREwE.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/coerce-CzaV_ZZv.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/iso-Uf7jbsYW.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planEntitlements-Cpt8dJtb.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/sparkles-BOXyS4Bl.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/clock-3-B7lktgff.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/openAskSlots-B-HDadw0.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/coins-D7Dh5NZ_.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/PlansV2Connected-CiHpjm5z.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/plansCatalogApi-D1EV0Nxz.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/billingCatalog-D84xlCCj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planCatalog-p54PVGlU.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/gauge-DjC-QjTb.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Plans-DB603aY9.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "plans-1280.png",
+      "imageSha256": "0b21083d081e88f2298f193425a695f1fe298c4e52c9ed25826910aa587b421b",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 1585
+      }
+    },
+    {
+      "path": "/sign-in",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Sign in to find or give a referral."
+        ],
+        "h1Count": 1,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/rememberedSignInEmail-CBR3_S4u.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/sparkles-BOXyS4Bl.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/arrow-left-DsKoJwAp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalField-BtHFwRx3.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/mail-D9xlelJK.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useLocationSearch-XWJ65x-g.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/eye-BDtCBuPp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/SeekerSignIn-CdI1Pa6O.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/eye-off-Ciy9allr.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalAuthFrame-B7jwCHGo.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/SignIn-CQKpQIjg.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "sign-in-1280.png",
+      "imageSha256": "d2aa0ad7ff744b3a528e85bf95fb0fee3587b549527b8146442f95d4d9dc11e1",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 1212
+      }
+    },
+    {
+      "path": "/work",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Your work",
+          "Choose what referrers see."
+        ],
+        "h1Count": 2,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Work-Co4EsSiV.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/workItems-DiCs18jj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/external-link-Cxq5mrzS.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/profileParts-_iacRM6P.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-DZdqFJDM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalFilterChip-CNUPqjkc.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalWork-4rqXuC9g.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "work-1280.png",
+      "imageSha256": "b056c1519d47d6866216934ba5215676c3bd23ea0e7a99eab480f6c2eb9dead5",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "path": "/explore",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Find a referral · skipwait.me",
+        "h1": [
+          "Find a referral",
+          "Get referred."
+        ],
+        "h1Count": 2,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalFilterChip-CNUPqjkc.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/workItems-DiCs18jj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planEntitlements-Cpt8dJtb.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/openAskSlots-B-HDadw0.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/alerts-BcdseBD7.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/iso-Uf7jbsYW.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/billingCatalog-D84xlCCj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/plansCatalogApi-D1EV0Nxz.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalField-BtHFwRx3.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planFamily-Cu1162oX.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/referralUrl-Bfngu23u.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-DZdqFJDM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/goalFlags-DxsgeO6s.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalListRow-CbkSeIjp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalAppShell-D9xt_GrY.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/companyOpportunities-B_itIlox.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/lock-Cs8NI6bf.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/companyDirectory-DPvuXwFc.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/companyDemand-BvulKOrf.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/AskDrawer-BHUPVJ5J.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/whyMe-C-oaGPTJ.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Explore-CbweVAF6.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/resumeUpload-DYcxqZ28.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/info-hWypWi9M.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalDrawer-CDv0Ftmm.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useAskComposer-D4cJZ8QC.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "explore-1280.png",
+      "imageSha256": "0ea3117042b6eb941d3534cb6637c05c8c2101b4b4f4a451f77a34a43736e3fe",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 2960
+      }
+    },
+    {
+      "path": "/reviewer-sign-in",
+      "width": 1280,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Review SkipWait with a demo account."
+        ],
+        "h1Count": 1,
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "viewportHeight": 900,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalField-BtHFwRx3.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/arrow-left-DsKoJwAp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalAuthFrame-B7jwCHGo.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/ReviewerSignIn-CRHzdHOj.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "reviewer-sign-in-1280.png",
+      "imageSha256": "72d424a1a9a2f2e52753dda93a08fbf0891b6534e49345a66ea2d19236ab0a9d",
+      "imageDimensions": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Nobody reads the pile."
+        ],
+        "h1Count": 1,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "home-390.png",
+      "imageSha256": "a7e9521bfbf84ce43f3e99e055500f0094ed6ef3ce6f5f869895001c68a1f381",
+      "imageDimensions": {
+        "width": 390,
+        "height": 6758
+      }
+    },
+    {
+      "path": "/messages",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Your chats."
+        ],
+        "h1Count": 1,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Messages-CGocAINK.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/arrow-left-DsKoJwAp.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "messages-390.png",
+      "imageSha256": "df287e8508ffb1b49c319d34ace73d3dfad7f35c1e149f7b4c69428227d0526b",
+      "imageDimensions": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "path": "/plans",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Plans and credits — skipwait.me",
+        "h1": [
+          "Plans",
+          "Choose your referrers."
+        ],
+        "h1Count": 2,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/paymentRoute-dIlHh46T.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planFamily-Cu1162oX.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/format-DMdEcScW.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/alerts-BcdseBD7.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planEntitlements-Cpt8dJtb.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/billingCatalog-D84xlCCj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/referrerPurchases-GfDwbiWC.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/PlansV2Connected-CiHpjm5z.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/sparkles-BOXyS4Bl.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/plansCatalogApi-D1EV0Nxz.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/coerce-CzaV_ZZv.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/gauge-DjC-QjTb.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/openAskSlots-B-HDadw0.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/iso-Uf7jbsYW.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planCatalog-p54PVGlU.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Plans-DB603aY9.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/clock-3-B7lktgff.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/coins-D7Dh5NZ_.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/pause-C7DMREwE.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "plans-390.png",
+      "imageSha256": "a22e3d8561bebf5c3c030de736326dfda75e2b856f3d16da37f9942cfa334626",
+      "imageDimensions": {
+        "width": 390,
+        "height": 3571
+      }
+    },
+    {
+      "path": "/sign-in",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Sign in to find or give a referral."
+        ],
+        "h1Count": 1,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/arrow-left-DsKoJwAp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/sparkles-BOXyS4Bl.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/rememberedSignInEmail-CBR3_S4u.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalField-BtHFwRx3.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/SeekerSignIn-CdI1Pa6O.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/mail-D9xlelJK.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/SignIn-CQKpQIjg.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useLocationSearch-XWJ65x-g.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/eye-off-Ciy9allr.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/eye-BDtCBuPp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalAuthFrame-B7jwCHGo.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "sign-in-390.png",
+      "imageSha256": "4d575c95428fae425ef942ea80c91f40f34524bd4c8c58ab62e1b9758a64e154",
+      "imageDimensions": {
+        "width": 390,
+        "height": 1376
+      }
+    },
+    {
+      "path": "/work",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Your work",
+          "Choose what referrers see."
+        ],
+        "h1Count": 2,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Work-Co4EsSiV.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/workItems-DiCs18jj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/profileParts-_iacRM6P.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-DZdqFJDM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalFilterChip-CNUPqjkc.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/external-link-Cxq5mrzS.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalWork-4rqXuC9g.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "work-390.png",
+      "imageSha256": "b81ec1d811d0bb828ce23793f12ba3deb93ad81102477d71de3c6a0e55c05134",
+      "imageDimensions": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "path": "/explore",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Find a referral · skipwait.me",
+        "h1": [
+          "Find a referral",
+          "Get referred."
+        ],
+        "h1Count": 2,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalFilterChip-CNUPqjkc.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/alerts-BcdseBD7.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/workItems-DiCs18jj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planEntitlements-Cpt8dJtb.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/iso-Uf7jbsYW.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/openAskSlots-B-HDadw0.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useOnlineStatus-BcZTRzTk.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/planFamily-Cu1162oX.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-DZdqFJDM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalField-BtHFwRx3.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/goalFlags-DxsgeO6s.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/billingCatalog-D84xlCCj.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/referralUrl-Bfngu23u.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/plansCatalogApi-D1EV0Nxz.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalAppShell-D9xt_GrY.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/Explore-CbweVAF6.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalListRow-CbkSeIjp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/companyDirectory-DPvuXwFc.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/resumeUpload-DYcxqZ28.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/companyDemand-BvulKOrf.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/useAskComposer-D4cJZ8QC.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/AskDrawer-BHUPVJ5J.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/companyOpportunities-B_itIlox.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/info-hWypWi9M.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/lock-Cs8NI6bf.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/whyMe-C-oaGPTJ.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalDrawer-CDv0Ftmm.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "explore-390.png",
+      "imageSha256": "9bcaefd78a5982c52591cc920773f2ec99205ba0712e6f10ad0e9571ced675cc",
+      "imageDimensions": {
+        "width": 390,
+        "height": 3588
+      }
+    },
+    {
+      "path": "/reviewer-sign-in",
+      "width": 390,
+      "status": 200,
+      "headers": {
+        "enforcedPolicy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com; connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io; frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com; report-uri /api/csp-report",
+        "reportOnlyPolicy": null
+      },
+      "observed": {
+        "sha": "f66ae9b388ee018939f78f15002868a2859d4ecd",
+        "title": "Private job referrals from verified employees — skipwait.me",
+        "h1": [
+          "Review SkipWait with a demo account."
+        ],
+        "h1Count": 1,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "viewportHeight": 844,
+        "violations": [
+          {
+            "directive": "script-src",
+            "blockedURI": "eval",
+            "sourceFile": "https://skipwait.me/assets/index-By4vu0W8.js",
+            "line": 29,
+            "column": 112327
+          }
+        ]
+      },
+      "errors": [],
+      "consoleErrors": [],
+      "scriptResponses": [
+        {
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/index-By4vu0W8.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/arrow-left-DsKoJwAp.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalField-BtHFwRx3.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalNextStep-i4QZejoM.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/GoalAuthFrame-B7jwCHGo.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/circle-alert-vxbwvY8p.js",
+          "status": 200
+        },
+        {
+          "url": "https://skipwait.me/assets/ReviewerSignIn-CRHzdHOj.js",
+          "status": 200
+        }
+      ],
+      "sentryRequests": [
+        {
+          "method": "POST",
+          "url": "https://o4511355895676928.ingest.de.sentry.io/api/4511451074723920/envelope/"
+        }
+      ],
+      "cloudflareRequests": [
+        {
+          "method": "GET",
+          "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+        }
+      ],
+      "reportAttempts": [
+        {
+          "contentType": "application/csp-report"
+        }
+      ],
+      "fulfilledTelemetryWrites": [
+        {
+          "host": "o4511355895676928.ingest.de.sentry.io",
+          "path": "/api/4511451074723920/envelope/"
+        }
+      ],
+      "image": "reviewer-sign-in-390.png",
+      "imageSha256": "3920e576233d05e1bc4d5f981d8a7639b32fcfaaa1b2688111bfb5d8da7cd257",
+      "imageDimensions": {
+        "width": 390,
+        "height": 844
+      }
+    }
+  ]
+}

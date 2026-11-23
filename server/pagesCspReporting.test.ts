@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { onRequest } from "../functions/_middleware";
 import { CSP_ENFORCED } from "./securityHeaders";
 
+const ENFORCED = "Content-Security-Policy";
 const REPORT_ONLY = "Content-Security-Policy-Report-Only";
-// Baseline policy before D-350: reporting must not change allowed sources.
-const EXISTING_POLICY = [
+const COLLECTED_POLICY = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -13,12 +13,13 @@ const EXISTING_POLICY = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline' https://cdn.usefathom.com",
-  "connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com",
+  "script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com",
+  "connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io",
   "frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com",
+  "report-uri /api/csp-report",
 ].join("; ");
 
-describe("Pages CSP reporting (D-350)", () => {
+describe("Pages CSP enforcement after collection (D-350)", () => {
   it.each([
     { name: "home HTML", path: "/", status: 200, expectedStatus: 200, type: "text/html", body: "<html>Home</html>" },
     { name: "sign-in HTML", path: "/sign-in", status: 200, expectedStatus: 200, type: "text/html", body: "<html>Sign in</html>" },
@@ -28,7 +29,7 @@ describe("Pages CSP reporting (D-350)", () => {
     { name: "HTML error", path: "/sign-in", status: 500, expectedStatus: 500, type: "text/html", body: "<html>Retry</html>" },
     { name: "API error", path: "/api/example", status: 503, expectedStatus: 503, type: "application/json", body: '{"error":"unavailable"}' },
     { name: "upstream redirect", path: "/sign-in", status: 302, expectedStatus: 302, type: "text/plain", body: "Redirecting" },
-  ])("adds only reporting to $name and preserves response behavior", async ({ path, status, expectedStatus, type, body }) => {
+  ])("enforces the collected policy on $name and preserves response behavior", async ({ path, status, expectedStatus, type, body }) => {
     const upstream = new Response(body, {
       status,
       statusText: "Upstream status",
@@ -39,6 +40,7 @@ describe("Pages CSP reporting (D-350)", () => {
         "x-request-id": "csp-fixture",
         "access-control-allow-origin": "https://example.test",
         location: "/next",
+        [ENFORCED]: "default-src 'none'; report-uri /old-enforcing-report",
         [REPORT_ONLY]: "default-src 'none'; report-uri /old-report",
       },
     });
@@ -46,8 +48,8 @@ describe("Pages CSP reporting (D-350)", () => {
     const response = await onRequest({ request: new Request(`https://skipwait.me${path}`), next });
 
     expect(next).toHaveBeenCalledOnce();
-    expect(response.headers.get(REPORT_ONLY)).toBe(`${EXISTING_POLICY}; report-uri /api/csp-report`);
-    expect(response.headers.has("Content-Security-Policy")).toBe(false);
+    expect(response.headers.get(ENFORCED)).toBe(COLLECTED_POLICY);
+    expect(response.headers.has(REPORT_ONLY)).toBe(false);
     expect(response.status).toBe(expectedStatus);
     expect(response.statusText).toBe("Upstream status");
     expect(await response.text()).toBe(body);
@@ -60,6 +62,7 @@ describe("Pages CSP reporting (D-350)", () => {
     expect(response.headers.get("Strict-Transport-Security")).toBe("max-age=15552000; includeSubDomains");
     expect(response.headers.get("Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=()");
     expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    expect(upstream.headers.get(ENFORCED)).toBe("default-src 'none'; report-uri /old-enforcing-report");
     expect(upstream.headers.get(REPORT_ONLY)).toBe("default-src 'none'; report-uri /old-report");
   });
 
@@ -71,8 +74,8 @@ describe("Pages CSP reporting (D-350)", () => {
     expect(response.status).toBe(204);
     expect(await response.text()).toBe("");
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get(REPORT_ONLY)).toBe(`${EXISTING_POLICY}; report-uri /api/csp-report`);
-    expect(response.headers.has("Content-Security-Policy")).toBe(false);
+    expect(response.headers.get(ENFORCED)).toBe(COLLECTED_POLICY);
+    expect(response.headers.has(REPORT_ONLY)).toBe(false);
   });
 
   it("preserves the canonical-host redirect before upstream handling", async () => {
@@ -85,7 +88,7 @@ describe("Pages CSP reporting (D-350)", () => {
     expect(await response.text()).toBe("");
   });
 
-  it("leaves enforcement off during report collection", () => {
-    expect(CSP_ENFORCED).toBe(false);
+  it("enforces after the completed collection interval", () => {
+    expect(CSP_ENFORCED).toBe(true);
   });
 });
