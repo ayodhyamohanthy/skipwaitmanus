@@ -42,6 +42,32 @@ function refusalBody(refusal: BandedRefusal): { error: string; code?: string } {
   return refusal.code ? { code: refusal.code, error: refusal.error } : { error: refusal.error };
 }
 
+type Customer = Parameters<typeof startBandedReferralCheckout>[0]["customer"];
+type ReturnUrls = Parameters<typeof startBandedReferralCheckout>[0]["urls"];
+
+export type ReferralCheckoutStart =
+  | { ok: true; started: Extract<Awaited<ReturnType<typeof startBandedReferralCheckout>>, { ok: true }> }
+  | { ok: false; status: number; code?: string; error: string };
+
+/**
+ * The one shared extra-referral checkout path (D-137, SKIPPY-3): the
+ * POST /api/chargebee/banded/referral-checkout route and Skippy's money card
+ * both call this, so neither can drift from the other. Behaviour is unchanged
+ * from the route's original body: a missing wiring answers 503, and every
+ * refusal keeps its own status, code and plain words.
+ */
+export async function beginBandedReferralCheckout(input: {
+  userId: number;
+  request: BandedReferralCheckoutRequest;
+  customer: Customer;
+  urls: ReturnUrls;
+  checkout: BandedCheckoutDeps | undefined;
+}): Promise<ReferralCheckoutStart> {
+  if (!input.checkout) return { ok: false, status: 503, error: notConfigured.error };
+  const started = await startBandedReferralCheckout({ userId: input.userId, request: input.request, customer: input.customer, urls: input.urls, deps: input.checkout });
+  return started.ok ? { ok: true, started } : { ok: false, status: started.status, code: started.code, error: started.error };
+}
+
 export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps) {
   const record = (input: Activity) => { void deps.recordActivity?.(input).catch(() => undefined); };
   const onSale = () => (deps.checkout?.salesEnabled ?? bandedSalesEnabled)();
@@ -114,14 +140,13 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
       }
       const parsed = bandedReferralCheckoutRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Choose referral levels and whole quantities on a supported billing route. Nothing has been charged." });
-      if (!deps.checkout) return res.status(503).json(notConfigured);
-      const started = await startBandedReferralCheckout({ userId, request: parsed.data, customer: customerOf(identity), urls: urlsFor(req), deps: deps.checkout });
+      const started = await beginBandedReferralCheckout({ userId, request: parsed.data, customer: customerOf(identity), urls: urlsFor(req), checkout: deps.checkout });
       if (!started.ok) {
         refused(userId, "referral", started);
         return res.status(started.status).json(refusalBody(started));
       }
-      record({ actorUserId: userId, action: "billing.banded_checkout_started", outcome: "success", resourceType: "banded_referral_checkout", resourceId: started.checkout.hostedPageId, metadata: { kind: "referral", quantity: started.quote.quantity, subtotal: started.quote.subtotal, discount: started.quote.discount, total: started.quote.total, currency: started.quote.currency, levels: started.quote.lines.map(line => `${line.level}:${line.quantity}`).join(","), site: started.site, checkoutIntentId: started.checkoutIntentId } });
-      return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+      record({ actorUserId: userId, action: "billing.banded_checkout_started", outcome: "success", resourceType: "banded_referral_checkout", resourceId: started.started.checkout.hostedPageId, metadata: { kind: "referral", quantity: started.started.quote.quantity, subtotal: started.started.quote.subtotal, discount: started.started.quote.discount, total: started.started.quote.total, currency: started.started.quote.currency, levels: started.started.quote.lines.map(line => `${line.level}:${line.quantity}`).join(","), site: started.started.site, checkoutIntentId: started.started.checkoutIntentId } });
+      return res.json({ checkoutUrl: started.started.checkout.checkoutUrl, hostedPageId: started.started.checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] banded referral checkout error", error);
       return res.status(502).json({ error: "Unable to start the secure checkout. Nothing has been charged." });
