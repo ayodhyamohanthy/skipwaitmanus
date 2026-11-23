@@ -6154,16 +6154,28 @@
       "id": "SKIPPY-stepup",
       "title": "Fresh sign-in before a Skippy money card: an interactive sign-in no older than 15 minutes, both auth planes, free methods only (D-140)",
       "row": "D-201",
-      "packet": null,
+      "packet": "docs/plans/SKIPPY-stepup.md",
       "tier": 1,
       "lane": "auth-stepup",
       "branch": "agent/queue/skippy-stepup",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "todo",
+      "syncedTo": "D-382",
       "dependsOn": [
         "SKIPPY-fix"
       ],
-      "note": "Write the packet first (D-109) from the ruling in docs/plans/SKIPPY-next.md: how the interactive sign-in time is carried for the cookie JWT and the WorkOS bearer token and survives renewal, how WorkOS re-prompts, and the tests. Login-rule pins stay green; referrer sign-in is untouched."
+      "owns": [
+        "server/_core/sdk.ts",
+        "server/_core/devAuth.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosSession.ts",
+        "server/_core/seekerEmailCode.ts",
+        "server/_core/passkeyLogin.ts",
+        "server/_core/sessionStepUp.ts",
+        "server/_core/sessionStepUp.test.ts",
+        "server/_core/sdk.session.test.ts",
+        "docs/plans/SKIPPY-stepup.md"
+      ],
+      "note": "Packet written in docs/plans/SKIPPY-stepup.md under D-382 (D-140, D-200). Interactive sign-in timestamp carried on cookie JWT and WorkOS Bearer token; survives renewal without being refreshed; assertFreshInteractiveSession gate (15-min limit); WorkOS prompt=login and maxAge; referrer sign-in untouched; login-rule pins green."
     },
     {
       "id": "SKIPPY-6",

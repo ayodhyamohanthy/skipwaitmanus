@@ -54,3 +54,4 @@
 ## Status
 One line per task, `<id>: in progress — <who> — <date> — branch <b>` when it starts and `<id>: done — <sha>` when it is on `main` (D-134).
 - SKIPPY-3 and SKIPPY-6: re-synced to D-378 — Claude Code · e969 — 2026-11-22. D-366 (7) was the only entry naming them since their stamps. SKIPPY-3 now sells extra referrals at the request's level through the banded checkout's shared function (D-367), never packs, and waits for `BANDED-grants`. SKIPPY-6 says referrals, never credits, to users. The flags are unchanged and off.
+- SKIPPY-stepup: packet written in docs/plans/SKIPPY-stepup.md under D-382 — Gemini 3.8 Flash · 9904 — 2026-11-23 — branch `agent/architect/skippy-stepup`
