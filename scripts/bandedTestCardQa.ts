@@ -190,11 +190,13 @@ export async function cancelTestSubscription(credentials: Credentials, subscript
 
 /** Fill the Chargebee hosted card form. Selectors are tried in order because the hosted page is provider-owned. */
 const FIELD_SELECTORS = {
-  number: ['input[name="card[number]"]', "#card_number", 'input[autocomplete="cc-number"]', 'input[name*="number"]'],
-  expiry: ['input[name="card[expiry_date]"]', "#card_expiry", 'input[autocomplete="cc-exp"]', 'input[name*="expiry"]'],
-  cvv: ['input[name="card[cvv]"]', "#card_cvv", 'input[autocomplete="cc-csc"]', 'input[name*="cvv"]'],
+  number: ['input[name="card[number]"]', "#card_number", "#card-number", 'input[autocomplete="cc-number"]', 'input[name*="number"]'],
+  expiry: ['input[name="card[expiry_date]"]', "#card_expiry", "#card-expiry", 'input[autocomplete="cc-exp"]', 'input[name*="expiry"]'],
+  cvv: ['input[name="card[cvv]"]', "#card_cvv", "#card-cvc", 'input[autocomplete="cc-csc"]', 'input[name*="cvv"]'],
   name: ['input[name="card[first_name]"]', "#card_first_name", 'input[name*="first_name"]'],
 } as const;
+
+const ALL_FIELD_SELECTORS = Object.values(FIELD_SELECTORS).flat().join(", ");
 
 async function fillFirst(page: import("playwright").Page, selectors: readonly string[], value: string): Promise<string | null> {
   for (const selector of selectors) {
@@ -220,6 +222,9 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
     const page = await browser.newPage();
     try {
       await page.goto(checkoutUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      // The hosted page is a client-rendered app: wait for its form before looking for fields.
+      await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
+      await page.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       await deps.screenshot(page, "01-hosted-page");
       const filled: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
@@ -228,7 +233,8 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
         if (used) filled.push(`${field}=${used}`);
       }
       if (!filled.some(entry => entry.startsWith("number="))) {
-        throw new Error("the hosted page showed no card-number field");
+        const inputs = await page.locator("input").count();
+        throw new Error(`the hosted page showed no card-number field (title "${await page.title()}", ${inputs} inputs); banded-qa/hosted-page.html records what it did show`);
       }
       await deps.screenshot(page, "02-card-filled");
       const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
