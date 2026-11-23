@@ -106,6 +106,8 @@ function makeSeekerDeps(overrides: Partial<SkippieSeekerDeps> = {}) {
       fileKey: "k/12",
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     })),
+    getBandedOffer: vi.fn(async () => ({ onSale: false })),
+    createMoneyCard: vi.fn(() => { throw new Error("no money card in this test"); }),
     ...overrides,
   };
   return { deps, calls };
