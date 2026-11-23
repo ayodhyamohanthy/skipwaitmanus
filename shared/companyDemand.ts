@@ -14,9 +14,9 @@ import { isCorporateEmailDomain } from "./const";
 import { isAskExpired, type ReferralStatus } from "./referral";
 
 /** Public demand routes and client hooks. One reviewed line; there is no env key. */
-export const COMPANY_DEMAND_PUBLIC_ENABLED = false;
+export const COMPANY_DEMAND_PUBLIC_ENABLED = true;
 /** The admin queue of unlisted domains. */
-export const COMPANY_DEMAND_ADMIN_ENABLED = false;
+export const COMPANY_DEMAND_ADMIN_ENABLED = true;
 /** D-086 (2): a number only from 3 people up. */
 export const DEMAND_PUBLIC_MIN = 3;
 /** The admin queue's output bound. */
