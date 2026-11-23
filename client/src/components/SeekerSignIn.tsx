@@ -39,9 +39,8 @@ type Stage = { readonly kind: "options" } | { readonly kind: "password"; readonl
 export function SeekerSignIn({ returnTo: requestedReturnTo = "/explore", goal = false }: { returnTo?: string; goal?: boolean }) {
   // Re-validated here so no caller can turn sign-in into an open redirect or a loop back to an auth page.
   const returnTo = safeSignInReturnTo(requestedReturnTo, typeof window === "undefined" ? "https://skipwait.me" : window.location.origin) ?? "/explore";
-  const remembered = rememberedSignInEmail("seeker");
-  const [stage, setStage] = useState<Stage>(() => (remembered ? { kind: "password", mode: "sign_in" } : { kind: "options" }));
-  const [email, setEmail] = useState(() => remembered);
+  const [stage, setStage] = useState<Stage>({ kind: "options" });
+  const [email, setEmail] = useState(() => rememberedSignInEmail("seeker"));
 
   if (stage.kind === "check_email") {
     return <CheckEmailStep email={stage.email} origin={stage.origin} onBack={() => setStage({ kind: "password", mode: stage.origin })} />;

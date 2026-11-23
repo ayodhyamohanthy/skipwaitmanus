@@ -30,6 +30,7 @@ describe("seeker sign-in on a returning device", () => {
   it("prefills the email this device last signed in with", () => {
     window.localStorage.setItem(SEEKER_KEY, "ana@example.com");
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("ana@example.com");
     expect(screen.getByRole("button", { name: /Not you\? Forget this email/ })).toBeTruthy();
   });
@@ -63,6 +64,7 @@ describe("seeker sign-in on a returning device", () => {
   it("Not you? forgets the remembered email and clears the field", () => {
     window.localStorage.setItem(SEEKER_KEY, "ana@example.com");
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     fireEvent.click(screen.getByRole("button", { name: /Not you\? Forget this email/ }));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("");
     expect(window.localStorage.getItem(SEEKER_KEY)).toBeNull();

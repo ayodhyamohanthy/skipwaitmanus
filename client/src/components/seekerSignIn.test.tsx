@@ -38,7 +38,7 @@ function fillSignIn(email = " Asha@Gmail.com ", password = "  my pass 1 ") {
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: password } });
 }
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); window.localStorage.clear(); });
 
 describe("seekers sign in with email and password, never a sign-in code", () => {
   it("posts the email and the password verbatim, then goes where the server says", async () => {
