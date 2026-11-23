@@ -158,6 +158,6 @@ Do not change any other answer on those pages. The existing cost answer ("There 
 ## 5. Status
 
 - `STORY-trust-landing`: todo. Not started.
-- `STORY-employer-rules-answer`: todo. Not started.
+- `STORY-employer-rules-answer`: in progress — Gemini 3.8 Flash · f3e2 — 2026-11-24 — branch agent/queue/story-employer-rules-answer
 
 Read receipt for this packet (Nov 11, 2026): written against `origin/main` `5f297cb6`; register read through D-320, plus D-006, D-040, D-055, D-147, D-153, D-173, D-176, D-180, D-196, D-219, D-225, D-314; no earlier session or packet exists for this work.
