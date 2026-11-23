@@ -107,7 +107,8 @@ describe("assistant access routes", () => {
     const plan = setup({ connectAssistant: async () => { throw new AssistantPlanRequiredError(); } });
     const gated = await authed(plan).post("/api/assistants/connections").send({ provider: "chatgpt" });
     expect(gated.status).toBe(402);
-    expect(gated.body.error).toBe("Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.");
+    // D-178.gate (D-290 R2): the refusal is the agent switch and allow-list, never a plan.
+    expect(gated.body.error).toBe("Agent access is not open for this account.");
     const tokens = setup({ createAssistantToken: async () => { throw new AssistantPlanRequiredError(); } });
     expect((await authed(tokens).post("/api/assistants/tokens").send({ name: "Tracker" })).status).toBe(402);
   });

@@ -14,7 +14,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, askInviteLinks, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, askInviteLinks, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, bandedCheckoutIntents, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -52,6 +52,7 @@ import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type Pl
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
 import { AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { agentPortalAllowed } from "./agentPortalAccess";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -73,6 +74,10 @@ import { captureServerError } from "./sentry";
 import { acceptedAskCostSchema, bandedAskQuoteSchema, isBandedPlan, sameAcceptedAskCost, type AcceptedAskCost } from "../shared/acceptedAskCost";
 import { bandedSalesEnabled } from "./billingSettings";
 import { readBandedAllocationTx, readBandedChargeTx, refundBandedDebitTx, spendBandedReferralTx } from "./bandedSpend";
+import { cancelBandedSubscriptionTx, fulfillBandedExtraReferralsTx, fulfillBandedPlanSubscriptionTx, refundBandedPurchaseTx } from "./bandedGrants";
+import { drizzleBandedGrantDb } from "./bandedGrantStore";
+import { resolveBillingEnvironment } from "./chargebeeEnvironment";
+import type { BandedCurrency } from "../shared/bandedGrants";
 import { AskPriceChangedError, ReferralPricingUnavailableError } from "./planGates";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
@@ -539,8 +544,9 @@ export async function getAssistantAccess(userId: number): Promise<AssistantAcces
   return assistantAccessFrom(await getSeekerEntitlements(userId));
 }
 
+/** D-178.gate (D-290 R2): agent access is the Skippy agent switch plus the account allow-list, never a plan. */
 async function assertAssistantAccess(userId: number) {
-  if (!(await getSeekerEntitlements(userId)).assistants) throw new AssistantPlanRequiredError();
+  if (!agentPortalAllowed(userId)) throw new AssistantPlanRequiredError();
 }
 
 export async function listAssistantConnections(userId: number): Promise<AssistantConnection[]> {
@@ -605,9 +611,9 @@ export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId
   return { userId: row.userId, tokenId: row.id };
 }
 
-/** True when the owner's plan still includes assistants (the Land tier). Fails closed. */
+/** D-178.gate (D-290 R2): true only when the switch is on and the owner is on the allow-list. Fails closed. */
 export async function hasAssistantAccess(userId: number): Promise<boolean> {
-  try { return (await getSeekerEntitlements(userId)).assistants; } catch { return false; }
+  return agentPortalAllowed(userId);
 }
 
 export async function revokeAssistantToken(userId: number, tokenId: number) {
@@ -2441,7 +2447,11 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
     let restored = 0;
     let grantId: number | null = null;
     const bandedRefund = await refundBandedDebitTx(tx, { ...input.wallet, monthlyCreditsRemaining: monthly }, spend, now);
-    if (bandedRefund.handled) { restored = bandedRefund.restored; monthly = bandedRefund.monthly; }
+    if (bandedRefund.handled) {
+      restored = bandedRefund.restored;
+      monthly = bandedRefund.monthly;
+      if (spend.creditGrantId != null) grantId = spend.creditGrantId;
+    }
     else if (spend.source === BUCKET_SOURCES.purchased) { balance += credits; restored = credits; }
     else if (spend.source === BUCKET_SOURCES.cycle) {
       if (spend.sourceCycleKey === input.wallet.monthlyCycleKey) { const next = Math.min(input.wallet.monthlyAllowance, monthly + credits); restored = next - monthly; monthly = next; }
@@ -4684,7 +4694,19 @@ export async function markChargebeePaymentForReview(paymentId: number, reason: "
   if (!db) throw new Error("Database unavailable");
   await db.transaction(async tx => {
     const row = (await tx.select({ id: paymentFulfillments.id, userId: paymentFulfillments.userId, status: paymentFulfillments.status, providerInvoiceId: paymentFulfillments.providerInvoiceId }).from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1).for("update"))[0];
-    if (!row || row.status !== "pending") return;
+    if (!row) {
+      const bandedRow = (await tx.select().from(bandedCheckoutIntents).where(eq(bandedCheckoutIntents.id, paymentId)).limit(1).for("update"))[0];
+      if (bandedRow && bandedRow.status === "pending") {
+        await tx.update(bandedCheckoutIntents).set({
+          status: "requires_review",
+          failureReason: reason,
+          lastCheckedAt: new Date(),
+          invoiceId: evidence.invoiceId ?? bandedRow.invoiceId,
+        }).where(eq(bandedCheckoutIntents.id, paymentId));
+      }
+      return;
+    }
+    if (row.status !== "pending") return;
     const invoice = evidence.invoiceId && !row.providerInvoiceId ? { providerInvoiceId: evidence.invoiceId } : {};
     const held = await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date(), ...invoice }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "pending")));
     if (Number(held[0]?.affectedRows ?? 0) !== 1) return;
@@ -4723,6 +4745,47 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
+
+    const site = resolveBillingEnvironment();
+    const isBandedExtra = checkoutIntentId.startsWith("br_") || Boolean(
+      (await tx.select({ id: bandedCheckoutIntents.id }).from(bandedCheckoutIntents).where(and(
+        eq(bandedCheckoutIntents.site, site),
+        eq(bandedCheckoutIntents.hostedPageId, hostedPageId),
+        eq(bandedCheckoutIntents.kind, "referral")
+      )).limit(1))[0]
+    );
+
+    if (isBandedExtra) {
+      let [intent] = await tx.select().from(bandedCheckoutIntents).where(and(
+        eq(bandedCheckoutIntents.site, site),
+        eq(bandedCheckoutIntents.checkoutIntentId, checkoutIntentId)
+      )).limit(1);
+
+      if (!intent && hostedPageId) {
+        [intent] = await tx.select().from(bandedCheckoutIntents).where(and(
+          eq(bandedCheckoutIntents.site, site),
+          eq(bandedCheckoutIntents.hostedPageId, hostedPageId)
+        )).limit(1);
+      }
+
+      if (intent && intent.userId) {
+        const grantDb = drizzleBandedGrantDb(tx);
+        const result = await fulfillBandedExtraReferralsTx(grantDb, {
+          site,
+          userId: intent.userId,
+          checkoutIntentId: intent.checkoutIntentId,
+          hostedPageId: intent.hostedPageId ?? hostedPageId,
+          invoiceId: input.invoiceId ?? `inv_fallback_${input.eventId}`,
+          amount: input.amount,
+          currency: input.currency as BandedCurrency,
+          now: new Date(),
+        });
+        if (result.status === "applied") return { status: "credited" as const, tokenCount: 0 };
+        if (result.status === "duplicate") return { status: "duplicate" as const, tokenCount: 0 };
+        return { status: "requires_review" as const, reason: result.reason ?? "reconciliation_rejected" };
+      }
+    }
+
     const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1).for("update");
     if (!intent[0]) {
       // No pending row: credit recovery or the reconcile job may already have
@@ -4917,7 +4980,41 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
   return db.transaction(async tx => {
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerInvoiceId, invoiceId))).limit(1).for("update");
     const row = rows[0];
-    if (!row) return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+    if (!row) {
+      const bandedPurchases = await tx.select().from(tokenTransactions).where(and(
+        eq(tokenTransactions.referenceType, "chargebee_invoice"),
+        like(tokenTransactions.referenceId, `${invoiceId}:%`),
+        eq(tokenTransactions.kind, "purchase")
+      ));
+      if (bandedPurchases.length > 0) {
+        const site = resolveBillingEnvironment();
+        const grantDb = drizzleBandedGrantDb(tx);
+        const result = await refundBandedPurchaseTx(grantDb, {
+          site,
+          invoiceId,
+          refundId: input.eventId,
+          now: new Date(),
+        });
+        if (result.handled) {
+          if (result.reason === "shortfall") {
+            return {
+              status: "review" as const,
+              paymentId: bandedPurchases[0].id,
+              reason: "refund_credits_spent" as const,
+              expectedAmount: input.refundAmount ?? 0,
+              currency: input.currency ?? "INR",
+            };
+          }
+          return {
+            status: "revoked" as const,
+            paymentId: bandedPurchases[0].id,
+            tokenCount: result.revoked,
+          };
+        }
+        return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+      }
+      return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+    }
     // Not credited: the refund is recorded once per event and decides what the review may do next; no credit moves there.
     if (row.status !== "credited") return settleRefundOfNonCreditedPaymentTx(tx, row, { eventId: input.eventId, invoiceId, refundAmount: input.refundAmount, currency: input.currency });
     // A replay of a refund recorded while the payment waited for its credit (the admin then added the pack) is not a new refund.
@@ -5000,7 +5097,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const receiptWallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
       if (duplicate[0].subscriptionId !== input.subscriptionId) throw new Error("Duplicate receipt identity conflict");
       const receiptPlan = receiptIntent?.plan ?? input.plan ?? (receiptWallet?.plan !== "free" ? receiptWallet?.plan : undefined);
-      if ((receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
+      if ((receiptWallet || receiptIntent) && (!receiptPlan || (!isBillablePlanId(receiptPlan) && !isBandedPlan(receiptPlan)))) {
         await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: isRetiredPlanId(receiptPlan) ? "plan_retired" : "unsupported_plan" });
       }
       return { status: "duplicate" as const };
@@ -5039,6 +5136,85 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (intent && input.plan && input.plan !== intent.plan) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       return { status: "ignored" as const, reason: "plan_mismatch" };
+    }
+    if (expectedPlan && isBandedPlan(expectedPlan)) {
+      const site = resolveBillingEnvironment();
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      const currentSubscription = sameSubscription ? wallet : undefined;
+      if (currentSubscription?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentSubscription.subscriptionResourceVersion) {
+        return { status: "stale" as const };
+      }
+      const userId = wallet?.userId ?? intent!.userId;
+      const role = wallet?.role ?? intent!.role;
+      const now = new Date();
+
+      if (input.status === "cancelled" || input.eventType === "subscription_cancelled") {
+        await cancelBandedSubscriptionTx(drizzleBandedGrantDb(tx), { site, subscriptionId: input.subscriptionId, userId, planId: expectedPlan, now });
+        if (wallet) {
+          await tx.update(tokenBalances).set({
+            plan: "free",
+            subscriptionId: null,
+            subscriptionStatus: "cancelled",
+            subscriptionCurrentTermStart: null,
+            subscriptionCurrentTermEnd: null,
+            subscriptionResourceVersion: input.resourceVersion ?? null,
+          }).where(eq(tokenBalances.id, wallet.id));
+        }
+        if (intent) {
+          await tx.update(subscriptionCheckoutIntents).set({ status: "cancelled" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
+        }
+        return { status: "applied" as const, userId, role, plan: expectedPlan };
+      }
+
+      const fulfillResult = await fulfillBandedPlanSubscriptionTx(drizzleBandedGrantDb(tx), {
+        site,
+        userId,
+        subscriptionId: input.subscriptionId,
+        planId: expectedPlan,
+        currency: (intent?.currency ?? input.currency ?? "INR") as BandedCurrency,
+        amount: intent?.amount ?? 0,
+        currentTermStart: input.currentTermStart ?? now,
+        currentTermEnd: input.currentTermEnd ?? new Date(now.getTime() + 30 * 86_400_000),
+        checkoutIntentId: input.passThruContent,
+        hostedPageId: input.hostedPageId,
+        now,
+      });
+
+      if (fulfillResult.status === "requires_review") {
+        return { status: "ignored" as const, reason: fulfillResult.reason ?? "founding_cap_exceeded" };
+      }
+
+      const walletFields = {
+        plan: expectedPlan,
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrentTermStart: input.currentTermStart ?? now,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? new Date(now.getTime() + 30 * 86_400_000),
+        subscriptionResourceVersion: input.resourceVersion ?? null,
+        lastPaidAt: now,
+      };
+      if (wallet) {
+        await tx.update(tokenBalances).set(walletFields).where(eq(tokenBalances.id, wallet.id));
+      } else {
+        await tx.insert(tokenBalances).values({
+          userId,
+          role,
+          balance: 0,
+          ...freshWalletCycle(role),
+          ...walletFields,
+        });
+      }
+
+      if (intent) {
+        await tx.update(subscriptionCheckoutIntents).set({ status: "activated" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
+      }
+
+      return {
+        status: fulfillResult.status === "applied" ? ("applied" as const) : ("duplicate" as const),
+        userId,
+        role,
+        plan: expectedPlan,
+      };
     }
     if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });

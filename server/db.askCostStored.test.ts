@@ -486,6 +486,74 @@ describe("BANDED-spend real create transaction", () => {
     expect(rows.bandedReferralBalances[0].includedRemaining).toBe(1);
     expect(rows.tokenTransactions.filter(row => row.kind === "withdrawal_refund")[0]).toMatchObject({ tokenCount: 0 });
   });
+
+  it("attributes purchased debit to supplying purchase row and retains creditGrantId on reversal", async () => {
+    rows.bandedReferralBalances[0].includedRemaining = 0;
+    rows.tokenBalances[0].monthlyCreditsRemaining = 0;
+    rows.bandedReferralBalances[0].purchasedRemaining = 2;
+    // Seed purchase row in tokenTransactions
+    rows.tokenTransactions.push({
+      id: 99,
+      userId: SEEKER,
+      role: "job_seeker",
+      tokenCount: 2,
+      kind: "purchase",
+      source: "banded:purchased:early",
+      referenceType: "chargebee_invoice",
+      referenceId: "inv_99:early",
+      idempotencyKey: "banded_purchase:test:inv_99:early",
+    });
+    const first = await send();
+    const spendTx = rows.tokenTransactions.find(r => r.kind === "credit_spend" && r.source === "banded:purchased:early");
+    expect(spendTx).toBeDefined();
+    expect(spendTx?.creditGrantId).toBe(99);
+
+    const db = fixtureDatabase();
+    const result = await db.transaction(async tx => refundLedgerSpendTx(tx, { userId: SEEKER, requestId: first.requestId, kind: "withdrawal_refund", wallet: rows.tokenBalances[0] as Parameters<typeof refundLedgerSpendTx>[1]["wallet"], now: new Date(NOW) }));
+    expect(result).toMatchObject({ returned: 1 });
+    const refundTx = rows.tokenTransactions.find(r => r.kind === "withdrawal_refund" && r.reversesTransactionId === spendTx?.id);
+    expect(refundTx?.creditGrantId).toBe(99);
+  });
+
+  it("does not restore a purchased referral if the supplying purchase was refunded by provider", async () => {
+    rows.bandedReferralBalances[0].includedRemaining = 0;
+    rows.tokenBalances[0].monthlyCreditsRemaining = 0;
+    rows.bandedReferralBalances[0].purchasedRemaining = 1;
+    // Seed purchase row
+    rows.tokenTransactions.push({
+      id: 101,
+      userId: SEEKER,
+      role: "job_seeker",
+      tokenCount: 1,
+      kind: "purchase",
+      source: "banded:purchased:early",
+      referenceType: "chargebee_invoice",
+      referenceId: "inv_101:early",
+      idempotencyKey: "banded_purchase:test:inv_101:early",
+    });
+    const first = await send();
+    const spendTx = rows.tokenTransactions.find(r => r.kind === "credit_spend" && r.creditGrantId === 101);
+    expect(spendTx).toBeDefined();
+
+    // Provider refunds the purchase row
+    rows.tokenTransactions.push({
+      id: 102,
+      userId: SEEKER,
+      role: "job_seeker",
+      tokenCount: -1,
+      kind: "withdrawal_refund",
+      source: "banded:refund:early",
+      creditGrantId: 101,
+      referenceType: "chargebee_refund",
+      referenceId: "ref_101:early",
+      idempotencyKey: "banded_refund:test:ref_101:early",
+    });
+
+    const db = fixtureDatabase();
+    const result = await db.transaction(async tx => refundLedgerSpendTx(tx, { userId: SEEKER, requestId: first.requestId, kind: "withdrawal_refund", wallet: rows.tokenBalances[0] as Parameters<typeof refundLedgerSpendTx>[1]["wallet"], now: new Date(NOW) }));
+    expect(result).toMatchObject({ returned: 0 });
+    expect(rows.bandedReferralBalances[0].purchasedRemaining).toBe(0);
+  });
 });
 
 beforeEach(() => {
