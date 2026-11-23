@@ -4,14 +4,16 @@
 // is never false for another state. It never states a money movement:
 // held_for_credit has no entry and keeps requestNote's own line.
 import { describe, expect, it } from "vitest";
+import { COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { askView } from "./askView";
 import { STATUS_HELP, STATUS_HELP_ENABLED, statusHelpFor, statusHelpKeyFor, type StatusHelpSource } from "./statusHelp";
 
 const source = (overrides: Partial<StatusHelpSource> = {}): StatusHelpSource => ({ status: "pending", referrerId: null, queueStatus: null, ...overrides });
 
 describe("status help catalogue (D-094 item 3)", () => {
-  it("ships switched off", () => {
-    expect(STATUS_HELP_ENABLED).toBe(false);
+  // The release row D-094-ai-in-ui turns it on (packet §6.4); the off path stays pinned in myRequests.statusHelp.test.tsx.
+  it("is switched on by the D-094 release", () => {
+    expect(STATUS_HELP_ENABLED).toBe(true);
   });
 
   it("has an entry for every askView label the seeker can see", () => {
@@ -93,6 +95,18 @@ describe("status help catalogue (D-094 item 3)", () => {
     expect(accepted?.body).not.toMatch(/(?:they|your referrer) (?:will )?submit(?:s)? (?:your|the) referral/i);
     expect(referred?.body).toMatch(/has submitted the referral/i);
     expect(accepted).not.toEqual(referred);
+  });
+
+  // D-379 (D-363 (4), D-153): the legacy 90-day waiting close (ask-expiry-sweep) still runs until
+  // D-174-expiry-clock-removal lands, so the waiting-for-coverage help states it and no entry promises
+  // an indefinite wait. The help states no money (packet §4.7). The clock-removal row removes the sentence.
+  it("states the 90-day waiting close and never promises an indefinite wait (D-379)", () => {
+    const body = STATUS_HELP["waiting:waiting_for_coverage"].body;
+    expect(body).toBe("No verified employee at this company can see it yet. It stays private while it waits; when one joins, the oldest waiting requests reach them first. If none joins within 90 days, it closes, and you can send it again while you are under your limit.");
+    expect(body).toContain(`within ${COVERAGE_WAIT_DAYS} days`);
+    for (const [key, entry] of Object.entries(STATUS_HELP)) {
+      expect(`${entry.title} ${entry.body}`, key).not.toMatch(/stays? (?:private|waiting|open) until|until (?:one|someone|an employee|a referrer) joins|whenever (?:one|an employee|a referrer) joins/i);
+    }
   });
 
   it("keys the catalogue by the waiting sub-state, not by the raw status alone", () => {
