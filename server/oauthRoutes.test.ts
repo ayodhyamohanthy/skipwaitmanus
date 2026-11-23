@@ -15,6 +15,8 @@ function setup(over: Partial<OAuthRouteDeps> = {}, signedIn = true) {
   const minted: Array<{ userId: number; name: string }> = [];
   const activity: Array<Record<string, unknown>> = [];
   const deps: OAuthRouteDeps = {
+    enabled: () => true,
+    allowed: () => true,
     resolveIdentity: async () => (signedIn ? { account: { id: 7 } } : undefined),
     registerClient: async input => ({ clientId: client.clientId, clientName: String(input.clientName), redirectUris: input.redirectUris as string[] }),
     getClient: async id => (id === client.clientId ? client : null),
@@ -95,11 +97,28 @@ describe("authorize + token", () => {
     const replay = await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code: code2, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER });
     expect(replay.status).toBe(400);
   });
-  it("answers 402 with the Land upgrade path, never a code, when the owner has no assistant entitlement", async () => {
+  it("answers 404 on every OAuth endpoint while the agent switch is off", async () => {
+    const { app } = setup({ enabled: () => false });
+    expect((await request(app).get("/api/oauth/authorization-server")).status).toBe(404);
+    expect((await request(app).get("/api/oauth/protected-resource")).status).toBe(404);
+    expect((await request(app).post("/api/oauth/register").send({ client_name: "Claude", redirect_uris: [REDIRECT] })).status).toBe(404);
+    expect((await request(app).get("/api/oauth/client").query({ client_id: client.clientId, redirect_uri: REDIRECT })).status).toBe(404);
+    expect((await authorize(app, {})).status).toBe(404);
+    expect((await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code: "c", redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER })).status).toBe(404);
+  });
+  it("answers 404 for an account that is not on the allow-list, never a code", async () => {
+    const { app, activity } = setup({ allowed: () => false });
+    const res = await authorize(app, {});
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
+    expect(res.body.redirectTo).toBeUndefined();
+    expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");
+  });
+  it("answers 404, never a code, when the gate closes between consent and issue", async () => {
     const { app, activity } = setup({ issueCode: async () => { throw new AssistantPlanRequiredError(); } });
     const res = await authorize(app, {});
-    expect(res.status).toBe(402);
-    expect(res.body).toEqual({ error: "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.", code: "assistant_plan_required", upgradePath: "/plans" });
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
     expect(res.body.redirectTo).toBeUndefined();
     expect(res.headers["cache-control"]).toBe("no-store");
     expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");

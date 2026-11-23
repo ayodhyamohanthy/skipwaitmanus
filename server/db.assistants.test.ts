@@ -134,6 +134,9 @@ const walletRow = (plan: string, termEnd: Date | null = plan === "free" ? null :
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  // D-178.gate (D-290 R2): agent access is the Skippy agent switch plus the allow-list, never a plan.
+  vi.stubEnv("SKIPPIE_AGENT_ENABLED", "true");
+  vi.stubEnv("SKIPPIE_AGENT_USER_IDS", "7");
   tables = {
     connections: [],
     tokens: [],
@@ -160,21 +163,35 @@ describe("assistant connections", () => {
     await expect(connectAssistant(7, { provider: "claude", scopes: ["read"] })).rejects.toThrow(/already connected/);
   });
 
-  it("gates connections on the assistant entitlement (the Land tier)", async () => {
-    tables.wallets = [walletRow("free")];
-    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toThrow(/part of Land and Concierge/);
+  it("gates connections on the agent switch and allow-list, never the plan", async () => {
+    // A Land wallet no longer opens the gate: the switch and the allow-list do (D-290 R2).
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "false");
+    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toThrow(/Agent access is not open/);
+    await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "true");
+    vi.stubEnv("SKIPPIE_AGENT_USER_IDS", "8");
     await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
     expect(await listAssistantConnections(7)).toEqual([]);
+  });
+
+  // D-178.gate (D-290 R2): the plan is not the gate, so a free wallet on the allow-list connects and a Land wallet off it does not.
+  it("connects a free-plan account on the allow-list and refuses a Land wallet off it", async () => {
+    tables.wallets = [walletRow("free")];
+    await expect(connectAssistant(7, { provider: "chatgpt" })).resolves.toMatchObject({ provider: "chatgpt", status: "connected" });
+    vi.stubEnv("SKIPPIE_AGENT_USER_IDS", "8");
+    tables.wallets = [walletRow("land_focus")];
+    await expect(connectAssistant(7, { provider: "claude" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
   });
 
   // D-067: Max no longer carries assistant access; every gate fails closed for a wallet still marked max or pro.
   it.each(["max", "pro"])("a wallet still marked %s has no assistant access and every gate fails closed", async plan => {
     tables.wallets = [walletRow(plan)];
     expect(await getAssistantAccess(7)).toEqual({ plan: "free", planLabel: "Free", tier: "free", hasAccess: false });
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "false");
     expect(await hasAssistantAccess(7)).toBe(false);
     await expect(connectAssistant(7, { provider: "chatgpt" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
     await expect(createAssistantToken(7, { name: "Notion tracker" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
-    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/part of Land and Concierge/);
+    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/Agent access is not open/);
     expect(tables.connections).toEqual([]);
     expect(tables.tokens).toEqual([]);
     expect(tables.apps).toEqual([]);
@@ -204,10 +221,11 @@ describe("assistant tokens", () => {
     await expect(revokeAssistantToken(8, token.id)).rejects.toThrow(/not in your account/);
   });
 
-  it("validates token names and gates on plan", async () => {
+  it("validates token names and gates on the agent switch", async () => {
     await expect(createAssistantToken(7, { name: "x" })).rejects.toThrow(/Give the token a name/);
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "false");
     tables.wallets = [walletRow("start")];
-    await expect(createAssistantToken(7, { name: "OK name" })).rejects.toThrow(/part of Land and Concierge/);
+    await expect(createAssistantToken(7, { name: "OK name" })).rejects.toThrow(/Agent access is not open/);
   });
 });
 
@@ -231,22 +249,23 @@ describe("assistant approvals", () => {
     expect(await verifyAssistantBearer(hash)).toBeNull();
   });
 
-  it("reports assistant access from the owner's entitlement", async () => {
+  it("reports assistant access from the switch and allow-list, never the wallet", async () => {
     expect(await hasAssistantAccess(7)).toBe(true);
+    // A different wallet changes nothing: the plan is not the gate (D-290 R2).
     tables.wallets = [walletRow("momentum")];
-    expect(await hasAssistantAccess(7)).toBe(false);
-    // A non-renewing Land pass keeps access through the paid term; a lapsed term fails closed even before the wallet normalizes.
-    tables.wallets = [walletRow("land_sprint", new Date(Date.now() + DAY), "non_renewing")];
     expect(await hasAssistantAccess(7)).toBe(true);
-    tables.wallets = [walletRow("land_focus", new Date(Date.now() - DAY))];
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "false");
     expect(await hasAssistantAccess(7)).toBe(false);
-    tables.wallets = [walletRow("land_focus", new Date(Date.now() + DAY), "cancelled")];
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "true");
+    vi.stubEnv("SKIPPIE_AGENT_USER_IDS", "8");
     expect(await hasAssistantAccess(7)).toBe(false);
-    expect(await getAssistantAccess(7)).toEqual({ plan: "free", planLabel: "Free", tier: "free", hasAccess: false });
+    expect(await hasAssistantAccess(8)).toBe(true);
+    // The plan readout still describes the wallet; it no longer opens agent access.
+    expect(await getAssistantAccess(7)).toEqual({ plan: "momentum", planLabel: "Momentum", tier: "momentum", hasAccess: false });
   });
 
-  it("reads only the caller's own wallet (cross-user)", async () => {
-    tables.wallets = [walletRow("free"), { ...walletRow("land_focus"), id: 2, userId: 8 }];
+  it("reads only the caller's own account (cross-user)", async () => {
+    vi.stubEnv("SKIPPIE_AGENT_USER_IDS", "8");
     expect(await hasAssistantAccess(7)).toBe(false);
     expect(await hasAssistantAccess(8)).toBe(true);
     await expect(createAssistantToken(7, { name: "Tracker" })).rejects.toBeInstanceOf(AssistantPlanRequiredError);
@@ -310,10 +329,10 @@ describe("developer apps", () => {
     await expect(createDeveloperApp(7, { ...base, agreeToTerms: false })).rejects.toThrow(/developer terms/);
   });
 
-  it("gates registration on the assistant entitlement and updates webhooks", async () => {
-    tables.wallets = [walletRow("free")];
-    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/part of Land and Concierge/);
-    tables.wallets = [walletRow("land_focus")];
+  it("gates registration on the agent switch and updates webhooks", async () => {
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "false");
+    await expect(createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true })).rejects.toThrow(/Agent access is not open/);
+    vi.stubEnv("SKIPPIE_AGENT_ENABLED", "true");
     const app = await createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true });
     expect(await updateDeveloperAppWebhook(7, app!.id, { webhookUrl: "https://instinct.app/hooks" })).toEqual({ id: app!.id, webhookUrl: "https://instinct.app/hooks" });
     expect(await updateDeveloperAppWebhook(7, app!.id, { webhookUrl: "" })).toEqual({ id: app!.id, webhookUrl: null });
