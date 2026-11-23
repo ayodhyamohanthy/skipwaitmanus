@@ -1435,6 +1435,10 @@ export function localSyncIssues({ local, branches, claimant, mainBehind = 0, tas
     // A fixer or lander pushes to the builder's branch, so that branch is theirs to keep in sync too.
     const mine = Boolean(claimant) && (known.holder === claimant || known.stage === claimant);
     const label = known.holder ?? known.stage ?? known.names[0] ?? null;
+    if (l.merged || branches?.get(l.branch)?.merged) {
+      notes.push(`${l.branch} is merged but not deleted: git branch -d ${l.branch}`);
+      continue;
+    }
     if (l.ahead === null) {
       notes.push(`${l.branch} is not on origin (worktree ${l.path}): if it is yours, push it now (git -C ${l.path} push -u origin ${l.branch}); work only on your machine is invisible to every other agent`);
       continue;

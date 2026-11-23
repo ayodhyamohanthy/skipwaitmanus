@@ -11,6 +11,7 @@ import {
   IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseDecisionRegister, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
+import { runLocalCleanup } from "./next-task.mjs";
 import { scopeViolations } from "./scope-check.mjs";
 
 const root = path.resolve(__dirname, "..");
@@ -600,7 +601,7 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     const tasks = [task("B", { lane: "L", dependsOn: ["A"] }), task("A", { lane: "L" })];
     expect(pick(tasks, { branches: [busyB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" })).toMatchObject({ kind: "build", task: { id: "A" } });
   });
-  it("tasks that share a plan row write their status in their packet, and landing is fast-forward only", () => {
+  it("tasks that share a plan row write their status in their packet, and landing is via merge button (BRANCH-HYGIENE-2)", () => {
     const ctx = { who: "Kimi · s2", date: "2026-10-21", claimed: true };
     const shared = [task("A", { row: "D-048", lane: "a" }), task("B", { row: "D-048", lane: "b" })];
     const text = renderPick(pick(shared, { claimant: "Kimi · s2" }), ctx);
@@ -608,8 +609,9 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     expect(text).not.toContain("§3b row \"D-048\" to \"in progress");
     const own = renderPick(pick([task("C")], { claimant: "Kimi · s2" }), ctx);
     expect(own).toContain("§3b row \"C\"");
-    expect(own).toContain("git push origin <sha>:main");
-    expect(own).not.toContain("merge the pull request");
+    expect(own).toContain("gh pr merge <number> --merge");
+    expect(own).toContain("node scripts/branch-cleanup.mjs --apply --only <task id>");
+    expect(own).not.toContain("git push origin <sha>:main");
   });
   it("a lane-mate that depends on a task never makes that task's lane busy (no deadlock)", () => {
     const tasks = [task("A", { lane: "L" }), task("B", { lane: "L", dependsOn: ["A"] })];
@@ -750,6 +752,17 @@ describe("local and origin stay in sync (D-085)", () => {
   it("notes a local main behind origin so nobody reads stale docs", () => {
     expect(localSyncIssues({ local: [], branches: remote, claimant: null, mainBehind: 7 }).notes.join("\n")).toContain("7 commits behind origin/main");
   });
+
+  it("shows a local branch that is merged but not deleted as a note, never as blocking (BRANCH-HYGIENE-2)", () => {
+    const out = localSyncIssues({
+      local: [{ branch: "agent/queue/a", ahead: 2, dirty: false, path: "/wt/a", merged: true }],
+      branches: remote,
+      claimant: "Qwen · s1",
+    });
+    expect(out.blocking).toEqual([]);
+    expect(out.unpushed).toEqual([]);
+    expect(out.notes.join("\n")).toContain("agent/queue/a is merged but not deleted: git branch -d agent/queue/a");
+  });
 });
 
 describe("markers and printed steps", () => {
@@ -800,14 +813,13 @@ describe("markers and printed steps", () => {
     const land1 = renderPick({ kind: "land", task: task("M", { tier: 1 }), work: "agent/queue/m", pr: "https://github.com/o/r/pull/9", lock: "agent/review/m", tier1: true, from: "Mistral · r1" }, ctx);
     expect(land1).toContain("LAND M");
     expect(land1).toContain("re-run the full gate");
-    // D-134 (6): landing is a fast-forward to the exact green commit (the merge button only for an up-to-date branch), never squash, with a step for a refused push.
-    expect(land1).toContain("git push origin <sha>:main");
-    expect(land1).toContain("If that push is refused because main moved");
-    expect(land1).toContain("never squash or rebase-merge");
+    expect(land1).toContain("gh pr merge <number> --merge");
+    expect(land1).toContain("never `--admin`, `--squash` or `--rebase`");
+    expect(land1).toContain("node scripts/branch-cleanup.mjs --apply --only <task id>");
     const fixMain = renderPick({ kind: "fix-main", sha: "c".repeat(40), url: "https://ci/run/2", lock: "agent/queue/fix-main-cccccccc", parent: null, from: null }, ctx);
-    expect(fixMain).toContain("git push origin <sha>:main");
-    expect(fixMain).not.toContain("Then merge it");
-    expect(fixMain).toContain("if that push is refused because main moved");
+    expect(fixMain).toContain("gh pr merge <number> --merge");
+    expect(fixMain).toContain("never `--admin`, `--squash` or `--rebase`");
+    expect(fixMain).toContain("node scripts/branch-cleanup.mjs --apply --only <task id>");
     // D-074: a Tier 1 landing checks that nothing was pushed after the pass verdict.
     expect(land1).toContain("was never reviewed (D-074)");
     expect(land1).toContain("<reviewed>..origin/agent/queue/m ^origin/main");
@@ -2112,5 +2124,44 @@ describe("D-202: every pick opens with the newest decisions", () => {
       { kind: "continue", of: "resync", task: task("A"), lock: "agent/architect/a" },
     ];
     for (const p of picks) expect(renderPick(p as never, ctx).startsWith("Newest decisions (read before you work):")).toBe(true);
+  });
+});
+
+describe("runLocalCleanup (BRANCH-HYGIENE-2)", () => {
+  it("deletes merged local branches whose upstream is gone and reports one line", () => {
+    const deleted: string[] = [];
+    const logs: string[] = [];
+    const errors: string[] = [];
+    const mockTryGit = (cmd: string, ...args: string[]) => {
+      if (cmd === "worktree" && args[0] === "list") return "worktree /repo\nbranch refs/heads/main\n\n";
+      if (cmd === "for-each-ref") {
+        return "main\t" + "a".repeat(40) + "\t\n" +
+               "agent/queue/done-task\t" + "b".repeat(40) + "\t[gone]\n" +
+               "agent/queue/active-task\t" + "c".repeat(40) + "\t[ahead 1]\n";
+      }
+      if (cmd === "merge-base" && args[0] === "--is-ancestor") {
+        return args[1] === "b".repeat(40) ? "" : null;
+      }
+      if (cmd === "branch" && args[0] === "-d") {
+        deleted.push(args[1]);
+        return "";
+      }
+      return null;
+    };
+    const res = runLocalCleanup({
+      tryGit: mockTryGit as any,
+      log: (msg: string) => logs.push(msg),
+      err: (msg: string) => errors.push(msg),
+    });
+    expect(deleted).toEqual(["agent/queue/done-task"]);
+    expect(res.deleted).toEqual(["agent/queue/done-task"]);
+    expect(logs.some(l => l.includes("LOCAL: deleted 1 of 1 merged local branches"))).toBe(true);
+  });
+
+  it("never blocks on git failure", () => {
+    const mockTryGit = () => { throw new Error("git crash"); };
+    const res = runLocalCleanup({ tryGit: mockTryGit as any });
+    expect(res.deleted).toEqual([]);
+    expect(res.failed).toEqual([]);
   });
 });

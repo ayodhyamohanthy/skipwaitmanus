@@ -18,9 +18,10 @@ const land = [
   "Run `node scripts/scope-check.mjs <id>` before you push: it reads the task's declared `owns` from origin/main and fails on any change outside them (PICKER-owns-scope).",
   "Probe every other open branch of the same goal for conflicts: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must print 0.",
   "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
-  "Then fast-forward main to that exact commit (`git push origin <sha>:main`; GitHub's \"Create a merge commit\" button is also safe, because the ruleset only lets an up-to-date branch merge, but never squash or rebase-merge: they replace the tested commits, D-134 (6)). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again; never force-push.",
+  "Then land it with GitHub's merge-commit button (`gh pr merge <number> --merge`; never `--admin`, `--squash` or `--rebase`, D-134 (6), D-200). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and merge again; never force-push.",
   "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
+  "After the live check: delete the task branch and its marker branches on origin and locally with `node scripts/branch-cleanup.mjs --apply --only <task id>`.",
 ];
 
 /** D-200 (5): a fresh worktree has no packages; installing the pinned lockfile is always allowed, never a block. */
@@ -152,8 +153,9 @@ const fixMainSteps = (pick, who) => steps([
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
-  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then fast-forward main to that exact commit (\`git push origin <sha>:main\`; never squash or rebase-merge, D-134 (6)); if that push is refused because main moved, merge the latest origin/main into the lock branch, re-run the full gate, push, wait until every check on the new commit is green and fast-forward again, never force-push. Watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
+  `Open a pull request from ${pick.lock} and wait until every check on that exact commit is green: main is red, so this fix is the one push D-082 allows. Then land it with GitHub's merge-commit button (\`gh pr merge <number> --merge\`; never \`--admin\`, \`--squash\` or \`--rebase\`, D-134 (6), D-200); if main moved, merge the latest origin/main into the lock branch, re-run the full gate, push, wait until every check on the new commit is green and merge again, never force-push. Watch main's CI and both deploys to the end, and run the live check from docs/BRIEF.md "How to ship".`,
   "Tell the owner what broke, which commit, and how you fixed it.",
+  `After the live check: delete the task branch and its marker branches on origin and locally with \`node scripts/branch-cleanup.mjs --apply --only <task id>\`.`,
 ]);
 
 const unblockSteps = (pick, who) => {
