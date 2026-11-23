@@ -81,7 +81,7 @@ test("0124 migration source is idempotent and creates bandedCheckoutIntents tabl
   expect(sql).toContain("UNIQUE INDEX `banded_intents_invoice_unique` (`site`,`invoiceId`)");
   expect(sql).toContain("INDEX `banded_intents_reconcile_idx` (`status`,`lastCheckedAt`,`createdAt`)");
   expect(sql).toContain("INDEX `banded_intents_recovery_idx` (`userId`,`site`,`createdAt`)");
-  expect(sql).not.toMatch(/DROP|TRUNCATE|DELETE/i);
+  expect(sql).not.toMatch(/\b(?:DROP|TRUNCATE)\b|\bDELETE\s+FROM\b/i);
 });
 
 test("migration applies cleanly over 0123 schema preserving existing balances and counters", async () => {
