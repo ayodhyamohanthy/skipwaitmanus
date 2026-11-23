@@ -306,7 +306,7 @@
       "tier": 2,
       "lane": "picker",
       "branch": "agent/queue/branch-hygiene-picker-wiring",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-373",
       "dependsOn": [
         "BRANCH-HYGIENE-1"
@@ -1615,8 +1615,8 @@
       "tier": 1,
       "lane": "d048-release-premium",
       "branch": "agent/queue/d048-r-premium",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-380",
       "dependsOn": [
         "D-048-p3-premium"
       ],
@@ -6106,7 +6106,7 @@
       "tier": 2,
       "lane": "skippy-redteam",
       "branch": "agent/queue/skippy-redteam",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [
         "SKIPPY-fix"
