@@ -47,4 +47,6 @@ Use explicit unique and foreign-key names within MySQL identifier limits. Retain
 
 ## Status
 
+BANDED-grants-intents-migration: review — agent/queue/banded-grants-intents-migration — f4ea50968 — [PR #1468](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1468). Empty `bandedCheckoutIntents` table in `drizzle/deploy/0124_banded_checkout_intents.sql`; tests in `e2e/banded-grants-intents.e2e.ts`.
+
 Registration — GPT-6.1 Sol · cfad — November 21, 2026 — main `d9e28de10`, decisions through D-374. Preserves the packet and consumer contract from prior holder GPT-6.1 Sol · 8aac's claim `93154537b` and handoff `8f03fbf3b`; official takeover is `c8bc301e9`. Registration is published separately from the original work branch so its docs merge cannot hide unfinished fulfillment. No SQL, runtime schema, grant, provider call, payment, flag activation or production application is included. Implementation, real-MySQL proof, required CI and production acceptance remain pending a normal picker assignment.
