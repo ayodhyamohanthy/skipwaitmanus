@@ -232,6 +232,26 @@ describe("plan checkout decision", () => {
     await expect(startBandedPlanCheckout({ userId: 7, request: { planId: "early_to_mid", billingCountry: "IN", idempotencyKey: KEY }, customer, urls, deps: failing })).rejects.toThrow("in progress");
     expect(failing.releaseFoundingPlace).not.toHaveBeenCalled();
   });
+
+  it("persists checkout intent and binds hostedPageId on successful plan checkout", async () => {
+    const persistCheckoutIntent = vi.fn(async () => ({ isReplay: false }));
+    const bindHostedPage = vi.fn(async () => undefined);
+    const deps = fakeBandedDeps({ persistCheckoutIntent, bindHostedPage });
+    const started = await startBandedPlanCheckout({ userId: 7, request: { planId: "early_to_mid", billingCountry: "IN", idempotencyKey: KEY }, customer, urls, deps });
+    expect(started.ok).toBe(true);
+    expect(persistCheckoutIntent).toHaveBeenCalledWith(expect.objectContaining({
+      site: "test",
+      userId: 7,
+      kind: "plan",
+      planId: "early_to_mid",
+      billingRoute: "IN",
+      currency: "INR",
+    }));
+    expect(bindHostedPage).toHaveBeenCalledWith(expect.objectContaining({
+      site: "test",
+      hostedPageId: "hp_plan",
+    }));
+  });
 });
 
 describe("extra-referral checkout decision", () => {
@@ -278,5 +298,25 @@ describe("extra-referral checkout decision", () => {
     const started = await startBandedReferralCheckout({ userId: 7, request: { ...cart, billingCountry: "INTL" }, customer, urls, deps });
     expect(started).toMatchObject({ ok: false, status: 409, code: BANDED_REFUSALS.notAvailable });
     expect(deps.createReferralPage).not.toHaveBeenCalled();
+  });
+
+  it("persists checkout intent and binds hostedPageId on successful referral checkout", async () => {
+    const persistCheckoutIntent = vi.fn(async () => ({ isReplay: false }));
+    const bindHostedPage = vi.fn(async () => undefined);
+    const deps = fakeBandedDeps({ membership: member("early_to_mid"), persistCheckoutIntent, bindHostedPage });
+    const started = await startBandedReferralCheckout({ userId: 7, request: cart, customer, urls, deps });
+    expect(started.ok).toBe(true);
+    expect(persistCheckoutIntent).toHaveBeenCalledWith(expect.objectContaining({
+      site: "test",
+      userId: 7,
+      kind: "referral",
+      planId: "early_to_mid",
+      billingRoute: "IN",
+      currency: "INR",
+    }));
+    expect(bindHostedPage).toHaveBeenCalledWith(expect.objectContaining({
+      site: "test",
+      hostedPageId: "hp_referral",
+    }));
   });
 });

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { bandedReferralBalances, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { acceptedAskCostSchema, isBandedPlan, sameAcceptedAskCost, type AcceptedAskCost } from "../shared/acceptedAskCost";
 import { bandIncludes, referralLevelForJobLevel, type JobLevelNumber } from "../shared/planFamily";
@@ -57,7 +57,30 @@ export async function spendBandedReferralTx(tx: LedgerTx, input: { wallet: Walle
     const changed = await tx.update(bandedReferralBalances).set(patch).where(and(eq(bandedReferralBalances.id, balance.id), eq(bandedReferralBalances.userId, wallet.userId), eq(column, current)));
     if (Number(changed[0]?.affectedRows) !== 1) throw new CreditSpendConflictError();
   }
-  await writeLedgerRow(tx, { userId: wallet.userId, role: "job_seeker", tokenCount: -1, kind: "credit_spend", source: `${sourcePrefix}${source.bucket}:${allocation.cost.band}`, sourceCycleKey: source.cycleKey, referenceType: input.meta.referenceType, referenceId: `${input.meta.referenceId}#1`, idempotencyKey: `${input.meta.idempotencyKey}#1`, monthlyCreditsAfter: wallet.monthlyCreditsRemaining, balanceAfter: wallet.balance });
+  let creditGrantId: number | null = null;
+  if (source.bucket === "purchased") {
+    // Attribute to oldest purchase row with available units
+    const candidatePurchases = await tx.select().from(tokenTransactions)
+      .where(and(
+        eq(tokenTransactions.userId, wallet.userId),
+        eq(tokenTransactions.role, "job_seeker"),
+        eq(tokenTransactions.kind, "purchase"),
+        eq(tokenTransactions.source, `${sourcePrefix}purchased:${allocation.cost.band}`)
+      ))
+      .orderBy(asc(tokenTransactions.id));
+    for (const purchase of candidatePurchases) {
+      const related = await tx.select().from(tokenTransactions)
+        .where(eq(tokenTransactions.creditGrantId, purchase.id));
+      const debits = related.filter(r => r.kind === "credit_spend").reduce((sum, d) => sum + Math.abs(d.tokenCount), 0);
+      const reversals = related.filter(r => r.kind === "withdrawal_refund" || r.kind === "expiry_refund").reduce((sum, r) => sum + r.tokenCount, 0);
+      const netSpent = debits - reversals;
+      if (purchase.tokenCount > netSpent) {
+        creditGrantId = purchase.id;
+        break;
+      }
+    }
+  }
+  await writeLedgerRow(tx, { userId: wallet.userId, role: "job_seeker", tokenCount: -1, kind: "credit_spend", source: `${sourcePrefix}${source.bucket}:${allocation.cost.band}`, sourceCycleKey: source.cycleKey, referenceType: input.meta.referenceType, referenceId: `${input.meta.referenceId}#1`, idempotencyKey: `${input.meta.idempotencyKey}#1`, creditGrantId, monthlyCreditsAfter: wallet.monthlyCreditsRemaining, balanceAfter: wallet.balance });
   return { wallet, chargedCost: allocation.cost };
 }
 
@@ -83,7 +106,22 @@ export async function refundBandedDebitTx(tx: LedgerTx, wallet: WalletRow, debit
   const balance = (await tx.select().from(bandedReferralBalances).where(and(eq(bandedReferralBalances.userId, wallet.userId), eq(bandedReferralBalances.level, parsed.band))).limit(1).for("update"))[0];
   if (!balance) throw new Error("Banded refund balance is missing; retry after recovery");
   const plan = activeBand(wallet, now);
-  const eligible = source.bucket === "purchased" || (plan !== null && bandIncludes(plan, parsed.band) && balance.includedCycleKey !== null && cycleIdentity(balance.includedCycleKey) === source.cycleKey && balance.includedExpiresAt !== null && balance.includedExpiresAt.getTime() > now.getTime());
+  let eligible = false;
+  if (source.bucket === "purchased") {
+    if (debit.creditGrantId != null) {
+      const [purchase] = await tx.select().from(tokenTransactions).where(eq(tokenTransactions.id, debit.creditGrantId)).limit(1);
+      if (purchase) {
+        const revocations = (await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.creditGrantId, purchase.id), eq(tokenTransactions.referenceType, "chargebee_refund")))).reduce((sum, r) => sum + Math.abs(r.tokenCount), 0);
+        eligible = purchase.tokenCount > revocations;
+      } else {
+        eligible = true;
+      }
+    } else {
+      eligible = true;
+    }
+  } else {
+    eligible = plan !== null && bandIncludes(plan, parsed.band) && balance.includedCycleKey !== null && cycleIdentity(balance.includedCycleKey) === source.cycleKey && balance.includedExpiresAt !== null && balance.includedExpiresAt.getTime() > now.getTime();
+  }
   if (!eligible) return { handled: true, restored: 0, monthly: wallet.monthlyCreditsRemaining };
   const patch = source.bucket === "included" ? { includedRemaining: balance.includedRemaining + 1 } : { purchasedRemaining: balance.purchasedRemaining + 1 };
   await tx.update(bandedReferralBalances).set(patch).where(and(eq(bandedReferralBalances.id, balance.id), eq(bandedReferralBalances.userId, wallet.userId)));

@@ -11,15 +11,15 @@
 // test can hold it while the server's cached db handle reads the same rows.
 import { DrizzleQueryError, SQL, getTableName, type Table } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { notifications, operationalActivityLogs, paymentFulfillments, planCreditGrants, promoCreditGrants, referralRequests, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
+import { bandedCheckoutIntents, notifications, operationalActivityLogs, paymentFulfillments, planCreditGrants, promoCreditGrants, referralRequests, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
 
 export type Row = Record<string, unknown>;
-export const LEDGER_TABLE_NAMES = ["wallets", "txns", "grants", "promo", "notes", "users", "events", "intents", "activity", "requests", "payments"] as const;
+export const LEDGER_TABLE_NAMES = ["wallets", "txns", "grants", "promo", "notes", "users", "events", "intents", "bandedIntents", "activity", "requests", "payments"] as const;
 export type LedgerTableName = (typeof LEDGER_TABLE_NAMES)[number];
 export type LedgerTables = Record<LedgerTableName, Row[]>;
 
 const dialect = new MySqlDialect();
-const TABLE_ENTRIES: ReadonlyArray<readonly [Table, LedgerTableName]> = [[tokenBalances, "wallets"], [tokenTransactions, "txns"], [planCreditGrants, "grants"], [promoCreditGrants, "promo"], [notifications, "notes"], [users, "users"], [subscriptionEvents, "events"], [subscriptionCheckoutIntents, "intents"], [operationalActivityLogs, "activity"], [referralRequests, "requests"], [paymentFulfillments, "payments"]];
+const TABLE_ENTRIES: ReadonlyArray<readonly [Table, LedgerTableName]> = [[tokenBalances, "wallets"], [tokenTransactions, "txns"], [planCreditGrants, "grants"], [promoCreditGrants, "promo"], [notifications, "notes"], [users, "users"], [subscriptionEvents, "events"], [subscriptionCheckoutIntents, "intents"], [bandedCheckoutIntents, "bandedIntents"], [operationalActivityLogs, "activity"], [referralRequests, "requests"], [paymentFulfillments, "payments"]];
 const TABLES = new Map<unknown, LedgerTableName>(TABLE_ENTRIES);
 const SQL_TABLE_NAMES = new Map<LedgerTableName, string>(TABLE_ENTRIES.map(([table, name]) => [name, getTableName(table)]));
 /** The unique keys of drizzle/schema.ts the ledger and payment paths rely on (a NULL member never collides, as in MySQL). */
@@ -30,10 +30,11 @@ const UNIQUE_KEYS: Partial<Record<LedgerTableName, readonly (readonly string[])[
   events: [["provider", "providerEventId"]],
   notes: [["eventKey"]],
   payments: [["provider", "providerEventId"]],
+  bandedIntents: [["site", "checkoutIntentId"]],
 };
 
 export function createLedgerFixture() {
-  const tables: LedgerTables = { wallets: [], txns: [], grants: [], promo: [], notes: [], users: [], events: [], intents: [], activity: [], requests: [], payments: [] };
+  const tables: LedgerTables = { wallets: [], txns: [], grants: [], promo: [], notes: [], users: [], events: [], intents: [], bandedIntents: [], activity: [], requests: [], payments: [] };
   /** Replaces every table's rows in place; a table left out is emptied. */
   const reset = (next: Partial<LedgerTables>) => { for (const name of LEDGER_TABLE_NAMES) tables[name] = next[name] ?? []; };
   const rowsOf = (table: unknown) => { const name = TABLES.get(table); if (!name) throw new Error("Unexpected table"); return tables[name]; };
