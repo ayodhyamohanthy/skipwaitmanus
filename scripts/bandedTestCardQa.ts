@@ -16,6 +16,8 @@ import { mkdir, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { createBandedPlanPage } from "../server/bandedCheckoutProvider";
+import { applyCatalogSync, buildCatalogSyncDryRun } from "../server/catalogSyncApply";
+import { createChargebeeCatalogApi } from "../server/chargebeeCatalogApi";
 import { bandedPlanItemPriceId } from "../shared/bandedCatalog";
 import { PLAN_FAMILY, planFeeMinor } from "../shared/planFamily";
 
@@ -48,12 +50,12 @@ export const DEMO_PASSWORD_ENV = "REVIEWER_SEEKER_PASSWORD";
 /** The plan the handshake buys up to the hosted page. */
 export const HANDSHAKE_PLAN_LABEL = "Early to Mid";
 
-export type Mode = "probe" | "card" | "handshake";
+export type Mode = "probe" | "provision" | "card" | "handshake";
 
 export function parseMode(value: string | undefined): Mode {
   const mode = value || "probe";
-  if (mode === "probe" || mode === "card" || mode === "handshake") return mode;
-  throw new Error(`mode must be probe, card or handshake, not "${mode}"`);
+  if (mode === "probe" || mode === "provision" || mode === "card" || mode === "handshake") return mode;
+  throw new Error(`mode must be probe, provision, card or handshake, not "${mode}"`);
 }
 
 /** The API key, or a plain refusal. The value is never returned in an error message. */
@@ -115,8 +117,29 @@ export async function probe(credentials: Credentials): Promise<ProbeResult> {
   return { items: ids, usdItemPriceId, usdAmount: expected };
 }
 
-export type CardProof = {
-  hostedPageId: string;
+export type ProvisionResult = { planned: number; outcome: string; blocked: number };
+
+/**
+ * Create-only: bring the TEST site's banded catalog in line with the frozen source, using the same reviewed
+ * dry-run/apply the admin sync uses. It never updates, archives or deletes, and it never touches a subscription,
+ * customer, invoice or payment. The TEST site was provisioned from an older catalog generation, so the app's
+ * current item price ids did not exist there and the card run could not exercise the real checkout.
+ */
+export async function provisionTestCatalog(credentials: Credentials): Promise<ProvisionResult> {
+  const api = createChargebeeCatalogApi(credentials);
+  const site = { site: SITE, environment: "test" as const };
+  const dry = await buildCatalogSyncDryRun({ api, site });
+  if (dry.blocked.length) {
+    throw new Error(`${dry.blocked.length} banded prices are blocked on the TEST site: ${dry.blocked.map(entry => `${entry.itemPriceId}: ${entry.reason}`).join("; ")}`);
+  }
+  const result = await applyCatalogSync({ planHash: dry.planHash, confirmSite: SITE }, {
+    api, site, actorUserId: 0, record: async () => undefined, reportError: () => undefined,
+  });
+  if (result.status !== "done") throw new Error(`the TEST-site catalog apply was refused: ${result.code} ${result.message}`);
+  return { planned: dry.counts.toCreate, outcome: result.report.outcome, blocked: dry.blocked.length };
+}
+
+export type CardProof = {  hostedPageId: string;
   checkoutUrl: string;
   subscriptionId: string;
   subscriptionStatus: string;
@@ -293,6 +316,7 @@ export type Summary = {
   plan: string;
   currency: string;
   probe: ProbeResult | null;
+  provision: ProvisionResult | null;
   card: { brand: string; last4: string } | null;
   proof: CardProof | null;
   handshake: HandshakeProof | null;
@@ -311,6 +335,7 @@ export function markdownOf(summary: Summary): string {
     `| Mode | ${summary.mode} |`,
     `| Plan / currency | ${summary.plan} / ${summary.currency} |`,
     `| USD item price | ${summary.probe ? `\`${summary.probe.usdItemPriceId}\` = ${summary.probe.usdAmount} minor units` : "not probed"} |`,
+    `| TEST catalog provision | ${summary.provision ? `${summary.provision.outcome}, ${summary.provision.planned} to create, ${summary.provision.blocked} blocked` : "not run"} |`,
     `| Card | ${summary.card ? `${summary.card.brand} ending ${summary.card.last4}` : "not charged"} |`,
     `| Subscription | ${summary.proof ? `\`${summary.proof.subscriptionId}\` (${summary.proof.subscriptionStatus}, ${summary.proof.currencyCode})` : "none"} |`,
     `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus})` : "none"} |`,
@@ -337,7 +362,7 @@ async function main(): Promise<number> {
   const credentials: Credentials = { site: SITE, apiKey: key };
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, card: null, proof: null, handshake: null, cancelled: false, ok: false, reason: "" };
+  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, provision: null, card: null, proof: null, handshake: null, cancelled: false, ok: false, reason: "" };
   try {
     if (mode === "handshake") {
       if (!password) throw new Error(`${DEMO_PASSWORD_ENV} is not set: the demo seeker password lives in the repository secret of that name`);
@@ -365,52 +390,62 @@ async function main(): Promise<number> {
       if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${handshakeMarkdown}\n`);
       return 0;
     }
-    summary.probe = await probe(credentials);
-    log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
-    if (mode === "probe") {
+    if (mode === "provision") {
+      // Provision first: the probe below is the confirmation that the site now matches the frozen source.
+      summary.provision = await provisionTestCatalog(credentials);
+      log(`provision: ${summary.provision.outcome}, ${summary.provision.planned} to create`);
+      summary.probe = await probe(credentials);
+      log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
       summary.ok = true;
-      summary.reason = "read-only probe passed";
+      summary.reason = "the TEST site's banded catalog now matches the frozen source";
     } else {
-      const card = cardOf();
-      const checkoutIntentId = `banded-qa-${randomUUID()}`;
-      const page = await createBandedPlanPage(credentials, {
-        itemPriceId: summary.probe.usdItemPriceId,
-        billingCountry: "INTL",
-        checkoutIntentId,
-        idempotencyKey: checkoutIntentId,
-        redirectUrl: "https://skipwait.me/plans",
-        cancelUrl: "https://skipwait.me/plans",
-        email: `banded-qa+${Date.now()}@skipwait.me`,
-        firstName: "SkipWait",
-        lastName: "QA",
-      });
-      log(`hosted page ${page.hostedPageId} created for ${summary.probe.usdItemPriceId}`);
-      const { chromium } = await import("playwright");
-      const run = await payHostedPage({
-        launch: async () => {
-          const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
-          return {
-            newPage: async () => {
-              const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-              return context.newPage();
-            },
-            close: () => browser.close(),
-          };
-        },
-        screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
-        log,
-      }, page.checkoutUrl, card);
-      log(`card form filled: ${run.filled.join(", ")}; final URL ${run.finalUrl}`);
-      summary.card = { brand: card.brand, last4: card.number.slice(-4) };
-      summary.proof = await readBack(credentials, page.hostedPageId);
-      log(`provider record: ${summary.proof.subscriptionId} ${summary.proof.subscriptionStatus} ${summary.proof.currencyCode}, invoice ${summary.proof.invoiceId ?? "none"} ${summary.proof.invoiceStatus ?? ""}`);
-      if (!summary.proof.paid || summary.proof.currencyCode !== CURRENCY) {
-        throw new Error(`the provider did not record a paid ${CURRENCY} subscription (status ${summary.proof.subscriptionStatus}, invoice ${summary.proof.invoiceStatus ?? "none"})`);
+      summary.probe = await probe(credentials);
+      log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
+      if (mode === "probe") {
+        summary.ok = true;
+        summary.reason = "read-only probe passed";
+      } else {
+        const card = cardOf();
+        const checkoutIntentId = `banded-qa-${randomUUID()}`;
+        const page = await createBandedPlanPage(credentials, {
+          itemPriceId: summary.probe.usdItemPriceId,
+          billingCountry: "INTL",
+          checkoutIntentId,
+          idempotencyKey: checkoutIntentId,
+          redirectUrl: "https://skipwait.me/plans",
+          cancelUrl: "https://skipwait.me/plans",
+          email: `banded-qa+${Date.now()}@skipwait.me`,
+          firstName: "SkipWait",
+          lastName: "QA",
+        });
+        log(`hosted page ${page.hostedPageId} created for ${summary.probe.usdItemPriceId}`);
+        const { chromium } = await import("playwright");
+        const run = await payHostedPage({
+          launch: async () => {
+            const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
+            return {
+              newPage: async () => {
+                const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+                return context.newPage();
+              },
+              close: () => browser.close(),
+            };
+          },
+          screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
+          log,
+        }, page.checkoutUrl, card);
+        log(`card form filled: ${run.filled.join(", ")}; final URL ${run.finalUrl}`);
+        summary.card = { brand: card.brand, last4: card.number.slice(-4) };
+        summary.proof = await readBack(credentials, page.hostedPageId);
+        log(`provider record: ${summary.proof.subscriptionId} ${summary.proof.subscriptionStatus} ${summary.proof.currencyCode}, invoice ${summary.proof.invoiceId ?? "none"} ${summary.proof.invoiceStatus ?? ""}`);
+        if (!summary.proof.paid || summary.proof.currencyCode !== CURRENCY) {
+          throw new Error(`the provider did not record a paid ${CURRENCY} subscription (status ${summary.proof.subscriptionStatus}, invoice ${summary.proof.invoiceStatus ?? "none"})`);
+        }
+        await cancelTestSubscription(credentials, summary.proof.subscriptionId);
+        summary.cancelled = true;
+        summary.ok = true;
+        summary.reason = "international TEST card paid a USD banded plan and the provider recorded it";
       }
-      await cancelTestSubscription(credentials, summary.proof.subscriptionId);
-      summary.cancelled = true;
-      summary.ok = true;
-      summary.reason = "international TEST card paid a USD banded plan and the provider recorded it";
     }
   } catch (error) {
     summary.reason = redact(error instanceof Error ? error.message : String(error));

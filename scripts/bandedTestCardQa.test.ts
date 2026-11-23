@@ -43,12 +43,13 @@ describe("TEST-site guards", () => {
     expect(redact(`key ${KEY} password demo-password-0001`)).toBe("key [redacted] password [redacted]");
   });
 
-  it("accepts only the three modes", () => {
+  it("accepts only the four modes", () => {
     expect(parseMode(undefined)).toBe("probe");
     expect(parseMode("probe")).toBe("probe");
+    expect(parseMode("provision")).toBe("provision");
     expect(parseMode("card")).toBe("card");
     expect(parseMode("handshake")).toBe("handshake");
-    expect(() => parseMode("live")).toThrow(/probe, card or handshake/);
+    expect(() => parseMode("live")).toThrow(/probe, provision, card or handshake/);
   });
 });
 
@@ -220,8 +221,8 @@ describe("the workflow", () => {
     expect(WORKFLOW).not.toMatch(/REVIEWER_SEEKER_PASSWORD=\S/);
   });
 
-  it("offers the three modes and uploads the evidence", () => {
-    expect(WORKFLOW).toContain("options: [probe, card, handshake]");
+  it("offers the four modes and uploads the evidence", () => {
+    expect(WORKFLOW).toContain("options: [probe, provision, card, handshake]");
     expect(WORKFLOW).toContain("actions/upload-artifact@v4");
     expect(WORKFLOW).toContain("path: banded-qa/");
     expect(WORKFLOW).toContain('scripts/bandedTestCardQa.ts "${{ inputs.mode }}"');
