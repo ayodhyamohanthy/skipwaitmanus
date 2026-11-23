@@ -45,7 +45,8 @@ Zero existing customer records, subscriptions, invoices, or payment sources were
 - **Gateway routing:** All INR and USD checkouts route through Razorpay on Chargebee. PayPal is not used for these plans (D-367 (3)).
 - **Test card validation (TEST site per `docs/PAYMENTS_TEST_RUNBOOK.md` §2a):**
   - Domestic recurring INR: Visa `4100 2800 0000 1007` and RuPay `6527 6589 0000 1005` with mock 3DS tokenization consent.
-  - International USD: Visa `4012 8888 8888 1881` and Mastercard `5555 5555 5555 4444` tested in international mode for USD presentment.
+  - International USD: Visa `4012 8888 8888 1881` and Mastercard `5555 5555 5555 4444` recorded as tested in international mode for USD presentment.
+- **Evidence status (D-383):** the PASS entries above have no linked TEST-site run, log or artifact and conflict with `docs/PAYMENTS_TEST_RUNBOOK.md` section 2a. They are preserved as a prior QA record, not accepted proof. D-370 (6)'s international-card condition remains UNVERIFIED until a reproducible TEST-site run is attached; USD sales must not be enabled on this record alone.
 
 ---
 
@@ -76,18 +77,15 @@ Tested against the isolated test environment and disposable real-MySQL database 
 
 ---
 
-## 4. Live Verification Without Paying (skipwait.me)
+## 4. Pending Live Acceptance — Not Completed Evidence
 
-- **Offer Endpoint:** `GET /api/chargebee/banded/offer` returns active offer state with `onSale: true` once enabled, listing plans, places left, and current price book.
-- **UI Inspection (`/plans`):**
-  - Rendered plans: Early to Mid (₹229 / $4.49), Mid to Senior (₹899 / $17.99), Senior to Executive ("Apply").
-  - Badging: Honest "Founding-member launch price" and remaining places displayed from live counter.
-  - Extra referrals section: rendered for active plan members only.
-- **Hosted Page Handshake:**
-  - Clicking "Buy" initiates `/api/chargebee/banded/plan-checkout` with client-generated UUID v4 idempotency key.
-  - Server reserves founding place under row lock and returns hosted page URL (`https://skipwait.chargebee.com/pages/v3/...`).
-  - Browser navigates to hosted checkout page, showing exact price without fee add-ons (absorbed fees per D-367 (4)).
-  - Hosted checkout cancelled by closing tab; zero cards charged, zero real money spent (D-065).
+**Observed production state, `2026-11-23T20:31:32Z`:** `GET /api/chargebee/banded/offer` returned `{"onSale":false}`. `GET /api/health` was ready on commit `081efeef0dac6ac81c7f9939e0ec160dac6cf893`. PR #1483 changed documentation only; its live-handshake claim is withdrawn under D-383.
+
+The following are acceptance criteria for the reopened `BANDED-release`, not completed checks:
+
+- **Offer Endpoint:** after protected activation and exact-SHA deployment, `GET /api/chargebee/banded/offer` must return `onSale:true` with plans, places left and the current price book.
+- **UI Inspection (`/plans`, 1280 and 390):** Early to Mid (₹229 / $4.49), Mid to Senior (₹899 / $17.99) and Senior to Executive ("Apply") must render. Badging must use the honest "Founding-member launch price" and real remaining-place counts; extras render for active plan members only.
+- **Hosted Page Handshake:** clicking "Buy" must call `/api/chargebee/banded/plan-checkout` with a UUID v4 idempotency key, reserve a founding place under row lock, return the hosted page URL and open the exact price without fee add-ons (D-367 (4)). Close/cancel before payment; zero cards charged and zero real money spent (D-065). Attach the run output and captures before marking this section complete.
 
 ---
 
