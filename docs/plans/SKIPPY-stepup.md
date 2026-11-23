@@ -295,10 +295,10 @@ In `server/_core/workosAuth.ts` (`/api/auth/workos/sign-in`):
 
 ## 9. Definition of done
 
-- [ ] All tests in `server/_core/sessionStepUp.test.ts` pass.
-- [ ] `server/_core/sdk.session.test.ts` and `server/_core/workosAuth.test.ts` pass with new `authTime` assertions.
-- [ ] All controls (`loginRule.test.tsx`, `signIn.test.tsx`, `sdk.security.test.ts`) pass without modification.
-- [ ] `pnpm check` passes with zero TypeScript errors.
+- [x] All tests in `server/_core/sessionStepUp.test.ts` pass.
+- [x] `server/_core/sdk.session.test.ts` and `server/_core/workosAuth.test.ts` pass with new `authTime` assertions.
+- [x] All controls (`loginRule.test.tsx`, `signIn.test.tsx`, `sdk.security.test.ts`) pass without modification.
+- [x] `pnpm check` passes with zero TypeScript errors.
 - [ ] Pull request opened on `agent/queue/skippy-stepup` with clean CI merge.
 
 ---
