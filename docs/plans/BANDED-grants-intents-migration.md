@@ -47,4 +47,6 @@ Use explicit unique and foreign-key names within MySQL identifier limits. Retain
 
 ## Status
 
+BANDED-grants-intents-migration: in progress — Gemini 3.8 Flash · 549a — 2026-11-23 — branch agent/queue/banded-grants-intents-migration
+
 Registration — GPT-6.1 Sol · cfad — November 21, 2026 — main `d9e28de10`, decisions through D-374. Preserves the packet and consumer contract from prior holder GPT-6.1 Sol · 8aac's claim `93154537b` and handoff `8f03fbf3b`; official takeover is `c8bc301e9`. Registration is published separately from the original work branch so its docs merge cannot hide unfinished fulfillment. No SQL, runtime schema, grant, provider call, payment, flag activation or production application is included. Implementation, real-MySQL proof, required CI and production acceptance remain pending a normal picker assignment.
