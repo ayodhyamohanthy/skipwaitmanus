@@ -182,31 +182,36 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
   const browser = await deps.launch();
   try {
     const page = await browser.newPage();
-    await page.goto(checkoutUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
-    await deps.screenshot(page, "01-hosted-page");
-    const filled: string[] = [];
-    for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
-      const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
-      const used = await fillFirst(page, selectors, value);
-      if (used) filled.push(`${field}=${used}`);
+    try {
+      await page.goto(checkoutUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      await deps.screenshot(page, "01-hosted-page");
+      const filled: string[] = [];
+      for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
+        const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
+        const used = await fillFirst(page, selectors, value);
+        if (used) filled.push(`${field}=${used}`);
+      }
+      if (!filled.some(entry => entry.startsWith("number="))) {
+        throw new Error("the hosted page showed no card-number field");
+      }
+      await deps.screenshot(page, "02-card-filled");
+      const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
+      await submit.click({ timeout: NAV_TIMEOUT_MS });
+      // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
+      const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
+      if (await success.count()) {
+        await deps.screenshot(page, "03-3ds");
+        await success.click({ timeout: NAV_TIMEOUT_MS });
+      }
+      await page.waitForLoadState("domcontentloaded", { timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
+      await deps.screenshot(page, "04-after-payment");
+      return { filled, finalUrl: page.url() };
+    } catch (error) {
+      // The hosted page is provider-owned: keep what it actually showed so a failure is diagnosable from the artifact.
+      await writeFile(path.join(OUTPUT_DIR, "hosted-page.html"), await page.content().catch(() => "")).catch(() => undefined);
+      await deps.screenshot(page, "99-failure").catch(() => undefined);
+      throw error;
     }
-    if (!filled.some(entry => entry.startsWith("number="))) {
-      const html = await page.content();
-      await writeFile(path.join(OUTPUT_DIR, "hosted-page.html"), html);
-      throw new Error("the hosted page showed no card-number field; banded-qa/hosted-page.html records what it did show");
-    }
-    await deps.screenshot(page, "02-card-filled");
-    const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
-    await submit.click({ timeout: NAV_TIMEOUT_MS });
-    // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
-    const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
-    if (await success.count()) {
-      await deps.screenshot(page, "03-3ds");
-      await success.click({ timeout: NAV_TIMEOUT_MS });
-    }
-    await page.waitForLoadState("domcontentloaded", { timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
-    await deps.screenshot(page, "04-after-payment");
-    return { filled, finalUrl: page.url() };
   } finally {
     await browser.close();
   }

@@ -47,11 +47,11 @@ jobs:
           QA_KEY: ${{ secrets.QA_CHARGEBEE_TEST_API_KEY }}
         shell: bash
         run: |
-          if [ -z "$QA_KEY" ]; then
+          if [ "${{ inputs.mode }}" != "handshake" ] && [ -z "$QA_KEY" ]; then
             echo "::error::QA_CHARGEBEE_TEST_API_KEY is not set; the TEST-site evidence cannot run"
             exit 1
           fi
-          echo "::add-mask::$QA_KEY"
+          if [ -n "$QA_KEY" ]; then echo "::add-mask::$QA_KEY"; fi
       - name: Mask the demo seeker password
         env:
           DEMO_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
