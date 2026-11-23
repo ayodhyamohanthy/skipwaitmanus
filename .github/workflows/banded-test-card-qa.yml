@@ -14,6 +14,11 @@ on:
         type: choice
         options: [probe, provision, card, handshake]
         default: probe
+      item_price_id:
+        description: "card mode only: the TEST site's own item price id, when the app's current id is absent there"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -66,6 +71,7 @@ jobs:
         env:
           QA_CHARGEBEE_TEST_API_KEY: ${{ secrets.QA_CHARGEBEE_TEST_API_KEY }}
           REVIEWER_SEEKER_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
+          QA_TEST_ITEM_PRICE_ID: ${{ inputs.item_price_id }}
         run: pnpm exec tsx scripts/bandedTestCardQa.ts "${{ inputs.mode }}"
       - name: Upload the evidence
         if: always()

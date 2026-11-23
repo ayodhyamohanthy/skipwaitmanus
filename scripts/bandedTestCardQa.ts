@@ -27,6 +27,14 @@ export const SITE = "skipwait-test";
 /** The repository secret holding the TEST-site API key. The live key is never read. */
 export const KEY_ENV = "QA_CHARGEBEE_TEST_API_KEY";
 
+/**
+ * The TEST site was provisioned from an older catalog generation, so the app's current item price ids do not exist
+ * there and the reviewed apply refuses it (its SkipWait objects span three product families). This is the TEST
+ * site's own Early to Mid USD plan price: the same plan, currency, amount and monthly shape under the older id.
+ * Setting it proves the provider leg; it does not prove the app's current id, which the live handshake covers.
+ */
+export const TEST_SITE_ITEM_PRICE_ID_ENV = "QA_TEST_ITEM_PRICE_ID";
+
 /** The plan and currency this evidence covers: the first banded plan, USD presentment (D-367 (2)). */
 export const PLAN = "early_to_mid" as const;
 export const CURRENCY = "USD" as const;
@@ -96,10 +104,10 @@ async function chargebeeGet(credentials: Credentials, requestPath: string): Prom
 }
 
 /** Read-only: the banded items exist and the USD item price matches the frozen book. */
-export async function probe(credentials: Credentials): Promise<ProbeResult> {
+export async function probe(credentials: Credentials, expectedId = bandedPlanItemPriceId(PLAN, CURRENCY)): Promise<ProbeResult> {
   const items = (await chargebeeGet(credentials, "/items?limit=100")) as { list?: { item: { id: string } }[] };
   const ids = (items.list ?? []).map(entry => entry.item.id);
-  const usdItemPriceId = bandedPlanItemPriceId(PLAN, CURRENCY);
+  const usdItemPriceId = expectedId;
   // List every price and match by id: a filtered query hides what the site actually has when the item is missing.
   const prices = (await chargebeeGet(credentials, "/item_prices?limit=100")) as {
     list?: { item_price: { id: string; item_id: string; currency_code: string; price: number; status: string } }[];
@@ -399,7 +407,9 @@ async function main(): Promise<number> {
       summary.ok = true;
       summary.reason = "the TEST site's banded catalog now matches the frozen source";
     } else {
-      summary.probe = await probe(credentials);
+      const override = mode === "card" ? (process.env[TEST_SITE_ITEM_PRICE_ID_ENV] ?? "").trim() : "";
+      if (override) log(`card mode uses the TEST site's own item price ${override} (the app's current id is absent there)`);
+      summary.probe = await probe(credentials, override || undefined);
       log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
       if (mode === "probe") {
         summary.ok = true;
