@@ -190,17 +190,17 @@ export async function cancelTestSubscription(credentials: Credentials, subscript
 
 /** Fill the Chargebee hosted card form. Selectors are tried in order because the hosted page is provider-owned. */
 const FIELD_SELECTORS = {
-  number: ['input[name="card[number]"]', "#card_number", "#card-number", 'input[autocomplete="cc-number"]', 'input[name*="number"]'],
-  expiry: ['input[name="card[expiry_date]"]', "#card_expiry", "#card-expiry", 'input[autocomplete="cc-exp"]', 'input[name*="expiry"]'],
-  cvv: ['input[name="card[cvv]"]', "#card_cvv", "#card-cvc", 'input[autocomplete="cc-csc"]', 'input[name*="cvv"]'],
-  name: ['input[name="card[first_name]"]', "#card_first_name", 'input[name*="first_name"]'],
+  number: ['input[name="card[number]"]', "#card_number", "#card-number", 'input[autocomplete="cc-number"]', 'input[name="card_number"]', 'input[name="number"]', 'input[name*="number"]'],
+  expiry: ['input[name="card[expiry_date]"]', "#card_expiry", "#card-expiry", 'input[autocomplete="cc-exp"]', 'input[name="expiry"]', 'input[name*="expiry"]'],
+  cvv: ['input[name="card[cvv]"]', "#card_cvv", "#card-cvc", 'input[autocomplete="cc-csc"]', 'input[name="cvv"]', 'input[name*="cvv"]'],
+  name: ['input[name="card[first_name]"]', "#card_first_name", 'input[name="card_holder_name"]', 'input[name*="first_name"]'],
 } as const;
 
 const ALL_FIELD_SELECTORS = Object.values(FIELD_SELECTORS).flat().join(", ");
 
-async function fillFirst(page: import("playwright").Page, selectors: readonly string[], value: string): Promise<string | null> {
+async function fillFirst(root: import("playwright").Page | import("playwright").FrameLocator, selectors: readonly string[], value: string): Promise<string | null> {
   for (const selector of selectors) {
-    const field = page.locator(selector).first();
+    const field = root.locator(selector).first();
     if (await field.count()) {
       await field.fill(value);
       return selector;
@@ -229,7 +229,7 @@ async function fillBilling(page: import("playwright").Page): Promise<void> {
   for (const field of BILLING_FIELDS) await page.locator(field.selector).fill(field.value).catch(() => undefined);
   await page.locator("#billing_address-country").selectOption("US").catch(() => undefined);
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
-  const state = page.locator("#billing_address-state");
+  const state = page.locator("#billing_address-state_code, #billing_address-state");
   await state.selectOption("WA").catch(async () => { await state.selectOption({ label: "Washington" }).catch(() => undefined); });
   // Some hosted-page builds leave the state list empty until the country round-trip finishes; take the first real option.
   const chosen = await state.inputValue().catch(() => "");
@@ -266,11 +266,16 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
         await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
         await deps.screenshot(page, "04-payment-step");
       }
-      await page.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
+      // The card fields live inside Chargebee's payment component iframe; fall back to the page when it is inline.
+      await page.locator("#cb-payment-component").waitFor({ state: "attached", timeout: 30_000 }).catch(() => undefined);
+      const paymentFrame = page.frameLocator("#cb-payment-component");
+      const root: import("playwright").Page | import("playwright").FrameLocator =
+        (await paymentFrame.locator("input").first().count().catch(() => 0)) > 0 ? paymentFrame : page;
+      await root.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const filled: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
         const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
-        const used = await fillFirst(page, selectors, value);
+        const used = await fillFirst(root, selectors, value);
         if (used) filled.push(`${field}=${used}`);
       }
       if (!filled.some(entry => entry.startsWith("number="))) {
