@@ -8395,7 +8395,7 @@
       "tier": 2,
       "lane": "gate-design-ratchet",
       "branch": "agent/queue/gate-goal-design-ratchet",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-332",
       "dependsOn": [],
       "owns": [
@@ -8403,7 +8403,7 @@
         "client/src/test/goalDesignRatchet.baseline.json",
         "docs/plans/D-048-retire.md"
       ],
-      "note": "D-332 (owner, Nov 11: the old design is completely removed and the change to the goal design is forced). A vitest file in the required unit job, so no workflow edit: (1) every surface id in the baseline's released list is still in RELEASED (client/src/lib/goalSurfaces.ts); (2) only files on the baseline's allow-list may import client/src/components/kit or call goalSurfaceOn outside client/src/pages/goal and client/src/components/goal, so no new old-design code and no new switch can land; (3) each rule has a failing fixture. The baseline is measured on main when the row is built; entries are only ever removed. Read docs/plans/D-048-retire.md section 5 first and reuse client/src/test/goalPagesBoundary.test.ts and scripts/designTokenAuditCore.mjs rather than repeating what they already check. Changes no page and no runtime code.",
+      "note": "Completed 2026-11-24: DeepSeek V4.1 Flash · 296d built the ratchet gate in PR #1496, merged ae9e265ad; required CI green (typecheck, 3 unit shards, production build, e2e); focused 19/19 and pnpm check green on the merged tree; baseline measured on main 2d8abf469 (41 released ids, 42 allow entries).",
       "epic": "D-048-p3"
     },
     {
