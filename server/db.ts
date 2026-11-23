@@ -75,7 +75,7 @@ import { bandedSalesEnabled } from "./billingSettings";
 import { readBandedAllocationTx, readBandedChargeTx, refundBandedDebitTx, spendBandedReferralTx } from "./bandedSpend";
 import { cancelBandedSubscriptionTx, fulfillBandedExtraReferralsTx, fulfillBandedPlanSubscriptionTx, refundBandedPurchaseTx } from "./bandedGrants";
 import { drizzleBandedGrantDb } from "./bandedGrantStore";
-import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
+import { resolveBillingEnvironment } from "./chargebeeEnvironment";
 import type { BandedCurrency } from "../shared/bandedGrants";
 import { AskPriceChangedError, ReferralPricingUnavailableError } from "./planGates";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
@@ -4744,7 +4744,7 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
 
-    const site = resolveChargebeeRuntime(undefined).environment;
+    const site = resolveBillingEnvironment();
     const isBandedExtra = checkoutIntentId.startsWith("br_") || Boolean(
       (await tx.select({ id: bandedCheckoutIntents.id }).from(bandedCheckoutIntents).where(and(
         eq(bandedCheckoutIntents.site, site),
@@ -4985,7 +4985,7 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
         eq(tokenTransactions.kind, "purchase")
       ));
       if (bandedPurchases.length > 0) {
-        const site = resolveChargebeeRuntime(undefined).environment;
+        const site = resolveBillingEnvironment();
         const grantDb = drizzleBandedGrantDb(tx);
         const result = await refundBandedPurchaseTx(grantDb, {
           site,
@@ -5136,7 +5136,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       return { status: "ignored" as const, reason: "plan_mismatch" };
     }
     if (expectedPlan && isBandedPlan(expectedPlan)) {
-      const site = resolveChargebeeRuntime(undefined).environment;
+      const site = resolveBillingEnvironment();
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       const currentSubscription = sameSubscription ? wallet : undefined;
       if (currentSubscription?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentSubscription.subscriptionResourceVersion) {
