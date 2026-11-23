@@ -50,8 +50,10 @@ describe("seeker sign-in passkey affordances exist only in the goal-native compo
   it("the legacy kit page renders no device-credential UI", () => {
     render(<SeekerSignIn />);
     expect(screen.queryByRole("button", { name: /Use a saved passkey/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    expect(screen.queryByRole("button", { name: /Use a saved passkey/ })).toBeNull();
     const email = screen.getByLabelText(/Email address/);
-    expect(email.getAttribute("autocomplete")).toBe("email");
+    expect(email.getAttribute("autocomplete")).toBe("username");
   });
 
   it("the goal sign-in opens with the server-enabled passkey action beside the social options", async () => {

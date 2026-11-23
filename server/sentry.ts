@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import * as Sentry from "@sentry/node";
 import type { NextFunction, Request, Response } from "express";
-import { scrubTelemetryPath } from "../shared/telemetryScrub";
+import {
+  scrubTelemetryBreadcrumb,
+  scrubTelemetryEvent,
+  scrubTelemetryPath,
+} from "../shared/telemetryScrub";
 
 let initialized = false;
 
@@ -31,6 +35,19 @@ export function scrubSentryUrlText(value: string): string {
 // FND-4: one shared scrubber for every token-bearing browser and API route.
 export function scrubSentryPath(path: string): string {
   return scrubTelemetryPath(path);
+}
+
+const RELATIVE_BASE = "http://relative.invalid";
+
+/** An absolute URL keeps its origin; every URL loses its query and fragment and has single-use paths redacted. */
+export function scrubServerUrl(value: string): string {
+  try {
+    const url = new URL(value, RELATIVE_BASE);
+    const path = scrubSentryPath(url.pathname);
+    return url.origin === RELATIVE_BASE ? path : `${url.origin}${path}`;
+  } catch {
+    return "[redacted]";
+  }
 }
 
 type EventRequest = NonNullable<Sentry.Event["request"]>;
@@ -121,7 +138,21 @@ function serverRelease(): string | undefined {
   }
 }
 
-export function initServerSentry(): boolean {
+function defaultHttpIntegrations() {
+  try {
+    if (typeof Sentry.httpIntegration === "function") {
+      return [Sentry.httpIntegration({ maxIncomingRequestBodySize: "none" })];
+    }
+  } catch {
+    // Vitest mocked modules may throw on missing export access
+  }
+  return [];
+}
+
+/** Tests only: a capturing transport and a sample rate, so a privacy test sees every event and transaction. */
+export type ServerSentryTestOverrides = Pick<Sentry.NodeOptions, "transport" | "tracesSampleRate">;
+
+export function initServerSentry(overrides: ServerSentryTestOverrides = {}): boolean {
   if (initialized) return true;
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return false;
@@ -130,8 +161,21 @@ export function initServerSentry(): boolean {
     release: serverRelease(),
     environment: process.env.NODE_ENV === "production" ? "production" : "development",
     tracesSampleRate: 0.1,
-    beforeSend: event => { scrubEventInPlace(event); return event; },
-    beforeSendTransaction: event => { scrubTransactionInPlace(event); return event; },
+    sendDefaultPii: false,
+    // The SDK attaches incoming request bodies (up to 10 KB) to every event and sampled transaction unless told
+    // not to, whatever sendDefaultPii says. Bodies carry passwords, emails and reset tokens: never capture them.
+    integrations: defaultHttpIntegrations(),
+    // And whatever an integration attaches anyway (cookies, headers, query strings) is removed before sending.
+    beforeSend: event => {
+      scrubEventInPlace(event);
+      return scrubTelemetryEvent(event, scrubServerUrl);
+    },
+    beforeSendTransaction: event => {
+      scrubTransactionInPlace(event);
+      return scrubTelemetryEvent(event, scrubServerUrl);
+    },
+    beforeBreadcrumb: breadcrumb => scrubTelemetryBreadcrumb(breadcrumb, scrubServerUrl),
+    ...overrides,
   });
   initialized = true;
   return true;

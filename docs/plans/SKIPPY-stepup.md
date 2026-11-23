@@ -161,14 +161,13 @@ export function assertFreshInteractiveSession(
 ### 4.6 WorkOS interactive re-prompt configuration
 
 In `server/_core/workosAuth.ts` (`/api/auth/workos/sign-in`):
-1. Supports `req.query.fresh === "1"` or `req.query.step_up === "1"`.
+1. Supports `req.query.fresh === "1"` or `req.query.step_up === "1"` on a listed social-provider flow. A provider-less or unknown-provider request still returns to skipwait.me's own sign-in under D-030/D-049 and never reaches hosted AuthKit.
 2. When present:
-   - Revokes any linked hosted session using `revokeLinkedHostedSession` (preventing silent sign-in via cached AuthKit cookies).
+   - Revokes any linked hosted session using `revokeLinkedHostedSession` (preventing silent sign-in via cached provider cookies).
    - In `workos.userManagement.getAuthorizationUrl(...)`, passes:
      - `prompt: "login"` (forces the user to enter their credentials interactively)
      - `maxAge: 900` (maxAge in seconds, OIDC compliant)
-     - `screenHint: "sign-in"`
-     - Preserves `returnTo` signed cookie targeting `/skippy?resume_card=<id>` or `/skippy`.
+     - Preserves the validated `returnTo` signed cookie targeting `/skippy?resume_card=<id>` or `/skippy`.
 
 ### 4.7 Login rule and referrer boundary preservation
 
@@ -330,4 +329,4 @@ None. The requirements follow directly from founder decisions D-140, D-030, D-04
 
 ## Status
 
-`SKIPPY-stepup`: review — agent/queue/skippy-stepup — PR #1479 (`f6a3c228b`)
+`SKIPPY-stepup`: make green — Qoder · 2b1b — 2026-11-23 — branch `agent/queue/skippy-stepup` — inherited merge of `main` `d7e981fa8`; red-first reproduced the missing provider step-up, resolution in progress.
