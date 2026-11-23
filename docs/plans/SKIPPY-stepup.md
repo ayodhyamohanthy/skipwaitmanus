@@ -299,7 +299,7 @@ In `server/_core/workosAuth.ts` (`/api/auth/workos/sign-in`):
 - [x] `server/_core/sdk.session.test.ts` and `server/_core/workosAuth.test.ts` pass with new `authTime` assertions.
 - [x] All controls (`loginRule.test.tsx`, `signIn.test.tsx`, `sdk.security.test.ts`) pass without modification.
 - [x] `pnpm check` passes with zero TypeScript errors.
-- [ ] Pull request opened on `agent/queue/skippy-stepup` with clean CI merge.
+- [x] Pull request opened on `agent/queue/skippy-stepup` with clean CI merge (PR #1479).
 
 ---
 
@@ -330,4 +330,4 @@ None. The requirements follow directly from founder decisions D-140, D-030, D-04
 
 ## Status
 
-`SKIPPY-stepup`: review — agent/queue/skippy-stepup — 67013b24588c1f2ff1bcf72faf7c76036ca8f8aa
+`SKIPPY-stepup`: review — agent/queue/skippy-stepup — PR #1479 (`f6a3c228b`)
