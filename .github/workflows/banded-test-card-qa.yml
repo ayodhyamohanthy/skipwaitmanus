@@ -1,0 +1,66 @@
+name: Banded TEST-card QA
+
+# BANDED-release (D-383 (3), D-370 (6)): the reproducible international TEST-card evidence that D-383 found missing.
+# Manual dispatch only: it never runs on push or pull_request, so it can never spend or charge by accident.
+# It talks to the Chargebee TEST site only (the script hard-codes skipwait-test) and pays with the runbook's
+# international test card. The API key comes from the repository secret QA_CHARGEBEE_TEST_API_KEY, is masked
+# before use and never reaches a log, argument or artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe = read-only catalog check; card = pay a USD hosted page with the international test card"
+        required: true
+        type: choice
+        options: [probe, card]
+        default: probe
+
+permissions:
+  contents: read
+
+concurrency:
+  group: banded-test-card-qa
+  cancel-in-progress: false
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Mask the TEST-site API key
+        env:
+          QA_KEY: ${{ secrets.QA_CHARGEBEE_TEST_API_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$QA_KEY" ]; then
+            echo "::error::QA_CHARGEBEE_TEST_API_KEY is not set; the TEST-site evidence cannot run"
+            exit 1
+          fi
+          echo "::add-mask::$QA_KEY"
+      - name: Run the TEST-site QA
+        env:
+          QA_CHARGEBEE_TEST_API_KEY: ${{ secrets.QA_CHARGEBEE_TEST_API_KEY }}
+        run: pnpm exec tsx scripts/bandedTestCardQa.ts "${{ inputs.mode }}"
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: banded-test-card-qa-${{ github.run_id }}
+          path: banded-qa/
+          retention-days: 90
+          if-no-files-found: warn
