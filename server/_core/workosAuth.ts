@@ -1,7 +1,7 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { registerSeekerEmailCodeRoutes } from "./seekerEmailCode";
-import { HOSTED_LINK_COOKIE, signHostedLink } from "./hostedAccountSwitch";
+import { HOSTED_LINK_COOKIE, readHostedLink, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 import { safeAuthReturnTo, signInPagePath } from "@shared/authReturnTo";
@@ -132,6 +132,17 @@ export function sessionKeyFromWorkosClaims(payload: Record<string, unknown>): st
   return typeof payload.sid === "string" && /^session_[A-Za-z0-9]+$/.test(payload.sid) ? `workos:${payload.sid}` : undefined;
 }
 
+/** D-140 / D-382: interactive authentication timestamp from WorkOS Bearer token (auth_time or fallback to iat). */
+export function authTimeFromWorkosClaims(payload: Record<string, unknown>): number | undefined {
+  if (typeof payload.auth_time === "number" && Number.isSafeInteger(payload.auth_time) && payload.auth_time > 0) {
+    return payload.auth_time;
+  }
+  if (typeof payload.iat === "number" && Number.isSafeInteger(payload.iat) && payload.iat > 0) {
+    return payload.iat;
+  }
+  return undefined;
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
@@ -149,7 +160,8 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   const cached = workosIdentityCache.get(cacheKey);
   // D-057: the Bearer identity is keyed by this token's own sid; it never carries the amr claim.
   const sessionKey = sessionKeyFromWorkosClaims(payload);
-  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing }, ...(sessionKey ? { sessionKey } : {}) };
+  const authTime = authTimeFromWorkosClaims(payload);
+  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing }, ...(sessionKey ? { sessionKey } : {}), ...(authTime ? { authTime } : {}) };
   const workos = new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
   const user = await workos.userManagement.getUser(sub);
   if (user.id !== sub) return undefined;
@@ -161,7 +173,7 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
-  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [], ...(authTime ? { authTime } : {}) };
   if (workosIdentityCache.size >= WORKOS_IDENTITY_CACHE_MAX) workosIdentityCache.clear();
   workosIdentityCache.set(cacheKey, { identity, expiresAt: Date.now() + WORKOS_IDENTITY_CACHE_TTL_MS });
   return sessionKey ? { ...identity, sessionKey } : identity;
@@ -271,7 +283,18 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
-          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(loginHint ? { loginHint } : {}) }));
+          const isStepUp = route === "sign-in" && (req.query.fresh === "1" || req.query.step_up === "1");
+          if (isStepUp) {
+            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
+            if (await revokeLinkedHostedSession(workos.userManagement as never, linked, { log: message => console.warn("[workos-fresh]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
+          }
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({
+            provider: authProvider,
+            redirectUri,
+            state,
+            ...(loginHint ? { loginHint } : {}),
+            ...(isStepUp ? { prompt: "login", maxAge: 900 } : {}),
+          }));
         } catch {
           res.status(502).send("Authentication could not be started");
         }
