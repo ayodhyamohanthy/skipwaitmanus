@@ -268,11 +268,20 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
             if (await revokeHostedSessionOnAccountSwitch(workos.userManagement as never, linked, loginHint, { log: message => console.warn("[workos-switch]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
           }
           // The /sign-in page's explicit Continue button asks for a fresh AuthKit screen (fresh=1): drop the hosted session this browser is linked to.
-          if (authProvider === "authkit" && screenHint === "sign-in" && req.query.fresh === "1") {
+          // D-140 / D-382: fresh=1 or step_up=1 requests an interactive re-authentication (drop hosted session, prompt: login, maxAge: 900).
+          const isStepUp = req.query.fresh === "1" || req.query.step_up === "1";
+          if (authProvider === "authkit" && screenHint === "sign-in" && isStepUp) {
             const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
             if (await revokeLinkedHostedSession(workos.userManagement as never, linked, { log: message => console.warn("[workos-fresh]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
           }
-          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({
+            provider: authProvider,
+            redirectUri,
+            state,
+            ...(authProvider === "authkit" ? { screenHint } : {}),
+            ...(loginHint ? { loginHint } : {}),
+            ...(isStepUp && screenHint === "sign-in" ? { prompt: "login", maxAge: 900 } : {}),
+          }));
         } catch {
           res.status(502).send("Authentication could not be started");
         }

@@ -329,4 +329,29 @@ describe("canonical WorkOS callback session", () => {
     expect(unknown.provider).toBe("authkit"); expect(unknown.screenHint).toBe("sign-in");
     restore();
   });
+
+  it("forwards prompt=login and maxAge=900 to getAuthorizationUrl on step_up=1 or fresh=1 (D-140 / D-382)", async () => {
+    const { app, restore } = await buildApp({ ...baseEnv });
+    try {
+      authUrl.mockClear();
+      await request(app).get("/api/auth/workos/sign-in").query({ step_up: "1" });
+      const stepUpCall = authUrl.mock.calls.at(-1)?.[0] as { prompt?: string; maxAge?: number };
+      expect(stepUpCall.prompt).toBe("login");
+      expect(stepUpCall.maxAge).toBe(900);
+
+      authUrl.mockClear();
+      await request(app).get("/api/auth/workos/sign-in").query({ fresh: "1" });
+      const freshCall = authUrl.mock.calls.at(-1)?.[0] as { prompt?: string; maxAge?: number };
+      expect(freshCall.prompt).toBe("login");
+      expect(freshCall.maxAge).toBe(900);
+
+      authUrl.mockClear();
+      await request(app).get("/api/auth/workos/sign-in");
+      const normalCall = authUrl.mock.calls.at(-1)?.[0] as { prompt?: string; maxAge?: number };
+      expect(normalCall.prompt).toBeUndefined();
+      expect(normalCall.maxAge).toBeUndefined();
+    } finally {
+      restore();
+    }
+  });
 });
