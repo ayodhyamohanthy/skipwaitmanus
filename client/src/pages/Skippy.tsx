@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/_core/auth";
 import { uploadResume, validateResumeFile } from "@/lib/resumeUpload";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+import GoalSkippy, { GOAL_PAGE } from "./goal/skippy/GoalSkippy";
+
+export { GOAL_PAGE };
 
 type Quote = { level: number; cost: number; totalAvailable: number; shortfall: number };
 type Session = {
@@ -35,6 +39,11 @@ async function turn(body: Record<string, unknown>): Promise<{ replies: string[];
 }
 
 export default function Skippy() {
+  if (goalSurfaceOn("skippy")) return <GoalSkippy />;
+  return <LegacySkippy />;
+}
+
+function LegacySkippy() {
   const { isSignedIn, isLoaded, getToken, openSignIn } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([{ from: "skippy", text: "Hi, I'm Skippy. Which company do you want a referral at? Paste the job link and I'll help you make the strongest ask - I never send anything without your yes." }]);
   const [session, setSession] = useState<Session | null>(null);

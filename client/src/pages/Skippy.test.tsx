@@ -135,6 +135,71 @@ describe("Skippy goal page (VITE_GOAL_SURFACES=skippy)", () => {
     await screen.findByText("Job post read.");
   });
 
+  it("renders resume step and satisfies assertGoalPage with Upload a resume primary button", async () => {
+    const resumeSession = { step: "resume", jobSource: "link", requirements: ["react"], facts: [], matches: [], gaps: [] };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: resumeSession, resumes: [{ id: 1, fileName: "test.pdf" }] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: resumeSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByRole("button", { name: "Upload a resume" });
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("button", { name: "Upload a resume" }).getAttribute("data-g-primary")).toBe("true");
+  });
+
+  it("renders consent step and satisfies assertGoalPage with Yes primary button", async () => {
+    const consentSession = { step: "consent", attachmentName: "resume.pdf", jobSource: "link", requirements: [], facts: [], matches: [], gaps: [] };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: consentSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: consentSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByRole("button", { name: "Yes, compare it" });
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("button", { name: "Yes, compare it" }).getAttribute("data-g-primary")).toBe("true");
+  });
+
+  it("renders fit step and satisfies assertGoalPage with Save my note primary button", async () => {
+    const fitSession = { step: "fit", matches: [{ requirement: "React", factId: "f1" }], facts: [{ id: "f1", text: "5 years React", source: "resume" }], gaps: ["Go"], note: "Hello referrer", consentToAi: true, requirements: [] };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: fitSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: fitSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByRole("button", { name: "Save my note" });
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("button", { name: "Save my note" }).getAttribute("data-g-primary")).toBe("true");
+  });
+
+  it("renders tailor_skills step and satisfies assertGoalPage with Build primary button", async () => {
+    const skillsSession = { step: "tailor_skills", tailor: { additions: [{ skill: "Go", confirmed: true }] }, requirements: [], facts: [], matches: [], gaps: [] };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: skillsSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: skillsSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByRole("button", { name: "Build the tailored resume" });
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("button", { name: "Build the tailored resume" }).getAttribute("data-g-primary")).toBe("true");
+  });
+
+  it("renders tailor_review step and satisfies assertGoalPage with Use it primary button", async () => {
+    const reviewSession = { step: "tailor_review", tailor: { generatedText: "Tailored resume text" }, requirements: [], facts: [], matches: [], gaps: [] };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/skippie/state")) return new Response(JSON.stringify({ session: reviewSession, resumes: [] }), { status: 200 });
+      return new Response(JSON.stringify({ replies: [], session: reviewSession }), { status: 200 });
+    }));
+    const { container } = render(<Skippy />);
+    await screen.findByRole("button", { name: "Use it for this ask" });
+    assertGoalPage(container, GOAL_PAGE);
+    expect(screen.getByRole("button", { name: "Use it for this ask" }).getAttribute("data-g-primary")).toBe("true");
+  });
+
   it("renders quote step with referral wording (no 'credits') and satisfies assertGoalPage", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -145,7 +210,7 @@ describe("Skippy goal page (VITE_GOAL_SURFACES=skippy)", () => {
     await screen.findByText(/1 referral/);
     expect(container.textContent).not.toMatch(/\bcredit(s)?\b/i);
     assertGoalPage(container, GOAL_PAGE);
-    expect(screen.getByRole("button", { name: "Send it" })).toHaveAttribute("data-g-primary", "true");
+    expect(screen.getByRole("button", { name: "Send it" }).getAttribute("data-g-primary")).toBe("true");
   });
 
   it("renders done step and satisfies assertGoalPage", async () => {
@@ -156,7 +221,7 @@ describe("Skippy goal page (VITE_GOAL_SURFACES=skippy)", () => {
       return new Response(JSON.stringify({ replies: [], session: doneSession }), { status: 200 });
     }));
     const { container } = render(<Skippy />);
-    await screen.findByText(/Your ask is with verified employees/);
+    await screen.findByText(/Your referral request is with verified employees/);
     assertGoalPage(container, GOAL_PAGE);
   });
 });
