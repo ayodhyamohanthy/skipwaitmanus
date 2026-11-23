@@ -52,6 +52,7 @@ import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type Pl
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
 import { AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { agentPortalAllowed } from "./agentPortalAccess";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
@@ -543,8 +544,9 @@ export async function getAssistantAccess(userId: number): Promise<AssistantAcces
   return assistantAccessFrom(await getSeekerEntitlements(userId));
 }
 
+/** D-178.gate (D-290 R2): agent access is the Skippy agent switch plus the account allow-list, never a plan. */
 async function assertAssistantAccess(userId: number) {
-  if (!(await getSeekerEntitlements(userId)).assistants) throw new AssistantPlanRequiredError();
+  if (!agentPortalAllowed(userId)) throw new AssistantPlanRequiredError();
 }
 
 export async function listAssistantConnections(userId: number): Promise<AssistantConnection[]> {
@@ -609,9 +611,9 @@ export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId
   return { userId: row.userId, tokenId: row.id };
 }
 
-/** True when the owner's plan still includes assistants (the Land tier). Fails closed. */
+/** D-178.gate (D-290 R2): true only when the switch is on and the owner is on the allow-list. Fails closed. */
 export async function hasAssistantAccess(userId: number): Promise<boolean> {
-  try { return (await getSeekerEntitlements(userId)).assistants; } catch { return false; }
+  return agentPortalAllowed(userId);
 }
 
 export async function revokeAssistantToken(userId: number, tokenId: number) {

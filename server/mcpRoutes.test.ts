@@ -1,16 +1,20 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hashBearer, registerMcpRoutes, type McpRouteDeps } from "./mcpRoutes";
 import { MCP_TOOL_NAMES, MCP_TOOLS, shapeAlert, shapeJob, shapeRequest } from "./mcpServer";
+import { resetAgentCallWindowsForTest } from "./agentPortalAccess";
 
 const TOKEN = `sw_${"a".repeat(32)}`;
+
+beforeEach(() => resetAgentCallWindowsForTest());
 
 function setup(over: Partial<McpRouteDeps> = {}) {
   const activity: Array<Record<string, unknown>> = [];
   const deps: McpRouteDeps = {
     verifyBearer: async hash => (hash === hashBearer(TOKEN) ? { userId: 7, tokenId: 3 } : null),
-    hasAccess: async () => true,
+    enabled: () => true,
+    allowed: () => true,
     recordActivity: async input => { activity.push(input); },
     searchJobs: async () => [{ id: 1, title: "Designer", company: "Wipro", location: "Pune", seniority: "Senior", compensation: "n/a", description: "secret long text", postedBy: "hr@wipro.com" }],
     listRequests: async () => [{ id: 9, jobTitle: "Designer", company: "Wipro", status: "pending", referrerId: 88, jobSeekerId: 7, personalPitch: "my private pitch", referrerMessage: "x", createdAt: new Date("2026-10-01T00:00:00Z"), updatedAt: new Date("2026-10-02T00:00:00Z") }],
@@ -44,21 +48,28 @@ describe("MCP authentication", () => {
     const res = await request(app).post(`/api/mcp?token=${TOKEN}`).set("Cookie", `session=${TOKEN}`).send({ jsonrpc: "2.0", id: 1, method: "tools/list" });
     expect(res.status).toBe(401);
   });
-  it("refuses an owner whose plan no longer includes assistants", async () => {
-    const { app, activity } = setup({ hasAccess: async () => false });
+  it("answers 404 on every method while the agent switch is off", async () => {
+    const { app } = setup({ enabled: () => false });
+    expect((await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" })).status).toBe(404);
+    expect((await request(app).get("/api/mcp")).status).toBe(404);
+    expect((await request(app).delete("/api/mcp")).status).toBe(404);
+  });
+  it("answers 404 for a token whose owner is not on the allow-list, and records the denial", async () => {
+    const { app, activity } = setup({ allowed: async () => false });
     const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
-    expect(res.status).toBe(403);
-    expect(res.body.error.message).toBe("Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
     expect(activity[0]).toMatchObject({ action: "assistant.mcp.denied", outcome: "denied" });
   });
-  it("rate limits per token", async () => {
+  it("caps a token at 20 calls an hour, below a person's rate", async () => {
     let t = 0;
-    const { app } = setup({ limitPerMinute: 2, now: () => t });
-    expect((await rpc(app, { jsonrpc: "2.0", id: 1, method: "ping" })).status).toBe(200);
-    expect((await rpc(app, { jsonrpc: "2.0", id: 2, method: "ping" })).status).toBe(200);
-    expect((await rpc(app, { jsonrpc: "2.0", id: 3, method: "ping" })).status).toBe(429);
-    t = 61_000;
-    expect((await rpc(app, { jsonrpc: "2.0", id: 4, method: "ping" })).status).toBe(200);
+    const { app } = setup({ now: () => t });
+    for (let i = 0; i < 20; i += 1) expect((await rpc(app, { jsonrpc: "2.0", id: i, method: "ping" })).status).toBe(200);
+    const refused = await rpc(app, { jsonrpc: "2.0", id: 21, method: "ping" });
+    expect(refused.status).toBe(429);
+    expect(Number(refused.headers["retry-after"])).toBeGreaterThan(0);
+    t = 3_600_000;
+    expect((await rpc(app, { jsonrpc: "2.0", id: 22, method: "ping" })).status).toBe(200);
   });
   it("only accepts POST", async () => {
     const { app } = setup();
