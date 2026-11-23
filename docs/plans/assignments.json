@@ -1615,8 +1615,8 @@
       "tier": 1,
       "lane": "d048-release-premium",
       "branch": "agent/queue/d048-r-premium",
-      "status": "todo",
-      "syncedTo": "D-349",
+      "status": "done",
+      "syncedTo": "D-380",
       "dependsOn": [
         "D-048-p3-premium"
       ],
