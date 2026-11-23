@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTableColumns, type SQL } from "drizzle-orm";
 import { MySqlDialect, type MySqlTable } from "drizzle-orm/mysql-core";
 import { jobs, jobRuns, notifications, operationalActivityLogs, profiles, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, userBlocks, users, workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
+import { jobWindowKey } from "../shared/scheduledJobs";
 import { claimReferralReviewDelivery, completeReferralReviewDelivery, createReferralRequest, getDb, prepareReferrerReviewEmailNotifications, recordOperationalActivity } from "./db";
 import { createDailyOpsCheck } from "./dailyOpsCheck";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
@@ -30,7 +31,10 @@ const GHOST_REFERRER = 999;
 const JOB_ID = 11;
 const store = createInMemoryDrizzle();
 const dialect = new MySqlDialect();
-const fixture = { databaseClockSkewMs: 0, failActivityInsert: false };
+const fixture = { databaseClockSkewMs: 0, failActivityInsert: false, interleaveRequest: false };
+let requestAggregateReads = 0;
+let requestAggregateSql: string | undefined;
+let requestAggregateParams: ReturnType<MySqlDialect["sqlToQuery"]>["params"] | undefined;
 
 function withDefaults(table: MySqlTable, values: Row): Row {
   const row = { ...values };
@@ -57,8 +61,25 @@ function fixtureDb(base: typeof store.db = store.db) {
         } };
       };
       if (prop === "execute") return async (query: SQL) => {
-        const text = dialect.sqlToQuery(query).sql.toLowerCase();
+        const compiled = dialect.sqlToQuery(query);
+        const text = compiled.sql.toLowerCase();
         if (text.includes("select now() as now")) return [[{ now: new Date(Date.now() + fixture.databaseClockSkewMs) }], []];
+        if (text.includes("count(case when") && text.includes("referralrequests")) {
+          requestAggregateReads += 1;
+          requestAggregateSql = text;
+          requestAggregateParams = compiled.params;
+          if (fixture.interleaveRequest) {
+            fixture.interleaveRequest = false;
+            await newAsk(NOW - HOUR);
+            vi.setSystemTime(NOW);
+          }
+          const databaseNow = Date.now() + fixture.databaseClockSkewMs;
+          const recent = store.rows(referralRequests).filter(row => {
+            const createdAt = new Date(String(row.createdAt)).getTime();
+            return createdAt >= databaseNow - 7 * DAY && createdAt <= databaseNow;
+          });
+          return [[{ last24Hours: recent.filter(row => new Date(String(row.createdAt)).getTime() >= databaseNow - DAY).length, last7Days: recent.length }], []];
+        }
         if (text.includes("select id, codehash")) {
           const rows = store.rows(workEmailOtpCodes).filter(row => row.consumedAt === null)
             .sort((a, b) => Date.parse(String(b.createdAt)) - Date.parse(String(a.createdAt)) || Number(b.id) - Number(a.id))
@@ -83,10 +104,10 @@ const person = (id: number, email: string): Row => full(users, { id, name: `Fixt
 const employee = (id: number, userId: number): Row => full(profiles, { id, userId, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date("2026-09-01T00:00:00Z"), paused: false, notifyNewAsk: true });
 
 type Email = { subject: string; text: string };
-async function runOps(at = NOW, sendEmail: (input: Email) => Promise<boolean> = async () => true) {
+async function runOps(at = NOW, sendEmail: (input: Email) => Promise<boolean> = async () => true, windowKey = jobWindowKey(at, DAY)) {
   vi.setSystemTime(at);
   const emails: Email[] = [];
-  const output = await createDailyOpsCheck({ sendEmail: async input => { emails.push(input); return sendEmail(input); } })({ nowMs: at, windowKey: "2026-11-24T12:00Z" });
+  const output = await createDailyOpsCheck({ sendEmail: async input => { emails.push(input); return sendEmail(input); } })({ nowMs: at, windowKey });
   return { emails, output };
 }
 
@@ -148,6 +169,10 @@ beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   fixture.databaseClockSkewMs = 0;
   fixture.failActivityInsert = false;
+  fixture.interleaveRequest = false;
+  requestAggregateReads = 0;
+  requestAggregateSql = undefined;
+  requestAggregateParams = undefined;
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDb());
   store.reset([
@@ -196,6 +221,18 @@ describe("daily ops invariants", () => {
     await newAsk(NOW + HOUR);
     fixture.databaseClockSkewMs = 2 * HOUR;
     expect((await runOps()).emails).toEqual([]);
+  });
+
+  it("uses one request snapshot when a request arrives during the check", async () => {
+    for (let index = 0; index < 21; index += 1) await newAsk(NOW - 25 * HOUR - index * 6 * HOUR);
+    fixture.interleaveRequest = true;
+    const { emails } = await runOps();
+    expect(store.rows(referralRequests)).toHaveLength(22);
+    expect(requestAggregateReads).toBe(1);
+    expect(requestAggregateSql).toMatch(/count\(case when .*createdat.* >= \? then 1 end\) as last24hours/);
+    expect(requestAggregateSql).toMatch(/where [\s\S]*createdat[\s\S]* >= \?\s+and\s+[\s\S]*createdat[\s\S]* <= \?/);
+    expect(requestAggregateParams).toEqual([new Date(NOW - DAY), new Date(NOW - 7 * DAY), new Date(NOW)]);
+    expect(emails).toEqual([]);
   });
 
   it.each([
@@ -267,6 +304,11 @@ describe("daily ops invariants", () => {
   it("sends one short all-clear email on Monday and none on other days", async () => {
     expect((await runOps(MONDAY)).emails).toEqual([{ subject: "skipwait.me daily ops check · all clear", text: "All clear: no ops invariants failed." }]);
     expect((await runOps(NOW)).emails).toEqual([]);
+  });
+
+  it("sends Monday's all-clear when the container clock is still Sunday", async () => {
+    const at = Date.parse("2026-11-22T23:59:59.700Z");
+    expect((await runOps(at, async () => true, "2026-11-23T00:00Z")).emails).toEqual([{ subject: "skipwait.me daily ops check · all clear", text: "All clear: no ops invariants failed." }]);
   });
 
   it("fails the window and reaches Sentry when the owner email is refused", async () => {
