@@ -2,6 +2,7 @@ import { Github, Mail } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/kit/button";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
+import { rememberedSignInEmail } from "@/lib/rememberedSignInEmail";
 import { PasswordForm, type PasswordMode } from "./seeker-sign-in/PasswordForm";
 import { CheckEmailStep } from "./seeker-sign-in/CheckEmailStep";
 
@@ -38,8 +39,9 @@ type Stage = { readonly kind: "options" } | { readonly kind: "password"; readonl
 export function SeekerSignIn({ returnTo: requestedReturnTo = "/explore", goal = false }: { returnTo?: string; goal?: boolean }) {
   // Re-validated here so no caller can turn sign-in into an open redirect or a loop back to an auth page.
   const returnTo = safeSignInReturnTo(requestedReturnTo, typeof window === "undefined" ? "https://skipwait.me" : window.location.origin) ?? "/explore";
-  const [stage, setStage] = useState<Stage>({ kind: "options" });
-  const [email, setEmail] = useState("");
+  const remembered = rememberedSignInEmail("seeker");
+  const [stage, setStage] = useState<Stage>(() => (remembered ? { kind: "password", mode: "sign_in" } : { kind: "options" }));
+  const [email, setEmail] = useState(() => remembered);
 
   if (stage.kind === "check_email") {
     return <CheckEmailStep email={stage.email} origin={stage.origin} onBack={() => setStage({ kind: "password", mode: stage.origin })} />;

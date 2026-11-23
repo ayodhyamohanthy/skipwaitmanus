@@ -14,8 +14,10 @@ import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@
 import { passwordStepSchema } from "@shared/passwordAuth";
 import { postPasswordAuth } from "@/lib/passwordAuthClient";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
-import { type PasswordMode, LOCKED_SIGN_IN_HINT } from "@/components/seeker-sign-in/PasswordForm";
 import { GOAL_SEEKER_SOCIAL, goalSeekerSocialUrl } from "./seekerSocial";
+
+export type PasswordMode = "sign_in" | "sign_up";
+export const LOCKED_SIGN_IN_HINT = "You can also use Forgot password, or continue with Google.";
 
 export const SEEKER_EMAIL_FIELD_ID = "seeker-email";
 const OFFLINE_REASON = "You are offline. Reconnect to sign in.";

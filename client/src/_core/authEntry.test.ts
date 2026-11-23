@@ -62,12 +62,12 @@ describe("openSignIn and SignInButton go to the skipwait.me sign-in with a safe 
     expect(location.href).toBe("/sign-in");
   });
 
-  it("does not navigate while the session is still loading", () => {
+  it("navigates even while the session is still loading", () => {
     mocks.me.isLoading = true;
     const location = stubLocation("https://skipwait.me/plans");
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(location.href).toBe("https://skipwait.me/plans");
+    expect(location.href).toBe("/sign-in?returnTo=%2Fplans");
   });
 
   it("does not navigate for someone already signed in", () => {

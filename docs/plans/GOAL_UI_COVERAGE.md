@@ -137,7 +137,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 | `PolicyPageShell.tsx` | 11 policy, about, contact, pricing and guide pages | `D-048-p3-policy` | The legal words stay the owner's (D-001's lasting rule) |
 | `app-states/SystemStates.tsx` | 15 pages and `App.tsx` | `D-048-p3-system` (the `/app-states` gallery) | Each page row swaps its own loading, error and empty use to `GoalStates`; `SystemStates` retires in `D-048-K-kit` |
 | `ActionErrorCard.tsx`, `LoadingSkeleton.tsx` | 3 pages each | none: replaced by `GoalStates` in each page row | Retire in `D-048-K-kit` |
-| `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx` | sign-in, the goal sign-in, `/referrer`, company claim | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`) |
+| `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx`, `PasswordForm.tsx`, `CheckEmailStep.tsx` | sign-in, the goal sign-in, `/referrer`, company claim | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`) |
 | `WorkEmailSignIn.tsx` | `/email-review`, `/referrer` | `D-048-p3-verify` | Work-email code only (D-030) |
 | `ask/PinnedWorkPicker.tsx` | `/ask`, the drawer, the composer | `D-048-p3-live-review-find` | |
 | `admin/UnlistedDemandView.tsx` | `/admin`, the companies view | `D-086.admit` (D-086) | Read-only admission queue of unlisted domains; no create, list or prefill control, and nothing is listed automatically (D-101) |

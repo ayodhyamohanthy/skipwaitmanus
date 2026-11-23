@@ -5,6 +5,7 @@ import { Button } from "@/components/kit/button";
 import { passwordStepSchema } from "@shared/passwordAuth";
 import { postPasswordAuth } from "@/lib/passwordAuthClient";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { forgetSignInEmail, rememberSignInEmail, rememberedSignInEmail } from "@/lib/rememberedSignInEmail";
 
 export type PasswordMode = "sign_in" | "sign_up";
 
@@ -33,6 +34,7 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
   const [error, setError] = useState("");
   // A referrer's work email is refused here; the way forward is the work-email code (D-030, D-049).
   const [workEmail, setWorkEmail] = useState(false);
+  const [remembered, setRemembered] = useState(() => rememberedSignInEmail("seeker") !== "");
   const creating = mode === "sign_up";
   const ready = email.trim() !== "" && (creating || password !== "");
 
@@ -49,7 +51,11 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
     // S-8: a locked sign-in is never a dead end; a reset proves the inbox and lifts the lock.
     if (!result.ok) { setError(result.code === "rate_limited" && !creating ? `${result.message} ${LOCKED_SIGN_IN_HINT}` : result.message); setWorkEmail(result.code === "use_work_email_code"); setBusy(false); return; }
     // Stay busy while the browser leaves for the signed-in page, so the button cannot submit twice.
-    if (result.data.step === "signed_in") { window.location.assign(result.data.redirectTo); return; }
+    if (result.data.step === "signed_in") {
+      rememberSignInEmail("seeker", normalized);
+      window.location.assign(result.data.redirectTo);
+      return;
+    }
     setBusy(false);
     onCheckEmail(normalized, mode);
   }
@@ -57,6 +63,20 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
   return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={event => { void submit(event); }} noValidate>
     <label htmlFor="seeker-email">Email address</label>
     <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" inputMode="email" placeholder="you@example.com" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email} onChange={event => { onEmailChange(event.target.value); setError(""); setWorkEmail(false); }} /></div>
+    {remembered ? (
+      <button
+        type="button"
+        className="self-start text-xs font-semibold underline underline-offset-2"
+        onClick={() => {
+          forgetSignInEmail("seeker");
+          setRemembered(false);
+          onEmailChange("");
+          document.getElementById("seeker-email")?.focus();
+        }}
+      >
+        Not you? Forget this email
+      </button>
+    ) : null}
     {creating
       ? <>
           <p className="text-xs leading-relaxed text-muted-foreground">We&apos;ll email you a link to set your password. It&apos;s how we know the address is yours.</p>
