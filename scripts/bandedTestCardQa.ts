@@ -231,6 +231,12 @@ async function fillBilling(page: import("playwright").Page): Promise<void> {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   const state = page.locator("#billing_address-state");
   await state.selectOption("WA").catch(async () => { await state.selectOption({ label: "Washington" }).catch(() => undefined); });
+  // Some hosted-page builds leave the state list empty until the country round-trip finishes; take the first real option.
+  const chosen = await state.inputValue().catch(() => "");
+  if (!chosen) {
+    const firstValue = await state.locator("option:not([disabled])").nth(1).getAttribute("value").catch(() => null);
+    if (firstValue) await state.selectOption(firstValue).catch(() => undefined);
+  }
 }
 
 /** Pay the hosted page with the international test card and prove the provider recorded it. */
@@ -255,7 +261,8 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
         await fillBilling(page);
         await deps.screenshot(page, "03-billing-filled");
         const next = page.locator("#submit-btn, button[type=\"submit\"]").first();
-        await next.click({ timeout: NAV_TIMEOUT_MS });
+        // The hosted page's button is a custom component; a plain click can wait forever on its actionability checks.
+        await next.click({ timeout: 15_000, force: true }).catch(async () => { await next.dispatchEvent("click"); });
         await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
         await deps.screenshot(page, "04-payment-step");
       }
@@ -272,7 +279,7 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       }
       await deps.screenshot(page, "05-card-filled");
       const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
-      await submit.click({ timeout: NAV_TIMEOUT_MS });
+      await submit.click({ timeout: 15_000, force: true }).catch(async () => { await submit.dispatchEvent("click"); });
       // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
       const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
       if (await success.count()) {
