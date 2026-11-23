@@ -74,7 +74,8 @@ async function readPurgeCounts(since: Date, now: Date): Promise<PurgeCounts> {
       .where(and(eq(operationalActivityLogs.action, "work_email_otp.purged"), eq(operationalActivityLogs.outcome, "success"), gt(operationalActivityLogs.id, afterId), gte(operationalActivityLogs.resourceId, since.toISOString()), lte(operationalActivityLogs.resourceId, now.toISOString())))
       .orderBy(asc(operationalActivityLogs.id)).limit(PURGE_BATCH);
     for (const row of rows) {
-      const parsed = purgeMetadataSchema.safeParse(row.metadata ? JSON.parse(row.metadata) : null);
+      let parsed: ReturnType<typeof purgeMetadataSchema.safeParse>;
+      try { parsed = purgeMetadataSchema.safeParse(row.metadata ? JSON.parse(row.metadata) : null); } catch { throw new Error(`Invalid work-email purge counts in activity log #${row.id}`); }
       if (!parsed.success) throw new Error(`Invalid work-email purge counts in activity log #${row.id}`);
       const key = row.resourceId ? `run:${row.resourceId}` : `log:${row.id}`;
       if (!byRun.has(key)) byRun.set(key, { logId: row.id, ...parsed.data });

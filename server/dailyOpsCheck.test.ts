@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTableColumns, type SQL } from "drizzle-orm";
 import { MySqlDialect, type MySqlTable } from "drizzle-orm/mysql-core";
-import { jobs, notifications, operationalActivityLogs, profiles, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, userBlocks, users, workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
-import { claimReferralReviewDelivery, completeReferralReviewDelivery, createReferralRequest, getDb, prepareReferrerReviewEmailNotifications } from "./db";
+import { jobs, jobRuns, notifications, operationalActivityLogs, profiles, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, userBlocks, users, workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
+import { claimReferralReviewDelivery, completeReferralReviewDelivery, createReferralRequest, getDb, prepareReferrerReviewEmailNotifications, recordOperationalActivity } from "./db";
 import { createDailyOpsCheck } from "./dailyOpsCheck";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { createMysqlJobRunStore } from "./jobRunStore";
+import { SCHEDULED_JOBS } from "./scheduledJobRegistry";
 import { runScheduledJob, type ScheduledJobDefinition } from "./scheduledJobRunner";
 import { createWorkEmailOtpService } from "./workEmailOtp";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
@@ -202,9 +203,28 @@ describe("daily ops invariants", () => {
     if (alerts) expect(emails[0].text).toContain("work_email_codes_unused");
   });
 
+  it("ignores purge telemetry outside the last 24 hours", async () => {
+    await purgeCodes(5, 0, NOW - 25 * HOUR);
+    expect((await runOps()).emails).toEqual([]);
+  });
+
+  it("fails closed on malformed purge telemetry without echoing its contents", async () => {
+    await recordOperationalActivity({ action: "work_email_otp.purged", outcome: "success", resourceType: "work_email_otp_purge", resourceId: new Date(NOW).toISOString(), metadata: { consumed: "private malformed value", expiredUnused: 5 } });
+    await expect(runOps()).rejects.toThrow("Invalid work-email purge counts in activity log #1");
+  });
+
+  it("is registered once per day with a shorter lease", () => {
+    const registered = SCHEDULED_JOBS.filter(job => job.name === "daily-ops-check");
+    expect(registered).toHaveLength(1);
+    expect(registered[0]).toMatchObject({ windowMs: DAY, leaseMs: 15 * 60_000 });
+    expect(registered[0].leaseMs).toBeLessThan(registered[0].windowMs);
+    expect(registered[0].description.length).toBeGreaterThan(0);
+    expect(registered[0].description.length).toBeLessThanOrEqual(200);
+  });
+
   it("writes no rows while checking findings", async () => {
     await purgeCodes(5, 0);
-    const tables = [users, profiles, jobs, notifications, referralRequests, referrerReviewEmailLinks, referralReviewDeliveries, operationalActivityLogs, workEmailOtpCodes, workEmailOtpReceipts, workEmailOtpRateLimits];
+    const tables = [users, profiles, jobs, notifications, referralRequests, referrerReviewEmailLinks, referralReviewDeliveries, jobRuns, operationalActivityLogs, workEmailOtpCodes, workEmailOtpReceipts, workEmailOtpRateLimits];
     const before = tables.map(table => store.rows(table));
     expect((await runOps()).emails).toHaveLength(1);
     expect(tables.map(table => store.rows(table))).toEqual(before);
