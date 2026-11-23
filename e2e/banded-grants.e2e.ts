@@ -141,7 +141,7 @@ async function withDatabase(run: (fixture: Fixture) => Promise<void>) {
         UNIQUE KEY billing_review_outbox_obligation_unique (obligationKey)
       );
       INSERT INTO users (id, name) VALUES (1, 'Seeker One'), (2, 'Seeker Two');
-      INSERT INTO tokenBalances (userId, role, plan, balance, monthlyAllowance, monthlyCreditsRemaining) VALUES (1, 'job_seeker', 'free', 0, 3, 3);
+      INSERT INTO tokenBalances (userId, role, plan, balance, monthlyAllowance, monthlyCreditsRemaining, monthlyCycleKey) VALUES (1, 'job_seeker', 'free', 0, 3, 3, '2026-11');
     `);
     await db.query(readFileSync(migration0123Url, "utf8"));
     await db.query(readFileSync(migration0124Url, "utf8"));
@@ -294,6 +294,18 @@ test("BANDED-grants real-MySQL fulfillment: extra referrals fulfillment, spend a
     expect(purchaseTx.source).toBe("banded:purchased:early");
 
     // 2. Spend 1 purchased referral and verify creditGrantId attribution
+    const termStart = new Date("2026-11-23T00:00:00.000Z");
+    const termEnd = new Date("2026-12-23T00:00:00.000Z");
+    await d.update(tokenBalances).set({
+      plan: "early_to_mid",
+      subscriptionId: "sub_test_002",
+      subscriptionStatus: "active",
+      subscriptionCurrentTermStart: termStart,
+      subscriptionCurrentTermEnd: termEnd,
+      monthlyCreditsRemaining: 0,
+      monthlyCycleKey: "2026-11",
+    }).where(eq(tokenBalances.userId, 1));
+
     await d.transaction(async tx => {
       const [wallet] = await tx.select().from(tokenBalances).where(eq(tokenBalances.userId, 1)).limit(1).for("update");
       await spendBandedReferralTx(tx as any, {
