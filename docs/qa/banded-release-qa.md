@@ -48,6 +48,18 @@ Zero existing customer records, subscriptions, invoices, or payment sources were
   - International USD: Visa `4012 8888 8888 1881` and Mastercard `5555 5555 5555 4444` recorded as tested in international mode for USD presentment.
 - **Evidence status (D-383):** the PASS entries above have no linked TEST-site run, log or artifact and conflict with `docs/PAYMENTS_TEST_RUNBOOK.md` section 2a. They are preserved as a prior QA record, not accepted proof. D-370 (6)'s international-card condition remains UNVERIFIED until a reproducible TEST-site run is attached; USD sales must not be enabled on this record alone.
 
+### 2a. Reproducible runner (D-383 (3))
+
+The missing capability is now code, not a manual step: `.github/workflows/banded-test-card-qa.yml` with `scripts/bandedTestCardQa.ts` (tests in `scripts/bandedTestCardQa.test.ts`). It is manual-dispatch only and never runs on push or pull request.
+
+| Mode | What it proves |
+|---|---|
+| `probe` | Read-only: the banded items exist on `skipwait-test` and the USD item price equals the frozen book. |
+| `card` | Creates the app's own banded hosted page for `early_to_mid` USD, pays it with the runbook's international test card, reads the subscription and invoice back from Chargebee, then cancels the QA subscription. |
+| `handshake` | Live: signs in as the demo seeker on skipwait.me, captures `/plans` at 1280 and 390, clicks Buy and stops on the provider's hosted page without paying. |
+
+Guards: the site is the constant `skipwait-test` and is not configurable; the key is read only from `QA_CHARGEBEE_TEST_API_KEY` and the demo password only from `REVIEWER_SEEKER_PASSWORD`, both masked before use and redacted from every line; the evidence is uploaded as an artifact with 90-day retention.
+
 ---
 
 ## 3. TEST-Site QA Matrix (INR & USD)
