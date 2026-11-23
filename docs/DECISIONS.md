@@ -1185,4 +1185,3 @@ Architectural rulings:
 Queue reconciliation:
 `SKIPPY-stepup` in `docs/plans/assignments.json` is updated from `status: "architect"` to `status: "todo"`, with `packet: "docs/plans/SKIPPY-stepup.md"` and `syncedTo: "D-382"`. It is unblocked for normal picker claim and builder implementation on `agent/queue/skippy-stepup`.
 This technical ruling changes no pricing, plan content, sales switch (`BANDED_SALES_ENABLED` remains false), legal text, login rule, money path or spending permission.
-
