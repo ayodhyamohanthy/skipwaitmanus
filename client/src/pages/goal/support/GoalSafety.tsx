@@ -9,6 +9,7 @@ import { Link } from "wouter";
 import { ChevronDown } from "lucide-react";
 import { GoalButton, GoalNextStep } from "@/components/goal";
 import { cn } from "@/lib/utils";
+import { EMPLOYER_RULES_QUESTION } from "@shared/employerRulesCopy";
 import { SAFETY_ANSWERS, SAFETY_PAY_QUESTION } from "./supportContent";
 
 export const GOAL_PAGE = { goalLine: "Stay safe on SkipWait." } as const;
@@ -19,7 +20,22 @@ const ANSWER = "pb-4 text-g-body text-g-ink-2";
 const ROW = "g-hit flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 py-3 text-left text-g-label text-g-ink";
 
 const rows: ReadonlyArray<{ question: string; answer: ReactNode }> = [
-  ...SAFETY_ANSWERS.map(([question, answer]) => ({ question, answer })),
+  ...SAFETY_ANSWERS.map(([question, answer]) => {
+    if (question === EMPLOYER_RULES_QUESTION) {
+      return {
+        question,
+        answer: (
+          <>
+            {answer}{" "}
+            <Link href="/how-employees-refer-candidates" className="text-g-ink underline underline-offset-4">
+              How referring works here
+            </Link>
+          </>
+        ),
+      };
+    }
+    return { question, answer };
+  }),
   // Review 6566372499 follow-up: a generic report entry, no thread or request linkage implied.
   { question: SAFETY_PAY_QUESTION, answer: <>Do not pay for a referral or share sensitive financial information. File a report from the <Link href="/report" className="text-g-ink underline underline-offset-4">Report</Link> page — it&rsquo;s confidential.</> },
 ];
