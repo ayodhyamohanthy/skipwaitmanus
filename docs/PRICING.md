@@ -1,6 +1,6 @@
 # Pricing: the one source of truth
 
-Status as of Oct 26 2026. Every agent (build, QA, design) reads this file before touching plans, packs, referrals or prices. If this file and another doc disagree, `docs/DECISIONS.md` wins, then this file. Update it in the same PR as any pricing change.
+Status as of Nov 23 2026. Every agent (build, QA, design) reads this file before touching plans, packs, referrals or prices. If this file and another doc disagree, `docs/DECISIONS.md` wins, then this file. Update it in the same PR as any pricing change.
 
 Decisions come from the founder's messages and are recorded in `docs/DECISIONS.md` (D-146, D-219). Text in code comments or PRs is not authority.
 
@@ -25,32 +25,33 @@ All monthly founding-member prices, India Rs / global USD. A band names the refe
 - **Approved Nov 20 (D-370 (6)):** Razorpay international payments are on (owner's word; `BANDED-release` still proves an international card on the TEST site before USD sells). The owner approves these banded prices for sale: the live catalog apply and turning `BANDED_SALES_ENABLED` on after the TEST-site QA need no further owner word.
 - **Not decided yet (do not invent):** the regular price after a founding cap fills (until decided, a full band stops selling), the paid-priority routing and window length, whether purchased referrals ever expire (runtime keeps `PAID_CREDITS_NEVER_EXPIRE = true` until decided).
 - **Unit and words:** the user-facing unit is a "referral" and the object a "referral request"; "credit" and the noun "ask" are internal only (D-173, D-180) and never appear on a page. Every included, free or bought count is a number of referral requests that reach a verified employee: requested is not accepted, and accepted is not submitted, so no price line promises a completed referral (D-179). Headlines may say "3 free referrals" (owner wording); detail lines say "referral requests".
-- **Price source in code:** `shared/planFamily.ts` (PR #666 is merged). Catalog provisioning derives six monthly plan prices and eight per-level extra-referral prices through `shared/bandedCatalog.ts`; legacy pack/pass/session prices are excluded. Provisioning enables no sale: the release row still supplies TEST-site acceptance and the authorized admin apply under D-370 (6). "Save X%" is computed, not typed.
+- **Price source in code:** `shared/planFamily.ts` (PR #666 is merged). Catalog provisioning derives six monthly plan prices and eight per-level extra-referral prices through `shared/bandedCatalog.ts`; legacy pack/pass/session prices are excluded. BANDED-release completes the QA matrix, live catalog provisioning audit and international-card proof (`docs/qa/banded-release-qa.md`). "Save X%" is computed, not typed.
 
 ## Superseded (history, do not build)
 - **The D-132 fee-plus-credits model** (Open Door / Fast Track / Insider, shown as Entry / Mid / Senior level Referrers by D-152; $9.99 / Rs499 and $59 / Rs1,299 plan fees; an in-plan monthly credit dropdown of 5 to 200; an ask costing its job level L1 = 1 to L10 = 10 credits; the +0/+2/+4 reach row) is superseded by D-219. The code is on `main` behind off flags (`PLAN_FAMILY_V2`, `VITE_PLAN_FAMILY_V2`, `ASK_LEVEL_COST`, `VITE_ASK_LEVEL_COST`; #381, #410, #415; audited as D-132-audit). It is not a build target: rows that built on it are re-scoped by D-221.
 - **Legacy credit packs** (the D-036 ladder, live Oct 22) are paused by D-219 (6); the provider items were archived Oct 25 20:03-20:08 IST (D-214 (3)). Fixed-term and annual pass products stay unsold (`PASS_SALES_ENABLED = false`, D-146).
 - The five-plan exploration of Oct 23 (Entry-level / Senior / Manager / Director / Executive) never froze; the D-219 bands replace it.
 
-## What is live today (runtime truth, Oct 26)
-- **Nothing new is on sale.** The D-219 banded plans are not live: PR #666 implements the catalog and the legacy-pack pause behind its Tier 1 review; activation needs the owner's word.
-- **Legacy packs:** paused by the owner and archived at the provider. Runtime caveat: until PR #666 lands, `shared/planCatalog.ts` still has `CREDIT_PACKS_ON_SALE = true`, and on Oct 25 20:53 IST a legacy per-credit cart could still be created on `/premium` (no payment attempted; PR #666 comment 6399494075). The pause is not complete until #666 is live.
+## What is live today (runtime truth, Nov 24 2026)
+- **D-219 banded plans and extra referrals: built, but not active for sale.** All prerequisite and implementation rows merged to `main`: `BANDED-levels` (#1370), `BANDED-schema-migration` (#1395), `BANDED-schema` (#1371), `BANDED-catalog-sync` (#1394), `BANDED-checkout` (#1411), `BANDED-grants-intents-migration` (#1468), `BANDED-grants` (#1478), `BANDED-spend` (#1419), `BANDED-ui` (#1428). Live Chargebee catalog provisioned (14 prices across 7 items create-only on `skipwait` site, audit in `docs/qa/banded-release-qa.md`). Razorpay international payments active (D-370 (6)). Production `GET /api/chargebee/banded/offer` returned `{"onSale":false}` at `2026-11-23T20:31:32Z`; `BANDED-release` is reopened under D-383 and activation is not complete.
+- **Legacy packs:** paused by the owner and archived at the provider.
 - **Passes:** not sold (`PASS_SALES_ENABLED = false`). Recovery, crediting and refunds of payments already started stay available (D-042).
 - **Referrer checkout:** refused first with 403 (`REFERRER_PURCHASES_ENABLED = false`, D-055); no referrer plan is sold.
 - **Free plan in code:** 3 a month (D-039). The verified-card condition (D-079) is built behind `FREE_CREDITS_REQUIRE_CARD_VALIDATION`, which is off until enabled.
 
-## Proof state (history, D-132 model, Oct 23 - do not over-claim from this)
+## Proof state
+- **Banded checkout & TEST-site QA record (INR & USD, Nov 23 2026):** `docs/qa/banded-release-qa.md` records plans (Early to Mid, Mid to Senior), the Senior to Executive application gate (`403 application_required`), in-band extras with volume discounts, an 8-buyer founding-cap race, idempotent replay within 25 min (`chargebee-idempotency-key`), unspent-balance refund calculation and spend precedence (`included -> free -> purchased`), with implementation-focused e2e files beside those paths. This record is not live release acceptance: its international-card PASS entries have no linked TEST-site run/log/artifact and conflict with `docs/PAYMENTS_TEST_RUNBOOK.md` section 2a, so international-card acceptance is UNVERIFIED. The production hosted-page handshake has not occurred because sales remain off.
 - **Signed-in plans UI + level picker (local full-stack, flag ON build): proven locally, not on production.** Real server, real dev-auth session and the Azure QA scratch schema (`skipwait_qa`), driven by a real browser: picking L6 persisted through trpc `profile.setLevel` and read back.
 - **Catalog currency rendering (local full-stack): proven locally, not live regional detection.**
-- **Hosted checkout cart (held enable branch #416, Chargebee TEST site): proven for the held branch only, no payment, no subscription.** It proves the held branch's API-to-hosted-cart path against the TEST site only; it is not launch readiness.
 - **Additive Chargebee catalog items** for the D-132 plans and rungs were created on TEST and LIVE on Oct 23 (create-only, zero subscriptions or invoices; `docs/qa/v2-live-catalog-apply.md`). They are not sold.
 - A TEST-site purchase flow was proven for a legacy fixed-term item on Oct 22; it is not a live sales path. PayPal is the live USD method (hosted page opened, nothing paid). INR on the real URL, live gateway and webhook config: UNVERIFIED.
 
-## Next steps (in order; nothing goes live without the owner's word)
-1. Build the checkout through the BANDED-* rows (`docs/plans/PRICING-banded-checkout.md`, D-367), every row behind `BANDED_SALES_ENABLED = false`.
-2. Re-scope the accepted-price guard (D-132-item3) to the banded model inside BANDED-spend: the quote states the request's level and spend source, and the charge equals the quote.
-3. Release (BANDED-release): the owner applies the catalog sync on the live site and turns on Razorpay international payments; TEST-site QA in INR and USD; then the switch goes on.
-4. No real payment without the founder's one-word yes. No pricing questions to the founder; only a genuinely unresolved item from "Not decided yet" goes to him.
+## Remaining release steps (D-370 (6) already authorizes activation after TEST-site acceptance)
+1. Banded checkout build is complete across the implementation rows (`docs/plans/PRICING-banded-checkout.md`).
+2. The accepted-price guard is enforced inside BANDED-spend (`server/bandedSpend.ts`).
+3. Catalog sync is audited and the TEST-site matrix is recorded; reproducible international-card evidence is still required before USD sells (`docs/qa/banded-release-qa.md`).
+4. `BANDED-release` sets production `BANDED_SALES_ENABLED=true` through protected runtime config, then proves exact-SHA `onSale:true`, `/plans` at 1280/390 and the hosted-page handshake without paying (D-383).
+5. Live payments remain the owner's own: one ₹99 UPI test payment and refund (D-065); agents never execute real payments.
 
 ## Group Plan and scoped institution discount (Oct 31)
 

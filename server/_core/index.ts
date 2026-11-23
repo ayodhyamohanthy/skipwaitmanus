@@ -71,6 +71,7 @@ import { createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAg
 import { registerOAuthRoutes } from "../oauthRoutes";
 import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
+import { agentPortalEnabled } from "../agentPortalAccess";
 import { registerProfileRoutes } from "../profileRoutes";
 import { registerAskDraftRoutes } from "../askDraftRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
@@ -280,9 +281,11 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Skippy step 5 (D-141): seeker agents, draft-only. Off unless SKIPPIE_AGENT_ENABLED.
   registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", allowedUserIds: () => parseSkippieAllowedIds(process.env.SKIPPIE_AGENT_USER_IDS), resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
   // MCP endpoint for connected assistants (read tools plus propose_ask, which only creates a pending approval) (bearer-token auth, skipwait.me/api/mcp).
+  // D-178.gate (D-290 R2): the Skippy agent switch and the account allow-list gate both transports, never a plan.
   registerMcpRoutes(app, {
+    enabled: () => agentPortalEnabled(),
+    allowed: db.hasAssistantAccess,
     verifyBearer: db.verifyAssistantBearer,
-    hasAccess: db.hasAssistantAccess,
     recordActivity: db.recordOperationalActivity,
     searchJobs: publicCatalogJobs(db.listJobs),
     listRequests: async userId => (await db.listReferralRequests(userId)).filter(row => row.jobSeekerId === userId),
@@ -292,6 +295,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
   // OAuth (authorization code + PKCE) so ChatGPT/Claude can connect without pasting a token.
   registerOAuthRoutes(app, {
+    enabled: () => agentPortalEnabled(),
+    allowed: db.hasAssistantAccess,
     resolveIdentity,
     registerClient: registerOAuthClient,
     getClient: getOAuthClient,

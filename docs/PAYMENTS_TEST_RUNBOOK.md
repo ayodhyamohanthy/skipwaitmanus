@@ -37,7 +37,7 @@ Domestic cards (read from the Razorpay page, Oct 16 2026): any future expiry, an
 Steps: enter the card, tick the tokenisation / recurring consent, then click Success on the mock 3DS (AFA) page. A mandate is not created without a successful 3DS step.
 Caution: the Razorpay page also lists 5305 6200 0006 0000 in its `payment_timed_out` failure table, so if that Mastercard times out, use the Visa or RuPay card above and tell QA.
 
-International / Export presentment (Chargebee page, only when international payments are enabled on the Razorpay account): Visa 4012 8888 8888 1881; Mastercard 5555 5555 5555 4444 or 5105 1051 0510 5100. Not yet run by QA. Domestic and Import use different Razorpay test accounts and different cards; do not mix them.
+International / Export presentment (Chargebee page, only when international payments are enabled on the Razorpay account): Visa 4012 8888 8888 1881; Mastercard 5555 5555 5555 4444 or 5105 1051 0510 5100. `docs/qa/banded-release-qa.md` records PASS, but supplies no linked run/log/artifact; acceptance remains UNVERIFIED until QA reproduces it on TEST (D-370 (6), D-383). Domestic and Import use different Razorpay test accounts and different cards; do not mix them.
 
 Browser: Chargebee support says to use a regular headed browser with pop-ups allowed. The hCaptcha is passive and headless automation can trigger it; a captcha frame on the page is not by itself a blocked payment. There is no TEST-only switch to turn it off.
 
