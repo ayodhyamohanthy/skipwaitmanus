@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { captureClientError, initClientSentry, isClientSentryActive, scrubSentryUrl } from "./sentry";
+import { captureClientError, initClientSentry, isClientSentryActive, scrubClientTelemetryUrl, scrubSentryUrl } from "./sentry";
 
 describe("client Sentry wiring", () => {
   it("stays inactive without VITE_SENTRY_DSN and never throws", () => {
@@ -27,6 +27,14 @@ describe("client Sentry wiring", () => {
     expect(scrubSentryUrl("https://skipwait.me/api/referrer-review-links/abc123/decision", "https://skipwait.me")).toBe("/api/referrer-review-links/:token/decision");
     expect(scrubSentryUrl("/api/referral-share-cards/public/xyz?x=1", "https://skipwait.me")).toBe("/api/referral-share-cards/public/:token");
     expect(scrubSentryUrl("https://skipwait.me/refer/acme/jane", "https://skipwait.me")).toBe("/refer/:token/:token");
+  });
+
+  it("breadcrumb URLs keep another site's origin but never a query, fragment or reset token", () => {
+    const origin = "https://skipwait.me";
+    expect(scrubClientTelemetryUrl("/reset-password?token=wos_reset_abc#x", origin)).toBe("/reset-password");
+    expect(scrubClientTelemetryUrl("https://skipwait.me/email-review/abc123?y=1", origin)).toBe("/email-review/:token");
+    expect(scrubClientTelemetryUrl("https://api.workos.com/user_management/users?email=a%40b.c", origin)).toBe("https://api.workos.com/user_management/users");
+    expect(scrubClientTelemetryUrl("http://[bad", origin)).toBe("[redacted]");
   });
 });
 

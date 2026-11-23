@@ -128,5 +128,6 @@ DATABASE_URL=<uri> pnpm db:push
 - Record the actual API/Pages target SHA, run and attempt; confirm the relevant rollout steps executed.
 - For API, run the exact-release script above and check canonical readiness, `api-runtime` and the closed direct origin. Record any additional active-revision evidence required by the packet separately.
 - For Web, verify the canonical homepage's exact `git-commit` meta tag; an HTTP 200/title alone is insufficient.
+- GET /api/auth/workos/sign-in → 302 to `/sign-in` (no provider: seekers never see the hosted WorkOS page, D-030/D-049); GET /api/auth/workos/sign-in?provider=google → 302 to api.workos.com authorize.
 - Run only the authorized no-money basics and changed-flow checks from `docs/BUGFREE_GATE.md`. Existing session/access limits still apply; no OTP, sign-in, notification or account mutation is authorized merely by this checklist.
 - A failed/skipped/cancelled deployment and a healthy earlier release are separate outcomes. Record the candidate as unverified until its own acceptance passes.

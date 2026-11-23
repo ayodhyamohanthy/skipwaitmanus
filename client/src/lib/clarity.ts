@@ -1,7 +1,8 @@
 import Clarity from "@microsoft/clarity";
 
 // Single-use links carry secrets in the path (referral review tokens, share
-// cards, fast-track codes). Clarity records page URLs alongside its replays,
+// cards, fast-track codes) or query string (WorkOS password reset tokens on
+// /reset-password). Clarity records page URLs alongside its replays,
 // so tracking stays off those routes entirely. Mirrors the scrub list in
 // client/src/lib/sentry.ts.
 const SENSITIVE_PATHS = [
@@ -13,6 +14,7 @@ const SENSITIVE_PATHS = [
   /\/refer\//i,
   /\/r\//i,
   /\/api\/ask-invites\//i,
+  /\/reset-password(?:\/|$)/i,
 ];
 const MAX_DECODE_PASSES = 2;
 

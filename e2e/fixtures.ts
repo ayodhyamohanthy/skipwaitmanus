@@ -90,7 +90,7 @@ export async function devSignIn(context: BrowserContext, name = "E2E Seeker"): P
  */
 export async function routeSignInThroughDevPlane(context: BrowserContext): Promise<{ signedIn: () => boolean; returnTo: () => string | null }> {
   let returnTo: string | null = null;
-  await context.route(/\/api\/auth\/workos\/sign-in(\?|$)/, async route => {
+  await context.route(/(?:\/api\/auth\/workos\/sign-in|\/sign-in)(?:\?|$)/, async route => {
     returnTo = new URL(route.request().url()).searchParams.get("returnTo");
     await devSignIn(context);
     await route.fulfill({ status: 302, headers: { location: returnTo ?? "/" } });

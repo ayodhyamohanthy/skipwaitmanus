@@ -1,16 +1,24 @@
 import * as Sentry from "@sentry/react";
-import { scrubTelemetryPath } from "@shared/telemetryScrub";
+import {
+  scrubTelemetryBreadcrumb,
+  scrubTelemetryEvent,
+  scrubTelemetryPath,
+} from "@shared/telemetryScrub";
 
 declare global {
   interface Window {
+    __COMMIT_HASH__?: string;
     __sentryTest?: () => boolean;
   }
 }
 
 let initialized = false;
 
-// A single-use token sits directly after one of these routes. React Router and
-// Express match routes case-insensitively, so the scan is too.
+// Single-use link prefixes that must never leave the device in error telemetry.
+// Mirrors the route list in client/src/App.tsx, the Clarity deny-list in
+// client/src/lib/clarity.ts, and the token-scrubbing rules in
+// shared/telemetryScrub.ts (FND-4: one shared scrubber for every token-bearing
+// browser and API route).
 const SENSITIVE_PREFIXES = [
   "/email-review/",
   "/share-card/",
@@ -19,14 +27,15 @@ const SENSITIVE_PREFIXES = [
   "/r/",
   "/api/ask-invites/",
   "/api/referrer-fast-track/",
-  "/api/referral-share-cards/public/",
+  "/api/referral-share-cards/",
   "/api/referrer-review-links/",
   "/api/documents/by-key/",
-];
+] as const;
+
 const MAX_DECODE_PASSES = 2;
 
 // Decodes only well-formed escapes, so one broken escape cannot stop the rest
-// of a hostile string from being inspected.
+// of a hostile string from being inspected (D-090 post-fix regression round).
 function decodeValidEscapes(value: string): string {
   return value.replace(/%([0-9a-f]{2})/gi, match => {
     try {
@@ -105,20 +114,50 @@ export function scrubBreadcrumb<T extends { data?: Record<string, unknown>; mess
   return next;
 }
 
-export function initClientSentry(): boolean {
+/**
+ * Breadcrumb, span and referer URLs: a same-site URL becomes its scrubbed path (no query, no fragment, no
+ * single-use token path); another site keeps its origin. Query strings carry what people type and the
+ * WorkOS reset token on /reset-password.
+ */
+export function scrubClientTelemetryUrl(value: string, origin: string): string {
+  try {
+    const url = new URL(value, origin);
+    const path = scrubSentryUrl(url.href, origin);
+    return url.origin === origin ? path : `${url.origin}${path}`;
+  } catch {
+    return "[redacted]";
+  }
+}
+
+/** Tests only: a capturing transport, so a privacy test sees exactly what would be sent. */
+export type ClientSentryTestOverrides = Pick<Sentry.BrowserOptions, "transport">;
+
+export function initClientSentry(overrides: ClientSentryTestOverrides = {}): boolean {
   if (initialized || typeof window === "undefined") return initialized;
   const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
   if (!dsn) return false;
   const origin = window.location.origin;
+  const scrubUrl = (value: string) => scrubClientTelemetryUrl(value, origin);
   Sentry.init({
     dsn,
     release: (import.meta.env.VITE_GIT_COMMIT_SHA as string | undefined) || undefined,
     environment: window.location.hostname === "localhost" ? "development" : "production",
     tracesSampleRate: 0.1,
-    beforeBreadcrumb: breadcrumb => scrubBreadcrumb(breadcrumb, origin),
+    sendDefaultPii: false,
     beforeSend(event) {
-      return scrubEvent(event, origin);
+      const scrubbed = scrubEvent(event, origin);
+      if (scrubbed.user) {
+        delete scrubbed.user.ip_address;
+        delete scrubbed.user.email;
+      }
+      return scrubbed;
     },
+    beforeSendTransaction: event => scrubTelemetryEvent(event, scrubUrl),
+    beforeBreadcrumb: breadcrumb => {
+      const scrubbed = scrubBreadcrumb(breadcrumb, origin);
+      return scrubTelemetryBreadcrumb(scrubbed, scrubUrl);
+    },
+    ...overrides,
   });
   initialized = true;
   return true;

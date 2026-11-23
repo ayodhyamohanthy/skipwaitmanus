@@ -92,13 +92,13 @@ describe("goal /sign-in: the retired route", () => {
 });
 
 describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
-  it("opens with the goal line and one next step whose only commit sends the email code", () => {
+  it("opens with the goal line and one next step whose only commit signs in with email and password", () => {
     stubFetch({ "/api/auth/passkey/availability": { status: 200, body: { enabled: false } } });
     stubLocation();
     const { container } = render(<SignIn />);
     assertGoalPage(container, SIGN_IN_PAGE);
     expect(container.querySelector('[data-skipwait-screen="sign-in"]')).not.toBeNull();
-    expect(primary(container)?.textContent).toBe("Send sign-in code");
+    expect(primary(container)?.textContent).toBe("Sign in");
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("false");
   });
@@ -110,7 +110,7 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     const form = screen.getByTestId("seeker-sign-in");
     expect(form.querySelectorAll<HTMLElement>("input, button")[0]).toBe(screen.getByLabelText("Email address"));
     for (const provider of ["Google", "Microsoft", "GitHub", "LinkedIn", "Slack"]) expect(screen.getByRole("button", { name: `Continue with ${provider}` })).toBeTruthy();
-    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(document.querySelector("input[type=password]")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue with GitHub" }));
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
     expect(assign).not.toHaveBeenCalledWith(expect.stringContaining("authkit.app"));
@@ -131,41 +131,37 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Email address"));
   });
 
-  it("sends and verifies the six-digit code against the email-code routes, then lands on /explore", async () => {
+  it("signs in with email and password against the password routes, then lands on /explore", async () => {
     const { calls } = stubFetch({
       "/api/auth/passkey/availability": { status: 200, body: { enabled: false } },
-      "/api/auth/workos/email-code/send": { status: 200, body: { sent: true } },
-      "/api/auth/workos/email-code/verify": { status: 200, body: { signedIn: true } },
+      "/api/auth/password/sign-in": { status: 200, body: { ok: true, step: "signed_in", redirectTo: "/explore" } },
     });
     const assign = stubLocation();
     const { container } = render(<SignIn />);
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Example.com " } });
-    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
-    const code = await screen.findByLabelText("Six-digit code");
-    assertGoalPage(container, SIGN_IN_PAGE);
-    expect(primary(container)?.textContent).toBe("Sign in");
-    fireEvent.change(code, { target: { value: "12a3456" } });
-    fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Secret!Pass123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
+    assertGoalPage(container, SIGN_IN_PAGE);
     expect(calls.filter(call => call.method === "POST")).toEqual([
-      { url: "/api/auth/workos/email-code/send", method: "POST", body: { email: "asha@example.com" } },
-      { url: "/api/auth/workos/email-code/verify", method: "POST", body: { email: "asha@example.com", code: "123456" } },
+      { url: "/api/auth/password/sign-in", method: "POST", body: { email: "asha@example.com", password: "Secret!Pass123", returnTo: "/explore" } },
     ]);
   });
 
-  it("shows the server's own words on a refused send, plain words on a network failure, and keeps the typed email", async () => {
+  it("shows the server's own words on a refused sign-in, plain words on a network failure, and keeps the typed email", async () => {
     stubFetch({
       "/api/auth/passkey/availability": { status: 200, body: { enabled: false } },
-      "/api/auth/workos/email-code/send": [{ status: 429, body: { error: "Too many codes. Try again in a few minutes." } }, "network"],
+      "/api/auth/password/sign-in": [{ status: 400, body: { ok: false, code: "invalid_credentials", message: "Incorrect password. Try again, or use Forgot password." } }, "network"],
     });
     stubLocation();
     const { container } = render(<SignIn />);
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "asha@example.com" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Too many codes. Try again in a few minutes.");
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "WrongPassword" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Incorrect password. Try again, or use Forgot password.");
     assertGoalPage(container, SIGN_IN_PAGE);
-    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We could not reach SkipWait. Check your connection and try again."));
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("We couldn't reach skipwait.me. Check your connection and try again."));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("asha@example.com");
   });
 
