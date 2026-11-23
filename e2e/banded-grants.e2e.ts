@@ -129,16 +129,25 @@ async function withDatabase(run: (fixture: Fixture) => Promise<void>) {
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE billingReviewOutbox (
-        id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        obligationKey varchar(128) NOT NULL,
-        eventId varchar(80) NULL,
-        eventType varchar(80) NULL,
-        subscriptionId varchar(80) NULL,
-        invoiceId varchar(80) NULL,
-        reason varchar(64) NOT NULL,
-        metadata json NULL,
-        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY billing_review_outbox_obligation_unique (obligationKey)
+        id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        obligationKey varchar(64) NOT NULL,
+        payload text NULL,
+        conflictDigest varchar(64) NOT NULL,
+        envelope text NULL,
+        submissionState varchar(20) NOT NULL DEFAULT 'never_submitted',
+        updatedAt timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        status varchar(16) NOT NULL DEFAULT 'pending',
+        attempts int NOT NULL DEFAULT 0,
+        nextAttemptAt timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        leaseOwner varchar(64) NULL,
+        leaseUntil timestamp(3) NULL,
+        firstAttemptAt timestamp(3) NULL,
+        acceptedAt timestamp(3) NULL,
+        providerMessageId varchar(255) NULL,
+        lastError varchar(80) NULL,
+        createdAt timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        UNIQUE KEY billing_review_obligation_unique (obligationKey),
+        INDEX billing_review_due_idx (status, nextAttemptAt, id)
       );
       INSERT INTO users (id, name) VALUES (1, 'Seeker One'), (2, 'Seeker Two');
       INSERT INTO tokenBalances (userId, role, plan, balance, monthlyAllowance, monthlyCreditsRemaining, monthlyCycleKey) VALUES (1, 'job_seeker', 'free', 0, 3, 3, '2026-11');
