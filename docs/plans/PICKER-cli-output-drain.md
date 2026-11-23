@@ -44,5 +44,4 @@ Existing direct owner instructions fix the picker/expose eligible work
 phonemsg-01M73FJZK5STP5W2BG9J9XG75V), personally inspected. This file
 records, not authenticates, that authority; no safety gate waived.
 
-PICKER-cli-output-drain: registration candidate, no source dispatched,
-no actual CLI red-first regression or fix PASS yet.
+PICKER-cli-output-drain: in progress — Qoder · 4fc4 — 2026-11-24 — branch agent/queue/picker-cli-output-drain
