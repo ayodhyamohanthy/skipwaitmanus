@@ -44,6 +44,8 @@ function makeDeps(overrides: Partial<SkippieSeekerDeps> = {}) {
     getOwnedResume: vi.fn(async (_u: number, id: number) => (id === 11 ? { id: 11, fileName: "asha.pdf", fileKey: "k/11", mimeType: "application/pdf" } : undefined)),
     createAsk: vi.fn(async (...args: unknown[]) => { calls.createAsk.push(args); return { requestId: 501, companyDomain: "acme.com", coverageStatus: "covered" as const }; }),
     saveTailoredResume: vi.fn(async (_u: number, { text }: { text: string }) => ({ id: 12, fileName: "skippy-tailored-resume.docx", fileKey: "k/12", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })),
+    getBandedOffer: vi.fn(async () => ({ onSale: false })),
+    createMoneyCard: vi.fn(() => { throw new Error("no money card in this test"); }),
     ...overrides,
   };
   return { deps, calls };

@@ -561,14 +561,14 @@
     },
     {
       "id": "BANDED-release",
-      "title": "Release: owner catalog apply on live, Razorpay international payments on, TEST-site QA matrix in INR and USD, then BANDED_SALES_ENABLED=true and live check without paying",
+      "title": "Release: prove international TEST-card evidence, set production BANDED_SALES_ENABLED=true through protected runtime config, and verify the exact live offer, plans and hosted-page handshake without paying",
       "row": "PRICING",
       "packet": "docs/plans/PRICING-banded-checkout.md",
       "tier": 1,
       "lane": "banded-release",
-      "branch": "agent/queue/banded-release",
+      "branch": "agent/queue/banded-release-activation",
       "status": "todo",
-      "syncedTo": "D-370",
+      "syncedTo": "D-383",
       "dependsOn": [
         "BANDED-levels",
         "BANDED-schema",
@@ -579,10 +579,17 @@
         "BANDED-ui"
       ],
       "owns": [
+        "AGENTS.md",
+        "docs/BRIEF.md",
+        "docs/PRD.md",
+        "docs/PRICING.md",
+        "docs/PAYMENTS_TEST_RUNBOOK.md",
+        "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
-        "docs/PRICING.md"
+        "server/configContract.test.ts",
+        "wrangler.jsonc"
       ],
-      "note": "D-366 (3) owner word to sell; D-367 answers. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
     {
       "id": "D-344-shell-referral-words",
