@@ -219,7 +219,6 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // D-057-session-gate: the in-session work-email step-up and the referrer session gate, before the routes it guards.
   registerReferrerStepUpRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerReviewerLoginRoutes(app);
-  registerPasswordResetRoutes(app);
   // Seeker email + password (D-049) registers with the WorkOS routes; without WorkOS keys it answers 503.
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else { registerDevAuthRoutes(app); registerPasswordAuthRoutes(app, { client: null }); }

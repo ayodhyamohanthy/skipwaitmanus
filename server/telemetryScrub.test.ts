@@ -20,7 +20,7 @@ describe("telemetry scrubber", () => {
     };
     scrubTelemetryEvent(event, scrubServerUrl);
     expect(event.request).toEqual({
-      url: "https://skipwait.me/api/referrer-review-links/[redacted]/decision",
+      url: "https://skipwait.me/api/referrer-review-links/:token/decision",
       headers: { "User-Agent": "Mozilla/5.0", Referer: "https://skipwait.me/reset-password", "Content-Type": "application/json" },
     });
     expect(event.user).toEqual({});
@@ -52,9 +52,9 @@ describe("telemetry scrubber", () => {
 
   it("redacts single-use link paths in transaction names and breadcrumbs recorded later", () => {
     const named: ScrubbableEvent = { transaction: "GET /api/referrer-fast-track/r12-34abcdef?x=1" };
-    expect(scrubTelemetryEvent(named, scrubServerUrl).transaction).toBe("GET /api/referrer-fast-track/[redacted]");
+    expect(scrubTelemetryEvent(named, scrubServerUrl).transaction).toBe("GET /api/referrer-fast-track/:token");
     expect(scrubTelemetryEvent({ transaction: "ask-expiry-sweep" }, scrubServerUrl).transaction).toBe("ask-expiry-sweep");
-    expect(scrubTelemetryBreadcrumb({ data: { url: "/email-review/abc123?y=2" } }, scrubServerUrl).data).toEqual({ url: "/email-review/[redacted]" });
+    expect(scrubTelemetryBreadcrumb({ data: { url: "/email-review/abc123?y=2" } }, scrubServerUrl).data).toEqual({ url: "/email-review/:token" });
   });
 
   it("server URLs keep their origin, lose query and fragment, and a malformed one is fully redacted", () => {

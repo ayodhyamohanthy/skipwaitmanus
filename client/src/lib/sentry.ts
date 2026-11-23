@@ -8,6 +8,7 @@ import {
 declare global {
   interface Window {
     __COMMIT_HASH__?: string;
+    __sentryTest?: () => boolean;
   }
 }
 
