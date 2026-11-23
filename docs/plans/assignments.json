@@ -6407,8 +6407,8 @@
       "tier": 2,
       "lane": "deploy-workflows",
       "branch": "agent/queue/rel-rollback-drill",
-      "status": "todo",
-      "syncedTo": "D-373",
+      "status": "done",
+      "syncedTo": "D-382",
       "dependsOn": [
         "REL-release-verify"
       ],
