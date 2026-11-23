@@ -12,6 +12,7 @@ import { and, count, eq, gt, inArray, lte, or } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { bandedFoundingCounters, bandedFoundingMemberships, subscriptionCheckoutIntents, tokenBalances } from "../drizzle/schema";
 import { PLAN_FAMILY, PLAN_FAMILY_IDS, planFamilyEntry, type PlanFamilyId } from "../shared/planFamily";
+import { bindHostedPageToBandedIntent, createBandedCheckoutIntent } from "./bandedGrantStore";
 import type { BandedCheckoutDeps, BandedMembership, BandedSite, FoundingReservation } from "./bandedCheckout";
 import type { BandedSubscriptionIntentInput } from "./bandedCheckoutRoutes";
 
@@ -130,6 +131,8 @@ export function bandedCheckoutStore(getDatabase: () => Promise<Db | null>): { ch
       reserveFoundingPlace: async input => reserveFoundingPlace(await database(), input),
       releaseFoundingPlace: async input => releaseFoundingPlace(await database(), input),
       foundingPlacesLeft: async (site, now) => foundingPlacesLeft(await database(), site, now),
+      persistCheckoutIntent: async input => createBandedCheckoutIntent(await database(), input),
+      bindHostedPage: async input => bindHostedPageToBandedIntent(await database(), input),
     },
     createSubscriptionIntent: async input => createBandedSubscriptionIntent(await database(), input),
   };

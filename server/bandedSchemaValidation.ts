@@ -16,6 +16,7 @@ export const BANDED_CHECK_CONSTRAINTS = [
   { table: "bandedFoundingCounters", name: "banded_founding_counter_cap" },
   { table: "bandedFoundingMemberships", name: "banded_founding_sequence_cap" },
   { table: "bandedFoundingMemberships", name: "banded_founding_state" },
+  { table: "bandedCheckoutIntents", name: "banded_intents_expected_total_positive" },
 ] as const;
 
 const metadataInteger = z.union([z.number().int().nonnegative(), z.string().regex(/^\d+$/).transform(Number)]);
@@ -38,9 +39,9 @@ const sameIdentifier = (actual: string, expected: string) => actual.toLowerCase(
 export async function validateBandedSchema(db: Pick<Database, "execute">, requiredIndexes: readonly RequiredIndex[]): Promise<SchemaDefinitionCheck[]> {
   const [columnRows] = await db.execute(sql`SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND COLUMN_NAME='plan' AND LOWER(TABLE_NAME) IN ('tokenbalances','subscriptioncheckoutintents')`);
   const columns = z.array(columnRow).parse(columnRows);
-  const [indexRows] = await db.execute(sql`SELECT TABLE_NAME,INDEX_NAME,COLUMN_NAME,SEQ_IN_INDEX,NON_UNIQUE,SUB_PART FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND LOWER(TABLE_NAME) IN ('bandedreferralbalances','bandedfoundingcounters','bandedfoundingmemberships')`);
+  const [indexRows] = await db.execute(sql`SELECT TABLE_NAME,INDEX_NAME,COLUMN_NAME,SEQ_IN_INDEX,NON_UNIQUE,SUB_PART FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND LOWER(TABLE_NAME) IN ('bandedreferralbalances','bandedfoundingcounters','bandedfoundingmemberships','bandedcheckoutintents')`);
   const indexes = z.array(indexRow).parse(indexRows);
-  const [constraintRows] = await db.execute(sql`SELECT TABLE_NAME,CONSTRAINT_NAME,ENFORCED FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA=DATABASE() AND CONSTRAINT_TYPE='CHECK' AND LOWER(TABLE_NAME) IN ('bandedreferralbalances','bandedfoundingcounters','bandedfoundingmemberships')`);
+  const [constraintRows] = await db.execute(sql`SELECT TABLE_NAME,CONSTRAINT_NAME,ENFORCED FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA=DATABASE() AND CONSTRAINT_TYPE='CHECK' AND LOWER(TABLE_NAME) IN ('bandedreferralbalances','bandedfoundingcounters','bandedfoundingmemberships','bandedcheckoutintents')`);
   const constraints = z.array(constraintRow).parse(constraintRows);
 
   return [

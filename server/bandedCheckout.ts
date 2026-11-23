@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { bandedPlanCatalogPrice, bandedReferralCatalogPrice, type BandedCatalogPrice } from "../shared/bandedCatalog";
 import { LEVEL_DISPLAY_NAME, bandIncludes, bandLevels, planFamilyEntry, type PlanFamilyId } from "../shared/planFamily";
 import { BANDED_REFUSALS, bandedReferralQuote, currencyForCountry, type BandedPlanCheckoutRequest, type BandedReferralCheckoutRequest, type BandedReferralQuote } from "../shared/subscriptionManagement";
+import { bandedIntentFingerprint, type BandedCart } from "../shared/bandedGrants";
 import { createBandedPlanPage, createBandedReferralPage } from "./bandedCheckoutProvider";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 import { retrieveItemPrice, type CheckoutCustomer, type HostedPageResult, type ProviderItemPrice } from "./chargebeeSubscriptionApi";
@@ -50,6 +51,27 @@ export type BandedCheckoutDeps = {
   reserveFoundingPlace: (input: { site: BandedSite; planId: PlanFamilyId; userId: number; checkoutIntentId: string; now: Date; expiresAt: Date; replayNotBefore: Date }) => Promise<FoundingReservation>;
   releaseFoundingPlace: (input: { site: BandedSite; checkoutIntentId: string; now: Date }) => Promise<{ released: boolean }>;
   foundingPlacesLeft: (site: BandedSite, now: Date) => Promise<Record<PlanFamilyId, number>>;
+  persistCheckoutIntent?: (input: {
+    site: BandedSite;
+    checkoutIntentId: string;
+    userId: number;
+    kind: "plan" | "referral";
+    planId?: PlanFamilyId | null;
+    billingRoute: "IN" | "INTL";
+    currency: "INR" | "USD";
+    expectedTotal: number;
+    fingerprint: string;
+    cart: BandedCart;
+    now: Date;
+    expiresAt: Date;
+    replayDeadline: Date;
+  }) => Promise<{ isReplay: boolean }>;
+  bindHostedPage?: (input: {
+    site: BandedSite;
+    checkoutIntentId: string;
+    hostedPageId: string;
+    now: Date;
+  }) => Promise<void>;
   createPlanPage?: typeof createBandedPlanPage;
   createReferralPage?: typeof createBandedReferralPage;
   now?: () => Date;
@@ -132,6 +154,42 @@ export async function startBandedPlanCheckout(input: { userId: number; request: 
   // D-367 (5): a full band stops selling; the regular price is the owner's to set, never invented here.
   if (reservation.status === "full") return refuse(409, BANDED_REFUSALS.foundingFull, `Founding places for ${entry.label} are taken. ${NOTHING_CHARGED}`);
   if (reservation.status === "key_used") return refuse(409, BANDED_REFUSALS.checkoutKeyUsed, `This checkout was already started. Start a new one; nothing has been charged.`);
+  const billingRoute = request.billingCountry === "IN" ? "IN" : "INTL";
+  const cart: BandedCart = {
+    kind: "plan",
+    planId: request.planId,
+    currency: price.currency,
+    itemPriceId: price.itemPriceId,
+    amount: price.amount,
+    billingRoute,
+  };
+  if (deps.persistCheckoutIntent) {
+    const fingerprint = bandedIntentFingerprint({
+      site,
+      userId,
+      kind: "plan",
+      planId: request.planId,
+      billingRoute,
+      currency: price.currency,
+      expectedTotal: price.amount,
+      cart,
+    });
+    await deps.persistCheckoutIntent({
+      site,
+      checkoutIntentId,
+      userId,
+      kind: "plan",
+      planId: request.planId,
+      billingRoute,
+      currency: price.currency,
+      expectedTotal: price.amount,
+      fingerprint,
+      cart,
+      now,
+      expiresAt: new Date(now.getTime() + BANDED_RESERVATION_TTL_MS),
+      replayDeadline: new Date(now.getTime() + BANDED_REPLAY_WINDOW_MS),
+    });
+  }
   try {
     const checkout = await (deps.createPlanPage ?? createBandedPlanPage)(credentials, {
       ...input.customer,
@@ -142,6 +200,14 @@ export async function startBandedPlanCheckout(input: { userId: number; request: 
       redirectUrl: input.urls.redirectUrl,
       cancelUrl: input.urls.cancelUrl,
     });
+    if (deps.bindHostedPage) {
+      await deps.bindHostedPage({
+        site,
+        checkoutIntentId,
+        hostedPageId: checkout.hostedPageId,
+        now,
+      });
+    }
     return { ok: true, site, price, checkoutIntentId, checkout };
   } catch (error) {
     // Only this request's own new reservation is released; a replayed key may already have a page someone can pay.
@@ -174,7 +240,55 @@ export async function startBandedReferralCheckout(input: { userId: number; reque
   if (verdicts.includes("missing")) return refuse(409, BANDED_REFUSALS.notAvailable, `Extra referrals at this level are not on sale yet. ${NOTHING_CHARGED}`);
 
   const site = credentials.environment;
+  const now = (deps.now ?? (() => new Date()))();
   const checkoutIntentId = bandedCheckoutIntentId("referral", site, userId, request.idempotencyKey);
+  const billingRoute = request.billingCountry === "IN" ? "IN" : "INTL";
+  const cart: BandedCart = {
+    kind: "referral",
+    currency,
+    billingRoute,
+    quantity: quote.quantity,
+    lines: quote.lines.map((line, index) => ({
+      level: line.level,
+      quantity: line.quantity,
+      itemPriceId: prices[index].itemPriceId,
+      unitAmount: line.unitAmount,
+      amount: line.amount,
+      lineAmount: line.amount,
+    })),
+    subtotal: quote.subtotal,
+    discountPct: quote.discountPct,
+    discount: quote.discount,
+    discountAmount: quote.discount,
+    total: quote.total,
+  };
+  if (deps.persistCheckoutIntent) {
+    const fingerprint = bandedIntentFingerprint({
+      site,
+      userId,
+      kind: "referral",
+      planId: bandedPlan,
+      billingRoute,
+      currency,
+      expectedTotal: quote.total,
+      cart,
+    });
+    await deps.persistCheckoutIntent({
+      site,
+      checkoutIntentId,
+      userId,
+      kind: "referral",
+      planId: bandedPlan,
+      billingRoute,
+      currency,
+      expectedTotal: quote.total,
+      fingerprint,
+      cart,
+      now,
+      expiresAt: new Date(now.getTime() + BANDED_RESERVATION_TTL_MS),
+      replayDeadline: new Date(now.getTime() + BANDED_REPLAY_WINDOW_MS),
+    });
+  }
   const checkout = await (deps.createReferralPage ?? createBandedReferralPage)(credentials, {
     ...input.customer,
     billingCountry: request.billingCountry,
@@ -186,5 +300,13 @@ export async function startBandedReferralCheckout(input: { userId: number; reque
     redirectUrl: input.urls.redirectUrl,
     cancelUrl: input.urls.cancelUrl,
   });
+  if (deps.bindHostedPage) {
+    await deps.bindHostedPage({
+      site,
+      checkoutIntentId,
+      hostedPageId: checkout.hostedPageId,
+      now,
+    });
+  }
   return { ok: true, site, quote, checkoutIntentId, checkout };
 }
