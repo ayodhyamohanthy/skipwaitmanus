@@ -599,7 +599,7 @@
       "tier": 1,
       "lane": "banded-release-qa",
       "branch": "agent/queue/banded-release-qa-runner",
-      "status": "in-review",
+      "status": "todo",
       "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
@@ -607,7 +607,7 @@
         "scripts/bandedTestCardQa.test.ts",
         ".github/workflows/banded-test-card-qa.yml"
       ],
-      "note": "D-383 (3) requires reproducible international TEST-card evidence with a linked run/artifact; no existing tooling could produce it. PR #1492 is open from this branch. Sub-row of BANDED-release: it lands first so the workflow can be dispatched, keeping BANDED-release unlanded until the activation is real (the D-373 (6) trap D-383 corrected)."
+      "note": "D-383 (3) requires reproducible international TEST-card evidence with a linked run/artifact; no existing tooling could produce it. PR #1492 is open from this branch, so the picker reads its stage from that pull request. Sub-row of BANDED-release: it lands first so the workflow can be dispatched, keeping BANDED-release unlanded until the activation is real (the D-373 (6) trap D-383 corrected)."
     },
     {
       "id": "D-344-shell-referral-words",
