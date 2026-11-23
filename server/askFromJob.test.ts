@@ -283,6 +283,7 @@ function seed() {
     referralRequests: [],
     referralAttachments: [
       { id: 41, ownerId: SEEKER, referralRequestId: null, fileName: "resume.pdf", fileKey: "private/resume", mimeType: "application/pdf", fileSize: 3 },
+      { id: 42, ownerId: SEEKER, referralRequestId: null, fileName: "resume2.pdf", fileKey: "private/resume2", mimeType: "application/pdf", fileSize: 3 },
     ],
     workItems: [],
     askCosts: [],
@@ -396,6 +397,9 @@ function seed() {
 
 describe("D-174-ask-from-job (D-193 §5.8)", () => {
   beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.useFakeTimers({ now: NOW });
     seed();
   });
@@ -474,7 +478,7 @@ describe("D-174-ask-from-job (D-193 §5.8)", () => {
 
     const oppCreated = await createCompanyReferralRequest(SEEKER, {
       opportunityId: 201,
-      attachmentIds: [41],
+      attachmentIds: [42],
       idempotencyKey: "ask-quote-match-opp-005",
       personalPitch: "Pitch for opportunity",
       expectedCost: oppQuote.acceptedCost,

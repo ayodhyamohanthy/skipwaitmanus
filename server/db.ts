@@ -14,7 +14,7 @@ import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, askInviteLinks, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, bandedCheckoutIntents, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, askInviteLinks, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, bandedCheckoutIntents, canonicalPeople, catalogJobs, companies, companyDomains, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -1859,7 +1859,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting representation. */ expectedCoverage?: "waiting_for_company_coverage" };
+export type CreateCompanyReferralInput = { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl?: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; catalogJobId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting representation. */ expectedCoverage?: "waiting_for_company_coverage" };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1877,18 +1877,185 @@ export class AskWorkItemNotInShowcaseError extends Error { constructor() { super
 export class ReferralIdempotencyConflictError extends Error { constructor() { super("This submission key was already used for a different referral request"); this.name="ReferralIdempotencyConflictError"; } }
 /** Idempotency fingerprint. An explicit job function is part of it only when sent, so retries from before 0077 still match. A post selection is part of it only when sent, so a retry that drops it can never silently become a different ask. Pinned work follows the same rule (0095), deduplicated so an order-only or repeated-id retry replays instead of conflicting. */
 export function companyReferralFingerprint(input: CreateCompanyReferralInput, companyDomain: string) {
-  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{}),...(input.workItemIds?.length?{workItemIds:dedupeAskWorkItemIds(input.workItemIds)}:{})};
+  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl ?? ""),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{}),...(input.catalogJobId?{catalogJobId:input.catalogJobId}:{}),...(input.workItemIds?.length?{workItemIds:dedupeAskWorkItemIds(input.workItemIds)}:{})};
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
+export type AskJobResolutionInput = {
+  targetRoleUrl?: string;
+  catalogJobId?: number;
+  opportunityId?: number;
+  selectedCompany?: { name: string; domains: string[] };
+  confirmedCompanyDomain?: string;
+  compensation?: string | null;
+  jobFunction?: JobFunction;
+  submittedTargetRoleUrl?: string;
+  publishedAt?: Date;
+};
+
+/**
+ * Shared helper for D-174-ask-from-job (D-193 §5.8): resolves the job row,
+ * binds the company domain, and calculates the job level identically for both
+ * createCompanyReferralRequest and previewBandedAskCost (quote).
+ */
+export async function resolveAskJobContext(db: any, input: AskJobResolutionInput) {
+  if (input.catalogJobId) {
+    if (!db) throw new Error("Database unavailable");
+    const catalogRows = await db.select().from(catalogJobs).where(eq(catalogJobs.id, input.catalogJobId)).limit(1);
+    const catalogJob = catalogRows[0];
+    if (!catalogJob) {
+      throw new Error("This job is no longer available. Refresh the company page and choose again.");
+    }
+    if (catalogJob.closedAt !== null) {
+      throw new Error("This job is closed. Refresh the company page and choose again.");
+    }
+    const domainRows = await db.select({ domain: companyDomains.domain, isPrimary: companyDomains.isPrimary }).from(companyDomains).where(eq(companyDomains.companyId, catalogJob.companyId));
+    if (domainRows.length === 0) {
+      throw new Error("We could not identify the employer behind this job.");
+    }
+    const primaryDomain = (domainRows.find((d: { domain: string; isPrimary: boolean }) => d.isPrimary) ?? domainRows[0]).domain.toLowerCase();
+    if (input.selectedCompany) {
+      const allowed = input.selectedCompany.domains.map((d: string) => d.trim().toLowerCase());
+      const matches = domainRows.some((d: { domain: string }) => allowed.includes(d.domain.toLowerCase()));
+      if (!matches) {
+        throw new CompanyLinkMismatchError(input.selectedCompany.name);
+      }
+    }
+    if (input.confirmedCompanyDomain) {
+      const confirmed = input.confirmedCompanyDomain.trim().toLowerCase();
+      const matches = domainRows.some((d: { domain: string }) => d.domain.toLowerCase() === confirmed);
+      if (!matches) {
+        throw new Error("The confirmed company domain does not match this job link.");
+      }
+    }
+    const companyDomain = primaryDomain;
+    const targetRoleUrl = catalogJob.applyUrl;
+    const decided = resolveAskJobFunction({
+      explicit: input.jobFunction ?? (catalogJob.jobFunction as JobFunction | null | undefined),
+      targetRoleUrl: input.submittedTargetRoleUrl ?? targetRoleUrl,
+    });
+    const publishedAt = input.publishedAt ?? (catalogJob.publishedAt ? new Date(catalogJob.publishedAt) : new Date());
+    const jobRow = {
+      title: catalogJob.title,
+      company: companyDomain,
+      location: catalogJob.rawLocation || "Not specified",
+      compensation: input.compensation ?? null,
+      description: catalogJob.snippet,
+      targetRoleUrl,
+      workMode: catalogJob.workMode ?? "Not specified",
+      seniority: "Not specified",
+      employmentType: "Not specified",
+      jobFunction: decided.jobFunction,
+      jobFunctionSource: decided.source,
+      publishedAt,
+    };
+    const level = assignJobLevel({
+      title: jobRow.title,
+      description: jobRow.description,
+      url: jobRow.targetRoleUrl,
+    }).level;
+    return { companyDomain, targetRoleUrl, jobRow, level, catalogJob };
+  }
+
+  if (input.opportunityId) {
+    if (!db) throw new Error("Database unavailable");
+    const oppRows = await db.select().from(companyOpportunities).where(eq(companyOpportunities.id, input.opportunityId)).limit(1);
+    const opportunity = oppRows[0];
+    const nowMs = Date.now();
+    if (!opportunity || !opportunity.isActive || isOpportunityExpired(opportunity.expiresAt, nowMs)) {
+      throw new Error("This opening is no longer available. Refresh the company page and choose again.");
+    }
+    const companyDomain = opportunity.companyDomain.trim().toLowerCase();
+    if (input.selectedCompany) {
+      const allowed = input.selectedCompany.domains.map((d: string) => d.trim().toLowerCase());
+      if (!allowed.includes(companyDomain)) {
+        throw new CompanyLinkMismatchError(input.selectedCompany.name);
+      }
+    }
+    if (input.confirmedCompanyDomain) {
+      if (input.confirmedCompanyDomain.trim().toLowerCase() !== companyDomain) {
+        throw new Error("The confirmed company domain does not match this job link.");
+      }
+    }
+    const targetRoleUrl = opportunity.targetRoleUrl ?? input.targetRoleUrl ?? "";
+    const decided = resolveAskJobFunction({
+      explicit: input.jobFunction,
+      targetRoleUrl: input.submittedTargetRoleUrl ?? targetRoleUrl,
+    });
+    const publishedAt = input.publishedAt ?? new Date();
+    const jobRow = {
+      title: opportunity.roleTitle,
+      company: companyDomain,
+      location: opportunity.location || "Not specified",
+      compensation: input.compensation ?? opportunity.compensation ?? null,
+      description: "Private referral request routed from a Target Role URL.",
+      targetRoleUrl,
+      workMode: "Not specified",
+      seniority: "Not specified",
+      employmentType: "Not specified",
+      jobFunction: decided.jobFunction,
+      jobFunctionSource: decided.source,
+      publishedAt,
+    };
+    const level = assignJobLevel({
+      title: jobRow.title,
+      description: jobRow.description,
+      url: jobRow.targetRoleUrl,
+    }).level;
+    return { companyDomain, targetRoleUrl, jobRow, level, opportunity };
+  }
+
+  if (!input.targetRoleUrl) {
+    throw new Error("A Target Role URL and at least one resume document are required");
+  }
+  const resolvedDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+  const confirmedDomain = input.confirmedCompanyDomain ? directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`) : undefined;
+  if (resolvedDomain && confirmedDomain && resolvedDomain !== confirmedDomain) {
+    throw new Error("The confirmed company domain does not match this job link.");
+  }
+  if (input.selectedCompany) {
+    const allowed = input.selectedCompany.domains.map(domain => domain.trim().toLowerCase());
+    const matches = (domain: string | undefined) => Boolean(domain) && allowed.includes(domain!.toLowerCase());
+    if (resolvedDomain ? !matches(resolvedDomain) : !matches(confirmedDomain)) {
+      throw new CompanyLinkMismatchError(input.selectedCompany.name);
+    }
+  }
+  const companyDomain = resolvedDomain ?? confirmedDomain;
+  if (!companyDomain) {
+    throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
+  }
+  const publishedAt = input.publishedAt ?? new Date();
+  const jobRow = companyAskJobRow({
+    companyDomain,
+    targetRoleUrl: input.targetRoleUrl,
+    roleLinkUrl: input.submittedTargetRoleUrl,
+    compensation: input.compensation ?? null,
+    jobFunction: input.jobFunction,
+    publishedAt,
+  });
+  const level = assignJobLevel({
+    title: jobRow.title,
+    description: jobRow.description,
+    url: jobRow.targetRoleUrl,
+  }).level;
+  return { companyDomain, targetRoleUrl: input.targetRoleUrl, jobRow, level };
+}
+
 /** Current caller's authoritative preview; no debit, request, document or delivery writes. */
-export async function previewBandedAskCost(userId: number, targetRoleUrl: string) {
+export async function previewBandedAskCost(userId: number, input: string | { targetRoleUrl?: string; catalogJobId?: number; opportunityId?: number }) {
   if (!bandedSalesEnabled()) throw new Error("Banded referral quotes are not available yet");
-  const companyDomain = await resolveEmployerDomainFromTargetUrl(targetRoleUrl);
-  if (!companyDomain) throw new Error("We could not identify the employer behind this job link");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const level = assignJobLevel({ url: normalizeTargetRoleUrl(targetRoleUrl) }).level;
+  const normalizedInput = typeof input === "string"
+    ? { targetRoleUrl: normalizeTargetRoleUrl(input) }
+    : {
+        targetRoleUrl: input.targetRoleUrl ? normalizeTargetRoleUrl(input.targetRoleUrl) : undefined,
+        catalogJobId: input.catalogJobId,
+        opportunityId: input.opportunityId,
+      };
+  const context = await resolveAskJobContext(db, normalizedInput);
+  const companyDomain = context.companyDomain;
+  const level = context.level;
   return db.transaction(async tx => {
     let wallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
     if (!wallet) {
@@ -1909,22 +2076,23 @@ export async function previewBandedAskCost(userId: number, targetRoleUrl: string
 
 export async function createCompanyReferralRequest(userId: number, input: CreateCompanyReferralInput) {
   if (input.expectedCost !== undefined) acceptedAskCostSchema.parse(input.expectedCost);
-  const resolvedDomain=await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
-  const confirmedDomain=input.confirmedCompanyDomain?directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`):undefined;
-  if(resolvedDomain&&confirmedDomain&&resolvedDomain!==confirmedDomain)throw new Error("The confirmed company domain does not match this job link.");
-  if(input.selectedCompany){const allowed=input.selectedCompany.domains.map(domain=>domain.trim().toLowerCase());const matches=(domain:string|undefined)=>Boolean(domain)&&allowed.includes(domain!.toLowerCase());
-    // The link has to resolve to this company. A confirmed domain only helps when the link names no employer, and it must be one of the company's own.
-    if(resolvedDomain?!matches(resolvedDomain):!matches(confirmedDomain))throw new CompanyLinkMismatchError(input.selectedCompany.name);}
-  const companyDomain=resolvedDomain??confirmedDomain;if(!companyDomain)throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
-  const compensation=input.compensation?.trim().slice(0,80)||null;const fingerprint=companyReferralFingerprint(input,companyDomain);
-  const db=await getDb();if(!db)throw new Error("Database unavailable");
-  if(input.opportunityId&&(input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
-  if(input.fastTrackCode&&(input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
-  const fastTrackLink=input.fastTrackCode?await getActiveReferrerFastTrackLink(input.fastTrackCode):input.fastTrackCompanySlug&&input.fastTrackAlias?await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug,input.fastTrackAlias):undefined;
-  if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error(PERSONAL_LINK_UNAVAILABLE);
-  if(fastTrackLink&&!fastTrackLinkMatchesCompany(fastTrackLink.companyDomain,companyDomain))throw new Error("Use a job link for the same company as this private referral link");
-  if (!bandedSalesEnabled() && input.expectedCost === undefined) await ensureTokenWallet(userId,"job_seeker");
-  return db.transaction(async tx=>{
+  const db = (input.catalogJobId || input.opportunityId) ? await getDb() : undefined;
+  const context = await resolveAskJobContext(db, input);
+  const companyDomain = context.companyDomain;
+  const targetRoleUrl = context.targetRoleUrl;
+  const jobRow = context.jobRow;
+  const level = context.level;
+  const compensation = input.compensation?.trim().slice(0, 80) || null;
+  const fingerprint = companyReferralFingerprint({ ...input, targetRoleUrl }, companyDomain);
+  const realDb = db ?? (await getDb());
+  if (!realDb) throw new Error("Database unavailable");
+  if (input.opportunityId && (input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
+  if (input.fastTrackCode && (input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
+  const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : input.fastTrackCompanySlug && input.fastTrackAlias ? await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug, input.fastTrackAlias) : undefined;
+  if ((input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias) && !fastTrackLink) throw new Error(PERSONAL_LINK_UNAVAILABLE);
+  if (fastTrackLink && !fastTrackLinkMatchesCompany(fastTrackLink.companyDomain, companyDomain)) throw new Error("Use a job link for the same company as this private referral link");
+  if (!bandedSalesEnabled() && input.expectedCost === undefined) await ensureTokenWallet(userId, "job_seeker");
+  return realDb.transaction(async tx=>{
     // The wallet lock is the per-seeker serialization point for both same-key
     // replay and different-key credit races.
     let lockedWallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];
@@ -1951,6 +2119,10 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       opportunity=(await tx.select({id:companyOpportunities.id,ownerId:companyOpportunities.ownerId,companyDomain:companyOpportunities.companyDomain,isActive:companyOpportunities.isActive,expiresAt:companyOpportunities.expiresAt}).from(companyOpportunities).where(eq(companyOpportunities.id,input.opportunityId)).limit(1).for("update"))[0];
       if(!opportunity||!opportunity.isActive||isOpportunityExpired(opportunity.expiresAt,nowMs)||opportunity.companyDomain.trim().toLowerCase()!==companyDomain.trim().toLowerCase())throw new Error("This opening is no longer available. Refresh the company page and choose again.");
     }
+    if(input.catalogJobId){
+      const lockedCatalog=(await tx.select({id:catalogJobs.id,closedAt:catalogJobs.closedAt}).from(catalogJobs).where(eq(catalogJobs.id,input.catalogJobId)).limit(1).for("update"))[0];
+      if(!lockedCatalog||lockedCatalog.closedAt)throw new Error("This opening is no longer available. Refresh the company page and choose again.");
+    }
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
     const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));
     // D-034/D-062: coverage means an *available* referrer (verified, unpaused, under monthly
@@ -1960,7 +2132,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
     if (bandedSalesEnabled() && isWaiting && input.expectedCost) {
-      const currentCost: AcceptedAskCost = { units: 0, band: referralLevelForJobLevel(assignJobLevel({url:input.targetRoleUrl}).level), source: [] };
+      const currentCost: AcceptedAskCost = { units: 0, band: referralLevelForJobLevel(level), source: [] };
       if (!sameAcceptedAskCost(input.expectedCost, currentCost)) throw new AskPriceChangedError(currentCost);
     }
     // D-132 item 3: a composer that promised free waiting never commits a charge because coverage flipped. Thrown before the slot-cap check, the spend and every write; the retry after re-pricing carries no expectation. Guarded by the same server flag as the quote: review F2 (55e5aa3a) - with ASK_LEVEL_COST off the promise does not exist, so today's create-and-charge is unchanged even if a body carries the field.
@@ -2004,7 +2176,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
-    const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
+    const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,coverageVisibleAt:isWaiting?null:new Date(nowMs),coverageHeldAt:null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
     // 1 credit = 1 request, spent when the ask first reaches an available referrer (D-034): a covered ask pays
     // here, in this transaction and under the wallet lock, through the credit ledger (soonest-expiring bucket
@@ -2021,7 +2193,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     }else{
       const askCost=bandedSalesEnabled()?1:askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
       const meta={idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)};
-      const banded=bandedSalesEnabled()?await spendBandedReferralTx(tx,{wallet:reconciled.wallet,level:assignJobLevel({url:jobRow.targetRoleUrl}).level,now:summaryNow,meta,expectedCost:input.expectedCost}):null;
+      const banded=bandedSalesEnabled()?await spendBandedReferralTx(tx,{wallet:reconciled.wallet,level,now:summaryNow,meta,expectedCost:input.expectedCost}):null;
       chargedCost=banded?.chargedCost;
       const spent=banded?{wallet:banded.wallet,grants:reconciled.grants,promoRemaining:promoState.grant?.creditsRemaining??null}:await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta,now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
       const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
@@ -2033,7 +2205,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // Task 13 (0105): the pinned-work snapshot, copied once at the send instant so
     // a later showcase edit or delete never rewrites what a referrer was shown.
     // D-132 audit item 2 (0106): with ASK_LEVEL_COST on, the level and cost this ask was priced at are stored once, here. Flag off writes nothing.
-    if(bandedSalesEnabled()||askLevelCostEnabled()){const price=bandedSalesEnabled()?{jobLevel:assignJobLevel({url:jobRow.targetRoleUrl}).level,creditCost:1}:askPriceAtCreate({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});await tx.insert(askCosts).values({referralRequestId:requestId,jobLevel:price.jobLevel,creditCost:price.creditCost,source:"classified_at_create"});}
+    if(bandedSalesEnabled()||askLevelCostEnabled()){const price=bandedSalesEnabled()?{jobLevel:level,creditCost:1}:askPriceAtCreate({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});await tx.insert(askCosts).values({referralRequestId:requestId,jobLevel:price.jobLevel,creditCost:price.creditCost,source:"classified_at_create"});}
     for(let index=0;index<pinnedWork.length;index++){const item=pinnedWork[index];await tx.insert(askWorkItems).values({referralRequestId:requestId,workItemId:item.id,title:item.title,kind:item.kind,source:item.source,url:item.url,position:index});}
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is
     // complete inside this transaction; a waiting ask has not gone out yet, so its rewards unlock at delivery (see
