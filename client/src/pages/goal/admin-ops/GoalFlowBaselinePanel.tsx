@@ -58,7 +58,7 @@ export function GoalFlowBaselinePanel({ baseline }: { baseline: FlowBaseline | n
             </>
           )}
         </OpsPanel>
-        <div className="grid gap-5">
+        <div className="grid min-w-0 gap-5">
           <OpsPanel icon={CreditCard} title="Paying subscribers" subtitle={showTrial ? "Wallets on a paid plan, and Free wallets inside the one-time reverse trial." : "Wallets on a paid plan."}>
             <div className="mt-4 grid gap-3 gdesk:grid-cols-2">
               <OpsMetric label="Paid plans" value={number(baseline.subscribers.paid)} detail="Any plan other than Free." />
