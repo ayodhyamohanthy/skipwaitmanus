@@ -5,11 +5,22 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SeekerAgents from "./SeekerAgents";
+import GoalConnectAssistant from "./goal/assistants/GoalConnectAssistant";
+import { GoalApprovalCard } from "./goal/assistants/GoalApprovalCard";
+import type { AssistantApproval } from "@/components/assistants/format";
 
-const { authState } = vi.hoisted(() => ({
-  authState: { isSignedIn: true, isLoaded: true, getToken: vi.fn().mockResolvedValue("fixture-token"), openSignIn: vi.fn() },
+const { authState, searchState } = vi.hoisted(() => ({
+  authState: { isSignedIn: true, isLoaded: true, getToken: vi.fn().mockResolvedValue("fixture-token"), signOut: vi.fn().mockResolvedValue(undefined), openSignIn: vi.fn() },
+  searchState: { value: "" },
 }));
-vi.mock("@/_core/auth", () => ({ useAuth: () => authState }));
+vi.mock("@/_core/auth", () => ({
+  useAuth: () => authState,
+  useUser: () => ({ user: { primaryEmailAddress: { emailAddress: "fictional@example.invalid" } } }),
+}));
+vi.mock("wouter", () => ({
+  useSearch: () => searchState.value,
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+}));
 
 const response = (body: object, status = 200) => ({ ok: status < 400, status, json: async () => body });
 const DAY = 86400000;
@@ -159,5 +170,99 @@ describe("goal /agents", () => {
     render(<SeekerAgents />);
     expect(await screen.findByText("You are offline. Review what is here; reconnect before making changes.")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Create agent key" }).getAttribute("aria-disabled")).toBe("true"));
+  });
+});
+
+describe("D-178.screen - agent portal access screen, consent, and approval card", () => {
+  const approvalBase: AssistantApproval = {
+    id: 42,
+    kind: "ask_send",
+    status: "pending",
+    provider: "ChatGPT",
+    companyDomain: "example.com",
+    role: "Senior Staff Engineer",
+    note: "Strong referral fit.",
+    creditCount: 1,
+    slotCount: 2,
+    targetRoleUrl: "https://example.com/jobs/42",
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 86400000).toISOString(),
+  };
+
+  const cardHandlers = () => ({
+    editing: false,
+    draftNote: "",
+    working: false,
+    actionError: "",
+    onDraftChange: vi.fn(),
+    onStartEdit: vi.fn(),
+    onSaveEdit: vi.fn(),
+    onDecide: vi.fn(),
+    resumes: [{ id: 1, fileName: "Resume.pdf" }],
+    resumeId: 1,
+    onResumeChange: vi.fn(),
+  });
+
+  it("consent page shows the self-declared name line and offers expiry (7 default, 30 max)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/api/assistants/access")) return response({ hasAccess: true });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<GoalConnectAssistant />);
+
+    // Self-declared name line requirement (R7)
+    expect(await screen.findByText(/The name “ChatGPT” is self-declared by the agent\. skipwait\.me has not verified it\./)).toBeTruthy();
+
+    // Expiry input requirement (7 default, 30 max)
+    const expiryInput = screen.getByLabelText("Access expires after (days, max 30)") as HTMLInputElement;
+    expect(expiryInput).toBeTruthy();
+    expect(expiryInput.value).toBe("7");
+    expect(expiryInput.getAttribute("min")).toBe("1");
+    expect(expiryInput.getAttribute("max")).toBe("30");
+  });
+
+  it("approval card shows referral cost with source (included, free or paid) and balance after", () => {
+    const h = cardHandlers();
+    const { rerender } = render(
+      <GoalApprovalCard approval={{ ...approvalBase, costSource: "included" }} balance={5} primary handlers={h} />
+    );
+
+    // Shows 1 referral with source (included)
+    expect(screen.getByText("1 referral")).toBeTruthy();
+    expect(screen.getByText(/included/i)).toBeTruthy();
+    // Shows balance before and after for referrals
+    expect(screen.getByText("5 available · 4 after this")).toBeTruthy();
+
+    // With free source
+    rerender(
+      <GoalApprovalCard approval={{ ...approvalBase, costSource: "free" }} balance={3} primary handlers={h} />
+    );
+    expect(screen.getByText(/free/i)).toBeTruthy();
+    expect(screen.getByText("3 available · 2 after this")).toBeTruthy();
+
+    // With paid source
+    rerender(
+      <GoalApprovalCard approval={{ ...approvalBase, costSource: "paid" }} balance={1} primary handlers={h} />
+    );
+    expect(screen.getByText(/paid/i)).toBeTruthy();
+    expect(screen.getByText("1 available · 0 after this")).toBeTruthy();
+  });
+
+  it("has no user-facing 'credit' in consent or approval cards", async () => {
+    const h = cardHandlers();
+    const { container: cardContainer } = render(
+      <GoalApprovalCard approval={{ ...approvalBase, costSource: "included" }} balance={5} primary handlers={h} />
+    );
+    expect(cardContainer.textContent?.toLowerCase()).not.toContain("credit");
+
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/api/assistants/access")) return response({ hasAccess: true });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container: consentContainer } = render(<GoalConnectAssistant />);
+    await screen.findByText("Connect ChatGPT to skipwait.me");
+    expect(consentContainer.textContent?.toLowerCase()).not.toContain("credit");
   });
 });
