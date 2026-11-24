@@ -179,3 +179,10 @@ export const ASK_RECONFIRM_PROMPT = "Still want this referral request sent? Conf
 export const ASK_RECONFIRM_COST = "Your existing request cost applies when a verified employee can see it.";
 export const ASK_RECONFIRM_ERROR = "We couldn’t confirm this referral request. Try again; if it was already confirmed, it won’t be sent twice.";
 export const ASK_RECONFIRM_NOTICE_TITLE = "Confirm your waiting referral request";
+
+/**
+ * D-099 / D-374: the one honesty line a referral-bonus fact line carries, verbatim
+ * from docs/PRD.md:40. The employer sets and pays its own programme; skipwait.me
+ * never pays referrers (D-055, D-063). Import this, never retype it (D-149 (c)).
+ */
+export const REFERRAL_BONUS_HONESTY = "Most companies pay their own referral bonus when a referral they make is hired. That programme is your employer's and they pay it - skipwait.me never pays referrers.";
