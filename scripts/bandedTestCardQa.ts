@@ -3,19 +3,23 @@
 //
 // D-383 withdrew the earlier PASS entries in docs/qa/banded-release-qa.md because they had no linked run, log or
 // artifact. This runner produces that missing evidence on the Chargebee TEST site only: it opens the app's own
-// banded hosted page for a USD plan and pays it with the runbook's international test card, then reads the
-// subscription and invoice back from the provider. It never touches the live site, never charges real money and
-// never prints the API key.
+// banded hosted page for a USD plan and pays it with the runbook's international test card, then reads the invoice
+// back, verifies a successful refund and cancels the subscription. It never touches the live site, never charges
+// real money and never prints the API key or raw card fields.
 //
-// Usage: pnpm exec tsx scripts/bandedTestCardQa.ts [probe|card]
+// Usage: pnpm exec tsx scripts/bandedTestCardQa.ts [probe|provision|card|handshake]
 //   probe (default) read-only: the banded items and USD item prices exist on the TEST site.
-//   card            probe, then create a USD hosted page, pay it with the international test card and verify.
+//   provision       create-only TEST-site catalog sync, then probe.
+//   card            probe, pay with the international test card, verify payment/refund and cancel.
+//   handshake       live /plans captures and Buy up to the hosted page without paying.
 // Output: banded-qa/summary.json plus screenshots; a Markdown table in $GITHUB_STEP_SUMMARY.
 // Exit 0 when the requested mode is proven, 1 otherwise.
 import { mkdir, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { createBandedPlanPage } from "../server/bandedCheckoutProvider";
+import { chargebeeRequest, idPath } from "../server/chargebeeApi";
 import { applyCatalogSync, buildCatalogSyncDryRun } from "../server/catalogSyncApply";
 import { createChargebeeCatalogApi } from "../server/chargebeeCatalogApi";
 import { bandedPlanItemPriceId } from "../shared/bandedCatalog";
@@ -148,24 +152,80 @@ export async function provisionTestCatalog(credentials: Credentials): Promise<Pr
   return { planned: dry.counts.toCreate, outcome: result.report.outcome, blocked: dry.blocked.length };
 }
 
-export type CardProof = {  hostedPageId: string;
+const hostedPageSchema = z.object({
+  hosted_page: z.object({
+    id: z.string().min(1),
+    url: z.string().min(1),
+    state: z.string().optional(),
+    content: z.object({
+      subscription: z.object({ id: z.string().min(1), status: z.string().min(1), currency_code: z.string().length(3) }).optional(),
+      invoice: z.object({ id: z.string().min(1), status: z.string().min(1) }).optional(),
+    }).optional(),
+  }),
+});
+
+const invoiceSchema = z.object({
+  invoice: z.object({
+    id: z.string().min(1),
+    status: z.string().min(1),
+    currency_code: z.string().length(3),
+    total: z.number().int().nonnegative(),
+    amount_paid: z.number().int().nonnegative(),
+  }),
+});
+
+const refundStatusSchema = z.enum(["in_progress", "success", "voided", "failure", "timeout", "needs_attention", "late_failure"]);
+const refundTransactionSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("refund"),
+  status: refundStatusSchema,
+  amount: z.number().int().nonnegative(),
+  currency_code: z.string().length(3),
+  error_code: z.string().max(100).nullish(),
+});
+
+const refundResponseSchema = z.object({
+  invoice: z.object({ id: z.string().min(1), status: z.string().min(1) }),
+  transaction: refundTransactionSchema,
+  credit_note: z.object({ id: z.string().min(1), status: z.string().min(1) }),
+});
+
+export type RefundProof = {
+  transactionId: string;
+  transactionStatus: z.infer<typeof refundStatusSchema>;
+  amountMinor: number;
+  currencyCode: string;
+  creditNoteId: string;
+  creditNoteStatus: string;
+  errorCode: string | null;
+  verified: boolean;
+  idempotencyKey: string;
+};
+
+export type CardProof = {
+  hostedPageId: string;
   checkoutUrl: string;
   subscriptionId: string;
   subscriptionStatus: string;
   currencyCode: string;
   invoiceId: string | null;
   invoiceStatus: string | null;
+  invoiceTotal: number | null;
+  invoiceCurrency: string | null;
+  invoiceAmountPaid: number | null;
   paid: boolean;
+  refund: RefundProof | null;
 };
 
-/** Read the provider's own record of what the hosted page created. */
+/** Read the provider's own record of what the hosted page created; subscription state alone is not payment proof. */
 export async function readBack(credentials: Credentials, hostedPageId: string): Promise<CardProof> {
-  const page = (await chargebeeGet(credentials, `/hosted_pages/${encodeURIComponent(hostedPageId)}`)) as {
-    hosted_page: { id: string; url: string; state?: string; content?: { subscription?: { id: string; status: string; currency_code: string }; invoice?: { id: string; status: string } } };
-  };
+  const page = await chargebeeRequest(credentials, { method: "GET", path: `/hosted_pages/${idPath(hostedPageId)}` }, hostedPageSchema);
   const subscription = page.hosted_page.content?.subscription;
   if (!subscription) throw new Error(`hosted page ${hostedPageId} created no subscription (state ${page.hosted_page.state ?? "unknown"})`);
-  const invoice = page.hosted_page.content?.invoice;
+  const hostedInvoice = page.hosted_page.content?.invoice;
+  const invoice = hostedInvoice
+    ? (await chargebeeRequest(credentials, { method: "GET", path: `/invoices/${idPath(hostedInvoice.id)}` }, invoiceSchema)).invoice
+    : null;
   return {
     hostedPageId,
     checkoutUrl: page.hosted_page.url,
@@ -174,7 +234,72 @@ export async function readBack(credentials: Credentials, hostedPageId: string): 
     currencyCode: subscription.currency_code,
     invoiceId: invoice?.id ?? null,
     invoiceStatus: invoice?.status ?? null,
-    paid: invoice?.status === "paid" || ["active", "in_trial"].includes(subscription.status),
+    invoiceTotal: invoice?.total ?? null,
+    invoiceCurrency: invoice?.currency_code ?? null,
+    invoiceAmountPaid: invoice?.amount_paid ?? null,
+    paid: invoice?.status === "paid",
+    refund: null,
+  };
+}
+
+export type RefundPollOptions = { attempts?: number; wait?: (milliseconds: number) => Promise<void> };
+
+function validateRefundTransaction(transaction: z.infer<typeof refundTransactionSchema>, invoice: { currencyCode: string; amountMinor: number }): void {
+  if (transaction.amount !== invoice.amountMinor || transaction.currency_code !== invoice.currencyCode) {
+    throw new Error(`refund ${transaction.id} returned the wrong amount/currency (${transaction.currency_code} ${transaction.amount})`);
+  }
+}
+
+/** Refund the paid TEST invoice and require Chargebee's refund transaction to reach success. */
+export async function refundInvoice(
+  credentials: Credentials,
+  invoice: { id: string; currencyCode: string; amountMinor: number },
+  idempotencyKey: string,
+  options: RefundPollOptions = {},
+): Promise<RefundProof> {
+  if (!Number.isInteger(invoice.amountMinor) || invoice.amountMinor < 1) throw new Error("a verified refund needs a positive paid amount in minor units");
+  const attempts = options.attempts ?? 18;
+  if (!Number.isInteger(attempts) || attempts < 1) throw new Error("refund poll attempts must be a positive integer");
+  const wait = options.wait ?? ((milliseconds: number) => new Promise<void>(resolve => setTimeout(resolve, milliseconds)));
+  const form = new URLSearchParams({
+    refund_amount: String(invoice.amountMinor),
+    comment: "BANDED QA international TEST card refund",
+  });
+  const response = await chargebeeRequest(credentials, {
+    method: "POST",
+    path: `/invoices/${idPath(invoice.id)}/refund`,
+    form,
+    idempotencyKey,
+  }, refundResponseSchema);
+  if (response.invoice.id !== invoice.id) throw new Error(`refund returned invoice ${response.invoice.id}, expected ${invoice.id}`);
+  let transaction = response.transaction;
+  const creditNoteId = response.credit_note.id;
+  const creditNoteStatus = response.credit_note.status;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    validateRefundTransaction(transaction, invoice);
+    if (transaction.status === "success") {
+      return {
+        transactionId: transaction.id, transactionStatus: transaction.status, amountMinor: transaction.amount,
+        currencyCode: transaction.currency_code, creditNoteId, creditNoteStatus,
+        errorCode: transaction.error_code ?? null, verified: true, idempotencyKey,
+      };
+    }
+    if (["voided", "failure", "timeout", "late_failure"].includes(transaction.status)) {
+      throw new Error(`refund ${transaction.id} ended ${transaction.status}${transaction.error_code ? ` (${transaction.error_code})` : ""}`);
+    }
+    if (attempt + 1 < attempts) {
+      await wait(5_000);
+      const current = await chargebeeRequest(credentials, {
+        method: "GET", path: `/transactions/${idPath(transaction.id)}`,
+      }, z.object({ transaction: refundTransactionSchema }));
+      if (current.transaction.id !== transaction.id) throw new Error("Chargebee returned a different refund transaction while polling");
+      transaction = current.transaction;
+    }
+  }
+  return {
+    transactionId: transaction.id, transactionStatus: transaction.status, amountMinor: transaction.amount,
+    currencyCode: transaction.currency_code, creditNoteId, creditNoteStatus,
+    errorCode: transaction.error_code ?? null, verified: false, idempotencyKey,
   };
 }
 
@@ -187,6 +312,48 @@ export async function cancelTestSubscription(credentials: Credentials, subscript
     signal: AbortSignal.timeout(20_000),
   });
   if (!response.ok) throw new Error(`cancel of ${subscriptionId} answered ${response.status}`);
+}
+
+export type CardSettlement = { cancelled: boolean; errors: string[] };
+
+/** Refund any recorded payment and always attempt cancellation, including after a hosted-page UI failure. */
+export async function settleCardProof(
+  credentials: Credentials,
+  proof: CardProof,
+  log: (line: string) => void,
+  refundOptions: RefundPollOptions = {},
+): Promise<CardSettlement> {
+  const errors: string[] = [];
+  const paymentInvalid = !proof.paid
+    || proof.currencyCode !== CURRENCY
+    || proof.invoiceCurrency !== CURRENCY
+    || proof.invoiceAmountPaid === null
+    || proof.invoiceAmountPaid < 1;
+  let refundFailed = false;
+  if (proof.paid && proof.invoiceId && proof.invoiceCurrency && proof.invoiceAmountPaid !== null && proof.invoiceAmountPaid > 0) {
+    try {
+      proof.refund = await refundInvoice(credentials, {
+        id: proof.invoiceId, currencyCode: proof.invoiceCurrency, amountMinor: proof.invoiceAmountPaid,
+      }, `banded-qa-refund-${proof.invoiceId}`, refundOptions);
+      log(`refund transaction ${proof.refund.transactionId} ${proof.refund.transactionStatus} ${proof.refund.currencyCode} ${proof.refund.amountMinor}, verified ${proof.refund.verified}`);
+    } catch (error) {
+      refundFailed = true;
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (paymentInvalid) {
+    errors.push(`the provider did not record a paid ${CURRENCY} invoice (subscription ${proof.subscriptionStatus}, invoice ${proof.invoiceStatus ?? "none"}, currency ${proof.invoiceCurrency ?? "none"}, paid ${proof.invoiceAmountPaid ?? "none"})`);
+  } else if (!refundFailed && !proof.refund?.verified) {
+    errors.push(`the paid invoice has no verified successful refund (transaction ${proof.refund?.transactionId ?? "none"})`);
+  }
+  let cancelled = false;
+  try {
+    await cancelTestSubscription(credentials, proof.subscriptionId);
+    cancelled = true;
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
+  }
+  return { cancelled, errors };
 }
 
 /** Fill the Chargebee hosted card form. Selectors are tried in order because the hosted page is provider-owned. */
@@ -241,6 +408,10 @@ async function fillBilling(page: import("playwright").Page): Promise<void> {
     const firstValue = await state.locator("option:not([disabled])").nth(1).getAttribute("value").catch(() => null);
     if (firstValue) await state.selectOption(firstValue).catch(() => undefined);
   }
+}
+
+export function cardFieldDiagnostic(field: string, selector: string, value: string): string {
+  return `${field}=${selector} state=${value ? "set" : "empty"} length=${value.length}`;
 }
 
 /** Pay the hosted page with the international test card and prove the provider recorded it. */
@@ -299,9 +470,9 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
         const used = await fillFirst(page, root, selectors, value);
         if (used) {
           filled.push(`${field}=${used}`);
-          // Masked fields can report an empty DOM value while showing one; record what the input actually holds.
+          // Masked fields can report an empty DOM value while showing one; record state and length, never the value.
           const actual = await root.locator(used).first().evaluate(el => (el as HTMLInputElement).value).catch(() => "");
-          values.push(`${field}:"${actual}"`);
+          values.push(cardFieldDiagnostic(field, used, actual));
         }
       }
       deps.log(`card field values: ${values.join(", ")}`);
@@ -441,7 +612,8 @@ export function markdownOf(summary: Summary): string {
     `| TEST catalog provision | ${summary.provision ? `${summary.provision.outcome}, ${summary.provision.planned} to create, ${summary.provision.blocked} blocked` : "not run"} |`,
     `| Card | ${summary.card ? `${summary.card.brand} ending ${summary.card.last4}` : "not charged"} |`,
     `| Subscription | ${summary.proof ? `\`${summary.proof.subscriptionId}\` (${summary.proof.subscriptionStatus}, ${summary.proof.currencyCode})` : "none"} |`,
-    `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus})` : "none"} |`,
+    `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus}, ${summary.proof.invoiceCurrency ?? "?"} ${summary.proof.invoiceTotal ?? "?"} minor units, paid ${summary.proof.invoiceAmountPaid ?? "?"})` : "none"} |`,
+    `| Refund | ${summary.proof?.refund ? `\`${summary.proof.refund.transactionId}\` (${summary.proof.refund.transactionStatus}, ${summary.proof.refund.currencyCode} ${summary.proof.refund.amountMinor}, credit note \`${summary.proof.refund.creditNoteId}\`, verified ${summary.proof.refund.verified})` : "none"} |`,
     `| QA subscription cancelled | ${summary.cancelled ? "yes" : "no"} |`,
     ...(summary.handshake ? [
       `| Live offer | onSale: ${summary.handshake.offerOnSale} |`,
@@ -511,6 +683,7 @@ async function main(): Promise<number> {
         summary.reason = "read-only probe passed";
       } else {
         const card = cardOf();
+        summary.card = { brand: card.brand, last4: card.number.slice(-4) };
         const checkoutIntentId = `banded-qa-${randomUUID()}`;
         const page = await createBandedPlanPage(credentials, {
           itemPriceId: summary.probe.usdItemPriceId,
@@ -525,31 +698,44 @@ async function main(): Promise<number> {
         });
         log(`hosted page ${page.hostedPageId} created for ${summary.probe.usdItemPriceId}`);
         const { chromium } = await import("playwright");
-        const run = await payHostedPage({
-          launch: async () => {
-            const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
-            return {
-              newPage: async () => {
-                const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-                return context.newPage();
-              },
-              close: () => browser.close(),
-            };
-          },
-          screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
-          log,
-        }, page.checkoutUrl, card);
+        let run: { filled: string[]; finalUrl: string };
+        try {
+          run = await payHostedPage({
+            launch: async () => {
+              const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
+              return {
+                newPage: async () => {
+                  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+                  return context.newPage();
+                },
+                close: () => browser.close(),
+              };
+            },
+            screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
+            log,
+          }, page.checkoutUrl, card);
+        } catch (error) {
+          const interactionFailure = error instanceof Error ? error.message : String(error);
+          log(`hosted-page interaction failed; reconciling the provider record before stopping: ${interactionFailure}`);
+          let recoveryErrors: string[] = [];
+          try {
+            summary.proof = await readBack(credentials, page.hostedPageId);
+            const recovered = await settleCardProof(credentials, summary.proof, log);
+            summary.cancelled = recovered.cancelled;
+            recoveryErrors = recovered.errors;
+          } catch (recoveryError) {
+            recoveryErrors = [recoveryError instanceof Error ? recoveryError.message : String(recoveryError)];
+          }
+          throw new Error([interactionFailure, ...recoveryErrors.map(message => `provider recovery: ${message}`)].join("; "));
+        }
         log(`card form filled: ${run.filled.join(", ")}; final URL ${run.finalUrl}`);
-        summary.card = { brand: card.brand, last4: card.number.slice(-4) };
         summary.proof = await readBack(credentials, page.hostedPageId);
         log(`provider record: ${summary.proof.subscriptionId} ${summary.proof.subscriptionStatus} ${summary.proof.currencyCode}, invoice ${summary.proof.invoiceId ?? "none"} ${summary.proof.invoiceStatus ?? ""}`);
-        if (!summary.proof.paid || summary.proof.currencyCode !== CURRENCY) {
-          throw new Error(`the provider did not record a paid ${CURRENCY} subscription (status ${summary.proof.subscriptionStatus}, invoice ${summary.proof.invoiceStatus ?? "none"})`);
-        }
-        await cancelTestSubscription(credentials, summary.proof.subscriptionId);
-        summary.cancelled = true;
+        const settled = await settleCardProof(credentials, summary.proof, log);
+        summary.cancelled = settled.cancelled;
+        if (settled.errors.length) throw new Error(settled.errors.join("; "));
         summary.ok = true;
-        summary.reason = "international TEST card paid a USD banded plan and the provider recorded it";
+        summary.reason = "international TEST card paid a USD banded plan, the paid invoice was refunded successfully and the subscription was cancelled";
       }
     }
   } catch (error) {
