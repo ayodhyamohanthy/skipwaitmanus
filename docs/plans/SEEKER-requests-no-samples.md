@@ -33,4 +33,4 @@ run's `/requests` captures show no sample rows (link them in the Status section)
 
 ## Status
 
-- SEEKER-requests-no-samples: in progress — Claude Code · 823b — 2026-11-24 — branch agent/queue/seeker-requests-no-samples
+- SEEKER-requests-no-samples: review — agent/queue/seeker-requests-no-samples — 05c1a6470 (Claude Code · 823b, 2026-11-24). Sample rows and `GoalSampleRows.tsx` removed; red-first test then 127/127 My asks + boundary tests, `pnpm check`, token audit and scope check pass. Captures of the empty `/requests` at 1280 and 390 (fixture API, signed-in seeker with no asks) attached to the PR. Live acceptance: the next signed-in live QA run's `/requests` captures.
