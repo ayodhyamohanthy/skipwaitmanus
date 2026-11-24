@@ -1,4 +1,5 @@
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
+import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_RECONFIRM_ENABLED, RECONFIRM_AFTER_DAYS, type AskReconfirmResponse } from "../shared/askReconfirm";
 import { ASK_RECONFIRM_NOTICE_TITLE, ASK_RECONFIRM_PROMPT } from "../shared/moneyCopy";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
@@ -2770,6 +2771,9 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, debitTransactionId: referralRequests.debitTransactionId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, createdAt: referralRequests.createdAt, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
     if (!current) throw new Error("This referral request is not in your account");
     if (current.status !== "pending") return { expired: false as const, requestId, status: current.status };
+    // D-174: while the ask clocks are suspended nothing closes and no credit moves; the ask keeps its
+    // credit until it is claimed or withdrawn (withdrawing before pickup still returns it).
+    if (ASK_NO_EXPIRY_ENABLED) return { expired: false as const, requestId, status: current.status };
     // D-061: the shelf life is window-aware — waiting asks close 90 days after creation at no cost, every other
     // ask 7 days after its first visibility (coverageVisibleAt; pre-0095 rows: creation).
     const expiresAt = getAskShelfLifeEndsAtMs(current);
@@ -2873,6 +2877,8 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
  */
 export async function reconcileExpiredPendingReferrals(userId: number, nowMs: number = Date.now()) {
   const db = await getDb(); if (!db) return { expiredRequestIds: [] as number[] };
+  // D-174: with the clocks off a read closes nothing and refunds nothing; every other read keeps working.
+  if (ASK_NO_EXPIRY_ENABLED) return { expiredRequestIds: [] as number[] };
   const cutoff = new Date(nowMs - ASK_TTL_MS);
   const waitingCutoff = new Date(nowMs - COVERAGE_WAIT_MS);
   // D-061: two windows — a visible ask is stale 7 days after first visibility (pre-0095 rows: creation), a waiting or

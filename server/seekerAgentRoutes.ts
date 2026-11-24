@@ -23,6 +23,7 @@ import {
   type AgentEventView,
   type AgentGrantView,
   type AgentLimits,
+  type AgentRequestView,
   type AgentScope,
   type AgentSendRequestView,
   createAgentGrantInputSchema,
@@ -89,6 +90,12 @@ export type SeekerAgentRouteDeps = {
   getCompanyDirectoryEntry: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
   /** SKIPPY-6: the seeker's own unattached resumes, newest first, for the approval card's default. */
   listResumes: (userId: number) => Promise<Array<{ id: number; fileName: string; createdAt: Date }>>;
+  /**
+   * D-178.read: the seeker's own referral requests, the same rows their
+   * /requests page lists (`listJobSeekerCompanyReferrals`). The route whitelists
+   * fields and never returns referrer identity (D-019(e)).
+   */
+  listRequests: (userId: number) => Promise<Array<Record<string, unknown>>>;
   /** SKIPPY-6: one in-app notice, plus at most one email a day with a direct link (D-060). */
   notifySendRequest: (input: { userId: number; agentName: string; approvalId: number; companyName: string; cost: number; origin: string }) => Promise<void>;
   now?: () => number;
@@ -107,6 +114,35 @@ const grantView = (grant: GrantRow, paused: boolean, nowMs: number): AgentGrantV
 });
 const draftView = (row: DraftRow): AgentDraftView => ({ id: row.id, companySlug: row.companySlug, targetRoleUrl: row.targetRoleUrl, note: row.note, jobLevel: row.jobLevel, creditCost: row.creditCost, status: row.status, createdAt: row.createdAt.toISOString() });
 const eventView = (row: EventRow): AgentEventView => ({ id: row.id, agentName: row.agentName, action: row.action, outcome: row.outcome, detail: row.detail, createdAt: row.createdAt.toISOString() });
+
+const isoOf = (value: unknown): string | null => {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === "string" && !Number.isNaN(new Date(value).getTime())) return new Date(value).toISOString();
+  return null;
+};
+const textOf = (value: unknown, max: number): string | null => (typeof value === "string" ? value.slice(0, max) : null);
+const countOf = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0);
+
+/**
+ * D-178.read (D-019(e)): a field whitelist, so a new column never reaches an
+ * agent by accident. Referrer id, name and title are deliberately absent: the
+ * agent never learns who the referrer is, before or after acceptance.
+ */
+const requestView = (row: Record<string, unknown>): AgentRequestView => ({
+  id: typeof row.id === "number" ? row.id : 0,
+  title: textOf(row.title, 200),
+  targetRoleUrl: textOf(row.targetRoleUrl, 2048),
+  companyDomain: textOf(row.companyDomain, 255) ?? "",
+  compensation: textOf(row.compensation, 200),
+  status: textOf(row.status, 40) ?? "pending",
+  queueStatus: row.queueStatus === "available_for_review" || row.queueStatus === "waiting_for_coverage" || row.queueStatus === "held_for_credit" ? row.queueStatus : null,
+  waitingForCoverage: row.waitingForCoverage === true,
+  referrerMessage: textOf(row.referrerMessage, 2000),
+  unreadMessageCount: countOf(row.unreadMessageCount),
+  attachmentCount: countOf(row.attachmentCount),
+  createdAt: isoOf(row.createdAt) ?? "",
+  updatedAt: isoOf(row.updatedAt) ?? "",
+});
 
 const newKey = () => `${AGENT_KEY_PREFIX}${randomBytes(32).toString("hex")}`;
 const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
@@ -179,6 +215,26 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     if (!grant) return;
     event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.me", outcome: "success" });
     noStore(res).json({ agent: grantView(grant, false, nowMs()) });
+  });
+
+  /**
+   * D-178.read (D-290 R9 parity): the same list MCP's `list_my_requests` returns,
+   * with the fields the seeker's own /requests page shows. Read-only, the token
+   * owner's own rows only, and never referrer identity (D-019(e)). Any live
+   * grant may read it, as with the MCP tool; no scope is required.
+   */
+  app.get("/api/agent/v1/requests", async (req, res) => {
+    if (!deps.enabled()) return res.status(404).json({ error: "Not found" });
+    const grant = await agentGuard(req, res, "agent.requests");
+    if (!grant) return;
+    try {
+      const rows = await deps.listRequests(grant.userId);
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.requests", outcome: "success" });
+      noStore(res).json({ requests: rows.map(requestView) });
+    } catch {
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.requests", outcome: "failure" });
+      noStore(res).status(503).json({ error: "Your referral requests are unavailable right now. Try again in a moment." });
+    }
   });
 
   app.get("/api/agent/v1/companies", async (req, res) => {

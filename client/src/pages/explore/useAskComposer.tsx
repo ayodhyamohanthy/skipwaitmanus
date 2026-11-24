@@ -37,6 +37,7 @@ import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
 import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, companyCapCopy, slotCapNudgeCopy } from "@shared/openAskSlots";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
+import { ASK_NO_EXPIRY_ENABLED } from "@shared/askNoExpiry";
 import { MAX_ASK_WORK_ITEMS } from "@shared/askWorkItems";
 import { parseOpportunityAskSearch, type OpportunityAskSearch } from "@shared/companyOpportunities";
 import { completeTargetRoleUrl, isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
@@ -214,6 +215,35 @@ function clearStartHandoff(): void {
     localStorage.removeItem("bridge-company-confirmation");
   } catch { /* persistence is best-effort */ }
   clearReferralDraft();
+}
+
+/**
+ * D-174: the line the composer shows after a send. With the ask clocks off there is no 7-day close
+ * and no 90-day cap, so the no-expiry variants promise only what still happens: the request stays
+ * open until it is answered or withdrawn, and withdrawing before pickup returns the charge.
+ * `noExpiry` defaults to the switch; the test passes both values.
+ */
+export function sentAskDetail(input: { company: string; where: string; fastTrack: boolean; waitingForCoverage: boolean; firstLook: boolean; levelCost: boolean }, noExpiry: boolean = ASK_NO_EXPIRY_ENABLED): string {
+  const creditUsed = creditUsedPhrase(input.levelCost);
+  const shortfall = input.levelCost ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one.";
+  if (input.fastTrack) {
+    return noExpiry
+      ? `Only the ${input.where}employee whose link you used will see it. It stays open until they answer it or you withdraw it; withdrawing before pickup returns the credit, ${CREDIT_ENDED_CAVEAT}.`
+      : `Only the ${input.where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`;
+  }
+  if (input.waitingForCoverage) {
+    return noExpiry
+      ? `It's waiting in ${input.company}'s pool for verified employees who join, so nothing was spent. It stays open until one can see it and answers, or you withdraw it: when one can see it, ${creditUsed} and it goes live; ${shortfall}`
+      : `It's waiting in ${input.company}'s pool for verified employees who join, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsed} and it goes live; ${shortfall}`;
+  }
+  if (input.firstLook) {
+    return noExpiry
+      ? `The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified ${input.where}employees can see it. It stays open until someone answers it or you withdraw it; withdrawing before pickup returns the credit, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`
+      : `The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified ${input.where}employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`;
+  }
+  return noExpiry
+    ? `It reached verified ${input.where}employees. It stays open until someone answers it or you withdraw it; withdrawing before pickup returns the credit, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`
+    : `It reached verified ${input.where}employees. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`;
 }
 
 export type AskComposer = {
@@ -630,13 +660,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       const where = created.companyDomain ? `${created.companyDomain} ` : "";
       setSent({
         company: name,
-        detail: created.fastTrack
-          ? `Only the ${where}employee whose link you used will see it. If they don’t pick it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
-          : created.waitingForCoverage
-            ? `It's waiting in ${name}'s pool for verified employees who join, so nothing was spent. It waits for free up to ${COVERAGE_WAIT_DAYS} days: when one can see it, ${creditUsedPhrase(ASK_LEVEL_COST_CLIENT)} and it goes live; ${ASK_LEVEL_COST_CLIENT ? "if you do not have enough then, we hold it until you add more." : "if you have no credit then, we hold it until you add one."}`
-            : created.firstLook
-              ? `The employee who posted this role sees your ask first. If they pass, or don’t accept within ${OPPORTUNITY_FIRST_LOOK_HOURS} hours, other verified ${where}employees can see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`
-              : `It reached verified ${where}employees. If nobody picks it up within ${ASK_TTL_DAYS} days, it closes and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`,
+        detail: sentAskDetail({ company: name, where, fastTrack: created.fastTrack, waitingForCoverage: created.waitingForCoverage, firstLook: created.firstLook, levelCost: ASK_LEVEL_COST_CLIENT }),
         slots: created.slots ? (created.slots.cap === null ? `Open referral requests ${created.slots.open}` : `Open referral requests ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,
       });
