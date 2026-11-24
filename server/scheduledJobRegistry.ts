@@ -154,5 +154,4 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     leaseMs: 5 * MINUTE,
     run: createPoolReviewEmail(),
   },
-  },
 ];
