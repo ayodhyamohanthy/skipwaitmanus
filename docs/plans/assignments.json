@@ -384,7 +384,7 @@
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys",
       "status": "todo",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "dependsOn": [
         "OPS-live-qa-hardening",
         "QA-sandbox-requests"
@@ -451,7 +451,7 @@
       "lane": "p0-ask-send",
       "branch": "agent/queue/p0-ask-send-blocked-reason",
       "status": "done",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "dependsOn": [],
       "owns": [
         "client/src/components/goal/GoalButton.tsx",
@@ -609,7 +609,7 @@
       "lane": "qa-sandbox-requests",
       "branch": "agent/queue/qa-sandbox-requests",
       "status": "todo",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "dependsOn": [],
       "owns": [
         "server/db.ts",
@@ -637,7 +637,7 @@
       "lane": "qa-demo-test-billing",
       "branch": "agent/queue/qa-demo-test-billing",
       "status": "todo",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "dependsOn": [
         "QA-sandbox-requests"
       ],
@@ -671,7 +671,7 @@
       "lane": "admin-activity-log",
       "branch": "agent/queue/admin-activity-log",
       "status": "todo",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "dependsOn": [],
       "owns": [
         "server/authEvents.ts",
@@ -700,7 +700,7 @@
       "lane": "admin-support-view",
       "branch": "agent/queue/admin-support-view",
       "status": "todo",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "dependsOn": [
         "ADMIN-activity-log"
       ],
@@ -8558,17 +8558,19 @@
       "lane": "d178-read",
       "branch": "agent/queue/d178-read",
       "status": "todo",
-      "syncedTo": "D-290",
+      "syncedTo": "D-395",
       "epic": "D-178",
       "owns": [
+        "docs/DECISIONS.md",
+        "docs/plans/assignments.json",
         "server/seekerAgentRoutes.ts (one route)",
         "shared/seekerAgents.ts (one view type)",
         "server/seekerAgentRequests.test.ts"
       ],
       "dependsOn": [
-        "SKIPPY-6"
+        "D-178.grant"
       ],
-      "note": "Packet section 5 row 4."
+      "note": "Packet section 5 row 4. D-395 (Nov 24) clears the standing Qoder · 2b1b block: worktree contention resolved by D-388 / PR #1537, SKIPPY-6 dependency reconciled to D-178.grant, and PR #1522 implementation ready with green required CI."
     },
     {
       "id": "D-178.screen",
