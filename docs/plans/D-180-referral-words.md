@@ -79,3 +79,5 @@ now owns SeekerConversation.tsx; this registration does not edit it.
 Status: registration repair prepared on main 7d69a3ce; build remains waiting.
 Separate final-delta review, exact required CI, current-main validation and a
 distinct normal-procedure lander are still required. No self-landing.
+
+- D-180-referral-words: in progress — DeepSeek V4.1 Flash · 3aec — 2026-11-24 — branch agent/queue/referral-words-sweep
