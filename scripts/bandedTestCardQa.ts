@@ -199,18 +199,14 @@ const FIELD_SELECTORS = {
 
 const ALL_FIELD_SELECTORS = Object.values(FIELD_SELECTORS).flat().join(", ");
 
-async function fillFirst(root: import("playwright").Page | import("playwright").FrameLocator, selectors: readonly string[], value: string): Promise<string | null> {
+async function fillFirst(page: import("playwright").Page, root: import("playwright").Page | import("playwright").FrameLocator, selectors: readonly string[], value: string): Promise<string | null> {
   for (const selector of selectors) {
     const field = root.locator(selector).first();
     if (await field.count()) {
-      await field.fill(value).catch(() => undefined);
-      // Masked inputs (the expiry) ignore a direct value set; type it when the field is still empty.
-      if (!(await field.inputValue().catch(() => ""))) {
-        await field.click({ force: true }).catch(() => undefined);
-        await field.pressSequentially(value, { delay: 40 }).catch(() => undefined);
-      }
-      // The payment component validates on blur, so leave the field before moving on.
-      await field.press("Tab").catch(() => undefined);
+      // The payment component is a controlled app: focus the field and send real key events, which its handlers see.
+      await field.click({ timeout: 10_000 }).catch(() => undefined);
+      await field.press("ControlOrMeta+a").catch(() => undefined);
+      await page.keyboard.type(value, { delay: 80 });
       return selector;
     }
   }
@@ -300,7 +296,7 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       const values: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
         const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
-        const used = await fillFirst(root, selectors, value);
+        const used = await fillFirst(page, root, selectors, value);
         if (used) {
           filled.push(`${field}=${used}`);
           // Masked fields can report an empty DOM value while showing one; record what the input actually holds.
