@@ -8749,6 +8749,27 @@
       ],
       "note": "Measured defect: a real --claim died with exit 1 on git rev-parse refs/remotes/origin/agent/architect/skippy-auto-send because the snapshot said the lock existed, another session merged it (#1510) and a concurrent prune dropped the ref before the claim. lockTipWith re-checks the ref and claims from main; the fix claim refuses. Red-first scripts/nextTaskVanishedLock.test.ts 3/3. Lands on green required CI (D-370).",
       "epic": "D-212"
+    },
+    {
+      "id": "PICKER-claim-race-reread",
+      "title": "A claim that loses the race for its picked task re-picks inside the bounded claim loop instead of spending the three snapshot rereads",
+      "row": "D-324",
+      "packet": "docs/plans/PICKER-claim-race-reread.md",
+      "epic": "D-212",
+      "tier": 2,
+      "lane": "picker-claim-race",
+      "branch": "agent/queue/picker-claim-race-reread",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-claim-race-reread.md",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "AGENTS.md"
+      ],
+      "note": "D-324/D-321 (11) same-day dead-end fix, measured 2026-11-24 under 5+ concurrent claims. Red-first test plus fix in one commit; required CI on the pull request head is the landing gate. No product, money, flag, workflow, settings or spending change."
     }
   ]
 }
