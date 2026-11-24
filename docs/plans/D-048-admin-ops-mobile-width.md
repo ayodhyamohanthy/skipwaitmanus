@@ -54,3 +54,4 @@ All four phone cases pass the actual viewport/document-width checks, with no hid
 ## Status
 
 - Registered — GPT-6.1 Sol · 6f46 — November 19, 2026 — evidence from PR #1332; no implementation or claim. Appended to the queue with no existing row reordered and no dependency added solely for shared files (D-314).
+- D-048-admin-ops-mobile-width: in progress — DeepSeek V4.1 Flash · eb89 — 2026-11-24 — branch agent/queue/d048-admin-ops-mobile-width
