@@ -6,6 +6,15 @@ Governing decisions:
 - **D-367:** Job level mapping (L1-L3 Early, L4 Mid, L5-L8 Senior, L9-L10 Executive); INR and USD both at launch through Razorpay; gateway fees absorbed; post-cap price undecided (full band stops selling).
 - **D-370 (6):** Pricing approved: Razorpay international payments confirmed on; live catalog apply (from admin) and turning `BANDED_SALES_ENABLED` on after TEST-site QA require no further owner word.
 - **D-065 / AGENTS.md / QA_PAYMENTS.md:** No real-money QA; live payment test is owner UPI test only; agents never pay.
+- **D-392 (Nov 24):** Chargebee's invisible hCaptcha withholds its token from the automated browser (artifact 14906988474 of run 45366564445: card parsed, fields valid, Pay clicked, hCaptcha response empty). No session works around a bot check and no further automated card attempt is made. The international-card condition of D-370 (6) is met by one TEST payment the owner makes in their own browser; the runner then proves the rest from the provider record.
+
+---
+
+## 0. D-392 owner TEST payment and the `verify` mode
+
+The owner pays one TEST checkout on `skipwait-test` in their own browser with the runbook's international test Visa 4012 8888 8888 1881, any future expiry, any CVV, using the fixed QA email `banded-qa+owner@skipwait.me`. No single-use hosted-page link is posted in a public log, artifact or chat: the owner opens the checkout from the Chargebee TEST dashboard for the USD `early_to_mid` price. If the dashboard offers no checkout for an item price, that exact question goes back to the owner and the row waits.
+
+`scripts/bandedTestCardQa.ts verify` then finds that payment by the fixed email (customer → subscription → paid invoice) and reuses card mode's settlement, refund and cancellation code. It never charges and never reads a hosted page. A `verify` that finds no paid invoice, or a refund that does not reach `success`, leaves sales off and is reported, never retried around.
 
 ---
 

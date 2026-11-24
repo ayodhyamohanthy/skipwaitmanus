@@ -62,13 +62,19 @@ export const DEMO_PASSWORD_ENV = "REVIEWER_SEEKER_PASSWORD";
 /** The plan the handshake buys up to the hosted page. */
 export const HANDSHAKE_PLAN_LABEL = "Early to Mid";
 
-export type Mode = "probe" | "provision" | "card" | "handshake";
+export type Mode = "probe" | "provision" | "card" | "handshake" | "verify";
 
 export function parseMode(value: string | undefined): Mode {
   const mode = value || "probe";
-  if (mode === "probe" || mode === "provision" || mode === "card" || mode === "handshake") return mode;
-  throw new Error(`mode must be probe, provision, card or handshake, not "${mode}"`);
+  if (mode === "probe" || mode === "provision" || mode === "card" || mode === "handshake" || mode === "verify") return mode;
+  throw new Error(`mode must be probe, provision, card, handshake or verify, not "${mode}"`);
 }
+
+/**
+ * D-392 (3)(a): the fixed QA email the owner types on the TEST checkout. `verify` finds the owner's own payment
+ * by this address, so no single-use hosted-page link has to travel through a public log, artifact or chat.
+ */
+export const OWNER_QA_EMAIL = "banded-qa+owner@skipwait.me";
 
 /** The API key, or a plain refusal. The value is never returned in an error message. */
 export function apiKeyOf(env: NodeJS.ProcessEnv): string {
@@ -241,6 +247,70 @@ export async function readBack(credentials: Credentials, hostedPageId: string): 
   };
 }
 
+const customerListSchema = z.object({
+  list: z.array(z.object({ customer: z.object({ id: z.string().min(1), email: z.string().min(1) }) })).optional(),
+});
+
+const subscriptionListSchema = z.object({
+  list: z.array(z.object({
+    subscription: z.object({
+      id: z.string().min(1),
+      status: z.string().min(1),
+      currency_code: z.string().length(3),
+      customer_id: z.string().min(1),
+    }),
+  })).optional(),
+});
+
+const invoiceListSchema = z.object({
+  list: z.array(z.object({
+    invoice: z.object({
+      id: z.string().min(1),
+      status: z.string().min(1),
+      currency_code: z.string().length(3),
+      total: z.number().int().nonnegative(),
+      amount_paid: z.number().int().nonnegative(),
+    }),
+  })).optional(),
+});
+
+export type OwnerProof = { customerId: string; proof: CardProof };
+
+/**
+ * D-392 (3)(a): the owner pays one TEST checkout in their own browser, so the automated runner cannot read a
+ * hosted page it created. Find that payment by the fixed QA email instead and build the same proof card mode
+ * builds, so settlement, refund and cancellation run through one code path. Read-only: it never charges.
+ */
+export async function findOwnerProof(credentials: Credentials, email = OWNER_QA_EMAIL): Promise<OwnerProof> {
+  const customers = customerListSchema.parse(await chargebeeGet(credentials, `/customers?email[is]=${encodeURIComponent(email)}&limit=5`));
+  const customer = customers.list?.[0]?.customer;
+  if (!customer) throw new Error(`no TEST-site customer has the QA email ${email}: the owner has not paid yet`);
+  const subscriptions = subscriptionListSchema.parse(await chargebeeGet(credentials, `/subscriptions?customer_id[is]=${encodeURIComponent(customer.id)}&limit=10`));
+  const subs = subscriptions.list?.map(entry => entry.subscription) ?? [];
+  if (!subs.length) throw new Error(`the TEST-site customer ${customer.id} has no subscription: the owner's payment created none`);
+  const invoices = invoiceListSchema.parse(await chargebeeGet(credentials, `/invoices?customer_id[is]=${encodeURIComponent(customer.id)}&limit=20`));
+  const paid = (invoices.list ?? []).map(entry => entry.invoice).find(invoice => invoice.status === "paid" && invoice.amount_paid > 0);
+  if (!paid) throw new Error(`the TEST-site customer ${customer.id} has no paid invoice: the owner's payment did not settle`);
+  const subscription = subs.find(sub => sub.currency_code === paid.currency_code) ?? subs[0];
+  return {
+    customerId: customer.id,
+    proof: {
+      hostedPageId: "",
+      checkoutUrl: "",
+      subscriptionId: subscription.id,
+      subscriptionStatus: subscription.status,
+      currencyCode: subscription.currency_code,
+      invoiceId: paid.id,
+      invoiceStatus: paid.status,
+      invoiceTotal: paid.total,
+      invoiceCurrency: paid.currency_code,
+      invoiceAmountPaid: paid.amount_paid,
+      paid: true,
+      refund: null,
+    },
+  };
+}
+
 export type RefundPollOptions = { attempts?: number; wait?: (milliseconds: number) => Promise<void> };
 
 function validateRefundTransaction(transaction: z.infer<typeof refundTransactionSchema>, invoice: { currencyCode: string; amountMinor: number }): void {
@@ -346,11 +416,17 @@ export async function settleCardProof(
     errors.push(`the paid invoice has no verified successful refund (transaction ${proof.refund?.transactionId ?? "none"})`);
   }
   let cancelled = false;
-  try {
-    await cancelTestSubscription(credentials, proof.subscriptionId);
+  if (proof.subscriptionStatus === "cancelled") {
+    // verify can be dispatched again after a partial run: the subscription the first run cancelled needs no
+    // second cancel, and Chargebee refuses one. The refund above is idempotent by its keyed transaction.
     cancelled = true;
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
+  } else {
+    try {
+      await cancelTestSubscription(credentials, proof.subscriptionId);
+      cancelled = true;
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
   }
   return { cancelled, errors };
 }
@@ -605,6 +681,7 @@ export type Summary = {
   card: { brand: string; last4: string } | null;
   proof: CardProof | null;
   handshake: HandshakeProof | null;
+  verify: { email: string; customerId: string } | null;
   cancelled: boolean;
   ok: boolean;
   reason: string;
@@ -625,6 +702,7 @@ export function markdownOf(summary: Summary): string {
     `| Subscription | ${summary.proof ? `\`${summary.proof.subscriptionId}\` (${summary.proof.subscriptionStatus}, ${summary.proof.currencyCode})` : "none"} |`,
     `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus}, ${summary.proof.invoiceCurrency ?? "?"} ${summary.proof.invoiceTotal ?? "?"} minor units, paid ${summary.proof.invoiceAmountPaid ?? "?"})` : "none"} |`,
     `| Refund | ${summary.proof?.refund ? `\`${summary.proof.refund.transactionId}\` (${summary.proof.refund.transactionStatus}, ${summary.proof.refund.currencyCode} ${summary.proof.refund.amountMinor}, credit note \`${summary.proof.refund.creditNoteId}\`, verified ${summary.proof.refund.verified})` : "none"} |`,
+    ...(summary.verify ? [`| Owner QA email | \`${summary.verify.email}\` (customer \`${summary.verify.customerId}\`) |`] : []),
     `| QA subscription cancelled | ${summary.cancelled ? "yes" : "no"} |`,
     ...(summary.handshake ? [
       `| Live offer | onSale: ${summary.handshake.offerOnSale} |`,
@@ -648,9 +726,21 @@ async function main(): Promise<number> {
   const credentials: Credentials = { site: SITE, apiKey: key };
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, provision: null, card: null, proof: null, handshake: null, cancelled: false, ok: false, reason: "" };
+  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, provision: null, card: null, proof: null, handshake: null, verify: null, cancelled: false, ok: false, reason: "" };
   try {
-    if (mode === "handshake") {
+    if (mode === "verify") {
+      // D-392 (3)(a): the owner paid in their own browser, so there is no hosted page to read back. Find the
+      // payment by the fixed QA email and settle it through the same refund and cancellation path card mode uses.
+      const found = await findOwnerProof(credentials);
+      summary.verify = { email: OWNER_QA_EMAIL, customerId: found.customerId };
+      summary.proof = found.proof;
+      log(`verify: customer ${found.customerId} subscription ${found.proof.subscriptionId} ${found.proof.subscriptionStatus} ${found.proof.currencyCode}, invoice ${found.proof.invoiceId ?? "none"} ${found.proof.invoiceStatus ?? ""} paid ${found.proof.invoiceAmountPaid ?? "none"}`);
+      const settled = await settleCardProof(credentials, summary.proof, log);
+      summary.cancelled = settled.cancelled;
+      if (settled.errors.length) throw new Error(settled.errors.join("; "));
+      summary.ok = true;
+      summary.reason = "the owner's TEST payment has a paid USD invoice, its refund reached success and the subscription was cancelled";
+    } else if (mode === "handshake") {
       if (!password) throw new Error(`${DEMO_PASSWORD_ENV} is not set: the demo seeker password lives in the repository secret of that name`);
       summary.handshake = await handshake({
         launch: async () => {
@@ -675,8 +765,7 @@ async function main(): Promise<number> {
       console.log(handshakeMarkdown);
       if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${handshakeMarkdown}\n`);
       return 0;
-    }
-    if (mode === "provision") {
+    } else if (mode === "provision") {
       // Provision first: the probe below is the confirmation that the site now matches the frozen source.
       summary.provision = await provisionTestCatalog(credentials);
       log(`provision: ${summary.provision.outcome}, ${summary.provision.planned} to create`);

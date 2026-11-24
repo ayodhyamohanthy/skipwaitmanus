@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  CARD_EXPIRY, CURRENCY, DEMO_PASSWORD_ENV, DEMO_SEEKER_EMAIL, HANDSHAKE_PLAN_LABEL, INTERNATIONAL_TEST_CARDS, KEY_ENV, PLAN, PRODUCTION_ORIGIN, SITE,
-  apiKeyOf, cardFieldDiagnostic, cardOf, handshake, markdownOf, parseMode, probe, readBack, readLiveOffer, redactor, refundInvoice, settleCardProof, summaryOf,
+  CARD_EXPIRY, CURRENCY, DEMO_PASSWORD_ENV, DEMO_SEEKER_EMAIL, HANDSHAKE_PLAN_LABEL, INTERNATIONAL_TEST_CARDS, KEY_ENV, OWNER_QA_EMAIL, PLAN, PRODUCTION_ORIGIN, SITE,
+  apiKeyOf, cardFieldDiagnostic, cardOf, findOwnerProof, handshake, markdownOf, parseMode, probe, readBack, readLiveOffer, redactor, refundInvoice, settleCardProof, summaryOf,
 } from "./bandedTestCardQa";
 
 const root = path.resolve(__dirname, "..");
@@ -43,13 +43,14 @@ describe("TEST-site guards", () => {
     expect(redact(`key ${KEY} password demo-password-0001`)).toBe("key [redacted] password [redacted]");
   });
 
-  it("accepts only the four modes", () => {
+  it("accepts only the five modes", () => {
     expect(parseMode(undefined)).toBe("probe");
     expect(parseMode("probe")).toBe("probe");
     expect(parseMode("provision")).toBe("provision");
     expect(parseMode("card")).toBe("card");
     expect(parseMode("handshake")).toBe("handshake");
-    expect(() => parseMode("live")).toThrow(/probe, provision, card or handshake/);
+    expect(parseMode("verify")).toBe("verify");
+    expect(() => parseMode("live")).toThrow(/probe, provision, card, handshake or verify/);
   });
 });
 
@@ -144,6 +145,85 @@ describe("readBack", () => {
       String(url).includes("/hosted_pages/") ? hostedPage() : { invoice: { id: "inv_1", status: "paid", total: "449" } },
     ), { status: 200 })));
     await expect(readBack(credentials, "hp_1")).rejects.toThrow(/invalid_response/);
+  });
+});
+
+describe("verify (D-392 (3)(a))", () => {
+  const credentials = { site: SITE, apiKey: KEY };
+  const list = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+  const ownerRoutes = (invoices: unknown[]) => vi.fn(async (url: string) => {
+    const path = new URL(String(url)).pathname + new URL(String(url)).search;
+    if (path.startsWith("/api/v2/customers")) return list({ list: [{ customer: { id: "cust_owner", email: OWNER_QA_EMAIL } }] });
+    if (path.startsWith("/api/v2/subscriptions")) return list({ list: [{ subscription: { id: "sub_owner", status: "active", currency_code: "USD", customer_id: "cust_owner" } }] });
+    if (path.startsWith("/api/v2/invoices")) return list({ list: invoices });
+    return new Response("{}", { status: 404 });
+  });
+
+  it("finds the owner's paid TEST invoice by the fixed QA email", async () => {
+    const fetchMock = ownerRoutes([{ invoice: { id: "inv_owner", status: "paid", currency_code: "USD", total: 449, amount_paid: 449 } }]);
+    vi.stubGlobal("fetch", fetchMock);
+    const found = await findOwnerProof(credentials);
+    expect(found.customerId).toBe("cust_owner");
+    expect(found.proof).toMatchObject({
+      subscriptionId: "sub_owner", subscriptionStatus: "active", currencyCode: "USD",
+      invoiceId: "inv_owner", invoiceStatus: "paid", invoiceCurrency: "USD", invoiceAmountPaid: 449, paid: true,
+    });
+    // The lookup asks for the fixed address, never a link or a card: the owner's payment is found by email alone.
+    expect(String(fetchMock.mock.calls[0][0])).toContain(encodeURIComponent(OWNER_QA_EMAIL));
+    expect(OWNER_QA_EMAIL).toBe("banded-qa+owner@skipwait.me");
+  });
+
+  it("refuses when the owner has not paid yet", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => list({ list: [] })));
+    await expect(findOwnerProof(credentials)).rejects.toThrow(/has not paid yet/);
+  });
+
+  it("refuses a subscription with no paid invoice", async () => {
+    vi.stubGlobal("fetch", ownerRoutes([{ invoice: { id: "inv_owner", status: "payment_due", currency_code: "USD", total: 449, amount_paid: 0 } }]));
+    await expect(findOwnerProof(credentials)).rejects.toThrow(/no paid invoice/);
+  });
+
+  it("settles the owner's proof through the same refund and cancellation path", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const path = new URL(String(url)).pathname;
+      if (path.endsWith("/refund")) return list({
+        invoice: { id: "inv_owner", status: "paid" },
+        transaction: { id: "txn_refund", type: "refund", status: "success", amount: 449, currency_code: "USD" },
+        credit_note: { id: "cn_1", status: "issued" },
+      });
+      if (path.endsWith("/cancel_for_items")) return new Response("{}", { status: 200 });
+      if (path.startsWith("/api/v2/customers")) return list({ list: [{ customer: { id: "cust_owner", email: OWNER_QA_EMAIL } }] });
+      if (path.startsWith("/api/v2/subscriptions")) return list({ list: [{ subscription: { id: "sub_owner", status: "active", currency_code: "USD", customer_id: "cust_owner" } }] });
+      if (path.startsWith("/api/v2/invoices")) return list({ list: [{ invoice: { id: "inv_owner", status: "paid", currency_code: "USD", total: 449, amount_paid: 449 } }] });
+      return new Response("{}", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const found = await findOwnerProof(credentials);
+    const settled = await settleCardProof(credentials, found.proof, () => undefined, { attempts: 1 });
+    expect(settled).toEqual({ cancelled: true, errors: [] });
+    expect(found.proof.refund).toMatchObject({ transactionId: "txn_refund", transactionStatus: "success", verified: true });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/cancel_for_items"))).toBe(true);
+  });
+
+  it("does not cancel a subscription a previous verify already cancelled", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const path = new URL(String(url)).pathname;
+      if (path.endsWith("/refund")) return list({
+        invoice: { id: "inv_owner", status: "paid" },
+        transaction: { id: "txn_refund", type: "refund", status: "success", amount: 449, currency_code: "USD" },
+        credit_note: { id: "cn_1", status: "issued" },
+      });
+      if (path.endsWith("/cancel_for_items")) throw new Error("a cancelled subscription must not be cancelled twice");
+      if (path.startsWith("/api/v2/customers")) return list({ list: [{ customer: { id: "cust_owner", email: OWNER_QA_EMAIL } }] });
+      if (path.startsWith("/api/v2/subscriptions")) return list({ list: [{ subscription: { id: "sub_owner", status: "cancelled", currency_code: "USD", customer_id: "cust_owner" } }] });
+      if (path.startsWith("/api/v2/invoices")) return list({ list: [{ invoice: { id: "inv_owner", status: "paid", currency_code: "USD", total: 449, amount_paid: 449 } }] });
+      return new Response("{}", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const found = await findOwnerProof(credentials);
+    const settled = await settleCardProof(credentials, found.proof, () => undefined, { attempts: 1 });
+    expect(settled).toEqual({ cancelled: true, errors: [] });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/cancel_for_items"))).toBe(false);
   });
 });
 
@@ -417,8 +497,8 @@ describe("the workflow", () => {
     expect(WORKFLOW).not.toMatch(/REVIEWER_SEEKER_PASSWORD=\S/);
   });
 
-  it("offers the four modes and uploads the evidence", () => {
-    expect(WORKFLOW).toContain("options: [probe, provision, card, handshake]");
+  it("offers the five modes and uploads the evidence", () => {
+    expect(WORKFLOW).toContain("options: [probe, provision, card, handshake, verify]");
     expect(WORKFLOW).toContain("actions/upload-artifact@v4");
     expect(WORKFLOW).toContain("path: banded-qa/");
     expect(WORKFLOW).toContain("QA_MODE: ${{ inputs.mode }}");

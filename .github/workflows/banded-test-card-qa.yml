@@ -9,10 +9,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe = read-only catalog check; provision = create-only TEST-site catalog sync; card = pay a USD hosted page with the international test card; handshake = live /plans captures and Buy up to the hosted page without paying"
+        description: "probe = read-only catalog check; provision = create-only TEST-site catalog sync; card = pay a USD hosted page with the international test card; handshake = live /plans captures and Buy up to the hosted page without paying; verify = find the owner's own TEST payment by the fixed QA email, refund it and cancel it"
         required: true
         type: choice
-        options: [probe, provision, card, handshake]
+        options: [probe, provision, card, handshake, verify]
         default: probe
       item_price_id:
         description: "card mode only: the TEST site's own item price id, when the app's current id is absent there"
