@@ -9286,24 +9286,44 @@
       ],
       "note": "D-324/D-321 (11) same-day dead-end fix, measured 2026-11-24 under 5+ concurrent claims. Red-first test plus fix in one commit; required CI on the pull request head is the landing gate. No product, money, flag, workflow, settings or spending change."
     },
-{
-    "id": "PROCESS-registry-reconcile",
-    "title": "The queue list tells the truth: the 65 rows the board already calls done are reconciled against their merged pull requests, and any row that still owes work stays open with its remaining steps",
-    "row": "D-373 (6)",
-    "packet": "docs/plans/PROCESS-registry-reconcile.md",
-    "epic": "D-212",
-    "tier": 3,
-    "lane": "registry-reconcile",
-    "branch": "agent/queue/process-registry-reconcile",
-    "status": "todo",
-    "syncedTo": "D-396",
-    "dependsOn": [],
-    "owns": [
-      "docs/plans/assignments.json",
-      "docs/plans/PROCESS-registry-reconcile.md",
-      "docs/plans/DECISION-REVIEW.md"
-    ],
-    "note": "CEO review 2026-11-25 (DeepSeek V4.1 Flash · 6f0f): the picker reported \"Nothing is left for you\" while assignments.json held 95 todo rows and its own board called 65 of them done, so FIFO was computed over finished work. Reconcile each listed row against the merged pull request from its branch (D-373 (6)): mark done only when that pull request is the row own accepted implementation, never a docs-only or partial carrier (D-383 (1)); otherwise keep it open on a fresh branch with the remaining steps in this note and drop any dependency edge whose only reason is gone. Registry only: no runtime, copy, price, plan, legal text, login rule, money path or spending change."
-  }
+    {
+      "id": "PICKER-branch-scan-batch",
+      "title": "One bounded git read for the picker branch scan instead of four processes per branch, so a claim does not cost minutes of serialized work",
+      "row": "D-324",
+      "packet": "docs/plans/PICKER-branch-scan-batch.md",
+      "epic": "D-212",
+      "tier": 2,
+      "lane": "picker-branch-scan",
+      "branch": "agent/queue/picker-branch-scan-batch",
+      "status": "todo",
+      "syncedTo": "D-396",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "scripts/nextTask.test.ts",
+        "docs/plans/PICKER-branch-scan-batch.md"
+      ],
+      "note": "CEO review 2026-11-25 (DeepSeek v4.1 Flash · ce4b): measured ~0.2s per branch ref x ~500 refs = ~97s of branch scanning per picker run, serialized behind one clone lock across 84 sessions; host load reached 974. Behaviour-preserving batching with an exact-equality test. No product, money, flag, workflow, settings or spending change."
+    },
+    {
+      "id": "PROCESS-registry-reconcile",
+      "title": "The queue list tells the truth: the 65 rows the board already calls done are reconciled against their merged pull requests, and any row that still owes work stays open with its remaining steps",
+      "row": "D-373 (6)",
+      "packet": "docs/plans/PROCESS-registry-reconcile.md",
+      "epic": "D-212",
+      "tier": 3,
+      "lane": "registry-reconcile",
+      "branch": "agent/queue/process-registry-reconcile",
+      "status": "todo",
+      "syncedTo": "D-396",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/assignments.json",
+        "docs/plans/PROCESS-registry-reconcile.md",
+        "docs/plans/DECISION-REVIEW.md"
+      ],
+      "note": "CEO review 2026-11-25 (DeepSeek V4.1 Flash · 6f0f): the picker reported \"Nothing is left for you\" while assignments.json held 95 todo rows and its own board called 65 of them done, so FIFO was computed over finished work. Reconcile each listed row against the merged pull request from its branch (D-373 (6)): mark done only when that pull request is the row own accepted implementation, never a docs-only or partial carrier (D-383 (1)); otherwise keep it open on a fresh branch with the remaining steps in this note and drop any dependency edge whose only reason is gone. Registry only: no runtime, copy, price, plan, legal text, login rule, money path or spending change."
+    }
   ]
 }
