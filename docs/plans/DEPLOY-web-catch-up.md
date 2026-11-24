@@ -30,8 +30,9 @@ by hand on Nov 24 as the one-off recovery. This row makes it automatic.
 ## Tests (red first)
 
 `scripts/deployWebCatchUp.test.ts`: reads the workflow YAML and asserts the `workflow_run` trigger
-on CI/main/completed, that the decision job runs before `release-gate`, and that the path list is
-read from the `push.paths` block. Unit-test the owed-deploy decision (pure function in a small
+on CI/main/completed, that the decision runs before any deploy (as built: the catch-up workflow
+decides, then dispatches Deploy Web, whose `release-gate` runs first; see Build notes), and that the
+path list is read from the `push.paths` block. Unit-test the owed-deploy decision (pure function in a small
 module under `scripts/`): behind with a matching path deploys; behind with only docs paths skips;
 equal SHAs skip; a live SHA that is not an ancestor skips with a notice; a failed or non-push CI run
 skips.
@@ -40,6 +41,32 @@ skips.
 
 Focused tests, `scripts/requireGreenRelease.test.ts` and `pnpm check` green; required CI green.
 After landing, the next green main CI after a web-path merge shows a catch-up run (link it here).
+
+## Build notes (Nov 24 2026, Claude Code · 857e)
+
+Built as a separate workflow rather than a `workflow_run` trigger on `deploy-pages.yml`, for two
+reasons found in the code the packet says must stay unchanged:
+
+1. `scripts/require-green-release.mjs` (`contextProblem`) refuses every event but `push` and
+   `workflow_dispatch` (`a workflow_run run never releases`), so a `workflow_run`-triggered Deploy
+   Web would fail at its release gate on every run.
+2. `scripts/requireGreenRelease.test.ts` pins `deploy-pages.yml`: no job-level `if:`, and every job
+   needs `release-gate`, so a decision job there could not skip itself or run first.
+
+So `.github/workflows/deploy-web-catch-up.yml` runs on CI completion on `main`, decides with
+`scripts/deployWebCatchUp.mjs`, and dispatches `deploy-pages.yml --ref main` when owed: the manual
+recovery `docs/DEPLOY.md` already documents. `workflow_dispatch` from `GITHUB_TOKEN` is allowed to
+start a run. `deploy-pages.yml` is not edited at all; its gate, queue, superseded refusal, re-check and
+canonical verification run unchanged in the dispatched run. The new workflow file is outside the row's
+`owns` (allowed for this session by D-359/D-370; `scope-check` reports it as a notice).
+
+Decision additions beyond the packet: skip when main has moved past the CI head (the newer commit's
+own CI decides), when a Deploy Web run for the head is already queued or running (a push-triggered
+run waiting on this CI), and, with a warning, when the live commit cannot be read.
+
+Verified: 21/21 in `scripts/deployWebCatchUp.test.ts` (red first: module and workflow absent);
+the module read the real live commit `16f2a2be` and the nine push paths. Pending: the first real
+catch-up run after a web-path merge (link it below).
 
 ## Status
 
