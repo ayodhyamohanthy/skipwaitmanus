@@ -47,7 +47,7 @@ only for `dependabot[bot]`, uses `--merge`, and refuses majors and runtime minor
 
 ## Status
 
-- SEC-deps-nov24: in progress — DeepSeek V4.1 Flash · ffe5, taking over the quiet claim of Claude Code · d275 and DeepSeek V4.1 Flash · a490 — 2026-11-24 — branch agent/queue/sec-deps-nov24
+- SEC-deps-nov24: done — agent/queue/sec-deps-nov24 — PR #1562 (lands on green required CI; live check on the deployed web SHA follows)
 
 ### Advisories after the patch
 
