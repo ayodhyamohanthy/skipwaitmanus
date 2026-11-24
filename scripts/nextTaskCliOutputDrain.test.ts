@@ -11,6 +11,12 @@ import { renderBoardSummary, renderPick } from "./nextTaskText.mjs";
 const CLI = fileURLToPath(new URL("./next-task.mjs", import.meta.url));
 const WHO = "Qoder · output-drain-test";
 const BRANCH = "agent/queue/output-drain";
+// Measured bounds, not invented ones. On a loaded machine on 2026-11-24 one healthy CLI run in this
+// fixture took 10-20s (bare `node -e ""` 1.9s, importing the picker modules 3.2s), and the slowest
+// whole test took 65.6s. A 60s child bound is three times the slowest healthy run, so it still catches
+// a real hang (the defect this row fixes) without failing on machine load.
+const CHILD_TIMEOUT_MS = 60_000;
+const TEST_TIMEOUT_MS = 180_000;
 type Mode = "green" | "wait" | "stop" | "late-error";
 type Status = "todo" | "owner" | "done";
 interface Task {
@@ -112,7 +118,7 @@ globalThis.fetch = async (input, options = {}) => {
   const runFile = (args: string[] = [], mode: Mode = "green"): Result => {
     const file = path.join(dir, `capture-${++capture}.out`), fd = openSync(file, "w");
     try {
-      const result = spawnSync(process.execPath, ["--import", mock, CLI, ...args], { cwd: work, env: env(mode), stdio: ["ignore", fd, "pipe"], timeout: 15_000, killSignal: "SIGKILL" });
+      const result = spawnSync(process.execPath, ["--import", mock, CLI, ...args], { cwd: work, env: env(mode), stdio: ["ignore", fd, "pipe"], timeout: CHILD_TIMEOUT_MS, killSignal: "SIGKILL" });
       return { status: result.status, signal: result.signal, stdout: readFileSync(file), stderr: Buffer.from(result.stderr ?? []) };
     } finally { closeSync(fd); }
   };
@@ -138,7 +144,7 @@ globalThis.fetch = async (input, options = {}) => {
     };
     stdout.on("readable", drain);
     stderr.on("data", chunk => err.push(Buffer.from(chunk)));
-    const watchdog = setTimeout(() => finish(() => { child.kill("SIGKILL"); reject(new Error("fixture pipe did not drain within 15s")); }), 15_000);
+    const watchdog = setTimeout(() => finish(() => { child.kill("SIGKILL"); reject(new Error(`fixture pipe did not drain within ${CHILD_TIMEOUT_MS / 1000}s`)); }), CHILD_TIMEOUT_MS);
     child.on("message", message => {
       if (message === "capture") resumeTimer = setTimeout(() => { resumed = true; drain(); stdout.resume(); }, 100);
     });
@@ -181,7 +187,7 @@ describe("actual picker CLI output drain", () => {
       expect(pipe.stdout.toString()).toContain("NEXT: WAIT");
       expect(f.refs()).toBe(before);
     });
-  }, 30_000);
+  }, TEST_TIMEOUT_MS);
 
   it("drains exact STOP output and preserves the real GitHub error on stderr", async () => {
     await inFixture("todo", async f => {
@@ -199,7 +205,7 @@ describe("actual picker CLI output drain", () => {
       expect(pipe.stdout.toString()).toContain("NEXT: STOP");
       expect(f.refs()).toBe(before);
     });
-  }, 30_000);
+  }, TEST_TIMEOUT_MS);
 
   it("preserves SYNC 3 after a large board and writes no marker", async () => {
     await inFixture("todo", async f => {
@@ -217,7 +223,7 @@ describe("actual picker CLI output drain", () => {
       expect(result.stdout.toString().trimEnd().endsWith("Nothing new was claimed.")).toBe(true);
       expect(f.refs()).toBe(before);
     });
-  }, 30_000);
+  }, TEST_TIMEOUT_MS);
 
   it("drains the complete large board before a late claim error", async () => {
     await inFixture("todo", async f => {
@@ -229,7 +235,7 @@ describe("actual picker CLI output drain", () => {
       expect(result.stdout.toString()).not.toContain("NEXT:");
       expect(f.refs()).toBe(before);
     });
-  }, 30_000);
+  }, TEST_TIMEOUT_MS);
 
   it("retains exit 0 for a claim, 5 for nothing to pick, and 6 for an ineligible request", async () => {
     await inFixture("todo", async f => {
@@ -253,20 +259,20 @@ describe("actual picker CLI output drain", () => {
       expect(refused.stdout.toString()).toContain("NEXT: NOT ELIGIBLE — MISSING");
       expect(f.refs()).toBe(before);
     });
-  }, 45_000);
+  }, TEST_TIMEOUT_MS);
 
   it("keeps invalid task-list refs on STOP 2 after moving validation into main", async () => {
     await inFixture("done", async f => {
       const before = f.refs();
       const result = spawnSync(process.execPath, ["--import", f.mock, CLI], {
-        cwd: f.work, encoding: "utf8", env: { ...f.env(), NEXT_TASK_LIST_REF: "origin/bad..ref" }, timeout: 15_000, killSignal: "SIGKILL",
+        cwd: f.work, encoding: "utf8", env: { ...f.env(), NEXT_TASK_LIST_REF: "origin/bad..ref" }, timeout: CHILD_TIMEOUT_MS, killSignal: "SIGKILL",
       });
       expect(result.status).toBe(2);
       expect(result.stdout).toBe("");
       expect(result.stderr).toBe("next-task: STOP: invalid task-list ref\n");
       expect(f.refs()).toBe(before);
     });
-  }, 30_000);
+  }, TEST_TIMEOUT_MS);
 
   it("fails truthfully when the stdout pipe is closed", async () => {
     await inFixture("done", async f => {
@@ -278,8 +284,8 @@ describe("actual picker CLI output drain", () => {
         const stderr: Buffer[] = [];
         const watchdog = setTimeout(() => {
           child.kill("SIGKILL");
-          reject(new Error("closed stdout pipe did not settle within 15s"));
-        }, 15_000);
+          reject(new Error(`closed stdout pipe did not settle within ${CHILD_TIMEOUT_MS / 1000}s`));
+        }, CHILD_TIMEOUT_MS);
         child.stdout.destroy();
         child.stderr.on("data", chunk => stderr.push(Buffer.from(chunk)));
         child.once("error", error => {
@@ -295,5 +301,5 @@ describe("actual picker CLI output drain", () => {
       expect(result.stderr.toString()).toMatch(/EPIPE|broken pipe|write/i);
       expect(f.refs()).toBe(before);
     });
-  }, 30_000);
+  }, TEST_TIMEOUT_MS);
 });

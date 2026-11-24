@@ -63,21 +63,18 @@ const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 // regression exercises these exact bindings instead of a copy of them.
 export const git = boundedGitReader({ env: GIT_ENV });
 export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
-class CliFailure extends Error {
-  constructor(message, code) {
-    super(message);
-    this.code = code;
-  }
-}
-const fail = (message, code = 1) => {
-  console.error(`next-task: ${message}`);
-  throw new CliFailure(message, code);
-};
+const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
 
 class RefSnapshotChanged extends Error {}
 let decisionRefs = null;
 const refPatterns = ["refs/heads/main", "refs/heads/agent/*"];
 const refspecs = ["+refs/heads/main:refs/remotes/origin/main", "+refs/heads/agent/*:refs/remotes/origin/agent/*"];
+if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main" && !LIST_REF.startsWith("origin/agent/")) {
+  const branch = LIST_REF.slice(7);
+  if (tryGit("check-ref-format", `refs/heads/${branch}`) === null) fail("STOP: invalid task-list ref", 2);
+  refPatterns.push(`refs/heads/${branch}`);
+  refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
+}
 
 function refsFrom(raw, prefix) {
   if (raw === null) fail("STOP: authoritative refs are unreadable; check origin access and run again", 2);
@@ -767,12 +764,6 @@ function autoSyncSetup() {
 }
 
 async function main() {
-  if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main" && !LIST_REF.startsWith("origin/agent/")) {
-    const branch = LIST_REF.slice(7);
-    if (tryGit("check-ref-format", `refs/heads/${branch}`) === null) fail("STOP: invalid task-list ref", 2);
-    refPatterns.push(`refs/heads/${branch}`);
-    refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
-  }
   const args = argsOf(process.argv.slice(2));
   if (args.claim) {
     autoSyncSetup();
@@ -931,18 +922,15 @@ async function runCommand(args) {
     // New work waits until your own work is on origin; your own claim waits until its commits are.
     if (CLAIMABLE.includes(pick.kind) && sync.blocking.length && (!continuing || sync.unpushed.includes(continuing))) {
       console.log("NEXT: SYNC FIRST\nYour own work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
-      process.exitCode = 3;
-      return;
+      process.exit(3);
     }
     if (pick.kind === "ineligible") {
       console.log(renderIneligible(pick, who ?? "<your session name>"));
-      process.exitCode = EXIT.ineligible;
-      return;
+      process.exit(EXIT.ineligible);
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
       console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register, requestedTask: args.task }));
-      process.exitCode = EXIT[pick.kind] ?? 0;
-      return;
+      process.exit(EXIT[pick.kind] ?? 0);
     }
     if (args.provenance) {
       const role = ({ build: "build", takeover: "build", green: "build", review: "review", fix: "fix", land: "land" })[pick.kind === "continue" ? pick.of : pick.kind];
@@ -959,16 +947,5 @@ async function runCommand(args) {
 // PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the
 // regression can import these real bindings without starting a picker run.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  process.stdout.on("error", error => {
-    console.error(`next-task: stdout write failed: ${error.code ?? error.message}`);
-    process.exitCode = 1;
-  });
-  main().catch(error => {
-    if (error instanceof CliFailure) {
-      process.exitCode = error.code;
-      return;
-    }
-    console.error(`next-task: ${error.stack ?? String(error)}`);
-    process.exitCode = 1;
-  });
+  main().catch(e => fail(e.stack ?? String(e)));
 }
