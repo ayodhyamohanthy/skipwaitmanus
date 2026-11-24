@@ -3,10 +3,12 @@
 // handing a password around. Run by .github/workflows/live-qa.yml after every production release and on demand.
 //
 // It signs in once per demo account on https://skipwait.me (and nowhere else), visits each signed-in route at 1280 and
-// 390, and records the document status, title, uncaught errors, console errors, 5xx requests and sideways scroll, with a
-// full-page screenshot. Navigation only: no click, no form, no request beyond the one sign-in, never /admin, no money.
+// 390, and records the document status, title, uncaught errors, console errors, 5xx requests, 4xx requests (method and
+// path, never the query string; D-387) and sideways scroll, with a full-page screenshot. Navigation only: no click, no
+// form, no request beyond the one sign-in, never /admin, no money.
 // Output: live-qa/<role>/<route>-<width>.png, live-qa/summary.json and a Markdown table in the step summary.
-// Exit 1 when a sign-in fails, a document answers 5xx, a page throws or does not load; 0 otherwise.
+// Exit 1 when a secret is missing (on every trigger, D-387), a sign-in fails, a document answers 5xx, a page throws or
+// does not load; 0 otherwise. A 4xx request is a finding, not a failure.
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -58,6 +60,8 @@ export function judgeRoute(r) {
   if (Number.isInteger(r.status) && r.status >= 400 && r.status < 500) findings.push(`document answered ${r.status}`);
   if (r.consoleErrors.length) findings.push(`${r.consoleErrors.length} console error${r.consoleErrors.length === 1 ? "" : "s"}`);
   if (r.failedRequests.length) findings.push(`${r.failedRequests.length} request${r.failedRequests.length === 1 ? "" : "s"} answered 5xx`);
+  const clientErrors = r.clientErrors ?? [];
+  if (clientErrors.length) findings.push(`${clientErrors.length} request${clientErrors.length === 1 ? "" : "s"} answered 4xx: ${[...new Set(clientErrors)].join("; ")}`);
   if (r.sideways) findings.push("scrolls sideways at 390");
   if (r.finalPath && r.finalPath !== r.route && r.finalPath.startsWith("/sign-in")) findings.push(`redirected to ${r.finalPath}`);
   return { fails, findings };
@@ -77,6 +81,14 @@ const short = sha => (typeof sha === "string" && sha ? sha.slice(0, 8) : "unknow
 const cell = text => String(text ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ").slice(0, 80);
 // A request's path only: query strings may carry tokens and are never recorded.
 const pathOf = url => { try { const u = new URL(url); return u.origin === ORIGIN ? u.pathname : `${u.origin}/…`; } catch { return "?"; } };
+// A 4xx request's method and path (D-387): third-party paths are kept so the failing call can be found, query strings never.
+const requestOf = res => {
+  let where = "?";
+  try { const u = new URL(res.url()); where = u.origin === ORIGIN ? u.pathname : `${u.origin}${u.pathname}`; } catch { /* stays "?" */ }
+  let method = "?";
+  try { method = res.request().method(); } catch { /* stays "?" */ }
+  return `${res.status()} ${method} ${where}`;
+};
 const messageOf = error => (error instanceof Error ? error.message : String(error)).split("\n")[0].slice(0, MAX_LINE);
 
 export function markdownOf(summary) {
@@ -125,10 +137,10 @@ export async function runLiveQa({ roles, passwords, trigger, launch, fetchText, 
   const say = line => log(redact(line));
   const missing = roles.filter(role => !passwords[role]).map(role => ACCOUNTS[role].secret);
   if (missing.length) {
-    const why = `${missing.join(" and ")} not set: the owner adds them on Settings > Secrets and variables > Actions (OPS-live-qa-runner section 4)`;
-    if (trigger === "workflow_dispatch") { say(`::error::${why}`); return { code: 1, summary: null }; }
-    say(`::notice::live QA skipped: ${why}`);
-    return { code: 0, summary: null };
+    // D-387: a run without its secrets fails on every trigger. It used to pass as a notice after a release, so the
+    // automatic runs reported green for days while checking nothing.
+    say(`::error::${missing.join(" and ")} not set: the owner adds them on Settings > Secrets and variables > Actions (OPS-live-qa-runner section 4); this run (${trigger || "manual"}) checked nothing`);
+    return { code: 1, summary: null };
   }
   const summary = { origin: ORIGIN, release: await releaseOf(fetchText), roles: [] };
   say(`release: API ${short(summary.release.api)}, web ${short(summary.release.web)}`);
@@ -155,9 +167,13 @@ export async function runLiveQa({ roles, passwords, trigger, launch, fetchText, 
           let current = null;
           page.on("pageerror", error => current?.pageErrors.push(redact(messageOf(error))));
           page.on("console", msg => { if (msg.type() === "error") current?.consoleErrors.push(redact(msg.text()).slice(0, MAX_LINE)); });
-          page.on("response", res => { if (res.status() >= 500) current?.failedRequests.push(`${res.status()} ${pathOf(res.url())}`); });
+          page.on("response", res => {
+            const status = res.status();
+            if (status >= 500) current?.failedRequests.push(`${status} ${pathOf(res.url())}`);
+            else if (status >= 400) current?.clientErrors.push(redact(requestOf(res)).slice(0, MAX_LINE));
+          });
           for (const route of ROUTES[role]) {
-            current = { route, width: viewport.width, status: null, title: null, finalPath: null, sideways: false, capture: null, navigationError: null, pageErrors: [], consoleErrors: [], failedRequests: [] };
+            current = { route, width: viewport.width, status: null, title: null, finalPath: null, sideways: false, capture: null, navigationError: null, pageErrors: [], consoleErrors: [], failedRequests: [], clientErrors: [] };
             await visit(page, role, route, viewport, current, io, redact);
             Object.assign(current, judgeRoute(current));
             result.routes.push(current);
