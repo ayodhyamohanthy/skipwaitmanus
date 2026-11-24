@@ -570,7 +570,7 @@
       "lane": "d174-journey",
       "branch": "agent/queue/d174-seeker-journey",
       "status": "todo",
-      "syncedTo": "D-394",
+      "syncedTo": "D-397",
       "dependsOn": [
         "D-166-journey-decisions-sync",
         "D-174-seeker-journey-build.door-neutral",
@@ -591,6 +591,7 @@
         "client/src/pages/explore/companyJobsApi.ts (switch only)",
         ".github/workflows/deploy-pages.yml",
         "shared/jobCatalog.ts (switch only)",
+        "e2e/company-jobs.e2e.ts",
         "docs/plans/D-174-seeker-journey-build.md",
         "docs/plans/assignments.json"
       ]
