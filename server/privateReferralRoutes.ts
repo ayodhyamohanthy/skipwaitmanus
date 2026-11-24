@@ -35,6 +35,7 @@ import { askWorkItemIdsSchema, dedupeAskWorkItemIds } from "../shared/askWorkIte
 import { AskPriceChangedError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, PlanLimitError, ReferralPricingUnavailableError } from "./planGates";
 import { InsufficientCreditsError } from "./creditLedger";
 import { acceptedAskCostSchema, bandedAskQuoteSchema, type AcceptedAskCost, type BandedAskQuote } from "../shared/acceptedAskCost";
+import { companyReferralRequestBodySchema } from "../shared/companyReferralRequest";
 import { bandedSalesEnabled } from "./billingSettings";
 import { previewBandedAskCost as defaultBandedAskQuote } from "./db";
 import { BlockedPersonalLinkError } from "./blockedPairs";
@@ -84,7 +85,7 @@ export type PrivateReferralRouteDeps = {
   revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
   getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus; inviteCode?: string | null } | undefined>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; chargedCost?: AcceptedAskCost; replayed?: boolean }>;
+  createCompanyReferralRequest: (userId: number, input: { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl?: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; catalogJobId?: number; workItemIds?: number[]; expectedCoverage?: "waiting_for_company_coverage" }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; chargedCost?: AcceptedAskCost; replayed?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -180,7 +181,7 @@ export type PrivateReferralRouteDeps = {
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
   getCreditSummary?: (userId: number, role: "job_seeker" | "referrer") => Promise<unknown>;
-  previewBandedAskCost?: (userId: number, targetRoleUrl: string) => Promise<BandedAskQuote>;
+  previewBandedAskCost?: (userId: number, input: string | { targetRoleUrl?: string; catalogJobId?: number; opportunityId?: number }) => Promise<BandedAskQuote>;
   /** D-079: provider-truth card-validation re-read on the return path (webhook lag); fail-open, alerts inside. */
   reconcileCardValidation?: (userId: number) => Promise<unknown>;
   listCreditLedger?: (userId: number, role: "job_seeker" | "referrer", limit: number) => Promise<CreditLedgerEntry[]>;
@@ -753,9 +754,21 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to see what this ask costs" });
       const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
-      if (!url || !isValidTargetRoleUrl(url)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      const catalogJobId = req.query.catalogJobId ? Number(req.query.catalogJobId) : undefined;
+      const opportunityId = req.query.opportunityId ? Number(req.query.opportunityId) : undefined;
+      if (!url && !catalogJobId && !opportunityId) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      if (url && !isValidTargetRoleUrl(url)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      if (catalogJobId !== undefined && (!Number.isInteger(catalogJobId) || catalogJobId <= 0)) {
+        return res.status(400).json({ error: "Invalid catalog job" });
+      }
+      if (opportunityId !== undefined && (!Number.isInteger(opportunityId) || opportunityId <= 0)) {
+        return res.status(400).json({ error: "Invalid opportunity" });
+      }
       if (bandedSalesEnabled()) {
-        const quote = bandedAskQuoteSchema.parse(await (deps.previewBandedAskCost ?? defaultBandedAskQuote)(identity.account.id, normalizeTargetRoleUrl(url)));
+        const quoteInput = catalogJobId || opportunityId
+          ? { catalogJobId, opportunityId, targetRoleUrl: url ? normalizeTargetRoleUrl(url) : undefined }
+          : normalizeTargetRoleUrl(url);
+        const quote = bandedAskQuoteSchema.parse(await (deps.previewBandedAskCost ?? defaultBandedAskQuote)(identity.account.id, quoteInput));
         res.set("Cache-Control", "private, no-store");
         return res.json(quote);
       }
@@ -777,50 +790,70 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
       actorUserId = identity.account.id;
-      const expectedCost = req.body?.expectedCost === undefined ? undefined : acceptedAskCostSchema.safeParse(req.body.expectedCost);
-      if (expectedCost && !expectedCost.success) return res.status(400).json({ error: "Review the referral cost and try again" });
-      const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug, expectedCoverage } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; expectedCoverage?: string };
-      // Optional seeker-confirmed function; absent means the server infers it from the job link.
-      const chosenFunction = askJobFunctionInputSchema.safeParse(req.body?.jobFunction);
-      if (!chosenFunction.success) return res.status(400).json({ error: "Choose a function from the list" });
-      const idempotencyKey = typeof req.get("Idempotency-Key") === "string" ? req.get("Idempotency-Key")!.trim() : "";
-      if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({ error: "A valid Idempotency-Key header is required" });
-      if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
-      if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
       // The note is read from candidateMessage (the app) or personalPitch; any other key is ignored.
       const note = resolveAskNote(req.body);
       if (!note.ok) return res.status(400).json({ error: note.error });
       const personalPitch = note.personalPitch;
-      const safeCompensation = typeof compensation === "string" && compensation.trim() ? compensation.trim().slice(0, 80) : undefined;
-      const safeFastTrackCode = typeof fastTrackCode === "string" && /^[a-zA-Z0-9-]{16,64}$/.test(fastTrackCode) ? fastTrackCode : undefined;
-      const safeFastTrackCompanySlug = typeof fastTrackCompanySlug === "string" && /^[a-z0-9-]{1,48}$/.test(fastTrackCompanySlug) ? fastTrackCompanySlug : undefined;
-      const safeFastTrackAlias = typeof fastTrackAlias === "string" && /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(fastTrackAlias) ? fastTrackAlias : undefined;
-      if ((fastTrackCompanySlug || fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) return res.status(400).json({ error: "This private referral alias is invalid" });
-      if (fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: "This private referral link is invalid" });
+      const parsedBody = companyReferralRequestBodySchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        if (req.body?.expectedCost !== undefined && !acceptedAskCostSchema.safeParse(req.body.expectedCost).success) {
+          return res.status(400).json({ error: "Review the referral cost and try again" });
+        }
+        if (req.body?.jobFunction !== undefined && !askJobFunctionInputSchema.safeParse(req.body.jobFunction).success) {
+          return res.status(400).json({ error: "Choose a function from the list" });
+        }
+        if (req.body?.opportunityId !== undefined && !opportunityAskSelectionSchema.safeParse({ opportunityId: req.body.opportunityId }).success) {
+          return res.status(400).json({ error: "That opening is no longer available. Refresh the company page and choose again." });
+        }
+        if (req.body?.workItemIds !== undefined && !askWorkItemIdsSchema.safeParse(req.body.workItemIds).success) {
+          return res.status(400).json({ error: "Pin work from your showcase, or send the ask without it." });
+        }
+        return res.status(400).json({ error: "Invalid referral request" });
+      }
+      const body = parsedBody.data;
+      const idempotencyKey = typeof req.get("Idempotency-Key") === "string" ? req.get("Idempotency-Key")!.trim() : "";
+      if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({ error: "A valid Idempotency-Key header is required" });
+      const attachmentIds = body.attachmentIds ?? [];
+      if ((!body.targetRoleUrl && !body.catalogJobId && !body.opportunityId) || attachmentIds.length === 0) {
+        return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
+      }
+      if (body.targetRoleUrl && !isValidTargetRoleUrl(body.targetRoleUrl)) {
+        return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
+      }
+      const safeCompensation = typeof body.compensation === "string" && body.compensation.trim() ? body.compensation.trim().slice(0, 80) : undefined;
+      const safeFastTrackCode = typeof body.fastTrackCode === "string" && /^[a-zA-Z0-9-]{16,64}$/.test(body.fastTrackCode) ? body.fastTrackCode : undefined;
+      const safeFastTrackCompanySlug = typeof body.fastTrackCompanySlug === "string" && /^[a-z0-9-]{1,48}$/.test(body.fastTrackCompanySlug) ? body.fastTrackCompanySlug : undefined;
+      const safeFastTrackAlias = typeof body.fastTrackAlias === "string" && /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(body.fastTrackAlias) ? body.fastTrackAlias : undefined;
+      if ((body.fastTrackCompanySlug || body.fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) return res.status(400).json({ error: "This private referral alias is invalid" });
+      if (body.fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: "This private referral link is invalid" });
       // A request made from a company's page (/explore/:slug) must use a job link
       // that belongs to that company; the directory owns the allowed domains.
       let selectedCompany: { name: string; domains: string[] } | undefined;
-      if (companySlug !== undefined && companySlug !== null && companySlug !== "") {
-        if (typeof companySlug !== "string" || !/^[a-z0-9-]{1,48}$/.test(companySlug)) return res.status(400).json({ error: "Choose a company from the list" });
-        selectedCompany = await (deps.getCompanyDirectoryEntry ?? defaultCompanyDirectoryEntry)(companySlug);
+      if (body.companySlug !== undefined && body.companySlug !== null && body.companySlug !== "") {
+        if (typeof body.companySlug !== "string" || !/^[a-z0-9-]{1,48}$/.test(body.companySlug)) return res.status(400).json({ error: "Choose a company from the list" });
+        selectedCompany = await (deps.getCompanyDirectoryEntry ?? defaultCompanyDirectoryEntry)(body.companySlug);
         if (!selectedCompany) return res.status(400).json({ error: "Choose a company from the list" });
       }
-      // A post selection from "/ask?post=<id>" must parse as one positive
-      // integer id; anything else is refused so a typo never silently becomes
-      // a plain ask (the message matches the DB's stale-post wording).
-      const opportunitySelection = req.body?.opportunityId === undefined || req.body?.opportunityId === null
-        ? null
-        : opportunityAskSelectionSchema.safeParse({ opportunityId: req.body.opportunityId });
-      if (opportunitySelection && !opportunitySelection.success) return res.status(400).json({ error: "That opening is no longer available. Refresh the company page and choose again." });
-      // Task 13: the showcase pieces pinned to this ask. A malformed list is
-      // refused here rather than ignored, so a typo never sends the ask without
-      // the work the seeker meant to show. Duplicates are folded once, here, so
-      // the analytics count and the forwarded list both describe what actually
-      // rides along (D-088: truthful numbers) — [12,12] is one piece, not two.
-      const pinnedWork = askWorkItemIdsSchema.safeParse(req.body?.workItemIds ?? []);
-      if (!pinnedWork.success) return res.status(400).json({ error: "Pin work from your showcase, or send the ask without it." });
-      const pinnedWorkIds = dedupeAskWorkItemIds(pinnedWork.data);
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(expectedCost?.success ? { expectedCost: expectedCost.data } : {}), ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}), ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}), ...(expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage } : {}) });
+      const pinnedWorkIds = dedupeAskWorkItemIds(body.workItemIds ?? []);
+      const result = await deps.createCompanyReferralRequest(identity.account.id, {
+        ...(body.expectedCost ? { expectedCost: body.expectedCost } : {}),
+        ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}),
+        ...(body.opportunityId ? { opportunityId: body.opportunityId } : {}),
+        ...(body.catalogJobId ? { catalogJobId: body.catalogJobId } : {}),
+        targetRoleUrl: body.targetRoleUrl ? normalizeTargetRoleUrl(body.targetRoleUrl) : undefined,
+        attachmentIds,
+        personalPitch,
+        idempotencyKey,
+        confirmedCompanyDomain: typeof body.confirmedCompanyDomain === "string" ? body.confirmedCompanyDomain : undefined,
+        compensation: safeCompensation,
+        fastTrackCode: safeFastTrackCode,
+        fastTrackCompanySlug: safeFastTrackCompanySlug,
+        fastTrackAlias: safeFastTrackAlias,
+        submittedTargetRoleUrl: body.targetRoleUrl ? body.targetRoleUrl.trim() : undefined,
+        ...(body.jobFunction ? { jobFunction: body.jobFunction } : {}),
+        ...(pinnedWorkIds.length ? { workItemIds: pinnedWorkIds } : {}),
+        ...(body.expectedCoverage === "waiting_for_company_coverage" ? { expectedCoverage: body.expectedCoverage } : {}),
+      });
       // Referrer email + Slack delivery runs after the response (shared dispatcher, D-137):
       // the ask is already committed, each send has a durable claim/lease row, and every
       // outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds
@@ -828,7 +861,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       dispatchReferralReviewDeliveries({ deps, record, origin: publicOutboundOrigin(req), result, actorUserId: identity.account.id });
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
-      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, pinnedWorkCount: pinnedWorkIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: result.coverageStatus !== "waiting_for_company_coverage", coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data) } });
+      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, pinnedWorkCount: pinnedWorkIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: result.coverageStatus !== "waiting_for_company_coverage", coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(body.jobFunction) } });
       if (result.coverageStatus === "waiting_for_company_coverage") {
         record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: false } });
       }
@@ -868,8 +901,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         record({ actorUserId, action: "company_referral.pinned_work_limit_reached", outcome: "denied", resourceType: "referral_request", metadata: { limit: error.limit, cap: error.cap } });
         return res.status(409).json({ error: error.message, code: error.code, limit: error.limit, cap: error.cap });
       }
-      // A piece that stopped being the caller's own while the ask was written.
-      if (error instanceof Error && error.name === "AskWorkItemNotInShowcaseError") return res.status(400).json({ error: error.message });
+      // A piece that stopped being the caller's own while the ask was written, or company link mismatch.
+      if (error instanceof Error && (error.name === "CompanyLinkMismatchError" || error.name === "AskWorkItemNotInShowcaseError")) return res.status(400).json({ error: error.message });
       res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key|opening/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });
   app.get("/api/credits/summary", async (req, res) => {

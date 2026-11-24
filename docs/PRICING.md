@@ -32,25 +32,26 @@ All monthly founding-member prices, India Rs / global USD. A band names the refe
 - **Legacy credit packs** (the D-036 ladder, live Oct 22) are paused by D-219 (6); the provider items were archived Oct 25 20:03-20:08 IST (D-214 (3)). Fixed-term and annual pass products stay unsold (`PASS_SALES_ENABLED = false`, D-146).
 - The five-plan exploration of Oct 23 (Entry-level / Senior / Manager / Director / Executive) never froze; the D-219 bands replace it.
 
-## What is live today (runtime truth, Nov 23 2026)
-- **D-219 banded plans and extra referrals:** All prerequisite and implementation rows merged to `main`: `BANDED-levels` (#1370), `BANDED-schema-migration` (#1395), `BANDED-schema` (#1371), `BANDED-catalog-sync` (#1394), `BANDED-checkout` (#1411), `BANDED-grants-intents-migration` (#1468), `BANDED-grants` (#1478), `BANDED-spend` (#1419), `BANDED-ui` (#1428). Live Chargebee catalog provisioned (14 prices across 7 items create-only on `skipwait` site, audit in `docs/qa/banded-release-qa.md`). Razorpay international payments active (D-370 (6)). Sales authorized under D-370 (6) with live check without real payment (D-065).
+## What is live today (runtime truth, Nov 24 2026)
+- **D-219 banded plans and extra referrals: built, but not active for sale.** All prerequisite and implementation rows merged to `main`: `BANDED-levels` (#1370), `BANDED-schema-migration` (#1395), `BANDED-schema` (#1371), `BANDED-catalog-sync` (#1394), `BANDED-checkout` (#1411), `BANDED-grants-intents-migration` (#1468), `BANDED-grants` (#1478), `BANDED-spend` (#1419), `BANDED-ui` (#1428). Live Chargebee catalog provisioned (14 prices across 7 items create-only on `skipwait` site, audit in `docs/qa/banded-release-qa.md`). Razorpay international payments active (D-370 (6)). Production `GET /api/chargebee/banded/offer` returned `{"onSale":false}` at `2026-11-23T20:31:32Z`; `BANDED-release` is reopened under D-383 and activation is not complete.
 - **Legacy packs:** paused by the owner and archived at the provider.
 - **Passes:** not sold (`PASS_SALES_ENABLED = false`). Recovery, crediting and refunds of payments already started stay available (D-042).
 - **Referrer checkout:** refused first with 403 (`REFERRER_PURCHASES_ENABLED = false`, D-055); no referrer plan is sold.
 - **Free plan in code:** 3 a month (D-039). The verified-card condition (D-079) is built behind `FREE_CREDITS_REQUIRE_CARD_VALIDATION`, which is off until enabled.
 
 ## Proof state
-- **Banded checkout & TEST-site QA matrix (INR & USD, Nov 23 2026):** Full matrix proven on the Chargebee test site and isolated real-MySQL database (`docs/qa/banded-release-qa.md`). Tested plans (Early to Mid, Mid to Senior), Senior to Executive application gate (`403 application_required`), extra referrals at in-band levels with volume discounts, 8-buyer concurrent last-place race on founding cap, idempotent replay within 25 min (`chargebee-idempotency-key`), unspent balance refund calculation, spend precedence (`included -> free -> purchased`), and live checkout handshake on skipwait.me up to the hosted page without real payments (D-065).
+- **Banded checkout & TEST-site QA record (INR & USD, Nov 23 2026):** `docs/qa/banded-release-qa.md` records plans (Early to Mid, Mid to Senior), the Senior to Executive application gate (`403 application_required`), in-band extras with volume discounts, an 8-buyer founding-cap race, idempotent replay within 25 min (`chargebee-idempotency-key`), unspent-balance refund calculation and spend precedence (`included -> free -> purchased`), with implementation-focused e2e files beside those paths. This record is not live release acceptance: its international-card PASS entries have no linked TEST-site run/log/artifact and conflict with `docs/PAYMENTS_TEST_RUNBOOK.md` section 2a, so international-card acceptance is UNVERIFIED. The production hosted-page handshake has not occurred because sales remain off.
 - **Signed-in plans UI + level picker (local full-stack, flag ON build): proven locally, not on production.** Real server, real dev-auth session and the Azure QA scratch schema (`skipwait_qa`), driven by a real browser: picking L6 persisted through trpc `profile.setLevel` and read back.
 - **Catalog currency rendering (local full-stack): proven locally, not live regional detection.**
 - **Additive Chargebee catalog items** for the D-132 plans and rungs were created on TEST and LIVE on Oct 23 (create-only, zero subscriptions or invoices; `docs/qa/v2-live-catalog-apply.md`). They are not sold.
 - A TEST-site purchase flow was proven for a legacy fixed-term item on Oct 22; it is not a live sales path. PayPal is the live USD method (hosted page opened, nothing paid). INR on the real URL, live gateway and webhook config: UNVERIFIED.
 
-## Next steps (in order; nothing goes live without the owner's word)
-1. Banded checkout build complete across all BANDED-* rows (`docs/plans/PRICING-banded-checkout.md`).
-2. Accepted-price guard absorbed and enforced inside BANDED-spend (`server/bandedSpend.ts`).
-3. Release (BANDED-release): catalog sync audit, Razorpay international payments check, and TEST-site QA matrix completed (`docs/qa/banded-release-qa.md`).
-4. Live payments remain the owner's own: one ₹99 UPI test payment and refund (D-065); agents never execute real payments.
+## Remaining release steps (D-370 (6) already authorizes activation after TEST-site acceptance)
+1. Banded checkout build is complete across the implementation rows (`docs/plans/PRICING-banded-checkout.md`).
+2. The accepted-price guard is enforced inside BANDED-spend (`server/bandedSpend.ts`).
+3. Catalog sync is audited and the TEST-site matrix is recorded; reproducible international-card evidence is still required before USD sells (`docs/qa/banded-release-qa.md`).
+4. `BANDED-release` sets production `BANDED_SALES_ENABLED=true` through protected runtime config, then proves exact-SHA `onSale:true`, `/plans` at 1280/390 and the hosted-page handshake without paying (D-383).
+5. Live payments remain the owner's own: one ₹99 UPI test payment and refund (D-065); agents never execute real payments.
 
 ## Group Plan and scoped institution discount (Oct 31)
 
