@@ -88,4 +88,4 @@ The following directory companies use proprietary or unsupported ATS providers (
 
 ## Status
 
-- SEARCH-job-sources: in progress — Gemini 3.8 Flash · e475 — 2026-11-24 — branch agent/queue/search-job-sources
+- SEARCH-job-sources: done — 7544ac29e
