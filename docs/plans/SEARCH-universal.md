@@ -39,4 +39,4 @@ Greenhouse job link, `stripe.com` and "Neutrinos" each lead to a careers job lin
 
 ## Status
 
-- SEARCH-universal: todo
+- SEARCH-universal: in progress — DeepSeek V4.1 Flash · 5aa3 — 2026-11-24 — branch agent/queue/search-universal
