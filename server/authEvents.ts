@@ -44,6 +44,7 @@ export const AUTH_REASONS = [
   "unknown_account", "use_work_email_code", "use_another_method", "verify_email", "check_email", "weak_password",
   "not_work_email", "email_mismatch", "session_mismatch", "session_too_old", "suspended", "not_signed_in",
   "provider_error", "unavailable", "invalid_request", "retired", "cancelled", "signed_in", "not_signed_in_after_reset",
+  "account_review", "account_inactive", "email_taken",
   "other",
 ] as const;
 export type AuthReason = (typeof AUTH_REASONS)[number];
