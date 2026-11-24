@@ -126,4 +126,35 @@ describe("ashby job payload parsing (fixtures from real Ashby boards)", () => {
     expect(jobs[0].snippet).toBe("Lead teams at scale.");
     expect(jobs[0].applyUrl).toBe("https://jobs.ashbyhq.com/openai/ashby-2");
   });
+
+  it("handles null fields returned by real Ashby boards (OpenAI, Snowflake)", () => {
+    const payload = {
+      jobs: [
+        {
+          id: "openai-job-1",
+          title: "Research Scientist",
+          department: null,
+          team: null,
+          location: "San Francisco, CA",
+          secondaryLocations: null,
+          isRemote: null,
+          workplaceType: "Onsite",
+          isListed: null,
+          jobUrl: "https://jobs.ashbyhq.com/openai/openai-job-1",
+          applyUrl: null,
+          publishedAt: null,
+          descriptionPlain: null,
+          descriptionHtml: "<p>Work on frontiers.</p>",
+        },
+      ],
+    };
+    const jobs = parseAshbyJobs(payload);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].title).toBe("Research Scientist");
+    expect(jobs[0].workMode).toBe("onsite");
+    expect(jobs[0].locations).toEqual(["San Francisco, CA"]);
+    expect(jobs[0].applyUrl).toBe("https://jobs.ashbyhq.com/openai/openai-job-1");
+    expect(jobs[0].snippet).toBe("Work on frontiers.");
+    expect(jobs[0].publishedAt).toBeNull();
+  });
 });
