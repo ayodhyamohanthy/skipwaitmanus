@@ -312,7 +312,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     getClient: getOAuthClient,
     issueCode: async (userId, input) => { if (!(await db.hasAssistantAccess(userId))) throw new AssistantPlanRequiredError(); return issueAuthCode(userId, input); },
     consumeCode: consumeAuthCode,
-    mintToken: async (userId, name) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name })).token }),
+    mintToken: async (userId, name, expiresInDays) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name, expiresInDays })).token }),
     recordActivity: db.recordOperationalActivity,
   });
   // Seeker/referrer profiles, work showcases, and shareable public profiles.

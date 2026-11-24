@@ -115,6 +115,29 @@ export type AgentSendRequestView = {
   note?: string;
 };
 
+/**
+ * D-178.read (D-290 R9 parity): what an agent may know about the seeker's own
+ * referral requests. These are the fields the seeker's own /requests page
+ * shows, minus every referrer identity field (D-019(e)): no referrer id, name
+ * or title, before or after acceptance. Another account's request is never
+ * listed, and the route only ever reads the token owner's own rows.
+ */
+export type AgentRequestView = {
+  id: number;
+  title: string | null;
+  targetRoleUrl: string | null;
+  companyDomain: string;
+  compensation: string | null;
+  status: string;
+  queueStatus: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null;
+  waitingForCoverage: boolean;
+  referrerMessage: string | null;
+  unreadMessageCount: number;
+  attachmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AgentEventView = {
   id: number;
   agentName: string;

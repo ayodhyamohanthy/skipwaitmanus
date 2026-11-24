@@ -154,6 +154,7 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 ### 6.7 `D-174-seeker-journey-build` (the release row; Tier 1, S)
 - **Waits for:** every row above, `D-174-company-search` and `D-174-ask-from-job`.
 - **Do (ruling 10):** set `COMPANY_TYPEAHEAD_ENABLED` and `COMPANY_JOBS_ENABLED` to `true` in one small PR after QA on the preview, an independent review and the CEO's sign-off (D-223 (3)). Do not touch `JOB_CATALOG_ENABLED`.
+- **D-394 (owner, Nov 24) replaces the gate above:** the owner's word is the sign-off and D-370 removed the independent review. Set `VITE_COMPANY_TYPEAHEAD=true` in `.github/workflows/deploy-pages.yml` (may ship first, after `SEARCH-work-domain`, in its own pull request); then turn `COMPANY_JOBS_ENABLED` and `JOB_CATALOG_ENABLED` on once `SEARCH-job-sources` has verified sources.
 - **Owns:** `client/src/pages/explore/useCompanySearch.ts (switch only)`, `client/src/pages/explore/companyJobsApi.ts (switch only)`.
 - **Done when:** after the deploy, captures of the whole journey on skipwait.me at 1280 and 390 (type a company, pick it, filter jobs, pick one, send a request, see the post-save line), and the four journey events visible in Clarity. Then `D-048-p3-live-review-find` takes the doctrine acceptance.
 
@@ -177,6 +178,8 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 - The door's remaining "ask" wording (for example "Send ask") is `D-048-p3-live-review-find`'s D-180 pass.
 
 ## Status
+
+- D-174-seeker-journey-build.typeahead-release: done — agent/queue/d174-typeahead-release — PR #1555. `VITE_COMPANY_TYPEAHEAD=true` in the Pages build (D-394), after SEARCH-work-domain (#1554). The jobs list and catalog stay off until SEARCH-job-sources has verified sources.
 
 D-174-seeker-journey-build.jobs-list: in progress — GPT-6.1 Sol · 8817 — ordinary takeover `f42ee2bbb39f0154afbb5e5d28d2a924a6021c0f`, branch `agent/queue/d174-journey-jobs`, current main `5e7a32126` integrated in this isolated clone. Prior holders left claim/takeover markers and the packet receipt below, but none of the three runtime/test files exists yet. Current §6.5, the separately delivered presence input in §6.3, D-360/D-363/D-366/D-367/D-370–D-372, DESIGN and doctrine are the reference lock. Build goal-native sourced rows below employee posts with labelled native facets, honest catalog/presence states and the optional wired request callback; no new visual language or dependency. `COMPANY_JOBS_ENABLED` stays false and server/pricing flags do not change. The current live-release landing hold applies; no landing is authorized while it is red. D-372's consumed writer bootstrap does not apply to this ordinary UI task. No implementation or test pass is claimed by this takeover receipt.
 Red-first boundary step: added the real off-switch/filter contract and consumer tests against the unchanged company page. Both local fork and thread pools failed before importing any test (worker-start timeout, zero tests); neither is a red behavior proof. Publish this tests-only head for fresh required CI before implementing the mount. No local worker policy or repository timeout changed.
