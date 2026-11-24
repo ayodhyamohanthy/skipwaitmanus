@@ -7760,14 +7760,16 @@
       "lane": "ask-flow",
       "branch": "agent/coordinator/expiry-clock-removal",
       "status": "todo",
-      "syncedTo": "D-386",
+      "syncedTo": "D-391",
       "dependsOn": [
         "D-166-journey-decisions-sync",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs). D-379: in the same PR, remove the 90-day sentence from the waiting-for-coverage status help (client/src/components/requests/statusHelp.ts). D-385 (Nov 24) clears the Qoder · ad9f packet block: own packet docs/plans/D-174-expiry-clock-removal.md, default-off ASK_NO_EXPIRY_ENABLED in shared/referral.ts, coupling test with ASK_RECONFIRM_ENABLED, Tier 1 because it switches off a refund trigger. This row never turns the switch on; D-174-no-expiry-release does.",
+      "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs). D-379: in the same PR, remove the 90-day sentence from the waiting-for-coverage status help (client/src/components/requests/statusHelp.ts). D-385 (Nov 24) clears the Qoder · ad9f packet block: own packet docs/plans/D-174-expiry-clock-removal.md, default-off ASK_NO_EXPIRY_ENABLED in shared/referral.ts, coupling test with ASK_RECONFIRM_ENABLED, Tier 1 because it switches off a refund trigger. This row never turns the switch on; D-174-no-expiry-release does. D-391 (Nov 24) clears the standing Qoder · ad9f block: the D-385 packet defines the runtime paths and tests, and the reconfirm dependency is reconciled to done.",
       "epic": "D-174",
       "owns": [
+        "docs/DECISIONS.md",
+        "docs/plans/assignments.json",
         "shared/referral.ts",
         "shared/referral.noExpiry.test.ts",
         "shared/askNoExpiryCoupling.test.ts",
@@ -7846,8 +7848,8 @@
       "tier": 1,
       "lane": "d174-pool",
       "branch": "agent/queue/d174-held-ask-reconfirm",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-391",
       "dependsOn": [
         "D-048-fix-post-copy",
         "POSTMERGE-oct22-fixes",
@@ -7855,7 +7857,7 @@
         "D-090-BYOR",
         "BANDED-spend"
       ],
-      "note": "D-193 section 5.3 and ruling (5): reconfirm before spending on every deliverWaitingAskTx path, never close the waiting request. Transition events, no migration; in-app notice only; ASK_RECONFIRM_ENABLED stays false until QA and expiry-clock removal still waits for this row. Existing post-copy, postmerge, audit and BYOR prerequisites remain. D-367 (6) moves the shared accepted-price guard into BANDED-spend, so the former D-132-item3 output dependency is redirected there. Reuse the current banded quote/spend contract after that output lands; the job-level mapping is D-367, never the superseded per-level credit cost or old band-null assumption. This changes routing only, not delivery, reconfirmation, money, flags or release acceptance.",
+      "note": "D-391 reconciles this row to done: PR #1437 merged (4feb94b9b, Nov 21) with ASK_RECONFIRM_ENABLED still false; turning the switch on stays with D-174-no-expiry-release. D-193 section 5.3 and ruling (5): reconfirm before spending on every deliverWaitingAskTx path, never close the waiting request. Transition events, no migration; in-app notice only; ASK_RECONFIRM_ENABLED stays false until QA and expiry-clock removal still waits for this row. Existing post-copy, postmerge, audit and BYOR prerequisites remain. D-367 (6) moves the shared accepted-price guard into BANDED-spend, so the former D-132-item3 output dependency is redirected there. Reuse the current banded quote/spend contract after that output lands; the job-level mapping is D-367, never the superseded per-level credit cost or old band-null assumption. This changes routing only, not delivery, reconfirmation, money, flags or release acceptance.",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts",
@@ -8845,8 +8847,8 @@
       "tier": 2,
       "lane": "d048-admin-ops-mobile-width",
       "branch": "agent/queue/d048-admin-ops-mobile-width",
-      "status": "todo",
-      "syncedTo": "D-366",
+      "status": "done",
+      "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
         "client/src/pages/goal/admin-ops/goalOpsParts.tsx",
@@ -8856,7 +8858,7 @@
         "e2e/admin-ops-width.e2e.ts",
         "design/goal-ui/captures/admin-ops/mobile-width/**"
       ],
-      "note": "P2 correctness follow-up measured during D-048-K-admin-ops / PR #1332, November 19: four 390@2x full-document images exceed 780px (1464/1140 for flow health and 1270 for both schema states), despite a zero root scroll-width metric. All 36 before/after retirement pairs are identical, so this predates that behavior-preserving deletion and does not hold it. Reproduce with actual browser/document/PNG-width checks, then bound the goal panel/grid/table and statement text locally without hiding data. No API/auth/money/global typography/release change. New row appended; existing FIFO order retained; no edge solely for shared files (D-314).",
+      "note": "P2 correctness follow-up measured during D-048-K-admin-ops / PR #1332, November 19: four 390@2x full-document images exceed 780px (1464/1140 for flow health and 1270 for both schema states), despite a zero root scroll-width metric. All 36 before/after retirement pairs are identical, so this predates that behavior-preserving deletion and does not hold it. Reproduce with actual browser/document/PNG-width checks, then bound the goal panel/grid/table and statement text locally without hiding data. No API/auth/money/global typography/release change. New row appended; existing FIFO order retained; no edge solely for shared files (D-314). Done: PR #1544 merged at eeda4afd6 (2026-11-24). e2e/admin-ops-width.e2e.ts red first (732/570/2030 CSS px at a 390px viewport) then 5/5 green; all eight 1280/390 captures at 780/1280 px; required CI green including e2e journeys.",
       "epic": "D-048-p3"
     },
     {
