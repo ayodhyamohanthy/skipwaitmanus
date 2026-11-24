@@ -59,3 +59,28 @@ and `LAUNCH-live-qa` updates its BUGFREE_GATE rows with that run's evidence.
 ## Status
 
 - OPS-live-qa-journeys: in progress — DeepSeek V4.1 Flash · e9e1 — 2026-11-24 — branch agent/queue/ops-live-qa-journeys
+
+### Build notes (DeepSeek V4.1 Flash · e9e1, 2026-11-24)
+
+- `mode` input on `.github/workflows/live-qa.yml`: `navigate` (default) or `journeys`. The journeys step runs only on
+  `workflow_dispatch`, shares the `live-qa` concurrency group, and the passwords are masked before either script.
+- `scripts/live-qa-journeys.mjs` signs in both demo accounts, fails closed unless each session is exactly its demo
+  email, stops before buying when the wallet has no free referral, and records every step in `live-qa/summary.json`.
+- **Route to the demo referrer's company.** The demo referrer's verified domain is `reviewer.skipwait.me`, and no
+  catalog job or job URL resolves to that subdomain (`directEmployerDomainFromTargetUrl` returns the registrable
+  `skipwait.me`). The run therefore reuses the demo referrer's live walk-in post at that domain, or publishes one
+  for the run and closes it again. The post is public on `/api/opportunities` for the minute or two the run takes;
+  its role title says it is an automatic check removed after the run.
+- **Money sequence (one credit net per run).** Ask A: create (spend at first visibility, D-034) → preview privacy →
+  document denial → claim → accept → reveal → cross-role denial → referrer step-back → seeker withdraw (the
+  step-back released the claim, so the credit returns). Ask B: create → withdraw before pickup (returns, D-034).
+  Ask C: create → claim → decline → withdraw (the latest pickup is the claim, so the credit stays spent: D-147,
+  D-021). The ledger asserts all three and the wallet ends one credit lower. The step-back route needs
+  `REFERRED_DEADLINE_ENABLED`, which is `true` on `main`.
+- **Job link.** `https://wellfound.com/jobs/3971835-account-executive` is a reviewed listing in
+  `shared/referralUrl.ts`; the preview resolves it to `chatfin.ai` without fetching a page.
+- Tests: `scripts/liveQaJourneys.test.ts` 19/19 (red first: the module did not exist, so the suite failed to
+  resolve `./live-qa-journeys.mjs`); the existing `liveQaSignedIn` 21/21 and `liveQaWorkflows` 6/6 still pass;
+  `tsc --noEmit` exits 0.
+- Not yet run: the dispatched `journeys` run on skipwait.me (acceptance). It needs the two repository secrets and
+  the review/landing stage; this build does not claim it.
