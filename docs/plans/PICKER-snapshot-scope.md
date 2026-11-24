@@ -55,6 +55,25 @@ All 17 earlier cases still pass, including:
 - a created report-log, landing-slot, review or architect input still forces a reread;
 - deleted and new refs, report and heartbeat push retries, unavailable origin and shallow history behave as before.
 
+## Claim-race re-pick (D-324, November 24 2026)
+
+Measured dead end: with several sessions claiming at once, a claim that lost the race for its
+picked task threw `RefSnapshotChanged` out of the six-claim loop, so the command spent its three
+whole snapshot rereads on the same task and ended in `STOP: authoritative refs kept changing`
+without an assignment. A rival claim moves the picked task's own work branch, which is a lost
+race, not churn.
+
+Change (`scripts/next-task.mjs` only): `RefSnapshotChanged` carries the scoped refs that moved.
+When the picked task's own work branch is among them, the claim loop treats it as a lost race and
+re-picks inside the same bounded six-claim loop. Every other moved ref keeps the existing
+three-reread stop, so a task whose own heartbeat or lock keeps moving still ends in STOP with no
+write. Non-force pushes, main-by-content, the shared report/landing inputs and every eligibility
+rule are unchanged.
+
+Red first in `scripts/nextTaskAuthoritativeRefs.test.ts`: "re-picks when a rival claims the picked
+task during the read" reproduced exit 2 on unchanged source and passes with the change; the
+existing bounded-churn STOP case still passes.
+
 ## Status
 
 - PICKER-snapshot-scope: done in [PR #1421](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1421) (registered by #1422) — Claude Code · d891 — 2026-11-21 — branch `agent/queue/picker-snapshot-scope`. Red-first `4a7ad51e3`, fix `74ceef1de`. All 29 picker and auto-land suites (524 tests) and the whole `scripts/` directory (71 files, 1,660 tests) pass locally, run without the sandbox proxy variable that the picker CLI re-executes under. A live read-only run of the new CLI with this registry validated it and printed a real assignment. Required CI on the pull request head is the landing gate; an ordinary `--claim` during normal multi-agent activity after it lands is the acceptance check. Agents run their local `scripts/`, so each must pull main first (D-321 (9)).

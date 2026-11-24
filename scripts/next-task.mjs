@@ -74,7 +74,10 @@ const fail = (message, code = 1) => {
   throw new CliFailure(message, code);
 };
 
-class RefSnapshotChanged extends Error {}
+class RefSnapshotChanged extends Error {
+  /** The scoped refs that moved since the snapshot, so a caller can tell a lost claim race from churn. */
+  constructor(message, changed = []) { super(message); this.changed = changed; }
+}
 let decisionRefs = null;
 const refPatterns = ["refs/heads/main", "refs/heads/agent/*"];
 const refspecs = ["+refs/heads/main:refs/remotes/origin/main", "+refs/heads/agent/*:refs/remotes/origin/agent/*"];
@@ -139,9 +142,32 @@ export function runLocalCleanup({ tryGit, log = console.log, err = console.error
   }
 }
 
+/**
+ * PICKER-fetch-retry (D-324, D-321 (11)): the ref refresh is the run's first network step and one
+ * reset there stopped the whole run ("authoritative ref refresh failed"), though replaying the same
+ * fetch by hand succeeded in 11.7 s. The same host also drops about 1 GitHub read in 60.
+ * The retry is bounded and covers transport only; the caller still fails closed afterwards.
+ */
+export const FETCH_ATTEMPTS = 3;
+
+/** How many attempts to make given the failures so far: the bounded attempt count. */
+export const fetchAttemptsFor = (failed, attempts = FETCH_ATTEMPTS) => Math.min(failed + 1, attempts);
+
+const FETCH_RETRY_DELAY_MS = 500;
+const sleepSync = ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+
+/** Runs one Git fetch, retrying a transport failure up to FETCH_ATTEMPTS; false when it never worked. */
+function fetchWithRetry(args) {
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    if (tryGit(...args) !== null) return true;
+    if (attempt < FETCH_ATTEMPTS) sleepSync(FETCH_RETRY_DELAY_MS * attempt);
+  }
+  return false;
+}
+
 function refreshAuthoritativeRefs() {
   // Explicit destinations update and prune tracking refs even in a main-only clone; config stays untouched.
-  if (tryGit("-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs) === null) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
+  if (!fetchWithRetry(["-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs])) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
   if (tryGit("rev-parse", "--is-shallow-repository") !== "false") fail("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
   runLocalCleanup({ tryGit, log: console.log, err: console.error });
   return trackingRefs();
@@ -220,16 +246,20 @@ function requireCurrentRefs(scope = null) {
   const differs = (refs, skipMain) => {
     const selected = map => [...map].filter(([name]) => relevant(name) && !(skipMain && name === "main"));
     const now = new Map(selected(refs)), then = selected(decisionRefs.refs);
-    return now.size !== then.length || then.some(([name, sha]) => now.get(name) !== sha);
+    const changed = then.filter(([name, sha]) => now.get(name) !== sha).map(([name]) => name);
+    if (now.size !== then.length) changed.push(...[...now.keys()].filter(name => !then.some(([was]) => was === name)));
+    return changed;
   };
   const remote = refsFrom(tryGit("ls-remote", "--heads", "origin", ...refPatterns), "refs/heads/");
-  if (differs(remote, mainByContent)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  const moved = differs(remote, mainByContent);
+  if (moved.length) throw new RefSnapshotChanged("authoritative snapshot changed before write", moved);
   if (mainByContent && remote.get("main") !== decisionRefs.refs.get("main")) {
     const current = remote.has("main") ? mainInputsUnchanged(scope) : null;
-    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write", ["main"]);
     decisionRefs.refs.set("main", current);
   }
-  if (differs(trackingRefs(), false)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  const tracked = differs(trackingRefs(), false);
+  if (tracked.length) throw new RefSnapshotChanged("authoritative snapshot changed before write", tracked);
 }
 
 /**
@@ -542,6 +572,14 @@ function pullRequestFacts(tasks, heads, branches) {
 const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) !== null;
 const tip = name => git("rev-parse", originRef(name));
 const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
+/**
+ * A lock ref can vanish between the snapshot read and the claim: another session
+ * merges it and a concurrent prune drops the remote-tracking ref. The snapshot
+ * said it existed, so `tip()` would throw and the whole pick would fail. Re-check
+ * the ref and fall back to main, which is what a lock that never existed uses.
+ * Pure over its three readers so the regression can pin it without a live repo.
+ */
+export const lockTipWith = ({ exists, tipOf, main }) => (name, existed) => (existed && exists(name) ? tipOf(name) : main());
 
 /** Other tasks' empty reports do not change this task's report/deduplication inputs. */
 function reportParentFor(task) {
@@ -745,6 +783,7 @@ function claim(pick, who, branches, provenanceBody) {
   // D-370: no model dependency; a task's external-route history no longer limits who may claim it.
   if (MODEL_ROUTES_ENFORCED && !provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
   const origin = () => git("rev-parse", "origin/main");
+  const lockTip = lockTipWith({ exists: onOrigin, tipOf: tip, main: origin });
   const scope = scopeOfPick(pick);
   switch (pick.kind) {
     case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody, scope));
@@ -759,12 +798,12 @@ function claim(pick, who, branches, provenanceBody) {
       }
       return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
     }
-    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
+    case "unblock": return Boolean(pushMarker(pick.lock, lockTip(pick.lock, pick.lockExists), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
     case "architect":
-    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
+    case "resync": return Boolean(pushMarker(pick.lock, lockTip(pick.lock, pick.lockExists), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
     case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who), undefined, scope));
-    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
-    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
+    case "review": return Boolean(pushMarker(pick.lock, lockTip(pick.lock, pick.lockExists), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
+    case "fix": return onOrigin(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
     case "continue": return keepClaim(pick, who, branches, provenanceBody);
     default: return false;
   }
@@ -982,7 +1021,18 @@ async function runCommand(args) {
       const route = routeIdentity(provenance.registry, args.provenance, who, pick.task.id, role);
       if (!route.ok) fail(route.reason);
     }
-    if (claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    // D-324 / PICKER-claim-race-reread: a rival's claim on the picked task is a lost race, not a
+    // snapshot dead end. Re-pick inside this bounded loop; churn on any other scoped ref keeps the
+    // existing three-reread stop, so a task whose own heartbeat keeps moving still ends in STOP.
+    let claimed = false;
+    try {
+      claimed = claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined);
+    } catch (error) {
+      if (!(error instanceof RefSnapshotChanged) || !pick.task || !error.changed?.includes(pick.task.branch)) throw error;
+      console.error(`next-task: another agent claimed ${pick.task.id} first (attempt ${attempt}); picking again`);
+      continue;
+    }
+    if (claimed) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("six claims in a row were taken by other agents; run again in a minute");
