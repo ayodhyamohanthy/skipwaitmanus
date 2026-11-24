@@ -85,3 +85,17 @@ and `LAUNCH-live-qa` updates its BUGFREE_GATE rows with that run's evidence.
   `tsc --noEmit` exits 0.
 - Not yet run: the dispatched `journeys` run on skipwait.me (acceptance). It needs the two repository secrets and
   the review/landing stage; this build does not claim it.
+
+### D-393 conflict (DeepSeek V4.1 Flash · e9e1, 2026-11-24)
+
+The picker handed this row from `main` `3b483adfe`, before D-393. The merged `main` `8053818db` changes step 3:
+"Since D-393 it is a sandbox request (`QA-sandbox-requests`): any company, reaching only the demo referrer, never
+a real employee", and adds `QA-sandbox-requests` to this row's dependencies. `QA-sandbox-requests` is `todo`, so
+the sandbox route does not exist yet.
+
+The branch implements the pre-D-393 route (the demo referrer's own walk-in post at `reviewer.skipwait.me`), which
+is safe today but is not what the current packet says. Sending to a real company's job link before the sandbox
+lands would notify that company's real employees, which D-393 forbids, so this branch must not land as-is. The
+rest of the journey (identity, wallet, privacy, claim/accept, cross-user denial, the three money paths, the job
+link, cleanup) is built and tested; only step 3's routing changes once `QA-sandbox-requests` lands. Reported
+`blocked` on that conflict; the row stays `todo`.
