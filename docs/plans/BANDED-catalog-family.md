@@ -47,6 +47,21 @@ in the Status section showing 14 prices planned or the exact remaining refusal.
 This row does not change that row's owns or acceptance. Read its branch before building and keep
 both changes when merging.
 
+## Build notes (Nov 24 2026, Claude Code · 075d)
+
+- **Step 1 readback: pending.** The only existing read-only path holding the TEST key in GitHub
+  Actions, `scripts/bandedTestCardQa.ts probe`, checks a single item price id; it does not list
+  families. Its run 45361686115 (Nov 24) reported only that `skipwait_early_to_mid_monthly-USD` is
+  absent on `skipwait-test`. No new provider-calling code was added (outside this row's owns). The
+  full TEST readback (ids, statuses, families) runs as the TEST-site dry run after this lands.
+- **Code (steps 2-3):** `chooseFamily` counts only active SkipWait items and item prices; `archived`
+  or `deleted` objects are retired and ignored, also for the "objects exist without a family" case,
+  so an archived-only site plans like an empty one. Two active families still block, and the reason
+  now names each family with its active ids. Create-only apply, the `planHash` re-check and the
+  owner-typed apply are unchanged (D-069).
+- **Step 5 still open:** the TEST site's banded prices may carry older ids; if the dry run shows
+  that, it is the owner's ruling (create the app ids alongside, or retire the old ones by hand).
+
 ## Status
 
 - BANDED-catalog-family: in progress — Claude Code · 075d — 2026-11-24 — branch agent/queue/banded-catalog-family
