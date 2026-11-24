@@ -8307,17 +8307,19 @@
       "lane": "d178-read",
       "branch": "agent/queue/d178-read",
       "status": "todo",
-      "syncedTo": "D-290",
+      "syncedTo": "D-393",
       "epic": "D-178",
       "owns": [
+        "docs/DECISIONS.md",
+        "docs/plans/assignments.json",
         "server/seekerAgentRoutes.ts (one route)",
         "shared/seekerAgents.ts (one view type)",
         "server/seekerAgentRequests.test.ts"
       ],
       "dependsOn": [
-        "SKIPPY-6"
+        "D-178.grant"
       ],
-      "note": "Packet section 5 row 4."
+      "note": "Packet section 5 row 4. D-393 (Nov 24) clears the standing Qoder · 2b1b block: worktree contention resolved by D-388 / PR #1537, SKIPPY-6 dependency reconciled to D-178.grant, and PR #1522 implementation ready with green required CI."
     },
     {
       "id": "D-178.screen",
