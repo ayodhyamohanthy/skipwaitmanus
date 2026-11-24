@@ -384,9 +384,10 @@
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys",
       "status": "todo",
-      "syncedTo": "D-389",
+      "syncedTo": "D-393",
       "dependsOn": [
-        "OPS-live-qa-hardening"
+        "OPS-live-qa-hardening",
+        "QA-sandbox-requests"
       ],
       "owns": [
         ".github/workflows/live-qa.yml",
@@ -397,7 +398,7 @@
         "scripts/liveQaWorkflows.test.ts",
         "docs/plans/OPS-live-qa-journeys.md"
       ],
-      "note": "Owner-approved Nov 24 (D-389): live demo-account journeys rather than the QA preview. Proves the LAUNCH-live-qa gaps listed in docs/qa/launch-live-qa-2026-11-24.md (PR #1540). workflow_dispatch only, fail closed on any non-demo identity, stop if no free referral, never a payment or provider call. Read server code for every endpoint before writing a step.",
+      "note": "Owner-approved Nov 24 (D-389): live demo-account journeys rather than the QA preview. Proves the LAUNCH-live-qa gaps listed in docs/qa/launch-live-qa-2026-11-24.md (PR #1540). workflow_dispatch only, fail closed on any non-demo identity, stop if no free referral, never a payment or provider call. Read server code for every endpoint before writing a step. D-393 (Nov 24): depends on QA-sandbox-requests; steps 3-9 run as sandbox requests (any company, reaching only the demo referrer), so no real employee is ever notified.",
       "epic": "D-212"
     },
     {
@@ -439,6 +440,155 @@
         "docs/plans/PICKER-tier1-wording.md"
       ],
       "note": "Technical correction implementing D-370 (registered with D-389). scripts/nextTaskText.mjs still prints for Tier 1: open a DRAFT pull request ... hands the review to a different session. Builders overrode it by instruction on Nov 24. Shares picker files with PICKER-session-worktree and HYGIENE-picker-bootstrap (D-314).",
+      "epic": "D-212"
+    },
+    {
+      "id": "P0-ask-send-blocked-reason",
+      "title": "P0: Send referral request is never silent: the blocking reason in red beside Send and at the field, an error toast with the fix, and focus on the field to fix (owner report Nov 24, /explore/go-neutrinos)",
+      "row": "D-212",
+      "packet": "docs/plans/P0-ask-send-blocked-reason.md",
+      "tier": 1,
+      "lane": "p0-ask-send",
+      "branch": "agent/queue/p0-ask-send-blocked-reason",
+      "status": "todo",
+      "syncedTo": "D-393",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/goal/GoalButton.tsx",
+        "client/src/components/goal/GoalField.tsx",
+        "client/src/components/goal/goalAtoms.test.tsx",
+        "client/src/components/goal/goalBoundary.test.ts",
+        "client/src/components/goal/index.ts",
+        "client/src/components/goal/wrapper/goalToaster.ts",
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/ExploreCompany.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/explore/JobLinkFromPosting.tsx",
+        "client/src/pages/explore/jobLinkPrefill.ts",
+        "client/src/pages/explore/jobLinkPrefill.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "DESIGN.md",
+        "docs/qa/",
+        "docs/plans/P0-ask-send-blocked-reason.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "P0 under D-019 (fix first, report after): owner report Nov 24, Send did nothing on /explore/go-neutrinos. Built by Claude Code · 695b in PR #1548; registered so the queue scope check (D-166) can evaluate it. No server, money or sign-in change.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-sandbox-requests",
+      "title": "The demo accounts test any company and any referral with no limits, in a sandbox: every demo request reaches only the demo referrer and no real person (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-sandbox-requests.md",
+      "tier": 1,
+      "lane": "qa-sandbox-requests",
+      "branch": "agent/queue/qa-sandbox-requests",
+      "status": "todo",
+      "syncedTo": "D-393",
+      "dependsOn": [],
+      "owns": [
+        "server/db.ts",
+        "server/sandbox.ts",
+        "shared/sandbox.ts",
+        "server/sandbox.test.ts",
+        "server/coverageDelivery.ts",
+        "server/referralReviewDispatch.ts",
+        "server/companyDemand.ts",
+        "server/impactCard.ts",
+        "server/dailyOpsCheck.ts",
+        "server/_core/reviewerLogin.ts",
+        "shared/openAskSlots.ts",
+        "docs/plans/QA-sandbox-requests.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393): test accounts test any company, any referral, free or paid, with no limits. The sandbox boundary (no real person notified, shown or counted) is the D-023 safeguard; the owner may remove it. OPS-live-qa-journeys depends on this row.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-demo-test-billing",
+      "title": "Only the demo seeker pays with test cards on the Chargebee TEST site from skipwait.me, with no plan or band limits, while sales stay off for everyone else (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-demo-test-billing.md",
+      "tier": 1,
+      "lane": "qa-demo-test-billing",
+      "branch": "agent/queue/qa-demo-test-billing",
+      "status": "todo",
+      "syncedTo": "D-393",
+      "dependsOn": [
+        "QA-sandbox-requests"
+      ],
+      "owns": [
+        "server/chargebeeEnvironment.ts",
+        "server/chargebeeApi.ts",
+        "server/bandedCheckout.ts",
+        "server/bandedCheckoutRoutes.ts",
+        "server/bandedCheckoutProvider.ts",
+        "server/chargebeeRoutes.ts",
+        "server/paymentWebhooks.ts",
+        "server/chargebeePendingReconcile.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/demoTestBilling.ts",
+        "server/demoTestBilling.test.ts",
+        "server/configContract.test.ts",
+        ".env.example",
+        "src/worker.ts",
+        "docs/PAYMENTS_TEST_RUNBOOK.md",
+        "docs/plans/QA-demo-test-billing.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393): demo accounts use the TEST site. DEMO_TEST_BILLING_ENABLED default false. Owner actions: TEST secrets via the release secrets file, TEST webhook endpoint, switch on after QA. Never a real card, never TEST for a real account.",
+      "epic": "D-212"
+    },
+    {
+      "id": "ADMIN-activity-log",
+      "title": "The admin sees every sign-in, failed attempt, sign-up, request transition and account action, per person, with no secret stored and 90-day retention for sign-in rows (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/ADMIN-activity-log.md",
+      "tier": 1,
+      "lane": "admin-activity-log",
+      "branch": "agent/queue/admin-activity-log",
+      "status": "todo",
+      "syncedTo": "D-393",
+      "dependsOn": [],
+      "owns": [
+        "server/authEvents.ts",
+        "server/authEvents.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/otpLogin.ts",
+        "server/workEmailOtp.ts",
+        "server/_core/reviewerLogin.ts",
+        "server/privateReferralRoutes.ts",
+        "server/db.ts",
+        "server/scheduledJobRegistry.ts",
+        "shared/scheduledJobs.ts",
+        "client/src/pages/AdminActivity.tsx",
+        "client/src/pages/goal/admin/**",
+        "docs/plans/ADMIN-activity-log.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393). No auth.* action exists on main. Privacy: no password, code, token or link stored; unknown emails masked + HMAC; IPs truncated; 90-day auth retention. The privacy-policy sentence is listed for the owner, not written.",
+      "epic": "D-212"
+    },
+    {
+      "id": "ADMIN-support-view",
+      "title": "One admin support page per person: identity, wallet and ledger, requests and why each waits or failed, activity, links to existing fixes, trouble signals and Try this in the sandbox; no impersonation (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/ADMIN-support-view.md",
+      "tier": 1,
+      "lane": "admin-support-view",
+      "branch": "agent/queue/admin-support-view",
+      "status": "todo",
+      "syncedTo": "D-393",
+      "dependsOn": [
+        "ADMIN-activity-log"
+      ],
+      "owns": [
+        "server/adminSupportRoutes.ts",
+        "server/adminSupport.ts",
+        "server/adminSupport.test.ts",
+        "shared/adminSupport.ts",
+        "client/src/pages/goal/admin/**",
+        "client/src/App.tsx",
+        "docs/plans/ADMIN-support-view.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393): admin analytics to fix a user problem and test it from the test accounts. Read-only aggregation plus links to the existing audited admin actions; no impersonation.",
       "epic": "D-212"
     },
     {
