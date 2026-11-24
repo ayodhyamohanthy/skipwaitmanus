@@ -159,6 +159,6 @@ Zod schemas, strict, so unknown keys fail.
 
 ## Status
 Two rows share this packet (D-134); each writes its own line.
-- D-099-bonus-pages: in progress — DeepSeek V4.1 Flash · d158 — 2026-11-24 — branch agent/claude/d099-bonus-pages
+- D-099-bonus-pages: in progress — DeepSeek V4.1 Flash · d158 — 2026-11-24 — branch agent/claude/d099-bonus-pages. A1-A4 are built and pushed (contracts, migration 0127 + store + eight routes, the report form, `/admin/bonuses`); both flags are off. The row is AHEAD OF ITS DEPENDENCIES (D-315): it opens a draft pull request and does not land or mark done until `D-089-request-inbox` and the other dependencies are done.
 - D-099-bonus-line: todo; waits for `D-099-bonus-pages`, `D-048-p3-live-review-find` and `D-048-F-primitives`.
 - D-099-bonus-pages and D-099-bonus-line: re-synced to D-378 — Claude Code · e969 — 2026-11-22. Entries naming them since D-227: D-219 and D-221 (pricing re-sync lists; this packet has no credit or price wording, and its honesty line agrees), D-366 (7) (the bonus hold) and D-374 (the owner's answer). Slice A keeps data, admin entry and the report path and drops the public pages and sitemap. Slice B is one neutral, sourced fact line on `/explore/:slug` only. Dependencies are unchanged.

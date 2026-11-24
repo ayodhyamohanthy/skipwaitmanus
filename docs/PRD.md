@@ -31,7 +31,7 @@ Every slice is tagged with the loop it feeds. Referrer supply is the bottleneck.
 | Demand list (D-086) | L1 | release | Released under D-374: bonus lead removed; k-anonymous public counts enabled on /explore and company pages; unlisted demand queue enabled for admins. Both switches on (`COMPANY_DEMAND_PUBLIC_ENABLED` and `COMPANY_DEMAND_ADMIN_ENABLED`). |
 | BYOR one-time link (idea 2) | L2 | build | landed (`D-090-BYOR`, PR #632, reviewed); flags `BYOR_LINK_ENABLED`/`VITE_BYOR_LINK` stay OFF until its release row |
 | Employee request-inbox link (idea 1) | L4 | packet written (`docs/plans/D-089-request-inbox.md`, D-327): screen name on the referral link, direct-request marker, one switch starting off | build after idea 2 and the demand list; its two build rows (`D-089.server`, `D-089.ui`) are registered (D-327, Nov 12) and queue behind their dependencies; the release row flips the switch only after both rows, QA and the owner's look at the captures |
-| Sourced bonus pages (idea 3) | L5 | packet written (`docs/plans/D-099-bonus-pages.md`, D-163) | build after ideas 2 and 1 and the demand list |
+| Sourced bonus data and admin entry (idea 3) | L5 | slice A built on `agent/claude/d099-bonus-pages` (D-099, D-374): migration 0127, the eight routes, `/admin/bonuses` and the report form, both flags off; no public bonus page | slice B (one neutral fact line on `/explore/:slug`) after its dependencies; QA with the flags on |
 | Bedrock AI provider plan | - | build | plan with owner; AWS access needed |
 
 ## Demand-list release contract (D-086, D-227, D-366, D-374)
