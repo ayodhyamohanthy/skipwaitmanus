@@ -1172,7 +1172,7 @@
       "tier": 2,
       "lane": "deps",
       "branch": "agent/queue/sec-deps-nov24",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-388",
       "dependsOn": [],
       "owns": [

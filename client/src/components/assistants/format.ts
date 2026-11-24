@@ -1,5 +1,6 @@
 // Display helpers for the assistant screens (/assistants, /approve).
 // Pure functions: every label is derived from real server rows, never sample data.
+import type { SpendSource } from "@shared/planFamily";
 
 export type AssistantConnection = {
   id: number;
@@ -42,9 +43,25 @@ export type AssistantApproval = {
   attachmentIds?: number[];
   grantId?: number | null;
   agentName?: string | null;
+  /** D-178.screen (D-290 R4): which allowance this referral would come from, when known. */
+  costSource?: SpendSource;
   createdAt: string;
   expiresAt: string;
 };
+
+/**
+ * D-178.screen (D-290 R4): the frozen spending order's own words (D-219/D-221),
+ * matching server/skippieSeekerCost.ts so the same bucket never reads two ways.
+ */
+const COST_SOURCE_LABEL: Readonly<Record<SpendSource, string>> = {
+  included: "your included allowance",
+  free: "your monthly free allowance",
+  purchased: "your purchased referrals",
+};
+
+export function costSourceLabel(source: SpendSource | undefined): string | null {
+  return source ? COST_SOURCE_LABEL[source] : null;
+}
 
 const PROVIDER_LABEL: Readonly<Record<string, string>> = { chatgpt: "ChatGPT", claude: "Claude", custom: "Assistant", assistant: "Your assistant" };
 
