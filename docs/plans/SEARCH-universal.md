@@ -39,4 +39,4 @@ Greenhouse job link, `stripe.com` and "Neutrinos" each lead to a careers job lin
 
 ## Status
 
-- SEARCH-universal: in progress — DeepSeek V4.1 Flash · 5aa3 — 2026-11-24 — branch agent/queue/search-universal
+- SEARCH-universal: in progress — DeepSeek V4.1 Flash · 5aa3 — 2026-11-24 — branch agent/queue/search-universal — draft PR #1583. Built ahead of `D-174-seeker-journey-build` (D-315): do not land or mark done until every dependency is done and the live release recovers (D-212). Evidence: `server/search.test.ts` + `client/src/pages/explore/universalSearch.test.tsx` + `companySearch.test.tsx` = 80 passed on the merged tree; `pnpm check` exit 0. Unverified: 1280/390 captures and the deployed-SHA acceptance (need a running app with catalog data and a landed release).
