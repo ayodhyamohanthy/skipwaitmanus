@@ -7961,7 +7961,7 @@
       "tier": 1,
       "lane": "d174-journey-composer",
       "branch": "agent/queue/d174-journey-job-ask",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-378",
       "dependsOn": [
         "D-174-ask-from-job",
@@ -7977,7 +7977,8 @@
         "client/src/pages/explore/askSend.test.ts",
         "client/src/hooks/useAskQuote.ts",
         "client/src/pages/explore/jobAsk.test.tsx",
-        "client/src/pages/ExploreCompany.tsx (switch only)"
+        "client/src/pages/ExploreCompany.tsx (switch only)",
+        "e2e/company-jobs.e2e.ts"
       ]
     },
     {
@@ -8759,7 +8760,7 @@
       "tier": 2,
       "lane": "picker-claim-race",
       "branch": "agent/queue/picker-claim-race-reread",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
