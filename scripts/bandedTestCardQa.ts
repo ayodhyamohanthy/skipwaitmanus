@@ -269,17 +269,24 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       // The card fields live inside Chargebee's payment component iframe; fall back to the page when it is inline.
       await page.locator("#cb-payment-component").waitFor({ state: "attached", timeout: 30_000 }).catch(() => undefined);
       const paymentFrame = page.frameLocator("#cb-payment-component");
-      // The component lists payment methods first (Card, PayPal); choosing Card reveals its fields.
-      const cardChoice = paymentFrame.getByText("Card", { exact: true }).first();
-      if (await cardChoice.count().catch(() => 0)) {
-        await cardChoice.click({ force: true, timeout: 15_000 }).catch(() => undefined);
-        await page.waitForTimeout(2_000);
-        await deps.screenshot(page, "05-card-method");
+      // The component is a client-rendered app that lists payment methods first (Card, PayPal). Poll until it either
+      // shows fields or offers Card, choose Card, and give it a moment to render its fields.
+      const deadline = Date.now() + 45_000;
+      let frameInputs = 0;
+      while (Date.now() < deadline) {
+        frameInputs = await paymentFrame.locator("input").count().catch(() => 0);
+        if (frameInputs > 0) break;
+        const cardChoice = paymentFrame.getByText("Card", { exact: true }).first();
+        if (await cardChoice.count().catch(() => 0)) {
+          await cardChoice.click({ force: true, timeout: 10_000 }).catch(() => undefined);
+          await page.waitForTimeout(2_000);
+          await deps.screenshot(page, "05-card-method");
+          frameInputs = await paymentFrame.locator("input").count().catch(() => 0);
+          if (frameInputs > 0) break;
+        }
+        await page.waitForTimeout(1_000);
       }
-      // The component is a client-rendered app of its own: wait for its inputs before deciding where the fields are.
-      await paymentFrame.locator("input").first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
-      const root: import("playwright").Page | import("playwright").FrameLocator =
-        (await paymentFrame.locator("input").first().count().catch(() => 0)) > 0 ? paymentFrame : page;
+      const root: import("playwright").Page | import("playwright").FrameLocator = frameInputs > 0 ? paymentFrame : page;
       await root.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const filled: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
