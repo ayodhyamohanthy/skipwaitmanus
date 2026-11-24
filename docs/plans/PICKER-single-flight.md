@@ -70,4 +70,4 @@ the landing gate (D-370).
 
 ## Status
 
-- PICKER-single-flight: registered — Qoder · 3f21 — 2026-11-24
+- PICKER-single-flight: review — agent/queue/picker-single-flight — Qoder · 9c14 — 2026-11-24. Per-clone run lock: an alive pid refuses with exit 4, WAIT copy and no marker; a dead pid or a lock past 30 minutes is taken over; released on every exit path. `--report` and `--heartbeat` are exempt so a heartbeat can never be blocked behind a long scan (D-085). Mutation-checked: 5/5 fail without the fix, 5/5 pass with it.

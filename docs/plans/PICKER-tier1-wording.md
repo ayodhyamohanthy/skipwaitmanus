@@ -53,4 +53,4 @@ Picker suites and `pnpm check` green; required CI green.
 
 ## Status
 
-- PICKER-tier1-wording: in progress — DeepSeek V4.1 Flash · 019f — 2026-11-24 — branch agent/queue/picker-tier1-wording
+- PICKER-tier1-wording: done — a2e8acece30cc4c051aae73415810fc14566f83d (PR #1564, merged Nov 24 2026; required CI green, local `pnpm check` exit 0)

@@ -41,17 +41,21 @@ async function answerFailure(ctx: PasswordRouteContext, client: PasswordWorkosCl
     case "invalid_credentials":
       await recordFailure(ctx, at.email, at.ip);
       noteWorkosUnauthorized(error);
-      recordPasswordActivity(PASSWORD_ACTIVITY[at.origin], "failure", { code: "invalid_credentials" });
+      recordPasswordActivity(res, at.email, PASSWORD_ACTIVITY[at.origin], "failure", { code: "invalid_credentials" });
       return sendPasswordError(res, "invalid_credentials");
     case "rate_limited":
+      recordPasswordActivity(res, at.email, PASSWORD_ACTIVITY[at.origin], "denied", { code: "rate_limited" });
       return sendPasswordError(res, "rate_limited", { retryAfterSeconds: failure.retryAfterSeconds });
     case "use_another_method":
+      recordPasswordActivity(res, at.email, PASSWORD_ACTIVITY[at.origin], "denied", { code: "use_another_method" });
       return sendPasswordError(res, "use_another_method");
     case "password_sign_in_unavailable":
       reportPasswordFailure(at.origin, failure.kind, error);
+      recordPasswordActivity(res, at.email, PASSWORD_ACTIVITY[at.origin], "failure", { code: failure.kind });
       return sendPasswordError(res, "password_sign_in_unavailable");
     default:
       reportPasswordFailure(at.origin, failure.kind, error);
+      recordPasswordActivity(res, at.email, PASSWORD_ACTIVITY[at.origin], "failure", { code: failure.kind });
       return sendPasswordError(res, "temporarily_unavailable");
   }
 }
@@ -73,12 +77,12 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
       const client = ctx.client;
       if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
       const ip = requestIp(req);
-      if (!(await passLimits(ctx, res, signInLimits(body.email, ip)))) return;
-      if (!(await passLock(ctx, res, passwordLockKeys(body.email, ip)))) return;
+      if (!(await passLimits(ctx, res, signInLimits(body.email, ip)))) return recordPasswordActivity(res, body.email, PASSWORD_ACTIVITY.sign_in, "denied", { code: "rate_limited" });
+      if (!(await passLock(ctx, res, passwordLockKeys(body.email, ip)))) return recordPasswordActivity(res, body.email, PASSWORD_ACTIVITY.sign_in, "denied", { code: "locked" });
       // D-081: an address at a verified referrer domain never reaches WorkOS for a password; the answer depends only on
       // the domain, so it says nothing about whether this exact address has an account.
       if ((await ctx.emailStanding(body.email)) === "referrer_work_email") {
-        recordPasswordActivity(PASSWORD_ACTIVITY.sign_in, "denied", { code: "use_work_email_code" });
+        recordPasswordActivity(res, body.email, PASSWORD_ACTIVITY.sign_in, "denied", { code: "use_work_email_code" });
         return sendPasswordError(res, "use_work_email_code");
       }
       const at: AttemptContext = { email: body.email, ip, redirectTo: signedInDestination(req, body.returnTo), origin: "sign_in" };
@@ -99,9 +103,9 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
       if (!body) return;
       const client = ctx.client;
       if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
-      if (!(await passLimits(ctx, res, signUpLimits(body.email, requestIp(req))))) return;
+      if (!(await passLimits(ctx, res, signUpLimits(body.email, requestIp(req))))) return recordPasswordActivity(res, body.email, PASSWORD_ACTIVITY.sign_up, "denied", { code: "rate_limited" });
       // D-078 ruling 2: the same answer at once for a new address, an existing account or a referrer's work email.
-      recordPasswordActivity(PASSWORD_ACTIVITY.sign_up, "success", { step: "check_email" });
+      recordPasswordActivity(res, body.email, PASSWORD_ACTIVITY.sign_up, "success", { code: "check_email" });
       sendPasswordStep(res, { ok: true, step: "check_email" });
       ctx.defer(() => startPasswordSetup(ctx, client, body.email));
     } catch (error) {

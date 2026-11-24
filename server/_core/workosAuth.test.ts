@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { SignJWT, decodeJwt } from "jose";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HOSTED_LINK_COOKIE, signHostedLink } from "./hostedAccountSwitch";
 
 const authUrl = vi.fn();
@@ -11,6 +11,8 @@ const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
 const standings = vi.hoisted(() => ({ byEmail: new Map<string, string>(), referrerDomains: new Set<string>(), calls: [] as Array<[string, string | undefined]> }));
 const hosted = vi.hoisted(() => ({ list: vi.fn(async () => ({ data: [{ id: "session_live", status: "active" }] })), revoke: vi.fn(async () => {}) }));
+const authEvents = vi.hoisted(() => ({ record: vi.fn(async () => undefined) }));
+vi.mock("../authEvents", () => ({ recordAuthEvent: authEvents.record }));
 vi.mock("../db", () => ({
   upsertUser: vi.fn(),
   getDb: vi.fn(async () => ({})),
@@ -486,5 +488,35 @@ describe("canonical WorkOS callback session", () => {
     } finally {
       restore();
     }
+  });
+});
+
+// ADMIN-activity-log (D-393): each WorkOS sign-in outcome is one auth row with a closed method, never a code or token.
+describe("WorkOS sign-in events", () => {
+  beforeEach(() => { authEvents.record.mockClear(); authenticate.mockClear(); });
+  const events = () => authEvents.record.mock.calls.map(call => (call as unknown as [unknown, Record<string, unknown>])[1]);
+  it("records a Google sign-in for the canonical account", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      const agent = request.agent(app);
+      await agent.get("/api/auth/workos/sign-in").query({ returnTo: "/explore", provider: "google" });
+      const state = authUrl.mock.calls.at(-1)![0].state;
+      authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" }, authenticationMethod: "GoogleOAuth" } as never);
+      await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
+      expect(events()).toEqual([{ action: "auth.social_sign_in", outcome: "success", plane: "seeker", method: "google", email: "test@example.com", userId: 1 }]);
+      expect(JSON.stringify(events())).not.toContain("provider-code");
+    } finally { restore(); }
+  });
+  it("records a refused administrator sign-in at the entry and at the callback", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      await request(app).get("/api/auth/workos/admin").query({ email: "someone@gmail.com" });
+      authenticate.mockResolvedValueOnce({ user: { id: "user_x", email: "intruder@gmail.com", firstName: "I", lastName: "N" } });
+      await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin" });
+      expect(events()).toEqual([
+        { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed", plane: "admin", email: "someone@gmail.com" },
+        { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed", plane: "admin", method: "unknown", email: "intruder@gmail.com" },
+      ]);
+    } finally { restore(); }
   });
 });
