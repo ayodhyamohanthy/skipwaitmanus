@@ -33,4 +33,4 @@ run's `/requests` captures show no sample rows (link them in the Status section)
 
 ## Status
 
-- SEEKER-requests-no-samples: todo
+- SEEKER-requests-no-samples: in progress — Claude Code · 823b — 2026-11-24 — branch agent/queue/seeker-requests-no-samples
