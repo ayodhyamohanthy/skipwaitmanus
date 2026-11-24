@@ -51,6 +51,7 @@ import { askInviteFeatureGateMiddleware, registerAskInviteRoutes } from "../askI
 import { registerJobCatalogRoutesWithDrizzle } from "../jobCatalogRoutes";
 import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
+import { registerReferralBonusRoutes } from "../referralBonusRoutes";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
@@ -235,6 +236,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // D-099 slice A (D-374): referral-bonus data, admin entry and reports; 404 while BONUS_PAGES_ENABLED is off.
+  registerReferralBonusRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerCompanyClaimRoutes(app, { resolveIdentity });
   // skipwait.me/sitemap.xml routes to the Worker (wrangler routes), which
   // forwards it here: the sitemap's live reads come straight from the DB.
