@@ -90,6 +90,17 @@ export type AssistantApproval = {
   slotCount: number | null;
   createdAt: string;
   expiresAt: string;
+  /**
+   * SKIPPY-6: the job link the ask would use, so the approval card can show it.
+   * Optional so every existing reader keeps working.
+   */
+  targetRoleUrl?: string | null;
+  /** SKIPPY-6: the resume ids the agent proposed; the seeker may choose another at approve. */
+  attachmentIds?: number[];
+  /** SKIPPY-6: set when a seeker's own agent requested the send; null for seeker-initiated approvals. */
+  grantId?: number | null;
+  /** SKIPPY-6: the agent's name, snapshotted for the card. */
+  agentName?: string | null;
 };
 
 export type DeveloperApp = {

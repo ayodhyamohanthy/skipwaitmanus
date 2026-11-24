@@ -58,7 +58,7 @@ type QueueItem = {
   waitingForCoverage?: boolean | null;
   coverageVisibleAt?: string | null;
 };
-type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown };
+type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown; /** SKIPPY-6 (D-142): true only for an ask a seeker's own agent drafted and the seeker approved. */ sentViaAssistant?: boolean };
 type InboxPayload = { requests?: QueueItem[] };
 /** Read model for the honest empty state: paused / active (capacity left) / at_capacity. */
 type RoutingState = "paused" | "active" | "at_capacity";
@@ -388,6 +388,8 @@ function QueueDetail({ item, index, count, preview, previewLoading, previewError
         left ? <span key="left"><GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></span> : null,
         closes ? <span key="closes">Closes <GoalNum>{formatDay(closes) ?? ""}</GoalNum></span> : null,
         <span key="received">Received <GoalNum>{formatDay(item.createdAt) ?? ""}</GoalNum></span>,
+        // SKIPPY-6 (D-142): the seeker's own agent drafted this ask and the seeker approved it.
+        preview?.sentViaAssistant ? <span key="via">Sent via the seeker&apos;s assistant</span> : null,
       ] as (ReactNode | null)[]).filter(entry => entry !== null) as ReactNode[]}
       phoneBack={{ href: "/queue", label: "Referral queue" }}
       phonePosition={<GoalNum>{index + 1} / {count}</GoalNum>}
