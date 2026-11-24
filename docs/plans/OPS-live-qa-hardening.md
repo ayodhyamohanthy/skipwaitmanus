@@ -47,4 +47,4 @@ the deploy, then a live QA run started by the reset job, both linked in the Stat
 
 ## Status
 
-- OPS-live-qa-hardening: todo
+- OPS-live-qa-hardening: in progress — Claude Code · 3016 — 2026-11-24 — branch agent/queue/ops-live-qa-hardening
