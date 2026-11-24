@@ -26,6 +26,7 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 const toGrant = (row: typeof seekerAgentGrants.$inferSelect): GrantRow => ({
   id: row.id, userId: row.userId, name: row.name, keyPrefix: row.keyPrefix,
   canLookup: row.canLookup, canDraft: row.canDraft, canSend: row.canSend,
+  autoSend: row.autoSend ?? false,
   maxCreditsPerAsk: row.maxCreditsPerAsk, maxCreditsPerDay: row.maxCreditsPerDay, maxCreditsPerWeek: row.maxCreditsPerWeek, maxAsksPerDay: row.maxAsksPerDay,
   expiresAt: row.expiresAt, revokedAt: row.revokedAt, lastUsedAt: row.lastUsedAt, createdAt: row.createdAt,
 });
@@ -75,6 +76,12 @@ export function createSeekerAgentStore(): SeekerAgentStore {
     async touchLastUsed(id, now) {
       const db = await requireDb();
       await db.update(seekerAgentGrants).set({ lastUsedAt: now }).where(eq(seekerAgentGrants.id, id));
+    },
+    async setAutoSend(userId, id, enabled) {
+      const db = await requireDb();
+      // Ownership is in the WHERE clause, so another seeker's grant can never be written even if a caller skips its own check.
+      const result = await db.update(seekerAgentGrants).set({ autoSend: enabled }).where(and(eq(seekerAgentGrants.id, id), eq(seekerAgentGrants.userId, userId)));
+      return Number(result[0]?.affectedRows ?? 0) > 0;
     },
     async isPaused(userId) {
       const db = await requireDb();

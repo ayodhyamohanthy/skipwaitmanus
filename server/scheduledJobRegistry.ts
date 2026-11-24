@@ -17,6 +17,7 @@ import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
 import { createReviewDeliveryRetry } from "./reviewDeliveryRetry";
+import { createAgentAutoSendDigest } from "./agentAutoSendDigest";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -134,5 +135,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createReviewDeliveryRetry(),
+  },
+  {
+    // SKIPPY-7 (D-201 (4), D-060): daily digest of auto-sent referral requests.
+    name: "agent-auto-send-digest",
+    description: "Emails seekers a daily digest of referral requests auto-sent by their assistants, bounded to 100 users per run and keyed by date",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAgentAutoSendDigest(),
   },
 ];
