@@ -260,7 +260,7 @@
       "tier": 2,
       "lane": "picker-network-retry",
       "branch": "agent/queue/picker-network-retry",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
@@ -280,7 +280,7 @@
       "tier": 2,
       "lane": "picker-fetch-retry",
       "branch": "agent/queue/picker-fetch-retry",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
