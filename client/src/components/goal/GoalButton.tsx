@@ -16,6 +16,8 @@ export type GoalButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "dis
   busy?: boolean;
   busyLabel?: string;
   disabledReason?: string;
+  /** Called when a press is swallowed because of disabledReason (not while busy), so the screen can show why. */
+  onBlockedClick?: () => void;
   asChild?: boolean;
   leadingIcon?: LucideIcon;
   /** Left-aligned ghost action: the label sits flush with the text column; the padding stays as hit area. */
@@ -29,7 +31,7 @@ const SIZES = {
 } as const;
 
 export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(function GoalButton(
-  { variant = "ghost", size = "md", touch = "default", keys, busy = false, busyLabel, disabledReason, asChild = false, leadingIcon: LeadingIcon, flush = false, className, children, onClick, ...rest },
+  { variant = "ghost", size = "md", touch = "default", keys, busy = false, busyLabel, disabledReason, onBlockedClick, asChild = false, leadingIcon: LeadingIcon, flush = false, className, children, onClick, ...rest },
   ref,
 ) {
   const reasonId = useId();
@@ -45,7 +47,7 @@ export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(functio
         aria-disabled={inert ? "true" : undefined}
         aria-busy={busy ? "true" : undefined}
         aria-describedby={disabledReason !== undefined ? reasonId : undefined}
-        onClick={inert ? (event: { preventDefault(): void; stopPropagation(): void }) => { event.preventDefault(); event.stopPropagation(); } : onClick}
+        onClick={inert ? (event: { preventDefault(): void; stopPropagation(): void }) => { event.preventDefault(); event.stopPropagation(); if (!busy) onBlockedClick?.(); } : onClick}
         className={cn(
           "inline-flex items-center justify-center gap-2 rounded-g-control border border-transparent text-g-label whitespace-nowrap transition-colors duration-(--g-dur-hover) ease-g-out select-none",
           SIZES[size],

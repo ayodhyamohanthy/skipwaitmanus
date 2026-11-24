@@ -10,7 +10,7 @@ export { GoalStatus, GoalMiniStepper, GoalStepper, GOAL_STATUS_GLYPHS, type Goal
 export { GoalFilterChip } from "./GoalFilterChip";
 export { GoalSearchInput } from "./GoalSearchInput";
 export { GoalReasonInput } from "./GoalReasonInput";
-export { GoalField, GoalTextInput } from "./GoalField";
+export { GoalField, GoalFieldError, GoalTextInput } from "./GoalField";
 export { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "./GoalStates";
 export { useOnlineStatus } from "./useOnlineStatus";
 export { GoalShell, type GoalShellProps, type GoalShellCredits } from "./GoalShell";
