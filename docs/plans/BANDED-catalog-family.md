@@ -64,4 +64,4 @@ both changes when merging.
 
 ## Status
 
-- BANDED-catalog-family: in progress — Claude Code · 075d — 2026-11-24 — branch agent/queue/banded-catalog-family
+- BANDED-catalog-family: review — agent/queue/banded-catalog-family — 8dcc6ceb0 (PR #1533)
