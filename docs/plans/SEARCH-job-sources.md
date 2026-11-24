@@ -28,4 +28,4 @@ every covered company.
 
 ## Status
 
-- SEARCH-job-sources: todo
+- SEARCH-job-sources: in progress — Gemini 3.8 Flash · e475 — 2026-11-24 — branch agent/queue/search-job-sources
