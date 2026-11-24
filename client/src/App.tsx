@@ -87,6 +87,8 @@ const AdminCatalogSync = lazy(() => import("./pages/AdminCatalogSync"));
 const AdminApprovalQueue = lazy(() => import("./pages/AdminApprovalQueue"));
 const AdminApprovalRecord = lazy(() => import("./pages/AdminApprovalRecord"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+// ADMIN-support-view (D-393): one person's whole state on one admin page.
+const AdminSupport = lazy(() => import("./pages/goal/admin/GoalAdminSupport"));
 const EmployerDashboard = lazy(() => import("./pages/EmployerDashboard"));
 const TalentDiscovery = lazy(() => import("./pages/TalentDiscovery"));
 const EmployerBilling = lazy(() => import("./pages/EmployerBilling"));
@@ -264,6 +266,7 @@ function Router() {
           <Route path="/admin/flow-health" component={AdminFlowHealth} />
           <Route path="/admin/token-recovery" component={AdminTokenRecovery} />
           <Route path="/admin/users" component={AdminUsers} />
+          <Route path="/admin/users/:id/support" component={AdminSupport} />
           <Route path="/admin/schema" component={AdminSchema} />
           <Route path="/admin/smoke" component={AdminSmoke} />
           <Route path="/admin/money-check" component={AdminMoneyCheck} />
