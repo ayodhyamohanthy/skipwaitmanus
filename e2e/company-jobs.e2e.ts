@@ -71,7 +71,20 @@ for (const width of [1280, 390]) {
     await page.goto(`${PREVIEW_ORIGIN}/explore/example-works`);
     await expect(section.getByRole("heading", { name: "Senior Platform Engineer" })).toBeVisible();
     await expect(section.getByText("Verified referrers have joined", { exact: true })).toBeVisible();
-    await expect(section.getByRole("button", { name: "Request a referral" })).toHaveCount(0);
+    // D-174 §6.6: the jobs list now hands the picked row to the composer, so the
+    // button is live and opens the drawer with that job locked (no dead button).
+    const pick = section.getByRole("button", { name: "Request a referral" }).first();
+    await expect(pick).toBeVisible();
+    await pick.click();
+    const drawer = page.getByTestId("goal-drawer");
+    await expect(drawer.getByRole("heading", { name: "Senior Platform Engineer" })).toBeVisible();
+    await expect(drawer.getByRole("button", { name: "Change job" })).toBeVisible();
+    await expect(drawer.getByRole("link", { name: "View posting for Senior Platform Engineer" })).toHaveAttribute("href", CATALOG.jobs[0].applyUrl);
+    // Packet §6.6 "Done when": the locked drawer captured at 1280 and 390.
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: testInfo.outputPath(`job-ask-locked-${width}.png`), fullPage: true });
+    await drawer.getByRole("button", { name: "Close" }).click();
+    await expect(drawer).toHaveCount(0);
     await expect(section.getByRole("link", { name: "View posting for Senior Platform Engineer" })).toHaveAttribute("href", CATALOG.jobs[0].applyUrl);
     await expect(page.getByText("Employee-shared software role", { exact: true })).toBeVisible();
     expect(await page.getByText("Employee-shared software role", { exact: true }).evaluate((element, selector) => {
