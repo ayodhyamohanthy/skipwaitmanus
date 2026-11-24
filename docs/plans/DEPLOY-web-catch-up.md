@@ -43,4 +43,4 @@ After landing, the next green main CI after a web-path merge shows a catch-up ru
 
 ## Status
 
-- DEPLOY-web-catch-up: todo
+- DEPLOY-web-catch-up: in progress — Claude Code · 857e — 2026-11-24 — branch agent/queue/deploy-web-catch-up
