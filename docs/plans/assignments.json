@@ -9285,6 +9285,26 @@
         "AGENTS.md"
       ],
       "note": "D-324/D-321 (11) same-day dead-end fix, measured 2026-11-24 under 5+ concurrent claims. Red-first test plus fix in one commit; required CI on the pull request head is the landing gate. No product, money, flag, workflow, settings or spending change."
+    },
+    {
+      "id": "PICKER-branch-scan-batch",
+      "title": "One bounded git read for the picker branch scan instead of four processes per branch, so a claim does not cost minutes of serialized work",
+      "row": "D-324",
+      "packet": "docs/plans/PICKER-branch-scan-batch.md",
+      "epic": "D-212",
+      "tier": 2,
+      "lane": "picker-branch-scan",
+      "branch": "agent/queue/picker-branch-scan-batch",
+      "status": "todo",
+      "syncedTo": "D-396",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "scripts/nextTask.test.ts",
+        "docs/plans/PICKER-branch-scan-batch.md"
+      ],
+      "note": "CEO review 2026-11-25 (DeepSeek v4.1 Flash · ce4b): measured ~0.2s per branch ref x ~500 refs = ~97s of branch scanning per picker run, serialized behind one clone lock across 84 sessions; host load reached 974. Behaviour-preserving batching with an exact-equality test. No product, money, flag, workflow, settings or spending change."
     }
   ]
 }
