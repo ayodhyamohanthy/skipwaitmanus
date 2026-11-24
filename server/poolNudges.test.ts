@@ -12,8 +12,8 @@ import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), enabled: true }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
-vi.mock("./poolNudges", async importOriginal => ({
-  ...await importOriginal<typeof import("./poolNudges")>(),
+// D-384 (4): the switch lives in shared/poolNudges.ts; server/db.ts, the routes and the job read it there.
+vi.mock("../shared/poolNudges", () => ({
   get POOL_NUDGES_ENABLED() { return mocks.enabled; },
 }));
 

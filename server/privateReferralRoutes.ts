@@ -2,7 +2,7 @@ import { setRetryAfter } from "./retryAfter";
 import { ASK_RECONFIRM_ENABLED, askReconfirmBodySchema, askReconfirmParamsSchema, askReconfirmResponseSchema } from "../shared/askReconfirm";
 import { ASK_RECONFIRM_ERROR } from "../shared/moneyCopy";
 import { AskReconfirmError, countWaitingPoolRequestsForReferrer as defaultCountWaitingPoolRequestsForReferrer, reconfirmWaitingAsk } from "./db";
-import { POOL_NUDGES_ENABLED } from "./poolNudges";
+import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";

@@ -1,20 +1,16 @@
 // D-174-pool-nudges (D-193 §5.9): waiting-pool nudges.
 //
-// D-097: every part ships behind a switch that stays off until QA verifies it.
-// While this is false none of the parts runs: the inbox carries no waiting
-// count, no pool review email is sent and no release notice is written.
-//
-// Part 2 (the pool review email) is not built here. A pool delivery writes no
-// `referrerReviewEmailLinks` row — grants are created only with the request
-// transaction (server/db.ts createCompanyReferralRequest) — so the existing
-// claim/lease has no link to send. That is the packet's own stop condition;
-// the task carries a blocked report with the evidence.
+// The switch (POOL_NUDGES_ENABLED) lives in shared/poolNudges.ts so server/db.ts
+// can read it without an import cycle (D-384 (4)); it is re-exported here.
+// Part 2, the pool review email, is the grant written at delivery
+// (writeReviewGrantTx in server/db.ts) plus the hourly job in
+// server/poolReviewEmail.ts.
 import { and, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { canonicalPeople, notifications, profiles, referralRequestPasses, users } from "../drizzle/schema";
 import { blockedCounterpartsFailOpen } from "./blockedPairs";
 import type { LedgerTx } from "./creditLedger";
 
-export const POOL_NUDGES_ENABLED = false;
+export { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
 /** The in-app notice a released request writes to the company's other verified colleagues. */
 export const POOL_RELEASE_NOTICE_KIND = "ask_released";
 /** A release notice is a nudge, not a delivery: bound one release's fan-out. */
