@@ -2,7 +2,7 @@
   "version": 1,
   "repo": "ayodhyamohanthy/skipwaitmanus",
   "decidedBy": "Claude Code (architect, D-074, D-083); two follow-ups registered by owner Ayu, coordinator unavailable, Oct 22",
-  "updated": "2026-11-21",
+  "updated": "2026-11-24",
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
@@ -270,6 +270,25 @@
         "scripts/nextTaskLandExactHead.test.ts"
       ],
       "note": "Measured defect: 1 of 60 identical picker GitHub reads failed ECONNRESET through the host proxy and the helper had no retry, so five consecutive --claim runs stopped at cannot read main CI with no work picked. Add GITHUB_READ_ATTEMPTS=3 and isTransientGithubFailure, retry only transport failures and 5xx/429 with short backoff, never a 4xx, cancellation or timeout, and leave githubWrite to the snapshot protocol. Red-first scripts/nextTaskNetworkRetry.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-fetch-retry",
+      "title": "The picker retries its authoritative ref fetch, so one dropped connection stops no session; every attempt failing still stops the run (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-fetch-retry.md",
+      "tier": 2,
+      "lane": "picker-fetch-retry",
+      "branch": "agent/queue/picker-fetch-retry",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskFetchRetry.test.ts",
+        "docs/plans/PICKER-fetch-retry.md"
+      ],
+      "note": "Measured: the authoritative ref fetch is one call and one reset printed STOP authoritative ref refresh failed, exit 2, no work picked, while replaying the same fetch by hand succeeded in 11.7s. Add FETCH_ATTEMPTS=3 and fetchWithRetry over the existing refspecs; every attempt failing keeps the same STOP and exit 2. Red-first scripts/nextTaskFetchRetry.test.ts, mutation-checked (3/3 red without the fix). Lands on green required CI (D-370).",
       "epic": "D-212"
     },
     {
@@ -607,7 +626,8 @@
         "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
         "server/configContract.test.ts",
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        "docs/DECISIONS.md"
       ],
       "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
@@ -6311,16 +6331,16 @@
       "id": "SKIPPY-7",
       "title": "Skippy step 7: opt-in auto-send within the grant's limits, through the step 6 approve function (flag off)",
       "row": "D-201",
-      "packet": null,
+      "packet": "docs/plans/SKIPPY-7-auto-send.md",
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "architect",
-      "syncedTo": "D-308",
+      "status": "todo",
+      "syncedTo": "D-383",
       "dependsOn": [
         "SKIPPY-6"
       ],
-      "note": "Write the packet after SKIPPY-6 lands, from the rulings in docs/plans/SKIPPY-next.md: off by default, turned on only by the seeker in session, the same transaction and limits as an approved send, revoke and pause stop the next call, never buys credits, a daily digest."
+      "note": "Packet written in docs/plans/SKIPPY-7-auto-send.md under D-383. Per-grant autoSend, default off, turned on only by the seeker in session on a confirmation that restates the limits and expiry; needs the send scope. An auto-send calls the SKIPPY-6 decideAssistantApprovalWithAgentSend path with actor agent_auto: same grant row lock, same 20/hour and 60/day caps, same one-referral ceiling, same cost check, same askOrigins label. Revoke and pause stop it inside the transaction. A shortfall parks the row pending for the seeker and never buys referrals. One daily digest per seeker keyed agent-auto-digest:<userId>:<date> (D-060). Additive migration 0126 (seekerAgentGrants.autoSend, assistantApprovals.decidedBy), flag SKIPPIE_AGENT_AUTOSEND_ENABLED off on top of the D-290 gate."
     },
     {
       "id": "D-178-agent-portal-access",
@@ -7519,17 +7539,61 @@
       "id": "D-174-expiry-clock-removal",
       "title": "Remove the ask death clocks per D-174 (7-day unclaimed expiry, 90-day waiting cap, day-30 closure)",
       "row": "D-174",
-      "packet": "docs/plans/D-048-seeker.md",
-      "tier": 2,
+      "packet": "docs/plans/D-174-expiry-clock-removal.md",
+      "tier": 1,
       "lane": "ask-flow",
       "branch": "agent/coordinator/expiry-clock-removal",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-386",
       "dependsOn": [
         "D-166-journey-decisions-sync",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs). D-379: in the same PR, remove the 90-day sentence from the waiting-for-coverage status help (client/src/components/requests/statusHelp.ts)."
+      "note": "Builds D-174 (merged in #601): asks never expire at launch. Scope: remove the 7-day unclaimed expiry, the 90-day waiting cap and the day-30 closure (D-021/D-034/D-050/D-061/D-076(3)) from runtime and sweeps, including the ASK_TTL_DAYS copy sweep - copy changes land only with the runtime change (Main, Oct 24 00:14 IST). Untouched: referrer action timers, security/session/payment bounds, credit and refund rules; no new debit behavior. QA and any expiry-sweep workers must be informed before this merges. Intent is recorded; live expiry behavior is unchanged until this row lands. D-193 (5): waits for D-174-held-ask-reconfirm and goes live only with ASK_RECONFIRM_ENABLED on, so removing the 90-day cap never lets the hourly sweep charge a months-old held request; its runtime list also covers reconcileExpiredPendingReferrals and the client countdowns (getAskExpiresAtMs). D-379: in the same PR, remove the 90-day sentence from the waiting-for-coverage status help (client/src/components/requests/statusHelp.ts). D-385 (Nov 24) clears the Qoder · ad9f packet block: own packet docs/plans/D-174-expiry-clock-removal.md, default-off ASK_NO_EXPIRY_ENABLED in shared/referral.ts, coupling test with ASK_RECONFIRM_ENABLED, Tier 1 because it switches off a refund trigger. This row never turns the switch on; D-174-no-expiry-release does.",
+      "epic": "D-174",
+      "owns": [
+        "shared/referral.ts",
+        "shared/referral.noExpiry.test.ts",
+        "shared/askNoExpiryCoupling.test.ts",
+        "server/askExpirySweep.ts",
+        "server/askExpirySweep.noExpiry.test.ts",
+        "server/db.ts",
+        "server/db.askExpiry.test.ts",
+        "server/dailyMoneyCheck.test.ts",
+        "shared/moneyCopy.ts",
+        "shared/moneyCopy.test.ts",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "client/src/pages/explore.test.tsx",
+        "client/src/components/requests/statusHelp.ts",
+        "client/src/components/requests/statusHelp.test.ts",
+        "client/src/components/requests/requestModel.ts",
+        "client/src/pages/goal/support/supportContent.ts",
+        "client/src/pages/MyRequests.tsx",
+        "docs/plans/D-174-expiry-clock-removal.md"
+      ]
+    },
+    {
+      "id": "D-174-no-expiry-release",
+      "title": "Release no-expiry: prove reconfirm-before-spend on a QA preview, then turn ASK_RECONFIRM_ENABLED and ASK_NO_EXPIRY_ENABLED on together and verify on the exact deployed SHA (D-174, D-193 (5))",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-expiry-clock-removal.md",
+      "tier": 1,
+      "lane": "ask-flow",
+      "branch": "agent/queue/d174-no-expiry-release",
+      "status": "todo",
+      "syncedTo": "D-386",
+      "dependsOn": [
+        "D-174-expiry-clock-removal",
+        "D-174-held-ask-reconfirm"
+      ],
+      "note": "D-385 packet section 7. QA preview first with fictional accounts and the test provider only (no real money): a 31-day-old held request with a fresh credit is not charged until the seeker confirms, then charged once. One PR flips both switches with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA. Activation authority: D-174's launch rule after QA (D-097).",
+      "epic": "D-174",
+      "owns": [
+        "shared/askReconfirm.ts (switch only)",
+        "shared/referral.ts (switch only)",
+        "docs/BUGFREE_GATE.md",
+        "docs/plans/D-174-expiry-clock-removal.md"
+      ]
     },
     {
       "id": "D-174-fix-post-binding",
@@ -7653,13 +7717,14 @@
       "lane": "d174-pool",
       "branch": "agent/queue/d174-pool-nudges",
       "status": "todo",
-      "syncedTo": "D-227",
+      "syncedTo": "D-386",
       "dependsOn": [
         "D-174-ask-from-job"
       ],
-      "note": "D-193 packet section 5.9 and ruling (4): keeps the D-062 one-at-a-time hand-off. Tier 1: it reads the delivery spend path and sends to referrers; blocked pairs are never notified. POOL_NUDGES_ENABLED stays false until QA.",
+      "note": "D-193 packet section 5.9 and ruling (4): keeps the D-062 one-at-a-time hand-off. Tier 1: it reads the delivery spend path and sends to referrers; blocked pairs are never notified. POOL_NUDGES_ENABLED stays false until QA. D-384 (Nov 24) clears the part-2 block: deliverWaitingAskTx writes the review grant (one helper shared with the create path) behind the switch, no delivery row at delivery; the capped hourly pool-review-email job creates the row through prepareReferrerReviewEmailNotifications and sends via the existing claim with PUBLIC_BASE_URL. POOL_NUDGES_ENABLED moves to shared/poolNudges.ts (no import cycle). Parts 1 and 3 on the branch are unaffected.",
       "epic": "D-174",
       "owns": [
+        "shared/poolNudges.ts",
         "server/poolNudges.ts",
         "server/poolNudges.test.ts",
         "server/db.ts",
@@ -8585,8 +8650,8 @@
       "tier": 2,
       "lane": "picker-stale-fixed",
       "branch": "agent/queue/picker-stale-fixed-landing",
-      "status": "todo",
-      "syncedTo": "D-366",
+      "status": "done",
+      "syncedTo": "D-386",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskCore.mjs",
@@ -8595,7 +8660,7 @@
         "scripts/nextTaskStaleFixedLanding.test.ts",
         "scripts/reviewGateStaleFixedFacts.test.ts"
       ],
-      "note": "Registered FIFO at the tail by the Nov19 D-200 execution ruling for D-100.provider-recon. Implement only docs/plans/PICKER-stale-fixed-landing.md: positive shared-gate stale-Fixed diagnosis on the same tip plus exact gate-only red and a quiet ordinary landing may reach the existing qualified FIX flow. Current gateClear:false conflates errors and conservative status recognition; unknown/malformed/off-tip facts cannot grant recovery. No acceptance/independence/provenance/status-only semantics or completion permissions change. Existing active leases, packet rows, currently clear gates and other failures retain their routes. Red-first new tests and actual read-only picker proof required; no demonstration marker on the consumer. No runtime application, provider/key, payment, schema, flag or settings change. The earlier ordinary-recovery implementation #1093 is preserved, not reopened.",
+      "note": "Registered FIFO at the tail by the Nov19 D-200 execution ruling for D-100.provider-recon. Implement only docs/plans/PICKER-stale-fixed-landing.md: positive shared-gate stale-Fixed diagnosis on the same tip plus exact gate-only red and a quiet ordinary landing may reach the existing qualified FIX flow. Current gateClear:false conflates errors and conservative status recognition; unknown/malformed/off-tip facts cannot grant recovery. No acceptance/independence/provenance/status-only semantics or completion permissions change. Existing active leases, packet rows, currently clear gates and other failures retain their routes. Red-first new tests and actual read-only picker proof required; no demonstration marker on the consumer. No runtime application, provider/key, payment, schema, flag or settings change. The earlier ordinary-recovery implementation #1093 is preserved, not reopened. D-386 (Nov 24): retired as superseded by D-370 — the review gate passes unless SKIPWAIT_LEGACY_REVIEW_RULES=on, so no stale Fixed head is rejected, and the motivating PR #1171 merged at d62fb841. Nothing was implemented.",
       "epic": "D-200"
     },
     {
@@ -8665,6 +8730,46 @@
       ],
       "epic": "D-212",
       "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
+    },
+    {
+      "id": "PICKER-vanished-lock-tip",
+      "title": "A lock ref that vanished before the claim falls back to main instead of crashing the pick (D-321 (11), D-324)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-vanished-lock-tip.md",
+      "tier": 2,
+      "lane": "picker-vanished-lock",
+      "branch": "agent/queue/picker-vanished-lock-tip",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskVanishedLock.test.ts",
+        "docs/plans/PICKER-vanished-lock-tip.md"
+      ],
+      "note": "Measured defect: a real --claim died with exit 1 on git rev-parse refs/remotes/origin/agent/architect/skippy-auto-send because the snapshot said the lock existed, another session merged it (#1510) and a concurrent prune dropped the ref before the claim. lockTipWith re-checks the ref and claims from main; the fix claim refuses. Red-first scripts/nextTaskVanishedLock.test.ts 3/3. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-claim-race-reread",
+      "title": "A claim that loses the race for its picked task re-picks inside the bounded claim loop instead of spending the three snapshot rereads",
+      "row": "D-324",
+      "packet": "docs/plans/PICKER-claim-race-reread.md",
+      "epic": "D-212",
+      "tier": 2,
+      "lane": "picker-claim-race",
+      "branch": "agent/queue/picker-claim-race-reread",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-claim-race-reread.md",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "AGENTS.md"
+      ],
+      "note": "D-324/D-321 (11) same-day dead-end fix, measured 2026-11-24 under 5+ concurrent claims. Red-first test plus fix in one commit; required CI on the pull request head is the landing gate. No product, money, flag, workflow, settings or spending change."
     }
   ]
 }
