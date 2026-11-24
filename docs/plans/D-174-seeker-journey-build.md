@@ -154,6 +154,7 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 ### 6.7 `D-174-seeker-journey-build` (the release row; Tier 1, S)
 - **Waits for:** every row above, `D-174-company-search` and `D-174-ask-from-job`.
 - **Do (ruling 10):** set `COMPANY_TYPEAHEAD_ENABLED` and `COMPANY_JOBS_ENABLED` to `true` in one small PR after QA on the preview, an independent review and the CEO's sign-off (D-223 (3)). Do not touch `JOB_CATALOG_ENABLED`.
+- **D-394 (owner, Nov 24) replaces the gate above:** the owner's word is the sign-off and D-370 removed the independent review. Set `VITE_COMPANY_TYPEAHEAD=true` in `.github/workflows/deploy-pages.yml` (may ship first, after `SEARCH-work-domain`, in its own pull request); then turn `COMPANY_JOBS_ENABLED` and `JOB_CATALOG_ENABLED` on once `SEARCH-job-sources` has verified sources.
 - **Owns:** `client/src/pages/explore/useCompanySearch.ts (switch only)`, `client/src/pages/explore/companyJobsApi.ts (switch only)`.
 - **Done when:** after the deploy, captures of the whole journey on skipwait.me at 1280 and 390 (type a company, pick it, filter jobs, pick one, send a request, see the post-save line), and the four journey events visible in Clarity. Then `D-048-p3-live-review-find` takes the doctrine acceptance.
 

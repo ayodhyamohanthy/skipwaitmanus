@@ -35,7 +35,6 @@ import {
 import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
-import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
 import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
@@ -48,6 +47,27 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
   const rerun = spawnSync(process.execPath, ["--disable-warning=UNDICI-EHPA", ...process.argv.slice(1)], { stdio: "inherit", env: { ...process.env, NODE_USE_ENV_PROXY: "1" } });
   process.exit(rerun.status ?? 1);
 }
+
+// HYGIENE-picker-bootstrap (D-387): the review gate needs installed packages (zod). A static import of it
+// failed before any line of the picker ran, so a fresh clone got a Node stack trace. Load it here instead and,
+// when a package is missing, print the one command that fixes it.
+/** The bare package an ERR_MODULE_NOT_FOUND names, or null for a missing relative module or any other error. */
+export function missingPackageOf(error) {
+  if (!error || error.code !== "ERR_MODULE_NOT_FOUND") return null;
+  return /Cannot find package '([^']+)'/.exec(String(error.message))?.[1] ?? null;
+}
+/** Loads a picker module; a missing package prints one install line and exits 1, every other failure is rethrown. */
+export async function loadPickerModule(load, { err = console.error, exit = process.exit } = {}) {
+  try {
+    return await load();
+  } catch (error) {
+    const pkg = missingPackageOf(error);
+    if (!pkg) throw error;
+    err(`next-task: dependencies are not installed (missing package "${pkg}"); run pnpm install --frozen-lockfile, then run the picker again`);
+    return exit(1);
+  }
+}
+const { changedPathsOf, findGateRow, reviewGateViolation } = await loadPickerModule(() => import("./review-gate.mjs"));
 
 const LIST = "docs/plans/assignments.json";
 const REGISTER = "docs/DECISIONS.md";
@@ -213,10 +233,21 @@ function fetchWithRetry(args) {
   return false;
 }
 
+/**
+ * HYGIENE-picker-bootstrap (D-387): a shallow clone is unshallowed once, automatically, instead of stopping a
+ * fresh cloud session. If that fetch fails, or history is still incomplete, the existing STOP stands unchanged.
+ */
+export function ensureCompleteHistory({ tryGit: read, fail: stop, log = console.log }) {
+  if (read("rev-parse", "--is-shallow-repository") === "false") return;
+  log("next-task: this clone has shallow history; fetching the full history once (git fetch --unshallow origin)");
+  read("fetch", "-q", "--unshallow", "origin");
+  if (read("rev-parse", "--is-shallow-repository") !== "false") stop("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+}
+
 function refreshAuthoritativeRefs() {
   // Explicit destinations update and prune tracking refs even in a main-only clone; config stays untouched.
   if (!fetchWithRetry(["-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs])) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
-  if (tryGit("rev-parse", "--is-shallow-repository") !== "false") fail("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+  ensureCompleteHistory({ tryGit, fail, log: console.log });
   runLocalCleanup({ tryGit, log: console.log, err: console.error });
   return trackingRefs();
 }

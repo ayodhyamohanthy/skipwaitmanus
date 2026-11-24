@@ -18,6 +18,7 @@
 // window.
 import { and, asc, eq, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
+import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
 import { expireStalePendingReferralRequest, getDb } from "./db";
 import { selectStaleHeldAsks } from "./heldAsk";
@@ -82,6 +83,9 @@ export async function mergeHeldStaleAsks(unassigned: StaleRow[], loadHeld: () =>
 
 export function createAskExpirySweep(deps: AskExpirySweepDeps = { listStale: listStalePendingAsks, expire: expireStalePendingReferralRequest }) {
   return async ({ nowMs }: JobRunContext): Promise<JobRunOutput> => {
+    // D-174/D-042/R-2: switched off, never deleted. The job stays registered and says why it did
+    // nothing, the same shape referral-timers uses for REFERRED_DEADLINE_ENABLED.
+    if (ASK_NO_EXPIRY_ENABLED) return { processed: 0, failed: 0, skipped: "ask expiry suspended (D-174)" };
     const stale = await deps.listStale({ visibleBefore: new Date(nowMs - ASK_TTL_MS), waitingBefore: new Date(nowMs - COVERAGE_WAIT_MS), heldBefore: new Date(nowMs - ASK_TTL_MS) }, ASK_EXPIRY_SWEEP_BATCH);
     const output: JobRunOutput = { processed: 0, failed: 0 };
     for (const ask of stale) {
