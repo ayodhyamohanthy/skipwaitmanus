@@ -17,7 +17,7 @@ import {
 } from "@/components/goal";
 import type { PublicCompany } from "@shared/companies";
 import type { CatalogJob } from "@shared/jobCatalog";
-import { JOB_LEVEL_LABELS } from "@shared/jobLevel";
+import { JOB_LEVEL_LABELS, type JobLevel } from "@shared/jobLevel";
 import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL, MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
@@ -78,6 +78,10 @@ export type AskDrawerProps = {
   sent: AskSentView | null;
   onAnother(): void;
 };
+
+/** A catalog level is a plain number; only a known 1-10 level has an honest label. */
+const jobLevelLabel = (level: number): string | null =>
+  Number.isInteger(level) && level >= 1 && level <= 10 ? JOB_LEVEL_LABELS[level as JobLevel] : null;
 
 export function AskDrawer(props: AskDrawerProps) {
   const { company, sent } = props;
@@ -146,7 +150,7 @@ export function AskDrawer(props: AskDrawerProps) {
                 <p className="mt-1 break-words text-g-meta text-g-ink-3">
                   {props.jobSelection.locations.join(" · ") || props.jobSelection.rawLocation || "Location not stated"}
                 </p>
-                <p className="mt-0.5 break-words text-g-meta text-g-ink-3">{JOB_LEVEL_LABELS[props.jobSelection.level]}</p>
+                <p className="mt-0.5 break-words text-g-meta text-g-ink-3">{jobLevelLabel(props.jobSelection.level) ?? "Level not stated"}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <a
