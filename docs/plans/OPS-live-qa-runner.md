@@ -55,10 +55,10 @@ The demo usernames are public in `server/_core/reviewerLogin.ts`: `seeker@review
 - Routes, each checked against `client/src/App.tsx` when the row is built (drop a route that no longer exists, and say so in the pull request):
   - seeker: `/plans`, `/billing`, `/requests`, `/ask`, `/explore`, `/alerts`, `/inbox`, `/messages`, `/profile`, `/settings`, `/invite`, `/support`;
   - referrer: `/referrer-home`, `/queue`, `/referrer/impact`, `/inbox`, `/invite`, `/profile`, `/settings`.
-- At 1280×900 and 390×844 for each route: navigate, wait for the network to go quiet (capped), take a full-page screenshot, and record the document title, the HTTP status of the document, uncaught page errors, console errors, failed requests with status 500 or above, and at 390 whether the page scrolls sideways (`scrollWidth > innerWidth`).
+- At 1280×900 and 390×844 for each route: navigate, wait for the network to go quiet (capped), take a full-page screenshot, and record the document title, the HTTP status of the document, uncaught page errors, console errors, failed requests with status 500 or above, requests with status 400 to 499 as `<status> <method> <path>` with the query string removed (third-party origins kept, D-387), and at 390 whether the page scrolls sideways (`scrollWidth > innerWidth`).
 - Navigation only: no click, form fill or request beyond the sign-in, so no state changes and no money moves. Never `/admin`.
 - Output: `live-qa/<role>/<route>-<width>.png`, `live-qa/summary.json` (release SHAs, per-route results, findings) and a short Markdown table in `$GITHUB_STEP_SUMMARY`. Upload `live-qa/` as the artifact `live-qa-<web sha>` with 14-day retention.
-- Exit codes: 1 when a sign-in fails, a document answers 500 or above, or a page throws an uncaught error; 0 otherwise. Console errors and sideways scroll are listed as findings without failing the run.
+- Exit codes: 1 when a password secret is missing (on every trigger, including after a release: D-387 replaced the earlier passing notice), a sign-in fails, a document answers 500 or above, or a page throws an uncaught error; 0 otherwise. Console errors, 4xx requests and sideways scroll are listed as findings without failing the run.
 
 **Tests** (fixtures, no network): the origin cannot be overridden; a password never appears in any line the script prints, in `summary.json` or in an error message; sign-in failure stops the role with no retry; the route list and the exit-code rules; the workflow file has no `pull_request` or `push` trigger, reads the secrets only through `env`, masks them, and pins the origin.
 
@@ -67,8 +67,8 @@ The demo usernames are public in `server/_core/reviewerLogin.ts`: `seeker@review
 ## 4. Provisioning, once (the owner, or a session with secret access)
 
 1. In GitHub, open the repository's **Settings → Secrets and variables → Actions → New repository secret**. Add `REVIEWER_SEEKER_PASSWORD` and `REVIEWER_REFERRER_PASSWORD`: two different passwords of at least 16 characters. Keep them in a password manager if you want to sign in yourself; nobody else needs them.
-2. After `OPS-reviewer-plaintext-reset` lands: **Actions → Reviewer QA passwords → Run workflow**, type `reset`. Wait for the dispatched Deploy API run to finish green.
-3. **Actions → Live QA (signed in) → Run workflow.** From then on the runner also starts by itself after every production release.
+2. After `OPS-reviewer-plaintext-reset` lands: **Actions → Reviewer QA passwords → Run workflow**, type `reset`. The job waits for the Deploy API run it dispatched and, when that succeeds, starts **Live QA (signed in)** itself (D-387): a run started with the workflow's token creates no `workflow_run` event, so the release trigger alone would never fire after a reset.
+3. Check that Live QA run: both roles signed in. From then on the runner also starts by itself after every production release that a person or a push started.
 
 A session with secret access may do steps 1 to 3 instead, with `gh secret set` reading each value from standard input, never as a command-line argument. Never write a value into the repository, a log, an artifact, a chat or a pull request.
 
