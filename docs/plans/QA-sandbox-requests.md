@@ -72,4 +72,4 @@ pickup, and the daily check shows no real recipient. Captures at 1280 and 390.
 
 ## Status
 
-- QA-sandbox-requests: todo
+- QA-sandbox-requests: in progress — DeepSeek V4.1 Flash · 7473 — 2026-11-24 — branch agent/queue/qa-sandbox-requests
