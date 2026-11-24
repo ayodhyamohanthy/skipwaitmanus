@@ -64,19 +64,19 @@ handles real money: a mistake reaches real users.
    - Your status line is your task's §3b row, or, when several tasks share
      that row, your line in the packet's Status section (the picker says
      which, D-134); never edit a shared §3b row.
-   - Tier 1: push the branch, open a draft pull request, set your status
-     line to "review — <BRANCH> — <sha>", and stop. Do not push to main.
-   - Tier 2 or 3: push the branch, open a pull request and wait until
-     every check on that exact commit is green. Then confirm main's latest
-     CI is green and fast-forward main to that exact commit
-     (`git push origin <sha>:main`; GitHub's merge-commit button is also
-     safe, since only an up-to-date branch can merge; never squash or
-     rebase-merge, D-134 (6)). If that push is refused because main moved, merge the
-     latest origin/main, wait for every required check on the new commit
-     (no fresh full local gate just because main moved: the Oct 23
-     merge-policy amendment) and fast-forward again; never force-push. Watch main's CI and
-     both deploys to the end, run the live check, set your status line to
-     "done — <sha>" with the evidence block.
+   - Every tier, Tier 1 included: push the branch, open the pull request,
+     mark it ready and turn on auto-merge (merge commit), and wait until
+     every check on that exact commit is green. D-370 (owner, Nov 20 2026):
+     green required CI alone lands a pull request; no independent review is
+     required or handed out, so a Tier 1 builder never parks work in a draft
+     waiting for one. Then confirm main's latest CI is green and land it
+     with GitHub's merge-commit button (`gh pr merge <number> --merge`;
+     never `--admin`, `--squash` or `--rebase`, D-134 (6), D-200). If main
+     moved, merge the latest origin/main, wait for every required check on
+     the new commit (no fresh full local gate just because main moved: the
+     Oct 23 merge-policy amendment) and land again; never force-push. Watch
+     main's CI and both deploys to the end, run the live check, set your
+     status line to "done — <sha>" with the evidence block.
    - Never push to main while main's CI is red (stop and report), while a
      check on your commit is failing, skipped or still running, or with
      --no-verify. If main goes red after your landing, revert or fix your
