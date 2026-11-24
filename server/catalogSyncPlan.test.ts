@@ -204,6 +204,37 @@ describe("planCatalogSync", () => {
     expect(ambiguous.blocked).toHaveLength(14);
   });
 
+  it("ignores retired (archived or deleted) SkipWait objects when choosing the family, and still blocks two active families (D-387)", () => {
+    const legacyIn = (family: string, suffix: string, status = "active") => ({ item: { id: `skipwait_token_${suffix}`, type: "charge", status, item_family_id: family }, price: { id: `skipwait_token_${suffix}-INR`, item_id: `skipwait_token_${suffix}`, item_family_id: family, item_type: "charge", status, currency_code: "INR", price: 9900, pricing_model: "per_unit" } });
+    const plans = legacyIn("skipwait_plans", "1");
+    const archivedCredits = legacyIn("skipwait_credits", "2", "archived");
+    const deletedTopups = legacyIn("skipwait_topups", "3", "deleted");
+    // The TEST-site shape: retired packs in two other families, one active family.
+    const testSite = plan({ families: [{ id: "skipwait_plans" }, { id: "skipwait_credits" }, { id: "skipwait_topups" }], items: [plans.item, archivedCredits.item, deletedTopups.item], itemPrices: [plans.price, archivedCredits.price, deletedTopups.price] });
+    expect(testSite.family).toMatchObject({ id: "skipwait_plans", action: "reuse" });
+    expect(testSite.blocked).toEqual([]);
+    for (const action of testSite.toCreate) if (action.kind === "item") expect(action.params.itemFamilyId).toBe("skipwait_plans");
+    expect(ids(testSite.toCreate, "item_price")).toHaveLength(14);
+
+    // An archived item price alone (its item active elsewhere) does not decide the family either.
+    const archivedPriceOnly = plan({ families: [], items: [plans.item], itemPrices: [plans.price, { ...archivedCredits.price, status: "archived" }] });
+    expect(archivedPriceOnly.family).toMatchObject({ id: "skipwait_plans", action: "reuse" });
+
+    // Only retired SkipWait objects: plans like an empty site (create-only, D-069).
+    const retiredOnly = plan({ families: [{ id: "skipwait_credits" }], items: [archivedCredits.item], itemPrices: [archivedCredits.price] });
+    expect(retiredOnly.family).toMatchObject({ id: "skipwait", action: "create" });
+
+    // Two active families still fail closed, naming each family with its active ids, and never the retired ones.
+    const activeCredits = legacyIn("skipwait_credits", "4");
+    const ambiguous = plan({ families: [], items: [plans.item, activeCredits.item, deletedTopups.item], itemPrices: [plans.price, activeCredits.price, deletedTopups.price] });
+    expect(ambiguous.family.action).toBe("blocked");
+    expect(ambiguous.family.reason).toContain("skipwait_credits: skipwait_token_4, skipwait_token_4-INR");
+    expect(ambiguous.family.reason).toContain("skipwait_plans: skipwait_token_1, skipwait_token_1-INR");
+    expect(ambiguous.family.reason).not.toContain("skipwait_topups");
+    expect(ambiguous.toCreate.filter(action => action.kind !== "item_price")).toEqual([]);
+    expect(ambiguous.blocked).toHaveLength(14);
+  });
+
   it("pins the hash to classifications, actions, site and environment rather than list order or volatile fields", () => {
     const id = "skipwait_referral_mid-INR";
     const base = withPrice(id, price => ({ ...price, price: 19901 }));
