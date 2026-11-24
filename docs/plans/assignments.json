@@ -823,7 +823,7 @@
       "tier": 1,
       "lane": "banded-release",
       "branch": "agent/queue/banded-release-activation",
-      "status": "todo",
+      "status": "owner",
       "syncedTo": "D-392",
       "dependsOn": [
         "BANDED-levels",
@@ -844,9 +844,13 @@
         "docs/qa/",
         "server/configContract.test.ts",
         "wrangler.jsonc",
-        "docs/DECISIONS.md"
+        "docs/DECISIONS.md",
+        "scripts/bandedTestCardQa.ts",
+        "scripts/bandedTestCardQa.test.ts",
+        ".github/workflows/banded-test-card-qa.yml",
+        "docs/plans/assignments.json"
       ],
-      "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md. D-392 (Nov 24) clears the Qoder · 4e6f block: Chargebee's invisible hCaptcha withholds its token from the automated browser (artifact 14906988474: card parsed, fields valid, Pay clicked, hCaptcha response empty), so no further automated card attempts. Builder: probe and create-only provision on TEST (#1533 fix; else the TEST site's own USD early_to_mid price), add a verify mode keyed by the QA email banded-qa+owner@skipwait.me, give the owner a TEST checkout path with no single-use link in a public log or artifact, then set this row to owner with one checklist: the owner pays the TEST checkout with test Visa 4012 8888 8888 1881 and runs the live /admin/catalog-sync dry run (apply if it lists items). Then dispatch verify (paid invoice, refund success, cancelled) and follow D-383 (3) to activate and prove onSale:true, /plans at 1280/390 and the handshake."
+      "note": "D-392 (Nov 24) clears the Qoder · 4e6f block: Chargebee's invisible hCaptcha withholds its token from the automated browser (artifact 14906988474), so no further automated card attempts. Builder work is done: the runner's verify mode finds the owner's own TEST payment by the fixed QA email banded-qa+owner@skipwait.me and reuses card mode's settlement, refund and cancellation. OWNER CHECKLIST (D-392 (3)(b)), one sitting: (1) in the Chargebee TEST dashboard (skipwait-test), open a checkout for the USD early_to_mid price and pay it in your own browser with test Visa 4012 8888 8888 1881, any future expiry, any CVV, using the QA email banded-qa+owner@skipwait.me; choose Success on a mock 3DS page if one appears; (2) open /admin/catalog-sync on skipwait.me, run the dry run, and if it lists anything to create, type the site name and apply (D-370 (6) authorizes that apply). If the TEST dashboard offers no checkout for an item price, report that exact question and the row waits here. Builder then dispatches verify (paid invoice, refund success, cancelled) and follows D-383 (3) to activate and prove onSale:true, /plans at 1280/390 and the handshake. No real payment, no agent payment; BANDED_SALES_ENABLED stays false until then."
     },
     {
       "id": "BANDED-release-qa-runner",
