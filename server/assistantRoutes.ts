@@ -247,12 +247,14 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
           return res.status(409).json({ error: approvalCostChangedMessage(current), code: "cost_changed", cost: current });
         }
       }
-      // SKIPPY-6: the card's resume choice. Only the agent-send path reads it;
-      // the plain queue path ignores it, exactly as before.
+      // SKIPPY-6: the card's resume choice. Only the agent-send path reads it, and
+      // the plain queue path keeps its exact three-argument call.
       const attachmentIds = Array.isArray(req.body?.attachmentIds)
         ? (req.body.attachmentIds as unknown[]).filter((value): value is number => typeof value === "number" && Number.isInteger(value) && value > 0).slice(0, 5)
         : undefined;
-      const result = await doDecide(identity.account.id, approvalId, decision, attachmentIds ? { attachmentIds } : undefined);
+      const result = attachmentIds?.length
+        ? await doDecide(identity.account.id, approvalId, decision, { attachmentIds })
+        : await doDecide(identity.account.id, approvalId, decision);
       record({ actorUserId: identity.account.id, action: `assistant.approval_${decision}`, outcome: "success", resourceType: "assistant_approval", resourceId: approvalId, metadata: { kind: req.body?.kind } });
       res.json({ approval: result });
     } catch (error) {
