@@ -288,14 +288,46 @@ function ghToken() {
 
 const githubTokenOf = () => process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
 
-async function github(repo, path, { signal } = {}) {
+/**
+ * PICKER-network-retry (D-324, D-321 (11)): one dropped connection must not stop every session.
+ * Measured on the owner's Mac: 1 of 60 identical reads failed with ECONNRESET through the local
+ * proxy, and a run makes about 140 reads, so a single attempt stopped runs that a second attempt
+ * finished (four consecutive `--claim` runs died at "cannot read main's CI runs from GitHub").
+ * Retried: a transport failure or a 5xx/429 answer, twice, on the same read. Never retried: a 4xx
+ * (a real answer), the caller's own cancellation, or the 15 s timeout (a slow GitHub must not
+ * become a 45 s stall on every read). Writes are not retried here: the snapshot protocol decides.
+ */
+export const GITHUB_READ_ATTEMPTS = 3;
+
+export function isTransientGithubFailure(error) {
+  if (!error || typeof error !== "object") return false;
+  if (error.name === "AbortError" || error.name === "TimeoutError") return false;
+  const status = typeof error.status === "number" ? error.status : null;
+  if (status !== null) return status === 429 || status >= 500;
+  return error.name === "TypeError" && /fetch failed/i.test(String(error.message ?? ""));
+}
+
+const RETRY_DELAY_MS = 400;
+
+export async function github(repo, path, { signal } = {}) {
   // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
   const token = githubTokenOf();
   const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
-  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
-  return res.json();
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
+      if (!res.ok) {
+        const error = Object.assign(new Error(`GitHub ${path} answered ${res.status}`), { status: res.status });
+        if (attempt < GITHUB_READ_ATTEMPTS && isTransientGithubFailure(error)) { await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt)); continue; }
+        throw error;
+      }
+      return res.json();
+    } catch (error) {
+      if (attempt >= GITHUB_READ_ATTEMPTS || !isTransientGithubFailure(error)) throw error;
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+    }
+  }
 }
 
 /** PICKER-auto-land (D-371): one authenticated GitHub write; REST when `path` starts with "/", else a GraphQL query. */
