@@ -86,8 +86,9 @@ export function cardOf(index = 0) {
   return card;
 }
 
-/** A future expiry and any 3-digit CVV, as the runbook allows for these test cards. */
-export const CARD_EXPIRY = "12/30";
+/** A future expiry and any 3-digit CVV, as the runbook allows for these test cards. The expiry mask wants digits
+ * only: typing "12/30" into it produced "03 / 0", so the value is MMYY and the field formats it. */
+export const CARD_EXPIRY = "1230";
 export const CARD_CVV = "123";
 
 export type ProbeResult = { items: string[]; usdItemPriceId: string; usdAmount: number };
@@ -307,11 +308,14 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       await deps.screenshot(page, "06-card-filled");
       const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
       await submit.click({ timeout: 15_000, force: true }).catch(async () => { await submit.dispatchEvent("click"); });
+      // The gateway answers asynchronously (mock 3DS or a redirect); give it time before looking for the next step.
+      await page.waitForTimeout(4_000);
+      await deps.screenshot(page, "07-after-pay");
       // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
       const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
       if (await success.count()) {
-        await deps.screenshot(page, "07-3ds");
-        await success.click({ timeout: NAV_TIMEOUT_MS });
+        await success.click({ force: true, timeout: 15_000 }).catch(() => undefined);
+        await page.waitForTimeout(3_000);
       }
       await page.waitForLoadState("domcontentloaded", { timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
       await deps.screenshot(page, "08-after-payment");
