@@ -292,6 +292,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-claim-stale-ref",
+      "title": "A claim whose lock or work branch was deleted on origin after the snapshot re-picks instead of crashing: marker parents are read from the refs at write time (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-claim-stale-ref.md",
+      "tier": 2,
+      "lane": "picker-claim-stale-ref",
+      "branch": "agent/queue/picker-claim-stale-ref",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskClaimParent.test.ts",
+        "docs/plans/PICKER-claim-stale-ref.md"
+      ],
+      "note": "Measured 2026-11-24: PR #1510 merged and its agent/architect/skippy-auto-send lock was deleted on origin while a --claim was still deciding, so claim() called tip() on a ref that no longer existed and the run died with git rev-parse status 128 and a stack trace (exit 1) instead of re-picking. Read every marker parent from the refs at write time: a lock gone is a fresh claim from main, a work branch gone makes the pick stale (return false, re-pick), and the land case resolves both parents before it takes the landing slot. Red-first scripts/nextTaskClaimParent.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
@@ -8685,25 +8704,6 @@
       ],
       "epic": "D-212",
       "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
-    },
-    {
-      "id": "PICKER-vanished-lock-tip",
-      "title": "A lock ref that vanished before the claim falls back to main instead of crashing the pick (D-321 (11), D-324)",
-      "row": "D-212",
-      "packet": "docs/plans/PICKER-vanished-lock-tip.md",
-      "tier": 2,
-      "lane": "picker-vanished-lock",
-      "branch": "agent/queue/picker-vanished-lock-tip",
-      "status": "todo",
-      "syncedTo": "D-383",
-      "dependsOn": [],
-      "owns": [
-        "scripts/next-task.mjs",
-        "scripts/nextTaskVanishedLock.test.ts",
-        "docs/plans/PICKER-vanished-lock-tip.md"
-      ],
-      "note": "Measured defect: a real --claim died with exit 1 on git rev-parse refs/remotes/origin/agent/architect/skippy-auto-send because the snapshot said the lock existed, another session merged it (#1510) and a concurrent prune dropped the ref before the claim. lockTipWith re-checks the ref and claims from main; the fix claim refuses. Red-first scripts/nextTaskVanishedLock.test.ts 3/3. Lands on green required CI (D-370).",
-      "epic": "D-212"
     }
   ]
 }
