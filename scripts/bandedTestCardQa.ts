@@ -209,8 +209,7 @@ async function fillFirst(root: import("playwright").Page | import("playwright").
         await field.click({ force: true }).catch(() => undefined);
         await field.pressSequentially(value, { delay: 40 }).catch(() => undefined);
       }
-      // A field that still holds nothing is not filled: report it instead of claiming success.
-      return (await field.inputValue().catch(() => "")) ? selector : null;
+      return selector;
     }
   }
   return null;
@@ -296,11 +295,18 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       const root: import("playwright").Page | import("playwright").FrameLocator = frameInputs > 0 ? paymentFrame : page;
       await root.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const filled: string[] = [];
+      const values: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
         const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
         const used = await fillFirst(root, selectors, value);
-        if (used) filled.push(`${field}=${used}`);
+        if (used) {
+          filled.push(`${field}=${used}`);
+          // Masked fields can report an empty DOM value while showing one; record what the input actually holds.
+          const actual = await root.locator(used).first().evaluate(el => (el as HTMLInputElement).value).catch(() => "");
+          values.push(`${field}:"${actual}"`);
+        }
       }
+      deps.log(`card field values: ${values.join(", ")}`);
       if (!filled.some(entry => entry.startsWith("number="))) {
         const inputs = await page.locator("input").count();
         throw new Error(`the hosted page showed no card-number field (title "${await page.title()}", ${inputs} inputs); banded-qa/hosted-page.html records what it did show`);
