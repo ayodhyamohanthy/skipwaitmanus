@@ -526,7 +526,7 @@
       "tier": 2,
       "lane": "search-job-sources",
       "branch": "agent/queue/search-job-sources",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
@@ -6873,8 +6873,8 @@
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "todo",
-      "syncedTo": "D-383",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "SKIPPY-6"
       ],
