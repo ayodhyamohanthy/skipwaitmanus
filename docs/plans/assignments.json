@@ -450,7 +450,7 @@
       "tier": 1,
       "lane": "p0-ask-send",
       "branch": "agent/queue/p0-ask-send-blocked-reason",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-393",
       "dependsOn": [],
       "owns": [
@@ -472,7 +472,7 @@
         "docs/plans/P0-ask-send-blocked-reason.md",
         "docs/plans/assignments.json"
       ],
-      "note": "P0 under D-019 (fix first, report after): owner report Nov 24, Send did nothing on /explore/go-neutrinos. Built by Claude Code · 695b in PR #1548; registered so the queue scope check (D-166) can evaluate it. No server, money or sign-in change.",
+      "note": "P0 under D-019 (fix first, report after): owner report Nov 24, Send did nothing on /explore/go-neutrinos. Built by Claude Code · 695b in PR #1548; registered so the queue scope check (D-166) can evaluate it. No server, money or sign-in change. Landed by PR #1548 on green required CI; live verification on the deployed web SHA follows.",
       "epic": "D-212"
     },
     {

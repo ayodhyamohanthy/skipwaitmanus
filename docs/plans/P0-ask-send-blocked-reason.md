@@ -25,4 +25,4 @@ toast and focus on the link field when Send is pressed, at 1280 and 390.
 
 ## Status
 
-- P0-ask-send-blocked-reason: review — agent/queue/p0-ask-send-blocked-reason — PR #1548
+- P0-ask-send-blocked-reason: done — agent/queue/p0-ask-send-blocked-reason — PR #1548 (lands on green required CI; live check on the deployed web SHA follows)
