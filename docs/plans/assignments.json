@@ -7977,7 +7977,8 @@
         "client/src/pages/explore/askSend.test.ts",
         "client/src/hooks/useAskQuote.ts",
         "client/src/pages/explore/jobAsk.test.tsx",
-        "client/src/pages/ExploreCompany.tsx (switch only)"
+        "client/src/pages/ExploreCompany.tsx (switch only)",
+        "e2e/company-jobs.e2e.ts"
       ]
     },
     {
