@@ -8318,7 +8318,7 @@
       "tier": 2,
       "lane": "picker-output",
       "branch": "agent/queue/picker-cli-output-drain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-313",
       "dependsOn": [
         "PICKER-authoritative-ref-refresh"
