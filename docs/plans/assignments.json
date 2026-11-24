@@ -384,9 +384,10 @@
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys",
       "status": "todo",
-      "syncedTo": "D-389",
+      "syncedTo": "D-395",
       "dependsOn": [
-        "OPS-live-qa-hardening"
+        "OPS-live-qa-hardening",
+        "QA-sandbox-requests"
       ],
       "owns": [
         ".github/workflows/live-qa.yml",
@@ -397,7 +398,7 @@
         "scripts/liveQaWorkflows.test.ts",
         "docs/plans/OPS-live-qa-journeys.md"
       ],
-      "note": "Owner-approved Nov 24 (D-389): live demo-account journeys rather than the QA preview. Proves the LAUNCH-live-qa gaps listed in docs/qa/launch-live-qa-2026-11-24.md (PR #1540). workflow_dispatch only, fail closed on any non-demo identity, stop if no free referral, never a payment or provider call. Read server code for every endpoint before writing a step.",
+      "note": "Owner-approved Nov 24 (D-389): live demo-account journeys rather than the QA preview. Proves the LAUNCH-live-qa gaps listed in docs/qa/launch-live-qa-2026-11-24.md (PR #1540). workflow_dispatch only, fail closed on any non-demo identity, stop if no free referral, never a payment or provider call. Read server code for every endpoint before writing a step. D-393 (Nov 24): depends on QA-sandbox-requests; steps 3-9 run as sandbox requests (any company, reaching only the demo referrer), so no real employee is ever notified.",
       "epic": "D-212"
     },
     {
@@ -439,6 +440,280 @@
         "docs/plans/PICKER-tier1-wording.md"
       ],
       "note": "Technical correction implementing D-370 (registered with D-389). scripts/nextTaskText.mjs still prints for Tier 1: open a DRAFT pull request ... hands the review to a different session. Builders overrode it by instruction on Nov 24. Shares picker files with PICKER-session-worktree and HYGIENE-picker-bootstrap (D-314).",
+      "epic": "D-212"
+    },
+    {
+      "id": "P0-ask-send-blocked-reason",
+      "title": "P0: Send referral request is never silent: the blocking reason in red beside Send and at the field, an error toast with the fix, and focus on the field to fix (owner report Nov 24, /explore/go-neutrinos)",
+      "row": "D-212",
+      "packet": "docs/plans/P0-ask-send-blocked-reason.md",
+      "tier": 1,
+      "lane": "p0-ask-send",
+      "branch": "agent/queue/p0-ask-send-blocked-reason",
+      "status": "done",
+      "syncedTo": "D-395",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/goal/GoalButton.tsx",
+        "client/src/components/goal/GoalField.tsx",
+        "client/src/components/goal/goalAtoms.test.tsx",
+        "client/src/components/goal/goalBoundary.test.ts",
+        "client/src/components/goal/index.ts",
+        "client/src/components/goal/wrapper/goalToaster.ts",
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/ExploreCompany.tsx",
+        "client/src/pages/explore/AskDrawer.tsx",
+        "client/src/pages/explore/JobLinkFromPosting.tsx",
+        "client/src/pages/explore/jobLinkPrefill.ts",
+        "client/src/pages/explore/jobLinkPrefill.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "DESIGN.md",
+        "docs/qa/",
+        "docs/plans/P0-ask-send-blocked-reason.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "P0 under D-019 (fix first, report after): owner report Nov 24, Send did nothing on /explore/go-neutrinos. Built by Claude Code · 695b in PR #1548; registered so the queue scope check (D-166) can evaluate it. No server, money or sign-in change. Landed by PR #1548 on green required CI; live verification on the deployed web SHA follows.",
+      "epic": "D-212"
+    },
+    {
+      "id": "SEARCH-work-domain",
+      "title": "A discovered company carries the domain its employees work email uses: about.google resolves to google.com, corporate subdomains to their parent (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/SEARCH-work-domain.md",
+      "tier": 2,
+      "lane": "search-work-domain",
+      "branch": "agent/queue/search-work-domain",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [],
+      "owns": [
+        "server/companyDiscovery.ts",
+        "server/companyDiscovery.test.ts",
+        "server/companyWorkDomain.ts",
+        "server/companyWorkDomain.test.ts",
+        "docs/plans/SEARCH-work-domain.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com.",
+      "epic": "D-174"
+    },
+    {
+      "id": "SEARCH-job-sources",
+      "title": "Verified public Greenhouse, Ashby and Lever boards for the listed companies, each with its evidence page, so the company jobs list shows real jobs (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/SEARCH-job-sources.md",
+      "tier": 2,
+      "lane": "search-job-sources",
+      "branch": "agent/queue/search-job-sources",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [],
+      "owns": [
+        "server/jobSources/**",
+        "shared/jobSourceSeed.ts",
+        "shared/jobSourceSeed.test.ts",
+        "docs/plans/SEARCH-job-sources.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Owner, Nov 24 (D-394): push company job search live. Production has no companyJobSources row (stripe jobs: completeness unavailable). Free public endpoints only.",
+      "epic": "D-174"
+    },
+    {
+      "id": "D-174-seeker-journey-build.typeahead-release",
+      "title": "Company search-as-you-type with worldwide discovery goes live: VITE_COMPANY_TYPEAHEAD=true in the Pages build (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-typeahead-release",
+      "branch": "agent/queue/d174-typeahead-release",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [
+        "SEARCH-work-domain"
+      ],
+      "owns": [
+        ".github/workflows/deploy-pages.yml",
+        "scripts/checkDeployTriggers.test.ts",
+        "docs/plans/D-174-seeker-journey-build.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390.",
+      "epic": "D-174"
+    },
+    {
+      "id": "D-174-seeker-journey-build",
+      "title": "Release the D-174 seeker journey: switch on company typeahead and the careers-site jobs list after QA, review and the CEO's sign-off",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey",
+      "branch": "agent/queue/d174-seeker-journey",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [
+        "D-166-journey-decisions-sync",
+        "D-174-seeker-journey-build.door-neutral",
+        "D-174-seeker-journey-build.composer-neutral",
+        "D-174-seeker-journey-build.public-payload",
+        "D-174-seeker-journey-build.search",
+        "D-174-seeker-journey-build.jobs-list",
+        "D-174-seeker-journey-build.job-ask",
+        "D-174-company-search",
+        "D-174-ask-from-job",
+        "SEARCH-work-domain",
+        "SEARCH-job-sources"
+      ],
+      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release; that move also changes the computed role from CDO to CTO (scripts/nextTaskCore.mjs ROLE_BY_LANE). D-394 (owner, Nov 24): push search live. The owner word is the sign-off this row waited for. Release = VITE_COMPANY_TYPEAHEAD=true in the Pages build (may ship first, after SEARCH-work-domain, in its own pull request), then COMPANY_JOBS_ENABLED and JOB_CATALOG_ENABLED true once SEARCH-job-sources has verified sources (supersedes packet 6.7 do not touch JOB_CATALOG_ENABLED). Live proof: captures at 1280 and 390 of type a company, pick it, see its jobs, ask.",
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/useCompanySearch.ts (switch only)",
+        "client/src/pages/explore/companyJobsApi.ts (switch only)",
+        ".github/workflows/deploy-pages.yml",
+        "shared/jobCatalog.ts (switch only)",
+        "docs/plans/D-174-seeker-journey-build.md",
+        "docs/plans/assignments.json"
+      ]
+    },
+    {
+      "id": "SEARCH-universal",
+      "title": "One search box takes a job title, a job link, a company name or a website and answers with careers job links, referrer presence, Apply on the careers site and Ask for a referral (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/SEARCH-universal.md",
+      "tier": 2,
+      "lane": "search-universal",
+      "branch": "agent/queue/search-universal",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [
+        "D-174-seeker-journey-build"
+      ],
+      "owns": [
+        "server/searchRoutes.ts",
+        "server/search.ts",
+        "server/search.test.ts",
+        "shared/search.ts",
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/explore/**",
+        "docs/plans/SEARCH-universal.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Owner, Nov 24 (D-394): let users search by job title, url, company name and get career job links. D-360 direction becomes built work.",
+      "epic": "D-174"
+    },
+    {
+      "id": "QA-sandbox-requests",
+      "title": "The demo accounts test any company and any referral with no limits, in a sandbox: every demo request reaches only the demo referrer and no real person (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-sandbox-requests.md",
+      "tier": 1,
+      "lane": "qa-sandbox-requests",
+      "branch": "agent/queue/qa-sandbox-requests",
+      "status": "todo",
+      "syncedTo": "D-395",
+      "dependsOn": [],
+      "owns": [
+        "server/db.ts",
+        "server/sandbox.ts",
+        "shared/sandbox.ts",
+        "server/sandbox.test.ts",
+        "server/coverageDelivery.ts",
+        "server/referralReviewDispatch.ts",
+        "server/companyDemand.ts",
+        "server/impactCard.ts",
+        "server/dailyOpsCheck.ts",
+        "server/_core/reviewerLogin.ts",
+        "shared/openAskSlots.ts",
+        "docs/plans/QA-sandbox-requests.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393): test accounts test any company, any referral, free or paid, with no limits. The sandbox boundary (no real person notified, shown or counted) is the D-023 safeguard; the owner may remove it. OPS-live-qa-journeys depends on this row.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-demo-test-billing",
+      "title": "Only the demo seeker pays with test cards on the Chargebee TEST site from skipwait.me, with no plan or band limits, while sales stay off for everyone else (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-demo-test-billing.md",
+      "tier": 1,
+      "lane": "qa-demo-test-billing",
+      "branch": "agent/queue/qa-demo-test-billing",
+      "status": "todo",
+      "syncedTo": "D-395",
+      "dependsOn": [
+        "QA-sandbox-requests"
+      ],
+      "owns": [
+        "server/chargebeeEnvironment.ts",
+        "server/chargebeeApi.ts",
+        "server/bandedCheckout.ts",
+        "server/bandedCheckoutRoutes.ts",
+        "server/bandedCheckoutProvider.ts",
+        "server/chargebeeRoutes.ts",
+        "server/paymentWebhooks.ts",
+        "server/chargebeePendingReconcile.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/demoTestBilling.ts",
+        "server/demoTestBilling.test.ts",
+        "server/configContract.test.ts",
+        ".env.example",
+        "src/worker.ts",
+        "docs/PAYMENTS_TEST_RUNBOOK.md",
+        "docs/plans/QA-demo-test-billing.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393): demo accounts use the TEST site. DEMO_TEST_BILLING_ENABLED default false. Owner actions: TEST secrets via the release secrets file, TEST webhook endpoint, switch on after QA. Never a real card, never TEST for a real account.",
+      "epic": "D-212"
+    },
+    {
+      "id": "ADMIN-activity-log",
+      "title": "The admin sees every sign-in, failed attempt, sign-up, request transition and account action, per person, with no secret stored and 90-day retention for sign-in rows (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/ADMIN-activity-log.md",
+      "tier": 1,
+      "lane": "admin-activity-log",
+      "branch": "agent/queue/admin-activity-log",
+      "status": "todo",
+      "syncedTo": "D-395",
+      "dependsOn": [],
+      "owns": [
+        "server/authEvents.ts",
+        "server/authEvents.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/otpLogin.ts",
+        "server/workEmailOtp.ts",
+        "server/_core/reviewerLogin.ts",
+        "server/privateReferralRoutes.ts",
+        "server/db.ts",
+        "server/scheduledJobRegistry.ts",
+        "shared/scheduledJobs.ts",
+        "client/src/pages/AdminActivity.tsx",
+        "client/src/pages/goal/admin/**",
+        "docs/plans/ADMIN-activity-log.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393). No auth.* action exists on main. Privacy: no password, code, token or link stored; unknown emails masked + HMAC; IPs truncated; 90-day auth retention. The privacy-policy sentence is listed for the owner, not written.",
+      "epic": "D-212"
+    },
+    {
+      "id": "ADMIN-support-view",
+      "title": "One admin support page per person: identity, wallet and ledger, requests and why each waits or failed, activity, links to existing fixes, trouble signals and Try this in the sandbox; no impersonation (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/ADMIN-support-view.md",
+      "tier": 1,
+      "lane": "admin-support-view",
+      "branch": "agent/queue/admin-support-view",
+      "status": "todo",
+      "syncedTo": "D-395",
+      "dependsOn": [
+        "ADMIN-activity-log"
+      ],
+      "owns": [
+        "server/adminSupportRoutes.ts",
+        "server/adminSupport.ts",
+        "server/adminSupport.test.ts",
+        "shared/adminSupport.ts",
+        "client/src/pages/goal/admin/**",
+        "client/src/App.tsx",
+        "docs/plans/ADMIN-support-view.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-393): admin analytics to fix a user problem and test it from the test accounts. Read-only aggregation plus links to the existing audited admin actions; no impersonation.",
       "epic": "D-212"
     },
     {
@@ -673,7 +948,7 @@
       "tier": 1,
       "lane": "banded-release",
       "branch": "agent/queue/banded-release-activation",
-      "status": "todo",
+      "status": "owner",
       "syncedTo": "D-392",
       "dependsOn": [
         "BANDED-levels",
@@ -694,9 +969,13 @@
         "docs/qa/",
         "server/configContract.test.ts",
         "wrangler.jsonc",
-        "docs/DECISIONS.md"
+        "docs/DECISIONS.md",
+        "scripts/bandedTestCardQa.ts",
+        "scripts/bandedTestCardQa.test.ts",
+        ".github/workflows/banded-test-card-qa.yml",
+        "docs/plans/assignments.json"
       ],
-      "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md. D-392 (Nov 24) clears the Qoder · 4e6f block: Chargebee's invisible hCaptcha withholds its token from the automated browser (artifact 14906988474: card parsed, fields valid, Pay clicked, hCaptcha response empty), so no further automated card attempts. Builder: probe and create-only provision on TEST (#1533 fix; else the TEST site's own USD early_to_mid price), add a verify mode keyed by the QA email banded-qa+owner@skipwait.me, give the owner a TEST checkout path with no single-use link in a public log or artifact, then set this row to owner with one checklist: the owner pays the TEST checkout with test Visa 4012 8888 8888 1881 and runs the live /admin/catalog-sync dry run (apply if it lists items). Then dispatch verify (paid invoice, refund success, cancelled) and follow D-383 (3) to activate and prove onSale:true, /plans at 1280/390 and the handshake."
+      "note": "D-392 (Nov 24) clears the Qoder · 4e6f block: Chargebee's invisible hCaptcha withholds its token from the automated browser (artifact 14906988474), so no further automated card attempts. Builder work is done: the runner's verify mode finds the owner's own TEST payment by the fixed QA email banded-qa+owner@skipwait.me and reuses card mode's settlement, refund and cancellation. OWNER CHECKLIST (D-392 (3)(b)), one sitting: (1) in the Chargebee TEST dashboard (skipwait-test), open a checkout for the TEST site's own USD early_to_mid price `skipwait_seeker_early_to_mid-USD-Monthly` (USD 4.49; probe run 45406350757 shows the app's current id is absent there and provision run 45406661633 is refused because the site's active objects span more than one product family, so catalog parity on TEST stays unproven per D-392) and pay it in your own browser with test Visa 4012 8888 8888 1881, any future expiry, any CVV, using the QA email banded-qa+owner@skipwait.me; choose Success on a mock 3DS page if one appears; (2) open /admin/catalog-sync on skipwait.me, run the dry run, and if it lists anything to create, type the site name and apply (D-370 (6) authorizes that apply). If the TEST dashboard offers no checkout for an item price, report that exact question and the row waits here. Builder then dispatches verify (paid invoice, refund success, cancelled) and follows D-383 (3) to activate and prove onSale:true, /plans at 1280/390 and the handshake. No real payment, no agent payment; BANDED_SALES_ENABLED stays false until then."
     },
     {
       "id": "BANDED-release-qa-runner",
@@ -8044,34 +8323,6 @@
       "epic": "D-212"
     },
     {
-      "id": "D-174-seeker-journey-build",
-      "title": "Release the D-174 seeker journey: switch on company typeahead and the careers-site jobs list after QA, review and the CEO's sign-off",
-      "row": "D-174",
-      "packet": "docs/plans/D-174-seeker-journey-build.md",
-      "tier": 1,
-      "lane": "d174-journey",
-      "branch": "agent/queue/d174-seeker-journey",
-      "status": "todo",
-      "syncedTo": "D-281",
-      "dependsOn": [
-        "D-166-journey-decisions-sync",
-        "D-174-seeker-journey-build.door-neutral",
-        "D-174-seeker-journey-build.composer-neutral",
-        "D-174-seeker-journey-build.public-payload",
-        "D-174-seeker-journey-build.search",
-        "D-174-seeker-journey-build.jobs-list",
-        "D-174-seeker-journey-build.job-ask",
-        "D-174-company-search",
-        "D-174-ask-from-job"
-      ],
-      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release; that move also changes the computed role from CDO to CTO (scripts/nextTaskCore.mjs ROLE_BY_LANE).",
-      "epic": "D-174",
-      "owns": [
-        "client/src/pages/explore/useCompanySearch.ts (switch only)",
-        "client/src/pages/explore/companyJobsApi.ts (switch only)"
-      ]
-    },
-    {
       "id": "D-174-seeker-journey-build.door-neutral",
       "title": "Company door, drawer and /ask show the same state for every company before sending (D-176 drift fix)",
       "row": "D-174",
@@ -8307,7 +8558,7 @@
       "lane": "d178-read",
       "branch": "agent/queue/d178-read",
       "status": "todo",
-      "syncedTo": "D-393",
+      "syncedTo": "D-395",
       "epic": "D-178",
       "owns": [
         "docs/DECISIONS.md",
@@ -8319,7 +8570,7 @@
       "dependsOn": [
         "D-178.grant"
       ],
-      "note": "Packet section 5 row 4. D-393 (Nov 24) clears the standing Qoder · 2b1b block: worktree contention resolved by D-388 / PR #1537, SKIPPY-6 dependency reconciled to D-178.grant, and PR #1522 implementation ready with green required CI."
+      "note": "Packet section 5 row 4. D-395 (Nov 24) clears the standing Qoder · 2b1b block: worktree contention resolved by D-388 / PR #1537, SKIPPY-6 dependency reconciled to D-178.grant, and PR #1522 implementation ready with green required CI."
     },
     {
       "id": "D-178.screen",
