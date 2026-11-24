@@ -58,6 +58,7 @@ behind the existing tests, not a rewrite.
 
 ## Status
 
-- PICKER-branch-scan-batch: todo — branch `agent/queue/picker-branch-scan-batch` — synced to
-  D-396. Registered by the CEO review of `DeepSeek v4.1 Flash · ce4b`, 2026-11-25. No product,
-  money, flag, workflow, settings or spending change.
+- PICKER-branch-scan-batch: in progress — DeepSeek V4.1 Flash · c45d — 2026-11-25 — branch
+  `agent/queue/picker-branch-scan-batch`. Registered by the CEO review of
+  `DeepSeek v4.1 Flash · ce4b`, 2026-11-25. No product, money, flag, workflow, settings or
+  spending change.
