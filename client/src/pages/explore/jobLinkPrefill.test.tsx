@@ -222,6 +222,16 @@ describe("the drawer on a company door (packet T4/T5/T6/T6b)", () => {
     await waitFor(() => expect(sendButton(drawer).getAttribute("aria-disabled")).toBeNull());
   });
 
+  // P0 (Nov 24, /explore/go-neutrinos: "it did nothing"): a blocked Send swallows the click and its reason
+  // was for screen readers only, while the mismatch line sat above the fold. The reason shows beside Send.
+  it("says beside Send why it is blocked when the posting is another company's (P0)", async () => {
+    stub({ previewReply: url => ({ status: 200, body: preview(url, { employerConfidence: "verified", companyDomain: "infosys.com", companyName: "Infosys", roleTitle: "Analyst" }) }) });
+    const drawer = await openDoorDrawer();
+    fillLink(drawer, "https://boards.greenhouse.io/infosys/jobs/42");
+    await waitFor(() => expect(sendButton(drawer).getAttribute("aria-disabled")).toBe("true"));
+    expect(within(drawer).getByTestId("ask-send-guidance").textContent).toBe("This posting looks like Infosys’, not Wipro’s.");
+  });
+
   it("shows a plain line on a rate limit, with no error banner, and debounces typing (T6)", async () => {
     const fetchMock = stub({ previewReply: () => ({ status: 429, body: { error: "Too many previews. Wait a minute and try again." } }) });
     const drawer = await openDoorDrawer();

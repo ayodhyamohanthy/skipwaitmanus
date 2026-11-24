@@ -693,7 +693,9 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     sendBusyLabel: sendStage === "resume" ? "Uploading your resume…" : "Sending your referral request…",
     sending: sendStage !== "idle",
     sendBlocked: blocked,
-    sendGuidance: !online ? blocked ?? null : cost.blockedReason && isSignedIn ? "Your balance is too low to send this referral request." : url.trim() && linkOk ? missing : null,
+    // Every reason Send is blocked is said beside it: the button swallows a blocked click and keeps its reason
+    // for screen readers only, so a job-link mismatch shown only at the field read as "Send did nothing" (P0, Nov 24).
+    sendGuidance: !online ? blocked ?? null : cost.blockedReason && isSignedIn ? "Your balance is too low to send this referral request." : jobLinkBlocked ?? (url.trim() && linkOk ? missing : null),
     creditRecovery: online && Boolean(isSignedIn && cost.blockedReason),
     send: () => { void send(); },
     onSaveDraft: isSignedIn ? () => { void saveDraft(); } : null,
