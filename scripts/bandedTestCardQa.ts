@@ -269,6 +269,13 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       // The card fields live inside Chargebee's payment component iframe; fall back to the page when it is inline.
       await page.locator("#cb-payment-component").waitFor({ state: "attached", timeout: 30_000 }).catch(() => undefined);
       const paymentFrame = page.frameLocator("#cb-payment-component");
+      // The component lists payment methods first (Card, PayPal); choosing Card reveals its fields.
+      const cardChoice = paymentFrame.getByText("Card", { exact: true }).first();
+      if (await cardChoice.count().catch(() => 0)) {
+        await cardChoice.click({ force: true, timeout: 15_000 }).catch(() => undefined);
+        await page.waitForTimeout(2_000);
+        await deps.screenshot(page, "05-card-method");
+      }
       // The component is a client-rendered app of its own: wait for its inputs before deciding where the fields are.
       await paymentFrame.locator("input").first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const root: import("playwright").Page | import("playwright").FrameLocator =
@@ -284,17 +291,17 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
         const inputs = await page.locator("input").count();
         throw new Error(`the hosted page showed no card-number field (title "${await page.title()}", ${inputs} inputs); banded-qa/hosted-page.html records what it did show`);
       }
-      await deps.screenshot(page, "05-card-filled");
+      await deps.screenshot(page, "06-card-filled");
       const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
       await submit.click({ timeout: 15_000, force: true }).catch(async () => { await submit.dispatchEvent("click"); });
       // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
       const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
       if (await success.count()) {
-        await deps.screenshot(page, "06-3ds");
+        await deps.screenshot(page, "07-3ds");
         await success.click({ timeout: NAV_TIMEOUT_MS });
       }
       await page.waitForLoadState("domcontentloaded", { timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
-      await deps.screenshot(page, "07-after-payment");
+      await deps.screenshot(page, "08-after-payment");
       return { filled, finalUrl: page.url() };
     } catch (error) {
       // The hosted page is provider-owned: keep what it actually showed so a failure is diagnosable from the artifact.
