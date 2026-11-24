@@ -48,20 +48,6 @@ Zero existing customer records, subscriptions, invoices, or payment sources were
   - International USD: Visa `4012 8888 8888 1881` and Mastercard `5555 5555 5555 4444` recorded as tested in international mode for USD presentment.
 - **Evidence status (D-383):** the PASS entries above have no linked TEST-site run, log or artifact and conflict with `docs/PAYMENTS_TEST_RUNBOOK.md` section 2a. They are preserved as a prior QA record, not accepted proof. D-370 (6)'s international-card condition remains UNVERIFIED until a reproducible TEST-site run is attached; USD sales must not be enabled on this record alone.
 
-### 2b. What the runner found on Nov 24 2026, and the unblock ruling (D-384)
-
-1. **The TEST site cannot be provisioned by the reviewed apply.** [Run 45287747237](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45287747237) refused all 14 banded prices: "SkipWait objects belong to more than one product family (skipwait_credits, skipwait_plans, skipwait_topups); resolve this in Chargebee before syncing." That is `chooseFamily` in `server/catalogSyncPlan.ts` refusing by design; resolving it is a Chargebee dashboard change, not a code change.
-2. **The hosted page itself is correct.** Using the TEST site's own USD plan price, the page renders the exact frozen amount — `$4.49`, `$4.49/month`, next charge Dec 24 2026 — and reaches the card form ([run 45289079336](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45289079336) onward; screenshots in each artifact).
-3. **The provider's payment component rejects automated card entry.** Across sixteen runs the card fields accept the values, but the component keeps no card state and the page answers "Please provide your payment details" ([run 45298043864](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45298043864)). `docs/PAYMENTS_TEST_RUNBOOK.md` §2a already says to use a regular headed browser; this is that limit, not an app defect.
-
-**Ruling (D-384, unblock under D-200/D-321/D-377):** the block stands, and every remaining input is the owner's, so `BANDED-release` waits at `owner`:
-
-- **(a) Chargebee dashboard:** resolve the TEST site's product family, then run the runner's `provision` and `card` modes.
-- **(b) Headed-browser card run:** complete the TEST-card payment in a real headed browser, or accept a recorded human run. No session may read `QA_CHARGEBEE_TEST_API_KEY` (D-373 (3)), and Actions runners are headless.
-- **(c) Live catalog ids:** confirm them with the admin dry run, which needs the owner's admin sign-in.
-
-**Release condition:** the pull request that records (a), (b) and (c) with linked runs and captures sets `BANDED-release` back to `todo` and cites them. A run that still fails leaves it parked. D-370 (6)'s activation authorization, the frozen prices and `BANDED_SALES_ENABLED=false` are unchanged.
-
 ---
 
 ## 3. TEST-Site QA Matrix (INR & USD)

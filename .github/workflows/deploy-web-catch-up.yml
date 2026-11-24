@@ -1,0 +1,61 @@
+name: Deploy Web catch-up
+
+# DEPLOY-web-catch-up (D-388): a Deploy Web run refused because main's CI was red (run 45363223861,
+# Nov 24) never re-ran once main turned green, so the live web stayed behind. After every CI run on
+# main completes, this decides whether the live web is owed a deploy (scripts/deployWebCatchUp.mjs)
+# and, if so, dispatches deploy-pages.yml on main: the manual recovery docs/DEPLOY.md names. It never
+# deploys itself; every Deploy Web gate runs unchanged in the dispatched run. CI on main is started by
+# pushes, so its completion does raise this workflow_run event.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: write
+
+# The newest CI completion supersedes an older pending decision.
+concurrency:
+  group: deploy-web-catch-up
+  cancel-in-progress: true
+
+jobs:
+  catch-up:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # main's tip and full history: the decision checks ancestry and diffs live..head.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Decide whether the live web is owed a deploy
+        id: owed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          CI_EVENT: ${{ github.event.workflow_run.event }}
+          CI_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node scripts/deployWebCatchUp.mjs >> "$GITHUB_OUTPUT"
+
+      - name: Report the decision
+        env:
+          DEPLOY: ${{ steps.owed.outputs.deploy }}
+          NOTICE: ${{ steps.owed.outputs.notice }}
+          REASON: ${{ steps.owed.outputs.reason }}
+        run: |
+          kind=notice
+          if [ "$NOTICE" = true ]; then kind=warning; fi
+          if [ "$DEPLOY" = true ]; then verb=deploying; else verb=skipped; fi
+          echo "::${kind}::Deploy Web catch-up ${verb}: ${REASON}"
+
+      - name: Dispatch Deploy Web on main
+        if: steps.owed.outputs.deploy == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run deploy-pages.yml --ref main

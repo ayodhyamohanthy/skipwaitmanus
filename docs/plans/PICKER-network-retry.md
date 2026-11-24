@@ -90,4 +90,4 @@ Green, pinning:
 
 ## Status
 
-- PICKER-network-retry: in progress — Qoder · 3f21 — 2026-11-24 — branch agent/queue/picker-network-retry
+- PICKER-network-retry: done — 1503 merged; row stamped done. Code and its red-first suite verified on main (`scripts/next-task.mjs`).

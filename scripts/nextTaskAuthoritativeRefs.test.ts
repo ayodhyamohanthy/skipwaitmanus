@@ -11,7 +11,7 @@ const CLI = fileURLToPath(new URL("./next-task.mjs", import.meta.url));
 const ME = "Fixture · refs", OTHER = "Fixture · holder";
 const A = "agent/queue/a";
 interface Mutation { ref?: string; sha?: string; unavailable?: boolean; repeat?: boolean; subject?: string; }
-interface RunOptions { args?: string[]; mutation?: Mutation; reject?: string; rejectAs?: string; }
+interface RunOptions { args?: string[]; mutation?: Mutation; reject?: string; rejectAs?: string; failUnshallow?: boolean; }
 
 function fixture(mainOnly = true) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "authoritative-refs-"));
@@ -54,6 +54,10 @@ const spawn = cp.spawnSync, exec = cp.execFileSync;
 let changed = false, rejected = false;
 const record = (file, value) => writeFileSync(file, JSON.stringify([...JSON.parse(existsSync(file) ? readFileSync(file, 'utf8') : '[]'), value]));
 cp.spawnSync = (command, args, options) => {
+  // HYGIENE-picker-bootstrap: simulate the one automatic unshallow fetch failing.
+  if (command === 'git' && setup.failUnshallow && Array.isArray(args) && args.includes('--unshallow')) {
+    return { pid: 0, output: [null, '', 'fixture: unshallow refused'], stdout: '', stderr: 'fixture: unshallow refused', status: 128, signal: null };
+  }
   if (command === 'git' && args[0] === 'push') {
     record(setup.attempts, args);
     if (!rejected && setup.reject && args.some(a => a.endsWith(':refs/heads/' + setup.reject))) {
@@ -73,7 +77,9 @@ globalThis.fetch = async input => {
       const m = setup.mutation;
       if (m.unavailable) renameSync(setup.remote, setup.remote + '.offline');
       else if (m.repeat) {
-        const current = exec('git', ['--git-dir', setup.remote, 'rev-parse', '--verify', 'refs/heads/' + m.ref], { encoding: 'utf8', stdio: 'pipe' }).trim();
+        let current;
+        try { current = exec('git', ['--git-dir', setup.remote, 'rev-parse', '--verify', 'refs/heads/' + m.ref], { encoding: 'utf8', stdio: 'pipe' }).trim(); }
+        catch { current = setup.head; }
         const next = exec('git', ['--git-dir', setup.remote, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit-tree', current + '^{tree}', '-p', current, '-m', m.subject ?? 'Fixture snapshot moved'], { encoding: 'utf8' }).trim();
         exec('git', ['--git-dir', setup.remote, 'update-ref', 'refs/heads/' + m.ref, next]);
       } else exec('git', ['--git-dir', setup.remote, 'update-ref', ...(m.sha ? ['refs/heads/' + m.ref, m.sha] : ['-d', 'refs/heads/' + m.ref])]);
@@ -85,13 +91,13 @@ globalThis.fetch = async input => {
   throw Error('unexpected fixture fetch: ' + url);
 };
 `);
-  const run = ({ args = ["--claim", ME], mutation, reject, rejectAs = OTHER }: RunOptions = {}, cwd = work) => {
+  const run = ({ args = ["--claim", ME], mutation, reject, rejectAs = OTHER, failUnshallow = false }: RunOptions = {}, cwd = work) => {
     const parent = reject ? remoteTip(reject) : head;
     const rival = reject ? marker("fixture-rival", `Heartbeat A: ${rejectAs}`, parent) : undefined;
     const result = spawnSync(process.execPath, ["--import", mock, CLI, ...args], {
       cwd, encoding: "utf8", timeout: 25_000, env: { ...process.env,
         NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
-        REF_FIXTURE: JSON.stringify({ head, remote, attempts, mutations, mutation, reject, rival }) },
+        REF_FIXTURE: JSON.stringify({ head, remote, attempts, mutations, mutation, reject, rival, failUnshallow }) },
     });
     if (existsOffline()) renameSync(remote + ".offline", remote);
     return result;
@@ -299,6 +305,19 @@ describe("authoritative refs in the real picker CLI", () => {
     expect(f.pushes()).toHaveLength(1);
   }));
 
+  // D-324 / PICKER-claim-race-reread: a rival's claim on the picked task is a lost race, not a
+  // snapshot dead end. The claim re-picks inside the same bounded loop instead of spending the
+  // command's three whole snapshot rereads on the same task.
+  it("treats a rival claim on the picked task as a lost race, not a snapshot abort", () => check(f => {
+    const result = f.run({ mutation: { ref: A, repeat: true, subject: `Claim A: ${OTHER}` } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD W");
+    expect(result.stderr).toContain(`another agent claimed A first (attempt 1)`);
+    expect(result.stderr).not.toContain("snapshot changed");
+    expect(result.stderr).not.toContain("STOP: authoritative refs kept changing");
+    expect(f.git("rev-parse", `${f.remoteTip("agent/queue/w")}^`)).toBe(f.head);
+  }));
+
   it("claims while main keeps moving without changing the picked task's inputs", () => check(f => {
     const result = f.run({ mutation: { ref: "main", repeat: true } });
     expect(result.status, output(result)).toBe(0);
@@ -336,14 +355,24 @@ describe("authoritative refs in the real picker CLI", () => {
     expect(spawnSync("test", ["-f", f.attempts]).status).toBe(1);
   }));
 
-  it("fails closed on shallow history instead of inferring an abandoned claim", () => check(f => {
+  it("fails closed on shallow history instead of inferring an abandoned claim when the automatic unshallow fails", () => check(f => {
     f.marker(A, `Claim A: ${OTHER}`, f.head, true);
     const shallow = path.join(f.dir, "shallow");
     f.git("clone", "--depth=1", "--branch=main", `file://${f.remote}`, shallow);
-    const before = f.remoteSet(), result = f.run({}, shallow);
+    const before = f.remoteSet(), result = f.run({ failUnshallow: true }, shallow);
     expect(result.status, output(result)).not.toBe(0);
     expect(result.stderr).toContain("STOP");
     expect(result.stderr).toContain("unshallow");
     expect(f.remoteSet()).toBe(before);
+  }));
+
+  it("completes shallow history once before it reads any claim (HYGIENE-picker-bootstrap, D-387)", () => check(f => {
+    f.marker(A, `Claim A: ${OTHER}`, f.head, true);
+    const shallow = path.join(f.dir, "shallow");
+    f.git("clone", "--depth=1", "--branch=main", `file://${f.remote}`, shallow);
+    const result = f.run({}, shallow);
+    expect(output(result)).toContain("fetching the full history once");
+    expect(output(result)).not.toContain("STOP: complete history is required");
+    expect(execFileSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: shallow, encoding: "utf8" }).trim()).toBe("false");
   }));
 });
