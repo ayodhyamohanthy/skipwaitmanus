@@ -167,6 +167,8 @@ export default function GoalAdminUsers() {
                   : <p className="text-g-meta text-g-ink-3">Work email not verified</p>}
                 <p className="text-g-meta text-g-ink-3">{joinedOn(selected.createdAt)}</p>
               </div>
+              {/* ADMIN-activity-log (D-393): this person's sign-ins, attempts, requests and account actions. */}
+              <a href={`/admin/activity?person=${selected.id}`} className="mt-3 inline-block text-g-meta text-g-ink-2 underline underline-offset-2 hover:text-g-ink">See this person's sign-ins and activity</a>
             </>
           ) : (
             <p className="text-g-meta text-g-ink-2" aria-busy={users.isLoading || undefined}>{users.isLoading ? "Loading accounts…" : loadError ? "No account is shown while the directory failed to load." : "No account is selected."}</p>

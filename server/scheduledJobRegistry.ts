@@ -16,6 +16,7 @@ import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } f
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
+import { createAuthActivityRetention } from "./authActivityRetention";
 import { createReviewDeliveryRetry } from "./reviewDeliveryRetry";
 import { createAgentAutoSendDigest } from "./agentAutoSendDigest";
 import { createPoolReviewEmail } from "./poolReviewEmail";
@@ -153,5 +154,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createPoolReviewEmail(),
+  },
+  {
+    // ADMIN-activity-log (D-393): sign-in rows in the admin activity log are kept 90 days.
+    name: "auth-activity-retention",
+    description: "Deletes sign-in rows (auth.* events) from the admin activity log once they are older than 90 days, in bounded batches",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAuthActivityRetention(),
   },
 ];
