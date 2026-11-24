@@ -179,6 +179,8 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 
 ## Status
 
+- D-174-seeker-journey-build: in progress — Claude Code · 695b — 2026-11-24 — branch agent/queue/d174-seeker-journey
+
 - D-174-seeker-journey-build.typeahead-release: done — agent/queue/d174-typeahead-release — PR #1555. `VITE_COMPANY_TYPEAHEAD=true` in the Pages build (D-394), after SEARCH-work-domain (#1554). The jobs list and catalog stay off until SEARCH-job-sources has verified sources.
 
 D-174-seeker-journey-build.jobs-list: in progress — GPT-6.1 Sol · 8817 — ordinary takeover `f42ee2bbb39f0154afbb5e5d28d2a924a6021c0f`, branch `agent/queue/d174-journey-jobs`, current main `5e7a32126` integrated in this isolated clone. Prior holders left claim/takeover markers and the packet receipt below, but none of the three runtime/test files exists yet. Current §6.5, the separately delivered presence input in §6.3, D-360/D-363/D-366/D-367/D-370–D-372, DESIGN and doctrine are the reference lock. Build goal-native sourced rows below employee posts with labelled native facets, honest catalog/presence states and the optional wired request callback; no new visual language or dependency. `COMPANY_JOBS_ENABLED` stays false and server/pricing flags do not change. The current live-release landing hold applies; no landing is authorized while it is red. D-372's consumed writer bootstrap does not apply to this ordinary UI task. No implementation or test pass is claimed by this takeover receipt.
