@@ -3,6 +3,7 @@
 // side, blocks and the last 90 days of activity — with the plain-words cause and the existing audited admin
 // action that fixes it. Read-only: nothing here signs in as the person, edits their data or opens a money path.
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { GoalButton } from "@/components/goal/GoalButton";
@@ -23,7 +24,7 @@ const CARD = "border border-g-hairline bg-g-surface";
 const HEAD = "border-b border-g-hairline px-4 py-3 text-g-label text-g-ink";
 const CELL = "px-4 py-3 align-top";
 
-function Section({ title, children, label }: { title: string; children: React.ReactNode; label?: string }) {
+function Section({ title, children, label }: { title: string; children: ReactNode; label?: string }) {
   return (
     <section aria-label={label ?? title} className={`${CARD} mt-6`}>
       <h2 className={HEAD}>{title}</h2>

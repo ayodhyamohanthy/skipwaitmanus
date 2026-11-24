@@ -33,6 +33,7 @@ export type SupportReaders = {
 };
 
 const DAY_MS = 86_400_000;
+const EMPTY_SIGNAL_WINDOW: SupportSignalWindowCounts = { signInFailures: [], sendRefusals: [], checkoutRefusals: [], heldRequests: 0, reviewEmailFailures: 0, clientErrors: 0 };
 const iso = (value: Date | string | null | undefined): string | null => (value === null || value === undefined ? null : value instanceof Date ? value.toISOString() : value);
 
 /** The newest failures with their plain-words cause; a row we cannot explain keeps its action and no cause. */
@@ -58,11 +59,12 @@ export async function buildSupportView(readers: SupportReaders, userId: number, 
 
 /** Both trouble-signal windows, each counted from the activity log and the review-delivery table. */
 export async function buildSupportSignals(readers: Pick<SupportReaders, "signals">, nowMs = Date.now()): Promise<SupportSignals> {
-  const entries = await Promise.all(SUPPORT_SIGNAL_WINDOWS.map(async window => {
+  const windows: Partial<Record<SupportSignalWindow, SupportSignalWindowCounts>> = {};
+  for (const window of SUPPORT_SIGNAL_WINDOWS) {
     const since = new Date(nowMs - SUPPORT_SIGNAL_WINDOW_HOURS[window] * 3_600_000);
-    return [window, await readers.signals(window, since)] as const;
-  }));
-  return { windows: Object.fromEntries(entries) as Record<SupportSignalWindow, SupportSignalWindowCounts> };
+    windows[window] = await readers.signals(window, since);
+  }
+  return { windows: { "24h": windows["24h"] ?? EMPTY_SIGNAL_WINDOW, "7d": windows["7d"] ?? EMPTY_SIGNAL_WINDOW } };
 }
 
 // ---------- the database readers ----------
@@ -180,18 +182,21 @@ export const databaseReaders: SupportReaders = {
     const events = await db.select({
       id: referralTransitionEvents.id, requestId: referralTransitionEvents.referralRequestId,
       action: referralTransitionEvents.action, fromStatus: referralTransitionEvents.fromStatus,
-      resultingStatus: referralTransitionEvents.resultingStatus, role: referralTransitionEvents.role,
+      resultingStatus: referralTransitionEvents.resultingStatus, actorUserId: referralTransitionEvents.actorUserId,
       createdAt: referralTransitionEvents.createdAt,
     }).from(referralTransitionEvents).where(inArray(referralTransitionEvents.referralRequestId, rows.map(row => row.id)))
       .orderBy(desc(referralTransitionEvents.id)).limit(rows.length * SUPPORT_TIMELINE_LIMIT);
+    // The table records who acted, not their role: derive it the way listPersonRequestTransitions does.
+    const referrerOf = new Map(rows.map(row => [row.id, row.referrerId]));
     const timelines = new Map<number, SupportTimelineRow[]>();
     for (const event of events) {
       const list = timelines.get(event.requestId) ?? [];
       if (list.length >= SUPPORT_TIMELINE_LIMIT) continue;
+      const referrerId = referrerOf.get(event.requestId) ?? null;
+      const role = event.actorUserId === userId ? "seeker" as const : referrerId !== null && event.actorUserId === referrerId ? "referrer" as const : "actor" as const;
       list.push({
         id: event.id, action: event.action, fromStatus: event.fromStatus, resultingStatus: event.resultingStatus,
-        role: event.role === "referrer" || event.role === "actor" ? event.role : "seeker",
-        createdAt: iso(event.createdAt) ?? new Date(0).toISOString(),
+        role, createdAt: iso(event.createdAt) ?? new Date(0).toISOString(),
       });
       timelines.set(event.requestId, list);
     }

@@ -3,7 +3,7 @@
 // client errors recorded in the activity log — counts only, each linking to the filtered activity log.
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/_core/auth";
-import { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
+import { GoalErrorState, GoalSkeletonRows } from "@/components/goal/GoalStates";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { loadSupportSignals } from "./adminSupportData";
 import type { SupportSignalCount, SupportSignalWindowCounts } from "@shared/adminSupport";
@@ -66,7 +66,6 @@ export function AdminSupportSignals() {
           <Window title="Last 7 days" counts={signals.data.windows["7d"]} />
         </div>
       ) : null}
-      {signals.data && !signals.data.windows["24h"] && !signals.data.windows["7d"] ? <GoalEmptyState title="No signals yet." body="Counts appear as people sign in and send requests." /> : null}
     </section>
   );
 }
