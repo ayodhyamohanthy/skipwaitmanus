@@ -41,4 +41,4 @@ shallow clone without `node_modules` prints the install line, and after install 
 
 ## Status
 
-- HYGIENE-picker-bootstrap: todo
+- HYGIENE-picker-bootstrap: in progress — Claude Code · 0889 — 2026-11-24 — branch agent/queue/hygiene-picker-bootstrap
