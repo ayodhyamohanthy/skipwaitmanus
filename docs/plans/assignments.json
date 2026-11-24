@@ -80,7 +80,7 @@
       "tier": 2,
       "lane": "process-no-review",
       "branch": "agent/queue/process-no-review-no-model",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [],
       "owns": [
@@ -250,6 +250,26 @@
         "docs/plans/PICKER-unblock-report-clears.md"
       ],
       "note": "D-378, D-321 (11) same-day dead-end fix. Build docs/plans/PICKER-unblock-report-clears.md section 2: standingReport takes the task's unblockers (every Unblock marker on its architect lock) and their report clears an evidence-backed block; blockers, the holder and unrelated sessions still cannot (D-346). Red-first scripts/nextTaskUnblockClears.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-network-retry",
+      "title": "One dropped GitHub read no longer stops every session: a transient reset or 5xx is retried twice, a real answer is never repeated, and the fail-closed STOP stays (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-network-retry.md",
+      "tier": 2,
+      "lane": "picker-network-retry",
+      "branch": "agent/queue/picker-network-retry",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskNetworkRetry.test.ts",
+        "docs/plans/PICKER-network-retry.md",
+        "scripts/nextTaskLandExactHead.test.ts"
+      ],
+      "note": "Measured defect: 1 of 60 identical picker GitHub reads failed ECONNRESET through the host proxy and the helper had no retry, so five consecutive --claim runs stopped at cannot read main CI with no work picked. Add GITHUB_READ_ATTEMPTS=3 and isTransientGithubFailure, retry only transport failures and 5xx/429 with short backoff, never a 4xx, cancellation or timeout, and leave githubWrite to the snapshot protocol. Red-first scripts/nextTaskNetworkRetry.test.ts. Lands on green required CI (D-370).",
       "epic": "D-212"
     },
     {
@@ -587,9 +607,28 @@
         "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
         "server/configContract.test.ts",
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        "docs/DECISIONS.md"
       ],
       "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
+    },
+    {
+      "id": "BANDED-release-qa-runner",
+      "title": "Prerequisite: reproducible Chargebee TEST-site international-card and live handshake QA runner",
+      "row": "PRICING",
+      "packet": "docs/plans/PRICING-banded-checkout.md",
+      "tier": 1,
+      "lane": "banded-release-qa",
+      "branch": "agent/queue/banded-release-qa-runner",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/bandedTestCardQa.ts",
+        "scripts/bandedTestCardQa.test.ts",
+        ".github/workflows/banded-test-card-qa.yml"
+      ],
+      "note": "D-383 (3) requires reproducible international TEST-card evidence with a linked run/artifact; no existing tooling could produce it. PR #1492 is open from this branch, so the picker reads its stage from that pull request. Sub-row of BANDED-release: it lands first so the workflow can be dispatched, keeping BANDED-release unlanded until the activation is real (the D-373 (6) trap D-383 corrected)."
     },
     {
       "id": "D-344-shell-referral-words",
@@ -6273,16 +6312,16 @@
       "id": "SKIPPY-7",
       "title": "Skippy step 7: opt-in auto-send within the grant's limits, through the step 6 approve function (flag off)",
       "row": "D-201",
-      "packet": null,
+      "packet": "docs/plans/SKIPPY-7-auto-send.md",
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "architect",
-      "syncedTo": "D-308",
+      "status": "todo",
+      "syncedTo": "D-383",
       "dependsOn": [
         "SKIPPY-6"
       ],
-      "note": "Write the packet after SKIPPY-6 lands, from the rulings in docs/plans/SKIPPY-next.md: off by default, turned on only by the seeker in session, the same transaction and limits as an approved send, revoke and pause stop the next call, never buys credits, a daily digest."
+      "note": "Packet written in docs/plans/SKIPPY-7-auto-send.md under D-383. Per-grant autoSend, default off, turned on only by the seeker in session on a confirmation that restates the limits and expiry; needs the send scope. An auto-send calls the SKIPPY-6 decideAssistantApprovalWithAgentSend path with actor agent_auto: same grant row lock, same 20/hour and 60/day caps, same one-referral ceiling, same cost check, same askOrigins label. Revoke and pause stop it inside the transaction. A shortfall parks the row pending for the seeker and never buys referrals. One daily digest per seeker keyed agent-auto-digest:<userId>:<date> (D-060). Additive migration 0126 (seekerAgentGrants.autoSend, assistantApprovals.decidedBy), flag SKIPPIE_AGENT_AUTOSEND_ENABLED off on top of the D-290 gate."
     },
     {
       "id": "D-178-agent-portal-access",
@@ -6474,21 +6513,14 @@
       "packet": "docs/plans/REL-production-watch.md",
       "tier": 1,
       "lane": "ops-check",
-      "branch": "agent/queue/rel-ops-invariants",
+      "branch": "agent/queue/rel-ops-invariants-first-run",
       "status": "todo",
-      "syncedTo": "D-222",
-      "dependsOn": [
-        "REL-review-email-retry",
-        "D-174-job-catalog"
-      ],
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "note": "D-373 (6): the build landed in PR #1491 (merge e69c73b0d, all required CI green). Remaining acceptance only: after the API deploy, confirm the first scheduled `daily-ops-check` run shows as succeeded through `GET /api/admin/jobs` and record the run evidence in the packet. No runtime change is expected; do not rebuild the job.",
       "epic": "D-212",
       "owns": [
-        "server/dailyOpsCheck.ts",
-        "server/dailyOpsCheck.test.ts",
-        "server/scheduledJobRegistry.ts (switch only)",
-        "shared/scheduledJobs.ts (switch only)",
-        "server/scheduledJobsContract.test.ts (switch only)",
-        "server/workEmailOtpPurge.ts"
+        "docs/plans/REL-production-watch.md"
       ]
     },
     {
@@ -7965,7 +7997,7 @@
       "tier": 1,
       "lane": "d178-grant",
       "branch": "agent/queue/d178-grant",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-290",
       "epic": "D-178",
       "owns": [
@@ -8307,7 +8339,7 @@
       "tier": 2,
       "lane": "picker-output",
       "branch": "agent/queue/picker-cli-output-drain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-313",
       "dependsOn": [
         "PICKER-authoritative-ref-refresh"
@@ -8323,7 +8355,7 @@
       "tier": 2,
       "lane": "story-landing",
       "branch": "agent/queue/story-trust-landing",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-323",
       "dependsOn": [],
       "owns": [
@@ -8377,7 +8409,7 @@
       "tier": 2,
       "lane": "gate-design-ratchet",
       "branch": "agent/queue/gate-goal-design-ratchet",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-332",
       "dependsOn": [],
       "owns": [
@@ -8385,7 +8417,7 @@
         "client/src/test/goalDesignRatchet.baseline.json",
         "docs/plans/D-048-retire.md"
       ],
-      "note": "D-332 (owner, Nov 11: the old design is completely removed and the change to the goal design is forced). A vitest file in the required unit job, so no workflow edit: (1) every surface id in the baseline's released list is still in RELEASED (client/src/lib/goalSurfaces.ts); (2) only files on the baseline's allow-list may import client/src/components/kit or call goalSurfaceOn outside client/src/pages/goal and client/src/components/goal, so no new old-design code and no new switch can land; (3) each rule has a failing fixture. The baseline is measured on main when the row is built; entries are only ever removed. Read docs/plans/D-048-retire.md section 5 first and reuse client/src/test/goalPagesBoundary.test.ts and scripts/designTokenAuditCore.mjs rather than repeating what they already check. Changes no page and no runtime code.",
+      "note": "Completed 2026-11-24: DeepSeek V4.1 Flash · 296d built the ratchet gate in PR #1496, merged ae9e265ad; required CI green (typecheck, 3 unit shards, production build, e2e); focused 19/19 and pnpm check green on the merged tree; baseline measured on main 2d8abf469 (41 released ids, 42 allow entries).",
       "epic": "D-048-p3"
     },
     {

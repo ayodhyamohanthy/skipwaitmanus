@@ -33,6 +33,9 @@ export default function GoalApprove() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [result, setResult] = useState<{ approval: AssistantApproval; decision: "approved" | "declined" } | null>(null);
+  // SKIPPY-6: the seeker's resumes and the one each agent approval would attach.
+  const [resumes, setResumes] = useState<Array<{ id: number; fileName: string }>>([]);
+  const [resumeChoice, setResumeChoice] = useState<Record<number, number>>({});
 
   const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
     const token = await fetchToken();
@@ -51,6 +54,14 @@ export default function GoalApprove() {
       if (!approvalsResponse.ok) throw new Error(approvalsPayload.error || "We could not load your approvals");
       const list = Array.isArray(approvalsPayload.approvals) ? approvalsPayload.approvals.map(withListedCost) : [];
       setApprovals(list);
+      // SKIPPY-6: an agent-requested send needs the seeker's resumes for the card's choice.
+      if (list.some(item => item.status === "pending" && item.grantId != null)) {
+        const resumeResponse = await fetch("/api/seeker/agents/resumes", { credentials: "include", headers: await authHeaders() });
+        if (resumeResponse.ok) {
+          const resumePayload = await readApiJson<{ resumes?: Array<{ id: number; fileName: string }> }>(resumeResponse, "");
+          setResumes(Array.isArray(resumePayload.resumes) ? resumePayload.resumes : []);
+        }
+      }
       if (creditsResponse.ok) {
         const creditsPayload = await readApiJson<{ summary?: CreditsSummary }>(creditsResponse, "");
         if (creditsPayload.summary) setCredits(creditsPayload.summary);
@@ -75,7 +86,12 @@ export default function GoalApprove() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-        body: JSON.stringify(approvalDecisionBody(approval, decision)),
+        body: JSON.stringify({
+          ...approvalDecisionBody(approval, decision),
+          // SKIPPY-6: the resume the seeker chose on the card; the server defaults
+          // to their most recent one when this is absent.
+          ...(approval.grantId != null && decision === "approved" ? { attachmentIds: [resumeChoice[approval.id] ?? resumes[0]?.id].filter((id): id is number => typeof id === "number") } : {}),
+        }),
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not record that decision");
       // Issue 644: the cost changed and nothing was charged; show the new cost so the owner can approve it.
@@ -195,6 +211,9 @@ export default function GoalApprove() {
                 onStartEdit: () => { setEditingId(approval.id); setDraftNote(approval.note ?? ""); },
                 onSaveEdit: () => { void saveEdit(approval); },
                 onDecide: decision => { void decide(approval, decision); },
+                resumes,
+                resumeId: resumeChoice[approval.id] ?? resumes[0]?.id ?? null,
+                onResumeChange: id => setResumeChoice(choice => ({ ...choice, [approval.id]: id })),
               }}
             />
           ))}

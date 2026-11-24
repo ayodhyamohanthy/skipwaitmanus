@@ -13,7 +13,11 @@ describe("application title configuration", () => {
     const indexHtml = readFileSync(join(__dirname, "..", "client", "index.html"), "utf8");
     // The shell title comes from the same constant the build-time snapshot and
     // the React landing page use, so crawler and visitor never disagree.
+    expect(LANDING_TITLE).toBe("Request a job referral from a verified employee");
     expect(indexHtml).toContain(`<title>${LANDING_TITLE} — skipwait.me</title>`);
+    expect(indexHtml).toContain(`<meta property="og:title" content="${LANDING_TITLE} — skipwait.me" />`);
+    expect(indexHtml).toContain(`<meta name="twitter:title" content="${LANDING_TITLE} — skipwait.me" />`);
+    expect(indexHtml).toContain(`"description":"${LANDING_TITLE}. Job seekers get real referrals; referrers stay anonymous."`);
     expect(indexHtml).toContain(`<meta name="description" content="${LANDING_SUMMARY}" />`);
     expect(indexHtml).toContain(`<meta property="og:description" content="${LANDING_SUMMARY}" />`);
   });

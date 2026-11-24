@@ -63,18 +63,21 @@ const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 // regression exercises these exact bindings instead of a copy of them.
 export const git = boundedGitReader({ env: GIT_ENV });
 export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
-const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
+class CliFailure extends Error {
+  constructor(message, code) {
+    super(message);
+    this.code = code;
+  }
+}
+const fail = (message, code = 1) => {
+  console.error(`next-task: ${message}`);
+  throw new CliFailure(message, code);
+};
 
 class RefSnapshotChanged extends Error {}
 let decisionRefs = null;
 const refPatterns = ["refs/heads/main", "refs/heads/agent/*"];
 const refspecs = ["+refs/heads/main:refs/remotes/origin/main", "+refs/heads/agent/*:refs/remotes/origin/agent/*"];
-if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main" && !LIST_REF.startsWith("origin/agent/")) {
-  const branch = LIST_REF.slice(7);
-  if (tryGit("check-ref-format", `refs/heads/${branch}`) === null) fail("STOP: invalid task-list ref", 2);
-  refPatterns.push(`refs/heads/${branch}`);
-  refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
-}
 
 function refsFrom(raw, prefix) {
   if (raw === null) fail("STOP: authoritative refs are unreadable; check origin access and run again", 2);
@@ -288,14 +291,46 @@ function ghToken() {
 
 const githubTokenOf = () => process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
 
-async function github(repo, path, { signal } = {}) {
+/**
+ * PICKER-network-retry (D-324, D-321 (11)): one dropped connection must not stop every session.
+ * Measured on the owner's Mac: 1 of 60 identical reads failed with ECONNRESET through the local
+ * proxy, and a run makes about 140 reads, so a single attempt stopped runs that a second attempt
+ * finished (four consecutive `--claim` runs died at "cannot read main's CI runs from GitHub").
+ * Retried: a transport failure or a 5xx/429 answer, twice, on the same read. Never retried: a 4xx
+ * (a real answer), the caller's own cancellation, or the 15 s timeout (a slow GitHub must not
+ * become a 45 s stall on every read). Writes are not retried here: the snapshot protocol decides.
+ */
+export const GITHUB_READ_ATTEMPTS = 3;
+
+export function isTransientGithubFailure(error) {
+  if (!error || typeof error !== "object") return false;
+  if (error.name === "AbortError" || error.name === "TimeoutError") return false;
+  const status = typeof error.status === "number" ? error.status : null;
+  if (status !== null) return status === 429 || status >= 500;
+  return error.name === "TypeError" && /fetch failed/i.test(String(error.message ?? ""));
+}
+
+const RETRY_DELAY_MS = 400;
+
+export async function github(repo, path, { signal } = {}) {
   // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
   const token = githubTokenOf();
   const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
-  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
-  return res.json();
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
+      if (!res.ok) {
+        const error = Object.assign(new Error(`GitHub ${path} answered ${res.status}`), { status: res.status });
+        if (attempt < GITHUB_READ_ATTEMPTS && isTransientGithubFailure(error)) { await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt)); continue; }
+        throw error;
+      }
+      return res.json();
+    } catch (error) {
+      if (attempt >= GITHUB_READ_ATTEMPTS || !isTransientGithubFailure(error)) throw error;
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+    }
+  }
 }
 
 /** PICKER-auto-land (D-371): one authenticated GitHub write; REST when `path` starts with "/", else a GraphQL query. */
@@ -764,6 +799,12 @@ function autoSyncSetup() {
 }
 
 async function main() {
+  if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main" && !LIST_REF.startsWith("origin/agent/")) {
+    const branch = LIST_REF.slice(7);
+    if (tryGit("check-ref-format", `refs/heads/${branch}`) === null) fail("STOP: invalid task-list ref", 2);
+    refPatterns.push(`refs/heads/${branch}`);
+    refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
+  }
   const args = argsOf(process.argv.slice(2));
   if (args.claim) {
     autoSyncSetup();
@@ -922,15 +963,18 @@ async function runCommand(args) {
     // New work waits until your own work is on origin; your own claim waits until its commits are.
     if (CLAIMABLE.includes(pick.kind) && sync.blocking.length && (!continuing || sync.unpushed.includes(continuing))) {
       console.log("NEXT: SYNC FIRST\nYour own work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
-      process.exit(3);
+      process.exitCode = 3;
+      return;
     }
     if (pick.kind === "ineligible") {
       console.log(renderIneligible(pick, who ?? "<your session name>"));
-      process.exit(EXIT.ineligible);
+      process.exitCode = EXIT.ineligible;
+      return;
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
       console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register, requestedTask: args.task }));
-      process.exit(EXIT[pick.kind] ?? 0);
+      process.exitCode = EXIT[pick.kind] ?? 0;
+      return;
     }
     if (args.provenance) {
       const role = ({ build: "build", takeover: "build", green: "build", review: "review", fix: "fix", land: "land" })[pick.kind === "continue" ? pick.of : pick.kind];
@@ -947,5 +991,16 @@ async function runCommand(args) {
 // PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the
 // regression can import these real bindings without starting a picker run.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch(e => fail(e.stack ?? String(e)));
+  process.stdout.on("error", error => {
+    console.error(`next-task: stdout write failed: ${error.code ?? error.message}`);
+    process.exitCode = 1;
+  });
+  main().catch(error => {
+    if (error instanceof CliFailure) {
+      process.exitCode = error.code;
+      return;
+    }
+    console.error(`next-task: ${error.stack ?? String(error)}`);
+    process.exitCode = 1;
+  });
 }

@@ -21,6 +21,7 @@
 // money wording kept byte-identical (see the note on it below).
 import { ASK_COST_SENTENCE, CREDIT_RULE, MONEY_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { FREE_PLAN } from "@shared/planCatalog";
+import { EMPLOYER_RULES_LEAD, EMPLOYER_RULES_QUESTION } from "@shared/employerRulesCopy";
 
 export const HELP_CATEGORIES = ["Asking", "Referring", "Plans & referrals", "Account & privacy", "Safety"] as const;
 export type HelpCategory = (typeof HELP_CATEGORIES)[number];
@@ -70,6 +71,7 @@ export const SAFETY_ANSWERS: ReadonlyArray<readonly [question: string, answer: s
   ["Who can see a referrer’s name?", "Referrer names are not public. A name is revealed only to the seeker whose request that referrer has accepted."],
   ["Does a referral guarantee an interview?", "No. A referral, interview, offer, or job is never guaranteed. Employers make their own hiring decisions."],
   ["What does work-email verification mean?", "It confirms ownership of an email address on an approved company domain. It does not prove current employment or employer endorsement."],
+  [EMPLOYER_RULES_QUESTION, EMPLOYER_RULES_LEAD],
   ["When is my resume shared?", "Resumes stay private until a referrer accepts a request."],
 ];
 export const SAFETY_PAY_QUESTION = "What if someone asks me to pay?";
