@@ -34,4 +34,4 @@ Picker suites and `pnpm check` green; required CI green.
 
 ## Status
 
-- PICKER-tier1-wording: todo
+- PICKER-tier1-wording: in progress — DeepSeek V4.1 Flash · 019f — 2026-11-24 — branch agent/queue/picker-tier1-wording
