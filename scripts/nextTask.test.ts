@@ -774,11 +774,13 @@ describe("markers and printed steps", () => {
     expect(parseMarker("Fix the claim flow")).toBeNull();
   });
 
-  it("tells a Tier 1 builder to stop at a draft PR, and a Tier 2 builder to land only when green", () => {
+  it("tells a Tier 1 and a Tier 2 builder alike to land only when green (D-370, D-389)", () => {
     const ctx = { who: "Qwen · s1", date: "2026-10-20", claimed: true };
     const t1 = renderPick({ kind: "build", task: task("M", { tier: 1 }), ciRunning: false }, ctx);
-    expect(t1).toContain("DRAFT pull request");
-    expect(t1).toContain("Never land it yourself");
+    expect(t1).toContain("Land under D-082");
+    expect(t1).toContain("auto-merge");
+    expect(t1).not.toContain("DRAFT");
+    expect(t1).not.toContain("different session");
     const t2 = renderPick({ kind: "build", task: task("N"), ciRunning: true }, ctx);
     expect(t2).toContain("Land under D-082");
     expect(t2).toContain('"status" to "done" in docs/plans/assignments.json');

@@ -448,17 +448,19 @@
       "tier": 2,
       "lane": "picker-tier1-wording",
       "branch": "agent/queue/picker-tier1-wording",
-      "status": "todo",
-      "syncedTo": "D-389",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskText.mjs",
         "scripts/nextTaskCore.mjs",
         "scripts/nextTask.test.ts",
         "scripts/nextTaskTier1Text.test.ts",
-        "docs/plans/PICKER-tier1-wording.md"
+        "scripts/nextTaskReviewWording.test.ts",
+        "docs/plans/PICKER-tier1-wording.md",
+        "docs/DELEGATION.md"
       ],
-      "note": "Technical correction implementing D-370 (registered with D-389). scripts/nextTaskText.mjs still prints for Tier 1: open a DRAFT pull request ... hands the review to a different session. Builders overrode it by instruction on Nov 24. Shares picker files with PICKER-session-worktree and HYGIENE-picker-bootstrap (D-314).",
+      "note": "Technical correction implementing D-370 (registered with D-389). scripts/nextTaskText.mjs still prints for Tier 1: open a DRAFT pull request ... hands the review to a different session. Builders overrode it by instruction on Nov 24. Shares picker files with PICKER-session-worktree and HYGIENE-picker-bootstrap (D-314). Owns gained nextTaskReviewWording.test.ts and docs/DELEGATION.md on Nov 24: both pin the superseded draft-and-wait wording and must move with the correction.",
       "epic": "D-212"
     },
     {
@@ -502,7 +504,7 @@
       "tier": 2,
       "lane": "search-work-domain",
       "branch": "agent/queue/search-work-domain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
@@ -513,7 +515,7 @@
         "docs/plans/SEARCH-work-domain.md",
         "docs/plans/assignments.json"
       ],
-      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com.",
+      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com. Landed by PR #1554 on green required CI; live check of /api/companies/search?q=google after the API deploy.",
       "epic": "D-174"
     },
     {
@@ -545,7 +547,7 @@
       "tier": 2,
       "lane": "d174-typeahead-release",
       "branch": "agent/queue/d174-typeahead-release",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [
         "SEARCH-work-domain"
@@ -556,7 +558,7 @@
         "docs/plans/D-174-seeker-journey-build.md",
         "docs/plans/assignments.json"
       ],
-      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390.",
+      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390. Landed by PR #1555 on green required CI; live captures after the Pages deploy.",
       "epic": "D-174"
     },
     {
@@ -1150,7 +1152,7 @@
       "tier": 2,
       "lane": "deps",
       "branch": "agent/queue/sec-deps-nov24",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-388",
       "dependsOn": [],
       "owns": [

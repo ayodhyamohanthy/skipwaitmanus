@@ -47,10 +47,11 @@ describe("the printed Tier 1 handoff step (D-235)", () => {
     expect(buildPick).not.toContain("end the session (one packet per session, D-074)");
   });
 
-  it("keeps the draft-pull-request step and the bar on landing your own work", () => {
-    expect(buildPick).toContain("open a DRAFT pull request");
-    expect(buildPick).toContain("Never land it yourself");
-    expect(buildPick).toContain("hands the review to a different session");
+  it("lands on green required CI instead of a draft waiting for a review (D-370, D-389)", () => {
+    expect(buildPick).toContain("Land under D-082");
+    expect(buildPick).toContain("auto-merge");
+    expect(buildPick).not.toContain("DRAFT");
+    expect(buildPick).not.toContain("different session");
   });
 
   it("ensures docs/BUILD_CONTINUITY.md and docs/DELEGATION.md carry no stale forward reference to the old end-of-session step", () => {
