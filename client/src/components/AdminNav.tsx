@@ -1,4 +1,4 @@
-import { Activity, CheckSquare, CreditCard, Database, Gauge, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake, MessageCircle } from "lucide-react";
+import { Activity, BadgePercent, CheckSquare, CreditCard, Database, Gauge, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake, MessageCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { Link } from "wouter";
@@ -12,7 +12,7 @@ import { Link } from "wouter";
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "overview" | "approvals" | "payments" | "catalog" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema" | "money-check" | "skippy";
+export type AdminSection = "overview" | "approvals" | "payments" | "catalog" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "bonuses" | "schema" | "money-check" | "skippy";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: Gauge },
@@ -20,6 +20,7 @@ const sections: Array<{ id: AdminSection; href: string; label: string; icon: Luc
   { id: "payments", href: "/admin/payments", label: "Payment reviews", icon: CreditCard },
   { id: "catalog", href: "/admin/catalog-sync", label: "Catalog sync", icon: Database },
   { id: "partners", href: "/admin/partners", label: "Partners", icon: Handshake },
+  { id: "bonuses", href: "/admin/bonuses", label: "Referral bonuses", icon: BadgePercent },
   { id: "privacy-requests", href: "/admin/privacy-requests", label: "Privacy requests", icon: EyeOff },
   { id: "token-recovery", href: "/admin/token-recovery", label: "Token recovery", icon: Wallet },
   { id: "activity", href: "/admin/activity", label: "Activity log", icon: Activity },

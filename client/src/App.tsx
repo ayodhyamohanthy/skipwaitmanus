@@ -92,6 +92,7 @@ const TalentDiscovery = lazy(() => import("./pages/TalentDiscovery"));
 const EmployerBilling = lazy(() => import("./pages/EmployerBilling"));
 const EmployerOpportunities = lazy(() => import("./pages/EmployerOpportunities"));
 const AdminPartners = lazy(() => import("./pages/AdminPartners"));
+const AdminBonuses = lazy(() => import("./pages/AdminBonuses"));
 const AdminSchema = lazy(() => import("./pages/AdminSchema"));
 const JobExplorer = lazy(() => import("./pages/JobExplorer"));
 const ComponentShowcase = lazy(() => import("./pages/ComponentShowcase"));
@@ -254,6 +255,7 @@ function Router() {
           <Route path="/employer/opportunities" component={EmployerOpportunities} />
           <Route path="/admin" component={AdminOverview} />
           <Route path="/admin/partners" component={AdminPartners} />
+          <Route path="/admin/bonuses" component={AdminBonuses} />
           <Route path="/post-opportunity" component={PostOpportunity} />
           <Route path="/admin/activity" component={AdminActivity} />
           <Route path="/admin/approvals" component={AdminApprovalQueue} />
