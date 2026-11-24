@@ -15,13 +15,14 @@ function fakeStore() {
   const sendRequests: Array<{ id: number; userId: number; grantId: number; draftId: number; expiresAt: Date }> = [];
   const store: SeekerAgentStore = {
     createGrant: async input => {
-      const row: GrantRow = { id: seq++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, canLookup: input.canLookup, canDraft: input.canDraft, canSend: input.canSend, maxCreditsPerAsk: input.limits.creditsPerAsk, maxCreditsPerDay: input.limits.creditsPerDay, maxCreditsPerWeek: input.limits.creditsPerWeek, maxAsksPerDay: input.limits.asksPerDay, expiresAt: input.expiresAt, revokedAt: null, lastUsedAt: null, createdAt: new Date() };
+      const row: GrantRow = { id: seq++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, canLookup: input.canLookup, canDraft: input.canDraft, canSend: input.canSend, autoSend: false, maxCreditsPerAsk: input.limits.creditsPerAsk, maxCreditsPerDay: input.limits.creditsPerDay, maxCreditsPerWeek: input.limits.creditsPerWeek, maxAsksPerDay: input.limits.asksPerDay, expiresAt: input.expiresAt, revokedAt: null, lastUsedAt: null, createdAt: new Date() };
       grants.push(row); return row;
     },
     listGrants: async userId => grants.filter(g => g.userId === userId),
     getGrantForUser: async (userId, id) => grants.find(g => g.userId === userId && g.id === id),
     findGrantByKeyHash: async () => undefined, // replaced per test via keyIndex
     revokeGrant: async (userId, id) => { const g = grants.find(x => x.userId === userId && x.id === id); if (g) g.revokedAt = new Date(); return Boolean(g); },
+    setAutoSend: async (userId, id, enabled) => { const g = grants.find(x => x.userId === userId && x.id === id); if (g) g.autoSend = enabled; return Boolean(g); },
     touchLastUsed: async (id, now) => { const g = grants.find(x => x.id === id); if (g) g.lastUsedAt = now; },
     isPaused: async userId => pausedUsers.has(userId),
     setPaused: async (userId, paused) => { if (paused) pausedUsers.add(userId); else pausedUsers.delete(userId); },
@@ -57,6 +58,7 @@ function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number;
   const app = express(); app.use(express.json());
   registerSeekerAgentRoutes(app, {
     enabled: () => opts.enabled ?? true,
+    autoSendEnabled: () => opts.enabled ?? true,
     allowedUserIds: () => opts.allowed ?? new Set([7, 8]),
     resolveIdentity: async () => (opts.userId ? { account: { id: opts.userId } } : undefined),
     store,
