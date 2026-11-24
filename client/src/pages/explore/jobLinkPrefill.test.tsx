@@ -8,6 +8,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import ExploreCompany from "../ExploreCompany";
@@ -230,6 +231,40 @@ describe("the drawer on a company door (packet T4/T5/T6/T6b)", () => {
     fillLink(drawer, "https://boards.greenhouse.io/infosys/jobs/42");
     await waitFor(() => expect(sendButton(drawer).getAttribute("aria-disabled")).toBe("true"));
     expect(within(drawer).getByTestId("ask-send-guidance").textContent).toBe("This posting looks like Infosys’, not Wipro’s.");
+    // Before a press it is a calm status line, not an error.
+    expect(within(within(drawer).getByTestId("ask-send-guidance")).queryByTestId("goal-field-error")).toBeNull();
+    // The field itself is marked invalid and says it in crimson.
+    const link = within(drawer).getByLabelText("Job link");
+    expect(link.getAttribute("aria-invalid")).toBe("true");
+    expect(within(within(drawer).getByTestId("job-link-from-posting")).getByTestId("goal-field-error").textContent).toBe("This posting looks like Infosys’, not Wipro’s.");
+    // Pressing the blocked Send turns the reason into the crimson input error (owner, Nov 24: "errors should be shown in red"),
+    // raises one toast that says how to fix it, and takes the seeker to the field.
+    const toastError = vi.spyOn(toast, "error");
+    fireEvent.click(sendButton(drawer));
+    const error = await within(within(drawer).getByTestId("ask-send-guidance")).findByTestId("goal-field-error");
+    expect(error.getAttribute("role")).toBe("alert");
+    expect(error.className).toContain("text-g-crimson");
+    expect(error.textContent).toBe("This posting looks like Infosys’, not Wipro’s.");
+    expect(toastError).toHaveBeenCalledWith("This posting looks like Infosys’, not Wipro’s.", expect.objectContaining({ id: "ask-send-problem", description: "Paste a job link from Wipro’s careers site, then send.", classNames: { icon: "text-g-crimson" } }));
+    // No contradictory "we'll confirm it when you send" hint under a link already known to be another company's.
+    expect(within(drawer).queryByText(/when you send/)).toBeNull();
+    expect(document.activeElement).toBe(link);
+  });
+
+  it("shows what is missing in crimson and a toast, and takes the seeker to the field (P0)", async () => {
+    stub({ previewReply: url => ({ status: 200, body: preview(url, { roleTitle: "Analyst" }) }) });
+    const drawer = await openDoorDrawer();
+    fillLink(drawer, "https://boards.greenhouse.io/wipro/jobs/42");
+    await within(drawer).findByText("From the posting: Analyst at Wipro");
+    const toastError = vi.spyOn(toast, "error");
+    fireEvent.click(sendButton(drawer));
+    const error = await within(drawer).findByTestId("ask-send-error");
+    const message = within(error).getByTestId("goal-field-error");
+    expect(message.className).toContain("text-g-crimson");
+    expect(toastError).toHaveBeenCalledWith(message.textContent, expect.objectContaining({ id: "ask-send-problem", classNames: { icon: "text-g-crimson" } }));
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
+    // Said once beside Send, not twice.
+    expect(within(drawer).getAllByText(message.textContent ?? "")).toHaveLength(1);
   });
 
   it("shows a plain line on a rate limit, with no error banner, and debounces typing (T6)", async () => {
