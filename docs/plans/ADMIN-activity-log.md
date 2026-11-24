@@ -58,4 +58,4 @@ minute in `/admin/activity`, filtered to that person.
 
 ## Status
 
-- ADMIN-activity-log: todo
+- ADMIN-activity-log: in progress — Claude Code · 695b — 2026-11-24 — branch agent/queue/admin-activity-log
