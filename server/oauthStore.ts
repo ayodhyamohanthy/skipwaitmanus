@@ -2,10 +2,24 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { oauthAuthCodes, oauthClients } from "../drizzle/schema";
 import { getDb } from "./db";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_EXPIRY_MAX_DAYS } from "../shared/seekerAgents";
 
 export const OAUTH_CODE_TTL_MS = 5 * 60 * 1000;
 const sha256Hex = (value: string) => createHash("sha256").update(value).digest("hex");
 export const pkceChallengeFor = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
+
+/**
+ * D-178.screen (D-290 R1): the seeker's grant length rides inside the one-time
+ * code, so the token exchange creates the grant they chose without a new column.
+ * The stored hash covers the whole string, so an agent that edits the suffix
+ * invalidates its own code instead of choosing a longer grant.
+ */
+const codeWithExpiry = (code: string, expiresInDays: number) => `${code}.${expiresInDays}`;
+const expiryDaysOf = (code: string): number => {
+  const suffix = code.slice(code.lastIndexOf(".") + 1);
+  const days = Number(suffix);
+  return Number.isInteger(days) && days >= 1 && days <= AGENT_EXPIRY_MAX_DAYS ? days : AGENT_EXPIRY_DEFAULT_DAYS;
+};
 
 /** https only, or http on a loopback host (desktop assistants). No fragments, no credentials. */
 export function isAllowedRedirectUri(value: unknown): value is string {
@@ -40,15 +54,15 @@ export async function getOAuthClient(clientId: unknown): Promise<OAuthClient | n
 }
 
 /** Called only after the signed-in owner pressed Allow. Returns the one-time code. */
-export async function issueAuthCode(userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string }) {
+export async function issueAuthCode(userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string; expiresInDays: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const code = randomBytes(32).toString("base64url");
+  const code = codeWithExpiry(randomBytes(32).toString("base64url"), input.expiresInDays);
   await db.insert(oauthAuthCodes).values({ codeHash: sha256Hex(code), clientId: input.clientId, userId, redirectUri: input.redirectUri, codeChallenge: input.codeChallenge, expiresAt: new Date(Date.now() + OAUTH_CODE_TTL_MS) });
   return code;
 }
 
 /** Single use: the conditional update means a second exchange of the same code finds nothing. */
-export async function consumeAuthCode(code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }): Promise<{ userId: number } | null> {
+export async function consumeAuthCode(code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }): Promise<{ userId: number; expiresInDays: number } | null> {
   const db = await getDb(); if (!db) return null;
   const hash = sha256Hex(code);
   const row = (await db.select().from(oauthAuthCodes).where(and(eq(oauthAuthCodes.codeHash, hash), isNull(oauthAuthCodes.usedAt), gt(oauthAuthCodes.expiresAt, new Date()))).limit(1))[0];
@@ -57,5 +71,5 @@ export async function consumeAuthCode(code: string, input: { clientId: string; r
   if (Number((claimed as unknown as [{ affectedRows?: number }])[0]?.affectedRows) !== 1) return null;
   if (row.clientId !== input.clientId || row.redirectUri !== input.redirectUri) return null;
   if (pkceChallengeFor(input.codeVerifier) !== row.codeChallenge) return null;
-  return { userId: row.userId };
+  return { userId: row.userId, expiresInDays: expiryDaysOf(code) };
 }
