@@ -1,6 +1,6 @@
 # OPS-live-qa-journeys: signed-in live QA proves the money, privacy and transition rows with the two demo accounts (D-389)
 
-Tier 1 · lane `live-qa-journeys` · branch `agent/queue/ops-live-qa-journeys` · epic D-212 · depends on `OPS-live-qa-hardening`
+Tier 1 · lane `live-qa-journeys` · branch `agent/queue/ops-live-qa-journeys` · epic D-212 · depends on `OPS-live-qa-hardening`, `QA-sandbox-requests` (D-393)
 
 ## Why
 
@@ -24,7 +24,8 @@ Steps, each recording status code, the relevant redacted response fields and, fo
    `referrer@reviewer.skipwait.me`.
 2. Read the seeker wallet (`GET /api/credits/summary`). If no free referral is available, stop and report
    (never buy, never open checkout).
-3. Send one referral request from the demo seeker to the demo referrer's company using the free allowance.
+3. Send one referral request from the demo seeker using the free allowance. Since D-393 it is a sandbox
+   request (`QA-sandbox-requests`): any company, reaching only the demo referrer, never a real employee.
 4. As the referrer, confirm the request is visible with no seeker name and no file links before acceptance.
 5. Claim and accept as the referrer; confirm name and files appear only after the referrer's own acceptance
    (D-019(e)).

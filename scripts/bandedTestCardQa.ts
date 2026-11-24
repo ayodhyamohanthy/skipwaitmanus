@@ -3,19 +3,25 @@
 //
 // D-383 withdrew the earlier PASS entries in docs/qa/banded-release-qa.md because they had no linked run, log or
 // artifact. This runner produces that missing evidence on the Chargebee TEST site only: it opens the app's own
-// banded hosted page for a USD plan and pays it with the runbook's international test card, then reads the
-// subscription and invoice back from the provider. It never touches the live site, never charges real money and
-// never prints the API key.
+// banded hosted page for a USD plan and pays it with the runbook's international test card, then reads the invoice
+// back, verifies a successful refund and cancels the subscription. It never touches the live site, never charges
+// real money and never prints the API key or raw card fields.
 //
-// Usage: pnpm exec tsx scripts/bandedTestCardQa.ts [probe|card]
+// Usage: pnpm exec tsx scripts/bandedTestCardQa.ts [probe|provision|card|handshake]
 //   probe (default) read-only: the banded items and USD item prices exist on the TEST site.
-//   card            probe, then create a USD hosted page, pay it with the international test card and verify.
+//   provision       create-only TEST-site catalog sync, then probe.
+//   card            probe, pay with the international test card, verify payment/refund and cancel.
+//   handshake       live /plans captures and Buy up to the hosted page without paying.
 // Output: banded-qa/summary.json plus screenshots; a Markdown table in $GITHUB_STEP_SUMMARY.
 // Exit 0 when the requested mode is proven, 1 otherwise.
 import { mkdir, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { createBandedPlanPage } from "../server/bandedCheckoutProvider";
+import { chargebeeRequest, idPath } from "../server/chargebeeApi";
+import { applyCatalogSync, buildCatalogSyncDryRun } from "../server/catalogSyncApply";
+import { createChargebeeCatalogApi } from "../server/chargebeeCatalogApi";
 import { bandedPlanItemPriceId } from "../shared/bandedCatalog";
 import { PLAN_FAMILY, planFeeMinor } from "../shared/planFamily";
 
@@ -24,6 +30,14 @@ export const SITE = "skipwait-test";
 
 /** The repository secret holding the TEST-site API key. The live key is never read. */
 export const KEY_ENV = "QA_CHARGEBEE_TEST_API_KEY";
+
+/**
+ * The TEST site was provisioned from an older catalog generation, so the app's current item price ids do not exist
+ * there and the reviewed apply refuses it (its SkipWait objects span three product families). This is the TEST
+ * site's own Early to Mid USD plan price: the same plan, currency, amount and monthly shape under the older id.
+ * Setting it proves the provider leg; it does not prove the app's current id, which the live handshake covers.
+ */
+export const TEST_SITE_ITEM_PRICE_ID_ENV = "QA_TEST_ITEM_PRICE_ID";
 
 /** The plan and currency this evidence covers: the first banded plan, USD presentment (D-367 (2)). */
 export const PLAN = "early_to_mid" as const;
@@ -48,13 +62,19 @@ export const DEMO_PASSWORD_ENV = "REVIEWER_SEEKER_PASSWORD";
 /** The plan the handshake buys up to the hosted page. */
 export const HANDSHAKE_PLAN_LABEL = "Early to Mid";
 
-export type Mode = "probe" | "card" | "handshake";
+export type Mode = "probe" | "provision" | "card" | "handshake" | "verify";
 
 export function parseMode(value: string | undefined): Mode {
   const mode = value || "probe";
-  if (mode === "probe" || mode === "card" || mode === "handshake") return mode;
-  throw new Error(`mode must be probe, card or handshake, not "${mode}"`);
+  if (mode === "probe" || mode === "provision" || mode === "card" || mode === "handshake" || mode === "verify") return mode;
+  throw new Error(`mode must be probe, provision, card, handshake or verify, not "${mode}"`);
 }
+
+/**
+ * D-392 (3)(a): the fixed QA email the owner types on the TEST checkout. `verify` finds the owner's own payment
+ * by this address, so no single-use hosted-page link has to travel through a public log, artifact or chat.
+ */
+export const OWNER_QA_EMAIL = "banded-qa+owner@skipwait.me";
 
 /** The API key, or a plain refusal. The value is never returned in an error message. */
 export function apiKeyOf(env: NodeJS.ProcessEnv): string {
@@ -76,7 +96,7 @@ export function cardOf(index = 0) {
   return card;
 }
 
-/** A future expiry and any 3-digit CVV, as the runbook allows for these test cards. */
+/** The current hosted component displays and validates expiry as MM/YY. */
 export const CARD_EXPIRY = "12/30";
 export const CARD_CVV = "123";
 
@@ -94,21 +114,98 @@ async function chargebeeGet(credentials: Credentials, requestPath: string): Prom
 }
 
 /** Read-only: the banded items exist and the USD item price matches the frozen book. */
-export async function probe(credentials: Credentials): Promise<ProbeResult> {
+export async function probe(credentials: Credentials, expectedId = bandedPlanItemPriceId(PLAN, CURRENCY)): Promise<ProbeResult> {
   const items = (await chargebeeGet(credentials, "/items?limit=100")) as { list?: { item: { id: string } }[] };
   const ids = (items.list ?? []).map(entry => entry.item.id);
-  const usdItemPriceId = bandedPlanItemPriceId(PLAN, CURRENCY);
-  const prices = (await chargebeeGet(credentials, `/item_prices?item_id[is]=skipwait_${PLAN}&limit=100`)) as {
-    list?: { item_price: { id: string; currency_code: string; price: number; status: string } }[];
+  const usdItemPriceId = expectedId;
+  // List every price and match by id: a filtered query hides what the site actually has when the item is missing.
+  const prices = (await chargebeeGet(credentials, "/item_prices?limit=100")) as {
+    list?: { item_price: { id: string; item_id: string; currency_code: string; price: number; status: string } }[];
   };
-  const usd = (prices.list ?? []).map(entry => entry.item_price).find(price => price.id === usdItemPriceId);
-  if (!usd) throw new Error(`the TEST site has no item price ${usdItemPriceId}`);
+  const all = (prices.list ?? []).map(entry => entry.item_price);
+  const usd = all.find(price => price.id === usdItemPriceId);
+  if (!usd) {
+    const banded = all.filter(price => price.item_id.startsWith("skipwait_")).map(price => `${price.id} (${price.currency_code} ${price.price})`);
+    throw new Error(`the TEST site has no item price ${usdItemPriceId}; skipwait prices on it: ${banded.length ? banded.join(", ") : "none"}; items: ${ids.filter(id => id.startsWith("skipwait_")).join(", ") || "none"}`);
+  }
   const expected = planFeeMinor(PLAN, CURRENCY);
   if (usd.currency_code !== CURRENCY || usd.price !== expected) {
     throw new Error(`the TEST site price ${usdItemPriceId} is ${usd.currency_code} ${usd.price}, expected ${CURRENCY} ${expected}`);
   }
   return { items: ids, usdItemPriceId, usdAmount: expected };
 }
+
+export type ProvisionResult = { planned: number; outcome: string; blocked: number };
+
+/**
+ * Create-only: bring the TEST site's banded catalog in line with the frozen source, using the same reviewed
+ * dry-run/apply the admin sync uses. It never updates, archives or deletes, and it never touches a subscription,
+ * customer, invoice or payment. The TEST site was provisioned from an older catalog generation, so the app's
+ * current item price ids did not exist there and the card run could not exercise the real checkout.
+ */
+export async function provisionTestCatalog(credentials: Credentials): Promise<ProvisionResult> {
+  const api = createChargebeeCatalogApi(credentials);
+  const site = { site: SITE, environment: "test" as const };
+  const dry = await buildCatalogSyncDryRun({ api, site });
+  if (dry.blocked.length) {
+    throw new Error(`${dry.blocked.length} banded prices are blocked on the TEST site: ${dry.blocked.map(entry => `${entry.itemPriceId}: ${entry.reason}`).join("; ")}`);
+  }
+  const result = await applyCatalogSync({ planHash: dry.planHash, confirmSite: SITE }, {
+    api, site, actorUserId: 0, record: async () => undefined, reportError: () => undefined,
+  });
+  if (result.status !== "done") throw new Error(`the TEST-site catalog apply was refused: ${result.code} ${result.message}`);
+  return { planned: dry.counts.toCreate, outcome: result.report.outcome, blocked: dry.blocked.length };
+}
+
+const hostedPageSchema = z.object({
+  hosted_page: z.object({
+    id: z.string().min(1),
+    url: z.string().min(1),
+    state: z.string().optional(),
+    content: z.object({
+      subscription: z.object({ id: z.string().min(1), status: z.string().min(1), currency_code: z.string().length(3) }).optional(),
+      invoice: z.object({ id: z.string().min(1), status: z.string().min(1) }).optional(),
+    }).optional(),
+  }),
+});
+
+const invoiceSchema = z.object({
+  invoice: z.object({
+    id: z.string().min(1),
+    status: z.string().min(1),
+    currency_code: z.string().length(3),
+    total: z.number().int().nonnegative(),
+    amount_paid: z.number().int().nonnegative(),
+  }),
+});
+
+const refundStatusSchema = z.enum(["in_progress", "success", "voided", "failure", "timeout", "needs_attention", "late_failure"]);
+const refundTransactionSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("refund"),
+  status: refundStatusSchema,
+  amount: z.number().int().nonnegative(),
+  currency_code: z.string().length(3),
+  error_code: z.string().max(100).nullish(),
+});
+
+const refundResponseSchema = z.object({
+  invoice: z.object({ id: z.string().min(1), status: z.string().min(1) }),
+  transaction: refundTransactionSchema,
+  credit_note: z.object({ id: z.string().min(1), status: z.string().min(1) }),
+});
+
+export type RefundProof = {
+  transactionId: string;
+  transactionStatus: z.infer<typeof refundStatusSchema>;
+  amountMinor: number;
+  currencyCode: string;
+  creditNoteId: string;
+  creditNoteStatus: string;
+  errorCode: string | null;
+  verified: boolean;
+  idempotencyKey: string;
+};
 
 export type CardProof = {
   hostedPageId: string;
@@ -118,17 +215,22 @@ export type CardProof = {
   currencyCode: string;
   invoiceId: string | null;
   invoiceStatus: string | null;
+  invoiceTotal: number | null;
+  invoiceCurrency: string | null;
+  invoiceAmountPaid: number | null;
   paid: boolean;
+  refund: RefundProof | null;
 };
 
-/** Read the provider's own record of what the hosted page created. */
+/** Read the provider's own record of what the hosted page created; subscription state alone is not payment proof. */
 export async function readBack(credentials: Credentials, hostedPageId: string): Promise<CardProof> {
-  const page = (await chargebeeGet(credentials, `/hosted_pages/${encodeURIComponent(hostedPageId)}`)) as {
-    hosted_page: { id: string; url: string; state?: string; content?: { subscription?: { id: string; status: string; currency_code: string }; invoice?: { id: string; status: string } } };
-  };
+  const page = await chargebeeRequest(credentials, { method: "GET", path: `/hosted_pages/${idPath(hostedPageId)}` }, hostedPageSchema);
   const subscription = page.hosted_page.content?.subscription;
   if (!subscription) throw new Error(`hosted page ${hostedPageId} created no subscription (state ${page.hosted_page.state ?? "unknown"})`);
-  const invoice = page.hosted_page.content?.invoice;
+  const hostedInvoice = page.hosted_page.content?.invoice;
+  const invoice = hostedInvoice
+    ? (await chargebeeRequest(credentials, { method: "GET", path: `/invoices/${idPath(hostedInvoice.id)}` }, invoiceSchema)).invoice
+    : null;
   return {
     hostedPageId,
     checkoutUrl: page.hosted_page.url,
@@ -137,7 +239,136 @@ export async function readBack(credentials: Credentials, hostedPageId: string): 
     currencyCode: subscription.currency_code,
     invoiceId: invoice?.id ?? null,
     invoiceStatus: invoice?.status ?? null,
-    paid: invoice?.status === "paid" || ["active", "in_trial"].includes(subscription.status),
+    invoiceTotal: invoice?.total ?? null,
+    invoiceCurrency: invoice?.currency_code ?? null,
+    invoiceAmountPaid: invoice?.amount_paid ?? null,
+    paid: invoice?.status === "paid",
+    refund: null,
+  };
+}
+
+const customerListSchema = z.object({
+  list: z.array(z.object({ customer: z.object({ id: z.string().min(1), email: z.string().min(1) }) })).optional(),
+});
+
+const subscriptionListSchema = z.object({
+  list: z.array(z.object({
+    subscription: z.object({
+      id: z.string().min(1),
+      status: z.string().min(1),
+      currency_code: z.string().length(3),
+      customer_id: z.string().min(1),
+    }),
+  })).optional(),
+});
+
+const invoiceListSchema = z.object({
+  list: z.array(z.object({
+    invoice: z.object({
+      id: z.string().min(1),
+      status: z.string().min(1),
+      currency_code: z.string().length(3),
+      total: z.number().int().nonnegative(),
+      amount_paid: z.number().int().nonnegative(),
+    }),
+  })).optional(),
+});
+
+export type OwnerProof = { customerId: string; proof: CardProof };
+
+/**
+ * D-392 (3)(a): the owner pays one TEST checkout in their own browser, so the automated runner cannot read a
+ * hosted page it created. Find that payment by the fixed QA email instead and build the same proof card mode
+ * builds, so settlement, refund and cancellation run through one code path. Read-only: it never charges.
+ */
+export async function findOwnerProof(credentials: Credentials, email = OWNER_QA_EMAIL): Promise<OwnerProof> {
+  const customers = customerListSchema.parse(await chargebeeGet(credentials, `/customers?email[is]=${encodeURIComponent(email)}&limit=5`));
+  const customer = customers.list?.[0]?.customer;
+  if (!customer) throw new Error(`no TEST-site customer has the QA email ${email}: the owner has not paid yet`);
+  const subscriptions = subscriptionListSchema.parse(await chargebeeGet(credentials, `/subscriptions?customer_id[is]=${encodeURIComponent(customer.id)}&limit=10`));
+  const subs = subscriptions.list?.map(entry => entry.subscription) ?? [];
+  if (!subs.length) throw new Error(`the TEST-site customer ${customer.id} has no subscription: the owner's payment created none`);
+  const invoices = invoiceListSchema.parse(await chargebeeGet(credentials, `/invoices?customer_id[is]=${encodeURIComponent(customer.id)}&limit=20`));
+  const paid = (invoices.list ?? []).map(entry => entry.invoice).find(invoice => invoice.status === "paid" && invoice.amount_paid > 0);
+  if (!paid) throw new Error(`the TEST-site customer ${customer.id} has no paid invoice: the owner's payment did not settle`);
+  const subscription = subs.find(sub => sub.currency_code === paid.currency_code) ?? subs[0];
+  return {
+    customerId: customer.id,
+    proof: {
+      hostedPageId: "",
+      checkoutUrl: "",
+      subscriptionId: subscription.id,
+      subscriptionStatus: subscription.status,
+      currencyCode: subscription.currency_code,
+      invoiceId: paid.id,
+      invoiceStatus: paid.status,
+      invoiceTotal: paid.total,
+      invoiceCurrency: paid.currency_code,
+      invoiceAmountPaid: paid.amount_paid,
+      paid: true,
+      refund: null,
+    },
+  };
+}
+
+export type RefundPollOptions = { attempts?: number; wait?: (milliseconds: number) => Promise<void> };
+
+function validateRefundTransaction(transaction: z.infer<typeof refundTransactionSchema>, invoice: { currencyCode: string; amountMinor: number }): void {
+  if (transaction.amount !== invoice.amountMinor || transaction.currency_code !== invoice.currencyCode) {
+    throw new Error(`refund ${transaction.id} returned the wrong amount/currency (${transaction.currency_code} ${transaction.amount})`);
+  }
+}
+
+/** Refund the paid TEST invoice and require Chargebee's refund transaction to reach success. */
+export async function refundInvoice(
+  credentials: Credentials,
+  invoice: { id: string; currencyCode: string; amountMinor: number },
+  idempotencyKey: string,
+  options: RefundPollOptions = {},
+): Promise<RefundProof> {
+  if (!Number.isInteger(invoice.amountMinor) || invoice.amountMinor < 1) throw new Error("a verified refund needs a positive paid amount in minor units");
+  const attempts = options.attempts ?? 18;
+  if (!Number.isInteger(attempts) || attempts < 1) throw new Error("refund poll attempts must be a positive integer");
+  const wait = options.wait ?? ((milliseconds: number) => new Promise<void>(resolve => setTimeout(resolve, milliseconds)));
+  const form = new URLSearchParams({
+    refund_amount: String(invoice.amountMinor),
+    comment: "BANDED QA international TEST card refund",
+  });
+  const response = await chargebeeRequest(credentials, {
+    method: "POST",
+    path: `/invoices/${idPath(invoice.id)}/refund`,
+    form,
+    idempotencyKey,
+  }, refundResponseSchema);
+  if (response.invoice.id !== invoice.id) throw new Error(`refund returned invoice ${response.invoice.id}, expected ${invoice.id}`);
+  let transaction = response.transaction;
+  const creditNoteId = response.credit_note.id;
+  const creditNoteStatus = response.credit_note.status;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    validateRefundTransaction(transaction, invoice);
+    if (transaction.status === "success") {
+      return {
+        transactionId: transaction.id, transactionStatus: transaction.status, amountMinor: transaction.amount,
+        currencyCode: transaction.currency_code, creditNoteId, creditNoteStatus,
+        errorCode: transaction.error_code ?? null, verified: true, idempotencyKey,
+      };
+    }
+    if (["voided", "failure", "timeout", "late_failure"].includes(transaction.status)) {
+      throw new Error(`refund ${transaction.id} ended ${transaction.status}${transaction.error_code ? ` (${transaction.error_code})` : ""}`);
+    }
+    if (attempt + 1 < attempts) {
+      await wait(5_000);
+      const current = await chargebeeRequest(credentials, {
+        method: "GET", path: `/transactions/${idPath(transaction.id)}`,
+      }, z.object({ transaction: refundTransactionSchema }));
+      if (current.transaction.id !== transaction.id) throw new Error("Chargebee returned a different refund transaction while polling");
+      transaction = current.transaction;
+    }
+  }
+  return {
+    transactionId: transaction.id, transactionStatus: transaction.status, amountMinor: transaction.amount,
+    currencyCode: transaction.currency_code, creditNoteId, creditNoteStatus,
+    errorCode: transaction.error_code ?? null, verified: false, idempotencyKey,
   };
 }
 
@@ -152,19 +383,80 @@ export async function cancelTestSubscription(credentials: Credentials, subscript
   if (!response.ok) throw new Error(`cancel of ${subscriptionId} answered ${response.status}`);
 }
 
+export type CardSettlement = { cancelled: boolean; errors: string[] };
+
+/** Refund any recorded payment and always attempt cancellation, including after a hosted-page UI failure. */
+export async function settleCardProof(
+  credentials: Credentials,
+  proof: CardProof,
+  log: (line: string) => void,
+  refundOptions: RefundPollOptions = {},
+): Promise<CardSettlement> {
+  const errors: string[] = [];
+  const paymentInvalid = !proof.paid
+    || proof.currencyCode !== CURRENCY
+    || proof.invoiceCurrency !== CURRENCY
+    || proof.invoiceAmountPaid === null
+    || proof.invoiceAmountPaid < 1;
+  let refundFailed = false;
+  if (proof.paid && proof.invoiceId && proof.invoiceCurrency && proof.invoiceAmountPaid !== null && proof.invoiceAmountPaid > 0) {
+    try {
+      proof.refund = await refundInvoice(credentials, {
+        id: proof.invoiceId, currencyCode: proof.invoiceCurrency, amountMinor: proof.invoiceAmountPaid,
+      }, `banded-qa-refund-${proof.invoiceId}`, refundOptions);
+      log(`refund transaction ${proof.refund.transactionId} ${proof.refund.transactionStatus} ${proof.refund.currencyCode} ${proof.refund.amountMinor}, verified ${proof.refund.verified}`);
+    } catch (error) {
+      refundFailed = true;
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (paymentInvalid) {
+    errors.push(`the provider did not record a paid ${CURRENCY} invoice (subscription ${proof.subscriptionStatus}, invoice ${proof.invoiceStatus ?? "none"}, currency ${proof.invoiceCurrency ?? "none"}, paid ${proof.invoiceAmountPaid ?? "none"})`);
+  } else if (!refundFailed && !proof.refund?.verified) {
+    errors.push(`the paid invoice has no verified successful refund (transaction ${proof.refund?.transactionId ?? "none"})`);
+  }
+  let cancelled = false;
+  if (proof.subscriptionStatus === "cancelled") {
+    // verify can be dispatched again after a partial run: the subscription the first run cancelled needs no
+    // second cancel, and Chargebee refuses one. The refund above is idempotent by its keyed transaction.
+    cancelled = true;
+  } else {
+    try {
+      await cancelTestSubscription(credentials, proof.subscriptionId);
+      cancelled = true;
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return { cancelled, errors };
+}
+
 /** Fill the Chargebee hosted card form. Selectors are tried in order because the hosted page is provider-owned. */
 const FIELD_SELECTORS = {
-  number: ['input[name="card[number]"]', "#card_number", 'input[autocomplete="cc-number"]', 'input[name*="number"]'],
-  expiry: ['input[name="card[expiry_date]"]', "#card_expiry", 'input[autocomplete="cc-exp"]', 'input[name*="expiry"]'],
-  cvv: ['input[name="card[cvv]"]', "#card_cvv", 'input[autocomplete="cc-csc"]', 'input[name*="cvv"]'],
-  name: ['input[name="card[first_name]"]', "#card_first_name", 'input[name*="first_name"]'],
+  number: ['input[name="card[number]"]', "#card_number", "#card-number", 'input[autocomplete="cc-number"]', 'input[name="card_number"]', 'input[name="number"]', 'input[name*="number"]'],
+  expiry: ['input[name="card[expiry_date]"]', "#card_expiry", "#card-expiry", 'input[autocomplete="cc-exp"]', 'input[name="expiry"]', 'input[name*="expiry"]'],
+  cvv: ['input[name="card[cvv]"]', "#card_cvv", "#card-cvc", "#card-cvv", 'input[autocomplete="cc-csc"]', 'input[name="cvv"]', 'input[name*="cvv"]'],
+  name: ['input[name="card[first_name]"]', "#card_first_name", 'input[name="card_holder_name"]', 'input[name*="first_name"]'],
 } as const;
 
-async function fillFirst(page: import("playwright").Page, selectors: readonly string[], value: string): Promise<string | null> {
+const ALL_FIELD_SELECTORS = Object.values(FIELD_SELECTORS).flat().join(", ");
+
+async function fillFirst(
+  page: import("playwright").Page,
+  root: import("playwright").Page | import("playwright").FrameLocator,
+  selectors: readonly string[],
+  value: string,
+  input: "type" | "insert" = "type",
+): Promise<string | null> {
   for (const selector of selectors) {
-    const field = page.locator(selector).first();
+    const field = root.locator(selector).first();
     if (await field.count()) {
-      await field.fill(value);
+      await field.click({ timeout: 10_000 }).catch(() => undefined);
+      await field.press("ControlOrMeta+a").catch(() => undefined);
+      if (input === "insert") await page.keyboard.insertText(value);
+      else await page.keyboard.type(value, { delay: 80 });
+      await field.press("Tab").catch(() => undefined);
+      await page.waitForTimeout(250);
       return selector;
     }
   }
@@ -177,6 +469,34 @@ export type CardRunDeps = {
   log: (line: string) => void;
 };
 
+/** The hosted page's own billing-address step, by the ids its form renders. */
+const BILLING_FIELDS = [
+  { selector: "#billing_address-first_name", value: "SkipWait" },
+  { selector: "#billing_address-last_name", value: "QA" },
+  { selector: "#billing_address-line1", value: "1 QA Street" },
+  { selector: "#billing_address-city", value: "Seattle" },
+  { selector: "#billing_address-zip", value: "98101" },
+] as const;
+
+/** Country first, then its dependent state list: the state select is empty until a country is chosen. */
+async function fillBilling(page: import("playwright").Page): Promise<void> {
+  for (const field of BILLING_FIELDS) await page.locator(field.selector).fill(field.value).catch(() => undefined);
+  await page.locator("#billing_address-country").selectOption("US").catch(() => undefined);
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
+  const state = page.locator("#billing_address-state_code, #billing_address-state");
+  await state.selectOption("WA").catch(async () => { await state.selectOption({ label: "Washington" }).catch(() => undefined); });
+  // Some hosted-page builds leave the state list empty until the country round-trip finishes; take the first real option.
+  const chosen = await state.inputValue().catch(() => "");
+  if (!chosen) {
+    const firstValue = await state.locator("option:not([disabled])").nth(1).getAttribute("value").catch(() => null);
+    if (firstValue) await state.selectOption(firstValue).catch(() => undefined);
+  }
+}
+
+export function cardFieldDiagnostic(field: string, selector: string, value: string): string {
+  return `${field}=${selector} state=${value ? "set" : "empty"} length=${value.length}`;
+}
+
 /** Pay the hosted page with the international test card and prove the provider recorded it. */
 export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card: { brand: string; number: string }): Promise<{ filled: string[]; finalUrl: string }> {
   const browser = await deps.launch();
@@ -184,31 +504,100 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
     const page = await browser.newPage();
     try {
       await page.goto(checkoutUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      // The hosted page is a client-rendered app: wait for its form before looking for fields.
+      await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
       await deps.screenshot(page, "01-hosted-page");
+      // A subscription page opens on its cart first; the card form is two steps further.
+      const proceed = page.locator('button:has-text("Proceed To Checkout"), button:has-text("Proceed to Checkout"), button:has-text("Proceed")').first();
+      if (await proceed.count()) {
+        await proceed.click({ timeout: NAV_TIMEOUT_MS });
+        await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
+        await deps.screenshot(page, "02-checkout-step");
+      }
+      // The billing-address step comes before the payment method; fill it and continue.
+      if (await page.locator("#billing_address-line1").count()) {
+        await fillBilling(page);
+        await deps.screenshot(page, "03-billing-filled");
+        const next = page.locator("#submit-btn, button[type=\"submit\"]").first();
+        // The hosted page's button is a custom component; a plain click can wait forever on its actionability checks.
+        await next.click({ timeout: 15_000, force: true }).catch(async () => { await next.dispatchEvent("click"); });
+        await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
+        await deps.screenshot(page, "04-payment-step");
+      }
+      // The card fields live inside Chargebee's payment component iframe; fall back to the page when it is inline.
+      await page.locator("#cb-payment-component").waitFor({ state: "attached", timeout: 30_000 }).catch(() => undefined);
+      const paymentFrame = page.frameLocator("#cb-payment-component");
+      // The component is a client-rendered app that lists payment methods first (Card, PayPal). Poll until it either
+      // shows fields or offers Card, choose Card, and give it a moment to render its fields.
+      const deadline = Date.now() + 45_000;
+      let frameInputs = 0;
+      while (Date.now() < deadline) {
+        frameInputs = await paymentFrame.locator("input").count().catch(() => 0);
+        if (frameInputs > 0) break;
+        const cardChoice = paymentFrame.getByText("Card", { exact: true }).first();
+        if (await cardChoice.count().catch(() => 0)) {
+          await cardChoice.click({ force: true, timeout: 10_000 }).catch(() => undefined);
+          await page.waitForTimeout(2_000);
+          await deps.screenshot(page, "05-card-method");
+          frameInputs = await paymentFrame.locator("input").count().catch(() => 0);
+          if (frameInputs > 0) break;
+        }
+        await page.waitForTimeout(1_000);
+      }
+      const root: import("playwright").Page | import("playwright").FrameLocator = frameInputs > 0 ? paymentFrame : page;
+      await root.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const filled: string[] = [];
+      const values: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
         const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
-        const used = await fillFirst(page, selectors, value);
-        if (used) filled.push(`${field}=${used}`);
+        const used = await fillFirst(page, root, selectors, value, field === "expiry" ? "insert" : "type");
+        if (used) {
+          filled.push(`${field}=${used}`);
+          const input = root.locator(used).first();
+          // Masked fields can report an empty DOM value while showing one; record state and length, never the value.
+          const actual = await input.evaluate(el => (el as HTMLInputElement).value).catch(() => "");
+          values.push(cardFieldDiagnostic(field, used, actual));
+          if (await input.getAttribute("aria-invalid") === "true") {
+            throw new Error(`card field ${field} remained invalid after entry; see 99-failure.png`);
+          }
+        }
       }
+      deps.log(`card field values: ${values.join(", ")}`);
       if (!filled.some(entry => entry.startsWith("number="))) {
-        throw new Error("the hosted page showed no card-number field");
+        const inputs = await page.locator("input").count();
+        throw new Error(`the hosted page showed no card-number field (title "${await page.title()}", ${inputs} inputs); banded-qa/hosted-page.html records what it did show`);
       }
-      await deps.screenshot(page, "02-card-filled");
+      await deps.screenshot(page, "06-card-filled");
       const submit = page.locator('button[type="submit"], input[type="submit"], button:has-text("Pay")').first();
-      await submit.click({ timeout: NAV_TIMEOUT_MS });
+      await submit.click({ timeout: 15_000, force: true }).catch(async () => { await submit.dispatchEvent("click"); });
+      // The gateway answers asynchronously (mock 3DS or a redirect); give it time before looking for the next step.
+      await page.waitForTimeout(4_000);
+      await deps.screenshot(page, "07-after-pay");
+      // The hosted page states plainly when it did not receive the card; report that instead of a vague timeout.
+      const refused = page.getByText("Please provide your payment details").first();
+      if (await refused.count().catch(() => 0)) {
+        throw new Error("the hosted page did not accept the card details (\"Please provide your payment details\"); the payment component kept no card state");
+      }
       // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
       const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
       if (await success.count()) {
-        await deps.screenshot(page, "03-3ds");
-        await success.click({ timeout: NAV_TIMEOUT_MS });
+        await success.click({ force: true, timeout: 15_000 }).catch(() => undefined);
+        await page.waitForTimeout(3_000);
       }
       await page.waitForLoadState("domcontentloaded", { timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
-      await deps.screenshot(page, "04-after-payment");
+      await deps.screenshot(page, "08-after-payment");
       return { filled, finalUrl: page.url() };
     } catch (error) {
       // The hosted page is provider-owned: keep what it actually showed so a failure is diagnosable from the artifact.
       await writeFile(path.join(OUTPUT_DIR, "hosted-page.html"), await page.content().catch(() => "")).catch(() => undefined);
+      // The payment form lives in a child frame; its markup is not part of page.content().
+      let index = 0;
+      for (const frame of page.frames()) {
+        if (frame === page.mainFrame()) continue;
+        const html = await frame.content().catch(() => "");
+        if (html) await writeFile(path.join(OUTPUT_DIR, `frame-${index}-${new URL(frame.url()).hostname.replace(/\./g, "-")}.html`), html).catch(() => undefined);
+        index += 1;
+      }
       await deps.screenshot(page, "99-failure").catch(() => undefined);
       throw error;
     }
@@ -288,9 +677,11 @@ export type Summary = {
   plan: string;
   currency: string;
   probe: ProbeResult | null;
+  provision: ProvisionResult | null;
   card: { brand: string; last4: string } | null;
   proof: CardProof | null;
   handshake: HandshakeProof | null;
+  verify: { email: string; customerId: string } | null;
   cancelled: boolean;
   ok: boolean;
   reason: string;
@@ -306,9 +697,12 @@ export function markdownOf(summary: Summary): string {
     `| Mode | ${summary.mode} |`,
     `| Plan / currency | ${summary.plan} / ${summary.currency} |`,
     `| USD item price | ${summary.probe ? `\`${summary.probe.usdItemPriceId}\` = ${summary.probe.usdAmount} minor units` : "not probed"} |`,
+    `| TEST catalog provision | ${summary.provision ? `${summary.provision.outcome}, ${summary.provision.planned} to create, ${summary.provision.blocked} blocked` : "not run"} |`,
     `| Card | ${summary.card ? `${summary.card.brand} ending ${summary.card.last4}` : "not charged"} |`,
     `| Subscription | ${summary.proof ? `\`${summary.proof.subscriptionId}\` (${summary.proof.subscriptionStatus}, ${summary.proof.currencyCode})` : "none"} |`,
-    `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus})` : "none"} |`,
+    `| Invoice | ${summary.proof?.invoiceId ? `\`${summary.proof.invoiceId}\` (${summary.proof.invoiceStatus}, ${summary.proof.invoiceCurrency ?? "?"} ${summary.proof.invoiceTotal ?? "?"} minor units, paid ${summary.proof.invoiceAmountPaid ?? "?"})` : "none"} |`,
+    `| Refund | ${summary.proof?.refund ? `\`${summary.proof.refund.transactionId}\` (${summary.proof.refund.transactionStatus}, ${summary.proof.refund.currencyCode} ${summary.proof.refund.amountMinor}, credit note \`${summary.proof.refund.creditNoteId}\`, verified ${summary.proof.refund.verified})` : "none"} |`,
+    ...(summary.verify ? [`| Owner QA email | \`${summary.verify.email}\` (customer \`${summary.verify.customerId}\`) |`] : []),
     `| QA subscription cancelled | ${summary.cancelled ? "yes" : "no"} |`,
     ...(summary.handshake ? [
       `| Live offer | onSale: ${summary.handshake.offerOnSale} |`,
@@ -332,9 +726,21 @@ async function main(): Promise<number> {
   const credentials: Credentials = { site: SITE, apiKey: key };
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, card: null, proof: null, handshake: null, cancelled: false, ok: false, reason: "" };
+  const summary: Summary = { site: SITE, mode, plan: PLAN, currency: CURRENCY, probe: null, provision: null, card: null, proof: null, handshake: null, verify: null, cancelled: false, ok: false, reason: "" };
   try {
-    if (mode === "handshake") {
+    if (mode === "verify") {
+      // D-392 (3)(a): the owner paid in their own browser, so there is no hosted page to read back. Find the
+      // payment by the fixed QA email and settle it through the same refund and cancellation path card mode uses.
+      const found = await findOwnerProof(credentials);
+      summary.verify = { email: OWNER_QA_EMAIL, customerId: found.customerId };
+      summary.proof = found.proof;
+      log(`verify: customer ${found.customerId} subscription ${found.proof.subscriptionId} ${found.proof.subscriptionStatus} ${found.proof.currencyCode}, invoice ${found.proof.invoiceId ?? "none"} ${found.proof.invoiceStatus ?? ""} paid ${found.proof.invoiceAmountPaid ?? "none"}`);
+      const settled = await settleCardProof(credentials, summary.proof, log);
+      summary.cancelled = settled.cancelled;
+      if (settled.errors.length) throw new Error(settled.errors.join("; "));
+      summary.ok = true;
+      summary.reason = "the owner's TEST payment has a paid USD invoice, its refund reached success and the subscription was cancelled";
+    } else if (mode === "handshake") {
       if (!password) throw new Error(`${DEMO_PASSWORD_ENV} is not set: the demo seeker password lives in the repository secret of that name`);
       summary.handshake = await handshake({
         launch: async () => {
@@ -359,53 +765,78 @@ async function main(): Promise<number> {
       console.log(handshakeMarkdown);
       if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${handshakeMarkdown}\n`);
       return 0;
-    }
-    summary.probe = await probe(credentials);
-    log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
-    if (mode === "probe") {
+    } else if (mode === "provision") {
+      // Provision first: the probe below is the confirmation that the site now matches the frozen source.
+      summary.provision = await provisionTestCatalog(credentials);
+      log(`provision: ${summary.provision.outcome}, ${summary.provision.planned} to create`);
+      summary.probe = await probe(credentials);
+      log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
       summary.ok = true;
-      summary.reason = "read-only probe passed";
+      summary.reason = "the TEST site's banded catalog now matches the frozen source";
     } else {
-      const card = cardOf();
-      const checkoutIntentId = `banded-qa-${randomUUID()}`;
-      const page = await createBandedPlanPage(credentials, {
-        itemPriceId: summary.probe.usdItemPriceId,
-        billingCountry: "INTL",
-        checkoutIntentId,
-        idempotencyKey: checkoutIntentId,
-        redirectUrl: "https://skipwait.me/plans",
-        cancelUrl: "https://skipwait.me/plans",
-        email: `banded-qa+${Date.now()}@skipwait.me`,
-        firstName: "SkipWait",
-        lastName: "QA",
-      });
-      log(`hosted page ${page.hostedPageId} created for ${summary.probe.usdItemPriceId}`);
-      const { chromium } = await import("playwright");
-      const run = await payHostedPage({
-        launch: async () => {
-          const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
-          return {
-            newPage: async () => {
-              const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-              return context.newPage();
+      const override = mode === "card" ? (process.env[TEST_SITE_ITEM_PRICE_ID_ENV] ?? "").trim() : "";
+      if (override) log(`card mode uses the TEST site's own item price ${override} (the app's current id is absent there)`);
+      summary.probe = await probe(credentials, override || undefined);
+      log(`probe: ${summary.probe.usdItemPriceId} = ${summary.probe.usdAmount} minor units on ${SITE}`);
+      if (mode === "probe") {
+        summary.ok = true;
+        summary.reason = "read-only probe passed";
+      } else {
+        const card = cardOf();
+        summary.card = { brand: card.brand, last4: card.number.slice(-4) };
+        const checkoutIntentId = `banded-qa-${randomUUID()}`;
+        const page = await createBandedPlanPage(credentials, {
+          itemPriceId: summary.probe.usdItemPriceId,
+          billingCountry: "INTL",
+          checkoutIntentId,
+          idempotencyKey: checkoutIntentId,
+          redirectUrl: "https://skipwait.me/plans",
+          cancelUrl: "https://skipwait.me/plans",
+          email: `banded-qa+${Date.now()}@skipwait.me`,
+          firstName: "SkipWait",
+          lastName: "QA",
+        });
+        log(`hosted page ${page.hostedPageId} created for ${summary.probe.usdItemPriceId}`);
+        const { chromium } = await import("playwright");
+        let run: { filled: string[]; finalUrl: string };
+        try {
+          run = await payHostedPage({
+            launch: async () => {
+              const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
+              return {
+                newPage: async () => {
+                  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+                  return context.newPage();
+                },
+                close: () => browser.close(),
+              };
             },
-            close: () => browser.close(),
-          };
-        },
-        screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
-        log,
-      }, page.checkoutUrl, card);
-      log(`card form filled: ${run.filled.join(", ")}; final URL ${run.finalUrl}`);
-      summary.card = { brand: card.brand, last4: card.number.slice(-4) };
-      summary.proof = await readBack(credentials, page.hostedPageId);
-      log(`provider record: ${summary.proof.subscriptionId} ${summary.proof.subscriptionStatus} ${summary.proof.currencyCode}, invoice ${summary.proof.invoiceId ?? "none"} ${summary.proof.invoiceStatus ?? ""}`);
-      if (!summary.proof.paid || summary.proof.currencyCode !== CURRENCY) {
-        throw new Error(`the provider did not record a paid ${CURRENCY} subscription (status ${summary.proof.subscriptionStatus}, invoice ${summary.proof.invoiceStatus ?? "none"})`);
+            screenshot: async (page, name) => { await page.screenshot({ path: path.join(OUTPUT_DIR, `${name}.png`), fullPage: true }); },
+            log,
+          }, page.checkoutUrl, card);
+        } catch (error) {
+          const interactionFailure = error instanceof Error ? error.message : String(error);
+          log(`hosted-page interaction failed; reconciling the provider record before stopping: ${interactionFailure}`);
+          let recoveryErrors: string[] = [];
+          try {
+            summary.proof = await readBack(credentials, page.hostedPageId);
+            const recovered = await settleCardProof(credentials, summary.proof, log);
+            summary.cancelled = recovered.cancelled;
+            recoveryErrors = recovered.errors;
+          } catch (recoveryError) {
+            recoveryErrors = [recoveryError instanceof Error ? recoveryError.message : String(recoveryError)];
+          }
+          throw new Error([interactionFailure, ...recoveryErrors.map(message => `provider recovery: ${message}`)].join("; "));
+        }
+        log(`card form filled: ${run.filled.join(", ")}; final URL ${run.finalUrl}`);
+        summary.proof = await readBack(credentials, page.hostedPageId);
+        log(`provider record: ${summary.proof.subscriptionId} ${summary.proof.subscriptionStatus} ${summary.proof.currencyCode}, invoice ${summary.proof.invoiceId ?? "none"} ${summary.proof.invoiceStatus ?? ""}`);
+        const settled = await settleCardProof(credentials, summary.proof, log);
+        summary.cancelled = settled.cancelled;
+        if (settled.errors.length) throw new Error(settled.errors.join("; "));
+        summary.ok = true;
+        summary.reason = "international TEST card paid a USD banded plan, the paid invoice was refunded successfully and the subscription was cancelled";
       }
-      await cancelTestSubscription(credentials, summary.proof.subscriptionId);
-      summary.cancelled = true;
-      summary.ok = true;
-      summary.reason = "international TEST card paid a USD banded plan and the provider recorded it";
     }
   } catch (error) {
     summary.reason = redact(error instanceof Error ? error.message : String(error));
