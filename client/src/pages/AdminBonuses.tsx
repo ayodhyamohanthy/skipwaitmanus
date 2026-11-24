@@ -103,7 +103,7 @@ export default function AdminBonuses() {
   return (
     <AdminGoalFrame screen="admin-bonuses">
       <AdminGoalHeading goalLine={GOAL_PAGE.goalLine} body="One current figure per company, entered from the employer's own page. The employer sets and pays its own programme; skipwait.me never pays referrers." />
-      {list.isLoading ? <GoalSkeletonRows density="comfortable" count={5} /> : list.isError ? <GoalErrorState title="We could not load referral bonuses" body={(list.error as Error).message} retry={{ label: "Try again", onClick: () => void list.refetch() }} /> : (
+      {list.isLoading ? <GoalSkeletonRows density="company" count={5} /> : list.isError ? <GoalErrorState title="We could not load referral bonuses" body={(list.error as Error).message} retry={{ label: "Try again", onClick: () => void list.refetch() }} /> : (
         <ul className="mt-4 divide-y divide-g-hairline">
           {(list.data ?? []).map(row => (
             <li key={row.company.id} className="py-3">
@@ -141,7 +141,7 @@ export default function AdminBonuses() {
       )}
       <section className="mt-8">
         <h2 className="text-g-label text-g-ink">Open reports</h2>
-        {reports.isLoading ? <GoalSkeletonRows density="comfortable" count={2} /> : reports.isError ? <GoalErrorState title="We could not load reports" body={(reports.error as Error).message} retry={{ label: "Try again", onClick: () => void reports.refetch() }} /> : (reports.data ?? []).length === 0 ? <p className="mt-2 text-g-meta text-g-ink-2">No open reports.</p> : (
+        {reports.isLoading ? <GoalSkeletonRows density="company" count={2} /> : reports.isError ? <GoalErrorState title="We could not load reports" body={(reports.error as Error).message} retry={{ label: "Try again", onClick: () => void reports.refetch() }} /> : (reports.data ?? []).length === 0 ? <p className="mt-2 text-g-meta text-g-ink-2">No open reports.</p> : (
           <ul className="mt-2 divide-y divide-g-hairline">
             {(reports.data ?? []).map(report => (
               <li key={report.id} className="py-3">
