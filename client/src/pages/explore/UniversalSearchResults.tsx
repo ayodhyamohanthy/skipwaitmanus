@@ -15,7 +15,6 @@ const presenceLabel = (presence: SearchJobHit["referrerPresence"]) => (presence 
 
 export interface UniversalSearchResultsProps {
   state: UniversalSearchState;
-  onOpenCompany(slug: string): void;
   onOpenJobLink(slug: string, url: string): void;
 }
 

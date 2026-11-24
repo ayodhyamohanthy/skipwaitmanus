@@ -38,7 +38,7 @@ const answer = (over: Partial<SearchResponse> = {}): SearchResponse => ({
 });
 
 const stub = (status: number, body: unknown) => {
-  const fetchMock = vi.fn(async () => json(status, body));
+  const fetchMock = vi.fn(async (_input: string) => json(status, body));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 };
@@ -105,7 +105,7 @@ describe("UniversalSearchResults", () => {
 
   it("lists a job with its company, locations, presence label and both actions", () => {
     const onOpenJobLink = vi.fn();
-    render(<UniversalSearchResults state={ready({ jobs: [job()] })} onOpenCompany={vi.fn()} onOpenJobLink={onOpenJobLink} />);
+    render(<UniversalSearchResults state={ready({ jobs: [job()] })} onOpenJobLink={onOpenJobLink} />);
     expect(screen.getByText("Product Designer")).toBeTruthy();
     expect(screen.getByText("Acme · Remote · Bengaluru")).toBeTruthy();
     expect(screen.getByText("Referrers here")).toBeTruthy();
@@ -116,7 +116,7 @@ describe("UniversalSearchResults", () => {
   });
 
   it("says 'No referrers yet' when the company has none", () => {
-    render(<UniversalSearchResults state={ready({ jobs: [job({ referrerPresence: "none" })] })} onOpenCompany={vi.fn()} onOpenJobLink={vi.fn()} />);
+    render(<UniversalSearchResults state={ready({ jobs: [job({ referrerPresence: "none" })] })} onOpenJobLink={vi.fn()} />);
     expect(screen.getByText("No referrers yet")).toBeTruthy();
     expect(screen.queryByText("Referrers here")).toBeNull();
   });
@@ -125,7 +125,6 @@ describe("UniversalSearchResults", () => {
     const onOpenJobLink = vi.fn();
     render(<UniversalSearchResults
       state={ready({ kind: "job-link", jobLink: { url: "https://boards.greenhouse.io/acme/jobs/123", companySlug: "acme", companyName: "Acme", roleTitle: "Product Designer", employerConfidence: "direct-domain", status: "fresh" } })}
-      onOpenCompany={vi.fn()}
       onOpenJobLink={onOpenJobLink}
     />);
     expect(screen.getByText("Product Designer at Acme")).toBeTruthy();
@@ -137,7 +136,6 @@ describe("UniversalSearchResults", () => {
   it("offers the invite path when the posting's company has no door yet", () => {
     render(<UniversalSearchResults
       state={ready({ kind: "job-link", jobLink: { url: "https://boards.greenhouse.io/zeta/jobs/1", companySlug: null, companyName: null, roleTitle: "Engineer", employerConfidence: "ambiguous", status: "fresh" } })}
-      onOpenCompany={vi.fn()}
       onOpenJobLink={vi.fn()}
     />);
     expect(screen.queryByRole("button", { name: "Ask for a referral" })).toBeNull();
@@ -145,7 +143,7 @@ describe("UniversalSearchResults", () => {
   });
 
   it("renders nothing when the answer has no result of its own", () => {
-    const { container } = render(<UniversalSearchResults state={ready()} onOpenCompany={vi.fn()} onOpenJobLink={vi.fn()} />);
+    const { container } = render(<UniversalSearchResults state={ready()} onOpenJobLink={vi.fn()} />);
     expect(container.textContent).toBe("");
   });
 });

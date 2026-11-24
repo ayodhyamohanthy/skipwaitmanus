@@ -294,7 +294,7 @@ export default function Explore() {
           </div>
         </GoalNextStep>
         </div>
-        {typeahead ? <UniversalSearchResults state={companySearch} onOpenCompany={selectCompany} onOpenJobLink={openJobLink} /> : null}
+        {typeahead ? <UniversalSearchResults state={companySearch} onOpenJobLink={openJobLink} /> : null}
         <p className="mt-3 text-g-meta text-g-ink-3">{FREE_ASKS_CHIP}.</p>
         <div role="group" aria-label="Filter companies" className="mt-4 flex flex-wrap gap-2 max-gdesk:gap-y-3">
           <GoalFilterChip label="All companies" pressed={fn === null} onPressedChange={() => { setFn(null); }} />
