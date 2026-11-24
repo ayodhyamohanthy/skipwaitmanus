@@ -80,4 +80,14 @@ Status: registration repair prepared on main 7d69a3ce; build remains waiting.
 Separate final-delta review, exact required CI, current-main validation and a
 distinct normal-procedure lander are still required. No self-landing.
 
-- D-180-referral-words: in progress — DeepSeek V4.1 Flash · 3aec — 2026-11-24 — branch agent/queue/referral-words-sweep
+- D-180-referral-words: review — agent/queue/referral-words-sweep — 7e9a0dc0e
+
+Evidence (DeepSeek V4.1 Flash · 3aec, 2026-11-24): nav label and rail label "My referrals" (id `asks`, href
+`/requests` unchanged), `/requests` shell title and My Requests page title "My referrals", onboarding hint
+"referral requests with a work link", plan-gate price error "uses its referral cost", `ADD_CREDITS_LABEL`
+"Add referrals" and `PAID_PLANS_SENTENCE` "Extra referrals when you need them". New nav pin asserts no nav
+label contains the noun "ask"; `useGoalShellMeta.test.ts`, `appShell.test.tsx` and `myRequests.goal.test.tsx`
+pins updated. 83 focused tests pass across 8 files; `pnpm check` exits 0; `scope-check` reports every change
+inside the 14 owned paths. `client/src/components/goal/useGoalShellMeta.test.ts` was added to this row's
+`owns` because it pins the string this row changes. Not done: the 1280/390 before/after captures (this
+machine is at 100% disk with about 2 GB free) and landing, which waits for this row's dependencies.
