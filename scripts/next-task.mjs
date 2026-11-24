@@ -139,9 +139,32 @@ export function runLocalCleanup({ tryGit, log = console.log, err = console.error
   }
 }
 
+/**
+ * PICKER-fetch-retry (D-324, D-321 (11)): the ref refresh is the run's first network step and one
+ * reset there stopped the whole run ("authoritative ref refresh failed"), though replaying the same
+ * fetch by hand succeeded in 11.7 s. The same host also drops about 1 GitHub read in 60.
+ * The retry is bounded and covers transport only; the caller still fails closed afterwards.
+ */
+export const FETCH_ATTEMPTS = 3;
+
+/** How many attempts to make given the failures so far: the bounded attempt count. */
+export const fetchAttemptsFor = (failed, attempts = FETCH_ATTEMPTS) => Math.min(failed + 1, attempts);
+
+const FETCH_RETRY_DELAY_MS = 500;
+const sleepSync = ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+
+/** Runs one Git fetch, retrying a transport failure up to FETCH_ATTEMPTS; false when it never worked. */
+function fetchWithRetry(args) {
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    if (tryGit(...args) !== null) return true;
+    if (attempt < FETCH_ATTEMPTS) sleepSync(FETCH_RETRY_DELAY_MS * attempt);
+  }
+  return false;
+}
+
 function refreshAuthoritativeRefs() {
   // Explicit destinations update and prune tracking refs even in a main-only clone; config stays untouched.
-  if (tryGit("-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs) === null) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
+  if (!fetchWithRetry(["-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs])) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
   if (tryGit("rev-parse", "--is-shallow-repository") !== "false") fail("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
   runLocalCleanup({ tryGit, log: console.log, err: console.error });
   return trackingRefs();
