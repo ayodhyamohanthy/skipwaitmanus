@@ -54,19 +54,60 @@ export const activityEventSchema = z.object({
   companyDomain: z.string().nullish(),
   metadata: z.string().nullish(),
   createdAt: z.union([z.string(), z.date()]),
+  actorUserId: z.number().nullish(),
   actorName: z.string().nullish(),
   actorEmail: z.string().nullish(),
 });
 export type ActivityEvent = z.infer<typeof activityEventSchema>;
 
-export async function loadActivity(getToken: TokenSource, query: string, outcome: string): Promise<ActivityEvent[]> {
-  const params = new URLSearchParams({ limit: "250" });
-  if (query.trim()) params.set("query", query.trim());
-  if (outcome) params.set("outcome", outcome);
+/** ADMIN-activity-log (D-393): the filters the page sends; blank values are left out. */
+export type ActivityQuery = { query?: string; outcome?: string; person?: string; family?: string; from?: string; to?: string };
+export type ActivityPage = { events: ActivityEvent[]; nextBefore: number | null };
+export const ACTIVITY_EXPORT_FALLBACK = "We could not export operational activity";
+export const PERSON_REQUESTS_FALLBACK = "We could not load this person's referral requests";
+
+export function activityParams(filter: ActivityQuery, extra: Record<string, string> = {}): URLSearchParams {
+  const params = new URLSearchParams(extra);
+  for (const key of ["query", "outcome", "person", "family", "from", "to"] as const) {
+    const value = filter[key]?.trim();
+    if (value) params.set(key, value);
+  }
+  return params;
+}
+
+export async function loadActivity(getToken: TokenSource, filter: ActivityQuery, before?: number): Promise<ActivityPage> {
+  const params = activityParams(filter, { limit: "250" });
+  if (before) params.set("before", String(before));
   const response = await fetch(`/api/admin/activity?${params.toString()}`, { headers: await bearer(getToken), credentials: "include" });
   const payload = await readPayload(response, ACTIVITY_FALLBACK);
   if (!response.ok) throw new Error(errorFrom(payload, ACTIVITY_FALLBACK));
-  return rows(payload.events, activityEventSchema);
+  return { events: rows(payload.events, activityEventSchema), nextBefore: typeof payload.nextBefore === "number" ? payload.nextBefore : null };
+}
+
+/** The filtered range as a CSV file (the server caps it at 5,000 rows). */
+export async function exportActivity(getToken: TokenSource, filter: ActivityQuery): Promise<Blob> {
+  const response = await fetch(`/api/admin/activity/export?${activityParams(filter).toString()}`, { headers: await bearer(getToken), credentials: "include" });
+  if (!response.ok) throw new Error(errorFrom(await readPayload(response, ACTIVITY_EXPORT_FALLBACK), ACTIVITY_EXPORT_FALLBACK));
+  return response.blob();
+}
+
+export const requestTransitionSchema = z.object({
+  id: z.number(),
+  referralRequestId: z.number(),
+  action: z.string(),
+  fromStatus: z.string(),
+  resultingStatus: z.string(),
+  actorUserId: z.number().nullish(),
+  role: z.enum(["seeker", "referrer", "actor"]),
+  createdAt: z.union([z.string(), z.date()]),
+});
+export type RequestTransition = z.infer<typeof requestTransitionSchema>;
+
+export async function loadPersonRequests(getToken: TokenSource, person: string): Promise<RequestTransition[]> {
+  const response = await fetch(`/api/admin/activity/requests?${new URLSearchParams({ person: person.trim() }).toString()}`, { headers: await bearer(getToken), credentials: "include" });
+  const payload = await readPayload(response, PERSON_REQUESTS_FALLBACK);
+  if (!response.ok) throw new Error(errorFrom(payload, PERSON_REQUESTS_FALLBACK));
+  return rows(payload.transitions, requestTransitionSchema);
 }
 
 // ---------- /admin/flow-health ----------
