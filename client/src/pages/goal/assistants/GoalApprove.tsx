@@ -9,12 +9,35 @@ import { AssistantLayout, NextStep, Section as Sheet } from "./AssistantLayout";
 import { GoalApprovalCard as ApprovalCard } from "./GoalApprovalCard";
 import type { AssistantApproval } from "@/components/assistants/format";
 import { approvalCostChangedSchema, approvalDecisionBody, withListedCost, type ApprovalCost } from "@shared/assistantApprovalCost";
+import { isBandedPlan } from "@shared/acceptedAskCost";
+import type { SpendSource } from "@shared/planFamily";
 
 /** Issue 644: a pending referral carries the cost the server will hold the owner to; the card shows it. */
 type PricedApproval = AssistantApproval & { cost?: ApprovalCost };
 const shownApproval = (approval: PricedApproval): AssistantApproval => (approval.cost ? { ...approval, creditCount: approval.cost.cost } : approval);
 
-type CreditsSummary = { plan?: string; totalAvailable?: number; monthlyCreditsRemaining?: number; monthlyAllowance?: number };
+type CreditsSummary = {
+  plan?: string;
+  totalAvailable?: number;
+  monthlyCreditsRemaining?: number;
+  monthlyAllowance?: number;
+  purchasedCreditsRemaining?: number;
+  ledger?: { planCreditsRemaining?: number; buckets?: { purchased?: number } };
+};
+
+/**
+ * D-178.screen (D-290 R4): which allowance the next referral would come from, in the
+ * frozen spending order (included, then the free allowance, then purchased). A banded
+ * plan keeps its included referrals per level, which this summary does not expose, so
+ * it reports no source rather than guessing one (BANDED-ui owns that read).
+ */
+function costSourceOf(summary: CreditsSummary | null): SpendSource | undefined {
+  if (!summary || (typeof summary.plan === "string" && isBandedPlan(summary.plan))) return undefined;
+  const planCredits = summary.ledger?.planCreditsRemaining ?? summary.monthlyCreditsRemaining ?? 0;
+  if (planCredits > 0) return summary.plan && summary.plan !== "free" ? "included" : "free";
+  const purchased = summary.ledger?.buckets?.purchased ?? summary.purchasedCreditsRemaining ?? 0;
+  return purchased > 0 ? "purchased" : undefined;
+}
 
 const FOOTNOTE = "Unanswered approvals expire after 24 hours.";
 
@@ -199,7 +222,7 @@ export default function GoalApprove() {
           {pending.filter(item => item.id === (selectedId !== null && pending.some(row => row.id === selectedId) ? selectedId : pending[0]?.id)).map((approval) => (
             <ApprovalCard
               key={approval.id}
-              approval={shownApproval(approval)}
+              approval={{ ...shownApproval(approval), costSource: approval.kind === "ask_send" ? costSourceOf(credits) : undefined }}
               balance={balance}
               primary
               handlers={{
