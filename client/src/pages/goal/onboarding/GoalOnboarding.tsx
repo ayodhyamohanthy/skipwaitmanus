@@ -149,7 +149,7 @@ export default function GoalOnboarding() {
     </section>,
     3: <section>
       <h2 className="text-g-heading text-g-ink">Show your work</h2>
-      <p className="mt-1 text-g-meta text-g-ink-2">Optional, but asks with a work link stand out. Add the URLs in <Link href="/work" className="text-g-ink underline underline-offset-[3px]">My work</Link>.</p>
+      <p className="mt-1 text-g-meta text-g-ink-2">Optional, but referral requests with a work link stand out. Add the URLs in <Link href="/work" className="text-g-ink underline underline-offset-[3px]">My work</Link>.</p>
       <div className="mt-4 flex flex-wrap gap-2">{LINK_KINDS.map(l => { const on = state.links.includes(l); return (
         <GoalFilterChip key={l} label={l} pressed={on} onPressedChange={() => toggleLink(l)} />); })}</div>
     </section>,

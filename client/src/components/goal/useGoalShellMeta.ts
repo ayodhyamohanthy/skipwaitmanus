@@ -12,7 +12,7 @@ export function shellActiveNav(path: string): GoalNavId {
 
 const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/explore/, "Find a referral"],
-  [/^\/requests/, "My asks"],
+  [/^\/requests/, "My referrals"],
   [/^\/ask/, "Ask for a referral"],
   [/^\/queue/, "Referral queue"],
   [/^\/inbox/, "Inbox"],

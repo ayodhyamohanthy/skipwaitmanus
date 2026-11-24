@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // W0 (D-048 phase 3): the app frame renders inside GoalShell - one navigation
-// (Find, My asks, Inbox, + Referral queue for a verified referrer), the credits
+// (Find, My referrals, Inbox, + Referral queue for a verified referrer), the credits
 // count on every signed-in route (D-222), the account menu carried over unchanged.
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -37,10 +37,10 @@ vi.mock("wouter", () => ({
 describe("AppShell on GoalShell (W0)", () => {
   afterEach(() => { cleanup(); state.path = "/requests"; state.signedIn = true; state.referrer = "unverified"; state.credits = { state: "ready", count: 9 }; });
 
-  it("renders the one navigation for a seeker: Find, My asks, Inbox - no Queue", () => {
+  it("renders the one navigation for a seeker: Find, My referrals, Inbox - no Queue", () => {
     render(<AppShell><p>page</p></AppShell>);
     const rail = screen.getAllByRole("navigation", { name: "Primary" })[0];
-    for (const [name, href] of [["Find", "/explore"], ["My asks", "/requests"], ["Inbox", "/inbox"]]) {
+    for (const [name, href] of [["Find", "/explore"], ["My referrals", "/requests"], ["Inbox", "/inbox"]]) {
       expect(within(rail).getByRole("link", { name }).getAttribute("href")).toBe(href);
     }
     expect(within(rail).queryByRole("link", { name: /Queue/ })).toBeNull();
@@ -69,7 +69,7 @@ describe("AppShell on GoalShell (W0)", () => {
   it("marks the current route active with aria-current", () => {
     render(<AppShell><p>page</p></AppShell>);
     const rail = screen.getAllByRole("navigation", { name: "Primary" })[0];
-    expect(within(rail).getByRole("link", { name: "My asks" }).getAttribute("aria-current")).toBe("page");
+    expect(within(rail).getByRole("link", { name: "My referrals" }).getAttribute("aria-current")).toBe("page");
     expect(within(rail).getByRole("link", { name: "Find" }).getAttribute("aria-current")).toBeNull();
   });
 

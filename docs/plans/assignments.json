@@ -1239,6 +1239,7 @@
         "client/src/pages/goal/onboarding/GoalOnboarding.tsx",
         "client/src/pages/MyRequests.tsx",
         "client/src/components/goal/useGoalShellMeta.ts",
+        "client/src/components/goal/useGoalShellMeta.test.ts",
         "client/src/components/goal/nav.test.ts",
         "client/src/pages/myRequests.goal.test.tsx",
         "client/src/components/appShell.test.tsx",

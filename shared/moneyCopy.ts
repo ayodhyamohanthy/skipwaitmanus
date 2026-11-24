@@ -138,7 +138,7 @@ export const addCreditPhrase = (levelCost: boolean): string => (levelCost ? "Add
 // The shortfall arithmetic stays in the cost line ("This ask costs N. You have M.
 // Add K more."); the action is generic and lands on the live packs section,
 // because no pack sells exactly K credits (D-132 item 3, designer review).
-export const ADD_CREDITS_LABEL = "Add credits";
+export const ADD_CREDITS_LABEL = "Add referrals";
 export const ADD_CREDITS_HREF = "/plans#packs";
 export const topUpHref = (packsOnSale = true): string => (packsOnSale ? "/plans#packs" : "/premium?role=job_seeker");
 export const creditUsedPhrase = (levelCost: boolean): string => (levelCost ? "its credits are used" : "1 is deducted from your balance");
@@ -172,7 +172,7 @@ export function askCostLanding(levelCost: boolean): { stepBody: string; waitBody
  * promises what the product does not do). One config source; change here when
  * the plan family goes live.
  */
-export const PAID_PLANS_SENTENCE = "Extra credits when you need them; paid plans arrive soon.";
+export const PAID_PLANS_SENTENCE = "Extra referrals when you need them; paid plans arrive soon.";
 
 /** D-193: an old waiting request needs the seeker's consent before first visibility. */
 export const ASK_RECONFIRM_PROMPT = "Still want this referral request sent? Confirm to send it.";
