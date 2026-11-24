@@ -49,4 +49,4 @@ both changes when merging.
 
 ## Status
 
-- BANDED-catalog-family: todo
+- BANDED-catalog-family: in progress — Claude Code · 075d — 2026-11-24 — branch agent/queue/banded-catalog-family
