@@ -33,7 +33,7 @@ Zero existing customer records, subscriptions, invoices, or payment sources were
 | Charge | `skipwait_referral_executive` | Executive referral request | INR | ₹799.00 (`79900`) | One-time / per-unit |
 | Charge | `skipwait_referral_executive` | Executive referral request | USD | $16.00 (`1600`) | One-time / per-unit |
 
-- **Catalog parity:** Exact match between `skipwait-test` and live `skipwait` catalog schemas.
+- **Catalog parity:** **FALSE, corrected Nov 24 2026.** The two sites do not match. A read-only probe of `skipwait-test` ([run 45286840729](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45286840729)) found the banded prices under an **older id generation** — `skipwait_seeker_early_to_mid-USD-Monthly` (USD 449), `skipwait_seeker_mid_to_senior-USD-Monthly` (USD 1799), `skipwait_seeker_senior_to_executive-USD-Monthly` (USD 2599), `skipwait_topup_early-USD` (USD 100), `skipwait_topup_mid-USD` (USD 400), `skipwait_topup_senior-USD` (USD 800), `skipwait_topup_executive-USD` (USD 1600), each with the correct frozen amount. The ids the app sends (`skipwait_<plan>_monthly-<CUR>`, `skipwait_referral_<level>-<CUR>`) do **not** exist there, so the app's own checkout cannot run on the TEST site as provisioned.
 - **Application gate:** `skipwait_senior_to_executive` provisioned in catalog, but checkout enforces application-only status (`byApplication: true`), responding `403 application_required` before provider call.
 - **Legacy isolation:** Paused packs, passes, and sessions remain excluded.
 
@@ -55,10 +55,19 @@ The missing capability is now code, not a manual step: `.github/workflows/banded
 | Mode | What it proves |
 |---|---|
 | `probe` | Read-only: the banded items exist on `skipwait-test` and the USD item price equals the frozen book. |
-| `card` | Creates the app's own banded hosted page for `early_to_mid` USD, pays it with the runbook's international test card, reads the subscription and invoice back from Chargebee, then cancels the QA subscription. |
+| `provision` | Create-only: runs the same reviewed dry-run/apply the admin sync uses, against `skipwait-test`. |
+| `card` | Creates a banded hosted page for `early_to_mid` USD, pays it with the runbook's international test card, reads the subscription and invoice back from Chargebee, then cancels the QA subscription. |
 | `handshake` | Live: signs in as the demo seeker on skipwait.me, captures `/plans` at 1280 and 390, clicks Buy and stops on the provider's hosted page without paying. |
 
 Guards: the site is the constant `skipwait-test` and is not configurable; the key is read only from `QA_CHARGEBEE_TEST_API_KEY` and the demo password only from `REVIEWER_SEEKER_PASSWORD`, both masked before use and redacted from every line; the evidence is uploaded as an artifact with 90-day retention.
+
+### 2b. What the runner found on Nov 24 2026 (BANDED-release blocked)
+
+1. **The TEST site cannot be provisioned by the reviewed apply.** [Run 45287747237](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45287747237) refused all 14 banded prices: "SkipWait objects belong to more than one product family (skipwait_credits, skipwait_plans, skipwait_topups); resolve this in Chargebee before syncing." That is `chooseFamily` in `server/catalogSyncPlan.ts` refusing by design; resolving it is a Chargebee dashboard change, not a code change.
+2. **The hosted page itself is correct.** Using the TEST site's own USD plan price, the page renders the exact frozen amount — `$4.49`, `$4.49/month`, next charge Dec 24 2026 — and reaches the card form ([run 45289079336](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45289079336) onward; screenshots in each artifact).
+3. **The provider's payment component rejects automated card entry.** Across fifteen runs the card fields accept the values, but the component keeps no card state and the page answers "Please provide your payment details" ([run 45298043864](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45298043864)). `docs/PAYMENTS_TEST_RUNBOOK.md` §2a already says to use a regular headed browser; this is that limit, not an app defect.
+
+**Consequence:** D-370 (6)'s international-card condition is still UNVERIFIED, and production `BANDED_SALES_ENABLED` must stay off. Unblock: (a) resolve the TEST-site product family in Chargebee, then run `provision` and `card`; (b) complete the card payment in a real headed browser, or accept a recorded human run; (c) confirm the live catalog's current ids with the admin dry run before activation.
 
 ---
 
