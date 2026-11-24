@@ -47,6 +47,7 @@ import { resolveAskNote } from "../shared/askNote";
 import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 import type { AskInviteMine } from "../shared/askInvites";
+import { registerAdminActivityRoutes, type ActivityListInput, type AdminActivityDeps } from "./adminActivity";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -174,7 +175,10 @@ export type PrivateReferralRouteDeps = {
   closeCompanyOpportunity?: (userId: number, opportunityId: number) => Promise<{ id: number; closed: true } | undefined>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   listMyUploadStarts?: (userId: number, since: Date) => Promise<Array<{ sessionId: string | null; clientUploadId: string | null; fileName: string | null; createdAt: Date }>>;
-  listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
+  listOperationalActivity?: (input: ActivityListInput) => Promise<unknown[]>;
+  /** ADMIN-activity-log (D-393): the accounts (and sign-in attempts) an admin's person filter names. */
+  resolveActivityPerson?: AdminActivityDeps["resolveActivityPerson"];
+  listPersonRequestTransitions?: AdminActivityDeps["listPersonRequestTransitions"];
   getReferralFlowHealth?: () => Promise<unknown>;
   /** D-018 aggregate baseline; absent in partial test apps, never faked. */
   getReferralFlowBaseline?: () => Promise<unknown>;
@@ -1684,7 +1688,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.send(csv);
     } catch { res.status(500).json({ error: "We could not export the referral ledger" }); }
   });
-  app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
+  registerAdminActivityRoutes(app, { resolveIdentity: deps.resolveIdentity, listOperationalActivity: deps.listOperationalActivity, resolveActivityPerson: deps.resolveActivityPerson, listPersonRequestTransitions: deps.listPersonRequestTransitions, record });
   app.get("/api/admin/approval-queue", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
