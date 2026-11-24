@@ -8,6 +8,7 @@
  * cannot drift from the catalog: the number comes from the Free plan.
  */
 import { FREE_PLAN } from "./planCatalog";
+import { ASK_NO_EXPIRY_ENABLED } from "./askNoExpiry";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS, REFERRED_DEADLINE_ENABLED } from "./referral";
 
 /** Free asks every account gets each UTC calendar month (D-039). */
@@ -40,7 +41,9 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
  * D-180): "referral requests", never the noun "asks", and the cost says
  * "nothing is used", never "credit".
  */
-export const COVERAGE_WAIT_REASON = `No verified employee can see referral requests yet. Yours waits at no cost until one can - up to ${COVERAGE_WAIT_DAYS} days - and nothing is used until then.`;
+/** D-174: with the ask clocks off, a waiting request stays open until it is answered or withdrawn. */
+export const COVERAGE_WAIT_REASON_NO_EXPIRY = "No verified employee can see referral requests yet. Yours waits at no cost until one can, and nothing is used until then.";
+export const COVERAGE_WAIT_REASON = ASK_NO_EXPIRY_ENABLED ? COVERAGE_WAIT_REASON_NO_EXPIRY : `No verified employee can see referral requests yet. Yours waits at no cost until one can - up to ${COVERAGE_WAIT_DAYS} days - and nothing is used until then.`;
 
 /**
  * The credit rule exactly as the ledger keeps it today (server/db.ts):
@@ -109,11 +112,15 @@ export function askCostLine(input: { open: boolean | null; balance: number | nul
       : `When one can, ${cost} is deducted from your balance; if you don't have enough then, we hold it until you add ${cost === 1 ? "one" : "more"}.`;
     return {
       line: "Nothing deducted from your balance until a verified employee can see it",
-      detail: `It waits up to ${COVERAGE_WAIT_DAYS} days. ${when}`,
+      // D-174: with the clocks off there is no wait cap to promise.
+      detail: ASK_NO_EXPIRY_ENABLED ? `It stays open until someone answers it or you withdraw it. ${when}` : `It waits up to ${COVERAGE_WAIT_DAYS} days. ${when}`,
       blockedReason: null,
     };
   }
-  const detail = `The charge is refunded if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays charged, even if they pass.`;
+  // D-174: with the clocks off the only way the charge comes back is a withdrawal before pickup.
+  const detail = ASK_NO_EXPIRY_ENABLED
+    ? `The charge is refunded if you withdraw before anyone picks it up, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays charged, even if they pass.`
+    : `The charge is refunded if you withdraw before anyone picks it up, or if nobody picks it up within ${ASK_TTL_DAYS} days, ${CREDIT_ENDED_CAVEAT}. Once picked up, it stays charged, even if they pass.`;
   if (input.open === null) return { line: `Uses ${cost} from your balance when a verified employee can see it`, detail, blockedReason: null };
   if (input.balance === null) return { line: `Uses ${cost} from your balance`, detail, blockedReason: null };
   if (cost > 1 && input.balance < cost) {
