@@ -71,4 +71,4 @@ with the fix they pass. This is why the earlier draft of this suite was discarde
 
 ## Status
 
-- PICKER-fetch-retry: in progress — Qoder · 3f21 — 2026-11-24 — branch agent/queue/picker-fetch-retry
+- PICKER-fetch-retry: done — 1518 merged; row stamped done. Code and its red-first suite verified on main (`scripts/next-task.mjs`).

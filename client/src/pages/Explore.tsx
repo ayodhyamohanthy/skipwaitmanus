@@ -224,6 +224,10 @@ export default function Explore() {
           sending={composer.sending}
           sendBlocked={composer.sendBlocked}
           sendGuidance={composer.sendGuidance}
+          sendAttempted={composer.sendAttempted}
+          onBlockedSend={composer.blockedSend}
+          sendProblemField={composer.sendProblemField}
+          linkBlocked={composer.linkBlocked}
           creditRecovery={composer.creditRecovery}
           onSend={composer.send}
           onSaveDraft={composer.onSaveDraft}
