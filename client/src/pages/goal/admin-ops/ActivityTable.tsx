@@ -2,7 +2,6 @@
 // A sign-in row's metadata reads as one line (reason · method · network · device); a row with no account shows
 // the masked email it was attempted with. "Follow" narrows the log to that person.
 import { GoalStatus, type GoalStatusValue } from "@/components/goal/GoalStatus";
-import { cn } from "@/lib/utils";
 import type { ActivityEvent } from "./adminOpsApi";
 
 /** Outcome keeps the kit page's meaning: emerald did it, amber was refused, crimson failed. */
@@ -39,7 +38,7 @@ export function maskedEmailOf(raw: string | null | undefined): string | undefine
 export function ActivityTable({ events, onFollow }: { events: ActivityEvent[]; onFollow: (person: string) => void }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-left">
+      <table className="w-full min-w-[760px] text-left">
         <thead>
           <tr className="border-b border-g-hairline text-g-label text-g-ink-3">
             <th scope="col" className="px-4 py-3 font-medium">Time</th>
@@ -66,10 +65,10 @@ export function ActivityTable({ events, onFollow }: { events: ActivityEvent[]; o
                     </button>
                   ) : null}
                 </td>
-                <td className="px-4 py-3 align-top"><span className="g-num text-g-ink">{item.action}</span></td>
+                <td className="px-4 py-3 align-top"><span className="g-num break-all text-g-ink">{item.action}</span></td>
                 <td className="px-4 py-3 align-top">
                   <span className="block text-g-meta text-g-ink-2">{item.companyDomain || item.resourceType || "—"}{item.resourceId ? ` · ${item.resourceId}` : ""}</span>
-                  <span className={cn("block max-w-96 truncate text-g-meta text-g-ink-3", context && "g-num")} title={item.metadata ?? undefined}>{context}</span>
+                  <span className="block max-w-60 break-words text-g-meta text-g-ink-3" title={item.metadata ?? undefined}>{context}</span>
                 </td>
                 <td className="px-4 py-3 align-top"><GoalStatus status={mark.status} label={mark.label} /></td>
               </tr>
