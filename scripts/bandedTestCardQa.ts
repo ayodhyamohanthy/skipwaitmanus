@@ -209,6 +209,8 @@ async function fillFirst(root: import("playwright").Page | import("playwright").
         await field.click({ force: true }).catch(() => undefined);
         await field.pressSequentially(value, { delay: 40 }).catch(() => undefined);
       }
+      // The payment component validates on blur, so leave the field before moving on.
+      await field.press("Tab").catch(() => undefined);
       return selector;
     }
   }
@@ -317,6 +319,11 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       // The gateway answers asynchronously (mock 3DS or a redirect); give it time before looking for the next step.
       await page.waitForTimeout(4_000);
       await deps.screenshot(page, "07-after-pay");
+      // The hosted page states plainly when it did not receive the card; report that instead of a vague timeout.
+      const refused = page.getByText("Please provide your payment details").first();
+      if (await refused.count().catch(() => 0)) {
+        throw new Error("the hosted page did not accept the card details (\"Please provide your payment details\"); the payment component kept no card state");
+      }
       // Razorpay's mock 3DS page asks for Success; a real gateway would redirect on its own.
       const success = page.locator('button:has-text("Success"), input[value="Success"], button:has-text("SUCCESS")').first();
       if (await success.count()) {
