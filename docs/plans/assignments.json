@@ -545,7 +545,7 @@
       "tier": 2,
       "lane": "d174-typeahead-release",
       "branch": "agent/queue/d174-typeahead-release",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [
         "SEARCH-work-domain"
@@ -556,7 +556,7 @@
         "docs/plans/D-174-seeker-journey-build.md",
         "docs/plans/assignments.json"
       ],
-      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390.",
+      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390. Landed by PR #1555 on green required CI; live captures after the Pages deploy.",
       "epic": "D-174"
     },
     {
