@@ -37,6 +37,11 @@ export type AssistantApproval = {
   note: string | null;
   creditCount: number | null;
   slotCount: number | null;
+  /** SKIPPY-6: the job link, the agent's name and the grant, for the approval card. */
+  targetRoleUrl?: string | null;
+  attachmentIds?: number[];
+  grantId?: number | null;
+  agentName?: string | null;
   createdAt: string;
   expiresAt: string;
 };
