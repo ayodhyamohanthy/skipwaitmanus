@@ -8847,8 +8847,8 @@
       "tier": 2,
       "lane": "d048-admin-ops-mobile-width",
       "branch": "agent/queue/d048-admin-ops-mobile-width",
-      "status": "todo",
-      "syncedTo": "D-366",
+      "status": "done",
+      "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
         "client/src/pages/goal/admin-ops/goalOpsParts.tsx",
@@ -8858,7 +8858,7 @@
         "e2e/admin-ops-width.e2e.ts",
         "design/goal-ui/captures/admin-ops/mobile-width/**"
       ],
-      "note": "P2 correctness follow-up measured during D-048-K-admin-ops / PR #1332, November 19: four 390@2x full-document images exceed 780px (1464/1140 for flow health and 1270 for both schema states), despite a zero root scroll-width metric. All 36 before/after retirement pairs are identical, so this predates that behavior-preserving deletion and does not hold it. Reproduce with actual browser/document/PNG-width checks, then bound the goal panel/grid/table and statement text locally without hiding data. No API/auth/money/global typography/release change. New row appended; existing FIFO order retained; no edge solely for shared files (D-314).",
+      "note": "P2 correctness follow-up measured during D-048-K-admin-ops / PR #1332, November 19: four 390@2x full-document images exceed 780px (1464/1140 for flow health and 1270 for both schema states), despite a zero root scroll-width metric. All 36 before/after retirement pairs are identical, so this predates that behavior-preserving deletion and does not hold it. Reproduce with actual browser/document/PNG-width checks, then bound the goal panel/grid/table and statement text locally without hiding data. No API/auth/money/global typography/release change. New row appended; existing FIFO order retained; no edge solely for shared files (D-314). Done: PR #1544 merged at eeda4afd6 (2026-11-24). e2e/admin-ops-width.e2e.ts red first (732/570/2030 CSS px at a 390px viewport) then 5/5 green; all eight 1280/390 captures at 780/1280 px; required CI green including e2e journeys.",
       "epic": "D-048-p3"
     },
     {
