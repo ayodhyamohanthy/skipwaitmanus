@@ -28,6 +28,7 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { countWords } from "@shared/askQuality";
 import type { PublicCompany } from "@shared/companies";
+import type { CatalogJob } from "@shared/jobCatalog";
 import { ADD_CREDITS_HREF, askCostLine, CREDIT_ENDED_CAVEAT, creditUsedPhrase, topUpHref, type AskCostLine } from "@shared/moneyCopy";
 import { usePlansCatalog } from "@/components/plans/plansCatalogApi";
 import { trackClarityEvent } from "@/lib/clarity";
@@ -251,11 +252,15 @@ export type AskComposer = {
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
   postSelection: OpportunityAskSearch | null;
+  /** D-174: the careers-site catalog job this ask opened from, while it still applies. */
+  jobSelection: CatalogJob | null;
   /** D-094 item 2 (switch off): the preview for the current link, read by /ask's company rule (§4.5). */
   jobLinkPreview: JobLinkPreview | null;
   /** D-174: pick a posted role in place. Replaces the whole selection - a
    * linkless pick clears any stale link and identity from an earlier pick. */
   selectPost(selection: OpportunityAskSearch | null): void;
+  /** D-174: pick a careers-site job in place. Clears any post selection. */
+  selectJob(job: CatalogJob | null): void;
   /** Fresh form for a new company; the resume carries unless clearResume is set. */
   resetForm(options?: { clearResume?: boolean }): void;
   /** Clear the terminal send view and error after the drawer has closed. */
@@ -338,6 +343,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   const [prefill] = useState(() => readAskPrefill(session()));
   const [startHandoff] = useState(() => readStartHandoff());
   const [postSelection, setPostSelection] = useState<OpportunityAskSearch | null>(() => parseOpportunityAskSearch(typeof window === "undefined" ? "" : window.location.search));
+  const [jobSelection, setJobSelection] = useState<CatalogJob | null>(null);
 
   // The posted role's link fills an untouched composer, wherever the composer lives.
   useEffect(() => {
@@ -347,12 +353,26 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
 
   // D-174 in-place pick from a door: the selection is REPLACED, never merged -
   // a linkless post clears the previous post's link so no stale link, pass
-  // check or opportunity id can leak into the next ask.
+  // check or opportunity id can leak into the next ask. Picking a post clears any job.
   const selectPost = (selection: OpportunityAskSearch | null) => {
     if (selection === null && postSelection === null) return;
     setPostSelection(selection);
     if (selection) {
+      setJobSelection(null);
       setUrl(selection.jobUrl ?? "");
+    } else {
+      setUrl(remoteDraft && company && remoteDraft.companySlug === company.slug ? remoteDraft.targetRoleUrl : "");
+    }
+    setDraftState("idle");
+  };
+
+  // D-174: pick a careers-site job in place. Picking a job clears any post.
+  const selectJob = (job: CatalogJob | null) => {
+    if (job === null && jobSelection === null) return;
+    setJobSelection(job);
+    if (job) {
+      setPostSelection(null);
+      setUrl(job.applyUrl);
     } else {
       setUrl(remoteDraft && company && remoteDraft.companySlug === company.slug ? remoteDraft.targetRoleUrl : "");
     }
@@ -411,7 +431,13 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   // The retired level-price flag stays off. Its compatibility path still
   // requires a current quote; directory availability never bypasses pricing.
   const askLevelCostOn = ASK_LEVEL_COST_CLIENT;
-  const quoteState = useAskQuote(url, askLevelCostOn && linkOk);
+  // D-174 §6.6: a picked catalog job is always quoted, so the banded quote and
+  // the send price the same job row; the retired level-price flag only gates
+  // the link-only path it used to own.
+  const quoteState = useAskQuote(url, (askLevelCostOn && linkOk) || Boolean(jobSelection), {
+    catalogJobId: jobSelection?.id,
+    opportunityId: postSelection?.opportunityId,
+  });
   const quote = quoteState.status === "ready" ? quoteState.quote : null;
   // D-176: the same charge condition applies before every send. The server
   // decides delivery and any shortfall at commit, preserving the draft on refusal.
@@ -447,13 +473,19 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     setSent(null);
     setDraftState("idle");
     setPostSelection(null);
+    setJobSelection(null);
     setPickedWork(null);
     setPinCap(null);
     setPinNotice("");
     if (options?.clearResume) { setResumeFile(null); setUploaded(null); }
   };
 
-  const clearAfterClose = () => { setSent(null); setSendError(null); };
+  const clearAfterClose = () => {
+    setSent(null);
+    setSendError(null);
+    setPostSelection(null);
+    setJobSelection(null);
+  };
 
   const pickResume = (file: File | null) => {
     if (!file) return;
@@ -503,6 +535,8 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
         fastTrack: fastTrackAskFields(window.location.search),
         confirmedCompanyDomain: confirmedDomain(jobUrl),
         opportunityId: postSelection?.opportunityId,
+        catalogJobId: jobSelection?.id,
+        expectedCost: quote?.acceptedCost,
         workItemIds: selectedWork,
       });
       const token = await fetchToken();
@@ -565,6 +599,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
       clearAskTopUpSelection(session());
       clearStartHandoff();
       setPostSelection(null);
+      setJobSelection(null);
       void discardAskDraftRemote(fetchToken);
       const name = company?.name ?? created.companyDomain ?? "the company";
       const where = created.companyDomain ? `${created.companyDomain} ` : "";
@@ -676,6 +711,8 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     },
     postSelection,
     selectPost,
+    jobSelection,
+    selectJob,
     jobLinkPreview,
     resetForm,
     clearAfterClose,
