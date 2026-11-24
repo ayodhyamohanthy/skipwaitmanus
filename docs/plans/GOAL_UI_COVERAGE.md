@@ -110,6 +110,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/employer/opportunities` | `pages/EmployerOpportunities` | `D-048-p3-employer` | D-048-p3-employer: to be added by its lane packet |
 | `/admin` | `pages/AdminOverview` | `D-048-p3-admin` | D-048-p3-admin: to be added by its lane packet |
 | `/admin/partners` | `pages/AdminPartners` | `D-048-p3-admin-ops` | D-048-p3-admin-ops: to be added by its lane packet |
+| `/admin/bonuses` | `pages/AdminBonuses` | `D-048-p3-admin-ops` | D-048-p3-admin-ops: to be added by its lane packet (D-099 slice A, D-374) |
 | `/post-opportunity` | `pages/PostOpportunity` | `D-048-p3-post` | D-048-p3-post: todo |
 | `/admin/activity` | `pages/AdminActivity` | `D-048-p3-admin-ops` | D-048-p3-admin-ops: to be added by its lane packet |
 | `/admin/approvals` | `pages/AdminApprovalQueue` | `D-048-p3-admin-approvals` | D-048-p3-admin-approvals: to be added by its lane packet |
@@ -166,6 +167,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/EmployerDashboard.tsx`: `employer/EmployerFrame.tsx`, `employer/EmployerOverview.tsx`
 - `pages/Explore.tsx` and `pages/ExploreCompany.tsx` (components mounted by row `D-086.mount`, page redesign still `D-048-p3-live-review-find`): `demand/CompanyDemandLine.tsx`, `demand/CompanyDemandList.tsx`
 - `pages/ExploreCompany.tsx` (child build `D-174-seeker-journey-build.jobs-list`, switch off; page doctrine acceptance remains `D-048-p3-live-review-find`): `pages/explore/CompanyJobs.tsx`, using Goal fields, secondary actions and neutral sourced rows. No availability inference or feature activation.
+- `pages/ExploreCompany.tsx` (child build `D-099-bonus-line`, switch off; page doctrine acceptance remains `D-048-p3-live-review-find`): `bonus/ReportBonusFigure.tsx`, the signed-in report form opened from the one neutral fact line. No button or wording ties a bonus to referring (D-374).
 - `pages/Home.tsx`: `VisualJourney.tsx`
 - `pages/Invite.tsx`: `referrer-home/CompanyRequestPanel.tsx`, `referrer-home/InviteLinkPanel.tsx`
 - `pages/Landed.tsx`: `requests/RequestStates.tsx`

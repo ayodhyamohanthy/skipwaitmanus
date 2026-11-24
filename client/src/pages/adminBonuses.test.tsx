@@ -4,7 +4,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import AdminBonuses from "./AdminBonuses";
+import AdminBonuses from "./goal/admin/GoalAdminBonuses";
 
 const authState: { isSignedIn: boolean; getToken: () => Promise<string | null>; openSignIn: () => void } = { isSignedIn: true, getToken: async () => "token", openSignIn: vi.fn() };
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, ...authState }) }));
