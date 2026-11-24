@@ -1494,6 +1494,12 @@ export async function recordOperationalActivity(input: OperationalActivityInput)
   const metadata = input.metadata ? JSON.stringify(Object.fromEntries(Object.entries(input.metadata).filter(([, value]) => value !== undefined))) : null;
   await db.insert(operationalActivityLogs).values({ actorUserId: input.actorUserId ?? null, action: input.action.slice(0, 100), outcome: input.outcome, resourceType: input.resourceType?.slice(0, 80) ?? null, resourceId: input.resourceId === undefined ? null : String(input.resourceId).slice(0, 120), companyDomain: input.companyDomain?.toLowerCase().slice(0, 255) ?? null, metadata });
 }
+/** ADMIN-activity-log (D-393): the canonical user whose verified login alias is this exact address. Never an unverified email. */
+export async function findVerifiedUserIdByEmail(normalizedEmail: string): Promise<number | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const rows = await db.select({ userId: verifiedLoginAliases.canonicalUserId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.normalizedVerifiedEmail, normalizedEmail)).limit(1);
+  return rows[0]?.userId;
+}
 export async function listMyUploadStarts(userId: number, since: Date) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ sessionId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), eq(operationalActivityLogs.action, "document.upload_started"), gt(operationalActivityLogs.createdAt, since))).orderBy(desc(operationalActivityLogs.createdAt)).limit(30);
