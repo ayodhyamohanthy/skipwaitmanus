@@ -202,8 +202,14 @@ async function fillFirst(root: import("playwright").Page | import("playwright").
   for (const selector of selectors) {
     const field = root.locator(selector).first();
     if (await field.count()) {
-      await field.fill(value);
-      return selector;
+      await field.fill(value).catch(() => undefined);
+      // Masked inputs (the expiry) ignore a direct value set; type it when the field is still empty.
+      if (!(await field.inputValue().catch(() => ""))) {
+        await field.click({ force: true }).catch(() => undefined);
+        await field.pressSequentially(value, { delay: 40 }).catch(() => undefined);
+      }
+      // A field that still holds nothing is not filled: report it instead of claiming success.
+      return (await field.inputValue().catch(() => "")) ? selector : null;
     }
   }
   return null;
