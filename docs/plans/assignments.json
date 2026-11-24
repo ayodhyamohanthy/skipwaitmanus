@@ -80,7 +80,7 @@
       "tier": 2,
       "lane": "process-no-review",
       "branch": "agent/queue/process-no-review-no-model",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [],
       "owns": [
@@ -250,6 +250,26 @@
         "docs/plans/PICKER-unblock-report-clears.md"
       ],
       "note": "D-378, D-321 (11) same-day dead-end fix. Build docs/plans/PICKER-unblock-report-clears.md section 2: standingReport takes the task's unblockers (every Unblock marker on its architect lock) and their report clears an evidence-backed block; blockers, the holder and unrelated sessions still cannot (D-346). Red-first scripts/nextTaskUnblockClears.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-network-retry",
+      "title": "One dropped GitHub read no longer stops every session: a transient reset or 5xx is retried twice, a real answer is never repeated, and the fail-closed STOP stays (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-network-retry.md",
+      "tier": 2,
+      "lane": "picker-network-retry",
+      "branch": "agent/queue/picker-network-retry",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskNetworkRetry.test.ts",
+        "docs/plans/PICKER-network-retry.md",
+        "scripts/nextTaskLandExactHead.test.ts"
+      ],
+      "note": "Measured defect: 1 of 60 identical picker GitHub reads failed ECONNRESET through the host proxy and the helper had no retry, so five consecutive --claim runs stopped at cannot read main CI with no work picked. Add GITHUB_READ_ATTEMPTS=3 and isTransientGithubFailure, retry only transport failures and 5xx/429 with short backoff, never a 4xx, cancellation or timeout, and leave githubWrite to the snapshot protocol. Red-first scripts/nextTaskNetworkRetry.test.ts. Lands on green required CI (D-370).",
       "epic": "D-212"
     },
     {
@@ -8318,7 +8338,7 @@
       "tier": 2,
       "lane": "picker-output",
       "branch": "agent/queue/picker-cli-output-drain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-313",
       "dependsOn": [
         "PICKER-authoritative-ref-refresh"

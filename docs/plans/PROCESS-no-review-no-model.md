@@ -1,6 +1,6 @@
 # PROCESS-no-review-no-model: green CI lands everything, no rule reads a model name (D-370)
 
-Status: in review (PR open). Row `PROCESS-no-review-no-model`, branch `agent/queue/process-no-review-no-model`, decision D-370 (owner, Nov 20 2026).
+Status: done — 671d026fd — DeepSeek V4.1 Flash · 6728 — 2026-11-24 — [PR #1384](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1384) merged 2026-11-20T14:57:01Z from `agent/queue/process-no-review-no-model`; its exact-head CI passed typecheck, all three unit shards, the aggregate, production build, e2e journeys and release captures. Acceptance re-verified on current main: `scripts/sessionPolicy.mjs` exports `INDEPENDENT_REVIEW_REQUIRED = false` and `MODEL_ROUTES_ENFORCED = false` unless `SKIPWAIT_LEGACY_REVIEW_RULES=on` (test-only), `scripts/nextTaskCore.mjs` computes `needsReview` from that switch, `scripts/review-gate.mjs` prints `NO_REVIEW_NOTICE` and passes, `scripts/scope-check.mjs` gives every session the out-of-`owns` notice, and `scripts/sessionPolicy.test.ts` pins the default. This row's registry status was left `todo` after the landing; this docs-only reconciliation records the actual outcome (D-373 (6)). No runtime, test, gate or policy change. Row `PROCESS-no-review-no-model`, branch `agent/queue/process-no-review-no-model`, decision D-370 (owner, Nov 20 2026).
 
 ## 1. What changes
 
