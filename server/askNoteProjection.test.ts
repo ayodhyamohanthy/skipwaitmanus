@@ -136,7 +136,8 @@ describe("referrer-facing reads", () => {
     await getUnclaimedCompanyReferralPreview(REFERRER, 501);
     const preview = selectFrom(referralRequests);
     // No seeker name before acceptance (#224); the route strips it as well (privateReferralRoutes.integration.test.ts).
-    expect(columnsOf(preview)).toEqual(["candidateMessage", "companyDomain", "id", "jobFunction", "targetRoleUrl", "title"]);
+    // SKIPPY-6 (D-142): askChannel is the only added field, and it carries no identity.
+    expect(columnsOf(preview)).toEqual(["askChannel", "candidateMessage", "companyDomain", "id", "jobFunction", "targetRoleUrl", "title"]);
     expect(preview?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
   });
 
@@ -157,7 +158,7 @@ describe("referrer-facing reads", () => {
     expect(exposesNote(select)).toBe(true);
     // `coverageVisibleAt` joined the projection with D-038-A: the decision deadline for an allocated ask is
     // computed from first visibility. It stays internal — the returned object names its fields one by one.
-    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "acceptedByActorEventId", "candidateMessage", "candidateName", "companyDomain", "coverageVisibleAt", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "acceptedByActorEventId", "askChannel", "candidateMessage", "candidateName", "companyDomain", "coverageVisibleAt", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
     // D-019(e): the ask loads on its assignment alone (a claim writes no grant); no grant condition gates the row.
     const where = select?.where ? dialect.sqlToQuery(select.where) : undefined;
     expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);

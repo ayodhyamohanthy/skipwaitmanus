@@ -81,7 +81,9 @@ describe("goal /agents", () => {
     }
     expect(screen.getByLabelText("Look up companies and prices")).toBeTruthy();
     expect(screen.getByLabelText("Draft referrals (never sends)")).toBeTruthy();
-    expect(container.textContent).toContain("No sends, purchases or automatic applications.");
+    // SKIPPY-6 (D-290 (1)): the send permission is a request, never a send.
+    expect(screen.getByLabelText("Ask me to approve a send (never sends on its own)")).toBeTruthy();
+    expect(container.textContent).toContain("it never sends on its own and never buys referrals or plans.");
     expect(screen.getByRole("button", { name: "Pause all agents" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Activity" })).toBeTruthy();

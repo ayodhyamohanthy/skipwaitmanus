@@ -626,7 +626,8 @@
         "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
         "server/configContract.test.ts",
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        "docs/DECISIONS.md"
       ],
       "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
@@ -6330,16 +6331,16 @@
       "id": "SKIPPY-7",
       "title": "Skippy step 7: opt-in auto-send within the grant's limits, through the step 6 approve function (flag off)",
       "row": "D-201",
-      "packet": null,
+      "packet": "docs/plans/SKIPPY-7-auto-send.md",
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "architect",
-      "syncedTo": "D-308",
+      "status": "todo",
+      "syncedTo": "D-383",
       "dependsOn": [
         "SKIPPY-6"
       ],
-      "note": "Write the packet after SKIPPY-6 lands, from the rulings in docs/plans/SKIPPY-next.md: off by default, turned on only by the seeker in session, the same transaction and limits as an approved send, revoke and pause stop the next call, never buys credits, a daily digest."
+      "note": "Packet written in docs/plans/SKIPPY-7-auto-send.md under D-383. Per-grant autoSend, default off, turned on only by the seeker in session on a confirmation that restates the limits and expiry; needs the send scope. An auto-send calls the SKIPPY-6 decideAssistantApprovalWithAgentSend path with actor agent_auto: same grant row lock, same 20/hour and 60/day caps, same one-referral ceiling, same cost check, same askOrigins label. Revoke and pause stop it inside the transaction. A shortfall parks the row pending for the seeker and never buys referrals. One daily digest per seeker keyed agent-auto-digest:<userId>:<date> (D-060). Additive migration 0126 (seekerAgentGrants.autoSend, assistantApprovals.decidedBy), flag SKIPPIE_AGENT_AUTOSEND_ENABLED off on top of the D-290 gate."
     },
     {
       "id": "D-178-agent-portal-access",
