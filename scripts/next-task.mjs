@@ -26,7 +26,7 @@
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
@@ -73,6 +73,54 @@ const fail = (message, code = 1) => {
   console.error(`next-task: ${message}`);
   throw new CliFailure(message, code);
 };
+
+/**
+ * PICKER-single-flight (D-324, D-321 (11)): one picker run per clone. Measured on the owner's Mac,
+ * 114 concurrent runs (oldest 2 h 56 min) drove load average to 624-1006 and starved each other:
+ * `sample` showed them running JavaScript, not deadlocked, and no session could pick work.
+ * A second run now waits instead of piling on, and a lock left by a crashed run is taken over.
+ */
+export const RUN_LOCK_TAKEOVER_MS = 30 * 60 * 1000;
+
+const lockPathOf = () => path.join(tryGit("rev-parse", "--git-dir") ?? ".git", "next-task-run.lock");
+
+const pidAlive = pid => {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch (error) { return error?.code === "EPERM"; }
+};
+
+/**
+ * Takes the per-clone run lock, or returns the record of the run that holds it.
+ * Takeover: the recorded process is gone, or the lock is older than RUN_LOCK_TAKEOVER_MS
+ * (a reused pid must not block the clone forever).
+ */
+export function acquireRunLock(file, nowMs = Date.now()) {
+  const take = () => {
+    try {
+      const body = readFileSync(file, "utf8");
+      const held = JSON.parse(body);
+      const startedAt = Date.parse(String(held?.startedAt ?? ""));
+      const stale = !pidAlive(Number(held?.pid)) || !Number.isFinite(startedAt) || nowMs - startedAt > RUN_LOCK_TAKEOVER_MS;
+      return stale ? null : held;
+    } catch { return null; } // unreadable or partial lock: treat as stale
+  };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      writeFileSync(file, JSON.stringify({ pid: process.pid, startedAt: new Date(nowMs).toISOString() }), { flag: "wx" });
+      return { acquired: true };
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const held = take();
+      if (held) return { acquired: false, held };
+      rmSync(file, { force: true });
+    }
+  }
+  return { acquired: false, held: null };
+}
+
+export function releaseRunLock(file) { try { rmSync(file, { force: true }); } catch { /* nothing to release */ } }
+
+let heldRunLock = null;
 
 class RefSnapshotChanged extends Error {
   /** The scoped refs that moved since the snapshot, so a caller can tell a lost claim race from churn. */
@@ -845,6 +893,22 @@ async function main() {
     refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
   }
   const args = argsOf(process.argv.slice(2));
+  // PICKER-single-flight: one run per clone, taken before any Git or GitHub read and released on
+  // every exit path below, so a second run waits instead of starving the first (D-324). The two
+  // short marker writes are exempt: blocking a --heartbeat behind a long scan would let the very
+  // claim it protects decay (D-085), and neither one does the expensive reads.
+  const lightMarker = Boolean(args.report || args.heartbeat);
+  const lockFile = lockPathOf();
+  if (!lightMarker) {
+    const lock = acquireRunLock(lockFile);
+    if (!lock.acquired) {
+      const mine = lock.held ? ` (pid ${lock.held.pid}, since ${lock.held.startedAt})` : "";
+      console.log(`NEXT: WAIT\nanother picker run is in progress on this clone${mine}; wait for it to finish, or rerun in a minute. Nothing was picked.\n`);
+      process.exitCode = EXIT.wait;
+      return;
+    }
+    heldRunLock = lockFile;
+  }
   if (args.claim) {
     autoSyncSetup();
     const who = sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4));
@@ -1052,5 +1116,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     console.error(`next-task: ${error.stack ?? String(error)}`);
     process.exitCode = 1;
+  }).finally(() => {
+    // PICKER-single-flight: released on every exit path, so a crash cannot block the clone.
+    if (heldRunLock) releaseRunLock(heldRunLock);
   });
 }
