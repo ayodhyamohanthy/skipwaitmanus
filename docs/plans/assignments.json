@@ -298,16 +298,16 @@
       "packet": "docs/plans/PICKER-single-flight.md",
       "tier": 2,
       "lane": "picker-single-flight",
-      "branch": "agent/queue/picker-single-flight",
+      "branch": "agent/queue/picker-lock-liveness",
       "status": "todo",
-      "syncedTo": "D-388",
+      "syncedTo": "D-396",
       "dependsOn": [],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskSingleFlight.test.ts",
         "docs/plans/PICKER-single-flight.md"
       ],
-      "note": "Measured: 114 concurrent picker processes, oldest 2h56m, load 624-1006, and two of my own --claim runs took 75m and 17m without finishing; sample shows active JS, so the clone is starved, not deadlocked. Add a per-clone single-flight lock: alive pid refuses with exit 4 and no marker, dead pid or over 30 minutes is taken over, released on every exit path. Red-first scripts/nextTaskSingleFlight.test.ts. Lands on green required CI (D-370).",
+      "note": "Remaining step (found live after #1557): the takeover rule treats a LIVE pid as stale once the lock passes 30 minutes, so my own 40-minute run was taken over and two picker runs overlapped on one clone, which is the livelock the lock exists to prevent. Change the rule so a live pid is never taken over; only a dead or unparseable pid is, with RUN_LOCK_TAKEOVER_MS governing only the unverifiable case. Red-first: an old lock with a live pid must refuse (the current suite asserts the buggy takeover and must be corrected), and a dead pid must still be taken over immediately.",
       "epic": "D-212"
     },
     {
