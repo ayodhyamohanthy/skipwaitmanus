@@ -97,8 +97,11 @@ pickup, and the daily check shows no real recipient. Captures at 1280 and 390.
 - **Tests.** `shared/sandboxRequests.test.ts` (7 tests) and a new demand case in
   `server/companyDemand.fixture.test.ts`; 94 related tests pass across 8 files, plus 66 across the claim,
   pool-nudge and review-retry suites.
-- **Gate.** `pnpm check`, the token audit, the migration lint, the deploy-trigger check, the full Vitest run and
-  `pnpm build` on this branch merged with current `origin/main`: see the pull request's required CI.
+- **Gate.** Required CI on head `be87ed1c4` is green: typecheck, production build, all three unit shards plus
+  the aggregate, e2e journeys, CodeQL and release captures. Locally `pnpm check`, the token audit, the migration
+  lint and the deploy-trigger check pass. The local full Vitest run on this machine reported 158 failures under
+  a load average above 700 with a dozen concurrent runners; a re-run of the touched suites and the ledger
+  fixtures passes 57/57, and CI's own full unit run is green, so those failures are environmental, not code.
 - **Not covered here.** The packet's live acceptance (two real companies as the demo accounts, a withdrawal
   before pickup, captures at 1280 and 390) runs on the deployed exact SHA after this row lands; the demo
   referrer gets the in-app notice but no review email, because `writeReviewGrantTx` only writes a grant for a
