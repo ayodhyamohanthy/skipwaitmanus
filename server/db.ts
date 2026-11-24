@@ -2111,7 +2111,9 @@ export async function previewBandedAskCost(userId: number, input: string | { tar
     const reconciled = await reconcileWalletTx(tx, wallet, now);
     const candidates = await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
     const counts = await readAllocatedSlotCountsTx(tx, candidates.map(candidate => candidate.userId));
-    const covered = candidates.some(candidate => isOpenReferrer(candidate, companyDomain, counts.get(candidate.userId) ?? 0));
+    // D-393 (a): a sandbox request is covered at any company, because the demo referrer acts as its verified employee.
+    const sandboxSeeker = isSandboxSeeker((await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email);
+    const covered = sandboxSeeker || candidates.some(candidate => isOpenReferrer(candidate, companyDomain, counts.get(candidate.userId) ?? 0));
     const allocation = await readBandedAllocationTx(tx, reconciled.wallet, level, now);
     const acceptedCost = covered ? allocation.cost : { ...allocation.cost, units: 0 as const, source: [] };
     return bandedAskQuoteSchema.parse({ level, cost: covered ? 1 : 0, totalAvailable: allocation.available, shortfall: covered && allocation.available === 0 ? 1 : 0, coverageStatus: covered ? "covered" : "waiting_for_company_coverage", acceptedCost });
@@ -2264,9 +2266,9 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       // wallet reconciliation, not a grant: the spend below still writes its own keyed debit row.
       let spendWallet=reconciled.wallet;
       const askCost=sandbox?1:bandedSalesEnabled()?1:askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
-      if(sandbox&&(spendWallet.monthlyCreditsRemaining??0)<askCost){
-        await tx.update(tokenBalances).set({monthlyCreditsRemaining:askCost}).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker")));
-        spendWallet={...spendWallet,monthlyCreditsRemaining:askCost};
+      if(sandbox&&(spendWallet.monthlyCreditsRemaining??0)<FREE_MONTHLY_ALLOWANCE){
+        await tx.update(tokenBalances).set({monthlyCreditsRemaining:FREE_MONTHLY_ALLOWANCE}).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker")));
+        spendWallet={...spendWallet,monthlyCreditsRemaining:FREE_MONTHLY_ALLOWANCE};
       }
       const meta={idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)};
       const banded=!sandbox&&bandedSalesEnabled()?await spendBandedReferralTx(tx,{wallet:spendWallet,level,now:summaryNow,meta,expectedCost:input.expectedCost}):null;
@@ -2298,7 +2300,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
     // A waiting ask has not gone out and holds no open slot (D-061): the count stays as read. A covered ask
     // adds one. `remaining` was computed in the matching branch above, under the same wallet lock.
-    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),...(chargedCost?{chargedCost}:{}),replayed:false as const};
+    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,sandbox?0:isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),...(chargedCost?{chargedCost}:{}),replayed:false as const};
   });
 }
 
