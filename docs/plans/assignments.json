@@ -8334,7 +8334,7 @@
       "tier": 2,
       "lane": "story-landing",
       "branch": "agent/queue/story-trust-landing",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-323",
       "dependsOn": [],
       "owns": [
