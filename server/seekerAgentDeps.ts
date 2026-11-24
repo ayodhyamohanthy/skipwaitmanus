@@ -16,6 +16,8 @@ import type { PublicCompany } from "../shared/companies";
 import type { PlanCatalogResponse } from "../shared/billingCatalog";
 import type { Request } from "express";
 import type { AgentLimits } from "../shared/seekerAgents";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
+import { hashAgentKey, mintAgentKey } from "./agentGrantAuth";
 import type { DraftRow, EventRow, GrantRow, SeekerAgentRouteDeps, SeekerAgentStore } from "./seekerAgentRoutes";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -120,8 +122,38 @@ export function createSeekerAgentStore(): SeekerAgentStore {
   };
 }
 
-/** Live read-only sources + pricing helpers for the route module. */
-export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry"> {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * D-178.grant (D-290 R1): the OAuth exchange creates the canonical D-141 grant
+ * and returns its `swa_` key. Default scopes and limits, 7-day expiry; the
+ * consent page's up-to-30-day choice lands with D-178.screen. No new column.
+ */
+export async function createOAuthAgentGrant(input: {
+  userId: number;
+  clientName: string;
+  store?: Pick<SeekerAgentStore, "createGrant">;
+  now?: () => number;
+}): Promise<{ token: string; grantId: number; expiresAt: Date }> {
+  const store = input.store ?? createSeekerAgentStore();
+  const nowMs = (input.now ?? Date.now)();
+  const token = mintAgentKey();
+  const name = (input.clientName.replace(/\s+/g, " ").trim() || "Assistant").slice(0, 120);
+  const expiresAt = new Date(nowMs + AGENT_EXPIRY_DEFAULT_DAYS * DAY_MS);
+  const grant = await store.createGrant({
+    userId: input.userId,
+    name,
+    keyPrefix: token.slice(0, 12),
+    keyHash: hashAgentKey(token),
+    canLookup: true,
+    canDraft: true,
+    limits: { ...AGENT_LIMIT_DEFAULTS },
+    expiresAt,
+  });
+  return { token, grantId: grant.id, expiresAt };
+}
+
+/** Live read-only sources + pricing helpers for the route module. */export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry"> {
   return {
     listCompanies: async (): Promise<PublicCompany[]> => (await listCompanyDirectory()).companies,
     prices: async (req: Request, region: "IN" | "INTL"): Promise<PlanCatalogResponse> => {

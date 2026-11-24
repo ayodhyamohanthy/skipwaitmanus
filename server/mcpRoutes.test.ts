@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { hashBearer, registerMcpRoutes, type McpRouteDeps } from "./mcpRoutes";
+import { registerMcpRoutes, type McpRouteDeps } from "./mcpRoutes";
 import { MCP_TOOL_NAMES, MCP_TOOLS, shapeAlert, shapeJob, shapeRequest } from "./mcpServer";
 import { resetAgentCallWindowsForTest } from "./agentPortalAccess";
 
@@ -12,7 +12,9 @@ beforeEach(() => resetAgentCallWindowsForTest());
 function setup(over: Partial<McpRouteDeps> = {}) {
   const activity: Array<Record<string, unknown>> = [];
   const deps: McpRouteDeps = {
-    verifyBearer: async hash => (hash === hashBearer(TOKEN) ? { userId: 7, tokenId: 3 } : null),
+    resolveBearer: async token => (token === TOKEN
+      ? { ok: true, capKey: 3, principal: { kind: "legacy", userId: 7, tokenId: 3 } }
+      : { ok: false, status: 401, error: "This token is not valid. It may have been revoked." }),
     enabled: () => true,
     allowed: () => true,
     recordActivity: async input => { activity.push(input); },
@@ -60,6 +62,27 @@ describe("MCP authentication", () => {
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: "Not found" });
     expect(activity[0]).toMatchObject({ action: "assistant.mcp.denied", outcome: "denied" });
+  });
+  // D-178.grant (D-290 R1): MCP resolves the same D-141 grant an OAuth connection created.
+  it("accepts a swa_ grant key and keys its cap by the grant", async () => {
+    const GRANT_KEY = `swa_${"1".repeat(64)}`;
+    const { app } = setup({ resolveBearer: async token => (token === GRANT_KEY ? { ok: true, capKey: 41, principal: { kind: "grant", grantId: 41, userId: 7, canLookup: true, canDraft: true } } : { ok: false, status: 401, error: "nope" }) });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" }, GRANT_KEY);
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body)).toContain("propose_ask");
+  });
+  it("refuses an expired or revoked grant from the verifier with its plain words", async () => {
+    const { app } = setup({ resolveBearer: async () => ({ ok: false, status: 401, error: "This agent's access expired. Ask your seeker for a new key." }) });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
+    expect(res.status).toBe(401);
+    expect(res.body.error.message).toContain("expired");
+    expect(res.headers["www-authenticate"]).toMatch(/invalid_token/);
+  });
+  it("refuses every agent of a paused seeker with 403", async () => {
+    const { app } = setup({ resolveBearer: async () => ({ ok: false, status: 403, error: "Your seeker paused all agents" }) });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toBe("Your seeker paused all agents");
   });
   it("caps a token at 20 calls an hour, below a person's rate", async () => {
     let t = 0;

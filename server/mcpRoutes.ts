@@ -1,18 +1,15 @@
 import { setRetryAfter } from "./retryAfter";
-import { createHash } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { handleMcpMessage, type McpDeps } from "./mcpServer";
 import { agentCallLimited } from "./agentPortalAccess";
+import type { AgentAuthResult } from "./agentGrantAuth";
 
-/** Tokens are `sw_` + 24 random bytes (base64url). Check the shape before any database lookup. */
-export const ASSISTANT_BEARER_RE = /^sw_[A-Za-z0-9_-]{32}$/;
-export const hashBearer = (token: string) => createHash("sha256").update(token).digest("hex");
-
-export type BearerAuth = { userId: number; tokenId: number };
+/** Tokens are a D-141 `swa_` grant key or a legacy `sw_` bearer. Check the shape before any store read. */
+export const ASSISTANT_BEARER_RE = /^(?:swa_[0-9a-f]{64}|sw_[A-Za-z0-9_-]{32})$/;
 
 export type McpRouteDeps = McpDeps & {
-  /** Looks up a non-revoked token by its hash and records last use. Returns null for unknown or revoked. */
-  verifyBearer: (tokenHash: string) => Promise<BearerAuth | null>;
+  /** D-178.grant (D-290 R1): one verifier for a grant key and a legacy token; scope, expiry and pause-all live there. */
+  resolveBearer: (token: string) => Promise<AgentAuthResult>;
   /** D-178.gate (D-290 R2): the one agent switch. Off answers 404 on every method. */
   enabled: () => boolean;
   /** D-178.gate (D-290 R2): the switch plus the account allow-list, never a plan. */
@@ -42,26 +39,31 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
       return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Send your skipwait.me token as a Bearer token" } });
     }
     try {
-      const auth = await deps.verifyBearer(hashBearer(token));
-      if (!auth) {
-        res.set("WWW-Authenticate", 'Bearer realm="skipwait", error="invalid_token", resource_metadata="https://skipwait.me/.well-known/oauth-protected-resource"');
-        return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "This token is not valid. It may have been revoked." } });
-      }
-      if (!(await deps.allowed(auth.userId))) {
-        record({ actorUserId: auth.userId, action: "assistant.mcp.denied", outcome: "denied", resourceType: "assistant_token", resourceId: auth.tokenId });
+      const auth = await deps.resolveBearer(token);
+      if (!auth.ok) {
+        if (auth.status === 401) {
+          res.set("WWW-Authenticate", 'Bearer realm="skipwait", error="invalid_token", resource_metadata="https://skipwait.me/.well-known/oauth-protected-resource"');
+          return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: auth.error } });
+        }
+        if (auth.status === 403) return res.status(403).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: auth.error } });
         return closed(res);
       }
-      if (agentCallLimited(auth.tokenId, now())) {
+      const userId = auth.principal.userId;
+      if (!(await deps.allowed(userId))) {
+        record({ actorUserId: userId, action: "assistant.mcp.denied", outcome: "denied", resourceType: "assistant_token", resourceId: auth.capKey });
+        return closed(res);
+      }
+      if (agentCallLimited(auth.capKey, now())) {
         setRetryAfter(res, 3600);
         return res.status(429).json({ jsonrpc: "2.0", id: null, error: { code: -32003, message: "Too many requests. Try again later." } });
       }
       const body: unknown = req.body;
       if (Array.isArray(body)) return res.status(400).json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Send one request at a time" } });
-      const reply = await handleMcpMessage(body, { userId: auth.userId }, deps);
+      const reply = await handleMcpMessage(body, { userId }, deps);
       const method = body && typeof body === "object" ? (body as { method?: unknown; params?: { name?: unknown } }) : {};
       if (method.method === "tools/call") {
         const tool = typeof method.params?.name === "string" ? method.params.name.slice(0, 40) : "unknown";
-        record({ actorUserId: auth.userId, action: "assistant.mcp.tool", outcome: reply && "error" in (reply ?? {}) ? "failure" : "success", resourceType: "assistant_token", resourceId: auth.tokenId, metadata: { tool } });
+        record({ actorUserId: userId, action: "assistant.mcp.tool", outcome: reply && "error" in (reply ?? {}) ? "failure" : "success", resourceType: "assistant_token", resourceId: auth.capKey, metadata: { tool } });
       }
       if (!reply) return res.status(202).end();
       res.json(reply);

@@ -14,7 +14,7 @@
 // such replay path (a consumed code is unusable by design), and an expired OTP
 // rate-limit window is dead the moment it ends.
 import { and, asc, eq, inArray, isNotNull, lte, notLike, or } from "drizzle-orm";
-import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
+import { operationalActivityLogs, workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
 import { getDb } from "./db";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
@@ -34,43 +34,51 @@ export async function purgeWorkEmailOtpRows(now: Date, limit: number = WORK_EMAI
   const batch = Math.max(1, Math.min(Math.floor(limit), WORK_EMAIL_PURGE_BATCH));
   const graceBefore = new Date(now.getTime() - RECEIPT_REPLAY_GRACE_MS);
 
-  const codeIds = await db.select({ id: workEmailOtpCodes.id }).from(workEmailOtpCodes)
-    .where(or(isNotNull(workEmailOtpCodes.consumedAt), lte(workEmailOtpCodes.expiresAt, now)))
-    .orderBy(asc(workEmailOtpCodes.id)).limit(batch);
-  const deletedCodes = codeIds.length ? affectedRows(await db.delete(workEmailOtpCodes).where(inArray(workEmailOtpCodes.id, codeIds.map(row => row.id)))) : 0;
+  return db.transaction(async tx => {
+    const codeRows = await tx.select({ id: workEmailOtpCodes.id, consumedAt: workEmailOtpCodes.consumedAt, expiresAt: workEmailOtpCodes.expiresAt }).from(workEmailOtpCodes)
+      .where(or(isNotNull(workEmailOtpCodes.consumedAt), lte(workEmailOtpCodes.expiresAt, now)))
+      .orderBy(asc(workEmailOtpCodes.id)).limit(batch).for("update");
+    const consumed = codeRows.filter(row => row.consumedAt != null).length;
+    const expiredUnused = codeRows.filter(row => row.consumedAt == null && row.expiresAt != null && row.expiresAt <= now).length;
+    const deletedCodes = codeRows.length ? affectedRows(await tx.delete(workEmailOtpCodes).where(inArray(workEmailOtpCodes.id, codeRows.map(row => row.id)))) : 0;
+    if (deletedCodes !== codeRows.length) throw new Error("Work-email code purge did not delete every selected row");
 
-  const receiptIds = await db.select({ id: workEmailOtpReceipts.id }).from(workEmailOtpReceipts)
-    .where(or(and(isNotNull(workEmailOtpReceipts.usedAt), lte(workEmailOtpReceipts.usedAt, graceBefore)), lte(workEmailOtpReceipts.expiresAt, graceBefore)))
-    .orderBy(asc(workEmailOtpReceipts.id)).limit(batch);
-  const deletedReceipts = receiptIds.length ? affectedRows(await db.delete(workEmailOtpReceipts).where(inArray(workEmailOtpReceipts.id, receiptIds.map(row => row.id)))) : 0;
+    const receiptIds = await tx.select({ id: workEmailOtpReceipts.id }).from(workEmailOtpReceipts)
+      .where(or(and(isNotNull(workEmailOtpReceipts.usedAt), lte(workEmailOtpReceipts.usedAt, graceBefore)), lte(workEmailOtpReceipts.expiresAt, graceBefore)))
+      .orderBy(asc(workEmailOtpReceipts.id)).limit(batch);
+    const deletedReceipts = receiptIds.length ? affectedRows(await tx.delete(workEmailOtpReceipts).where(inArray(workEmailOtpReceipts.id, receiptIds.map(row => row.id)))) : 0;
 
-  const rateLimitIds = await db.select({ id: workEmailOtpRateLimits.id }).from(workEmailOtpRateLimits)
-    .where(lte(workEmailOtpRateLimits.expiresAt, now))
-    .orderBy(asc(workEmailOtpRateLimits.id)).limit(batch);
-  const deletedRateLimits = rateLimitIds.length ? affectedRows(await db.delete(workEmailOtpRateLimits).where(inArray(workEmailOtpRateLimits.id, rateLimitIds.map(row => row.id)))) : 0;
+    const rateLimitIds = await tx.select({ id: workEmailOtpRateLimits.id }).from(workEmailOtpRateLimits)
+      .where(lte(workEmailOtpRateLimits.expiresAt, now))
+      .orderBy(asc(workEmailOtpRateLimits.id)).limit(batch);
+    const deletedRateLimits = rateLimitIds.length ? affectedRows(await tx.delete(workEmailOtpRateLimits).where(inArray(workEmailOtpRateLimits.id, rateLimitIds.map(row => row.id)))) : 0;
 
-  const plaintextCodes = await db.select({ id: workEmailOtpCodes.id, email: workEmailOtpCodes.email }).from(workEmailOtpCodes)
-    .where(notLike(workEmailOtpCodes.email, `${WORK_EMAIL_FINGERPRINT_PREFIX}%`))
-    .orderBy(asc(workEmailOtpCodes.id)).limit(batch);
-  let rewrittenCodes = 0;
-  for (const row of plaintextCodes) {
-    // Compare-and-set on the value read, so a concurrent replace of the same row is never overwritten.
-    const written = await db.update(workEmailOtpCodes).set({ email: workEmailStorageKeys(row.email).write })
-      .where(and(eq(workEmailOtpCodes.id, row.id), eq(workEmailOtpCodes.email, row.email)));
-    if (affectedRows(written) === 1) rewrittenCodes += 1;
-  }
+    const plaintextCodes = await tx.select({ id: workEmailOtpCodes.id, email: workEmailOtpCodes.email }).from(workEmailOtpCodes)
+      .where(notLike(workEmailOtpCodes.email, `${WORK_EMAIL_FINGERPRINT_PREFIX}%`))
+      .orderBy(asc(workEmailOtpCodes.id)).limit(batch);
+    let rewrittenCodes = 0;
+    for (const row of plaintextCodes) {
+      // Compare-and-set on the value read, so a concurrent replace of the same row is never overwritten.
+      const written = await tx.update(workEmailOtpCodes).set({ email: workEmailStorageKeys(row.email).write })
+        .where(and(eq(workEmailOtpCodes.id, row.id), eq(workEmailOtpCodes.email, row.email)));
+      if (affectedRows(written) === 1) rewrittenCodes += 1;
+    }
 
-  const plaintextReceipts = await db.select({ id: workEmailOtpReceipts.id, email: workEmailOtpReceipts.email }).from(workEmailOtpReceipts)
-    .where(notLike(workEmailOtpReceipts.email, `${WORK_EMAIL_FINGERPRINT_PREFIX}%`))
-    .orderBy(asc(workEmailOtpReceipts.id)).limit(batch);
-  let rewrittenReceipts = 0;
-  for (const row of plaintextReceipts) {
-    const written = await db.update(workEmailOtpReceipts).set({ email: workEmailStorageKeys(row.email).write })
-      .where(and(eq(workEmailOtpReceipts.id, row.id), eq(workEmailOtpReceipts.email, row.email)));
-    if (affectedRows(written) === 1) rewrittenReceipts += 1;
-  }
+    const plaintextReceipts = await tx.select({ id: workEmailOtpReceipts.id, email: workEmailOtpReceipts.email }).from(workEmailOtpReceipts)
+      .where(notLike(workEmailOtpReceipts.email, `${WORK_EMAIL_FINGERPRINT_PREFIX}%`))
+      .orderBy(asc(workEmailOtpReceipts.id)).limit(batch);
+    let rewrittenReceipts = 0;
+    for (const row of plaintextReceipts) {
+      const written = await tx.update(workEmailOtpReceipts).set({ email: workEmailStorageKeys(row.email).write })
+        .where(and(eq(workEmailOtpReceipts.id, row.id), eq(workEmailOtpReceipts.email, row.email)));
+      if (affectedRows(written) === 1) rewrittenReceipts += 1;
+    }
 
-  return { deletedCodes, deletedReceipts, deletedRateLimits, rewrittenCodes, rewrittenReceipts };
+    await tx.insert(operationalActivityLogs).values({
+      action: "work_email_otp.purged", outcome: "success", resourceType: "work_email_otp_purge", resourceId: now.toISOString(), metadata: JSON.stringify({ consumed, expiredUnused }),
+    });
+    return { deletedCodes, deletedReceipts, deletedRateLimits, rewrittenCodes, rewrittenReceipts };
+  });
 }
 
 export function createWorkEmailOtpPurgeJob(deps: WorkEmailPurgeDeps = { purge: purgeWorkEmailOtpRows }) {
