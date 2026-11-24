@@ -47,4 +47,4 @@ only for `dependabot[bot]`, uses `--merge`, and refuses majors and runtime minor
 
 ## Status
 
-- SEC-deps-nov24: todo
+- SEC-deps-nov24: in progress — Claude Code · d275 — 2026-11-24 — branch agent/queue/sec-deps-nov24
