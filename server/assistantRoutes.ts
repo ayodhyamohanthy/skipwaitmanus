@@ -4,7 +4,6 @@ import {
   createAssistantApproval,
   createAssistantToken,
   createDeveloperApp,
-  decideAssistantApproval,
   disconnectAssistant,
   editAssistantApproval,
   getAssistantAccess,
@@ -21,10 +20,22 @@ import {
 import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
 import { readApprovalCosts } from "./assistantApprovalCost";
 import { approvalCostChangedMessage, approvalCostSchema, sameApprovalCost } from "../shared/assistantApprovalCost";
+import { AgentSendRefusal, decideAssistantApprovalWithAgentSend } from "./agentSendApproval";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
 type Identity = { account: Account; primaryEmail?: EmailAddress | null; emailAddresses?: EmailAddress[] };
+
+/**
+ * SKIPPY-6: the decision route passes the resume the seeker chose on the card.
+ * The plain queue path ignores it; the agent-send path uses it.
+ */
+type DecideApproval = (
+  userId: number,
+  approvalId: number,
+  decision: "approved" | "declined",
+  options?: { attachmentIds?: number[] },
+) => Promise<{ id: number; status: "approved" | "declined"; requestId?: number }>;
 
 export type AssistantRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
@@ -37,7 +48,7 @@ export type AssistantRouteDeps = {
   listAssistantTokens?: typeof listAssistantTokens;
   createAssistantApproval?: typeof createAssistantApproval;
   listAssistantApprovals?: typeof listAssistantApprovals;
-  decideAssistantApproval?: typeof decideAssistantApproval;
+  decideAssistantApproval?: DecideApproval;
   editAssistantApproval?: typeof editAssistantApproval;
   listAssistantActivity?: typeof listAssistantActivity;
   listDeveloperApps?: typeof listDeveloperApps;
@@ -76,7 +87,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   const listTokens = deps.listAssistantTokens ?? listAssistantTokens;
   const doCreateApproval = deps.createAssistantApproval ?? createAssistantApproval;
   const listApprovals = deps.listAssistantApprovals ?? listAssistantApprovals;
-  const doDecide = deps.decideAssistantApproval ?? decideAssistantApproval;
+  const doDecide: DecideApproval = deps.decideAssistantApproval ?? decideAssistantApprovalWithAgentSend;
   const doEdit = deps.editAssistantApproval ?? editAssistantApproval;
   const listActivity = deps.listAssistantActivity ?? listAssistantActivity;
   const listApps = deps.listDeveloperApps ?? listDeveloperApps;
@@ -236,12 +247,22 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
           return res.status(409).json({ error: approvalCostChangedMessage(current), code: "cost_changed", cost: current });
         }
       }
-      const result = await doDecide(identity.account.id, approvalId, decision);
+      // SKIPPY-6: the card's resume choice. Only the agent-send path reads it;
+      // the plain queue path ignores it, exactly as before.
+      const attachmentIds = Array.isArray(req.body?.attachmentIds)
+        ? (req.body.attachmentIds as unknown[]).filter((value): value is number => typeof value === "number" && Number.isInteger(value) && value > 0).slice(0, 5)
+        : undefined;
+      const result = await doDecide(identity.account.id, approvalId, decision, attachmentIds ? { attachmentIds } : undefined);
       record({ actorUserId: identity.account.id, action: `assistant.approval_${decision}`, outcome: "success", resourceType: "assistant_approval", resourceId: approvalId, metadata: { kind: req.body?.kind } });
       res.json({ approval: result });
     } catch (error) {
       // An approved ask runs the same open-ask slot cap as the in-app form; the approval stays pending.
       if (error instanceof OpenAskSlotCapError) return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
+      // SKIPPY-6: a refused agent send says why in plain words and spends nothing.
+      if (error instanceof AgentSendRefusal) {
+        const status = error.code === "grant" ? 403 : error.code === "limit" ? 429 : error.code === "needs_referrals" ? 402 : 409;
+        return res.status(status).json({ error: error.message, code: error.code });
+      }
       const { status, message } = classify(error);
       res.status(status).json({ error: message });
     }

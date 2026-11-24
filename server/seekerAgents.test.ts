@@ -12,9 +12,10 @@ function fakeStore() {
   const drafts: DraftRow[] = [];
   const events: EventRow[] = [];
   const pausedUsers = new Set<number>();
+  const sendRequests: Array<{ id: number; userId: number; grantId: number; draftId: number; expiresAt: Date }> = [];
   const store: SeekerAgentStore = {
     createGrant: async input => {
-      const row: GrantRow = { id: seq++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, canLookup: input.canLookup, canDraft: input.canDraft, maxCreditsPerAsk: input.limits.creditsPerAsk, maxCreditsPerDay: input.limits.creditsPerDay, maxCreditsPerWeek: input.limits.creditsPerWeek, maxAsksPerDay: input.limits.asksPerDay, expiresAt: input.expiresAt, revokedAt: null, lastUsedAt: null, createdAt: new Date() };
+      const row: GrantRow = { id: seq++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, canLookup: input.canLookup, canDraft: input.canDraft, canSend: input.canSend, maxCreditsPerAsk: input.limits.creditsPerAsk, maxCreditsPerDay: input.limits.creditsPerDay, maxCreditsPerWeek: input.limits.creditsPerWeek, maxAsksPerDay: input.limits.asksPerDay, expiresAt: input.expiresAt, revokedAt: null, lastUsedAt: null, createdAt: new Date() };
       grants.push(row); return row;
     },
     listGrants: async userId => grants.filter(g => g.userId === userId),
@@ -26,6 +27,13 @@ function fakeStore() {
     setPaused: async (userId, paused) => { if (paused) pausedUsers.add(userId); else pausedUsers.delete(userId); },
     createDraft: async input => { const row: DraftRow = { id: seq++, status: "draft", createdAt: new Date(), ...input }; drafts.push(row); return row; },
     listDraftsByGrant: async grantId => drafts.filter(d => d.grantId === grantId),
+    getDraftForGrant: async (grantId, draftId) => drafts.find(d => d.grantId === grantId && d.id === draftId),
+    createSendRequest: async input => {
+      const id = seq++;
+      const expiresAt = input.expiresAt;
+      sendRequests.push({ id, userId: input.userId, grantId: input.grantId, draftId: input.draft.id, expiresAt });
+      return { id, expiresAt };
+    },
     sumDraftCreditsSince: async (grantId, since) => drafts.filter(d => d.grantId === grantId && d.createdAt >= since && d.status === "draft").reduce((n, d) => n + d.creditCost, 0),
     countDraftsSince: async (grantId, since) => drafts.filter(d => d.grantId === grantId && d.createdAt >= since && d.status === "draft").length,
     listEvents: async (userId, grantId) => events.filter(e => e.grantId === grantId),
@@ -36,7 +44,7 @@ function fakeStore() {
   const origCreate = store.createGrant;
   store.createGrant = async input => { const row = await origCreate(input); byHash.set(input.keyHash, row); return row; };
   store.findGrantByKeyHash = async hash => byHash.get(hash);
-  return { store, grants, drafts, events, pausedUsers };
+  return { store, grants, drafts, events, pausedUsers, sendRequests };
 }
 
 const companies: PublicCompany[] = [
@@ -55,10 +63,12 @@ function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number;
     listCompanies: async () => companies,
     prices: async (_req, region) => ({ region, currency: region === "IN" ? "INR" : "USD", priceNote: null, free: { openRequests: 3, creditsPerMonth: 3 }, plans: [], packs: [{ id: "credits_5", credits: 5, amount: 490, available: false, firstPack: false, recommended: false }], sessions: [] } as never),
     quoteCost: url => ({ level: url.includes("staff") ? 5 : 1, cost: url.includes("staff") ? 5 : 1 }),
-    getCompanyDirectoryEntry: async slug => (slug === "wipro" ? { name: "Wipro" } : undefined),
+    getCompanyDirectoryEntry: async slug => (slug === "wipro" ? { name: "Wipro", domains: ["wipro.com"] } : undefined),
+    listResumes: async () => [{ id: 41, fileName: "cv.pdf", createdAt: new Date("2026-11-01T00:00:00Z") }],
+    notifySendRequest: async () => undefined,
     now: opts.now,
   });
-  return { app, grants, drafts, events };
+  return { app, grants, drafts, events, sendRequests };
 }
 
 const DRAFT = { companySlug: "wipro", targetRoleUrl: "https://jobs.wipro.com/role/123", note: "Please refer me." };
