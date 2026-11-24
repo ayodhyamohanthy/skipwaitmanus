@@ -448,8 +448,8 @@
       "tier": 2,
       "lane": "picker-tier1-wording",
       "branch": "agent/queue/picker-tier1-wording",
-      "status": "todo",
-      "syncedTo": "D-389",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [],
       "owns": [
         "scripts/nextTaskText.mjs",
