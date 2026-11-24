@@ -60,13 +60,14 @@ function appWith(over: Partial<JobCatalogRouteDeps> = {}, rows: StoredCatalogJob
 }
 
 describe("GET /api/companies/:slug/jobs (D-174-job-catalog)", () => {
-  it("answers unavailable with the switch off (default is the shipped flag)", async () => {
-    const { app } = appWith({ enabled: undefined });
+  it("answers unavailable with the switch off", async () => {
+    const { app } = appWith({ enabled: false });
     const res = await request(app).get("/api/companies/acme/jobs");
     expect(res.status).toBe(200);
     expect(res.body.completeness).toBe("unavailable");
     expect(res.body.jobs).toEqual([]);
-    expect(JOB_CATALOG_ENABLED).toBe(false);
+    // D-394 release: the shipped switch is on; the off answer above is what any later switch-off returns.
+    expect(JOB_CATALOG_ENABLED).toBe(true);
     companyJobsResponseSchema.parse(res.body);
   });
 

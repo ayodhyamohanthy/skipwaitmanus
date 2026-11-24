@@ -95,9 +95,9 @@ export async function syncOneSource(
   return { ok: true, closed, count: upserts.length };
 }
 
-export function createJobCatalogSync(store?: CatalogSyncStore) {
+export function createJobCatalogSync(store?: CatalogSyncStore, enabled: () => boolean = () => JOB_CATALOG_ENABLED) {
   return async (context: JobRunContext): Promise<JobRunOutput> => {
-    if (!JOB_CATALOG_ENABLED) return { processed: 0, failed: 0, skipped: "flag_off" };
+    if (!enabled()) return { processed: 0, failed: 0, skipped: "flag_off" };
     const resolved = store ?? (await createDrizzleCatalogSyncStore());
     const now = new Date(context.nowMs);
     const sources = await resolved.loadSources();

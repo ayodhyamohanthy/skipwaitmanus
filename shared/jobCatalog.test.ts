@@ -7,8 +7,8 @@ import {
 } from "./jobCatalog";
 
 describe("job catalog contracts (D-174-job-catalog)", () => {
-  it("ships with the switch off (D-097)", () => {
-    expect(JOB_CATALOG_ENABLED).toBe(false);
+  it("ships with the switch on since the D-394 release (owner, Nov 24: jobs list live once sources are verified)", () => {
+    expect(JOB_CATALOG_ENABLED).toBe(true);
   });
 
   it("companyJobSourceSchema rejects unknown fields", () => {
