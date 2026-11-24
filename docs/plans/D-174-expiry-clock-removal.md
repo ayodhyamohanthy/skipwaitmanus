@@ -56,3 +56,4 @@ Waits for this row and `D-174-held-ask-reconfirm`. In order: (1) turn `ASK_RECON
 ## Status
 D-174-expiry-clock-removal: packet written by the D-385 unblock ruling, 2026-11-24 (Claude Code fork for "Claude Code · 29ed", on the owner's "lets work on all blockers"). Decisions read through D-386. No implementation, source change or switch change.
 D-174-no-expiry-release: registered by D-385, 2026-11-24; waits for both dependencies.
+D-174-expiry-clock-removal: D-391 (Nov 24) clears the standing Qoder · ad9f packet block — this packet supplies the runtime paths and tests it said were missing — and reconciles `D-174-held-ask-reconfirm` to done (PR #1437, `4feb94b9b`). The row is ready for a normal picker build; the switch stays off on `main`.
