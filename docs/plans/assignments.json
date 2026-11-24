@@ -273,6 +273,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-fetch-retry",
+      "title": "The picker retries its authoritative ref fetch, so one dropped connection stops no session; every attempt failing still stops the run (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-fetch-retry.md",
+      "tier": 2,
+      "lane": "picker-fetch-retry",
+      "branch": "agent/queue/picker-fetch-retry",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskFetchRetry.test.ts",
+        "docs/plans/PICKER-fetch-retry.md"
+      ],
+      "note": "Measured: the authoritative ref fetch is one call and one reset printed STOP authoritative ref refresh failed, exit 2, no work picked, while replaying the same fetch by hand succeeded in 11.7s. Add FETCH_ATTEMPTS=3 and fetchWithRetry over the existing refspecs; every attempt failing keeps the same STOP and exit 2. Red-first scripts/nextTaskFetchRetry.test.ts, mutation-checked (3/3 red without the fix). Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
@@ -607,7 +626,8 @@
         "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
         "server/configContract.test.ts",
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        "docs/DECISIONS.md"
       ],
       "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
