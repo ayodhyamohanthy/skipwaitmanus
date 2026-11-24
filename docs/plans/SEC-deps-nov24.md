@@ -47,4 +47,14 @@ only for `dependabot[bot]`, uses `--merge`, and refuses majors and runtime minor
 
 ## Status
 
-- SEC-deps-nov24: in progress — Claude Code · d275 — 2026-11-24 — branch agent/queue/sec-deps-nov24
+- SEC-deps-nov24: in progress — DeepSeek V4.1 Flash · ffe5, taking over the quiet claim of Claude Code · d275 and DeepSeek V4.1 Flash · a490 — 2026-11-24 — branch agent/queue/sec-deps-nov24
+
+### Advisories after the patch
+
+`pnpm audit` on the branch lockfile: 0 critical, 0 high, 2 moderate, 0 low (main before: 0 critical,
+6 high, 14 moderate, 4 low). The two left need a major bump, so they stay for a person:
+
+| Package | Installed | Patched | Why it stays |
+|---|---|---|---|
+| `glob` | 11.1.0 | >=14.0.2 | The patch is a major bump (11 → 14) under `vite-plugin-pwa>workbox-build`; the packet keeps patches inside the current major. |
+| `minimatch` | 10.2.6 | >=11.0.1 | The patch is a major bump (10 → 11) under the same `workbox-build>glob` path. |
