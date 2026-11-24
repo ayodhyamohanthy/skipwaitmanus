@@ -1,0 +1,238 @@
+{
+  "source": "e9b9553e488bc34d89c824172e175370145b71b6",
+  "sourceTreeDirty": true,
+  "build": "VITE_GOAL_SURFACES=admin-ops (local vite dev server, every /api call mocked in the browser)",
+  "command": "node design/goal-ui/captures/admin-ops/capture.mjs all",
+  "synthetic": true,
+  "clock": "2026-10-08T10:00:00+05:30 fixed",
+  "results": [
+    {
+      "file": "goal-admin-ops-flow-health-default-390.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-no-baseline-390.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-pending-390.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-reconciled-390.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-default-1280.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-flow-health-no-baseline-1280.png",
+      "route": "/admin/flow-health",
+      "screen": "admin-flow-health",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/flow-health -> 200",
+          "GET /api/admin/revenue -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "See where the referral flow needs work."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-pending-1280.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "goal-admin-ops-schema-reconciled-1280.png",
+      "route": "/admin/schema",
+      "screen": "admin-schema",
+      "persona": "synthetic admin",
+      "fixture": {
+        "api": [
+          "GET /api/admin/schema/reconcile -> 200"
+        ],
+        "steps": []
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1
+      },
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Reconcile the database schema."
+      ],
+      "nextStepBlocks": 1,
+      "primaryCommits": 1,
+      "nestedButtons": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    }
+  ]
+}
