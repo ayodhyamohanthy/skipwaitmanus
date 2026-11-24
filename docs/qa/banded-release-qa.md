@@ -14,6 +14,13 @@ Governing decisions:
 
 The owner pays one TEST checkout on `skipwait-test` in their own browser with the runbook's international test Visa 4012 8888 8888 1881, any future expiry, any CVV, using the fixed QA email `banded-qa+owner@skipwait.me`. No single-use hosted-page link is posted in a public log, artifact or chat: the owner opens the checkout from the Chargebee TEST dashboard for the USD `early_to_mid` price. If the dashboard offers no checkout for an item price, that exact question goes back to the owner and the row waits.
 
+Builder runs on `main` `c087a723d` (the head that landed the `verify` mode):
+
+- `probe` [run 45406350757](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45406350757) FAIL: the TEST site has no item price `skipwait_early_to_mid_monthly-USD`; it does have its own USD `early_to_mid` price `skipwait_seeker_early_to_mid-USD-Monthly` at USD 4.49.
+- `provision` [run 45406661633](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45406661633) FAIL: 14 banded prices are blocked because the TEST site's active SkipWait objects belong to more than one product family. Create-only provisioning therefore creates nothing, and catalog parity on TEST stays unproven (D-392 (3)(a)).
+
+So the owner pays the TEST site's own USD `early_to_mid` price `skipwait_seeker_early_to_mid-USD-Monthly` (USD 4.49): card acceptance does not depend on the id.
+
 `scripts/bandedTestCardQa.ts verify` then finds that payment by the fixed email (customer → subscription → paid invoice) and reuses card mode's settlement, refund and cancellation code. It never charges and never reads a hosted page. A `verify` that finds no paid invoice, or a refund that does not reach `success`, leaves sales off and is reported, never retried around.
 
 ---
