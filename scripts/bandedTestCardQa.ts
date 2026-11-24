@@ -90,9 +90,8 @@ export function cardOf(index = 0) {
   return card;
 }
 
-/** A future expiry and any 3-digit CVV, as the runbook allows for these test cards. The expiry mask wants digits
- * only: typing "12/30" into it produced "03 / 0", so the value is MMYY and the field formats it. */
-export const CARD_EXPIRY = "1230";
+/** The current hosted component displays and validates expiry as MM/YY. */
+export const CARD_EXPIRY = "12/30";
 export const CARD_CVV = "123";
 
 export type ProbeResult = { items: string[]; usdItemPriceId: string; usdAmount: number };
@@ -366,14 +365,22 @@ const FIELD_SELECTORS = {
 
 const ALL_FIELD_SELECTORS = Object.values(FIELD_SELECTORS).flat().join(", ");
 
-async function fillFirst(page: import("playwright").Page, root: import("playwright").Page | import("playwright").FrameLocator, selectors: readonly string[], value: string): Promise<string | null> {
+async function fillFirst(
+  page: import("playwright").Page,
+  root: import("playwright").Page | import("playwright").FrameLocator,
+  selectors: readonly string[],
+  value: string,
+  input: "type" | "insert" = "type",
+): Promise<string | null> {
   for (const selector of selectors) {
     const field = root.locator(selector).first();
     if (await field.count()) {
-      // The payment component is a controlled app: focus the field and send real key events, which its handlers see.
       await field.click({ timeout: 10_000 }).catch(() => undefined);
       await field.press("ControlOrMeta+a").catch(() => undefined);
-      await page.keyboard.type(value, { delay: 80 });
+      if (input === "insert") await page.keyboard.insertText(value);
+      else await page.keyboard.type(value, { delay: 80 });
+      await field.press("Tab").catch(() => undefined);
+      await page.waitForTimeout(250);
       return selector;
     }
   }
@@ -467,12 +474,16 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       const values: string[] = [];
       for (const [field, selectors] of Object.entries(FIELD_SELECTORS)) {
         const value = field === "number" ? card.number : field === "expiry" ? CARD_EXPIRY : field === "cvv" ? CARD_CVV : "SkipWait QA";
-        const used = await fillFirst(page, root, selectors, value);
+        const used = await fillFirst(page, root, selectors, value, field === "expiry" ? "insert" : "type");
         if (used) {
           filled.push(`${field}=${used}`);
+          const input = root.locator(used).first();
           // Masked fields can report an empty DOM value while showing one; record state and length, never the value.
-          const actual = await root.locator(used).first().evaluate(el => (el as HTMLInputElement).value).catch(() => "");
+          const actual = await input.evaluate(el => (el as HTMLInputElement).value).catch(() => "");
           values.push(cardFieldDiagnostic(field, used, actual));
+          if (await input.getAttribute("aria-invalid") === "true") {
+            throw new Error(`card field ${field} remained invalid after entry; see 99-failure.png`);
+          }
         }
       }
       deps.log(`card field values: ${values.join(", ")}`);

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  CURRENCY, DEMO_PASSWORD_ENV, DEMO_SEEKER_EMAIL, HANDSHAKE_PLAN_LABEL, INTERNATIONAL_TEST_CARDS, KEY_ENV, PLAN, PRODUCTION_ORIGIN, SITE,
+  CARD_EXPIRY, CURRENCY, DEMO_PASSWORD_ENV, DEMO_SEEKER_EMAIL, HANDSHAKE_PLAN_LABEL, INTERNATIONAL_TEST_CARDS, KEY_ENV, PLAN, PRODUCTION_ORIGIN, SITE,
   apiKeyOf, cardFieldDiagnostic, cardOf, handshake, markdownOf, parseMode, probe, readBack, readLiveOffer, redactor, refundInvoice, settleCardProof, summaryOf,
 } from "./bandedTestCardQa";
 
@@ -294,6 +294,15 @@ describe("card diagnostics", () => {
     expect(diagnostic).toBe("number=#card_number state=set length=16");
     expect(diagnostic).not.toContain("4012888888881881");
     expect(diagnostic).not.toContain("1881");
+  });
+
+  it("enters the displayed expiry format as one input and refuses invalid fields before payment", () => {
+    const source = readFileSync(path.join(root, "scripts/bandedTestCardQa.ts"), "utf8");
+    expect(CARD_EXPIRY).toBe("12/30");
+    expect(source).toContain('field === "expiry" ? "insert" : "type"');
+    expect(source).toContain("await page.keyboard.insertText(value)");
+    expect(source).toContain('getAttribute("aria-invalid") === "true"');
+    expect(source).toContain("remained invalid after entry");
   });
 });
 
