@@ -26,7 +26,10 @@ export function formatRevenueTotal(totalAmount: number, currency: string): strin
 
 export function OpsPanel({ title, subtitle, icon: Icon, children, className }: { title: string; subtitle?: string; icon?: LucideIcon; children?: ReactNode; className?: string }) {
   return (
-    <section className={cn("border border-g-hairline bg-g-surface p-4 gdesk:p-5", className)}>
+    // min-w-0: a panel is a grid item on the admin ops pages, and a grid item's
+    // automatic minimum size would otherwise grow to the min-content width of the
+    // 520px table inside it and push the whole document past a phone viewport.
+    <section className={cn("min-w-0 border border-g-hairline bg-g-surface p-4 gdesk:p-5", className)}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-g-heading text-g-ink">{title}</h2>
@@ -57,7 +60,7 @@ export function OpsNote({ children, className }: { children: ReactNode; classNam
 
 export function OpsTable({ head, rows, className }: { head: string[]; rows: Array<Array<string | number>>; className?: string }) {
   return (
-    <div className={cn("mt-4 overflow-x-auto", className)}>
+    <div data-testid="ops-table-scroll" className={cn("mt-4 overflow-x-auto", className)}>
       <table className="w-full min-w-[520px] text-left">
         <thead>
           <tr className="border-b border-g-hairline text-g-label text-g-ink-3">
