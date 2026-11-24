@@ -80,7 +80,11 @@ export type SeekerAgentStore = {
 
 export type SeekerAgentRouteDeps = {
   enabled: () => boolean;
-  autoSendEnabled: () => boolean;
+  /**
+   * SKIPPY-7: the auto-send switch. Optional so an unwired or older caller fails safe — a missing
+   * switch means off, never a thrown route. `server/_core/index.ts` wires the real environment flag.
+   */
+  autoSendEnabled?: () => boolean;
   allowedUserIds: () => ReadonlySet<number>;
   resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
   store: SeekerAgentStore;
@@ -164,6 +168,8 @@ async function authenticateAgent(req: Request, deps: SeekerAgentRouteDeps, nowMs
 
 export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDeps) {
   const nowMs = () => (deps.now ? deps.now() : Date.now());
+  /** SKIPPY-7: an unwired switch reads as off, so a missing dep can never throw inside a route. */
+  const autoSendOn = () => deps.autoSendEnabled?.() === true;
   const noStore = (res: Response) => res.set("Cache-Control", "private, no-store");
   const event = (input: Parameters<SeekerAgentStore["recordEvent"]>[0]) => { void deps.store.recordEvent(input).catch(() => undefined); };
 
@@ -186,7 +192,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     const grant = await agentGuard(req, res, "agent.me");
     if (!grant) return;
     event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.me", outcome: "success" });
-    noStore(res).json({ agent: grantView(grant, false, nowMs(), deps.autoSendEnabled()) });
+    noStore(res).json({ agent: grantView(grant, false, nowMs(), autoSendOn()) });
   });
 
   app.get("/api/agent/v1/companies", async (req, res) => {
@@ -303,7 +309,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
       event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.send_request", outcome: "success", detail: `approval ${created.id} for draft ${draft.id}` });
 
       // SKIPPY-7 (D-201 (4), D-141): opt-in auto-send runs through the exact SKIPPY-6 approve path.
-      if (deps.autoSendEnabled() && grant.autoSend) {
+      if (autoSendOn() && grant.autoSend) {
         try {
           const decide = deps.decideApproval ?? decideAssistantApprovalWithAgentSend;
           const result = await decide(grant.userId, created.id, "approved", { actor: "agent_auto" }) as { id: number; status: "approved"; requestId: number };
@@ -365,9 +371,9 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     if (userId === undefined) return;
     const [grants, paused] = await Promise.all([deps.store.listGrants(userId), deps.store.isPaused(userId)]);
     noStore(res).json({
-      agents: grants.map(g => grantView(g, paused, nowMs(), deps.autoSendEnabled())),
+      agents: grants.map(g => grantView(g, paused, nowMs(), autoSendOn())),
       paused,
-      autoSendAvailable: deps.autoSendEnabled(),
+      autoSendAvailable: autoSendOn(),
     });
   });
 
@@ -404,7 +410,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
       });
       event({ userId, grantId: grant.id, agentName: grant.name, action: "grant.create", outcome: "success", detail: `expires in ${days} day(s)` });
       // The one and only time the key is shown.
-      noStore(res).status(201).json({ agent: grantView(grant, false, nowMs(), deps.autoSendEnabled()), key });
+      noStore(res).status(201).json({ agent: grantView(grant, false, nowMs(), autoSendOn()), key });
     } catch {
       event({ userId, grantId: null, agentName: input.name.slice(0, 120), action: "grant.create", outcome: "failure" });
       noStore(res).status(500).json({ error: "The agent could not be created" });
@@ -430,7 +436,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
    * Turning off is always allowed, including on a revoked or expired grant.
    */
   app.post("/api/seeker/agents/:id/auto-send", async (req, res) => {
-    if (!deps.enabled() || !deps.autoSendEnabled()) return res.status(404).json({ error: "Not found" });
+    if (!deps.enabled() || !autoSendOn()) return res.status(404).json({ error: "Not found" });
     const userId = await seekerGuard(req, res);
     if (userId === undefined) return;
     const id = Number(req.params.id);
