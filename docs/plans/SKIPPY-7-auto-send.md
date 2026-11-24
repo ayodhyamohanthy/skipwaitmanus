@@ -209,4 +209,4 @@ Every test below is written first and must fail for the stated reason.
 
 ## 11. Status
 
-- SKIPPY-7: packet written in `docs/plans/SKIPPY-7-auto-send.md` under D-383 — DeepSeek V4.1 Flash · 0cd0 — 2026-11-24 — branch `agent/architect/skippy-auto-send`. Rulings taken from `SKIPPY-next.md` §SKIPPY-7 and D-290 (1)–(3); no ruling changed. Build remains `todo` with this packet.
+- SKIPPY-7: in progress — Gemini 2.5 Pro · c243 — 2026-11-24 — branch agent/queue/skippy-auto-send
