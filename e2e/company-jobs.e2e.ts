@@ -55,6 +55,11 @@ for (const width of [1280, 390]) {
       const request = route.request();
       const url = new URL(request.url());
       const json = (body: object | null, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+      // D-174 §6.6: opening the locked drawer reads the posting preview (a POST
+      // lookup, no write). Answer it synthetically so the browse stays read-only.
+      if (url.pathname === "/api/job-link/preview" && request.method() === "POST") {
+        return json({ canonicalUrl: "https://careers.example.com/platform-engineer", status: "fresh", employerConfidence: "verified", companyDomain: "example.com", companyName: "Example Works" });
+      }
       if (request.method() !== "GET") {
         unexpected.push(`${request.method()} ${url.pathname}`);
         return json({ error: "Synthetic browse must not write" }, 405);
@@ -82,7 +87,7 @@ for (const width of [1280, 390]) {
     await expect(drawer.getByRole("link", { name: "View posting for Senior Platform Engineer" })).toHaveAttribute("href", CATALOG.jobs[0].applyUrl);
     // Packet §6.6 "Done when": the locked drawer captured at 1280 and 390.
     await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: testInfo.outputPath(`job-ask-locked-${width}.png`), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath(`company-jobs-locked-${width}.png`), fullPage: true });
     await drawer.getByRole("button", { name: "Close" }).click();
     await expect(drawer).toHaveCount(0);
     await expect(section.getByRole("link", { name: "View posting for Senior Platform Engineer" })).toHaveAttribute("href", CATALOG.jobs[0].applyUrl);
