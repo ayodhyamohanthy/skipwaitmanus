@@ -87,7 +87,7 @@ for (const width of [1280, 390]) {
     await expect(drawer.getByRole("link", { name: "View posting for Senior Platform Engineer" })).toHaveAttribute("href", CATALOG.jobs[0].applyUrl);
     // Packet §6.6 "Done when": the locked drawer captured at 1280 and 390.
     await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: testInfo.outputPath(`job-ask-locked-${width}.png`), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath(`company-jobs-locked-${width}.png`), fullPage: true });
     await drawer.getByRole("button", { name: "Close" }).click();
     await expect(drawer).toHaveCount(0);
     await expect(section.getByRole("link", { name: "View posting for Senior Platform Engineer" })).toHaveAttribute("href", CATALOG.jobs[0].applyUrl);
