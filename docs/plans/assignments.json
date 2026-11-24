@@ -760,6 +760,27 @@
       "epic": "D-212"
     },
     {
+      "id": "ADMIN-support-view-acceptance",
+      "title": "ADMIN-support-view acceptance: captures at 1280 and 390 and the exact-SHA person view, once QA-sandbox-requests lands (D-393, D-373 (6))",
+      "row": "D-212",
+      "packet": "docs/plans/ADMIN-support-view.md",
+      "tier": 1,
+      "lane": "admin-support-view-acceptance",
+      "branch": "agent/queue/admin-support-view-acceptance",
+      "status": "todo",
+      "syncedTo": "D-396",
+      "dependsOn": [
+        "QA-sandbox-requests"
+      ],
+      "owns": [
+        "docs/plans/ADMIN-support-view.md",
+        "docs/plans/assignments.json",
+        "docs/qa/**"
+      ],
+      "note": "D-373 (6): the build row landed (PR #1579, merge 2caf1fab) with its acceptance still owed. Needs captures at 1280 and 390 with synthetic data, and on the deployed exact SHA the demo seeker's person view with its sandbox requests, ledger and sign-ins plus 'Try this in the sandbox' opening the same company. The sandbox half waits on QA-sandbox-requests; the admin half needs an admin session, which the demo accounts are not, so it is the owner's or an authorized admin session's run.",
+      "epic": "D-212"
+    },
+    {
       "id": "LAUNCH-qa-fixes",
       "title": "Live-QA fixes: no sample rows on the referrer home, and the shell names every route instead of skipwait.me (D-371)",
       "row": "D-212",
