@@ -9,6 +9,12 @@ import { DAY_MS, LINK_OWNER, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), sendEmail: vi.fn(), recordActivity: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
+// D-174/D-385: off for every existing case; the no-expiry case flips it.
+const noExpiryFlags = vi.hoisted(() => ({ noExpiry: false }));
+vi.mock("../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../shared/askNoExpiry")>(),
+  get ASK_NO_EXPIRY_ENABLED() { return noExpiryFlags.noExpiry; },
+}));
 vi.mock("./emailDelivery", () => ({ sendTransactionalEmail: mocks.sendEmail }));
 vi.mock("./db", async importOriginal => ({
   ...await importOriginal<typeof import("./db")>(),
@@ -288,6 +294,18 @@ describe("allocated_ask_past_window", () => {
     expect(sent[0]!.text).toContain("allocated_ask_past_window: ask #11 ");
     expect(sent[0]!.text).toContain("allocated_ask_past_window: ask #15 ");
     for (const id of [12, 13, 14, 16]) expect(sent[0]!.text).not.toContain(`ask #${id} `);
+  });
+
+  // D-174/D-385: with the clocks off an old unclaimed allocation is expected, not a finding.
+  it("switch on: an old unclaimed allocation is not a finding", async () => {
+    noExpiryFlags.noExpiry = true;
+    try {
+      const { deps, sent } = makeDeps({ listAllocatedAsks: vi.fn(async (_windows: unknown, afterId: number) => afterId === 0 ? [unclaimed(21)] : []) });
+      await runJob(deps);
+      expect(sent).toHaveLength(0);
+    } finally {
+      noExpiryFlags.noExpiry = false;
+    }
   });
 });
 
