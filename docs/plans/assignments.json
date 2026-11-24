@@ -526,7 +526,7 @@
       "tier": 2,
       "lane": "search-job-sources",
       "branch": "agent/queue/search-job-sources",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
@@ -2072,8 +2072,8 @@
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium-repair",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2101,8 +2101,8 @@
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -6873,8 +6873,8 @@
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "todo",
-      "syncedTo": "D-383",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "SKIPPY-6"
       ],
@@ -9186,7 +9186,7 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post-link-parity",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-368",
       "dependsOn": [
         "D-048-p3-post",
