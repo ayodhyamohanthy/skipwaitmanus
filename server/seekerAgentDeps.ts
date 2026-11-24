@@ -4,7 +4,7 @@
 import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { assistantApprovals, notifications, referralAttachments, seekerAgentControls, seekerAgentDrafts, seekerAgentEvents, seekerAgentGrants, users } from "../drizzle/schema";
 import { getDb } from "./db";
-import { askLevelCostEnabled } from "./db";
+import { askLevelCostEnabled, listJobSeekerCompanyReferrals } from "./db";
 import { listCompanyDirectory, getCompanyDirectoryEntry } from "./companyDirectory";
 import { planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
 import { priceAvailability } from "./billingAvailability";
@@ -189,7 +189,7 @@ export async function createOAuthAgentGrant(input: {
   return { token, grantId: grant.id, expiresAt };
 }
 
-/** Live read-only sources + pricing helpers for the route module. */export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry" | "listResumes" | "notifySendRequest"> {
+/** Live read-only sources + pricing helpers for the route module. */export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry" | "listResumes" | "listRequests" | "notifySendRequest"> {
   return {
     listCompanies: async (): Promise<PublicCompany[]> => (await listCompanyDirectory()).companies,
     prices: async (req: Request, region: "IN" | "INTL"): Promise<PlanCatalogResponse> => {
@@ -217,6 +217,12 @@ export async function createOAuthAgentGrant(input: {
         .where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId)))
         .orderBy(desc(referralAttachments.createdAt)).limit(25);
     },
+    /**
+     * D-178.read: the same rows the seeker's /requests page lists, scoped to the
+     * seeker (`jobSeekerId = userId`). The route whitelists fields and drops
+     * every referrer identity field (D-019(e)).
+     */
+    listRequests: async (userId: number) => listJobSeekerCompanyReferrals(userId),
     /**
      * SKIPPY-6 / D-060: one in-app notice, and at most one email a day with a
      * direct link to the approval. The daily check reads before this call's own
