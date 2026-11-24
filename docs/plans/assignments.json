@@ -292,6 +292,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-single-flight",
+      "title": "One picker run per clone: a second concurrent run waits instead of starving the machine, and a stale lock is taken over (D-324, D-321 (11))",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-single-flight.md",
+      "tier": 2,
+      "lane": "picker-single-flight",
+      "branch": "agent/queue/picker-single-flight",
+      "status": "todo",
+      "syncedTo": "D-388",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskSingleFlight.test.ts",
+        "docs/plans/PICKER-single-flight.md"
+      ],
+      "note": "Measured: 114 concurrent picker processes, oldest 2h56m, load 624-1006, and two of my own --claim runs took 75m and 17m without finishing; sample shows active JS, so the clone is starved, not deadlocked. Add a per-clone single-flight lock: alive pid refuses with exit 4 and no marker, dead pid or over 30 minutes is taken over, released on every exit path. Red-first scripts/nextTaskSingleFlight.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
