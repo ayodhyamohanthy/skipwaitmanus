@@ -80,7 +80,7 @@
       "tier": 2,
       "lane": "process-no-review",
       "branch": "agent/queue/process-no-review-no-model",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-370",
       "dependsOn": [],
       "owns": [
@@ -8338,7 +8338,7 @@
       "tier": 2,
       "lane": "picker-output",
       "branch": "agent/queue/picker-cli-output-drain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-313",
       "dependsOn": [
         "PICKER-authoritative-ref-refresh"
