@@ -1,12 +1,13 @@
 import express from "express";
 import request from "supertest";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ resolve: vi.fn(), save: vi.fn(), createSessionToken: vi.fn(), inserts: [] as unknown[], updates: [] as unknown[] }));
+const m = vi.hoisted(() => ({ resolve: vi.fn(), save: vi.fn(), createSessionToken: vi.fn(), recordAuthEvent: vi.fn(), inserts: [] as unknown[], updates: [] as unknown[] }));
 const chain = (rows: unknown[] = []): any => new Proxy(() => undefined, { get: (_t, k) => k === "then" ? undefined : (...a: unknown[]) => { if (k === "values") m.inserts.push(a[0]); if (k === "set") m.updates.push(a[0]); return k === "limit" ? Promise.resolve(rows) : chain(rows); } });
 vi.mock("../db", () => ({ resolveLoginIdentity: m.resolve, saveVerifiedWorkEmail: m.save, getDb: async () => ({ insert: () => chain(), select: () => chain(), update: () => chain() }) }));
 vi.mock("./sdk", () => ({ sdk: { createSessionToken: m.createSessionToken }, SESSION_ACCESS_TTL_MS: 1000 }));
 vi.mock("./cookies", () => ({ getSessionCookieOptions: () => ({}) }));
 vi.mock("./trustedClientIp", () => ({ resolveTrustedClientIp: () => "203.0.113.9" }));
+vi.mock("../authEvents", () => ({ recordAuthEvent: m.recordAuthEvent }));
 import { hashReviewerPassword, registerReviewerLoginRoutes, verifyReviewerPassword } from "./reviewerLogin";
 
 const app = () => { const a = express(); a.use(express.json()); registerReviewerLoginRoutes(a); return a; };
@@ -64,5 +65,19 @@ describe("reviewer sign-in", () => {
     for (let i = 0; i < 9; i++) last = (await post(a, "seeker@reviewer.skipwait.me", "bad" + i)).status;
     expect(last).toBe(429);
     expect((await post(a, "seeker@reviewer.skipwait.me", "seeker-pass-1")).status).toBe(429);
+  });
+});
+
+// ADMIN-activity-log (D-393): a demo sign-in and a wrong demo password each leave one auth row, never the password.
+describe("reviewer sign-in events", () => {
+  const events = () => m.recordAuthEvent.mock.calls.map(call => call[1]);
+  it("records the demo sign-in for its account", async () => {
+    await post(app(), "seeker@reviewer.skipwait.me", "seeker-pass-1");
+    expect(events()).toEqual([{ action: "auth.reviewer_sign_in", outcome: "success", email: "seeker@reviewer.skipwait.me", method: "reviewer", plane: "reviewer", userId: 9 }]);
+  });
+  it("records a wrong password as a failure without the password", async () => {
+    await post(app(), "seeker@reviewer.skipwait.me", "not-the-password");
+    expect(events()).toEqual([expect.objectContaining({ action: "auth.reviewer_sign_in", outcome: "failure", reason: "wrong_password" })]);
+    expect(JSON.stringify(events())).not.toContain("not-the-password");
   });
 });
