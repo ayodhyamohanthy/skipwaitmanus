@@ -16,6 +16,7 @@ import { getDb } from "../db";
 import { captureServerError } from "../sentry";
 import type { JobRunContext, JobRunOutput } from "../scheduledJobRunner";
 import { fetchJobBoard, type NormalizedCatalogJob } from "./greenhouse";
+import { seedJobSourcesIfMissing } from "./seed";
 
 export type CatalogSourceRow = {
   id: number;
@@ -121,6 +122,11 @@ export async function createDrizzleCatalogSyncStore(): Promise<CatalogSyncStore>
   if (!db) throw new Error("database unavailable");
   return {
     async loadSources() {
+      try {
+        await seedJobSourcesIfMissing(db);
+      } catch (error) {
+        captureServerError(error, { lane: "job-catalog-seed" });
+      }
       const rows = await db
         .select({
           id: companyJobSources.id,
