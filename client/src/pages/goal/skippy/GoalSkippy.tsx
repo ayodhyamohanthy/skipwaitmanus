@@ -10,12 +10,28 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/_core/auth";
 import { uploadResume, validateResumeFile } from "@/lib/resumeUpload";
+import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
+import { money } from "@/components/plans/format";
 import { GoalButton, GoalNextStep, GoalStatus } from "@/components/goal";
 import { cn } from "@/lib/utils";
 
 export const GOAL_PAGE = { goalLine: "Get your ask ready." } as const;
 
 export type Quote = { level: number; cost: number; totalAvailable: number; shortfall: number };
+/** SKIPPY-3: the one-use card the server built from the banded quote. */
+export type MoneyCardView = {
+  id: string;
+  level: number;
+  levelName: string;
+  quantity: number;
+  currency: "INR" | "USD";
+  unitAmount: number;
+  subtotal: number;
+  discountPct: number;
+  discount: number;
+  total: number;
+  expiresAt: string;
+};
 export type Session = {
   step: "job_link" | "job_text" | "resume" | "consent" | "fit" | "tailor_skills" | "tailor_review" | "quote" | "done";
   targetRoleUrl?: string;
@@ -32,6 +48,8 @@ export type Session = {
   note?: string;
   noteFlags?: string[];
   quote?: Quote;
+  /** SKIPPY-3: present while a one-use money card is waiting for the seeker's approval. */
+  moneyCard?: MoneyCardView;
   tailor?: { additions: Array<{ skill: string; confirmed: boolean | null }>; generatedText?: string };
   createdRequestId?: number;
   companyDomain?: string;
@@ -74,6 +92,13 @@ export default function GoalSkippy() {
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // SKIPPY-3: the hosted page returns to /skippy?payment=pending|cancelled.
+  const [paymentReturn] = useState<"pending" | "cancelled" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const value = new URLSearchParams(window.location.search).get("payment");
+    return value === "pending" || value === "cancelled" ? value : null;
+  });
+  const returnHandled = useRef(false);
 
   useEffect(() => {
     const meta = document.createElement("meta");
@@ -101,6 +126,35 @@ export default function GoalSkippy() {
   useEffect(() => {
     scrollRef.current?.scrollTo?.({ top: scrollRef.current.scrollHeight });
   }, [messages, session]);
+
+  // SKIPPY-3: on the payment return, ask Skippy to re-quote. A pending payment is polled a
+  // bounded three times (the webhook may not have landed yet); a cancelled one says nothing was charged.
+  useEffect(() => {
+    if (!paymentReturn || returnHandled.current || !isLoaded || !isSignedIn) return;
+    returnHandled.current = true;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("payment");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    let stopped = false;
+    let tries = 0;
+    const attempt = async (): Promise<void> => {
+      if (stopped) return;
+      tries += 1;
+      try {
+        const out = await turn({ kind: "confirm_referrals", outcome: paymentReturn });
+        if (stopped) return;
+        setMessages(prev => [...prev, ...out.replies.map(t => ({ from: "skippy" as const, text: t }))]);
+        setSession(out.session);
+        if (paymentReturn === "pending" && (out.session.quote?.shortfall ?? 1) > 0 && tries < 3) {
+          window.setTimeout(() => void attempt(), tries === 1 ? 2_500 : 7_500);
+        }
+      } catch {
+        /* one failed try only means "still confirming" */
+      }
+    };
+    void attempt();
+    return () => { stopped = true; };
+  }, [paymentReturn, isLoaded, isSignedIn]);
 
   const apply = useCallback(
     (out: { replies: string[]; session: Session }, mine?: string) => {
@@ -131,6 +185,32 @@ export default function GoalSkippy() {
     },
     [apply, busy],
   );
+
+  // SKIPPY-3: approve the card the server built; the client sends only the card id.
+  const approveCard = useCallback(async () => {
+    const card = session?.moneyCard;
+    if (!card || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/skippie/cards/${encodeURIComponent(card.id)}/approve`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await response.json().catch(() => ({}))) as { checkoutUrl?: string; error?: string };
+      if (!response.ok || !data.checkoutUrl) throw new Error(data.error ?? "We could not open the secure checkout. Nothing has been charged.");
+      openChargebeeCheckout(data.checkoutUrl);
+    } catch (e) {
+      // The card is spent server-side even when the provider refuses, so drop it here and
+      // show the plain refusal with the /plans route; a new card is one click away.
+      setSession(prev => (prev ? { ...prev, moneyCard: undefined } : prev));
+      setError(e instanceof Error ? e.message : "We could not open the secure checkout. Nothing has been charged.");
+    } finally {
+      setBusy(false);
+    }
+  }, [session?.moneyCard, busy]);
 
   const onUpload = async (file: File) => {
     const problem = validateResumeFile(file);
@@ -427,13 +507,39 @@ export default function GoalSkippy() {
           </div>
 
           {quote.shortfall > 0 ? (
-            <GoalNextStep reason={`Add ${quote.shortfall} more referral${quote.shortfall === 1 ? "" : "s"} to send this request.`}>
-              <div className="mt-3">
-                <GoalButton variant="primary" asChild className="w-full">
-                  <a href="/plans">Add {quote.shortfall} more referral{quote.shortfall === 1 ? "" : "s"} on /plans</a>
-                </GoalButton>
-              </div>
-            </GoalNextStep>
+            session?.moneyCard ? (
+              <GoalNextStep reason="Approve the exact amount, then pay on Chargebee's secure page.">
+                <div className="mt-3 space-y-3 rounded-g-control border border-g-hairline bg-g-surface p-4">
+                  <p className="text-g-heading text-g-ink font-medium">
+                    {session.moneyCard.quantity} {session.moneyCard.levelName} referral{session.moneyCard.quantity === 1 ? "" : "s"} for{" "}
+                    {money(session.moneyCard.total, session.moneyCard.currency)}
+                  </p>
+                  {session.moneyCard.discount > 0 ? (
+                    <p className="text-g-meta text-g-ink-2">
+                      {money(session.moneyCard.discount, session.moneyCard.currency)} off {money(session.moneyCard.subtotal, session.moneyCard.currency)}
+                    </p>
+                  ) : null}
+                  <p className="text-g-meta text-g-ink-2">
+                    Payment happens on Chargebee's secure page. Refunds follow the{" "}
+                    <a href="/refunds" className="underline underline-offset-4">refund policy</a>.
+                  </p>
+                  <GoalButton variant="primary" className="w-full" busy={busy} onClick={() => void approveCard()}>
+                    Approve and pay {money(session.moneyCard.total, session.moneyCard.currency)}
+                  </GoalButton>
+                </div>
+              </GoalNextStep>
+            ) : (
+              <GoalNextStep reason={`Add ${quote.shortfall} more referral${quote.shortfall === 1 ? "" : "s"} to send this request.`}>
+                <div className="mt-3 space-y-2">
+                  <GoalButton variant="primary" className="w-full" busy={busy} onClick={() => void send({ kind: "buy_referrals" }, "Buy the referrals I need")}>
+                    Buy {quote.shortfall} referral{quote.shortfall === 1 ? "" : "s"} here
+                  </GoalButton>
+                  <a href="/plans" className="block text-center text-g-meta text-g-ink-2 underline underline-offset-4">
+                    Or see all plans on /plans
+                  </a>
+                </div>
+              </GoalNextStep>
+            )
           ) : (
             <GoalNextStep reason="Send your referral request to verified employees. You are charged only when a referrer can see it.">
               <div className="mt-3 flex gap-3">

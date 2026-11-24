@@ -16,6 +16,13 @@
  * them. Titles, descriptions, and canonical URLs stay in @shared/publicRoutes.
  */
 
+import {
+  EMPLOYER_RULES_LEAD,
+  EMPLOYER_RULES_POINTS,
+  EMPLOYER_RULES_QUESTION,
+  EMPLOYER_RULES_VERIFICATION_NOTE,
+} from "@shared/employerRulesCopy";
+
 export type GuideSection = {
   readonly heading: string;
   readonly paragraphs: readonly string[];
@@ -211,6 +218,14 @@ const HOW_EMPLOYEES_REFER_CANDIDATES: Guide = {
         "The reviewer has three options, and in practice they take all three over time: accept and pass your application on, ask you one question, or pass.",
         "A pass is not a judgement about your worth and is usually not about your resume. Most passes are about timing, band, location, or the fact that the team is not hiring that role this quarter. It is also the outcome that makes these systems honest: because passing is free and normal, the acceptances mean something.",
       ],
+    },
+    {
+      heading: EMPLOYER_RULES_QUESTION,
+      paragraphs: [
+        EMPLOYER_RULES_LEAD,
+        EMPLOYER_RULES_VERIFICATION_NOTE,
+      ],
+      points: EMPLOYER_RULES_POINTS.map(point => `${point.title} ${point.body}`),
     },
     {
       heading: "What the employer sees",

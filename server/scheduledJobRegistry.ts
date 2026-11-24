@@ -8,6 +8,7 @@ import { createAskExpirySweep } from "./askExpirySweep";
 import { createAskInviteSweep } from "./askInviteSweep";
 import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
+import { createDailyOpsCheck } from "./dailyOpsCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createReferralTimers } from "./referralTimers";
@@ -107,6 +108,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 24 * 60 * MINUTE,
     leaseMs: 15 * MINUTE,
     run: createDailyMoneyCheck(),
+  },
+  {
+    name: "daily-ops-check",
+    description: "Read-only daily audit of stuck review email, request drought, exhausted jobs and unused work-email codes; emails only counts and row ids, with a Monday all-clear",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 15 * MINUTE,
+    run: createDailyOpsCheck(),
   },
   { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },
   {
