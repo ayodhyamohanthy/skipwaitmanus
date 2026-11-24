@@ -73,7 +73,9 @@ globalThis.fetch = async input => {
       const m = setup.mutation;
       if (m.unavailable) renameSync(setup.remote, setup.remote + '.offline');
       else if (m.repeat) {
-        const current = exec('git', ['--git-dir', setup.remote, 'rev-parse', '--verify', 'refs/heads/' + m.ref], { encoding: 'utf8', stdio: 'pipe' }).trim();
+        let current;
+        try { current = exec('git', ['--git-dir', setup.remote, 'rev-parse', '--verify', 'refs/heads/' + m.ref], { encoding: 'utf8', stdio: 'pipe' }).trim(); }
+        catch { current = setup.head; }
         const next = exec('git', ['--git-dir', setup.remote, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit-tree', current + '^{tree}', '-p', current, '-m', m.subject ?? 'Fixture snapshot moved'], { encoding: 'utf8' }).trim();
         exec('git', ['--git-dir', setup.remote, 'update-ref', 'refs/heads/' + m.ref, next]);
       } else exec('git', ['--git-dir', setup.remote, 'update-ref', ...(m.sha ? ['refs/heads/' + m.ref, m.sha] : ['-d', 'refs/heads/' + m.ref])]);
@@ -297,6 +299,19 @@ describe("authoritative refs in the real picker CLI", () => {
     expect(result.stderr).not.toContain("kept changing");
     expect(f.git("rev-parse", `${f.remoteTip(A)}^`)).toBe(f.head);
     expect(f.pushes()).toHaveLength(1);
+  }));
+
+  // D-324 / PICKER-claim-race-reread: a rival's claim on the picked task is a lost race, not a
+  // snapshot dead end. The claim re-picks inside the same bounded loop instead of spending the
+  // command's three whole snapshot rereads on the same task.
+  it("treats a rival claim on the picked task as a lost race, not a snapshot abort", () => check(f => {
+    const result = f.run({ mutation: { ref: A, repeat: true, subject: `Claim A: ${OTHER}` } });
+    expect(result.status, output(result)).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD W");
+    expect(result.stderr).toContain(`another agent claimed A first (attempt 1)`);
+    expect(result.stderr).not.toContain("snapshot changed");
+    expect(result.stderr).not.toContain("STOP: authoritative refs kept changing");
+    expect(f.git("rev-parse", `${f.remoteTip("agent/queue/w")}^`)).toBe(f.head);
   }));
 
   it("claims while main keeps moving without changing the picked task's inputs", () => check(f => {
