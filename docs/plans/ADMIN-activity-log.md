@@ -76,6 +76,11 @@ minute in `/admin/activity`, filtered to that person.
   `referralTransitionEvents`, which includes the transitions scheduled jobs make (lapse, expiry, delivery). The
   users page links each account to its activity. Admin only, `private, no-store`; every read and export is logged.
 - **Retention.** Daily `auth-activity-retention` deletes the sign-in rows (`AUTH_ACTIONS`) older than 90 days.
+- **Write budget.** `recordAuthEvent` writes at most 30 rows a minute per action, outcome and /24 or /48 network in
+  one server instance, checked before any database work, so a flood of attempts or refused requests cannot become
+  one write per request; drops are reported to Sentry once a window. CodeQL `js/missing-rate-limiting` still flags
+  the sign-in routes this row edits: it accepts only npm limiters (`express-rate-limit` and similar), and adding one
+  is a dependency for the owner to approve (asked Nov 24).
 - **Request gaps (build step 2).** Route-level request events (created, claimed, accept/decline/pass, referred,
   withdrawn, step back, extend, cap and coverage refusals) were already logged; the job-driven transitions are
   shown from `referralTransitionEvents` in the person view instead of new writes inside the money transactions.
