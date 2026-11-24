@@ -53,6 +53,6 @@ export function supportStatusOf(request: SupportRequest): { status: GoalStatusVa
 }
 
 /** One date-time format, locale pinned so a capture is reproducible. */
-export const supportStamp = (value: string) => new Date(value).toLocaleString("en-US");
+export const supportStamp = (value: string | Date) => new Date(value).toLocaleString("en-US");
 /** The activity log filtered to this person, for the "why" links. */
 export const activityHref = (person: string | number) => `/admin/activity?person=${encodeURIComponent(String(person))}`;

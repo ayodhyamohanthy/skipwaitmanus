@@ -86,7 +86,7 @@ function byReason(rows: ReadonlyArray<{ action: string; metadata: string | null;
     const reason = reasonOf(row.metadata) ?? row.action;
     totals.set(reason, (totals.get(reason) ?? 0) + row.total);
   }
-  return [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([reason, total]) => ({ reason, count: total }));
+  return Array.from(totals.entries()).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([reason, total]) => ({ reason, count: total }));
 }
 
 async function counted(where: ReturnType<typeof and>) {
@@ -151,7 +151,7 @@ export const databaseReaders: SupportReaders = {
     const db = await getDb(); if (!db) return null;
     const row = (await db.select({ domain: profiles.workEmailDomain, verifiedAt: profiles.workEmailVerifiedAt })
       .from(profiles).where(eq(profiles.userId, userId)).limit(1))[0];
-    if (!row?.workEmailVerifiedAt) return null;
+    if (!row?.verifiedAt) return null;
     const [open] = await db.select({ total: count() }).from(referralRequests)
       .where(and(eq(referralRequests.referrerId, userId), eq(referralRequests.status, "pending")));
     const openClaims = Number(open?.total ?? 0);
