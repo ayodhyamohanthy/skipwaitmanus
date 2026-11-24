@@ -11,6 +11,7 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDirectoryResponse, PublicCompany } from "@shared/companies";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
+import { SEARCH_QUERY_MAX } from "@shared/search";
 
 const { go, flag, events, eventArgs } = vi.hoisted(() => ({
   go: vi.fn(),
@@ -57,6 +58,25 @@ const DIRECTORY: CompanyDirectoryResponse = { companies: LAUNCH_COMPANY_SEED.map
 const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, url: "", json: async () => body });
 
 type SearchAnswer = { status: number; body: unknown };
+/** D-394: /explore now reads GET /api/search; the legacy company body is wrapped into the universal answer so every existing pin keeps its meaning. */
+function universalAnswer(q: string, body: unknown): unknown {
+  const legacy = body as { companies?: Array<Record<string, unknown>>; discovered?: unknown[]; discoveryState?: string };
+  const companies = (legacy.companies ?? []).map(row => {
+    const { openToReferrals: _drop, ...rest } = row;
+    return { ...rest, referrerPresence: "none" };
+  });
+  const discovered = legacy.discovered ?? [];
+  return {
+    kind: companies.length > 0 || discovered.length > 0 ? "company-name" : "job-title",
+    query: q,
+    companies,
+    discovered,
+    ...(legacy.discoveryState ? { discoveryState: legacy.discoveryState } : {}),
+    jobLink: null,
+    jobs: [],
+    catalogState: "unavailable",
+  };
+}
 function stub(search: (q: string) => SearchAnswer | Promise<SearchAnswer>, directory: () => SearchAnswer | Promise<SearchAnswer> = () => ({ status: 200, body: DIRECTORY })) {
   const fetchMock = vi.fn(async (input: string) => {
     const path = String(input);
@@ -66,6 +86,11 @@ function stub(search: (q: string) => SearchAnswer | Promise<SearchAnswer>, direc
       const answer = await search(q);
       return json(answer.status, answer.body);
     }
+    if (path.startsWith("/api/search?")) {
+      const q = new URL(path, "http://x").searchParams.get("q") ?? "";
+      const answer = await search(q);
+      return json(answer.status, answer.status === 200 ? universalAnswer(q, answer.body) : answer.body);
+    }
     if (path.startsWith("/api/credits/summary")) return json(200, { summary: { totalAvailable: 4 } });
     if (path === "/api/profile/setup") return json(200, { goal: "", roles: [], level: "", links: [], city: "", countries: "", remote: true, visa: "", resume: null });
     if (path === "/api/ask-drafts") return json(200, { draft: null });
@@ -74,7 +99,8 @@ function stub(search: (q: string) => SearchAnswer | Promise<SearchAnswer>, direc
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
-const searchCalls = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.map(call => String(call[0])).filter(path => path.startsWith("/api/companies/search"));
+/** Both the legacy route (its own unit tests) and the universal one (Explore) read as the same call list. */
+const searchCalls = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.map(call => String(call[0])).filter(path => path.startsWith("/api/companies/search") || path.startsWith("/api/search")).map(path => path.replace(/^\/api\/search\?/, "/api/companies/search?"));
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const renderExplore = () => render(<QueryClientProvider client={client()}><Explore /></QueryClientProvider>);
 /** D-176: before sending, no company reads as open or not open, in any typeahead state. */
@@ -610,6 +636,8 @@ describe("switch on: directory guards on 'unlisted'", () => {
 describe("invalid input (route 400) is not a connection failure", () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client()}>{children}</QueryClientProvider>;
   const LONG = "a".repeat(81);
+  /** D-394: /explore reads the universal route, whose cap is SEARCH_QUERY_MAX (a job link is longer than a company name). */
+  const UNIVERSAL_LONG = "a".repeat(SEARCH_QUERY_MAX + 1);
   const wait = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
 
   it("fetchCompanySearch marks the route's 400 as invalid input and a 5xx or a dropped connection as retryable", async () => {
@@ -683,12 +711,12 @@ describe("invalid input (route 400) is not a connection failure", () => {
     expectNoQueryInEvents("tcs");
   });
 
-  it("switch on, /explore: an 81-character query sends nothing, offers no retry or paste-a-link, fires no event, and makes no missing-company claim", async () => {
+  it("switch on, /explore: an over-long query sends nothing, offers no retry or paste-a-link, fires no event, and makes no missing-company claim", async () => {
     flag.on = true;
     const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
     renderExplore();
     await screen.findByTestId("goal-directory-summary");
-    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: LONG } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Search companies" }), { target: { value: UNIVERSAL_LONG } });
     await wait();
     await wait();
     expect(searchCalls(fetchMock)).toEqual([]);
@@ -698,7 +726,7 @@ describe("invalid input (route 400) is not a connection failure", () => {
     expect(screen.queryByText("No matching companies yet")).toBeNull();
     expect(screen.queryByRole("link", { name: "Request a company" })).toBeNull();
     expect(events).toEqual([]);
-    expectNoQueryInEvents(LONG);
+    expectNoQueryInEvents(UNIVERSAL_LONG);
   });
 
   it("switch off: the same 81-character query keeps today's client filter and never calls the search route", async () => {
@@ -721,7 +749,7 @@ describe("invalid input (route 400) is not a connection failure", () => {
 // the directory makes no missing-company / Request-a-company claim, and there is no
 // retry, no paste-a-link and no no-match event.
 describe("switch on: invalid input says why, and nothing claims the company is missing", () => {
-  const TOO_LONG = "Use 80 characters or fewer to search companies.";
+  const TOO_LONG = "Use 200 characters or fewer to search.";
   const REFUSED = "We couldn’t use that search. Try a different company name.";
   const wait = () => act(async () => { await new Promise(resolve => setTimeout(resolve, COMPANY_SEARCH_DEBOUNCE_MS + 150)); });
   const expectNoMissingClaim = () => {
@@ -751,12 +779,12 @@ describe("switch on: invalid input says why, and nothing claims the company is m
     expect(searchCalls(fetchMock)).toEqual(["/api/companies/search?q=zzqq"]);
   });
 
-  it("over 80 characters: the length line shows, the query is not sent or truncated, and the directory makes no missing-company claim", async () => {
+  it("over the length cap: the length line shows, the query is not sent or truncated, and the directory makes no missing-company claim", async () => {
     flag.on = true;
     const fetchMock = stub(() => ({ status: 200, body: { companies: [] } }));
     renderExplore();
     await screen.findByTestId("goal-directory-summary");
-    const LONG = "b".repeat(81);
+    const LONG = "b".repeat(SEARCH_QUERY_MAX + 1);
     const box = screen.getByRole("combobox", { name: "Search companies" }) as HTMLInputElement;
     fireEvent.change(box, { target: { value: LONG } });
     await wait();

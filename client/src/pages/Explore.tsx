@@ -35,7 +35,10 @@ import { publicRoute } from "@shared/publicRoutes";
 import { AskDrawer } from "./explore/AskDrawer";
 import { directorySummary, filterCompanies, FILTER_FUNCTIONS } from "./explore/findModel";
 import { useAskComposer } from "./explore/useAskComposer";
-import { COMPANY_TYPEAHEAD_ENABLED, useCompanySearch, type CompanySearchState, type DiscoveredSuggestion } from "./explore/useCompanySearch";
+import { COMPANY_TYPEAHEAD_ENABLED } from "./explore/useCompanySearch";
+import { useUniversalSearch, type UniversalSearchState } from "./explore/universalSearch";
+import { UniversalSearchResults } from "./explore/UniversalSearchResults";
+import type { DiscoveredCompany } from "@shared/companies";
 import { saveDiscoveryHandoff } from "./explore/discoveryHandoff";
 
 // The goal line is the seeker's goal in their words; the directory IS the
@@ -65,9 +68,10 @@ export default function Explore() {
   const composer = useAskComposer(company);
   const shown = useMemo(() => filterCompanies(companies ?? [], { query, fn }), [companies, query, fn]);
   const summary = directorySummary(shown);
-  // D-174-seeker-journey-build.search: off until the release row; off sends nothing.
+  // D-394: the one box answers a company name, a company website, a job link
+  // or a job title through GET /api/search; off sends nothing.
   const typeahead = COMPANY_TYPEAHEAD_ENABLED;
-  const companySearch = useCompanySearch(query, typeahead);
+  const companySearch = useUniversalSearch(query, typeahead);
   // The server suggests by company name; the directory filter also matches function and industry.
   // "Unlisted" needs both: an answered search with no company and no directory row for the query.
   // Whether the company exists is a question about the query alone: the active
@@ -78,7 +82,7 @@ export default function Explore() {
   // No empty-directory claim while the search is in flight, failed, or suggested a company the filter misses.
   // When the query does match rows the chip hides, the filter empty state is the truthful line and stays.
   // Invalid input speaks for itself (the typeahead's invalid line), so the directory never claims the company is missing.
-  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && (companySearch.suggestions.length > 0 || companySearch.discovered.length > 0)))));
+  const searchSpeaks = typeahead && (companySearch.status === "invalid" || (!queryMatched && (companySearch.status === "loading" || companySearch.status === "error" || (companySearch.status === "ready" && (companySearch.suggestions.length > 0 || companySearch.discovered.length > 0 || companySearch.jobs.length > 0 || companySearch.jobLink !== null)))));
 
   useEffect(() => { applySeo({ title: "Find a referral", description: exploreDescription(companies ?? []) ?? publicRoute("/explore")?.description, path: "/explore" }); }, [companies]);
 
@@ -130,9 +134,17 @@ export default function Explore() {
   // directory is loading or failed, and the query alone decides — the active
   // function chip only narrows the list, so it never makes a company unlisted.
   const unlistedAnswered = noMatch || (!typeahead && Boolean(companies) && !directory.isError && !queryMatched);
+  // D-394: the box's own answer commits first - a resolved posting opens its
+  // company with the link ready to ask, a single named company opens its door,
+  // and a job-title answer opens the first job's company with that job's link.
+  const universalCommit = typeahead && companySearch.status === "ready"
+    ? (companySearch.jobLink?.companySlug ? { slug: companySearch.jobLink.companySlug, url: companySearch.jobLink.url } : null)
+      ?? (companySearch.suggestions.length === 1 ? { slug: companySearch.suggestions[0].slug, url: null } : null)
+      ?? (companySearch.jobs.length > 0 ? { slug: companySearch.jobs[0].companySlug, url: companySearch.jobs[0].applyUrl } : null)
+    : null;
   // An enabled commit must always do something (N6): the one remaining no-op is
   // an empty filtered list where the query names several (or no) companies.
-  const commitDoesNothing = shown.length === 0 && !unlistedAnswered && queryMatches.length !== 1;
+  const commitDoesNothing = shown.length === 0 && !unlistedAnswered && queryMatches.length !== 1 && universalCommit === null;
   const commitBlockedReason = commitDoesNothing
     ? searchSpeaks
       ? "Pick a company from the suggestions."
@@ -140,8 +152,17 @@ export default function Explore() {
         ? "Clear the filters to see matching companies."
         : "Widen the name to see matches."
     : undefined;
+  const openJobLink = (slug: string, url: string) => {
+    selectCompany(slug);
+    composer.onUrlChange(url);
+  };
   const findCompany = () => {
     if (!query.trim()) return;
+    if (universalCommit) {
+      if (universalCommit.url) openJobLink(universalCommit.slug, universalCommit.url);
+      else selectCompany(universalCommit.slug);
+      return;
+    }
     if (shown.length === 1) { selectCompany(shown[0].slug); return; }
     if (shown.length === 0) {
       if (unlistedAnswered) { navigate("/ask"); return; }
@@ -268,11 +289,12 @@ export default function Explore() {
               }
               onClick={findCompany}
             >
-              Find your company
+              {typeahead && companySearch.status === "ready" && companySearch.jobs.length > 0 && companySearch.suggestions.length === 0 && !companySearch.jobLink ? "Find a job" : "Find your company"}
             </GoalButton>
           </div>
         </GoalNextStep>
         </div>
+        {typeahead ? <UniversalSearchResults state={companySearch} onOpenCompany={selectCompany} onOpenJobLink={openJobLink} /> : null}
         <p className="mt-3 text-g-meta text-g-ink-3">{FREE_ASKS_CHIP}.</p>
         <div role="group" aria-label="Filter companies" className="mt-4 flex flex-wrap gap-2 max-gdesk:gap-y-3">
           <GoalFilterChip label="All companies" pressed={fn === null} onPressedChange={() => { setFn(null); }} />
@@ -306,9 +328,10 @@ export default function Explore() {
   );
 }
 
-// Invalid input, by cause: the shared schema's 80-character limit, or a 400 the route gave for a query
+// Invalid input, by cause: the shared schema's length cap (D-394: 200, because a
+// job link is longer than a company name), or a 400 the route gave for a query
 // the schema accepts (cause unknown, so this line does not claim length). Neither offers a retry.
-const INVALID_TOO_LONG = "Use 80 characters or fewer to search companies.";
+const INVALID_TOO_LONG = "Use 200 characters or fewer to search.";
 const INVALID_REFUSED = "We couldn’t use that search. Try a different company name.";
 
 /**
@@ -336,17 +359,17 @@ function DiscoveredLogo({ name, logoUrl }: { name: string; logoUrl?: string }) {
   );
 }
 
-function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value: string; onChange(value: string): void; search: CompanySearchState; unlisted: boolean; onOpen(slug: string): void }) {
+function CompanyTypeahead({ value, onChange, search, unlisted, onOpen }: { value: string; onChange(value: string): void; search: UniversalSearchState; unlisted: boolean; onOpen(slug: string): void }) {
   const listId = useId();
   const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
   // A discovered (worldwide, not-in-directory) candidate the seeker picked; it confirms before acting.
-  const [confirm, setConfirm] = useState<DiscoveredSuggestion | null>(null);
+  const [confirm, setConfirm] = useState<DiscoveredCompany | null>(null);
   const tracked = useRef<string | null>(null);
   const { status, suggestions, discovered, query } = search;
   // Only Explore knows whether the directory also has no row for the query.
   const noMatch = unlisted;
-  const options: ({ kind: "directory"; item: (typeof suggestions)[number] } | { kind: "discovered"; item: DiscoveredSuggestion })[] = [
+  const options: ({ kind: "directory"; item: (typeof suggestions)[number] } | { kind: "discovered"; item: DiscoveredCompany })[] = [
     ...suggestions.map(item => ({ kind: "directory" as const, item })),
     ...discovered.map(item => ({ kind: "discovered" as const, item })),
   ];
