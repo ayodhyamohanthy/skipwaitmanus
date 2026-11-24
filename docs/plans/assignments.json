@@ -9186,7 +9186,7 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post-link-parity",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-368",
       "dependsOn": [
         "D-048-p3-post",
