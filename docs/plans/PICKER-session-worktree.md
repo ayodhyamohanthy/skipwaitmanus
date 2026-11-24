@@ -33,4 +33,4 @@ Focused tests, `scripts/nextTask.test.ts` and `pnpm check` green; required CI gr
 
 ## Status
 
-- PICKER-session-worktree: todo
+- PICKER-session-worktree: in progress — Claude Code · 83fe — 2026-11-24 — branch agent/queue/picker-session-worktree
