@@ -626,7 +626,8 @@
         "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
         "server/configContract.test.ts",
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        "docs/DECISIONS.md"
       ],
       "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
