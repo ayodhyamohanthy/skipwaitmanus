@@ -35,4 +35,4 @@ Live QA run shows zero `api.workos.com/user_management/authenticate` 4xx entries
 
 ## Status
 
-- AUTH-workos-refresh-scope: todo
+- AUTH-workos-refresh-scope: in progress — DeepSeek V4.1 Flash · f2a2 — 2026-11-24 — branch agent/queue/auth-workos-refresh-scope

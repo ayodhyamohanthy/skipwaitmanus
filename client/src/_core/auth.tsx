@@ -128,8 +128,14 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
   }, [auth.signOut, utils]);
 
   const getToken = useCallback(async () => {
+    // AUTH-workos-refresh-scope (D-389): the AuthKit SDK answers getAccessToken()
+    // with a WorkOS refresh, and WorkOS refuses that with 400 when the session was
+    // not issued by WorkOS. Cookie-only sessions (reviewer demo accounts,
+    // work-email OTP referrers, seeker email code, password, passkey) authenticate
+    // through the server cookie, so they never ask the SDK for a token.
+    if (!auth.user) return null;
     try { return await auth.getAccessToken(); } catch { return null; }
-  }, [auth.getAccessToken]);
+  }, [auth.user, auth.getAccessToken]);
 
   const value = useMemo<CompatValue>(
     () => ({ isLoaded, isSignedIn: signedIn, userId: user?.id ?? null, getToken, signOut, user, openSignIn }),
