@@ -526,7 +526,7 @@
       "tier": 2,
       "lane": "search-job-sources",
       "branch": "agent/queue/search-job-sources",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
