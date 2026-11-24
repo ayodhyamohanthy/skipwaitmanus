@@ -17,7 +17,7 @@ import type { PublicCompany } from "../shared/companies";
 import type { PlanCatalogResponse } from "../shared/billingCatalog";
 import type { Request } from "express";
 import type { AgentLimits } from "../shared/seekerAgents";
-import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_EXPIRY_MAX_DAYS, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
 import { hashAgentKey, mintAgentKey } from "./agentGrantAuth";
 import type { DraftRow, EventRow, GrantRow, SeekerAgentRouteDeps, SeekerAgentStore } from "./seekerAgentRoutes";
 
@@ -156,12 +156,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * D-178.grant (D-290 R1): the OAuth exchange creates the canonical D-141 grant
- * and returns its `swa_` key. Default scopes and limits, 7-day expiry; the
- * consent page's up-to-30-day choice lands with D-178.screen. No new column.
+ * and returns its `swa_` key. Default scopes and limits; D-178.screen carries
+ * the consent page's 1-30 day choice here (7 when absent). No new column.
  */
 export async function createOAuthAgentGrant(input: {
   userId: number;
   clientName: string;
+  expiresInDays?: number;
   store?: Pick<SeekerAgentStore, "createGrant">;
   now?: () => number;
 }): Promise<{ token: string; grantId: number; expiresAt: Date }> {
@@ -169,7 +170,9 @@ export async function createOAuthAgentGrant(input: {
   const nowMs = (input.now ?? Date.now)();
   const token = mintAgentKey();
   const name = (input.clientName.replace(/\s+/g, " ").trim() || "Assistant").slice(0, 120);
-  const expiresAt = new Date(nowMs + AGENT_EXPIRY_DEFAULT_DAYS * DAY_MS);
+  // The route validates too; this clamp keeps a direct caller from minting a longer grant.
+  const days = Number.isInteger(input.expiresInDays) ? Math.min(Math.max(input.expiresInDays!, 1), AGENT_EXPIRY_MAX_DAYS) : AGENT_EXPIRY_DEFAULT_DAYS;
+  const expiresAt = new Date(nowMs + days * DAY_MS);
   const grant = await store.createGrant({
     userId: input.userId,
     name,

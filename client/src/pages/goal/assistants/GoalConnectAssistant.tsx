@@ -4,7 +4,7 @@ import { useAuth, useUser } from "@/_core/auth";
 import { Link, useSearch } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
-import { GoalButton as Button, useOnlineStatus } from "@/components/goal";
+import { GoalButton as Button, GoalField, GoalTextInput, useOnlineStatus } from "@/components/goal";
 import { AssistantLayout, NetworkButton, NextStep } from "./AssistantLayout";
 import { Section as Panel } from "./AssistantLayout";
 
@@ -57,6 +57,10 @@ export default function GoalConnectAssistant() {
   const [checked, setChecked] = useState<string[]>(() => Array.from(new Set(CAN.map(item => item.key))));
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  // D-178.screen (D-290 R1): the seeker chooses how long the grant lasts. 7 days
+  // by default, 30 at most; the server refuses anything else before a code exists.
+  const [expiresInDays, setExpiresInDays] = useState(7);
+  const expiryValid = Number.isInteger(expiresInDays) && expiresInDays >= 1 && expiresInDays <= 30;
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -110,7 +114,7 @@ export default function GoalConnectAssistant() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ client_id: oauth.clientId, redirect_uri: oauth.redirectUri, code_challenge: oauth.codeChallenge, code_challenge_method: oauth.method, state: oauth.state, decision }),
+        body: JSON.stringify({ client_id: oauth.clientId, redirect_uri: oauth.redirectUri, code_challenge: oauth.codeChallenge, code_challenge_method: oauth.method, state: oauth.state, decision, expires_in_days: expiresInDays }),
       });
       const payload = await readApiJson<{ error?: string; redirectTo?: string }>(response, "We could not connect this assistant");
       if (!response.ok || !payload.redirectTo) {
@@ -168,6 +172,7 @@ export default function GoalConnectAssistant() {
         <>
 
           <h2 className="mt-5 text-g-heading">Connect {label} to skipwait.me</h2>
+          <p className="mt-2 text-g-meta text-g-ink-2">The name “{label}” is self-declared by the agent. skipwait.me has not verified it.</p>
           <p className="mt-2 text-g-ink-2">{label} will be able to use skipwait.me as <strong className="text-g-ink">{email ?? "you"}</strong>. <button type="button" className="underline underline-offset-4" onClick={() => { void signOut({ returnTo: `${window.location.pathname}${window.location.search}` }).catch(() => setError("Sign out could not be completed. Please try again.")); }}>Switch account</button></p>
           {errorLine}
           <Panel className="mt-6"><h2 className="font-semibold">It can</h2><ul className="mt-2">{CAN.map(item => <li key={`${item.label}-${item.key}`}><label className="flex min-h-12 cursor-pointer items-center gap-3 border-b border-g-hairline py-2 last:border-0"><input type="checkbox" className="size-5 accent-g-ink" checked={checked.includes(item.key)} onChange={() => toggle(item.key, item.locked)} disabled={item.locked} /><span className="text-sm">{item.label}</span></label></li>)}</ul></Panel>
@@ -183,8 +188,13 @@ export default function GoalConnectAssistant() {
             <ShieldAlert className="size-8 text-g-ink" />
             <h2 className="mt-3 text-g-heading">{oauth && clientName ? `“${clientName}” isn't verified by skipwait.me` : "This app isn't verified by skipwait.me"}</h2>
             <p className="mt-2 text-sm text-g-ink-2">It connected through the open MCP link. It can only read and draft until it&apos;s verified. Only continue if you trust it.</p>
+            <p className="mt-2 text-g-meta text-g-ink-2">The name “{label}” is self-declared by the agent. skipwait.me has not verified it.</p>
+            <div className="mt-4 max-w-xs">
+              <GoalField label="Access expires after (days, max 30)" htmlFor="consent-expiry"><GoalTextInput id="consent-expiry" type="number" min={1} max={30} required value={expiresInDays} onChange={e => setExpiresInDays(Number(e.target.value))}/></GoalField>
+              <p className="mt-2 text-g-meta text-g-ink-2">The grant ends on its own after this many days. You can revoke it sooner under Agents.</p>
+            </div>
             {errorLine}
-            <NextStep><div className="grid gap-2 gdesk:grid-cols-2"><Button variant="outline" onClick={cancel}>Cancel</Button><NetworkButton variant="primary" busy={working} onClick={() => { setChecked(["read", "draft"]); void approve(["read", "draft"]); }}>{working ? "Connecting…" : "Continue, read & draft only"}</NetworkButton></div></NextStep>
+            <NextStep><div className="grid gap-2 gdesk:grid-cols-2"><Button variant="outline" onClick={cancel}>Cancel</Button><NetworkButton variant="primary" busy={working} blocked={!expiryValid ? "Choose an access period between 1 and 30 days" : undefined} onClick={() => { setChecked(["read", "draft"]); void approve(["read", "draft"]); }}>{working ? "Connecting…" : "Continue, read & draft only"}</NetworkButton></div></NextStep>
           </Panel>
           {/* OAuth clients never reach the consent screen, so its "Callback:" footnote is shown here: the member sees where approval returns them. */}
           {callback ? <p className="mt-4 flex gap-2 text-xs text-g-ink-2"><Lock className="size-4 shrink-0" /><span>Callback: {callback}</span></p> : null}
