@@ -41,4 +41,19 @@ shallow clone without `node_modules` prints the install line, and after install 
 
 ## Status
 
-- HYGIENE-picker-bootstrap: in progress — Claude Code · 0889 — 2026-11-24 — branch agent/queue/hygiene-picker-bootstrap
+- HYGIENE-picker-bootstrap: review — Claude Code · 0889 — 2026-11-24 — branch agent/queue/hygiene-picker-bootstrap — PR #1535
+- Clean-up, Nov 24 2026 (66 open PRs read against `docs/plans/assignments.json` on main):
+  - **Closed (12), each with a comment naming its task:** #1313 (heartbeat, D-048-K-profile), #1049 (review,
+    D-100.otp-hmac), #1047 (architect re-sync, D-048-p3-admin-approvals), #1036 (review, D-048-p3-for-companies),
+    #1035 (review, D-048-p3-admin-money), #1034 (review, CONV-report-entry), #1033 (review, D-048-R4), #1031
+    (heartbeat, D-048-p3-admin-approvals), #1029 (heartbeat, PICKER-land-exact-head), #872 (review,
+    D-048-p3-conversation), #823 (review, D-048-p3-inbox), #806 (review, D-090-BYOR). Every task is `done`; 11 of
+    the 12 changed no file. No branch was deleted.
+  - **Skipped, task done but content not on main:** #1207 carries register entry D-339, absent from main; #1429
+    carries the D-048-R-support release captures. A session should land or deliberately retire each.
+  - **Skipped, no task or not done:** 52 PRs, including #455 and #625 (never closed), every PR updated in the last
+    24 hours, the parked `D-048-K-*` drafts, and about 25 orphaned registry/docs PRs with no matching task. Those
+    need a per-PR read, not a bulk rule.
+  - **Lock branches:** none deleted. All 7 `agent/queue/fix-main-*` tips (20adbd8e, 38264e0d, 80123a43, affed40a,
+    d6685c97, e6b785a0, eb0c78cd) are claim markers on top of main, not commits in main, and `fix-main-d6685c97`
+    still backs open PR #1039.
