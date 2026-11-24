@@ -137,12 +137,40 @@ export type AuthEventDeps = {
   findVerifiedUserIdByEmail: (normalizedEmail: string) => Promise<number | undefined>;
   secret: () => string | undefined;
   capture: (error: unknown, context: Record<string, unknown>) => void;
+  now?: () => number;
 };
 
+/**
+ * Write budget: at most this many rows a minute for one action, outcome and network (/24 or /48) in one server
+ * instance. A flood of sign-in attempts or refused requests then costs a bounded number of database writes and
+ * lookups instead of one per request; what is dropped is reported to Sentry once a window with the count.
+ */
+export const AUTH_EVENT_BUDGET_PER_MINUTE = 30;
+const BUDGET_WINDOW_MS = 60_000;
+const BUDGET_MAX_KEYS = 5_000;
+
 export function createAuthEventRecorder(deps: AuthEventDeps) {
+  const now = deps.now ?? (() => Date.now());
+  const windows = new Map<string, { start: number; used: number; dropped: number }>();
+  const withinBudget = (key: string, action: string): boolean => {
+    const at = now();
+    if (windows.size > BUDGET_MAX_KEYS) {
+      windows.forEach((window, entry) => { if (at - window.start >= BUDGET_WINDOW_MS) windows.delete(entry); });
+      if (windows.size > BUDGET_MAX_KEYS) windows.clear();
+    }
+    let window = windows.get(key);
+    if (!window || at - window.start >= BUDGET_WINDOW_MS) { window = { start: at, used: 0, dropped: 0 }; windows.set(key, window); }
+    if (window.used < AUTH_EVENT_BUDGET_PER_MINUTE) { window.used += 1; return true; }
+    window.dropped += 1;
+    if (window.dropped === 1) deps.capture(new Error("Sign-in event write budget reached; further events this minute are not logged"), { lane: "auth-events", action, budget: AUTH_EVENT_BUDGET_PER_MINUTE });
+    return false;
+  };
   return async function recordAuthEvent(req: Request | undefined, input: AuthEventInput): Promise<void> {
     try {
       const event = authEventSchema.parse(input);
+      const context = req ? authEventContext(req) : undefined;
+      // The budget is checked before any database work, including the verified-alias lookup.
+      if (!withinBudget(`${event.action}|${event.outcome}|${context?.ip ?? "-"}`, event.action)) return;
       const email = event.email && isEmailShape(normalizeEmail(event.email)) ? normalizeEmail(event.email) : undefined;
       let userId = event.userId;
       if (userId === undefined && email) {
@@ -155,7 +183,7 @@ export function createAuthEventRecorder(deps: AuthEventDeps) {
       if (event.plane) metadata.plane = event.plane;
       if (email && secret) metadata.emailKey = authEmailKey(email, secret);
       if (email && userId === undefined) { const masked = maskEmail(email); if (masked) metadata.maskedEmail = masked; }
-      if (req) for (const [key, value] of Object.entries(authEventContext(req))) if (value !== undefined) metadata[key] = value;
+      if (context) for (const [key, value] of Object.entries(context)) if (value !== undefined) metadata[key] = value;
       await deps.record({ actorUserId: userId, action: event.action, outcome: event.outcome, resourceType: "auth", ...(event.companyDomain ? { companyDomain: event.companyDomain.toLowerCase() } : {}), metadata });
     } catch (error) {
       deps.capture(error, { lane: "auth-events", action: input.action, outcome: input.outcome });

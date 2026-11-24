@@ -1,7 +1,7 @@
 import type { Request } from "express";
 import { describe, expect, it, vi } from "vitest";
 import type { OperationalActivityInput } from "./db";
-import { authEmailKey, authEventContext, createAuthEventRecorder, isEmailShape, maskEmail, reduceUserAgent, truncateIp } from "./authEvents";
+import { AUTH_EVENT_BUDGET_PER_MINUTE, authEmailKey, authEventContext, createAuthEventRecorder, isEmailShape, maskEmail, reduceUserAgent, truncateIp } from "./authEvents";
 
 // ADMIN-activity-log (D-393): every sign-in event is logged with no secret, a masked unknown email and a coarse device.
 const SECRET = "test-jwt-secret-for-auth-events";
@@ -119,5 +119,29 @@ describe("recordAuthEvent", () => {
     const record = createAuthEventRecorder({ record: async row => { rows.push(row); }, findVerifiedUserIdByEmail: async () => undefined, secret: () => undefined, capture: vi.fn() });
     await record(undefined, { action: "auth.password_forgot", outcome: "success", email: "asha@gmail.com" });
     expect(rows[0].metadata).toEqual({ maskedEmail: "a***@gmail.com" });
+  });
+});
+
+// CodeQL js/missing-rate-limiting on PR #1566: a flood of sign-in attempts or refused requests must not become one
+// database write (and alias lookup) per request.
+describe("recordAuthEvent write budget", () => {
+  it("writes at most the budget per minute for one action, outcome and network, then resumes the next minute", async () => {
+    let clock = Date.parse("2026-11-24T16:00:00Z");
+    const rows: OperationalActivityInput[] = [];
+    const lookups = vi.fn(async () => undefined);
+    const capture = vi.fn();
+    const record = createAuthEventRecorder({ record: async row => { rows.push(row); }, findVerifiedUserIdByEmail: lookups, secret: () => SECRET, capture, now: () => clock });
+    const flood = () => record(req({}, "203.0.113.77"), { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed", email: "x@gmail.com" });
+    for (let i = 0; i < AUTH_EVENT_BUDGET_PER_MINUTE + 50; i += 1) await flood();
+    expect(rows).toHaveLength(AUTH_EVENT_BUDGET_PER_MINUTE);
+    expect(lookups).toHaveBeenCalledTimes(AUTH_EVENT_BUDGET_PER_MINUTE);
+    expect(capture).toHaveBeenCalledTimes(1);
+    // Another network, or another outcome, has its own budget.
+    await record(req({}, "198.51.100.4"), { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed" });
+    await record(req({}, "203.0.113.77"), { action: "auth.password_sign_in", outcome: "success", userId: 3 });
+    expect(rows).toHaveLength(AUTH_EVENT_BUDGET_PER_MINUTE + 2);
+    clock += 60_000;
+    await flood();
+    expect(rows).toHaveLength(AUTH_EVENT_BUDGET_PER_MINUTE + 3);
   });
 });
