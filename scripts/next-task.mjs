@@ -74,7 +74,10 @@ const fail = (message, code = 1) => {
   throw new CliFailure(message, code);
 };
 
-class RefSnapshotChanged extends Error {}
+class RefSnapshotChanged extends Error {
+  /** The scoped refs that moved since the snapshot, so a caller can tell a lost claim race from churn. */
+  constructor(message, changed = []) { super(message); this.changed = changed; }
+}
 let decisionRefs = null;
 const refPatterns = ["refs/heads/main", "refs/heads/agent/*"];
 const refspecs = ["+refs/heads/main:refs/remotes/origin/main", "+refs/heads/agent/*:refs/remotes/origin/agent/*"];
@@ -243,16 +246,20 @@ function requireCurrentRefs(scope = null) {
   const differs = (refs, skipMain) => {
     const selected = map => [...map].filter(([name]) => relevant(name) && !(skipMain && name === "main"));
     const now = new Map(selected(refs)), then = selected(decisionRefs.refs);
-    return now.size !== then.length || then.some(([name, sha]) => now.get(name) !== sha);
+    const changed = then.filter(([name, sha]) => now.get(name) !== sha).map(([name]) => name);
+    if (now.size !== then.length) changed.push(...[...now.keys()].filter(name => !then.some(([was]) => was === name)));
+    return changed;
   };
   const remote = refsFrom(tryGit("ls-remote", "--heads", "origin", ...refPatterns), "refs/heads/");
-  if (differs(remote, mainByContent)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  const moved = differs(remote, mainByContent);
+  if (moved.length) throw new RefSnapshotChanged("authoritative snapshot changed before write", moved);
   if (mainByContent && remote.get("main") !== decisionRefs.refs.get("main")) {
     const current = remote.has("main") ? mainInputsUnchanged(scope) : null;
-    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write", ["main"]);
     decisionRefs.refs.set("main", current);
   }
-  if (differs(trackingRefs(), false)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  const tracked = differs(trackingRefs(), false);
+  if (tracked.length) throw new RefSnapshotChanged("authoritative snapshot changed before write", tracked);
 }
 
 /**
@@ -1014,7 +1021,18 @@ async function runCommand(args) {
       const route = routeIdentity(provenance.registry, args.provenance, who, pick.task.id, role);
       if (!route.ok) fail(route.reason);
     }
-    if (claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    // D-324 / PICKER-claim-race-reread: a rival's claim on the picked task is a lost race, not a
+    // snapshot dead end. Re-pick inside this bounded loop; churn on any other scoped ref keeps the
+    // existing three-reread stop, so a task whose own heartbeat keeps moving still ends in STOP.
+    let claimed = false;
+    try {
+      claimed = claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined);
+    } catch (error) {
+      if (!(error instanceof RefSnapshotChanged) || !pick.task || !error.changed?.includes(pick.task.branch)) throw error;
+      console.error(`next-task: another agent claimed ${pick.task.id} first (attempt ${attempt}); picking again`);
+      continue;
+    }
+    if (claimed) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("six claims in a row were taken by other agents; run again in a minute");
