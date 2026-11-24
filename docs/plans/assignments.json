@@ -8522,11 +8522,11 @@
     {
       "id": "D-177-recruiter-posts-referral-drives",
       "title": "Recruiter/HR job posts (public + internal) and employee-published referral drives feeding the company -> job -> ask journey",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "todo",
+      "syncedTo": "D-396",
       "lane": "employer",
       "branch": "agent/queue/d177-recruiter-drives",
-      "packet": null,
+      "packet": "docs/plans/D-177-recruiter-posts-referral-drives.md",
       "owns": [
         "docs/plans/D-177-recruiter-posts-referral-drives.md"
       ],
