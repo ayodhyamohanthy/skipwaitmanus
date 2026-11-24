@@ -650,6 +650,92 @@
       "note": "D-383 (3) requires reproducible international TEST-card evidence with a linked run/artifact; no existing tooling could produce it. PR #1492 is open from this branch, so the picker reads its stage from that pull request. Sub-row of BANDED-release: it lands first so the workflow can be dispatched, keeping BANDED-release unlanded until the activation is real (the D-373 (6) trap D-383 corrected)."
     },
     {
+      "id": "OPS-live-qa-hardening",
+      "title": "Signed-in live QA never passes silently: missing secrets fail the run, a password reset starts live QA itself, and every 4xx is recorded with its path (D-387)",
+      "row": "D-212",
+      "packet": "docs/plans/OPS-live-qa-hardening.md",
+      "tier": 2,
+      "lane": "live-qa-hardening",
+      "branch": "agent/queue/ops-live-qa-hardening",
+      "status": "todo",
+      "syncedTo": "D-387",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/live-qa.yml",
+        ".github/workflows/reviewer-qa-passwords.yml",
+        "scripts/live-qa-signed-in.mjs",
+        "scripts/liveQaSignedIn.test.ts",
+        "scripts/liveQaWorkflows.test.ts",
+        "docs/plans/OPS-live-qa-hardening.md",
+        "docs/plans/OPS-live-qa-runner.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-387). Observed: run 45307607684 skipped with a notice and concluded success; the reset-dispatched Deploy API run 45361666119 started no live QA (GITHUB_TOKEN runs create no workflow_run event); run 45364628436 logged one 400 console error on all 38 captures with no URL recorded. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "BANDED-catalog-family",
+      "title": "The reviewed catalog sync ignores archived SkipWait items when choosing a product family, so a site whose retired packs sit in other families can be provisioned; still fails closed on two active families (D-387)",
+      "row": "PRICING",
+      "packet": "docs/plans/BANDED-catalog-family.md",
+      "tier": 1,
+      "lane": "banded-catalog-family",
+      "branch": "agent/queue/banded-catalog-family",
+      "status": "todo",
+      "syncedTo": "D-387",
+      "dependsOn": [],
+      "owns": [
+        "server/catalogSyncPlan.ts",
+        "server/catalogSyncPlan.test.ts",
+        "server/catalogSyncFixtures.ts",
+        "docs/plans/BANDED-catalog-family.md",
+        "docs/qa/banded-release-qa.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-387). chooseFamily (server/catalogSyncPlan.ts:92) counts archived items, so the TEST site refuses all 14 banded prices over skipwait_credits/plans/topups (run 45287747237). Read the real TEST catalog through GitHub Actions first; create-only apply (D-069) unchanged; an older-id mapping on TEST is an owner ruling, not this code. Coordinate with BANDED-release (Qoder · 4e6f).",
+      "epic": "BANDED-release"
+    },
+    {
+      "id": "SEEKER-requests-no-samples",
+      "title": "My asks shows no fabricated sample asks and no expiry or credit promise to signed-in seekers (D-387)",
+      "row": "D-212",
+      "packet": "docs/plans/SEEKER-requests-no-samples.md",
+      "tier": 2,
+      "lane": "seeker-requests-samples",
+      "branch": "agent/queue/seeker-requests-no-samples",
+      "status": "todo",
+      "syncedTo": "D-387",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/MyRequests.tsx",
+        "client/src/components/goal/GoalSampleRows.tsx",
+        "client/src/pages/myRequests.sampleStates.test.tsx",
+        "client/src/pages/myRequests.empty.test.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "docs/plans/SEEKER-requests-no-samples.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-387). Live QA run 45364628436: /requests shows SAMPLE rows saying \"Expires in 7 days ... The credit comes back\" (contradicts D-174, D-173/D-180). Same removal D-371 made on the referrer side. Captures at 1280 and 390. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
+      "id": "HYGIENE-picker-bootstrap",
+      "title": "A fresh clone runs the picker first time (install hint instead of a stack trace, one automatic unshallow fetch), and PRs and lock branches of finished work are closed (D-387, D-205)",
+      "row": "D-212",
+      "packet": "docs/plans/HYGIENE-picker-bootstrap.md",
+      "tier": 2,
+      "lane": "picker-bootstrap",
+      "branch": "agent/queue/hygiene-picker-bootstrap",
+      "status": "todo",
+      "syncedTo": "D-387",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskBootstrap.test.ts",
+        "docs/plans/HYGIENE-picker-bootstrap.md",
+        "docs/plans/BRANCH-HYGIENE.md"
+      ],
+      "note": "Owner-approved Nov 24 (D-387). Fresh cloud sessions hit ERR_MODULE_NOT_FOUND (zod) and then STOP: complete history is required. 61 open PRs, 17 for done tasks. Shares scripts/next-task.mjs with PICKER-network-retry (D-314: second lander merges main and keeps both). Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "D-344-shell-referral-words",
       "title": "The goal shell's count says 'N referrals left' (a unit on phones), never 'credits' (D-222 wording slice, D-344)",
       "row": "D-048",
