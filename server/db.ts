@@ -18,7 +18,7 @@ import * as mysql from "mysql2/promise";
 import { accountPreferences, askCosts, askInviteLinks, askOrigins, seekerLevels, seekerAgentGrants, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, bandedCheckoutIntents, canonicalPeople, catalogJobs, companies, companyDomains, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
 import { ACTIVITY_FAMILY_PREFIXES, ACTIVITY_PAGE_MAX, type ActivityPersonMatch, type RequestTransitionRow } from "../shared/adminActivity";
 import type { ActivityListInput } from "./adminActivity";
-import { authEmailKey } from "./authEvents";
+import { authEmailKey, isEmailShape } from "./authEvents";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -1537,7 +1537,7 @@ export async function listOperationalActivity(input: Partial<ActivityListInput> 
 /** ADMIN-activity-log (D-393): the accounts an admin's person filter names: by account email or a verified login alias. */
 export async function resolveActivityPerson(person: string): Promise<ActivityPersonMatch> {
   const email = person.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { userIds: [] };
+  if (!isEmailShape(email)) return { userIds: [] };
   const secret = process.env.JWT_SECRET;
   const emailKey = secret ? authEmailKey(email, secret) : undefined;
   const db = await getDb(); if (!db) return { userIds: [], ...(emailKey ? { emailKey } : {}) };

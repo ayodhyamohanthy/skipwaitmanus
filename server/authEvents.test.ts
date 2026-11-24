@@ -1,7 +1,7 @@
 import type { Request } from "express";
 import { describe, expect, it, vi } from "vitest";
 import type { OperationalActivityInput } from "./db";
-import { authEmailKey, authEventContext, createAuthEventRecorder, maskEmail, reduceUserAgent, truncateIp } from "./authEvents";
+import { authEmailKey, authEventContext, createAuthEventRecorder, isEmailShape, maskEmail, reduceUserAgent, truncateIp } from "./authEvents";
 
 // ADMIN-activity-log (D-393): every sign-in event is logged with no secret, a masked unknown email and a coarse device.
 const SECRET = "test-jwt-secret-for-auth-events";
@@ -22,6 +22,16 @@ describe("masking and reduction", () => {
     expect(maskEmail("Asha.Rao@Gmail.com")).toBe("a***@gmail.com");
     expect(maskEmail("x@example.org")).toBe("x***@example.org");
     expect(maskEmail("not-an-email")).toBeUndefined();
+  });
+
+  it("checks an address shape in linear time, even on a hostile string", () => {
+    expect(isEmailShape("asha.rao@mail.example.co.in")).toBe(true);
+    for (const bad of ["asha@", "asha@example", "asha@example..com", "a b@example.com", "a@b@c.com", `a@${"b".repeat(320)}.com`]) expect(isEmailShape(bad)).toBe(false);
+    const hostile = `a@${".".repeat(50_000)}!`;
+    const started = performance.now();
+    expect(isEmailShape(hostile.slice(0, 320))).toBe(false);
+    expect(isEmailShape(`a@${"b.".repeat(150)}`)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(50);
   });
 
   it("keys an email with an HMAC that groups case and spacing variants and reveals nothing", () => {

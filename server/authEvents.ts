@@ -70,11 +70,19 @@ const authEventSchema = z.object({
 export type AuthEventInput = z.input<typeof authEventSchema> & { action: AuthAction; reason?: AuthReason };
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * An address shape check that runs in linear time on hostile input: the local part cannot contain "@", and each
+ * domain label cannot contain ".", so there is exactly one way to match (no polynomial backtracking, CodeQL
+ * js/polynomial-redos). Longer than 320 characters is never an address.
+ */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
+export function isEmailShape(value: string): boolean {
+  return value.length <= 320 && EMAIL_SHAPE.test(value);
+}
 
 export function maskEmail(email: string): string | undefined {
   const normalized = normalizeEmail(email);
-  if (!EMAIL_SHAPE.test(normalized)) return undefined;
+  if (!isEmailShape(normalized)) return undefined;
   const [local, domain] = normalized.split("@");
   return `${local.slice(0, 1)}***@${domain}`;
 }
@@ -135,7 +143,7 @@ export function createAuthEventRecorder(deps: AuthEventDeps) {
   return async function recordAuthEvent(req: Request | undefined, input: AuthEventInput): Promise<void> {
     try {
       const event = authEventSchema.parse(input);
-      const email = event.email && EMAIL_SHAPE.test(normalizeEmail(event.email)) ? normalizeEmail(event.email) : undefined;
+      const email = event.email && isEmailShape(normalizeEmail(event.email)) ? normalizeEmail(event.email) : undefined;
       let userId = event.userId;
       if (userId === undefined && email) {
         try { userId = await deps.findVerifiedUserIdByEmail(email); } catch { userId = undefined; }

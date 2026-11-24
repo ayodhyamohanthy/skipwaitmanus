@@ -8,7 +8,7 @@ import { isTrustedAuthPost } from "./authPostGuard";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { resolveTrustedClientIp } from "./trustedClientIp";
-import { recordAuthEvent, type AuthReason } from "../authEvents";
+import { isEmailShape, recordAuthEvent, type AuthReason } from "../authEvents";
 
 /**
  * The retired job-seeker email code (D-049, D-078 ruling 1). Seekers now sign in with a social provider or email +
@@ -36,7 +36,7 @@ export function registerSeekerEmailCodeRoutes(app: Express, deps: Deps = {}) {
   // ADMIN-activity-log (D-393): a cached app still using the retired code shows up in the log, never the code.
   const event = (req: Request, outcome: "success" | "failure" | "denied", extra: { reason?: AuthReason; userId?: number } = {}) => {
     const email = normalizeEmail(req.body?.email);
-    void recordAuthEvent(req, { action: "auth.seeker_email_code", outcome, method: "email_code", plane: "seeker", ...(EMAIL.test(email) ? { email } : {}), ...extra });
+    void recordAuthEvent(req, { action: "auth.seeker_email_code", outcome, method: "email_code", plane: "seeker", ...(isEmailShape(email) ? { email } : {}), ...extra });
   };
 
   app.post("/api/auth/workos/email-code/send", (req: Request, res: Response) => { event(req, "denied", { reason: "retired" }); retired(res); });
