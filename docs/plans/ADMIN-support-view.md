@@ -54,4 +54,4 @@ opens the same company for the demo seeker.
 
 ## Status
 
-- ADMIN-support-view: todo
+- ADMIN-support-view: in progress — DeepSeek V4.1 Flash · 7d4d — 2026-11-24 — branch agent/queue/admin-support-view
