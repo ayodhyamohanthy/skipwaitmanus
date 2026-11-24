@@ -302,7 +302,10 @@ globalThis.fetch = async input => {
     try {
       const res = f.picker();
       const out = `${res.stdout}\n--- stderr ---\n${res.stderr}`;
-      expect(f.hits().length).toBe(1);
+      // PICKER-network-retry (D-324): a 5xx is a transient answer, so the read is attempted
+      // GITHUB_READ_ATTEMPTS times (k1 and k2 stay at one attempt: a 200 is never repeated).
+      // The outcome this case guards is unchanged: no LAND after every attempt fails.
+      expect(f.hits().length).toBe(3);
       expect(handOut(out), out).not.toBe("LAND");
       expect(res.stderr).toContain("next-task:");
     } finally {
