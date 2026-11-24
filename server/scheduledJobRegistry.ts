@@ -16,7 +16,9 @@ import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } f
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
+import { createAuthActivityRetention } from "./authActivityRetention";
 import { createReviewDeliveryRetry } from "./reviewDeliveryRetry";
+import { createAgentAutoSendDigest } from "./agentAutoSendDigest";
 import { createPoolReviewEmail } from "./poolReviewEmail";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
@@ -137,6 +139,14 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     run: createReviewDeliveryRetry(),
   },
   {
+    // SKIPPY-7 (D-201 (4), D-060): daily digest of auto-sent referral requests.
+    name: "agent-auto-send-digest",
+    description: "Emails seekers a daily digest of referral requests auto-sent by their assistants, bounded to 100 users per run and keyed by date",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAgentAutoSendDigest(),
+  },
+  {
     // D-174-pool-nudges part 2 (D-384): the review email for a request delivered from the waiting pool, through
     // the existing claim, at most one per referrer per UTC day (D-060). Does nothing while POOL_NUDGES_ENABLED is false.
     name: "pool-review-email",
@@ -144,5 +154,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createPoolReviewEmail(),
+  },
+  {
+    // ADMIN-activity-log (D-393): sign-in rows in the admin activity log are kept 90 days.
+    name: "auth-activity-retention",
+    description: "Deletes sign-in rows (auth.* events) from the admin activity log once they are older than 90 days, in bounded batches",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAuthActivityRetention(),
   },
 ];

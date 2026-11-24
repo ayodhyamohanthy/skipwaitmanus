@@ -12,7 +12,7 @@ import { AssistantLayout, NetworkButton, NextStep, Section } from "./AssistantLa
  */
 
 type Limits = { creditsPerAsk: number; creditsPerDay: number; creditsPerWeek: number; asksPerDay: number };
-type Agent = { id: number; name: string; keyPrefix: string; scopes: string[]; limits: Limits; status: "active" | "paused" | "expired" | "revoked"; expiresAt: string; lastUsedAt: string | null; createdAt: string };
+type Agent = { id: number; name: string; keyPrefix: string; scopes: string[]; limits: Limits; autoSend?: boolean; status: "active" | "paused" | "expired" | "revoked"; expiresAt: string; lastUsedAt: string | null; createdAt: string };
 type Draft = { id: number; companySlug: string; targetRoleUrl: string; note: string; jobLevel: number; creditCost: number; status: string; createdAt: string };
 type AgentEvent = { id: number; agentName: string; action: string; outcome: string; detail: string | null; createdAt: string };
 
@@ -28,6 +28,8 @@ export default function GoalSeekerAgents() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [paused, setPaused] = useState(false);
+  const [autoSendAvailable, setAutoSendAvailable] = useState(false);
+  const [confirmAutoSendAgent, setConfirmAutoSendAgent] = useState<Agent | null>(null);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -56,9 +58,9 @@ export default function GoalSeekerAgents() {
     try {
       const res = await fetch("/api/seeker/agents", { headers: await headers(), credentials: "include" });
       if (res.status === 404) { setLoadError("Agent access is not turned on yet."); return; }
-      const body = await readApiJson<{ agents: Agent[]; paused: boolean }>(res, "Could not load your agents");
+      const body = await readApiJson<{ agents: Agent[]; paused: boolean; autoSendAvailable?: boolean }>(res, "Could not load your agents");
       if (!res.ok || !Array.isArray(body.agents)) throw new Error();
-      setAgents(body.agents); setPaused(body.paused);
+      setAgents(body.agents); setPaused(body.paused); setAutoSendAvailable(Boolean(body.autoSendAvailable));
     } catch { setLoadError("Could not load your agents. Try again in a moment."); }
     finally { setLoading(false); }
   }, [isSignedIn, isLoaded, headers]);
@@ -85,6 +87,30 @@ export default function GoalSeekerAgents() {
       if (!res.ok) { const body = await res.json().catch(() => ({})); setActionError(body.error ?? "That did not work"); return; }
       await load();
     } catch { setActionError("That did not complete. Check your connection and try again."); } finally { setBusy(false); }
+  };
+
+  const setAutoSend = async (agent: Agent, enabled: boolean) => {
+    if (busy || !online) return;
+    setBusy(true); setActionError("");
+    try {
+      const res = await fetch(`/api/seeker/agents/${agent.id}/auto-send`, {
+        method: "POST",
+        headers: await headers(),
+        credentials: "include",
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setActionError(body.error ?? "That did not work");
+        return;
+      }
+      setConfirmAutoSendAgent(null);
+      await load();
+    } catch {
+      setActionError("That did not complete. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const openDetail = async (id: number) => {
@@ -115,6 +141,28 @@ export default function GoalSeekerAgents() {
     {!loadError && !loading ? <Section title="Granted agents"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><GoalStatus status="queue_new" label={paused ? "All agents paused" : "You control each grant"}/>{agents.length ? <NetworkButton blocked={busy ? "An action is in progress" : undefined} onClick={() => void act(paused ? "/api/seeker/agents/resume-all" : "/api/seeker/agents/pause-all")}>{paused ? "Resume all agents" : "Pause all agents"}</NetworkButton> : null}</div>{!agents.length ? <p className="text-g-body text-g-ink-2">No agents yet. Create a key above when you are ready.</p> : null}<ul>{agents.map(agent => <li key={agent.id} className="border-t border-g-hairline py-5">
       <div className="flex flex-wrap justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-g-label">{agent.name}</h3><p className="mt-1 break-all font-g-mono text-g-mono text-g-ink-3">{agent.keyPrefix}...</p><GoalStatus status={agent.status === "expired" || agent.status === "revoked" ? "expired" : "queue_new"} label={agent.status}/></div><div className="flex flex-wrap items-start gap-2"><GoalButton onClick={() => void openDetail(agent.id)}>{openId === agent.id ? "Hide activity" : "Activity"}</GoalButton>{agent.status === "active" || agent.status === "paused" ? <NetworkButton blocked={busy ? "An action is in progress" : undefined} onClick={() => void act(`/api/seeker/agents/${agent.id}/revoke`)}>Revoke</NetworkButton> : null}</div></div>
       <p className="mt-3 text-g-meta text-g-ink-2">Expires <GoalNum>{fmt(agent.expiresAt)}</GoalNum> · last used <GoalNum>{fmt(agent.lastUsedAt)}</GoalNum></p><p className="mt-2 text-g-meta text-g-ink-2">May: {agent.scopes.join(", ")} · <GoalNum>{agent.limits.creditsPerAsk}</GoalNum> referrals/send, <GoalNum>{agent.limits.creditsPerDay}</GoalNum>/day, <GoalNum>{agent.limits.creditsPerWeek}</GoalNum>/week · <GoalNum>{agent.limits.asksPerDay}</GoalNum> sends/day</p>
+      {autoSendAvailable && agent.scopes.includes("send") ? <div className="mt-3 flex flex-wrap items-center gap-3">
+        {agent.autoSend ? <>
+          <span className="text-g-meta text-g-ink-1">Auto-send is on</span>
+          <NetworkButton blocked={busy ? "An action is in progress" : undefined} onClick={() => void setAutoSend(agent, false)}>Turn off auto-send</NetworkButton>
+        </> : <>
+          <GoalButton onClick={() => setConfirmAutoSendAgent(agent)}>Turn on auto-send</GoalButton>
+        </>}
+      </div> : null}
+      {confirmAutoSendAgent?.id === agent.id ? <div className="mt-4 border border-g-control-edge bg-g-surface-2 p-4">
+        <h4 className="text-g-label">Turn on auto-send for {agent.name}?</h4>
+        <p className="mt-2 text-g-body">Your assistant will send referral requests without asking you each time, within this grant's limits:</p>
+        <ul className="mt-2 list-disc pl-5 text-g-meta text-g-ink-2">
+          <li><GoalNum>{agent.limits.creditsPerAsk}</GoalNum> referrals per send</li>
+          <li><GoalNum>{agent.limits.creditsPerDay}</GoalNum> referrals per day, <GoalNum>{agent.limits.asksPerDay}</GoalNum> sends per day</li>
+          <li>Access expires <GoalNum>{fmt(agent.expiresAt)}</GoalNum></li>
+        </ul>
+        <p className="mt-2 text-g-meta text-g-ink-2">Each send spends one of your referrals. It never buys referrals or plans. You can pause all agents or revoke access immediately at any time.</p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <NetworkButton variant="primary" busy={busy} onClick={() => void setAutoSend(agent, true)}>Confirm and turn on</NetworkButton>
+          <GoalButton onClick={() => setConfirmAutoSendAgent(null)}>Cancel</GoalButton>
+        </div>
+      </div> : null}
       {openId === agent.id ? <div className="mt-5 border-t border-g-hairline pt-4">{detailLoading ? <p role="status">Loading activity...</p> : detailError ? <p role="alert">{detailError}</p> : <><h4 className="text-g-label">Drafts by this agent</h4>{!drafts.length ? <p className="mt-2 text-g-meta text-g-ink-2">No drafts yet.</p> : <ul>{drafts.map(d => <li className="mt-3 break-words text-g-meta" key={d.id}>{d.companySlug} · {d.targetRoleUrl} · <GoalNum>{d.creditCost}</GoalNum> {d.creditCost === 1 ? "referral" : "referrals"} · {d.status}{d.note ? <p className="mt-2 whitespace-pre-wrap">{d.note}</p> : null}</li>)}</ul>}<h4 className="mt-5 text-g-label">What this agent did</h4>{!events.length ? <p className="mt-2 text-g-meta text-g-ink-2">Nothing yet.</p> : <ul>{events.map(ev => <li key={ev.id} className="mt-3 break-words text-g-meta"><GoalNum>{fmt(ev.createdAt)}</GoalNum> · {ev.action} · {ev.outcome}{ev.detail ? ` · ${ev.detail}` : ""}</li>)}</ul>}</>}</div> : null}
     </li>)}</ul></Section> : null}
   </>;

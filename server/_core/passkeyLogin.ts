@@ -28,6 +28,7 @@ import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { resolveTrustedClientIp } from "./trustedClientIp";
 import { isServerSentryActive } from "../sentry";
+import { recordAuthEvent, type AuthReason } from "../authEvents";
 
 // D-097-style switch: off until QA passes on a non-production deploy.
 const PASSKEY_SIGNIN_ENABLED = false;
@@ -43,7 +44,7 @@ const rpID = () => process.env.PASSKEY_RP_ID ?? "skipwait.me";
 const expectedOrigin = () => process.env.PASSKEY_ORIGIN ?? "https://skipwait.me";
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
-type ResolveIdentity = (req: Request) => Promise<{ account: { openId: string; email: string | null; name: string | null; loginMethod: string | null } } | null | undefined>;
+type ResolveIdentity = (req: Request) => Promise<{ account: { id?: number; openId: string; email: string | null; name: string | null; loginMethod: string | null } } | null | undefined>;
 
 function isReferrerOpenId(openId: string) {
   return openId.startsWith("workemail_");
@@ -120,9 +121,14 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
     return;
   }
 
+  // ADMIN-activity-log (D-393): passkey sign-ins, additions and removals in the admin log; never a credential or challenge.
+  const passkeyEvent = (req: Request, action: "auth.passkey_sign_in" | "auth.passkey_registered" | "auth.passkey_revoked", outcome: "success" | "failure" | "denied", extra: { reason?: AuthReason; userId?: number } = {}) =>
+    void recordAuthEvent(req, { action, outcome, method: "passkey", plane: "seeker", ...extra });
+
   const rateLimitGuard = (req: Request, res: Response, next: () => void) => {
     const clientIp = resolveTrustedClientIp(req);
     if (!checkPasskeyRateLimit(clientIp)) {
+      if (req.path === "/api/auth/passkey/login/verify") passkeyEvent(req, "auth.passkey_sign_in", "denied", { reason: "rate_limited" });
       res.status(429).json({ error: "Too many requests. Please try again later." });
       return;
     }
@@ -167,6 +173,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         expectedRPID: rpID(),
       });
       if (!verification.verified || !verification.registrationInfo) {
+        passkeyEvent(req, "auth.passkey_registered", "failure", { reason: "passkey_rejected", userId: me.account.id });
         return res.status(400).json({ error: "That passkey could not be verified. Try again." });
       }
       const { credential } = verification.registrationInfo;
@@ -178,6 +185,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         transports: Array.isArray(req.body?.response?.transports) ? req.body.response.transports.join(",") : null,
         deviceName: typeof req.body?.deviceName === "string" ? req.body.deviceName.slice(0, 120) : null,
       });
+      passkeyEvent(req, "auth.passkey_registered", "success", { userId: me.account.id });
       res.json({ registered: true });
     } catch (err) {
       handleRouteError(err, "register_verify", "We could not finish passkey setup", res);
@@ -208,6 +216,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       }
       const stored = await store.getPasskeyCredentialByCredentialId(credentialId);
       if (!stored || (await isReferrerAccount(stored.openId))) {
+        passkeyEvent(req, "auth.passkey_sign_in", "failure", { reason: stored ? "not_allowed" : "unknown_account" });
         return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
       }
       const ceremony = z.number().int().positive().safe().safeParse(req.body?.ceremonyId);
@@ -231,6 +240,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
         },
       });
       if (!verification.verified) {
+        passkeyEvent(req, "auth.passkey_sign_in", "failure", { reason: "passkey_rejected" });
         return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
       }
       // Only a verified assertion consumes the ceremony, and only the one caller
@@ -246,9 +256,10 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       if (!account || (await isReferrerAccount(account.openId))) {
         return res.status(400).json({ error: "That sign-in could not be verified. Try again." });
       }
-      if (account.suspended) return res.status(403).json({ error: "We could not complete sign-in." });
+      if (account.suspended) { passkeyEvent(req, "auth.passkey_sign_in", "denied", { reason: "suspended", userId: account.id }); return res.status(403).json({ error: "We could not complete sign-in." }); }
       const token = await sdk.createSessionToken(stored.openId, { name: account.name ?? undefined, authTime: Math.floor(Date.now() / 1000) });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
+      passkeyEvent(req, "auth.passkey_sign_in", "success", { userId: account.id });
       res.json({ signedIn: true, role: account.role });
     } catch (err) {
       handleRouteError(err, "login_verify", "We could not complete passkey sign-in", res);
@@ -288,6 +299,7 @@ export function registerPasskeyLoginRoutes(app: Express, opts: { resolveIdentity
       }
       const revoked = await store.deletePasskeyCredential(me.account.openId, credentialId);
       if (!revoked) return res.status(404).json({ error: "That passkey was not found. Reload your passkeys and try again." });
+      passkeyEvent(req, "auth.passkey_revoked", "success", { userId: me.account.id });
       res.json({ revoked: true });
     } catch (err) {
       handleRouteError(err, "revoke", "We could not revoke passkey", res);
