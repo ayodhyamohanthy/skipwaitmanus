@@ -179,7 +179,7 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 
 ## Status
 
-- D-174-seeker-journey-build: in progress — Claude Code · 695b — 2026-11-24 — branch agent/queue/d174-seeker-journey
+- D-174-seeker-journey-build: done when this pull request lands — Claude Code · 695b — 2026-11-24. `COMPANY_JOBS_ENABLED` and `JOB_CATALOG_ENABLED` are true (D-394; typeahead already live via `.typeahead-release`, #1555). Sources: SEARCH-job-sources #1570, 13 verified boards seeded by the sync. The daily `job-catalog-sync` window for the landing day already ran while off, so real jobs appear after the next UTC-day run (or a stale-source refresh once a source exists). Live acceptance after that run: the whole journey on skipwait.me at 1280 and 390 (type a company, pick it, filter jobs, pick one, send a request, see the post-save line) and the four journey events in Clarity; then `D-048-p3-live-review-find`.
 
 - D-174-seeker-journey-build.typeahead-release: done — agent/queue/d174-typeahead-release — PR #1555. `VITE_COMPANY_TYPEAHEAD=true` in the Pages build (D-394), after SEARCH-work-domain (#1554). The jobs list and catalog stay off until SEARCH-job-sources has verified sources.
 

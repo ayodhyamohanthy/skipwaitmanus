@@ -569,7 +569,7 @@
       "tier": 1,
       "lane": "d174-journey",
       "branch": "agent/queue/d174-seeker-journey",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [
         "D-166-journey-decisions-sync",
