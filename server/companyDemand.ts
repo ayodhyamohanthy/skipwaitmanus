@@ -3,11 +3,11 @@
 // what a number means. No name, email, pitch, URL or request id leaves this
 // module, and it reads no profile, availability, slot, wallet or plan table:
 // demand is coverage-neutral (packet §4.2).
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { canonicalPeople, jobs, referralRequests, users } from "../drizzle/schema";
 import { countDemandPeople, countUnlistedDemand, type DemandCompany, type DemandRow } from "../shared/companyDemand";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
-import { getDb } from "./db";
+import { getDb, sandboxSeekerUserId } from "./db";
 
 /** The one read shape both loaders use. Adding a field here is a contract change. */
 const demandRowColumns = {
@@ -25,13 +25,14 @@ const demandRowColumns = {
 };
 
 /** Every live request row at the given domains. Timestamps are compared in JS, never against SQL NOW(). */
-function liveRequestsAt(domains: readonly string[], db: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+function liveRequestsAt(domains: readonly string[], db: NonNullable<Awaited<ReturnType<typeof getDb>>>, sandboxSeekerId: number | null) {
   return db.select(demandRowColumns)
     .from(referralRequests)
     .innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
     .innerJoin(users, eq(users.id, referralRequests.jobSeekerId))
     .leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId))
-    .where(and(eq(referralRequests.status, "pending"), inArray(jobs.company, domains)));
+    // D-393 (a): a sandbox request is invisible to every real count, demand included.
+    .where(and(eq(referralRequests.status, "pending"), inArray(jobs.company, domains), ...(sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)])));
 }
 
 /**
@@ -43,7 +44,7 @@ export async function loadCompanyDemand(companies: readonly DemandCompany[], now
   if (domains.length === 0) return companies.map(company => ({ slug: company.slug, name: company.name, people: 0 }));
   const db = dbOverride ?? await getDb();
   if (!db) throw new CompanyDirectoryUnavailableError();
-  const rows = (await liveRequestsAt(domains, db)) as DemandRow[];
+  const rows = (await liveRequestsAt(domains, db, await sandboxSeekerUserId(db))) as DemandRow[];
   return countDemandPeople(rows, companies, nowMs);
 }
 
@@ -55,6 +56,7 @@ export async function loadCompanyDemand(companies: readonly DemandCompany[], now
 export async function loadUnlistedDemand(ownedDomains: readonly string[], nowMs: number, dbOverride?: Awaited<ReturnType<typeof getDb>>): Promise<Array<{ domain: string; people: number }>> {
   const db = dbOverride ?? await getDb();
   if (!db) throw new CompanyDirectoryUnavailableError();
+  const sandboxSeekerId = await sandboxSeekerUserId(db);
   // No domain filter in SQL: the unowned set is the complement of every company
   // domain, so it is resolved in the pure function where it is also bounded.
   const rows = (await db.select(demandRowColumns)
@@ -62,6 +64,7 @@ export async function loadUnlistedDemand(ownedDomains: readonly string[], nowMs:
     .innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
     .innerJoin(users, eq(users.id, referralRequests.jobSeekerId))
     .leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId))
-    .where(eq(referralRequests.status, "pending"))) as DemandRow[];
+    // D-393 (a): a sandbox request is invisible to every real count, demand included.
+    .where(and(eq(referralRequests.status, "pending"), ...(sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)])))) as DemandRow[];
   return countUnlistedDemand(rows, ownedDomains, nowMs);
 }
