@@ -1,10 +1,10 @@
-import { getTableColumns } from "drizzle-orm";
+import { eq, getTableColumns, isNull } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { askCosts, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
-import { deliverWaitingAsksToReferrer } from "./db";
+import { deliverWaitingAsksToReferrer, prepareReferrerReviewEmailNotifications } from "./db";
 import { createPoolReviewEmail, PoolReviewEmailOriginMissingError } from "./poolReviewEmail";
 
 /*
@@ -49,18 +49,21 @@ function seed(options: { asks?: readonly Row[]; referrerEmail?: string } = {}) {
 
 const grants = () => store.rows(referrerReviewEmailLinks);
 const deliveries = () => store.rows(referralReviewDeliveries);
-/** MySQL fills `createdAt` with DEFAULT CURRENT_TIMESTAMP; the in-memory store does not, so stamp it as the database would. */
-const stampCreatedAt = (at: Date) => { for (const row of deliveries()) if (row.createdAt === null) row.createdAt = at; };
+/** MySQL fills attemptCount (DEFAULT 0) and createdAt (DEFAULT CURRENT_TIMESTAMP) on insert; the in-memory store does not. */
+const applyColumnDefaults = async () => {
+  await store.db.update(referralReviewDeliveries).set({ attemptCount: 0 }).where(isNull(referralReviewDeliveries.attemptCount));
+  await store.db.update(referralReviewDeliveries).set({ createdAt: new Date() }).where(isNull(referralReviewDeliveries.createdAt));
+};
 
+/** The real job over the real prepare/claim/complete; only the provider, the origin and the lease ids are fakes. */
 function job(send = vi.fn(async () => ({ sent: true, reason: "sent" as const })), origin: () => string | undefined = () => ORIGIN) {
   let lease = 0;
-  return { send, run: createPoolReviewEmail({ send, origin, newLeaseOwner: () => `lease-${++lease}` }) };
+  const prepare = async (requestId: number) => { const links = await prepareReferrerReviewEmailNotifications(requestId); await applyColumnDefaults(); return links; };
+  return { send, run: createPoolReviewEmail({ send, origin, prepare, newLeaseOwner: () => `lease-${++lease}` }) };
 }
 async function runAt(at: Date, runner: ReturnType<typeof job>) {
   vi.setSystemTime(at);
-  const output = await runner.run({ nowMs: at.getTime(), windowKey: "2026-11-24T09:00Z" });
-  stampCreatedAt(at);
-  return output;
+  return runner.run({ nowMs: at.getTime(), windowKey: "2026-11-24T09:00Z" });
 }
 
 beforeEach(() => {
@@ -116,7 +119,7 @@ describe("D-384 (3): the hourly pool-review-email job", () => {
     seed({ asks: [waiting(501, SEEKERS[0], 3 * DAY), waiting(502, SEEKERS[1], 2 * DAY), waiting(503, SEEKERS[2], DAY)] });
     expect(await deliverWaitingAsksToReferrer(REFERRER, "acme.com", NOW.getTime())).toEqual({ delivered: 3, held: 0, skipped: 0 });
     // Deliveries carry the same instant here; make the oldest unambiguous, as consecutive hand-offs would.
-    for (const [id, offset] of [[501, 0], [502, 1], [503, 2]] as const) store.rows(referralRequests).find(row => row.id === id)!.coverageVisibleAt = new Date(NOW.getTime() + offset * 60_000);
+    for (const [id, offset] of [[501, 0], [502, 1], [503, 2]] as const) await store.db.update(referralRequests).set({ coverageVisibleAt: new Date(NOW.getTime() + offset * 60_000) }).where(eq(referralRequests.id, id));
     const runner = job();
 
     expect(await runAt(new Date(NOW.getTime() + HOUR), runner)).toEqual({ processed: 1, failed: 0 });
@@ -132,7 +135,7 @@ describe("D-384 (3): the hourly pool-review-email job", () => {
   it("never emails a referrer blocked with the seeker", async () => {
     seed();
     await deliverWaitingAsksToReferrer(REFERRER, "acme.com", NOW.getTime());
-    store.rows(userBlocks).push({ ...full(userBlocks, { id: 91, blockerUserId: SEEKERS[0], blockedUserId: REFERRER }) });
+    await store.db.insert(userBlocks).values(full(userBlocks, { id: 91, blockerUserId: SEEKERS[0], blockedUserId: REFERRER }));
     const runner = job();
     expect(await runAt(new Date(NOW.getTime() + HOUR), runner)).toEqual({ processed: 0, failed: 0 });
     expect(runner.send).not.toHaveBeenCalled();
