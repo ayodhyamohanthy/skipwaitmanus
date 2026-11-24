@@ -56,6 +56,8 @@ import { agentPortalAllowed } from "./agentPortalAccess";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
+import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
+import { notifyColleaguesOfReleasedRequest } from "./poolNudges";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredEventKey, coverageDeliveredNotice, coverageHeldEventKey, coverageHeldNotice, coverageReferrerEventKey, coverageReferrerNotice, coverageWaitExpiredNotice, isAwaitingCoverageActionAllowed, type CoverageDeliveryOutcome, type CoverageHandoffSummary } from "./coverageDelivery";
 import { askInviteActiveRequestKey } from "../shared/askInvites";
@@ -2251,11 +2253,11 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(!isWaiting)await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     // D-022 first look: only the poster is told while their 48 hours run; every
     // other eligible employee is told when the first look lapses (the sweep).
-    // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them).
+    // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them, the link behind POOL_NUDGES_ENABLED).
     const notified=isWaiting?[]:firstLook?[firstLook]:reachable;
     for(const employee of notified){
       await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A referral request from your link is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
-      const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
+      if(await writeReviewGrantTx(tx,{requestId,referrerId:employee.userId,email:employee.email,companyDomain,nowMs:Date.now()}))await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
     // A waiting ask has not gone out and holds no open slot (D-061): the count stays as read. A covered ask
@@ -2267,6 +2269,21 @@ export async function createCompanyReferralRequest(userId: number, input: Create
 const reviewEmailLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 const reviewLinkToken = () => randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "").slice(0, 16);
 
+/**
+ * The one review-grant insert (D-384 (2)), shared by request creation and pool
+ * delivery (deliverWaitingAskTx): a fresh token, the 7-day lifetime and grant
+ * version 1, written only when the referrer's email is at the company's own
+ * domain. Returns whether it wrote a grant. It writes no delivery row: creation
+ * adds its own pending row, and pool delivery leaves the send to the capped
+ * pool-review-email job (server/poolReviewEmail.ts).
+ */
+async function writeReviewGrantTx(tx: Pick<LedgerTx, "insert">, input: { requestId: number; referrerId: number; email: string | null | undefined; companyDomain: string; nowMs: number }): Promise<boolean> {
+  const email = input.email?.trim().toLowerCase() || "";
+  if (!email || email.split("@")[1] !== input.companyDomain) return false;
+  await tx.insert(referrerReviewEmailLinks).values({ referralRequestId: input.requestId, referrerId: input.referrerId, linkToken: reviewLinkToken(), expiresAt: new Date(input.nowMs + reviewEmailLifetimeMs), grantVersion: 1 });
+  return true;
+}
+
 export async function createReferrerReviewEmailLinks(requestId: number, recipients: Array<{ userId: number; email: string | null; companyDomain: string }>) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const links: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
@@ -2274,7 +2291,7 @@ export async function createReferrerReviewEmailLinks(requestId: number, recipien
     const email = recipient.email?.trim().toLowerCase() || "";
     if (!email || email.split("@")[1] !== recipient.companyDomain) continue;
     const existing = (await db.select().from(referrerReviewEmailLinks).where(and(eq(referrerReviewEmailLinks.referralRequestId,requestId),eq(referrerReviewEmailLinks.referrerId,recipient.userId))).limit(1))[0];
-    if (!existing) continue; // grants are created only with the request transaction
+    if (!existing) continue; // grants are written by request creation or pool delivery (writeReviewGrantTx)
     await db.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:recipient.userId,channel:"email",grantVersion:1,status:"pending"}).onDuplicateKeyUpdate({set:{referrerId:recipient.userId}});
     links.push({referrerId:recipient.userId,email,linkToken:existing.linkToken,companyDomain:recipient.companyDomain});
   }
@@ -2349,7 +2366,8 @@ export async function prepareReferrerReviewEmailNotifications(requestId: number)
   const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, waitingForCoverage: referralRequests.waitingForCoverage, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
   const current = request[0]; if (!current || current.status !== "pending") return [];
   // D-061: a waiting or held ask has reached no referrer, so it has no email, Slack or review link to prepare;
-  // delivery (deliverWaitingAskTx) writes the referrer notice and the links the day the ask becomes visible.
+  // delivery (deliverWaitingAskTx) writes the referrer notice the day the ask becomes visible, and its review link
+  // behind POOL_NUDGES_ENABLED (D-384); the pool-review-email job then calls this function for it.
   if (current.waitingForCoverage) return [];
   const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, notifyNewAsk: profiles.notifyNewAsk }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const passes = await db.select({ referrerId: referralRequestPasses.referrerId }).from(referralRequestPasses).where(eq(referralRequestPasses.referralRequestId, requestId));
@@ -2418,6 +2436,7 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
 async function passReferralRequestTx(tx: any, input: { requestId: number; actorUserId: number; companyDomain: string; jobSeekerId: number; reason: string; reasonCode: string | null; operationKey: string; reviewLinkToken?: string; releasedClaim: boolean }) {
   const reasonLabel = passReasonSeekerLabel(input.reasonCode);
   const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: input.actorUserId, action: "pass", operationKey: input.operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== input.actorUserId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: null, referrerMessage: null, firstLookReferrerId: null, firstLookUntil: null }, notification: { userId: input.jobSeekerId, title: `Update on your referral request — ${input.companyDomain}`, body: input.releasedClaim ? `The employee who was reviewing your request can't take it on${reasonLabel ? ` (${reasonLabel})` : ""}. Your ask is open again to other verified employees at ${input.companyDomain}.` : `The employee can't help right now${reasonLabel ? ` (${reasonLabel})` : ""}. Your request stays active for other employees.` }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,input.actorUserId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: input.actorUserId, reason: input.reason, reasonCode: input.reasonCode }).onDuplicateKeyUpdate({ set: { reason: input.reason, reasonCode: input.reasonCode } }); await tx.update(referralDocumentAccessGrants).set({ revokedAt: new Date(), revokeReason: "passed" }).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),eq(referralDocumentAccessGrants.referrerId,input.actorUserId),isNull(referralDocumentAccessGrants.revokedAt))); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,input.actorUserId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,input.actorUserId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,input.actorUserId),eq(referralAvailabilitySlots.status,"allocated"))); } });
+  if (POOL_NUDGES_ENABLED && input.releasedClaim && !result.replayed) await notifyColleaguesOfReleasedRequest(tx, { requestId: input.requestId, companyDomain: input.companyDomain, seekerUserId: input.jobSeekerId, releasingReferrerId: input.actorUserId, revision: result.revision });
   return { ...result, reopened: input.releasedClaim && !result.replayed };
 }
 
@@ -2429,6 +2448,26 @@ export async function consumeReferrerReviewEmailLink(userId: number, linkToken: 
 
 export async function listCompanyReferralInbox(userId: number) {
   return listCompanyReferralInboxByState(userId, "new");
+}
+
+/**
+ * D-174-pool-nudges: how many requests wait in the pool at this referrer's own
+ * verified company. A count only — no seeker data — and only for a verified
+ * employee of that company (D-176: availability is routing, never a browse gate).
+ */
+export async function countWaitingPoolRequestsForReferrer(userId: number): Promise<number> {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return 0;
+  const db = await getDb(); if (!db) return 0;
+  const rows = await db.select({ waiting: count(referralRequests.id) }).from(referralRequests)
+    .innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
+    .where(and(
+      eq(jobs.company, profile.workEmailDomain),
+      eq(referralRequests.status, "pending"),
+      eq(referralRequests.waitingForCoverage, true),
+      isNull(referralRequests.referrerId),
+    ));
+  return Number(rows[0]?.waiting ?? 0);
 }
 
 export type CompanyReferralInboxState = "new" | "saved" | "completed";
@@ -3051,7 +3090,7 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   const hasLiveReservation = invite?.status === "claimed" && invite.reservationExpiresAt !== null && new Date(invite.reservationExpiresAt).getTime() > input.nowMs;
   if (hasLiveReservation && invite.claimedByUserId !== input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   const companyDomain = locked.companyDomain;
-  const referrer = (await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
+  const referrer = (await tx.select({ userId: profiles.userId, email: users.email, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
     .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.referrerId)).limit(1).for("update"))[0];
   if (!referrer) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   if (!isOpenReferrer(referrer, companyDomain, await readAllocatedSlotsForUpdateTx(tx, input.referrerId))) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
@@ -3102,6 +3141,9 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     await tx.insert(operationalActivityLogs).values({ actorUserId: input.referrerId, action: "ask_invite.delivered", outcome: "success", resourceType: "ask_invite", resourceId: String(invite.id), companyDomain: companyDomain.toLowerCase().slice(0, 255), metadata: JSON.stringify({ requestId: input.requestId, linkId: invite.id, outcome: "delivered" }) });
   }
   await tx.insert(referralAvailabilitySlots).values({ referrerId: input.referrerId, companyDomain, referralRequestId: input.requestId, status: "allocated", activeRequestKey: `request:${input.requestId}` });
+  // D-174-pool-nudges part 2 (D-384 (2)): the review grant the email will carry. No delivery row here: the hourly
+  // pool-review-email job creates it within D-060's one-a-day cap. The blocked-pair check above already returned.
+  if (POOL_NUDGES_ENABLED) await writeReviewGrantTx(tx, { requestId: input.requestId, referrerId: input.referrerId, email: referrer.email, companyDomain, nowMs: input.nowMs });
   const deliveredNotice = coverageDeliveredNotice(companyDomain);
   await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "coverage_delivered", refId: input.requestId, title: deliveredNotice.title, body: deliveredNotice.body, eventKey: coverageDeliveredEventKey(input.requestId) }).onDuplicateKeyUpdate({ set: { eventKey: coverageDeliveredEventKey(input.requestId) } });
   const referrerNotice = coverageReferrerNotice(companyDomain);
@@ -3454,7 +3496,8 @@ export async function lapseClaimTx(tx: LedgerTx, requestId: number, nowMs: numbe
   if (nowMs < claimLapseAtMs(claimCreatedAt)) return { lapsed: false };
   const referrerId = current.referrerId;
   const companyDomain = current.companyDomain;
-  await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "claim_lapse", operationKey: `claim-lapse:${claimEventId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't accept or pass within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "claim_lapse", operationKey: `claim-lapse:${claimEventId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't accept or pass within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  if (POOL_NUDGES_ENABLED && !transition.replayed) await notifyColleaguesOfReleasedRequest(tx, { requestId, companyDomain, seekerUserId: current.jobSeekerId, releasingReferrerId: referrerId, revision: transition.revision });
   await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, referrerId)));
   await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.referralRequestId, requestId), eq(referrerReviewEmailLinks.referrerId, referrerId), isNull(referrerReviewEmailLinks.consumedAt)));
   await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated")));
@@ -3476,7 +3519,8 @@ export async function lapseAllocationTx(tx: LedgerTx, requestId: number, nowMs: 
   if (nowMs < allocationLapseAtMs(coverageVisibleAt)) return { lapsed: false };
   const referrerId = current.referrerId;
   const companyDomain = current.companyDomain;
-  await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "allocation_lapse", operationKey: `allocation-lapse:${slotId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't respond within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "allocation_lapse", operationKey: `allocation-lapse:${slotId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't respond within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  if (POOL_NUDGES_ENABLED && !transition.replayed) await notifyColleaguesOfReleasedRequest(tx, { requestId, companyDomain, seekerUserId: current.jobSeekerId, releasingReferrerId: referrerId, revision: transition.revision });
   await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, referrerId)));
   await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.referralRequestId, requestId), eq(referrerReviewEmailLinks.referrerId, referrerId), isNull(referrerReviewEmailLinks.consumedAt)));
   await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated")));
