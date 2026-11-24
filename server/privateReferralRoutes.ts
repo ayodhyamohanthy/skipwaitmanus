@@ -1,7 +1,8 @@
 import { setRetryAfter } from "./retryAfter";
 import { ASK_RECONFIRM_ENABLED, askReconfirmBodySchema, askReconfirmParamsSchema, askReconfirmResponseSchema } from "../shared/askReconfirm";
 import { ASK_RECONFIRM_ERROR } from "../shared/moneyCopy";
-import { AskReconfirmError, reconfirmWaitingAsk } from "./db";
+import { AskReconfirmError, countWaitingPoolRequestsForReferrer as defaultCountWaitingPoolRequestsForReferrer, reconfirmWaitingAsk } from "./db";
+import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
@@ -122,6 +123,8 @@ export type PrivateReferralRouteDeps = {
   reconcileExpiredPendingReferrals?: (userId: number, nowMs?: number) => Promise<{ expiredRequestIds: number[] }>;
   /** The caller's own open-ask slots against the plan cap (shared/openAskSlots.ts). */
   getOpenAskSlots?: (userId: number, nowMs?: number) => Promise<OpenAskSlots>;
+  /** D-174-pool-nudges: requests waiting in the pool at the caller's own verified company (a count only). */
+  countWaitingPoolRequestsForReferrer?: (userId: number) => Promise<number>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown; creditRefunded?: boolean }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
@@ -1249,7 +1252,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // W1: referrers quote the HMAC public ref, never the sequential id.
       return Number.isInteger(id) && id > 0 ? { ...(parsed as Record<string, unknown>), publicRef: publicAskRef(id) } : parsed;
     });
-    return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed };
+    // D-174-pool-nudges part 1: a count only, at the caller's own verified company, and only while the switch is on.
+    // Fail-soft: a count that cannot be read never hides the inbox.
+    let waitingCount: number | undefined;
+    if (POOL_NUDGES_ENABLED) {
+      try { waitingCount = await (deps.countWaitingPoolRequestsForReferrer ?? defaultCountWaitingPoolRequestsForReferrer)(userId); }
+      catch (error) { captureServerError(error, { area: "referrer_inbox_waiting_count" }); }
+    }
+    return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed, ...(waitingCount === undefined ? {} : { waitingCount }) };
   };
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {
