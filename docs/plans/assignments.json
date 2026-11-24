@@ -273,6 +273,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-fetch-retry",
+      "title": "The picker retries its authoritative ref fetch, so one dropped connection stops no session; every attempt failing still stops the run (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-fetch-retry.md",
+      "tier": 2,
+      "lane": "picker-fetch-retry",
+      "branch": "agent/queue/picker-fetch-retry",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskFetchRetry.test.ts",
+        "docs/plans/PICKER-fetch-retry.md"
+      ],
+      "note": "Measured: the authoritative ref fetch is one call and one reset printed STOP authoritative ref refresh failed, exit 2, no work picked, while replaying the same fetch by hand succeeded in 11.7s. Add FETCH_ATTEMPTS=3 and fetchWithRetry over the existing refspecs; every attempt failing keeps the same STOP and exit 2. Red-first scripts/nextTaskFetchRetry.test.ts, mutation-checked (3/3 red without the fix). Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
@@ -607,7 +626,8 @@
         "docs/plans/PRICING-banded-checkout.md",
         "docs/qa/",
         "server/configContract.test.ts",
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        "docs/DECISIONS.md"
       ],
       "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
@@ -6311,16 +6331,16 @@
       "id": "SKIPPY-7",
       "title": "Skippy step 7: opt-in auto-send within the grant's limits, through the step 6 approve function (flag off)",
       "row": "D-201",
-      "packet": null,
+      "packet": "docs/plans/SKIPPY-7-auto-send.md",
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "architect",
-      "syncedTo": "D-308",
+      "status": "todo",
+      "syncedTo": "D-383",
       "dependsOn": [
         "SKIPPY-6"
       ],
-      "note": "Write the packet after SKIPPY-6 lands, from the rulings in docs/plans/SKIPPY-next.md: off by default, turned on only by the seeker in session, the same transaction and limits as an approved send, revoke and pause stop the next call, never buys credits, a daily digest."
+      "note": "Packet written in docs/plans/SKIPPY-7-auto-send.md under D-383. Per-grant autoSend, default off, turned on only by the seeker in session on a confirmation that restates the limits and expiry; needs the send scope. An auto-send calls the SKIPPY-6 decideAssistantApprovalWithAgentSend path with actor agent_auto: same grant row lock, same 20/hour and 60/day caps, same one-referral ceiling, same cost check, same askOrigins label. Revoke and pause stop it inside the transaction. A shortfall parks the row pending for the seeker and never buys referrals. One daily digest per seeker keyed agent-auto-digest:<userId>:<date> (D-060). Additive migration 0126 (seekerAgentGrants.autoSend, assistantApprovals.decidedBy), flag SKIPPIE_AGENT_AUTOSEND_ENABLED off on top of the D-290 gate."
     },
     {
       "id": "D-178-agent-portal-access",
@@ -8665,6 +8685,25 @@
       ],
       "epic": "D-212",
       "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
+    },
+    {
+      "id": "PICKER-vanished-lock-tip",
+      "title": "A lock ref that vanished before the claim falls back to main instead of crashing the pick (D-321 (11), D-324)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-vanished-lock-tip.md",
+      "tier": 2,
+      "lane": "picker-vanished-lock",
+      "branch": "agent/queue/picker-vanished-lock-tip",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskVanishedLock.test.ts",
+        "docs/plans/PICKER-vanished-lock-tip.md"
+      ],
+      "note": "Measured defect: a real --claim died with exit 1 on git rev-parse refs/remotes/origin/agent/architect/skippy-auto-send because the snapshot said the lock existed, another session merged it (#1510) and a concurrent prune dropped the ref before the claim. lockTipWith re-checks the ref and claims from main; the fix claim refuses. Red-first scripts/nextTaskVanishedLock.test.ts 3/3. Lands on green required CI (D-370).",
+      "epic": "D-212"
     }
   ]
 }
