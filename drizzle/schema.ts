@@ -369,10 +369,14 @@ export const assistantApprovals = mysqlTable("assistantApprovals", {
   attachmentIds: text("attachmentIds"),
   idempotencyKey: varchar("idempotencyKey", { length: 64 }),
   executedRequestId: int("executedRequestId"),
+  // SKIPPY-6 (D-290 (1)): set when a seeker's own agent requested the send, so
+  // approve can check that grant's live state and count its sends. Null for
+  // seeker-initiated approvals, which keep today's behaviour.
+  grantId: int("grantId").references(() => seekerAgentGrants.id, { onDelete: "set null" }),
   expiresAt: timestamp("expiresAt").notNull(),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("assistant_approvals_user_idx").on(table.userId), index("assistant_approvals_status_idx").on(table.status), index("assistant_approvals_expiry_idx").on(table.expiresAt)]);
+}, table => [index("assistant_approvals_user_idx").on(table.userId), index("assistant_approvals_status_idx").on(table.status), index("assistant_approvals_expiry_idx").on(table.expiresAt), index("assistant_approvals_grant_idx").on(table.grantId, table.createdAt)]);
 
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
@@ -1338,6 +1342,9 @@ export const seekerAgentGrants = mysqlTable("seekerAgentGrants", {
   keyHash: varchar("keyHash", { length: 64 }).notNull(),
   canLookup: boolean("canLookup").default(true).notNull(),
   canDraft: boolean("canDraft").default(true).notNull(),
+  // SKIPPY-6 (D-290 (1)): off by default. Only lets the agent *request* a send;
+  // the seeker approves every one in their own session.
+  canSend: boolean("canSend").default(false).notNull(),
   maxCreditsPerAsk: int("maxCreditsPerAsk").notNull(),
   maxCreditsPerDay: int("maxCreditsPerDay").notNull(),
   maxCreditsPerWeek: int("maxCreditsPerWeek").notNull(),
@@ -1385,6 +1392,19 @@ export const seekerAgentEvents = mysqlTable("seekerAgentEvents", {
   detail: varchar("detail", { length: 600 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("seeker_agent_events_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_events_user_idx").on(table.userId, table.createdAt)]);
+
+/**
+ * SKIPPY-6 (D-142 label): how an ask was started. `agent` means a seeker's own
+ * AI agent drafted it and the seeker approved the send, so the referrer sees
+ * "Sent via the seeker's assistant". `skippy` is Skippy's own send, for
+ * analytics only. One row per ask; an ask without a row is a normal page send.
+ */
+export const askOrigins = mysqlTable("askOrigins", {
+  referralRequestId: int("referralRequestId").primaryKey().references(() => referralRequests.id, { onDelete: "cascade" }),
+  channel: mysqlEnum("channel", ["skippy", "agent"]).notNull(),
+  agentGrantId: int("agentGrantId").references(() => seekerAgentGrants.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("ask_origins_channel_idx").on(table.channel, table.createdAt)]);
 
 /** D-148 (0107): the level a seeker picks for themselves (1-10). Display only (plans "Who you can ask"); never inferred. */
 export const seekerLevels = mysqlTable("seekerLevels", {

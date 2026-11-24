@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { registerOAuthRoutes, type OAuthRouteDeps } from "./oauthRoutes";
 import { isAllowedRedirectUri, pkceChallengeFor } from "./oauthStore";
 import { AssistantPlanRequiredError } from "./planGates";
+import { createOAuthAgentGrant } from "./seekerAgentDeps";
+import { AGENT_EXPIRY_MAX_DAYS, AGENT_KEY_PATTERN, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
 
 const VERIFIER = "a".repeat(43);
 const CHALLENGE = pkceChallengeFor(VERIFIER);
@@ -165,5 +167,48 @@ describe("static discovery files", () => {
     const res = JSON.parse(readFileSync(new URL("../client/public/.well-known/oauth-protected-resource", import.meta.url), "utf8"));
     expect(auth).toEqual((await request(app).get("/api/oauth/authorization-server")).body);
     expect(res).toEqual((await request(app).get("/api/oauth/protected-resource")).body);
+  });
+});
+
+describe("D-178.grant (D-290 R1): the exchange creates a D-141 grant", () => {
+  const NOW = new Date("2026-11-24T09:00:00.000Z").getTime();
+  const recordingStore = () => {
+    const created: Array<Record<string, unknown>> = [];
+    let next = 71;
+    const store = {
+      createGrant: async (input: Record<string, unknown>) => {
+        created.push(input);
+        return { id: next++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix as string, canLookup: input.canLookup as boolean, canDraft: input.canDraft as boolean, maxCreditsPerAsk: 10, maxCreditsPerDay: 20, maxCreditsPerWeek: 50, maxAsksPerDay: 3, expiresAt: input.expiresAt as Date, revokedAt: null, lastUsedAt: null, createdAt: new Date(NOW) };
+      },
+    };
+    return { created, store };
+  };
+
+  it("exchanges once for one grant with the default scopes, limits and a usable agent key", async () => {
+    const { created, store } = recordingStore();
+    const { app } = setup({ mintToken: async (userId, name) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name, store: store as never, now: () => NOW })).token }) });
+    const approved = await request(app).post("/api/oauth/authorize").send({ client_id: client.clientId, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", decision: "approve" });
+    const code = new URL(approved.body.redirectTo).searchParams.get("code")!;
+    const exchanged = await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER });
+    expect(exchanged.status).toBe(200);
+    expect(exchanged.body.access_token).toMatch(AGENT_KEY_PATTERN);
+    expect(exchanged.body).toMatchObject({ token_type: "Bearer", scope: "read draft" });
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ userId: 7, canLookup: true, canDraft: true });
+    expect((created[0].limits as Record<string, number>)).toEqual(AGENT_LIMIT_DEFAULTS);
+    const days = ((created[0].expiresAt as Date).getTime() - NOW) / 86_400_000;
+    expect(days).toBe(7);
+    expect(days).toBeLessThanOrEqual(AGENT_EXPIRY_MAX_DAYS);
+  });
+
+  it("creates no second grant when the same code is replayed", async () => {
+    const { created, store } = recordingStore();
+    const { app } = setup({ mintToken: async (userId, name) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name, store: store as never, now: () => NOW })).token }) });
+    const approved = await request(app).post("/api/oauth/authorize").send({ client_id: client.clientId, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", decision: "approve" });
+    const code = new URL(approved.body.redirectTo).searchParams.get("code")!;
+    const form = { grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER };
+    expect((await request(app).post("/api/oauth/token").type("form").send(form)).status).toBe(200);
+    expect((await request(app).post("/api/oauth/token").type("form").send(form)).status).toBe(400);
+    expect(created).toHaveLength(1);
   });
 });

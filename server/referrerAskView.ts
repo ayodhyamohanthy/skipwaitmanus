@@ -36,6 +36,8 @@ const detailRowSchema = z.object({
   revision: z.number().int().nullish(),
   candidateName: z.string().nullish(),
   documentAccessActive: z.boolean().optional(),
+  /** SKIPPY-6 (D-142): true only for an ask a seeker's own agent drafted and the seeker approved. */
+  sentViaAssistant: z.boolean().optional(),
   attachments: z.array(attachmentRowSchema),
 });
 
@@ -51,6 +53,8 @@ export type ClaimedAskDetailView = {
   revision: number | null;
   /** Present only once the referrer has accepted. */
   candidateName?: string | null;
+  /** SKIPPY-6 (D-142): present and true only for an agent ask, so /queue can say so. */
+  sentViaAssistant?: boolean;
   attachments: ReferrerAskAttachment[];
 };
 
@@ -76,6 +80,9 @@ export function buildClaimedAskDetailView(row: object): AskViewResult<ClaimedAsk
     attachments: data.attachments.map(attachment => (accepted ? toOpenAskAttachment(attachment, linked) : toLockedAskAttachment(attachment))),
   };
   if (accepted) view.candidateName = data.candidateName ?? null;
+  // Only an agent ask carries the label; a page or Skippy ask sends the same
+  // payload it always did.
+  if (data.sentViaAssistant === true) view.sentViaAssistant = true;
   return { ok: true, view };
 }
 

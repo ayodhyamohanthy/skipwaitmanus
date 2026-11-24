@@ -231,3 +231,14 @@ describe("goal static frame: prerender fetches nothing with every surface on", (
     vi.unstubAllEnvs();
   });
 });
+
+describe("home snapshot trust and matching copy (D-323)", () => {
+  it("contains the new fair rules and none of the retired phrases", () => {
+    const html = landingSnapshot(policyLinks);
+    expect(html).toContain("Nobody can buy a referral. You send a request; a verified employee decides on their own, and can always pass.");
+    expect(html).toContain("The employer's process, every time. Before accepting, a referrer confirms they will refer only through their company's official process and accept nothing in return.");
+    for (const retired of ["your ask", "Review asks", "One referral on skipwait.me", "Your odds"]) {
+      expect(html).not.toContain(retired);
+    }
+  });
+});

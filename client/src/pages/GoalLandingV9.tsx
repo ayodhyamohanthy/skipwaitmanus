@@ -15,7 +15,7 @@ import { GoalLanguageConsent } from "@/components/goal/GoalLanguageConsent";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
 import { COST_COPY, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
-import { GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_HREF, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_QUOTE, GOAL_LANDING_QUOTE_LEAD, GOAL_LANDING_QUOTE_REST, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2_PARTS, goalLandingSteps, goalLandingTrust } from "@shared/landingContent";
+import { GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_COLUMN, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_HREF, GOAL_LANDING_FOOTER_BLURB, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_KICKER, GOAL_LANDING_QUOTE, GOAL_LANDING_QUOTE_LEAD, GOAL_LANDING_QUOTE_REST, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2_PARTS, goalLandingSteps, goalLandingTrust } from "@shared/landingContent";
 
 // Benefit-led copy (owner 17:59:41 phonemsg-01M5F70MEJM3WQEYVW9JZJKP6N
 // "Have outcome benfit oriented wording" + 18:00:59
@@ -96,7 +96,7 @@ export default function GoalLandingV9() {
       {/* Stark white hero, left-aligned (Uber style). No colour here. */}
       <section className="border-b border-g-hairline">
         <div className="mx-auto max-w-[1120px] px-5 pb-16 pt-14 gdesk:px-8 gdesk:pb-24 gdesk:pt-24">
-          <Kicker>Private job referrals</Kicker>
+          <Kicker>{GOAL_LANDING_KICKER}</Kicker>
           <h1 className="mt-5 text-[56px] font-semibold leading-[0.98] tracking-[-0.045em] gdesk:text-[96px]">{GOAL_LANDING_H1}</h1>
           <p className="mt-5 max-w-[520px] text-g-body leading-[1.6] text-g-ink-2">{GOAL_LANDING_HERO_LEAD}</p>
           <SearchCTA />
@@ -133,7 +133,7 @@ export default function GoalLandingV9() {
             <div className="hidden grid-cols-[140px_1fr_1fr] gap-6 pb-3 gdesk:grid" aria-hidden="true">
               <span />
               <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">Mass applying</span>
-              <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">One referral on skipwait.me</span>
+              <span className="font-g-mono text-[11px] uppercase tracking-[0.14em] text-g-ink-3">{GOAL_LANDING_COMPARE_COLUMN}</span>
             </div>
             {GOAL_LANDING_COMPARE_ROWS.map(([label, mass, referral]) => (
               <Reveal key={label} className="border-t border-g-hairline py-5">
@@ -249,7 +249,7 @@ export default function GoalLandingV9() {
         <div className="mx-auto grid max-w-[1120px] gap-10 px-5 py-12 gdesk:grid-cols-[1.4fr_1fr_1fr_1fr] gdesk:px-8 gdesk:py-16">
           <div>
             <img src="/brand/lockup-dark.svg" alt="SkipWait.me" className="h-[22px] w-auto" />
-            <p className="mt-4 max-w-[260px] text-g-small leading-[1.6] opacity-70">A warmer way in. Private job referrals from verified employees. skipwait.me is in beta.</p>
+            <p className="mt-4 max-w-[260px] text-g-small leading-[1.6] opacity-70">{GOAL_LANDING_FOOTER_BLURB}</p>
           </div>
           {FOOTER_COLS.map((col) => (
             <nav key={col.title} aria-label={col.title}>

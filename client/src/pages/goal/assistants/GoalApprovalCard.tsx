@@ -3,7 +3,9 @@ import { GoalButton, GoalNum, GoalStatus } from "@/components/goal";
 import { providerLabel, type AssistantApproval } from "@/components/assistants/format";
 import { NetworkButton, NextStep, Section } from "./AssistantLayout";
 
-type Handlers = { editing: boolean; draftNote: string; working: boolean; actionError: string; onDraftChange(value: string): void; onStartEdit(): void; onSaveEdit(): void; onDecide(decision: "approved" | "declined"): void };
+type Handlers = { editing: boolean; draftNote: string; working: boolean; actionError: string; onDraftChange(value: string): void; onStartEdit(): void; onSaveEdit(): void; onDecide(decision: "approved" | "declined"): void;
+  /** SKIPPY-6: the seeker's resumes and the one this send would attach. */
+  resumes: Array<{ id: number; fileName: string }>; resumeId: number | null; onResumeChange(id: number): void };
 // D-180: the seeker balance is "referrals" in user-facing copy (owner, Oct 23).
 // This local label deliberately forks components/assistants/format.ts creditsLabel:
 // the shared helper still says "credits" for the kit pages, and renaming the shared
@@ -32,9 +34,10 @@ export function GoalApprovalCard({ approval, balance, primary, handlers: h }: { 
   // reaches an available referrer (server/db.ts:1958-1960, D-034); a waiting ask pays
   // nothing and holds no slot (server/db.ts:1917, D-061).
   return <article aria-label={title}>
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><span className="text-g-meta text-g-ink-2">Prepared by {providerLabel(approval.provider)}</span><GoalStatus status={ended ? "expired" : "waiting"} label={ended ? "Approval ended" : "Waiting for your decision"} /></div>
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><span className="text-g-meta text-g-ink-2">Prepared by {approval.agentName ?? providerLabel(approval.provider)}</span><GoalStatus status={ended ? "expired" : "waiting"} label={ended ? "Approval ended" : "Waiting for your decision"} /></div>
     <h2 className="text-g-heading">{title}</h2>
     {approval.role ? <p className="mt-2 text-g-body text-g-ink-2">{approval.role}</p> : null}
+    {approval.kind === "ask_send" && approval.targetRoleUrl ? <p className="mt-2 break-all text-g-meta text-g-ink-2">Job link: <a className="underline" href={approval.targetRoleUrl} target="_blank" rel="noreferrer noopener">{approval.targetRoleUrl}</a></p> : null}
     <Section title="Before you decide">
       {exactCost ? <p className="text-g-label">{referralsLabel(cost)}</p> : null}
       {approval.kind === "credit_spend" && exactCost && balance !== null ? <p className="mt-2 text-g-meta text-g-ink-2"><GoalNum>{balance}</GoalNum> available · <GoalNum>{Math.max(0, balance - cost)}</GoalNum> after this</p> : balance === null ? <p className="mt-2 text-g-meta text-g-ink-2">Balance unavailable. The server checks your balance before acting.</p> : null}
@@ -43,6 +46,10 @@ export function GoalApprovalCard({ approval, balance, primary, handlers: h }: { 
     </Section>
     {approval.kind === "ask_send" && exactCost && cost > 0 ? <p className="mb-5 text-g-meta text-g-ink-2">{referralsLabel(cost)} and 1 open slot are used only when it reaches a referrer. While it waits for one, nothing is charged and no slot is held.</p> : null}
     {approval.kind === "ask_send" ? <Section title="Your note">{h.editing ? <label className="grid gap-2 text-g-label">Referral note<textarea className="min-h-40 w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body" value={h.draftNote} onChange={event => h.onDraftChange(event.target.value)} /></label> : <p className="whitespace-pre-wrap break-words text-g-body">{approval.note || "No note yet. Edit before sending."}</p>}</Section> : null}
+    {approval.kind === "ask_send" && approval.grantId != null ? <Section title="Your resume">
+      {h.resumes.length ? <label className="grid gap-2 text-g-label">Resume attached to this referral<select className="min-h-11 w-full rounded-g-control border border-g-control-edge bg-g-surface p-3 text-g-body" value={h.resumeId ?? ""} onChange={event => h.onResumeChange(Number(event.target.value))}>{h.resumes.map(resume => <option key={resume.id} value={resume.id}>{resume.fileName}</option>)}</select></label> : <p className="text-g-body text-g-ink-2">Add a resume before you approve this send.</p>}
+      <p className="mt-2 text-g-meta text-g-ink-2">The referrer sees your role and note, not your name or resume, until they accept.</p>
+    </Section> : null}
     {h.actionError ? <p role="alert" className="mb-4 text-g-meta">{h.actionError}</p> : null}
     <NextStep>
       <p className="mb-3 text-g-body text-g-ink-2">{h.editing ? "Save your changes before you decide to send." : full ? "No referral can be sent while every slot is in use." : "Review the action and cost. Nothing happens until you approve."}</p>

@@ -176,12 +176,15 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
 - **Waits for:** `D-174-ask-from-job` (`server/db.ts`, `server/privateReferralRoutes.ts`) and, through it, `D-174-job-catalog` (`shared/scheduledJobs.ts`).
 - **Do:** new `server/poolNudges.ts` with `export const POOL_NUDGES_ENABLED = false`. While the switch is off, none of the three parts below runs.
   1. **Waiting count:** `GET /api/company-referrals/inbox` gains `waitingCount`: the number of requests waiting in the pool at the referrer's own verified company. It is a count only, with no seeker data.
-  2. **Review email for pool deliveries:**
+  2. **Review email for pool deliveries (mechanism set by D-384, Nov 24):**
+     - **The grant is written at delivery.** Today `deliverWaitingAskTx` (`server/db.ts`) writes the referrer notice but no `referrerReviewEmailLinks` row, although the create path's comment ("delivery writes them") and `prepareReferrerReviewEmailNotifications` ("delivery ... writes the referrer notice and the links") both say it does. Without that row `claimReferralReviewDelivery` and `createReferrerReviewEmailLinks` return nothing, so no email can send (the DeepSeek V4.1 Flash · 66b7 block). Fix: extract the create path's grant insert (same `reviewLinkToken()`, same `reviewEmailLifetimeMs`, `grantVersion` 1, only when the referrer's email domain is the company domain) into one helper, `writeReviewGrantTx`, and call it from both the create path (behaviour identical) and `deliverWaitingAskTx`, in the delivery transaction, after the slot allocation. The blocked-pair check earlier in `deliverWaitingAskTx` already returns before this point. Write the grant only while the switch is on.
+     - **The delivery transaction writes no `referralReviewDeliveries` row.** The existing `review-delivery-retry` job (`server/reviewDeliveryRetry.ts`) sends any `pending` email row older than 10 minutes, which would bypass the D-060 cap below.
      - Add an hourly job `pool-review-email` (`shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`, `server/scheduledJobsContract.test.ts`).
-     - It looks at requests delivered from the pool in the last 72 hours (`coverageVisibleAt` set, still pending with that referrer) that have no `referralReviewDeliveries` email row for that request and referrer.
-     - For each, it sends the existing review email with the stored `referrerReviewEmailLinks` link, through the existing claim (`claimReferralReviewDelivery`), so a retry sends nothing twice. The origin is `PUBLIC_BASE_URL`.
+     - It looks at requests delivered from the pool in the last 72 hours (`coverageVisibleAt` set, still pending with that referrer, an unconsumed and unexpired grant) that have no `referralReviewDeliveries` email row for that request and referrer.
      - **D-060:** at most one such email per referrer per UTC day. Skip a referrer who already has an email delivery row created that day; the next run picks up the rest. Send oldest first.
+     - For each one it sends, it calls `prepareReferrerReviewEmailNotifications(requestId)`, which re-checks eligibility (pending, assigned referrer, not paused, `notifyNewAsk`, not passed, blocked pairs either way) and writes the `pending` delivery row. It then follows the same claim → `sendReferrerReviewEmail` → `completeReferralReviewDelivery` lease sequence as `reviewDeliveryRetry.ts`, with the origin from `configuredPublicOrigin()` (`PUBLIC_BASE_URL`). No request origin is needed, which answers this row's second stop condition. A missing origin fails the run loudly, as `ReviewDeliveryOriginMissingError` does, and sends nothing. A failed or unknown send is then retried by the existing `review-delivery-retry` job (five attempts, then the owner alert). No new table, no migration.
      - Never email a referrer blocked with the seeker (`server/blockedPairs.ts`).
+     - **Switch location:** `deliverWaitingAskTx` in `server/db.ts` must read the switch, so `POOL_NUDGES_ENABLED` lives in a leaf module both can import without a cycle (`shared/poolNudges.ts`), and `server/poolNudges.ts` re-exports it.
   3. **Released to colleagues:**
      - When a pass or a 48 h allocation lapse (`server/referralTimers.ts`) releases a request, its company's verified colleagues who can now see it get one in-app notice. The referrer who released it does not, and neither does anyone blocked with the seeker.
      - The notice never names the seeker. It is sent once per release event.
@@ -192,9 +195,12 @@ Every row: claim through the picker, red tests first, one commit per step, `pnpm
   - A blocked referrer gets no email and no notice.
   - A lapse notifies colleagues, never by the seeker's name.
   - With the switch off, nothing happens.
-- **Owns:** `server/poolNudges.ts`, `server/poolNudges.test.ts`, `server/db.ts`, `server/privateReferralRoutes.ts`, `server/referralTimers.ts`, `shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`, `server/scheduledJobsContract.test.ts`.
-- **Done when:** tests pass, the D-038 timer and coverage-delivery suites stay green, and the independent review passes. QA turns the switch on.
-- **Stop if:** pool deliveries do not write `referrerReviewEmailLinks` rows, or no existing email sender can send the review link without a request origin.
+  - (D-384) With the switch on, a pool delivery writes exactly one grant and no delivery row for an in-domain referrer; with it off, none. A blocked pair gets no grant. A settled or repeated delivery writes nothing new.
+  - (D-384) The job's send goes through the existing claim; a failure leaves a `failed` row that `review-delivery-retry` picks up; a missing origin fails the run and sends nothing.
+  - (D-384) The create path writes the same grant and delivery rows as before the refactor (existing review-link and review-delivery tests unchanged and green).
+- **Owns:** `shared/poolNudges.ts`, `server/poolNudges.ts`, `server/poolNudges.test.ts`, `server/db.ts`, `server/privateReferralRoutes.ts`, `server/referralTimers.ts`, `shared/scheduledJobs.ts`, `server/scheduledJobRegistry.ts`, `server/scheduledJobsContract.test.ts`.
+- **Done when:** tests pass, the D-038 timer, coverage-delivery and review-delivery-retry suites stay green, and required CI is green (D-370). QA turns the switch on.
+- **Stop if:** a pool delivery reaches a referrer through a path other than `deliverWaitingAskTx`. (The earlier two stop conditions, no review-link row at pool delivery and no sender without a request origin, were met and are resolved by D-384.)
 
 ### 5.10 `D-175-coverage-study` (Tier 3, docs only)
 - **Do:** publish `docs/research/D-175-coverage.md`. Start from §3.11 and the appendix below, and complete it:
@@ -215,7 +221,7 @@ The D-189 packet for `D-174-seeker-journey-build` takes these as its server rows
 
 The D-189 packet also rules the pre-send per-company state against D-176 and adds the row that drops `openToReferrals`/`openCount` from the public payload (§4.6).
 
-`D-174-expiry-clock-removal` adds `reconcileExpiredPendingReferrals` and the client countdowns (§3.10) to its runtime list, waits for `D-174-held-ask-reconfirm`, and goes live only with `ASK_RECONFIRM_ENABLED` on (§4.5).
+`D-174-expiry-clock-removal` adds `reconcileExpiredPendingReferrals` and the client countdowns (§3.10) to its runtime list, waits for `D-174-held-ask-reconfirm`, and goes live only with `ASK_RECONFIRM_ENABLED` on (§4.5). Its own packet is `docs/plans/D-174-expiry-clock-removal.md` (D-385), and its switch is turned on by `D-174-no-expiry-release`.
 
 `D-048-p3-live-review-find` waits for `D-174-seeker-journey-build`, `D-174-fix-post-binding` and `D-176-public-claims`. `D-099-bonus-pages` waits for `D-174-held-ask-reconfirm`, `D-174-sample-job-removal` and `D-174-job-catalog`, because it owns the same migration folder, schema and money-copy files.
 
@@ -245,7 +251,7 @@ The D-189 packet also rules the pre-send per-company state against D-176 and add
 
 ## Status
 
-D-174-pool-nudges: in progress — DeepSeek V4.1 Flash · 66b7 — 2026-11-24 — branch agent/queue/d174-pool-nudges. Parts 1 (inbox `waitingCount`) and 3 (one in-app notice to the company's other verified colleagues when a pass or a 48 h lapse releases a request) are built behind `POOL_NUDGES_ENABLED = false`, red-first. Part 2 (the pool review email) is BLOCKED on this packet's own stop condition: a pool delivery writes no `referrerReviewEmailLinks` row — grants are created only with the request transaction (`createCompanyReferralRequest`, `server/db.ts`) and `deliverWaitingAskTx` writes none — so `claimReferralReviewDelivery` returns undefined and the existing review email cannot send. Ruling needed: create the grant at delivery, or drop part 2. No job registration, no email, no schema, no price or money change.
+D-174-pool-nudges: in progress — Claude Code · 695b (takeover from DeepSeek V4.1 Flash · 66b7, quiet since 2026-11-23T23:07Z) — 2026-11-24 — branch agent/queue/d174-pool-nudges. Parts 1 (inbox `waitingCount`) and 3 (release notice to colleagues) are built by 66b7 behind `POOL_NUDGES_ENABLED = false`, red-first. Part 2 is being built to D-384: the review grant at pool delivery and the hourly `pool-review-email` job. `POOL_NUDGES_ENABLED` stays false.
 
 D-174-ask-from-job: review — Gemini 2.5 Pro · efd5 — 2026-11-23 — branch agent/queue/d174-ask-from-job — [PR #1488](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1488) (auto-merge enabled) — commit 8122933fa — tests: server/askFromJob.test.ts (4/4 passed), shared/companyReferralRequest.test.ts (5/5 passed), server/askQuoteRoute.test.ts (9/9 passed), server/companyReferralSelectedCompany.test.ts (7/7 passed), server/askNoteRoundTrip.test.ts (14/14 passed), client/src/pages/loginRule.test.tsx (9/9 passed), tsc --noEmit (clean), scope-check (5 owned paths).
 
