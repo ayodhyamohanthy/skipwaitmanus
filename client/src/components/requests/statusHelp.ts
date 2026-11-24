@@ -8,6 +8,7 @@
 // requires "localised"; keying by view lets the i18n foundation carry each
 // entry per locale, and the row stops before landing until that ruling and the
 // catalogue's approval are accepted (packet §4.9-4.10).
+import { ASK_NO_EXPIRY_ENABLED } from "@shared/askNoExpiry";
 import { askView } from "./askView";
 
 export const STATUS_HELP_ENABLED = true;
@@ -47,8 +48,10 @@ export type StatusHelpSource = {
 export const STATUS_HELP: Readonly<Record<StatusHelpKey, StatusHelp>> = {
   "waiting:waiting_for_coverage": {
     title: "Waiting for a verified employee",
-    // D-379: the legacy 90-day close still runs (D-363 (4)); D-174-expiry-clock-removal removes the last sentence.
-    body: "No verified employee at this company can see it yet. It stays private while it waits; when one joins, the oldest waiting requests reach them first. If none joins within 90 days, it closes, and you can send it again while you are under your limit.",
+    // D-379 (3): the 90-day sentence is true only while the legacy close runs; D-174 removes it with the clocks.
+    body: ASK_NO_EXPIRY_ENABLED
+      ? "No verified employee at this company can see it yet. It stays private while it waits; when one joins, the oldest waiting requests reach them first."
+      : "No verified employee at this company can see it yet. It stays private while it waits; when one joins, the oldest waiting requests reach them first. If none joins within 90 days, it closes, and you can send it again while you are under your limit.",
   },
   "waiting:available_for_review": {
     title: "With the company's verified employees",
