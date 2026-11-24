@@ -292,6 +292,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-single-flight",
+      "title": "One picker run per clone: a second concurrent run waits instead of starving the machine, and a stale lock is taken over (D-324, D-321 (11))",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-single-flight.md",
+      "tier": 2,
+      "lane": "picker-single-flight",
+      "branch": "agent/queue/picker-single-flight",
+      "status": "todo",
+      "syncedTo": "D-388",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskSingleFlight.test.ts",
+        "docs/plans/PICKER-single-flight.md"
+      ],
+      "note": "Measured: 114 concurrent picker processes, oldest 2h56m, load 624-1006, and two of my own --claim runs took 75m and 17m without finishing; sample shows active JS, so the clone is starved, not deadlocked. Add a per-clone single-flight lock: alive pid refuses with exit 4 and no marker, dead pid or over 30 minutes is taken over, released on every exit path. Red-first scripts/nextTaskSingleFlight.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
@@ -485,7 +504,7 @@
       "tier": 2,
       "lane": "search-work-domain",
       "branch": "agent/queue/search-work-domain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
@@ -496,7 +515,7 @@
         "docs/plans/SEARCH-work-domain.md",
         "docs/plans/assignments.json"
       ],
-      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com.",
+      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com. Landed by PR #1554 on green required CI; live check of /api/companies/search?q=google after the API deploy.",
       "epic": "D-174"
     },
     {
@@ -528,7 +547,7 @@
       "tier": 2,
       "lane": "d174-typeahead-release",
       "branch": "agent/queue/d174-typeahead-release",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [
         "SEARCH-work-domain"
@@ -539,7 +558,7 @@
         "docs/plans/D-174-seeker-journey-build.md",
         "docs/plans/assignments.json"
       ],
-      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390.",
+      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390. Landed by PR #1555 on green required CI; live captures after the Pages deploy.",
       "epic": "D-174"
     },
     {
