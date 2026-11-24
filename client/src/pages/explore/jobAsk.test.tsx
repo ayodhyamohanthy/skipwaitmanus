@@ -41,11 +41,11 @@ vi.mock("@/components/goal", async importOriginal => ({
 }));
 vi.mock("@/components/demand/CompanyDemandLine", () => ({ CompanyDemandLine: () => null }));
 vi.mock("@/lib/companyResponseSignal", () => ({ useCompanyResponseSignal: () => ({ data: undefined }) }));
-vi.mock("./explore/companyJobsApi", async importOriginal => ({
-  ...await importOriginal<typeof import("./explore/companyJobsApi")>(),
+vi.mock("./companyJobsApi", async importOriginal => ({
+  ...await importOriginal<typeof import("./companyJobsApi")>(),
   COMPANY_JOBS_ENABLED: true,
 }));
-vi.mock("./explore/CompanyJobs", () => ({
+vi.mock("./CompanyJobs", () => ({
   CompanyJobs: ({ onPickJob, onPasteJobLink }: { onPickJob?: (job: CatalogJob) => void; onPasteJobLink?: () => void }) => (
     <section aria-label="Jobs from the company careers site">
       <button type="button" onClick={() => onPickJob?.(catalogJob)}>Pick catalog job</button>

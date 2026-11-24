@@ -16,6 +16,8 @@ import {
   GoalTextInput,
 } from "@/components/goal";
 import type { PublicCompany } from "@shared/companies";
+import type { CatalogJob } from "@shared/jobCatalog";
+import { JOB_LEVEL_LABELS } from "@shared/jobLevel";
 import { ADD_CREDITS_HREF, ADD_CREDITS_LABEL, MONEY_SENTENCE, type AskCostLine } from "@shared/moneyCopy";
 import { WHY_ME_MAX } from "@shared/whyMe";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
@@ -57,6 +59,9 @@ export type AskDrawerProps = {
   isPostSelected?: boolean;
   postSelection?: { opportunityId?: number | null } | null;
   onChangeRole?: () => void;
+  /** D-174: whether a careers-site catalog job is selected, showing read-only title/location/level/link and Change job */
+  jobSelection?: CatalogJob | null;
+  onChangeJob?: () => void;
   /** D-132 item 3 (flag VITE_ASK_LEVEL_COST): set when the by-level quote is short; the primary action becomes the top-up. */
   topUp: { shortfall: number; href?: string } | null;
   onTopUp?: (event?: React.MouseEvent) => void;
@@ -134,51 +139,84 @@ export function AskDrawer(props: AskDrawerProps) {
             {!props.signedIn ? <p className="text-pretty text-g-meta text-g-ink">You’ll sign in before it’s sent. We keep your link and reasons.</p> : null}
           </div>
 
-          <GoalField
-            label="Job link"
-            htmlFor={linkId}
-            hint={props.hint && props.hint.tone !== "error" ? { icon: Info, text: props.hint.text, tone: props.hint.tone === "pass" ? "pass" : "muted" } : undefined}
-            error={props.hint?.tone === "error" ? props.hint.text : undefined}
-          >
-            {isPostSelected ? (
-              <div className="flex items-center gap-2">
-                <GoalTextInput
-                  id={linkId}
-                  readOnly
-                  aria-readonly="true"
-                  type="url"
-                  value={props.url}
-                  className="bg-g-surface-sunken text-g-ink-2"
-                />
-                {props.onChangeRole ? (
+          {props.jobSelection ? (
+            <div className="grid gap-2">
+              <div className="rounded-g-control border border-g-hairline bg-g-surface-sunken p-3">
+                <h3 className="break-words text-g-label text-g-ink">{props.jobSelection.title}</h3>
+                <p className="mt-1 break-words text-g-meta text-g-ink-3">
+                  {props.jobSelection.locations.join(" · ") || props.jobSelection.rawLocation || "Location not stated"}
+                </p>
+                <p className="mt-0.5 break-words text-g-meta text-g-ink-3">{JOB_LEVEL_LABELS[props.jobSelection.level]}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={props.jobSelection.applyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-g-meta text-g-ink-2 underline decoration-g-hairline underline-offset-2 hover:text-g-ink"
+                >
+                  {`View posting for ${props.jobSelection.title}`}
+                </a>
+                {props.onChangeJob ? (
                   <GoalButton
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="shrink-0 text-g-meta text-g-ink-2 hover:text-g-ink"
-                    onClick={props.onChangeRole}
+                    onClick={props.onChangeJob}
                   >
-                    Change role
+                    Change job
                   </GoalButton>
                 ) : null}
               </div>
-            ) : (
-              <GoalTextInput
-                id={linkId}
-                autoFocus
-                type="url"
-                inputMode="url"
-                autoCapitalize="none"
-                autoComplete="url"
-                spellCheck={false}
-                placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
-                value={props.url}
-                invalid={props.hint?.tone === "error"}
-                onChange={event => props.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
-                onBlur={props.onUrlBlur}
-              />
-            )}
-          </GoalField>
+            </div>
+          ) : (
+            <GoalField
+              label="Job link"
+              htmlFor={linkId}
+              hint={props.hint && props.hint.tone !== "error" ? { icon: Info, text: props.hint.text, tone: props.hint.tone === "pass" ? "pass" : "muted" } : undefined}
+              error={props.hint?.tone === "error" ? props.hint.text : undefined}
+            >
+              {isPostSelected ? (
+                <div className="flex items-center gap-2">
+                  <GoalTextInput
+                    id={linkId}
+                    readOnly
+                    aria-readonly="true"
+                    type="url"
+                    value={props.url}
+                    className="bg-g-surface-sunken text-g-ink-2"
+                  />
+                  {props.onChangeRole ? (
+                    <GoalButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-g-meta text-g-ink-2 hover:text-g-ink"
+                      onClick={props.onChangeRole}
+                    >
+                      Change role
+                    </GoalButton>
+                  ) : null}
+                </div>
+              ) : (
+                <GoalTextInput
+                  id={linkId}
+                  autoFocus
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoComplete="url"
+                  spellCheck={false}
+                  placeholder={company ? `https://careers.${company.domains[0]}/…` : "Paste the job posting link…"}
+                  value={props.url}
+                  invalid={props.hint?.tone === "error"}
+                  onChange={event => props.onUrlChange(event.target.value, (event.nativeEvent as InputEvent).inputType === "insertFromPaste")}
+                  onBlur={props.onUrlBlur}
+                />
+              )}
+            </GoalField>
+          )}
 
           {/* D-094 item 2 (switch off): what the posting says, under its link. */}
           <JobLinkFromPosting url={props.url} company={company} />

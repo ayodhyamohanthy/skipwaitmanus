@@ -20,7 +20,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
-import type { AskCostQuote } from "@/pages/explore/findModel";
+import type { AcceptedAskCost } from "@shared/acceptedAskCost";
+
+export type AskCostQuote = {
+  cost: number;
+  totalAvailable: number;
+  shortfall: number;
+  level?: number;
+  coverageStatus?: "covered" | "waiting_for_company_coverage";
+  acceptedCost?: AcceptedAskCost;
+};
+
+export type UseAskQuoteOptions = {
+  catalogJobId?: number;
+  opportunityId?: number;
+};
 
 export type AskQuoteState =
   | { status: "off" }
@@ -28,30 +42,51 @@ export type AskQuoteState =
   | { status: "error" }
   | { status: "ready"; quote: AskCostQuote };
 
-export function useAskQuote(url: string, enabled: boolean): AskQuoteState {
+export function useAskQuote(url: string, enabled: boolean, options?: UseAskQuoteOptions): AskQuoteState {
   const { isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const trimmed = url.trim();
-  const quotable = enabled && isSignedIn && isValidTargetRoleUrl(trimmed);
+  const catalogJobId = options?.catalogJobId;
+  const opportunityId = options?.opportunityId;
+  const hasTarget = Boolean(catalogJobId || opportunityId || (trimmed && isValidTargetRoleUrl(trimmed)));
+  const quotable = enabled && isSignedIn && hasTarget;
   // Editing inside a still-valid link must not fire a fetch per keystroke.
   const [target, setTarget] = useState(trimmed);
   useEffect(() => {
     const timer = setTimeout(() => setTarget(trimmed), 300);
     return () => clearTimeout(timer);
   }, [trimmed]);
-  const active = quotable && target === trimmed;
+  const active = Boolean(quotable && (catalogJobId || opportunityId || target === trimmed));
   const query = useQuery({
-    queryKey: ["ask-quote", userId ?? null, target],
+    queryKey: ["ask-quote", userId ?? null, target, catalogJobId ?? null, opportunityId ?? null],
     enabled: active,
     retry: 1,
     staleTime: 30_000,
     queryFn: async (): Promise<AskCostQuote | null> => {
       const token = await fetchToken();
-      const response = await fetch(`/api/company-referrals/quote?url=${encodeURIComponent(target)}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const params = new URLSearchParams();
+      if (catalogJobId) params.set("catalogJobId", String(catalogJobId));
+      if (opportunityId) params.set("opportunityId", String(opportunityId));
+      if (target) params.set("url", target);
+      const response = await fetch(`/api/company-referrals/quote?${params.toString()}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!response.ok) return null;
-      const payload = await response.json() as { cost?: unknown; totalAvailable?: unknown; shortfall?: unknown };
+      const payload = await response.json() as {
+        cost?: unknown;
+        totalAvailable?: unknown;
+        shortfall?: unknown;
+        level?: unknown;
+        coverageStatus?: unknown;
+        acceptedCost?: unknown;
+      };
       return typeof payload.cost === "number" && typeof payload.totalAvailable === "number" && typeof payload.shortfall === "number"
-        ? { cost: payload.cost, totalAvailable: payload.totalAvailable, shortfall: payload.shortfall }
+        ? {
+            cost: payload.cost,
+            totalAvailable: payload.totalAvailable,
+            shortfall: payload.shortfall,
+            ...(typeof payload.level === "number" ? { level: payload.level } : {}),
+            ...(typeof payload.coverageStatus === "string" ? { coverageStatus: payload.coverageStatus as "covered" | "waiting_for_company_coverage" } : {}),
+            ...(payload.acceptedCost ? { acceptedCost: payload.acceptedCost as AcceptedAskCost } : {}),
+          }
         : null;
     },
   });
