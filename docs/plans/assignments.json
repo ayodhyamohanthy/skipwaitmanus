@@ -456,9 +456,11 @@
         "scripts/nextTaskCore.mjs",
         "scripts/nextTask.test.ts",
         "scripts/nextTaskTier1Text.test.ts",
-        "docs/plans/PICKER-tier1-wording.md"
+        "scripts/nextTaskReviewWording.test.ts",
+        "docs/plans/PICKER-tier1-wording.md",
+        "docs/DELEGATION.md"
       ],
-      "note": "Technical correction implementing D-370 (registered with D-389). scripts/nextTaskText.mjs still prints for Tier 1: open a DRAFT pull request ... hands the review to a different session. Builders overrode it by instruction on Nov 24. Shares picker files with PICKER-session-worktree and HYGIENE-picker-bootstrap (D-314).",
+      "note": "Technical correction implementing D-370 (registered with D-389). scripts/nextTaskText.mjs still prints for Tier 1: open a DRAFT pull request ... hands the review to a different session. Builders overrode it by instruction on Nov 24. Shares picker files with PICKER-session-worktree and HYGIENE-picker-bootstrap (D-314). Owns gained nextTaskReviewWording.test.ts and docs/DELEGATION.md on Nov 24: both pin the superseded draft-and-wait wording and must move with the correction.",
       "epic": "D-212"
     },
     {
