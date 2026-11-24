@@ -192,7 +192,7 @@ export async function cancelTestSubscription(credentials: Credentials, subscript
 const FIELD_SELECTORS = {
   number: ['input[name="card[number]"]', "#card_number", "#card-number", 'input[autocomplete="cc-number"]', 'input[name="card_number"]', 'input[name="number"]', 'input[name*="number"]'],
   expiry: ['input[name="card[expiry_date]"]', "#card_expiry", "#card-expiry", 'input[autocomplete="cc-exp"]', 'input[name="expiry"]', 'input[name*="expiry"]'],
-  cvv: ['input[name="card[cvv]"]', "#card_cvv", "#card-cvc", 'input[autocomplete="cc-csc"]', 'input[name="cvv"]', 'input[name*="cvv"]'],
+  cvv: ['input[name="card[cvv]"]', "#card_cvv", "#card-cvc", "#card-cvv", 'input[autocomplete="cc-csc"]', 'input[name="cvv"]', 'input[name*="cvv"]'],
   name: ['input[name="card[first_name]"]', "#card_first_name", 'input[name="card_holder_name"]', 'input[name*="first_name"]'],
 } as const;
 
@@ -269,6 +269,8 @@ export async function payHostedPage(deps: CardRunDeps, checkoutUrl: string, card
       // The card fields live inside Chargebee's payment component iframe; fall back to the page when it is inline.
       await page.locator("#cb-payment-component").waitFor({ state: "attached", timeout: 30_000 }).catch(() => undefined);
       const paymentFrame = page.frameLocator("#cb-payment-component");
+      // The component is a client-rendered app of its own: wait for its inputs before deciding where the fields are.
+      await paymentFrame.locator("input").first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
       const root: import("playwright").Page | import("playwright").FrameLocator =
         (await paymentFrame.locator("input").first().count().catch(() => 0)) > 0 ? paymentFrame : page;
       await root.locator(ALL_FIELD_SELECTORS).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
