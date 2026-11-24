@@ -543,6 +543,19 @@ const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) 
 const tip = name => git("rev-parse", originRef(name));
 const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
 
+/**
+ * PICKER-claim-stale-ref (D-324, D-321 (11)): a marker's parent is read from the refs at write time,
+ * never from the pick's snapshot. The snapshot is taken before the run's GitHub reads, and another
+ * session's merge can delete the branch on origin in between: PR #1510 merged and its
+ * `agent/architect/skippy-auto-send` lock was deleted while a claim was still deciding, so `tip()`
+ * threw `git rev-parse` status 128 and the run died with a stack trace instead of re-picking.
+ * A lock that is gone is a fresh claim from main; a work branch that is gone makes the pick stale.
+ */
+export function claimParentOf(name, { onOrigin, tip, origin, required = false }) {
+  if (onOrigin(name)) return tip(name);
+  return required ? null : origin();
+}
+
 /** Other tasks' empty reports do not change this task's report/deduplication inputs. */
 function reportParentFor(task) {
   const previous = decisionRefs.refs.get(REPORTS);
@@ -746,25 +759,43 @@ function claim(pick, who, branches, provenanceBody) {
   if (MODEL_ROUTES_ENFORCED && !provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
   const origin = () => git("rev-parse", "origin/main");
   const scope = scopeOfPick(pick);
+  // PICKER-claim-stale-ref: the parent and the marker verb come from the refs now, not from the snapshot.
+  const parentOf = (name, required = false) => claimParentOf(name, { onOrigin, tip, origin, required });
   switch (pick.kind) {
     case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody, scope));
     case "takeover":
-    case "green": return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
+    case "green": {
+      const parent = parentOf(pick.work, true);
+      return parent !== null && Boolean(pushMarker(pick.work, parent, markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
+    }
     case "land": {
+      // Resolve every parent before the first write, so a stale pick never leaves a half-taken landing slot.
+      const lockParent = pick.tier1 ? parentOf(pick.lock, true) : null;
+      const workParent = pick.tier1 ? null : parentOf(pick.work, true);
+      if (pick.tier1 ? lockParent === null : workParent === null) return false;
       const parent = onOrigin(LAND_SLOT) ? tip(LAND_SLOT) : git("rev-parse", "origin/main");
       const tookSlot = pushMarker(LAND_SLOT, parent, markerSubject("Land claim", pick.task.id, who), provenanceBody, scope);
       if (!tookSlot) return false;
       if (pick.tier1) {
-        return Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Land claim", pick.task.id, who), provenanceBody, scope));
+        return Boolean(pushMarker(pick.lock, lockParent, markerSubject("Land claim", pick.task.id, who), provenanceBody, scope));
       }
-      return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
+      return Boolean(pushMarker(pick.work, workParent, markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
     }
-    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
+    case "unblock": return Boolean(pushMarker(pick.lock, parentOf(pick.lock), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
     case "architect":
-    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
-    case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who), undefined, scope));
-    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
-    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
+    case "resync": {
+      const lockOnOrigin = onOrigin(pick.lock);
+      return Boolean(pushMarker(pick.lock, parentOf(pick.lock), markerSubject(lockOnOrigin ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
+    }
+    case "fix-main": {
+      const parent = pick.parent ? parentOf(pick.parent, true) : origin();
+      return parent !== null && Boolean(pushMarker(pick.lock, parent, markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who), undefined, scope));
+    }
+    case "review": return Boolean(pushMarker(pick.lock, parentOf(pick.lock), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
+    case "fix": {
+      const parent = parentOf(pick.lock, true);
+      return parent !== null && Boolean(pushMarker(pick.lock, parent, markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
+    }
     case "continue": return keepClaim(pick, who, branches, provenanceBody);
     default: return false;
   }

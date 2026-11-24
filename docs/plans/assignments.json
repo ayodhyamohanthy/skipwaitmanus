@@ -292,6 +292,25 @@
       "epic": "D-212"
     },
     {
+      "id": "PICKER-claim-stale-ref",
+      "title": "A claim whose lock or work branch was deleted on origin after the snapshot re-picks instead of crashing: marker parents are read from the refs at write time (D-324, D-321 (11), D-082)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-claim-stale-ref.md",
+      "tier": 2,
+      "lane": "picker-claim-stale-ref",
+      "branch": "agent/queue/picker-claim-stale-ref",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskClaimParent.test.ts",
+        "docs/plans/PICKER-claim-stale-ref.md"
+      ],
+      "note": "Measured 2026-11-24: PR #1510 merged and its agent/architect/skippy-auto-send lock was deleted on origin while a --claim was still deciding, so claim() called tip() on a ref that no longer existed and the run died with git rev-parse status 128 and a stack trace (exit 1) instead of re-picking. Read every marker parent from the refs at write time: a lock gone is a fresh claim from main, a work branch gone makes the pick stale (return false, re-pick), and the land case resolves both parents before it takes the landing slot. Red-first scripts/nextTaskClaimParent.test.ts. Lands on green required CI (D-370).",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-clone-guard",
       "title": "One command keeps any clone and GitHub in sync: committed branch work is pushed to its own branch, main fast-forwards, merged branches are safely deleted, uncommitted work is reported and never touched (D-373, D-205)",
       "row": "D-212",
