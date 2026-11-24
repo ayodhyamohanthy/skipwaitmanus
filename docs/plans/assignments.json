@@ -2050,8 +2050,8 @@
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium-repair",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2079,8 +2079,8 @@
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
