@@ -7028,7 +7028,7 @@
       "tier": 1,
       "lane": "ops-check",
       "branch": "agent/queue/rel-ops-invariants-first-run",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-383",
       "dependsOn": [],
       "note": "D-373 (6): the build landed in PR #1491 (merge e69c73b0d, all required CI green). Remaining acceptance only: after the API deploy, confirm the first scheduled `daily-ops-check` run shows as succeeded through `GET /api/admin/jobs` and record the run evidence in the packet. No runtime change is expected; do not rebuild the job.",
@@ -8557,7 +8557,7 @@
       "tier": 1,
       "lane": "d178-read",
       "branch": "agent/queue/d178-read",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-395",
       "epic": "D-178",
       "owns": [
