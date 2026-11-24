@@ -8645,6 +8645,27 @@
       ],
       "epic": "D-212",
       "note": "D-372 one-task bootstrap exception only: actual author GPT-6.1 Sol · 8817, branch agent/queue/picker-report-append-snapshot-8817, initial code base751a9a1ef. Publish the packet/author/base binding before source dispatch; preserve an intervening ordinary claim and never fabricate a marker. Keep all current guards and normal protected PR/required CI. #1421 remains; this follows the measured unrelated report-log append conflict. Append this registration without reordering any existing work. No product/money/flag, generic claim bypass, workflow/settings or spending change."
+    },
+    {
+      "id": "PICKER-claim-race-reread",
+      "title": "A claim that loses the race for its picked task re-picks inside the bounded claim loop instead of spending the three snapshot rereads",
+      "row": "D-324",
+      "packet": "docs/plans/PICKER-claim-race-reread.md",
+      "epic": "D-212",
+      "tier": 2,
+      "lane": "picker-claim-race",
+      "branch": "agent/queue/picker-claim-race-reread",
+      "status": "todo",
+      "syncedTo": "D-383",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "docs/plans/PICKER-claim-race-reread.md",
+        "docs/plans/PICKER-snapshot-scope.md",
+        "AGENTS.md"
+      ],
+      "note": "D-324/D-321 (11) same-day dead-end fix, measured 2026-11-24 under 5+ concurrent claims. Red-first test plus fix in one commit; required CI on the pull request head is the landing gate. No product, money, flag, workflow, settings or spending change."
     }
   ]
 }
