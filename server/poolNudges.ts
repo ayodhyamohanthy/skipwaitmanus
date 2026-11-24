@@ -7,6 +7,7 @@
 // server/poolReviewEmail.ts.
 import { and, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { canonicalPeople, notifications, profiles, referralRequestPasses, users } from "../drizzle/schema";
+import { isSandboxSeeker } from "../shared/sandboxRequests";
 import { blockedCounterpartsFailOpen } from "./blockedPairs";
 import type { LedgerTx } from "./creditLedger";
 
@@ -37,6 +38,10 @@ export type PoolReleaseNoticeInput = {
 export async function notifyColleaguesOfReleasedRequest(tx: Pick<LedgerTx, "select" | "insert">, input: PoolReleaseNoticeInput): Promise<number> {
   const companyDomain = input.companyDomain.trim().toLowerCase();
   if (!companyDomain) return 0;
+  // D-393 (a): a sandbox request reaches no real person, so a release nudges nobody. The demo referrer is the only
+  // referrer it may reach, and it is the releasing referrer here.
+  const seekerEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, input.seekerUserId)).limit(1))[0]?.email;
+  if (isSandboxSeeker(seekerEmail)) return 0;
   const colleagues = await tx.select({ userId: profiles.userId }).from(profiles)
     .innerJoin(users, eq(users.id, profiles.userId))
     .leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId))
