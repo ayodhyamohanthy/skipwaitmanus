@@ -476,6 +476,131 @@
       "epic": "D-212"
     },
     {
+      "id": "SEARCH-work-domain",
+      "title": "A discovered company carries the domain its employees work email uses: about.google resolves to google.com, corporate subdomains to their parent (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/SEARCH-work-domain.md",
+      "tier": 2,
+      "lane": "search-work-domain",
+      "branch": "agent/queue/search-work-domain",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [],
+      "owns": [
+        "server/companyDiscovery.ts",
+        "server/companyDiscovery.test.ts",
+        "server/companyWorkDomain.ts",
+        "server/companyWorkDomain.test.ts",
+        "docs/plans/SEARCH-work-domain.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com.",
+      "epic": "D-174"
+    },
+    {
+      "id": "SEARCH-job-sources",
+      "title": "Verified public Greenhouse, Ashby and Lever boards for the listed companies, each with its evidence page, so the company jobs list shows real jobs (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/SEARCH-job-sources.md",
+      "tier": 2,
+      "lane": "search-job-sources",
+      "branch": "agent/queue/search-job-sources",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [],
+      "owns": [
+        "server/jobSources/**",
+        "shared/jobSourceSeed.ts",
+        "shared/jobSourceSeed.test.ts",
+        "docs/plans/SEARCH-job-sources.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Owner, Nov 24 (D-394): push company job search live. Production has no companyJobSources row (stripe jobs: completeness unavailable). Free public endpoints only.",
+      "epic": "D-174"
+    },
+    {
+      "id": "D-174-seeker-journey-build.typeahead-release",
+      "title": "Company search-as-you-type with worldwide discovery goes live: VITE_COMPANY_TYPEAHEAD=true in the Pages build (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 2,
+      "lane": "d174-typeahead-release",
+      "branch": "agent/queue/d174-typeahead-release",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [
+        "SEARCH-work-domain"
+      ],
+      "owns": [
+        ".github/workflows/deploy-pages.yml",
+        "scripts/checkDeployTriggers.test.ts",
+        "docs/plans/D-174-seeker-journey-build.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "D-394 (owner, Nov 24): the typeahead ships first, after SEARCH-work-domain, in its own pull request; the parent release row keeps the jobs list and catalog switches. Live proof: type a company and a worldwide company (google resolves to google.com) at 1280 and 390.",
+      "epic": "D-174"
+    },
+    {
+      "id": "D-174-seeker-journey-build",
+      "title": "Release the D-174 seeker journey: switch on company typeahead and the careers-site jobs list after QA, review and the CEO's sign-off",
+      "row": "D-174",
+      "packet": "docs/plans/D-174-seeker-journey-build.md",
+      "tier": 1,
+      "lane": "d174-journey",
+      "branch": "agent/queue/d174-seeker-journey",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [
+        "D-166-journey-decisions-sync",
+        "D-174-seeker-journey-build.door-neutral",
+        "D-174-seeker-journey-build.composer-neutral",
+        "D-174-seeker-journey-build.public-payload",
+        "D-174-seeker-journey-build.search",
+        "D-174-seeker-journey-build.jobs-list",
+        "D-174-seeker-journey-build.job-ask",
+        "D-174-company-search",
+        "D-174-ask-from-job",
+        "SEARCH-work-domain",
+        "SEARCH-job-sources"
+      ],
+      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release; that move also changes the computed role from CDO to CTO (scripts/nextTaskCore.mjs ROLE_BY_LANE). D-394 (owner, Nov 24): push search live. The owner word is the sign-off this row waited for. Release = VITE_COMPANY_TYPEAHEAD=true in the Pages build (may ship first, after SEARCH-work-domain, in its own pull request), then COMPANY_JOBS_ENABLED and JOB_CATALOG_ENABLED true once SEARCH-job-sources has verified sources (supersedes packet 6.7 do not touch JOB_CATALOG_ENABLED). Live proof: captures at 1280 and 390 of type a company, pick it, see its jobs, ask.",
+      "epic": "D-174",
+      "owns": [
+        "client/src/pages/explore/useCompanySearch.ts (switch only)",
+        "client/src/pages/explore/companyJobsApi.ts (switch only)",
+        ".github/workflows/deploy-pages.yml",
+        "shared/jobCatalog.ts (switch only)",
+        "docs/plans/D-174-seeker-journey-build.md",
+        "docs/plans/assignments.json"
+      ]
+    },
+    {
+      "id": "SEARCH-universal",
+      "title": "One search box takes a job title, a job link, a company name or a website and answers with careers job links, referrer presence, Apply on the careers site and Ask for a referral (D-394)",
+      "row": "D-174",
+      "packet": "docs/plans/SEARCH-universal.md",
+      "tier": 2,
+      "lane": "search-universal",
+      "branch": "agent/queue/search-universal",
+      "status": "todo",
+      "syncedTo": "D-394",
+      "dependsOn": [
+        "D-174-seeker-journey-build"
+      ],
+      "owns": [
+        "server/searchRoutes.ts",
+        "server/search.ts",
+        "server/search.test.ts",
+        "shared/search.ts",
+        "client/src/pages/Explore.tsx",
+        "client/src/pages/explore/**",
+        "docs/plans/SEARCH-universal.md",
+        "docs/plans/assignments.json"
+      ],
+      "note": "Owner, Nov 24 (D-394): let users search by job title, url, company name and get career job links. D-360 direction becomes built work.",
+      "epic": "D-174"
+    },
+    {
       "id": "QA-sandbox-requests",
       "title": "The demo accounts test any company and any referral with no limits, in a sandbox: every demo request reaches only the demo referrer and no real person (D-393)",
       "row": "D-212",
@@ -8196,34 +8321,6 @@
       "dependsOn": [],
       "note": "Owner's word needed for each (account settings). Nothing to build.",
       "epic": "D-212"
-    },
-    {
-      "id": "D-174-seeker-journey-build",
-      "title": "Release the D-174 seeker journey: switch on company typeahead and the careers-site jobs list after QA, review and the CEO's sign-off",
-      "row": "D-174",
-      "packet": "docs/plans/D-174-seeker-journey-build.md",
-      "tier": 1,
-      "lane": "d174-journey",
-      "branch": "agent/queue/d174-seeker-journey",
-      "status": "todo",
-      "syncedTo": "D-281",
-      "dependsOn": [
-        "D-166-journey-decisions-sync",
-        "D-174-seeker-journey-build.door-neutral",
-        "D-174-seeker-journey-build.composer-neutral",
-        "D-174-seeker-journey-build.public-payload",
-        "D-174-seeker-journey-build.search",
-        "D-174-seeker-journey-build.jobs-list",
-        "D-174-seeker-journey-build.job-ask",
-        "D-174-company-search",
-        "D-174-ask-from-job"
-      ],
-      "note": "Builds D-174 (merged in #601; user instruction phonemsg-01M5MZZWSQ7DY7WGZSYGA97YY2, Oct 23 23:52 IST): seekers type a company name, see its jobs, ask, and the ask routes into the company pool - the existing D-061/D-062 waiting queue, no new queue. Company coverage follows the D-175 feasibility study only: free and legal sources, no fake jobs, no coverage claims without proof, no paid data, no account-risk scraping; D-170 verified-sources-only stands until the study reports. Tracked under the parent journey todo; research seat reports separately. D-189: #612 built the first slice (company door: pick a posted role, ask in place, filter roles) on the old branch name, which made the picker read this row done. Write the packet for what remains after #612: the journey from company search to pool routing, D-176's post-save line (reached verified employees, or waiting in the company's pool), linkless posts (D-177), seniority filtering (no data yet), and how the pre-send per-company state in the drawer and the composer squares with D-176. Packet written Nov 1 (docs/plans/D-174-seeker-journey-build.md): this row is the D-223 release row of six pieces (door-neutral, composer-neutral, public-payload, search, jobs-list, job-ask); it flips COMPANY_TYPEAHEAD_ENABLED and COMPANY_JOBS_ENABLED only, never JOB_CATALOG_ENABLED. Lane moved off d048-foundation so unrelated holds there do not hold the release; that move also changes the computed role from CDO to CTO (scripts/nextTaskCore.mjs ROLE_BY_LANE).",
-      "epic": "D-174",
-      "owns": [
-        "client/src/pages/explore/useCompanySearch.ts (switch only)",
-        "client/src/pages/explore/companyJobsApi.ts (switch only)"
-      ]
     },
     {
       "id": "D-174-seeker-journey-build.door-neutral",
