@@ -55,3 +55,28 @@ opens the same company for the demo seeker.
 ## Status
 
 - ADMIN-support-view: in progress — DeepSeek V4.1 Flash · 7d4d — 2026-11-24 — branch agent/queue/admin-support-view
+
+### Build notes (DeepSeek V4.1 Flash · 7d4d, 2026-11-24)
+
+- **Routes.** `GET /api/admin/users/:userId/support` and `GET /api/admin/support/signals`, both admin-role only,
+  `private, no-store`, logged as `admin.support_viewed` / `admin.support_signals_viewed`. Read-only: no route
+  edits a person's data, signs in as them or opens a money path.
+- **Files.** `shared/adminSupport.ts` (contract, the plain-words cause table, the request-state words),
+  `server/adminSupport.ts` (assembly over injected readers + the database readers), `server/adminSupportRoutes.ts`,
+  `client/src/pages/goal/admin/GoalAdminSupport.tsx` (the page), `client/src/pages/goal/admin/adminSupportData.ts`
+  (fetch + parse), `client/src/pages/goal/admin/AdminSupportSignals.tsx` (the `/admin` block), `client/src/App.tsx`
+  (the route). Out-of-`owns` notices under D-370: `server/privateReferralRoutes.ts` (one registration line),
+  `client/src/pages/goal/admin-people/GoalAdminUsers.tsx` (one link from the people directory).
+- **Scoping.** MySQL has no row-level security, so every reader carries its own ownership predicate
+  (`users.id`, `tokenBalances.userId`, `referralRequests.jobSeekerId`, `operationalActivityLogs.actorUserId`,
+  `userBlocks.blockerUserId|blockedUserId`). The page never renders a second account.
+- **Item 4, "Try this in the sandbox", is built but off.** `SANDBOX_ASKS_AVAILABLE` in `shared/adminSupport.ts`
+  is `false`: the sandbox itself is `QA-sandbox-requests` (D-393 (3)(a)), and until that row lands a demo-seeker
+  send would reach a real company's real employees. The control renders disabled with that plain reason; the
+  row that lands the sandbox flips the constant.
+- **Item 3, client errors.** The activity log holds no `client.*` rows today, so the count is the activity log's
+  own (0) and the label says Sentry holds the full feed. No Sentry credential is read by this row (D-031).
+- **Tests.** `server/adminSupport.test.ts` 34/34 (red first: the suite cannot import without the new modules);
+  `client/src/pages/goal/admin/adminSupport.goal.test.tsx` 8/8 including `assertGoalPage`.
+- **Not yet done.** Captures at 1280 and 390 with synthetic data, and the deployed exact-SHA acceptance, both
+  of which need the release.
