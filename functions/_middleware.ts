@@ -106,6 +106,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/admin/catalog-sync",
   "/admin/flow-health",
   "/admin/partners",
+  "/admin/bonuses",
   "/admin/payments",
   "/admin/privacy-requests",
   "/admin/schema",
