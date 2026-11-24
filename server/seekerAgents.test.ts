@@ -53,7 +53,7 @@ const companies: PublicCompany[] = [
 ] as never;
 
 function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number; allowed?: ReadonlySet<number> } = {}) {
-  const { store, grants, drafts, events } = fakeStore();
+  const { store, grants, drafts, events, sendRequests } = fakeStore();
   const app = express(); app.use(express.json());
   registerSeekerAgentRoutes(app, {
     enabled: () => opts.enabled ?? true,

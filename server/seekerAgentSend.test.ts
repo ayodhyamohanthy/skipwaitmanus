@@ -11,6 +11,7 @@ import { askOrigins, assistantApprovals, seekerAgentControls, seekerAgentEvents,
 import { AGENT_SEND_DAILY_CAP } from "../shared/seekerAgents";
 import { buildClaimedAskDetailView } from "./referrerAskView";
 import { registerSeekerAgentRoutes } from "./seekerAgentRoutes";
+import { decideAssistantApprovalWithAgentSend, type AgentSendApprovalDeps } from "./agentSendApproval";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -98,12 +99,9 @@ function fixtureDatabase() {
       const input = (Array.isArray(row) ? row[0] : row) as Row;
       const rows = rowsFor(table);
       const id = rows.length + 1;
-      const write = () => {
-        rows.push({ id, createdAt: new Date(), ...structuredClone(input) });
-        return [{ affectedRows: 1, insertId: id }];
-      };
+      rows.push({ id, createdAt: new Date(), ...structuredClone(input) });
       const result = Promise.resolve([{ affectedRows: 1, insertId: id }]);
-      return Object.assign(result, { onDuplicateKeyUpdate: async () => { write(); return [{ affectedRows: 1 }]; } });
+      return Object.assign(result, { onDuplicateKeyUpdate: async () => [{ affectedRows: 1 }] });
     },
   });
   const db = { select, update, insert, transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(db) };
@@ -132,21 +130,20 @@ beforeEach(() => {
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+afterEach(() => { vi.unstubAllEnvs(); });
 
 async function loadApprover() {
-  const module = await import("./agentSendApproval");
   const created: Array<{ userId: number; input: Record<string, unknown> }> = [];
-  const deps = {
-    getDb: async () => fixtureDatabase(),
+  const deps: AgentSendApprovalDeps = {
+    getDb: async () => fixtureDatabase() as never,
     quoteCost: () => ({ level: 1, cost: 1 }),
     createRequest: async (userId: number, input: Record<string, unknown>) => { created.push({ userId, input }); return { requestId: 501 }; },
     listCompanies: async () => ({ companies: [{ slug: "wipro", name: "Wipro", domains: ["wipro.com"] }] }),
     listResumes: async () => [{ id: 41, fileName: "cv.pdf", createdAt: NOW }],
     decidePlain: async () => ({ id: 21, status: "declined" as const }),
     now: () => NOW.getTime(),
-  };
-  return { module, deps, created };
+  } as never;
+  return { module: { decideAssistantApprovalWithAgentSend }, deps, created };
 }
 
 describe("SKIPPY-6 agent send approval", () => {
