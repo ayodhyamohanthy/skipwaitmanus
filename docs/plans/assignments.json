@@ -502,7 +502,7 @@
       "tier": 2,
       "lane": "search-work-domain",
       "branch": "agent/queue/search-work-domain",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
@@ -513,7 +513,7 @@
         "docs/plans/SEARCH-work-domain.md",
         "docs/plans/assignments.json"
       ],
-      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com.",
+      "note": "Owner, Nov 24 (D-394): Fix the Google issue. Live search for google answers about.google; employees verify with @google.com. Landed by PR #1554 on green required CI; live check of /api/companies/search?q=google after the API deploy.",
       "epic": "D-174"
     },
     {
