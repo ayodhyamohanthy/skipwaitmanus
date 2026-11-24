@@ -32,6 +32,25 @@ contains no "DRAFT", no "different session" and names auto-merge on green requir
 
 Picker suites and `pnpm check` green; required CI green.
 
+## What changed (Nov 24, DeepSeek V4.1 Flash · 019f)
+
+- `scripts/nextTaskText.mjs`: the `task.tier === 1` branches of the build/resume hand-out and of the
+  make-green hand-out are gone, so every tier prints one landing instruction. That instruction now names
+  marking the pull request ready and turning on auto-merge (merge commit) before waiting for green
+  required CI. The D-235 handoff to the next eligible task is kept for every tier.
+- `scripts/nextTaskCore.mjs`: **unchanged, because the review routing is already inert.** `needsReview` is
+  `INDEPENDENT_REVIEW_REQUIRED && reviewNeeded(...)`, and `scripts/sessionPolicy.mjs` sets
+  `INDEPENDENT_REVIEW_REQUIRED = false` unless `SKIPWAIT_LEGACY_REVIEW_RULES=on`, which only the test run
+  sets (`vitest.config.ts`). No Tier 1 path routes a review stage in production; only the printed text
+  contradicted D-370.
+- `scripts/nextTask.test.ts` and `scripts/nextTaskReviewWording.test.ts`: the two assertions that pinned the
+  superseded draft-and-wait wording now pin the D-370 landing instruction. The second file was not in this
+  row's `owns`; it is added there in the same pull request, because a test that pins superseded wording has
+  to move with the correction.
+- `docs/DELEGATION.md` §4 step 7: the Tier 1 "open a draft pull request ... and stop" bullet is replaced by
+  one rule for every tier (D-370), and its stale "fast-forward main" wording becomes the merge-commit
+  button D-082/D-200 require.
+
 ## Status
 
 - PICKER-tier1-wording: in progress — DeepSeek V4.1 Flash · 019f — 2026-11-24 — branch agent/queue/picker-tier1-wording
