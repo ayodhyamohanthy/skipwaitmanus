@@ -48,6 +48,7 @@ import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourn
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 import type { AskInviteMine } from "../shared/askInvites";
 import { registerAdminActivityRoutes, type ActivityListInput, type AdminActivityDeps } from "./adminActivity";
+import { registerAdminSupportRoutes } from "./adminSupportRoutes";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -1689,6 +1690,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch { res.status(500).json({ error: "We could not export the referral ledger" }); }
   });
   registerAdminActivityRoutes(app, { resolveIdentity: deps.resolveIdentity, listOperationalActivity: deps.listOperationalActivity, resolveActivityPerson: deps.resolveActivityPerson, listPersonRequestTransitions: deps.listPersonRequestTransitions, record });
+  // ADMIN-support-view (D-393): one person's whole state on one admin page. Read-only and admin-gated.
+  registerAdminSupportRoutes(app, { resolveIdentity: deps.resolveIdentity, record });
   app.get("/api/admin/approval-queue", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

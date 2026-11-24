@@ -120,6 +120,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | `/admin/flow-health` | `pages/AdminFlowHealth` | `D-048-p3-admin-ops` | D-048-p3-admin-ops: to be added by its lane packet |
 | `/admin/token-recovery` | `pages/AdminTokenRecovery` | `D-048-p3-admin-money` | D-048-p3-admin-money: to be added by its lane packet |
 | `/admin/users` | `pages/AdminUsers` | `D-048-p3-admin-people` | D-048-p3-admin-people: to be added by its lane packet |
+| `/admin/users/:id/support` | `pages/goal/admin/GoalAdminSupport` | `ADMIN-support-view` | ADMIN-support-view: goal page built (D-393); captures and exact-SHA acceptance owed |
 | `/admin/schema` | `pages/AdminSchema` | `D-048-p3-admin-ops` | D-048-p3-admin-ops: to be added by its lane packet |
 | `/admin/smoke` | `pages/AdminSmoke` | `D-048-p3-admin-ops` | D-048-p3-admin-ops: to be added by its lane packet |
 | `/admin/money-check` | `pages/AdminMoneyCheck` | `D-048-p3-admin-money` (D-167) | D-048-p3-admin-money: to be added by its lane packet |
