@@ -431,7 +431,10 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   // The retired level-price flag stays off. Its compatibility path still
   // requires a current quote; directory availability never bypasses pricing.
   const askLevelCostOn = ASK_LEVEL_COST_CLIENT;
-  const quoteState = useAskQuote(url, askLevelCostOn && (linkOk || Boolean(jobSelection)), {
+  // D-174 §6.6: a picked catalog job is always quoted, so the banded quote and
+  // the send price the same job row; the retired level-price flag only gates
+  // the link-only path it used to own.
+  const quoteState = useAskQuote(url, (askLevelCostOn && linkOk) || Boolean(jobSelection), {
     catalogJobId: jobSelection?.id,
     opportunityId: postSelection?.opportunityId,
   });

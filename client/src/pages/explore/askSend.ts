@@ -45,7 +45,7 @@ export function buildAskBody(input: {
     candidateMessage: composeWhyMe(input.reasons),
   };
   // D-174 §6.6: a picked catalog job is the job identity; an empty link is not sent as an override.
-  if (input.targetRoleUrl.trim()) body.targetRoleUrl = input.targetRoleUrl.trim();
+  if (!input.catalogJobId && input.targetRoleUrl.trim()) body.targetRoleUrl = input.targetRoleUrl.trim();
   if (input.workItemIds?.length) body.workItemIds = dedupeAskWorkItemIds(input.workItemIds);
   if (input.expectedCoverage) body.expectedCoverage = input.expectedCoverage;
   if (input.companySlug) body.companySlug = input.companySlug;

@@ -57,8 +57,10 @@ export function useAskQuote(url: string, enabled: boolean, options?: UseAskQuote
     return () => clearTimeout(timer);
   }, [trimmed]);
   const active = Boolean(quotable && (catalogJobId || opportunityId || target === trimmed));
+  // D-174 §6.6: a picked catalog job is the identity, so the link is neither sent
+  // nor part of the key; the job's own apply link must not fire a second quote.
   const query = useQuery({
-    queryKey: ["ask-quote", userId ?? null, target, catalogJobId ?? null, opportunityId ?? null],
+    queryKey: ["ask-quote", userId ?? null, catalogJobId ?? null, opportunityId ?? null, catalogJobId ? null : target],
     enabled: active,
     retry: 1,
     staleTime: 30_000,
@@ -67,7 +69,7 @@ export function useAskQuote(url: string, enabled: boolean, options?: UseAskQuote
       const params = new URLSearchParams();
       if (catalogJobId) params.set("catalogJobId", String(catalogJobId));
       if (opportunityId) params.set("opportunityId", String(opportunityId));
-      if (target) params.set("url", target);
+      if (target && !catalogJobId) params.set("url", target);
       const response = await fetch(`/api/company-referrals/quote?${params.toString()}`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!response.ok) return null;
       const payload = await response.json() as {
@@ -78,16 +80,19 @@ export function useAskQuote(url: string, enabled: boolean, options?: UseAskQuote
         coverageStatus?: unknown;
         acceptedCost?: unknown;
       };
-      return typeof payload.cost === "number" && typeof payload.totalAvailable === "number" && typeof payload.shortfall === "number"
-        ? {
-            cost: payload.cost,
-            totalAvailable: payload.totalAvailable,
-            shortfall: payload.shortfall,
-            ...(typeof payload.level === "number" ? { level: payload.level } : {}),
-            ...(typeof payload.coverageStatus === "string" ? { coverageStatus: payload.coverageStatus as "covered" | "waiting_for_company_coverage" } : {}),
-            ...(payload.acceptedCost ? { acceptedCost: payload.acceptedCost as AcceptedAskCost } : {}),
-          }
-        : null;
+      if (typeof payload.cost !== "number" || typeof payload.totalAvailable !== "number" || typeof payload.shortfall !== "number") return null;
+      const acceptedCost = payload.acceptedCost as AcceptedAskCost | undefined;
+      // D-193 §5.8: the accepted cost must price the same units the quote charges;
+      // a mismatch is an unpriceable ask, never a silently different charge.
+      if (acceptedCost && acceptedCost.units !== payload.cost) return null;
+      return {
+        cost: payload.cost,
+        totalAvailable: payload.totalAvailable,
+        shortfall: payload.shortfall,
+        ...(typeof payload.level === "number" ? { level: payload.level } : {}),
+        ...(typeof payload.coverageStatus === "string" ? { coverageStatus: payload.coverageStatus as "covered" | "waiting_for_company_coverage" } : {}),
+        ...(acceptedCost ? { acceptedCost } : {}),
+      };
     },
   });
   if (!quotable) return { status: "off" };
