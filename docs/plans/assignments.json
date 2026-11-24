@@ -587,8 +587,8 @@
       "tier": 1,
       "lane": "banded-release",
       "branch": "agent/queue/banded-release-activation",
-      "status": "todo",
-      "syncedTo": "D-383",
+      "status": "owner",
+      "syncedTo": "D-384",
       "dependsOn": [
         "BANDED-levels",
         "BANDED-schema",
@@ -609,7 +609,7 @@
         "server/configContract.test.ts",
         "wrangler.jsonc"
       ],
-      "note": "D-383 reopens the docs-only dead end from PR #1483. D-370 (6) already authorizes catalog apply and activation after TEST-site acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
+      "note": "D-384 parks this row at owner: the TEST site needs its product family resolved in the Chargebee dashboard, a headed-browser TEST-card run (no session may read the TEST API key, D-373 (3)), and the live catalog ids confirmed by the admin dry run. The pull request that records all three with linked runs and captures sets it back to todo. D-370 (6) already authorizes activation after that acceptance; no real payment. Packet docs/plans/PRICING-banded-checkout.md."
     },
     {
       "id": "BANDED-release-qa-runner",
