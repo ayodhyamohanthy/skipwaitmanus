@@ -17,6 +17,7 @@ import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
 import { createReviewDeliveryRetry } from "./reviewDeliveryRetry";
+import { createPoolReviewEmail } from "./poolReviewEmail";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -134,5 +135,14 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createReviewDeliveryRetry(),
+  },
+  {
+    // D-174-pool-nudges part 2 (D-384): the review email for a request delivered from the waiting pool, through
+    // the existing claim, at most one per referrer per UTC day (D-060). Does nothing while POOL_NUDGES_ENABLED is false.
+    name: "pool-review-email",
+    description: "Sends the review email for requests delivered from the waiting pool, oldest first, at most one per referrer per day; failures fall to review-delivery-retry",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createPoolReviewEmail(),
   },
 ];

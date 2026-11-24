@@ -11,7 +11,7 @@ const CLI = fileURLToPath(new URL("./next-task.mjs", import.meta.url));
 const ME = "Fixture · refs", OTHER = "Fixture · holder";
 const A = "agent/queue/a";
 interface Mutation { ref?: string; sha?: string; unavailable?: boolean; repeat?: boolean; subject?: string; }
-interface RunOptions { args?: string[]; mutation?: Mutation; reject?: string; rejectAs?: string; }
+interface RunOptions { args?: string[]; mutation?: Mutation; reject?: string; rejectAs?: string; failUnshallow?: boolean; }
 
 function fixture(mainOnly = true) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "authoritative-refs-"));
@@ -54,6 +54,10 @@ const spawn = cp.spawnSync, exec = cp.execFileSync;
 let changed = false, rejected = false;
 const record = (file, value) => writeFileSync(file, JSON.stringify([...JSON.parse(existsSync(file) ? readFileSync(file, 'utf8') : '[]'), value]));
 cp.spawnSync = (command, args, options) => {
+  // HYGIENE-picker-bootstrap: simulate the one automatic unshallow fetch failing.
+  if (command === 'git' && setup.failUnshallow && Array.isArray(args) && args.includes('--unshallow')) {
+    return { pid: 0, output: [null, '', 'fixture: unshallow refused'], stdout: '', stderr: 'fixture: unshallow refused', status: 128, signal: null };
+  }
   if (command === 'git' && args[0] === 'push') {
     record(setup.attempts, args);
     if (!rejected && setup.reject && args.some(a => a.endsWith(':refs/heads/' + setup.reject))) {
@@ -87,13 +91,13 @@ globalThis.fetch = async input => {
   throw Error('unexpected fixture fetch: ' + url);
 };
 `);
-  const run = ({ args = ["--claim", ME], mutation, reject, rejectAs = OTHER }: RunOptions = {}, cwd = work) => {
+  const run = ({ args = ["--claim", ME], mutation, reject, rejectAs = OTHER, failUnshallow = false }: RunOptions = {}, cwd = work) => {
     const parent = reject ? remoteTip(reject) : head;
     const rival = reject ? marker("fixture-rival", `Heartbeat A: ${rejectAs}`, parent) : undefined;
     const result = spawnSync(process.execPath, ["--import", mock, CLI, ...args], {
       cwd, encoding: "utf8", timeout: 25_000, env: { ...process.env,
         NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
-        REF_FIXTURE: JSON.stringify({ head, remote, attempts, mutations, mutation, reject, rival }) },
+        REF_FIXTURE: JSON.stringify({ head, remote, attempts, mutations, mutation, reject, rival, failUnshallow }) },
     });
     if (existsOffline()) renameSync(remote + ".offline", remote);
     return result;
@@ -351,14 +355,24 @@ describe("authoritative refs in the real picker CLI", () => {
     expect(spawnSync("test", ["-f", f.attempts]).status).toBe(1);
   }));
 
-  it("fails closed on shallow history instead of inferring an abandoned claim", () => check(f => {
+  it("fails closed on shallow history instead of inferring an abandoned claim when the automatic unshallow fails", () => check(f => {
     f.marker(A, `Claim A: ${OTHER}`, f.head, true);
     const shallow = path.join(f.dir, "shallow");
     f.git("clone", "--depth=1", "--branch=main", `file://${f.remote}`, shallow);
-    const before = f.remoteSet(), result = f.run({}, shallow);
+    const before = f.remoteSet(), result = f.run({ failUnshallow: true }, shallow);
     expect(result.status, output(result)).not.toBe(0);
     expect(result.stderr).toContain("STOP");
     expect(result.stderr).toContain("unshallow");
     expect(f.remoteSet()).toBe(before);
+  }));
+
+  it("completes shallow history once before it reads any claim (HYGIENE-picker-bootstrap, D-387)", () => check(f => {
+    f.marker(A, `Claim A: ${OTHER}`, f.head, true);
+    const shallow = path.join(f.dir, "shallow");
+    f.git("clone", "--depth=1", "--branch=main", `file://${f.remote}`, shallow);
+    const result = f.run({}, shallow);
+    expect(output(result)).toContain("fetching the full history once");
+    expect(output(result)).not.toContain("STOP: complete history is required");
+    expect(execFileSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: shallow, encoding: "utf8" }).trim()).toBe("false");
   }));
 });

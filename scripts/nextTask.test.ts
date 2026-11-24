@@ -1203,7 +1203,7 @@ describe("hardening from the D-085 review", () => {
     for (const p of [{ kind: "fix-main", sha: "c".repeat(40), url: "u", lock: "agent/queue/fix-main-cccccccc" }, { kind: "continue", of: "fix-main", sha: "c".repeat(40), url: "u", lock: "agent/queue/fix-main-cccccccc" }]) {
       const text = renderPick(p, ctx);
       expect(text).toContain('--heartbeat --as "Kimi · s2"');
-      expect(text).toContain("worktree add ../skipwaitmanus-wt/fix-main-cccccccc agent/queue/fix-main-cccccccc");
+      expect(text).toContain("worktree add ../skipwaitmanus-wt/fix-main-cccccccc-s2 agent/queue/fix-main-cccccccc");
       expect(text).not.toContain("main's own CI is green");
     }
   });
@@ -1211,7 +1211,7 @@ describe("hardening from the D-085 review", () => {
   it("a freshly claimed packet's worktree tracks the lock the claim pushed", () => {
     const text = renderPick({ kind: "architect", task: task("P", { status: "architect", packet: null }), lock: "agent/architect/p", lockExists: false }, { who: "Claude Code · s9", date: "d", claimed: true });
     expect(text).not.toContain("-b agent/architect/p origin/main");
-    expect(text).toContain("worktree add ../skipwaitmanus-wt/architect-p agent/architect/p");
+    expect(text).toContain("worktree add ../skipwaitmanus-wt/architect-p-s9 agent/architect/p");
   });
 
   it("local sync covers packets, fixes and landings; never tells anyone to push onto someone else's branch", () => {
