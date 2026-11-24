@@ -58,4 +58,4 @@ and `LAUNCH-live-qa` updates its BUGFREE_GATE rows with that run's evidence.
 
 ## Status
 
-- OPS-live-qa-journeys: todo
+- OPS-live-qa-journeys: in progress — DeepSeek V4.1 Flash · e9e1 — 2026-11-24 — branch agent/queue/ops-live-qa-journeys
