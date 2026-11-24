@@ -8759,7 +8759,7 @@
       "tier": 2,
       "lane": "picker-claim-race",
       "branch": "agent/queue/picker-claim-race-reread",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-383",
       "dependsOn": [],
       "owns": [
