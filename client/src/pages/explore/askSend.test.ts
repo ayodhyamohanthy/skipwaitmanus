@@ -42,4 +42,30 @@ describe("ask send body", () => {
     expect(buildAskBody({ ...base, confirmedCompanyDomain: "acme.com" }).confirmedCompanyDomain).toBe("acme.com");
     expect(buildAskBody({ ...base, confirmedCompanyDomain: undefined }).confirmedCompanyDomain).toBeUndefined();
   });
+
+  it("sends a catalog job id and its accepted cost without a free-text URL override", () => {
+    const expectedCost = { units: 1 as const, band: "senior" as const, source: [{ bucket: "included" as const, units: 1 as const, cycleKey: "paid-cycle" }] };
+    expect(buildAskBody({
+      targetRoleUrl: "",
+      catalogJobId: 701,
+      expectedCost,
+      reasons: ["One"],
+      resumeId: 1,
+      companySlug: "acme",
+      fastTrack: {},
+      confirmedCompanyDomain: undefined,
+    })).toEqual({
+      catalogJobId: 701,
+      expectedCost,
+      attachmentIds: [1],
+      candidateMessage: "One",
+      companySlug: "acme",
+    });
+  });
+
+  it("omits catalog job identity and accepted cost when no job was given", () => {
+    const body = buildAskBody({ targetRoleUrl: "https://acme.com/jobs/1", reasons: ["One"], resumeId: 1, companySlug: "acme", fastTrack: {}, confirmedCompanyDomain: undefined });
+    expect(body).not.toHaveProperty("catalogJobId");
+    expect(body).not.toHaveProperty("expectedCost");
+  });
 });

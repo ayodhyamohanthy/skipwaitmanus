@@ -14,9 +14,9 @@ import { isCorporateEmailDomain } from "./const";
 import { isAskExpired, type ReferralStatus } from "./referral";
 
 /** Public demand routes and client hooks. One reviewed line; there is no env key. */
-export const COMPANY_DEMAND_PUBLIC_ENABLED = false;
+export const COMPANY_DEMAND_PUBLIC_ENABLED = true;
 /** The admin queue of unlisted domains. */
-export const COMPANY_DEMAND_ADMIN_ENABLED = false;
+export const COMPANY_DEMAND_ADMIN_ENABLED = true;
 /** D-086 (2): a number only from 3 people up. */
 export const DEMAND_PUBLIC_MIN = 3;
 /** The admin queue's output bound. */
@@ -177,9 +177,4 @@ export function demandLine(demand: PublicDemand, companyName: string): string | 
 /** A plain link, never a black commit: the referrer sign-in is the work-email code (D-030/D-057). */
 export function demandHelpLine(companyName: string): string {
   return `Work at ${companyName}? Verify your work email to help.`;
-}
-
-/** Informational only: no figure (those come from D-099 with a source), no guarantee (D-055, D-088). */
-export function demandBonusLine(companyName: string): string {
-  return `If ${companyName} pays employees a referral bonus, ${companyName} sets and pays it under its own rules. skipwait.me never pays referrers.`;
 }

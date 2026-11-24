@@ -1,0 +1,59 @@
+# Packet D-174-expiry-clock-removal: asks stop expiring, behind one switch
+
+Row `D-174-expiry-clock-removal` (epic D-174, Tier 1). Release row `D-174-no-expiry-release` (§7). Ruling: D-385.
+Replaces the row's old pointer to `docs/plans/D-048-seeker.md`, which has no expiry-removal section and whose §5 is docs-only (the Qoder · ad9f block, Nov 23).
+
+## 1. Goal and authority
+- **D-174 (owner, Oct 23):** "for now I dont require any expiry ... as we are launching". The launch rule is that asks do not expire. Only the ask's own death clocks stop. Referrer action timers (48 h claim and allocation lapse, 5-day referred deadline, D-038/D-076), OTP, session and claim-link validity, payment timeouts and retention stay exactly as they are. "No new debit, refund or ledger behavior is created by this entry", and "expiry returns the credit" simply never fires while expiry is suspended.
+- **D-193 (5):** removing the clocks must never let the hourly delivery sweep charge a months-old held request, so this row waits for `D-174-held-ask-reconfirm` (landed in PR #1437, merge `4feb94b9b`, switch `ASK_RECONFIRM_ENABLED = false` in `shared/askReconfirm.ts`) and goes live only with that switch on.
+- **D-379 (3):** the 90-day sentence in the waiting status help goes in the same pull request.
+- **D-097 / AGENTS rule 9:** the change lands behind a switch that starts off. Off is byte-for-byte today's behaviour.
+
+## 2. What exists today (verified on `main` `4358c1a25`, Nov 24; find by name, lines drift)
+| Clock | Where it runs | Money effect today |
+|---|---|---|
+| 7-day unclaimed expiry, from first visibility (`ASK_TTL_DAYS`, `ASK_TTL_MS` in `shared/referral.ts`) | the hourly `ask-expiry-sweep` job (`server/askExpirySweep.ts`: `listStalePendingAsks`, `selectStaleHeldAsks` in `server/heldAsk.ts`), and on reads: `reconcileExpiredPendingReferrals` and `expireStalePendingReferralRequest` (`server/db.ts`) | the ask closes and its credit is refunded once |
+| 90-day waiting cap, from creation (`COVERAGE_WAIT_DAYS`, `COVERAGE_WAIT_MS`) | the same sweep and read paths; closure notice `coverageWaitExpiredNotice` in `server/coverageDelivery.ts` | closes at no cost (nothing was spent) |
+| Day-30 reconfirm closure (D-061) | **not in runtime.** D-061's own status says the email "ships with D-060 ... until then a waiting ask past 30 days keeps waiting". `D-174-held-ask-reconfirm` built reconfirm-before-spend without any closure | none |
+
+Every expiry decision derives from one function, `getAskShelfLifeEndsAtMs` (`shared/referral.ts`): `isAskExpired`, `askDaysLeft`, `askDaysShown`, `formatAskExpiry`, `isPastAskWindow` (`server/heldAsk.ts`), `isAllocatedAskPastWindow` (`server/dailyMoneyCheck.ts`), the demand count (`shared/companyDemand.ts`) and the payload `expiresAt` (`server/privateReferralRoutes.ts`) all read it. `getAskExpiresAtMs` (creation-based) feeds the client "expiring soon" check in `client/src/components/requests/requestModel.ts`. `listStalePendingAsks` builds its SQL windows from the constants directly, so it needs its own gate.
+
+## 3. The change
+1. **Switch.** In `shared/referral.ts`: `export const ASK_NO_EXPIRY_ENABLED = false;` with a comment naming D-174/D-193 (5). Off: everything below is inert.
+2. **One choke point.** When the switch is on, `getAskShelfLifeEndsAtMs` and `getAskExpiresAtMs` return `null`. That alone makes `isAskExpired` false, removes every countdown and "expiring soon" chip, stops `isPastAskWindow` and `isAllocatedAskPastWindow` from flagging anything, keeps pending asks in the demand count and sends `expiresAt: null` in the payload. Check that each client parser already accepts `null` (`client/src/components/requests/requestsApi.ts`, referrer-home and inbox readers); widen a schema only if a test proves it rejects `null`.
+3. **The sweep is switched off, never deleted (D-042/R-2).** `createAskExpirySweep` returns `{ processed: 0, failed: 0, skipped: "ask expiry suspended (D-174)" }` without reading the database when the switch is on, the same shape `referral-timers` uses for `REFERRED_DEADLINE_ENABLED`. The job stays registered in `shared/scheduledJobs.ts` and `server/scheduledJobRegistry.ts` (no edit to either).
+4. **Read-path expiry.** `reconcileExpiredPendingReferrals` and `expireStalePendingReferralRequest` close nothing and refund nothing when the switch is on (return early with the "not expired" answer each already has). Every other read keeps working.
+5. **Copy changes only with the runtime change.** Each user-facing line that promises a 7-day close, a refund on close, or a 90-day close gets a no-expiry variant chosen by the same switch. Existing lines stay as they are (additions only in `shared/moneyCopy.ts`, D-173):
+   - `client/src/pages/explore/useAskComposer.tsx`: the three sent-state lines that say "within 7 days, it closes and the credit comes back" or "waits for free up to 90 days".
+   - `shared/moneyCopy.ts`: `COVERAGE_WAIT_REASON`, the waiting detail ("It waits up to 90 days") and the refund detail ("or if nobody picks it up within 7 days"). The no-expiry versions say the request stays open until someone answers it or the seeker withdraws, and that withdrawing before pickup returns the credit. Nothing else about money changes.
+   - `client/src/components/requests/statusHelp.ts`: drop the 90-day sentence (D-379 (3)).
+   - `client/src/pages/goal/support/supportContent.ts`: the "Why did my referral request expire?" answer gains a no-expiry variant.
+   - `client/src/pages/MyRequests.tsx`: the sample row's "Expires in 7 days if nobody picks it up" line gets the no-expiry variant.
+6. **Coupling guard.** A contract test fails if `ASK_NO_EXPIRY_ENABLED` is true while `ASK_RECONFIRM_ENABLED` is false, so the clocks can never come off before reconfirm-before-spend is on (D-193 (5)).
+
+**In-flight asks when the switch turns on.** Nothing is migrated, closed or refunded at the flip. A visible unclaimed ask stays open with its credit attached and unspent. The seeker gets it back by withdrawing before pickup, exactly as today. A waiting or held ask keeps waiting at no cost. Past 30 days it needs the seeker's one-tap reconfirm before any spend (D-061 as built by #1437). The 48 h allocation lapse keeps returning an unanswered delivery to the company's open queue. One effect to state in the release report: an unclaimed visible ask now keeps its open-request slot (`server/planGates.ts`, `shared/openAskSlots.ts`) until it is claimed or withdrawn, because it no longer expires. The capacity rules themselves are unchanged (D-174).
+
+## 4. Tests (red first)
+- `shared/referral.noExpiry.test.ts`: with the switch forced on (test seam such as `vi.mock` of the constant), `getAskShelfLifeEndsAtMs`, `getAskExpiresAtMs`, `isAskExpired`, `askDaysLeft` and `formatAskExpiry` give null/false for a 400-day-old waiting ask and a 30-day-old visible ask. With it off, today's values are unchanged.
+- `server/askExpirySweep.noExpiry.test.ts`: switch on → the job reads nothing, closes nothing, refunds nothing and reports `skipped`. Switch off → the existing `server/askExpirySweep*.test.ts` suites pass unchanged.
+- `server/db.askExpiry.test.ts` (extend): switch on → `reconcileExpiredPendingReferrals` and `expireStalePendingReferralRequest` leave a 10-day-old unclaimed visible ask pending with no ledger row and no notice.
+- `server/dailyMoneyCheck.test.ts` (extend): switch on → an old unclaimed allocated ask is not a finding.
+- `shared/askNoExpiryCoupling.test.ts`: fails when no-expiry is on and reconfirm is off.
+- Copy pins: each no-expiry variant contains no "7 days", "90 days" or "expire"; each legacy line is unchanged with the switch off (`shared/moneyCopy.test.ts`, `client/src/components/requests/statusHelp.test.ts`, the composer tests in `client/src/pages/explore.test.tsx`).
+- Unchanged and green: `server/referralTimers*.test.ts` (48 h and 5-day timers), `server/coverageDeliverySweep.test.ts`, `server/askReconfirm.test.ts`, the D-034/D-047 money suites.
+
+## 5. Owns
+`shared/referral.ts`, `shared/referral.noExpiry.test.ts`, `shared/askNoExpiryCoupling.test.ts`, `server/askExpirySweep.ts`, `server/askExpirySweep.noExpiry.test.ts`, `server/db.ts`, `server/db.askExpiry.test.ts`, `server/dailyMoneyCheck.test.ts`, `shared/moneyCopy.ts`, `shared/moneyCopy.test.ts`, `client/src/pages/explore/useAskComposer.tsx`, `client/src/pages/explore.test.tsx`, `client/src/components/requests/statusHelp.ts`, `client/src/components/requests/statusHelp.test.ts`, `client/src/components/requests/requestModel.ts`, `client/src/pages/goal/support/supportContent.ts`, `client/src/pages/MyRequests.tsx`, this packet.
+Read-only (no edit expected): `server/heldAsk.ts`, `server/dailyMoneyCheck.ts`, `shared/companyDemand.ts`, `server/privateReferralRoutes.ts`, `server/coverageDelivery.ts`. If a test proves one needs an edit, stop and report it rather than widening scope silently.
+
+## 6. Done when
+Every test above passes, `pnpm check` and `pnpm build` pass, required CI is green on the exact head, captures of the composer's sent state and `/requests` at 1280 and 390 show both switch states (off = today, on = no countdown, no 7/90-day promise). The switch stays **off** on `main`. This row never turns it on.
+**Stop if:** a death clock runs through a path that does not read `getAskShelfLifeEndsAtMs` or the sweep; a money line other than the expiry refund would change; or a parser rejects `expiresAt: null` and fixing it needs a file outside §5.
+
+## 7. Release row `D-174-no-expiry-release` (Tier 1)
+Waits for this row and `D-174-held-ask-reconfirm`. In order: (1) turn `ASK_RECONFIRM_ENABLED` on in a QA preview, prove a 31-day-old held request with a fresh credit is not charged until confirmed, then charged once (fictional accounts, test provider only, no real money); (2) one pull request sets `ASK_RECONFIRM_ENABLED = true` and `ASK_NO_EXPIRY_ENABLED = true` together, with the coupling test green; (3) after deploy, read back on the exact deployed SHA that `ask-expiry-sweep` reports `skipped: "ask expiry suspended (D-174)"` in `/api/admin/jobs` and that `/requests` shows no countdown, with captures at 1280 and 390. Owns `shared/askReconfirm.ts (switch only)`, `shared/referral.ts (switch only)`, `docs/BUGFREE_GATE.md`, this packet. Activation authority is D-174's own launch rule; QA verification first (D-097).
+
+## Status
+D-174-expiry-clock-removal: packet written by the D-385 unblock ruling, 2026-11-24 (Claude Code fork for "Claude Code · 29ed", on the owner's "lets work on all blockers"). Decisions read through D-386. No implementation, source change or switch change.
+D-174-no-expiry-release: registered by D-385, 2026-11-24; waits for both dependencies.
+D-174-expiry-clock-removal: D-391 (Nov 24) clears the standing Qoder · ad9f packet block — this packet supplies the runtime paths and tests it said were missing — and reconciles `D-174-held-ask-reconfirm` to done (PR #1437, `4feb94b9b`). The row is ready for a normal picker build; the switch stays off on `main`.

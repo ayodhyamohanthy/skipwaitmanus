@@ -24,9 +24,12 @@ import {
   type AgentGrantView,
   type AgentLimits,
   type AgentScope,
+  type AgentSendRequestView,
   createAgentGrantInputSchema,
   agentDraftInputSchema,
 } from "../shared/seekerAgents";
+import { getApprovalExpiresAtMs } from "../shared/assistant";
+import { publicOutboundOrigin } from "./_core/authPostGuard";
 import type { PlanCatalogResponse } from "../shared/billingCatalog";
 import type { PublicCompany } from "../shared/companies";
 
@@ -37,6 +40,7 @@ export type GrantRow = {
   keyPrefix: string;
   canLookup: boolean;
   canDraft: boolean;
+  canSend: boolean;
   maxCreditsPerAsk: number;
   maxCreditsPerDay: number;
   maxCreditsPerWeek: number;
@@ -50,7 +54,7 @@ export type DraftRow = { id: number; grantId: number; userId: number; companySlu
 export type EventRow = { id: number; grantId: number | null; agentName: string; action: string; outcome: "success" | "denied" | "failure"; detail: string | null; createdAt: Date };
 
 export type SeekerAgentStore = {
-  createGrant: (input: { userId: number; name: string; keyPrefix: string; keyHash: string; canLookup: boolean; canDraft: boolean; limits: AgentLimits; expiresAt: Date }) => Promise<GrantRow>;
+  createGrant: (input: { userId: number; name: string; keyPrefix: string; keyHash: string; canLookup: boolean; canDraft: boolean; canSend: boolean; limits: AgentLimits; expiresAt: Date }) => Promise<GrantRow>;
   listGrants: (userId: number) => Promise<GrantRow[]>;
   getGrantForUser: (userId: number, id: number) => Promise<GrantRow | undefined>;
   findGrantByKeyHash: (keyHash: string) => Promise<GrantRow | undefined>;
@@ -60,6 +64,10 @@ export type SeekerAgentStore = {
   setPaused: (userId: number, paused: boolean, now: Date) => Promise<void>;
   createDraft: (input: { grantId: number; userId: number; companySlug: string; targetRoleUrl: string; note: string; jobLevel: number; creditCost: number }) => Promise<DraftRow>;
   listDraftsByGrant: (grantId: number, limit: number) => Promise<DraftRow[]>;
+  /** SKIPPY-6: one draft, scoped to its grant, so another agent's draft is invisible. */
+  getDraftForGrant: (grantId: number, draftId: number) => Promise<DraftRow | undefined>;
+  /** SKIPPY-6: the request row in the existing approvals queue, with `grantId` set. */
+  createSendRequest: (input: { userId: number; grantId: number; agentName: string; draft: DraftRow; companyDomain: string | null; expiresAt: Date }) => Promise<{ id: number; expiresAt: Date }>;
   sumDraftCreditsSince: (grantId: number, since: Date) => Promise<number>;
   countDraftsSince: (grantId: number, since: Date) => Promise<number>;
   listEvents: (userId: number, grantId: number, limit: number) => Promise<EventRow[]>;
@@ -78,7 +86,11 @@ export type SeekerAgentRouteDeps = {
   /** The same level/cost the pre-send quote route computes. */
   quoteCost: (targetRoleUrl: string) => { level: number; cost: number };
   /** Directory entry lookup, for validating a draft's company. */
-  getCompanyDirectoryEntry: (slug: string) => Promise<{ name: string } | undefined>;
+  getCompanyDirectoryEntry: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
+  /** SKIPPY-6: the seeker's own unattached resumes, newest first, for the approval card's default. */
+  listResumes: (userId: number) => Promise<Array<{ id: number; fileName: string; createdAt: Date }>>;
+  /** SKIPPY-6: one in-app notice, plus at most one email a day with a direct link (D-060). */
+  notifySendRequest: (input: { userId: number; agentName: string; approvalId: number; companyName: string; cost: number; origin: string }) => Promise<void>;
   now?: () => number;
 };
 
@@ -86,7 +98,7 @@ const grantView = (grant: GrantRow, paused: boolean, nowMs: number): AgentGrantV
   id: grant.id,
   name: grant.name,
   keyPrefix: grant.keyPrefix,
-  scopes: [...(grant.canLookup ? ["lookup" as const] : []), ...(grant.canDraft ? ["draft" as const] : [])],
+  scopes: [...(grant.canLookup ? ["lookup" as const] : []), ...(grant.canDraft ? ["draft" as const] : []), ...(grant.canSend ? ["send" as const] : [])],
   limits: { creditsPerAsk: grant.maxCreditsPerAsk, creditsPerDay: grant.maxCreditsPerDay, creditsPerWeek: grant.maxCreditsPerWeek, asksPerDay: grant.maxAsksPerDay },
   status: grant.revokedAt ? "revoked" : grant.expiresAt.getTime() <= nowMs ? "expired" : paused ? "paused" : "active",
   expiresAt: grant.expiresAt.toISOString(),
@@ -250,6 +262,47 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     noStore(res).json({ drafts: drafts.map(draftView) });
   });
 
+  /**
+   * SKIPPY-6 (D-290 (1)): the agent asks the seeker to approve a send. This
+   * writes one row in the existing approvals queue and nothing else: the draft
+   * keeps its status, no credit moves and no ask exists until the seeker
+   * approves in their own session.
+   */
+  app.post("/api/agent/v1/drafts/:id/send-request", async (req, res) => {
+    if (!deps.enabled()) return res.status(404).json({ error: "Not found" });
+    const grant = await agentGuard(req, res, "agent.send_request");
+    if (!grant) return;
+    if (!grant.canSend) {
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.send_request", outcome: "denied", detail: AGENT_ERROR.sendScope });
+      return noStore(res).status(403).json({ error: AGENT_ERROR.sendScope });
+    }
+    const draftId = Number(req.params.id);
+    if (!Number.isInteger(draftId) || draftId <= 0) return noStore(res).status(400).json({ error: AGENT_ERROR.draftUnknown });
+    try {
+      const draft = await deps.store.getDraftForGrant(grant.id, draftId);
+      if (!draft) return noStore(res).status(404).json({ error: AGENT_ERROR.draftUnknown });
+      if (draft.status !== "draft") return noStore(res).status(409).json({ error: "This draft was discarded" });
+      const company = await deps.getCompanyDirectoryEntry(draft.companySlug);
+      if (!company) return noStore(res).status(400).json({ error: "Choose a company from the list" });
+      const created = await deps.store.createSendRequest({
+        userId: grant.userId,
+        grantId: grant.id,
+        agentName: grant.name,
+        draft,
+        companyDomain: company.domains[0] ?? null,
+        expiresAt: new Date(getApprovalExpiresAtMs(nowMs())),
+      });
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.send_request", outcome: "success", detail: `approval ${created.id} for draft ${draft.id}` });
+      // D-060: one in-app notice, and at most one email a day with a direct link.
+      await deps.notifySendRequest({ userId: grant.userId, agentName: grant.name, approvalId: created.id, companyName: company.name, cost: draft.creditCost, origin: publicOutboundOrigin(req) }).catch(() => undefined);
+      const view: AgentSendRequestView = { approvalId: created.id, status: "pending", creditCost: draft.creditCost, expiresAt: created.expiresAt.toISOString() };
+      noStore(res).status(201).json({ request: view });
+    } catch {
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.send_request", outcome: "failure" });
+      noStore(res).status(500).json({ error: "The send request could not be saved" });
+    }
+  });
+
   // ---- Seeker surface (signed-in session) ----
 
   const seekerGuard = async (req: Request, res: Response): Promise<number | undefined> => {
@@ -267,8 +320,16 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     noStore(res).json({ agents: grants.map(g => grantView(g, paused, nowMs())), paused });
   });
 
-  app.post("/api/seeker/agents", async (req, res) => {
+  /** SKIPPY-6: the resumes the approval card can offer, newest first (the card's default). */
+  app.get("/api/seeker/agents/resumes", async (req, res) => {
     if (!deps.enabled()) return res.status(404).json({ error: "Not found" });
+    const userId = await seekerGuard(req, res);
+    if (userId === undefined) return;
+    const resumes = await deps.listResumes(userId);
+    noStore(res).json({ resumes: resumes.map(row => ({ id: row.id, fileName: row.fileName, createdAt: row.createdAt.toISOString() })) });
+  });
+
+  app.post("/api/seeker/agents", async (req, res) => {    if (!deps.enabled()) return res.status(404).json({ error: "Not found" });
     const userId = await seekerGuard(req, res);
     if (userId === undefined) return;
     const parsed = createAgentGrantInputSchema.safeParse(req.body);
@@ -286,6 +347,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
         keyHash: hashKey(key),
         canLookup: scopes.has("lookup"),
         canDraft: scopes.has("draft"),
+        canSend: scopes.has("send"),
         limits,
         expiresAt: new Date(nowMs() + days * DAY_MS),
       });

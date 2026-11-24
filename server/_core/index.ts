@@ -59,6 +59,7 @@ import { publicOutboundOrigin } from "./authPostGuard";
 import { registerSkippieSeekerRoutes, skippieSeekerAllowedIds } from "../skippieSeekerRoutes";
 import { parseSkippieAllowedIds } from "../skippieAllowList";
 import { createSkippieSeekerDeps } from "../skippieSeekerDeps";
+import { createSkippieCardStore } from "../skippieMoneyCards";
 import { createSkippieAdminDeps } from "../skippieAdminDeps";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { employerSponsorshipEnabled } from "../billingSettings";
@@ -66,10 +67,12 @@ import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerAssistantRoutes } from "../assistantRoutes";
 import { registerSeekerAgentRoutes } from "../seekerAgentRoutes";
-import { createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAgentDeps";
+import { createOAuthAgentGrant, createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAgentDeps";
 import { registerOAuthRoutes } from "../oauthRoutes";
 import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
+import { agentPortalEnabled } from "../agentPortalAccess";
+import { resolveAgentBearer } from "../agentGrantAuth";
 import { registerProfileRoutes } from "../profileRoutes";
 import { registerAskDraftRoutes } from "../askDraftRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
@@ -239,11 +242,18 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, skippie: { enabled: () => process.env.SKIPPIE_ADMIN_ENABLED === "true", deps: () => createSkippieAdminDeps() } }); // Worker cron tick + admin job status
   // Seeker Skippy (D-136..D-142, step 2): ask-only chat. Off unless SKIPPIE_SEEKER_ENABLED=true,
   // and then only for the account ids in SKIPPIE_SEEKER_USER_IDS (the test seeker).
+  // SKIPPY-3: one money-card store per process, shared by the chat turns and the approve route,
+  // and the same banded checkout wiring the Chargebee routes use.
+  const skippieMoneyCards = createSkippieCardStore();
+  const bandedCheckout = bandedCheckoutStore(db.getDb);
   registerSkippieSeekerRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
     enabled: () => process.env.SKIPPIE_SEEKER_ENABLED === "true",
     allowedUserIds: () => skippieSeekerAllowedIds(),
+    moneyCards: skippieMoneyCards,
+    bandedCheckout: () => bandedCheckout.checkout,
+    purchaseEnabled: () => process.env.SKIPPIE_PURCHASE_ENABLED === "true",
     deps: () => {
       // The storagePut selection above is a union of three backends with slightly different
       // signatures (dbStoragePut takes no content type and returns no URL). Adapt once here.
@@ -251,6 +261,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       return createSkippieSeekerDeps({
         storagePut: async (key, data, contentType) => { const stored = await put(key, Buffer.from(data), contentType); return { key: stored.key, url: stored.url ?? "" }; },
         storageGetBytes: async key => { const bytes = await storageGetBytes(key); if (!bytes) throw new Error("Stored file is missing."); return bytes; },
+        moneyCards: skippieMoneyCards,
       });
     },
     listOwnedResumes: userId => db.listOwnedResumeAttachments(userId),
@@ -271,9 +282,13 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Skippy step 5 (D-141): seeker agents, draft-only. Off unless SKIPPIE_AGENT_ENABLED.
   registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", allowedUserIds: () => parseSkippieAllowedIds(process.env.SKIPPIE_AGENT_USER_IDS), resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
   // MCP endpoint for connected assistants (read tools plus propose_ask, which only creates a pending approval) (bearer-token auth, skipwait.me/api/mcp).
+  // D-178.gate (D-290 R2): the Skippy agent switch and the account allow-list gate both transports, never a plan.
+  const agentGrantStore = createSeekerAgentStore();
   registerMcpRoutes(app, {
-    verifyBearer: db.verifyAssistantBearer,
-    hasAccess: db.hasAssistantAccess,
+    enabled: () => agentPortalEnabled(),
+    allowed: db.hasAssistantAccess,
+    // D-178.grant (D-290 R1): one verifier for a D-141 grant key and a legacy sw_ token.
+    resolveBearer: token => resolveAgentBearer(token, { store: { findGrantByKeyHash: agentGrantStore.findGrantByKeyHash, isPaused: agentGrantStore.isPaused, touchGrantLastUsed: agentGrantStore.touchLastUsed, verifyLegacyBearer: db.verifyAssistantBearer }, allowed: db.hasAssistantAccess }),
     recordActivity: db.recordOperationalActivity,
     searchJobs: publicCatalogJobs(db.listJobs),
     listRequests: async userId => (await db.listReferralRequests(userId)).filter(row => row.jobSeekerId === userId),
@@ -283,12 +298,14 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
   // OAuth (authorization code + PKCE) so ChatGPT/Claude can connect without pasting a token.
   registerOAuthRoutes(app, {
+    enabled: () => agentPortalEnabled(),
+    allowed: db.hasAssistantAccess,
     resolveIdentity,
     registerClient: registerOAuthClient,
     getClient: getOAuthClient,
     issueCode: async (userId, input) => { if (!(await db.hasAssistantAccess(userId))) throw new AssistantPlanRequiredError(); return issueAuthCode(userId, input); },
     consumeCode: consumeAuthCode,
-    mintToken: (userId, name) => db.createAssistantToken(userId, { name }),
+    mintToken: async (userId, name) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name })).token }),
     recordActivity: db.recordOperationalActivity,
   });
   // Seeker/referrer profiles, work showcases, and shareable public profiles.
@@ -325,7 +342,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
     // BANDED-checkout (D-367): routes answer 409 not_on_sale until BANDED_SALES_ENABLED is true.
-    banded: bandedCheckoutStore(db.getDb),
+    banded: bandedCheckout,
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,

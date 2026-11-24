@@ -129,6 +129,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
 
   const openHeroAsk = () => {
     composer.selectPost(null);
+    composer.selectJob(null);
     if (typeof window !== "undefined" && window.location.search) {
       const url = new URL(window.location.href);
       if (url.searchParams.has("post")) {
@@ -150,6 +151,8 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           company={company}
           isPostSelected={Boolean(composer.postSelection)}
           onChangeRole={() => composer.selectPost(null)}
+          jobSelection={composer.jobSelection}
+          onChangeJob={() => composer.selectJob(null)}
           context={composer.sent ? null : composer.context}
           signedIn={composer.signedIn}
           url={composer.url}
@@ -223,7 +226,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
             setDrawerOpen(true);
           }}
         />
-        {COMPANY_JOBS_ENABLED ? <CompanyJobs company={company} onPasteJobLink={openHeroAsk} /> : null}
+        {COMPANY_JOBS_ENABLED ? <CompanyJobs company={company} onPasteJobLink={openHeroAsk} onPickJob={composer.selectJob ? job => { composer.selectJob(job); setDrawerOpen(true); } : undefined} /> : null}
 
         <section className="mt-10" aria-label="Before you ask">
           <h2 className={EYEBROW}>Before you ask</h2>

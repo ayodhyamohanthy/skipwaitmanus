@@ -4,7 +4,7 @@
 import { GoalNum } from "@/components/goal/GoalNum";
 import { trackClarityEvent } from "@/lib/clarity";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
-import { COMPANY_DEMAND_PUBLIC_ENABLED, demandBonusLine, demandCountLine, demandFewLine, demandHelpLine } from "@shared/companyDemand";
+import { COMPANY_DEMAND_PUBLIC_ENABLED, demandCountLine, demandFewLine, demandHelpLine } from "@shared/companyDemand";
 import { Link } from "wouter";
 import { useCompanyDemand } from "./useCompanyDemand";
 
@@ -46,7 +46,6 @@ export function CompanyDemandLine({ slug, companyName }: { slug: string; company
         ? <CountedSentence companyName={companyName} people={data.people} />
         : <p data-testid="demand-sentence" className="text-g-body text-g-ink">{demandFewLine(companyName)}</p>}
       <HelpLine companyName={companyName} />
-      <p data-testid="demand-bonus-line" className="text-g-meta text-g-ink-3">{demandBonusLine(companyName)}</p>
     </section>
   );
 }

@@ -35,7 +35,6 @@ import {
 import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
-import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
 import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
@@ -48,6 +47,27 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
   const rerun = spawnSync(process.execPath, ["--disable-warning=UNDICI-EHPA", ...process.argv.slice(1)], { stdio: "inherit", env: { ...process.env, NODE_USE_ENV_PROXY: "1" } });
   process.exit(rerun.status ?? 1);
 }
+
+// HYGIENE-picker-bootstrap (D-387): the review gate needs installed packages (zod). A static import of it
+// failed before any line of the picker ran, so a fresh clone got a Node stack trace. Load it here instead and,
+// when a package is missing, print the one command that fixes it.
+/** The bare package an ERR_MODULE_NOT_FOUND names, or null for a missing relative module or any other error. */
+export function missingPackageOf(error) {
+  if (!error || error.code !== "ERR_MODULE_NOT_FOUND") return null;
+  return /Cannot find package '([^']+)'/.exec(String(error.message))?.[1] ?? null;
+}
+/** Loads a picker module; a missing package prints one install line and exits 1, every other failure is rethrown. */
+export async function loadPickerModule(load, { err = console.error, exit = process.exit } = {}) {
+  try {
+    return await load();
+  } catch (error) {
+    const pkg = missingPackageOf(error);
+    if (!pkg) throw error;
+    err(`next-task: dependencies are not installed (missing package "${pkg}"); run pnpm install --frozen-lockfile, then run the picker again`);
+    return exit(1);
+  }
+}
+const { changedPathsOf, findGateRow, reviewGateViolation } = await loadPickerModule(() => import("./review-gate.mjs"));
 
 const LIST = "docs/plans/assignments.json";
 const REGISTER = "docs/DECISIONS.md";
@@ -63,18 +83,24 @@ const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 // regression exercises these exact bindings instead of a copy of them.
 export const git = boundedGitReader({ env: GIT_ENV });
 export const tryGit = nullableBoundedGitReader({ env: GIT_ENV });
-const fail = (message, code = 1) => { console.error(`next-task: ${message}`); process.exit(code); };
+class CliFailure extends Error {
+  constructor(message, code) {
+    super(message);
+    this.code = code;
+  }
+}
+const fail = (message, code = 1) => {
+  console.error(`next-task: ${message}`);
+  throw new CliFailure(message, code);
+};
 
-class RefSnapshotChanged extends Error {}
+class RefSnapshotChanged extends Error {
+  /** The scoped refs that moved since the snapshot, so a caller can tell a lost claim race from churn. */
+  constructor(message, changed = []) { super(message); this.changed = changed; }
+}
 let decisionRefs = null;
 const refPatterns = ["refs/heads/main", "refs/heads/agent/*"];
 const refspecs = ["+refs/heads/main:refs/remotes/origin/main", "+refs/heads/agent/*:refs/remotes/origin/agent/*"];
-if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main" && !LIST_REF.startsWith("origin/agent/")) {
-  const branch = LIST_REF.slice(7);
-  if (tryGit("check-ref-format", `refs/heads/${branch}`) === null) fail("STOP: invalid task-list ref", 2);
-  refPatterns.push(`refs/heads/${branch}`);
-  refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
-}
 
 function refsFrom(raw, prefix) {
   if (raw === null) fail("STOP: authoritative refs are unreadable; check origin access and run again", 2);
@@ -136,10 +162,44 @@ export function runLocalCleanup({ tryGit, log = console.log, err = console.error
   }
 }
 
+/**
+ * PICKER-fetch-retry (D-324, D-321 (11)): the ref refresh is the run's first network step and one
+ * reset there stopped the whole run ("authoritative ref refresh failed"), though replaying the same
+ * fetch by hand succeeded in 11.7 s. The same host also drops about 1 GitHub read in 60.
+ * The retry is bounded and covers transport only; the caller still fails closed afterwards.
+ */
+export const FETCH_ATTEMPTS = 3;
+
+/** How many attempts to make given the failures so far: the bounded attempt count. */
+export const fetchAttemptsFor = (failed, attempts = FETCH_ATTEMPTS) => Math.min(failed + 1, attempts);
+
+const FETCH_RETRY_DELAY_MS = 500;
+const sleepSync = ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+
+/** Runs one Git fetch, retrying a transport failure up to FETCH_ATTEMPTS; false when it never worked. */
+function fetchWithRetry(args) {
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    if (tryGit(...args) !== null) return true;
+    if (attempt < FETCH_ATTEMPTS) sleepSync(FETCH_RETRY_DELAY_MS * attempt);
+  }
+  return false;
+}
+
+/**
+ * HYGIENE-picker-bootstrap (D-387): a shallow clone is unshallowed once, automatically, instead of stopping a
+ * fresh cloud session. If that fetch fails, or history is still incomplete, the existing STOP stands unchanged.
+ */
+export function ensureCompleteHistory({ tryGit: read, fail: stop, log = console.log }) {
+  if (read("rev-parse", "--is-shallow-repository") === "false") return;
+  log("next-task: this clone has shallow history; fetching the full history once (git fetch --unshallow origin)");
+  read("fetch", "-q", "--unshallow", "origin");
+  if (read("rev-parse", "--is-shallow-repository") !== "false") stop("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+}
+
 function refreshAuthoritativeRefs() {
   // Explicit destinations update and prune tracking refs even in a main-only clone; config stays untouched.
-  if (tryGit("-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs) === null) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
-  if (tryGit("rev-parse", "--is-shallow-repository") !== "false") fail("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+  if (!fetchWithRetry(["-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs])) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
+  ensureCompleteHistory({ tryGit, fail, log: console.log });
   runLocalCleanup({ tryGit, log: console.log, err: console.error });
   return trackingRefs();
 }
@@ -217,16 +277,20 @@ function requireCurrentRefs(scope = null) {
   const differs = (refs, skipMain) => {
     const selected = map => [...map].filter(([name]) => relevant(name) && !(skipMain && name === "main"));
     const now = new Map(selected(refs)), then = selected(decisionRefs.refs);
-    return now.size !== then.length || then.some(([name, sha]) => now.get(name) !== sha);
+    const changed = then.filter(([name, sha]) => now.get(name) !== sha).map(([name]) => name);
+    if (now.size !== then.length) changed.push(...[...now.keys()].filter(name => !then.some(([was]) => was === name)));
+    return changed;
   };
   const remote = refsFrom(tryGit("ls-remote", "--heads", "origin", ...refPatterns), "refs/heads/");
-  if (differs(remote, mainByContent)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  const moved = differs(remote, mainByContent);
+  if (moved.length) throw new RefSnapshotChanged("authoritative snapshot changed before write", moved);
   if (mainByContent && remote.get("main") !== decisionRefs.refs.get("main")) {
     const current = remote.has("main") ? mainInputsUnchanged(scope) : null;
-    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+    if (!current) throw new RefSnapshotChanged("authoritative snapshot changed before write", ["main"]);
     decisionRefs.refs.set("main", current);
   }
-  if (differs(trackingRefs(), false)) throw new RefSnapshotChanged("authoritative snapshot changed before write");
+  const tracked = differs(trackingRefs(), false);
+  if (tracked.length) throw new RefSnapshotChanged("authoritative snapshot changed before write", tracked);
 }
 
 /**
@@ -288,14 +352,46 @@ function ghToken() {
 
 const githubTokenOf = () => process.env.GH_TOKEN || process.env.GITHUB_TOKEN || tryGit("config", "--get", "github.token") || ghToken();
 
-async function github(repo, path, { signal } = {}) {
+/**
+ * PICKER-network-retry (D-324, D-321 (11)): one dropped connection must not stop every session.
+ * Measured on the owner's Mac: 1 of 60 identical reads failed with ECONNRESET through the local
+ * proxy, and a run makes about 140 reads, so a single attempt stopped runs that a second attempt
+ * finished (four consecutive `--claim` runs died at "cannot read main's CI runs from GitHub").
+ * Retried: a transport failure or a 5xx/429 answer, twice, on the same read. Never retried: a 4xx
+ * (a real answer), the caller's own cancellation, or the 15 s timeout (a slow GitHub must not
+ * become a 45 s stall on every read). Writes are not retried here: the snapshot protocol decides.
+ */
+export const GITHUB_READ_ATTEMPTS = 3;
+
+export function isTransientGithubFailure(error) {
+  if (!error || typeof error !== "object") return false;
+  if (error.name === "AbortError" || error.name === "TimeoutError") return false;
+  const status = typeof error.status === "number" ? error.status : null;
+  if (status !== null) return status === 429 || status >= 500;
+  return error.name === "TypeError" && /fetch failed/i.test(String(error.message ?? ""));
+}
+
+const RETRY_DELAY_MS = 400;
+
+export async function github(repo, path, { signal } = {}) {
   // D-109: any token raises GitHub's limit from 60 reads an hour; `gh auth token` covers agents signed in with the GitHub CLI.
   const token = githubTokenOf();
   const headers = { accept: "application/vnd.github+json", "user-agent": "skipwait-next-task", ...(token ? { authorization: `Bearer ${token}` } : {}) };
-  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`GitHub ${path} answered ${res.status}`);
-  return res.json();
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}${path}`, { headers,
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000) });
+      if (!res.ok) {
+        const error = Object.assign(new Error(`GitHub ${path} answered ${res.status}`), { status: res.status });
+        if (attempt < GITHUB_READ_ATTEMPTS && isTransientGithubFailure(error)) { await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt)); continue; }
+        throw error;
+      }
+      return res.json();
+    } catch (error) {
+      if (attempt >= GITHUB_READ_ATTEMPTS || !isTransientGithubFailure(error)) throw error;
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+    }
+  }
 }
 
 /** PICKER-auto-land (D-371): one authenticated GitHub write; REST when `path` starts with "/", else a GraphQL query. */
@@ -507,6 +603,14 @@ function pullRequestFacts(tasks, heads, branches) {
 const onOrigin = name => tryGit("rev-parse", "--verify", "-q", originRef(name)) !== null;
 const tip = name => git("rev-parse", originRef(name));
 const base = name => (onOrigin(name) ? tip(name) : git("rev-parse", "origin/main"));
+/**
+ * A lock ref can vanish between the snapshot read and the claim: another session
+ * merges it and a concurrent prune drops the remote-tracking ref. The snapshot
+ * said it existed, so `tip()` would throw and the whole pick would fail. Re-check
+ * the ref and fall back to main, which is what a lock that never existed uses.
+ * Pure over its three readers so the regression can pin it without a live repo.
+ */
+export const lockTipWith = ({ exists, tipOf, main }) => (name, existed) => (existed && exists(name) ? tipOf(name) : main());
 
 /** Other tasks' empty reports do not change this task's report/deduplication inputs. */
 function reportParentFor(task) {
@@ -710,6 +814,7 @@ function claim(pick, who, branches, provenanceBody) {
   // D-370: no model dependency; a task's external-route history no longer limits who may claim it.
   if (MODEL_ROUTES_ENFORCED && !provenanceBody && pick.kind !== "continue" && history.some(m => m.id === pick.task?.id && markerReferences(m.body).external)) fail("external task claim requires its actual qualified operator route");
   const origin = () => git("rev-parse", "origin/main");
+  const lockTip = lockTipWith({ exists: onOrigin, tipOf: tip, main: origin });
   const scope = scopeOfPick(pick);
   switch (pick.kind) {
     case "build": return Boolean(pushMarker(pick.task.branch, origin(), markerSubject("Claim", pick.task.id, who), provenanceBody, scope));
@@ -724,12 +829,12 @@ function claim(pick, who, branches, provenanceBody) {
       }
       return Boolean(pushMarker(pick.work, tip(pick.work), markerSubject("Takeover", pick.task.id, who), provenanceBody, scope));
     }
-    case "unblock": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
+    case "unblock": return Boolean(pushMarker(pick.lock, lockTip(pick.lock, pick.lockExists), markerSubject("Unblock", pick.task.id, who), provenanceBody, scope));
     case "architect":
-    case "resync": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
+    case "resync": return Boolean(pushMarker(pick.lock, lockTip(pick.lock, pick.lockExists), markerSubject(pick.lockExists ? "Takeover" : "Claim", pick.task.id, who), undefined, scope));
     case "fix-main": return Boolean(pushMarker(pick.lock, pick.parent ? tip(pick.parent) : origin(), markerSubject(pick.parent ? "Takeover" : "Claim", fixMainIdOf(pick.sha), who), undefined, scope));
-    case "review": return Boolean(pushMarker(pick.lock, pick.lockExists ? tip(pick.lock) : origin(), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
-    case "fix": return branches.has(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
+    case "review": return Boolean(pushMarker(pick.lock, lockTip(pick.lock, pick.lockExists), markerSubject("Review claim", pick.task.id, who), provenanceBody, scope));
+    case "fix": return onOrigin(pick.lock) && Boolean(pushMarker(pick.lock, tip(pick.lock), markerSubject("Fix claim", pick.task.id, who), provenanceBody, scope));
     case "continue": return keepClaim(pick, who, branches, provenanceBody);
     default: return false;
   }
@@ -764,6 +869,12 @@ function autoSyncSetup() {
 }
 
 async function main() {
+  if (LIST_REF.startsWith("origin/") && LIST_REF !== "origin/main" && !LIST_REF.startsWith("origin/agent/")) {
+    const branch = LIST_REF.slice(7);
+    if (tryGit("check-ref-format", `refs/heads/${branch}`) === null) fail("STOP: invalid task-list ref", 2);
+    refPatterns.push(`refs/heads/${branch}`);
+    refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
+  }
   const args = argsOf(process.argv.slice(2));
   if (args.claim) {
     autoSyncSetup();
@@ -922,15 +1033,18 @@ async function runCommand(args) {
     // New work waits until your own work is on origin; your own claim waits until its commits are.
     if (CLAIMABLE.includes(pick.kind) && sync.blocking.length && (!continuing || sync.unpushed.includes(continuing))) {
       console.log("NEXT: SYNC FIRST\nYour own work is not on origin (the MUST PUSH lines above). Push it, then run this again. Nothing new was claimed.\n");
-      process.exit(3);
+      process.exitCode = 3;
+      return;
     }
     if (pick.kind === "ineligible") {
       console.log(renderIneligible(pick, who ?? "<your session name>"));
-      process.exit(EXIT.ineligible);
+      process.exitCode = EXIT.ineligible;
+      return;
     }
     if (!args.claim || !CLAIMABLE.includes(pick.kind)) {
       console.log(renderPick(pick, { who: who ?? "<your session name>", date, claimed: false, register, requestedTask: args.task }));
-      process.exit(EXIT[pick.kind] ?? 0);
+      process.exitCode = EXIT[pick.kind] ?? 0;
+      return;
     }
     if (args.provenance) {
       const role = ({ build: "build", takeover: "build", green: "build", review: "review", fix: "fix", land: "land" })[pick.kind === "continue" ? pick.of : pick.kind];
@@ -938,7 +1052,18 @@ async function runCommand(args) {
       const route = routeIdentity(provenance.registry, args.provenance, who, pick.task.id, role);
       if (!route.ok) fail(route.reason);
     }
-    if (claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined)) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    // D-324 / PICKER-claim-race-reread: a rival's claim on the picked task is a lost race, not a
+    // snapshot dead end. Re-pick inside this bounded loop; churn on any other scoped ref keeps the
+    // existing three-reread stop, so a task whose own heartbeat keeps moving still ends in STOP.
+    let claimed = false;
+    try {
+      claimed = claim(pick, who, branches, args.provenance ? `provenance ${args.provenance}` : undefined);
+    } catch (error) {
+      if (!(error instanceof RefSnapshotChanged) || !pick.task || !error.changed?.includes(pick.task.branch)) throw error;
+      console.error(`next-task: another agent claimed ${pick.task.id} first (attempt ${attempt}); picking again`);
+      continue;
+    }
+    if (claimed) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("six claims in a row were taken by other agents; run again in a minute");
@@ -947,5 +1072,16 @@ async function runCommand(args) {
 // PROCESS-provenance-loader-bounds: run only when executed as the CLI, so the
 // regression can import these real bindings without starting a picker run.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch(e => fail(e.stack ?? String(e)));
+  process.stdout.on("error", error => {
+    console.error(`next-task: stdout write failed: ${error.code ?? error.message}`);
+    process.exitCode = 1;
+  });
+  main().catch(error => {
+    if (error instanceof CliFailure) {
+      process.exitCode = error.code;
+      return;
+    }
+    console.error(`next-task: ${error.stack ?? String(error)}`);
+    process.exitCode = 1;
+  });
 }

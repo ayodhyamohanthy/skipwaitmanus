@@ -16,10 +16,9 @@ export function strictTransportSecurityValue(preload: boolean): string {
 
 const HSTS_HEADER_VALUE = strictTransportSecurityValue(HSTS_PRELOAD);
 
-// D-100.csp-enforce: the enforcing header is built but stays off. Only
-// D-100.csp-release flips this after 48 hours of page reports and desktop/mobile
-// verification (D-350). Off, the response is unchanged during collection.
-export const CSP_ENFORCED = false;
+// D-100.csp-release accepted the exact 48-hour collection interval before this
+// switch. False remains the reporting-only rollback (D-350).
+export const CSP_ENFORCED = true;
 
 export const CSP_POLICY = `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; report-uri ${CSP_REPORT_PATH}`;
 

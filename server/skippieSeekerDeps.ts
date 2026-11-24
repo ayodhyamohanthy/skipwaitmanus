@@ -13,6 +13,8 @@ import { buildSimpleDocx } from "../shared/docxSimple";
 import { bandedAskQuoteSchema } from "../shared/acceptedAskCost";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { bandedSalesEnabled } from "./billingSettings";
+import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
+import { createSkippieCardStore, type SkippieCardStore } from "./skippieMoneyCards";
 import { skippieQuoteSchema } from "./skippieSeekerCost";
 import * as db from "./db";
 import { rulesAnalyzeFit, type FitDraft, type OwnedResume, type SkippieQuote, type SkippieSeekerDeps } from "./skippieSeeker";
@@ -127,9 +129,12 @@ async function analyzeFit(input: { resumeText: string; jobText: string }): Promi
 export function createSkippieSeekerDeps(overrides: {
   storagePut?: (key: string, data: Uint8Array, contentType: string) => Promise<{ key: string; url: string }>;
   storageGetBytes?: (key: string) => Promise<Buffer>;
+  /** SKIPPY-3: the one-use money-card store the route also approves from; one per process. */
+  moneyCards?: SkippieCardStore;
 } = {}): SkippieSeekerDeps {
   const storagePut = overrides.storagePut;
   const storageGetBytes = overrides.storageGetBytes;
+  const moneyCards = overrides.moneyCards ?? createSkippieCardStore();
   return {
     previewJob: url => previewJobLink(url, db.resolveEmployerDomainFromTargetUrl),
     fetchJobText,
@@ -155,6 +160,17 @@ export function createSkippieSeekerDeps(overrides: {
       try { return await db.getOwnedResumeAttachmentForPitch(userId, attachmentId); } catch { return undefined; }
     },
     createAsk: (userId, input) => db.createCompanyReferralRequest(userId, input),
+    // SKIPPY-3: the same on-sale answer GET /api/chargebee/banded/offer gives, plus its own flag.
+    // With SKIPPIE_PURCHASE_ENABLED off, or banded sales off, or billing unconfigured, no card is offered.
+    getBandedOffer: async () => {
+      if (process.env.SKIPPIE_PURCHASE_ENABLED !== "true" || !bandedSalesEnabled()) return { onSale: false };
+      try {
+        return { onSale: Boolean(resolveChargebeeRuntime(undefined)) };
+      } catch {
+        return { onSale: false };
+      }
+    },
+    createMoneyCard: input => moneyCards.create(input),
     saveTailoredResume: async (userId, { text, basedOnAttachmentId }) => {
       if (!storagePut) throw new Error("Document storage is unavailable");
       const bytes = buildSimpleDocx(text.split(/\r?\n/));

@@ -35,6 +35,9 @@ describe("Trust cluster", () => {
     // The pay answer points at the live Report flow instead of a preview-only promise.
     fireEvent.click(screen.getByRole("button", { name: "What if someone asks me to pay?" }));
     expect(screen.getByRole("link", { name: "Report" }).getAttribute("href")).toBe("/report");
+    // The employer-rules answer points to the employee guide (D-323)
+    fireEvent.click(screen.getByRole("button", { name: "Does this fit my employer's referral rules?" }));
+    expect(screen.getByRole("link", { name: "How referring works here" }).getAttribute("href")).toBe("/how-employees-refer-candidates");
     expect(container.textContent).not.toMatch(/DESIGN PREVIEW|before the platform launches|This design preview/i);
     expect(screen.queryByText(/DESIGN PREVIEW/i)).toBeNull();
     expect(screen.queryByText(/before the platform launches/i)).toBeNull();
@@ -106,5 +109,16 @@ describe("Decision copy pins (DECISION-COPY-oct26)", () => {
     const blob = JSON.stringify(Object.values(guides));
     expect(blob).not.toMatch(/credit leaves your balance when you send/i);
     expect(blob).toMatch(/A referral request is used only when a verified employee can see it/);
+  });
+
+  it("the guides include the calm employer-rules answer (D-323)", async () => {
+    const guides = await import("@/content/guides");
+    const guide = guides.guideFor("/how-employees-refer-candidates");
+    expect(guide).toBeDefined();
+    const section = guide?.sections.find(s => s.heading === "Does this fit my employer's referral rules?");
+    expect(section).toBeDefined();
+    expect(section?.paragraphs[0]).toContain("That depends on your employer's policy, and it wins.");
+    expect(section?.paragraphs[1]).toContain("Work-email verification shows you control an address at your company.");
+    expect(section?.points).toHaveLength(5);
   });
 });
