@@ -16,7 +16,7 @@ const REFERRER_PW = "referrer-fixture-password-02";
 const API_SHA = "a".repeat(40);
 const WEB_SHA = "b".repeat(40);
 
-type PageScript = { status?: number; pageError?: string; consoleError?: string; failed5xx?: boolean; sideways?: boolean; finalPath?: string; throws?: string };
+type PageScript = { status?: number; pageError?: string; consoleError?: string; failed5xx?: boolean; failed4xx?: string; sideways?: boolean; finalPath?: string; throws?: string };
 
 /** A fake Playwright: records every call so the tests can prove what was (and was not) requested. */
 function harness({ signIn = { seeker: 200, referrer: 200 } as Record<string, number>, pages = {} as Record<string, PageScript>, echoPasswordInError = false } = {}) {
@@ -49,7 +49,8 @@ function harness({ signIn = { seeker: 200, referrer: 200 } as Record<string, num
               if (s.throws) throw new Error(echoPasswordInError ? `${s.throws} ${SEEKER_PW}` : s.throws);
               if (s.pageError) handlers.pageerror?.(new Error(echoPasswordInError ? `${s.pageError} ${SEEKER_PW}` : s.pageError));
               if (s.consoleError) handlers.console?.({ type: () => "error", text: () => s.consoleError });
-              if (s.failed5xx) handlers.response?.({ status: () => 502, url: () => `${ORIGIN}/api/x?token=abc` });
+              if (s.failed5xx) handlers.response?.({ status: () => 502, url: () => `${ORIGIN}/api/x?token=abc`, request: () => ({ method: () => "GET" }) });
+              if (s.failed4xx) handlers.response?.({ status: () => 400, url: () => s.failed4xx, request: () => ({ method: () => "POST" }) });
               if (s.finalPath) current = s.finalPath;
               return { status: () => s.status ?? 200 };
             },
@@ -132,15 +133,20 @@ describe("rules", () => {
     expect(signInMessage(503)).toContain("503");
   });
   it("fails a route only on a 5xx document, an uncaught error or a failed navigation; lists the rest as findings", () => {
-    const ok = { route: "/plans", width: 1280, status: 200, pageErrors: [], consoleErrors: [], failedRequests: [], sideways: false, finalPath: "/plans", navigationError: null };
+    const ok = { route: "/plans", width: 1280, status: 200, pageErrors: [], consoleErrors: [], failedRequests: [], clientErrors: [], sideways: false, finalPath: "/plans", navigationError: null };
     expect(judgeRoute(ok)).toEqual({ fails: [], findings: [] });
     expect(judgeRoute({ ...ok, status: 500 }).fails).toEqual(["document answered 500"]);
     expect(judgeRoute({ ...ok, pageErrors: ["boom"] }).fails).toEqual(["uncaught error: boom"]);
     expect(judgeRoute({ ...ok, navigationError: "timeout" }).fails).toEqual(["navigation failed: timeout"]);
-    expect(judgeRoute({ ...ok, status: 404, consoleErrors: ["x"], failedRequests: ["502 /api/x"], sideways: true, finalPath: "/sign-in" })).toEqual({
+    expect(judgeRoute({ ...ok, status: 404, consoleErrors: ["x"], failedRequests: ["502 /api/x"], clientErrors: ["400 POST /api/y"], sideways: true, finalPath: "/sign-in" })).toEqual({
       fails: [],
-      findings: ["document answered 404", "1 console error", "1 request answered 5xx", "scrolls sideways at 390", "redirected to /sign-in"],
+      findings: ["document answered 404", "1 console error", "1 request answered 5xx", "1 request answered 4xx: 400 POST /api/y", "scrolls sideways at 390", "redirected to /sign-in"],
     });
+  });
+  it("names each distinct 4xx request once, so the summary says which call failed", () => {
+    const ok = { route: "/plans", width: 1280, status: 200, pageErrors: [], consoleErrors: [], failedRequests: [], sideways: false, finalPath: "/plans", navigationError: null };
+    expect(judgeRoute({ ...ok, clientErrors: ["400 POST /a", "400 POST /a", "404 GET /b"] }).findings).toEqual(["3 requests answered 4xx: 400 POST /a; 404 GET /b"]);
+    expect(judgeRoute({ ...ok, clientErrors: ["400 POST /a"] }).fails).toEqual([]);
   });
   it("exits 1 for a failed sign-in or a failing route, 0 otherwise", () => {
     const route = (fails: string[]) => ({ fails, findings: ["1 console error"] });
@@ -202,11 +208,32 @@ describe("runLiveQa", () => {
     expect((await run(fivexx)).code).toBe(1);
   });
 
-  it("skips quietly after a release until the owner adds the secrets, but fails a deliberate run", async () => {
+  it("records every 4xx request with its method and path, never its query string, and does not fail the run for it", async () => {
+    const h = harness({ pages: {
+      "seeker/plans": { failed4xx: `${ORIGIN}/api/auth/refresh?code=secret-code&state=xyz` },
+      "referrer/queue@390": { failed4xx: "https://api.workos.com/user_management/authenticate?token=abc" },
+    } });
+    const { code, summary } = await run(h);
+    expect(code).toBe(0);
+    const plans = summary.roles[0].routes.find((r: { route: string; width: number }) => r.route === "/plans" && r.width === 1280);
+    expect(plans.clientErrors).toEqual(["400 POST /api/auth/refresh"]);
+    expect(plans.findings).toContain("1 request answered 4xx: 400 POST /api/auth/refresh");
+    const queue = summary.roles[1].routes.find((r: { route: string; width: number }) => r.route === "/queue" && r.width === 390);
+    expect(queue.clientErrors).toEqual(["400 POST https://api.workos.com/user_management/authenticate"]);
+    const all = everything(h);
+    expect(all).not.toContain("secret-code");
+    expect(all).not.toContain("token=abc");
+    expect(all).not.toContain("state=xyz");
+    expect(JSON.parse(h.files.get(path.join("live-qa", "summary.json")) ?? "{}").roles[0].routes[0].clientErrors).toEqual(["400 POST /api/auth/refresh"]);
+  });
+
+  it("fails a run after a release when the secrets are missing, instead of passing silently", async () => {
     const after = harness();
-    const skipped = await run(after, { passwords: { seeker: "", referrer: "" }, trigger: "workflow_run" });
-    expect(skipped.code).toBe(0);
-    expect(after.lines.join("\n")).toMatch(/::notice::live QA skipped: REVIEWER_SEEKER_PASSWORD and REVIEWER_REFERRER_PASSWORD not set/);
+    const failed = await run(after, { passwords: { seeker: "", referrer: "" }, trigger: "workflow_run" });
+    expect(failed.code).toBe(1);
+    expect(failed.summary).toBeNull();
+    expect(after.lines.join("\n")).toMatch(/::error::REVIEWER_SEEKER_PASSWORD and REVIEWER_REFERRER_PASSWORD not set/);
+    expect(after.lines.join("\n")).not.toMatch(/::notice::|skipped/);
     expect(after.calls).toEqual([]);
     const manual = harness();
     const refused = await run(manual, { passwords: { seeker: SEEKER_PW, referrer: "" }, trigger: "workflow_dispatch" });
