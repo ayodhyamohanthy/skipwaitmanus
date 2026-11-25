@@ -11,7 +11,8 @@ describe("plainTextSnippet", () => {
 
   it("strips ordinary HTML and decodes named and numeric entities once", () => {
     expect(plainTextSnippet("<p>Build <b>payments</b> &amp; billing&nbsp;&#8212; R&amp;D &#x2019;26</p>")).toBe("Build payments & billing — R&D ’26");
-    expect(plainTextSnippet("Use &amp;lt;b&amp;gt; for bold")).toBe("Use &lt;b&gt; for bold");
+    // Greenhouse escapes its HTML a second time, so text entities arrive as &amp;amp; (live MongoDB, Nov 25).
+    expect(plainTextSnippet("&lt;p&gt;Senior Manager, AI &amp;amp; People Transformation&lt;/p&gt;")).toBe("Senior Manager, AI & People Transformation");
     expect(plainTextSnippet("<p>Build <b>payments</b>.</p><p>Ship <a href='x'>fast</a>.</p>")).toBe("Build payments. Ship fast.");
   });
 

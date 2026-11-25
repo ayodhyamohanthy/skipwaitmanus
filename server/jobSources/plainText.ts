@@ -1,7 +1,7 @@
 // Job snippets as plain text (D-174 release, Nov 25). Providers send descriptions as HTML, and Greenhouse's
-// ?content=true sends it entity-encoded ("&lt;p&gt;..."). Decode entities first, then remove tags (and the
-// contents of script/style), then collapse whitespace, so no markup ever reaches the jobs list. The result is
-// rendered as React text, never as HTML.
+// ?content=true sends it entity-encoded ("&lt;p&gt;AI &amp;amp; People&lt;/p&gt;"). Decode entities, remove tags
+// (and the contents of script/style) until nothing changes, decode the remaining text's entities, then collapse
+// whitespace, so no markup or entity code ever reaches the jobs list. The result is rendered as React text.
 const NAMED: Readonly<Record<string, string>> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'" };
 
 function decodeEntities(text: string): string {
@@ -27,6 +27,8 @@ export function plainTextSnippet(html: string | null | undefined, max = 400): st
     if (next === text) break;
     text = next;
   }
-  // Whatever still opens a tag after the bound (pathological nesting) loses its "<", so no markup can survive.
-  return text.replace(/<(?=[a-z/!?])/gi, "").replace(/\s+/g, " ").trim().slice(0, max);
+  // Greenhouse escapes its HTML twice, so the text left between tags still carries entities ("AI &amp; People"):
+  // decode the text once more. Whatever then still opens a tag (pathological nesting, or markup decoded from the
+  // text) loses its "<", so no markup can survive.
+  return decodeEntities(text).replace(/<(?=[a-z/!?])/gi, "").replace(/\s+/g, " ").trim().slice(0, max);
 }
