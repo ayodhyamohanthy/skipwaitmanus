@@ -307,7 +307,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     listRequests: async userId => (await db.listReferralRequests(userId)).filter(row => row.jobSeekerId === userId),
     listAlerts: userId => db.listSeekerAlerts(userId),
     listResumes: userId => db.listMyUnattachedResumes(userId),
-    proposeAsk: (userId, input) => db.proposeAssistantAsk(userId, input),
+    proposeAsk: (userId, input, grant) => db.proposeAssistantAsk(userId, input, grant),
   });
   // OAuth (authorization code + PKCE) so ChatGPT/Claude can connect without pasting a token.
   registerOAuthRoutes(app, {
