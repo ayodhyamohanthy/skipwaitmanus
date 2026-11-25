@@ -78,4 +78,4 @@ main CI (`45592467105`) and its pushed task files are unchanged on `main`.
 
 ## Status
 
-- PICKER-single-flight: done — `ae57f6cc86bedb62e9474b334235175aa0061eea` — PR #1625 — HungerG · e6a2 — 2026-11-25. A live pid refuses at any age or with a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; all three critical regressions fail against the previous rule; exact-head required CI and main CI are green. `--report` and `--heartbeat` remain exempt (D-085).
+- PICKER-single-flight: done — #1557 (lock) and #1625 (live-pid rule) merged; the latter landed as `ae57f6cc86bedb62e9474b334235175aa0061eea` — HungerG · e6a2 — 2026-11-25. A live pid refuses at any age or with a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; all three critical regressions fail against the previous rule; exact-head required CI and main CI are green. `--report` and `--heartbeat` remain exempt (D-085).
