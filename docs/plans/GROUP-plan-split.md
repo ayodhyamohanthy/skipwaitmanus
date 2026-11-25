@@ -456,7 +456,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-plan-split: packet and registry prepared — GPT-6.1 Sol · 01aa — 2026-11-25 — claim `d16a563a7`; source audit on main `47e8f6645`, instructions refreshed through D-400's founder-protection amendment on `30d2f6ebe`. Packet commit `369f8d1dd` is pushed. `pnpm check` passed; focused `nextTask`, `queueGate`, `decisionIdCheck`: 208/208 passed (three files, 24.25 s). After main integration, five registry integration tests passed; validation checked all 455 rows and preserved all 435 existing rows/order except this assigned packet row, with 20 Group rows appended and stamped D-400. A picker simulation selects `GROUP-contracts` after the parser completes despite `GROUP-terms` being owner-held. PR/required CI remain pending. No Group runtime, payment, email, migration or production activation performed.
 - GROUP-terms: owner — pending the single §8 commercial answer batch; no policy default approved.
 - GROUP-contracts: todo — §6.1.
-- GROUP-provider: todo — §6.2.
+- GROUP-provider: in progress — DeepSeek v4.1 Flash · 5988 — 2026-11-25 — branch agent/queue/group-provider
 - GROUP-migration: todo — §6.3; migration number unallocated.
 - GROUP-schema: todo — §6.3; production migration proof required first.
 - GROUP-orders: todo — §6.4.
