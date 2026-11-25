@@ -9386,15 +9386,15 @@
       "id": "GROUP-plan-split",
       "title": "Group Plan: write the slice plan (seats and one-seat additions, server quote with the 10% institution discount, checkout intent, verified-payment activation and email, candidate-approved delegation) and register its rows",
       "row": "GROUP",
-      "packet": null,
+      "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-plan-split",
       "branch": "agent/queue/group-plan-split",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [],
-      "note": "Packet-only task: its work is the rows it adds (D-223, D-321 (8)). Read docs/plans/GROUP-bulk-oct31.md in full, docs/PRICING.md, D-219, D-367 and the existing banded checkout, grants and ledger code it names. Write docs/plans/GROUP-plan-split.md: one row per owned-file slice that one session finishes alone, each behind a switch that starts off, migration rows first, red-first tests and the packet's proof gates. Resolve the open items (discount stacking with volume discounts, single-seat additions and proration, delegation scope and institute visibility) from existing rules with stated, changeable assumptions; a point that would change a price, plan content, legal text or the login rule goes to the owner as one batched question and only the rows that need it wait. Never a real payment or email.",
+      "note": "Original packet/registry registration by GPT-6.1 Sol · 01aa on 2026-11-25 (claim d16a563a7), implementation 369f8d1dd; PR #1609 merged from exact head c0cc452c8c84cb02a1ad937a5a4c55f885e87067 as dadc0528975dc4bc7fc6fefb8adc1799fe36acee with required CI run 45579946145 green. Packet-only reconciliation; no Group runtime, payment, email, migration or activation.",
       "epic": "GROUP",
-      "syncedTo": "D-398"
+      "syncedTo": "D-405"
     },
     {
       "id": "PICKER-never-wait",
