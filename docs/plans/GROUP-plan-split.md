@@ -458,7 +458,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-contracts: todo — §6.1.
 - GROUP-provider: todo — §6.2.
 - GROUP-migration: todo — §6.3; migration number unallocated.
-- GROUP-schema: todo — §6.3; production migration proof required first.
+- GROUP-schema: in progress — GPT-6.1 Sol · 2819 — 2026-11-25 — branch agent/queue/group-schema; read receipt: main `3a549921256997e517486bb3d5ea83ac47a07559`, claim `7059a3ccb`; read BRIEF/AGENTS/BUILD_CONTINUITY/COLLABORATION and decisions through D-402; no prior implementation of this row. Draft build-ahead pending matching GROUP-contracts/migration and production migration/checksum receipt before schema landing. setup blocker: pnpm install --frozen-lockfile failed with ENOSPC; pnpm check unavailable; no schema/runtime files changed.
 - GROUP-orders: todo — §6.4.
 - GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
 - GROUP-checkout: todo — §6.5; disabled.
