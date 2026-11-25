@@ -1792,7 +1792,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: req.body.suspended ? "admin.user_suspended" : "admin.user_unsuspended", outcome: "success", resourceType: "user", resourceId: userId, metadata: { note: typeof note === "string" ? note : null } });
       res.set("Cache-Control", "private, no-store");
       res.json({ user });
-    } catch { res.status(500).json({ error: "We could not update this user account" }); }
+    } catch (error) {
+      // D-400: the founder's account is protected; say so plainly instead of a generic failure.
+      if (error instanceof Error && error.name === "FounderProtectedError") return res.status(403).json({ error: "The founder's account cannot be suspended" });
+      res.status(500).json({ error: "We could not update this user account" });
+    }
   });
   app.get("/api/admin/payments/review", async (req, res) => {
     try {

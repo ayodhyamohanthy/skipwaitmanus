@@ -7,8 +7,9 @@ import { scrubTelemetryPath } from "../shared/telemetryScrub";
 import { routeTemplateOf } from "./httpErrorCapture";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
-// Second recipient: the owner mailbox. Best effort: the primary result decides success.
+// Copies: the owner mailbox and, since D-400, the administrator mailbox. Best effort: the primary result decides success.
 export const ADMIN_ALERT_COPY_RECIPIENT = "ayodhya@mail.instinct.com";
+export const ADMIN_MAILBOX_COPY_RECIPIENT = "admin@skipwait.me";
 
 export async function sendAdminAlertEmail(fetchImpl: typeof fetch | undefined, input: { subject: string; text: string }) {
   // An email outage still leaves a trace in Sentry; the message carries only the fixed part of the subject.
@@ -20,7 +21,9 @@ export async function sendAdminAlertEmail(fetchImpl: typeof fetch | undefined, i
   } catch { /* the alert path must never fail because of Sentry */ }
   const send = createTransactionalEmailSender({ fetchImpl });
   const primary = await send({ to: ADMIN_ERROR_RECIPIENT, ...input });
-  try { await send({ to: ADMIN_ALERT_COPY_RECIPIENT, ...input }); } catch { /* copy is best effort */ }
+  for (const copy of [ADMIN_ALERT_COPY_RECIPIENT, ADMIN_MAILBOX_COPY_RECIPIENT]) {
+    try { await send({ to: copy, ...input }); } catch { /* copy is best effort */ }
+  }
   return primary;
 }
 const DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000;

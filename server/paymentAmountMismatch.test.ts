@@ -65,7 +65,9 @@ describe("paid invoice that disagrees with the checkout amount", () => {
     const input = { paymentId: 41, reason: "checkout_amount_mismatch", expectedAmount: 99000, expectedCurrency: "INR", paidAmount: 116820, paidCurrency: "INR" };
     expect(await alert(input)).toEqual({ alerted: true });
     expect(await alert(input)).toEqual({ alerted: true });
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    // Two alerts, each to the founder plus two copies (D-400 adds the administrator mailbox).
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect((fetchImpl.mock.calls as unknown as [string, { body: string }][]).map(call => JSON.parse(call[1].body).to[0])).toContain("admin@skipwait.me");
     const body = JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, { body: string }])[1].body);
     expect(body.to).toEqual(["ayodhya@skipwait.me"]);
     expect(body.subject).toContain("#41");
