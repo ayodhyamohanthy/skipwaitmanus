@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "task": "D-048-K-premium",
+  "synthetic": true,
+  "baseline": {
+    "sourceSha": "30626b641b77d9977f5afa167b482cea104fb2fd",
+    "publicAssets": 364,
+    "preservedAssetHashes": true
+  },
+  "candidate": {
+    "sourceSha": "6ca4b0945a096d5cd96657d5a44f47a8d1b57219",
+    "runtimeChange": "Premium wrapper only; goal page, recovery hook, shared model and routes unchanged",
+    "build": "passed",
+    "providerOrProductionTraffic": false
+  },
+  "browser": {
+    "backend": "ZCode in-app browser",
+    "fixtureHost": "127.0.0.1",
+    "scenario": "paused",
+    "auth": "synthetic signed-in seeker",
+    "externalConnections": "blocked by fixture host CSP",
+    "visualInspection": "unverified: screenshot image media was omitted by the active model provider"
+  },
+  "comparisons": [
+    {
+      "width": 1280,
+      "height": 900,
+      "baseline": {
+        "file": "baseline/paused-1280.png",
+        "sha256": "b60302685c5725c43711f70a4701cad9ed0f0cd396bba23a85113332dfb74781",
+        "horizontalOverflowPx": 0,
+        "primaryActions": 1
+      },
+      "candidate": {
+        "file": "candidate/paused-1280.png",
+        "sha256": "b60302685c5725c43711f70a4701cad9ed0f0cd396bba23a85113332dfb74781",
+        "horizontalOverflowPx": 0,
+        "primaryActions": 1
+      },
+      "pngFilesByteIdentical": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "baseline": {
+        "file": "baseline/paused-390.png",
+        "sha256": "a0851e9e4e4d250e6b4f5630fd804b959c61cd7719e46f4185bda5e776cbd8f4",
+        "horizontalOverflowPx": 0,
+        "primaryActions": 1
+      },
+      "candidate": {
+        "file": "candidate/paused-390.png",
+        "sha256": "a0851e9e4e4d250e6b4f5630fd804b959c61cd7719e46f4185bda5e776cbd8f4",
+        "horizontalOverflowPx": 0,
+        "primaryActions": 1
+      },
+      "pngFilesByteIdentical": true
+    }
+  ],
+  "verdict": "Paused-state browser output is byte-identical at 1280 and 390, with no horizontal overflow and one primary action. Other roles/recovery states are covered by component tests, not this visual capture. Human visual review and canonical live acceptance remain unverified."
+}

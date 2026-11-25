@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render as rtlRender, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
@@ -17,6 +17,8 @@ import { CreditsSection } from "@/components/plans/PlansCredits";
 const openChargebeeCheckout = vi.hoisted(() => vi.fn());
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn(async () => null), openSignIn: vi.fn() }) }));
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout }));
+
+beforeAll(async () => { await import("./goal/premium/GoalPremium"); });
 
 // D-219 / D-366: legacy pack sales remain paused on the released referral-request page.
 describe("credit packs are paused", () => {

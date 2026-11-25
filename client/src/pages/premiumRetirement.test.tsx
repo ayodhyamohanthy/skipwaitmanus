@@ -101,7 +101,8 @@ describe("public Premium retirement parity", () => {
     request.mockResolvedValue(json({ status: "credited", tokenCount: 5, summary }));
     const view = mount();
     const checking = await screen.findByRole("button", { name: "Checking sign-in…" });
-    expect(checking.hasAttribute("disabled")).toBe(true);
+    expect(checking.getAttribute("aria-disabled")).toBe("true");
+    expect(document.getElementById(checking.getAttribute("aria-describedby") ?? "")?.textContent).toBe("Checking sign-in…");
     fireEvent.click(checking);
     await act(async () => { window.dispatchEvent(new Event("focus")); });
     expect(request).not.toHaveBeenCalled();
