@@ -9454,7 +9454,7 @@
       "tier": 2,
       "lane": "picker-short-session",
       "branch": "agent/queue/picker-short-session",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Owner, Nov 25 2026 (D-401). The cap is the provider's; this row makes it harmless. Picker files and a new test only.",
       "epic": "D-212",
@@ -9486,6 +9486,29 @@
         "scripts/agentLoop.test.ts",
         "docs/BUILD_CONTINUITY.md",
         "docs/plans/AGENT-LOOP-supervisor.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-402"
+    },
+    {
+      "id": "AGENT-CLIENT-config",
+      "title": "OpenCode and ZCode load turn-bounded worker subagents and the delegation rule from the repository, so Xingchi's 20-turn cap is avoided with no per-machine setup (D-402 (6))",
+      "row": "PICKER",
+      "packet": "docs/plans/AGENT-CLIENT-config.md",
+      "tier": 2,
+      "lane": "agent-client-config",
+      "branch": "agent/queue/agent-client-config",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026: 'whatever can be automatically fixed we should do'. Formats checked against opencode.ai/docs/agents and zcode.z.ai/en/docs/subagents. Being built by Claude Code · 43c8.",
+      "epic": "D-212",
+      "owns": [
+        "opencode.json",
+        ".opencode/agents/worker.md",
+        ".zcode/agents/worker.md",
+        "docs/agents/TURN-CAPPED-CLIENTS.md",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/AGENT-CLIENT-config.md",
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-402"
