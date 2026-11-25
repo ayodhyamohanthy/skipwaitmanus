@@ -9468,6 +9468,27 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-401"
+    },
+    {
+      "id": "AGENT-LOOP-supervisor",
+      "title": "Turn-capped agents restart themselves: a supervisor loop reruns the agent's headless mode as each conversation ends, so nobody types /new (D-402)",
+      "row": "PICKER",
+      "packet": "docs/plans/AGENT-LOOP-supervisor.md",
+      "tier": 2,
+      "lane": "agent-loop",
+      "branch": "agent/queue/agent-loop-supervisor",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-402): 'i want a automatic solution for this error no manual'. Being built by Claude Code · 43c8 right after registration lands.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/agent-loop.mjs",
+        "scripts/agentLoop.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/AGENT-LOOP-supervisor.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-402"
     }
   ]
 }
