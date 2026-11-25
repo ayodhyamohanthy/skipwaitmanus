@@ -96,15 +96,21 @@ payment, public post, price or login change.
 
 ## Status
 
-- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 2431 — 2026-11-25 — takeover on `agent/queue/ops-live-qa-journeys-sandbox`; implementation and dispatched live acceptance remain **UNVERIFIED** until their evidence is recorded. After the script merge, the existing row stays `todo` on `agent/queue/ops-live-qa-journeys-acceptance-2431` under D-373 (6), so that merge cannot prematurely release `LAUNCH-live-qa`.
+- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 930b — 2026-11-25 — official takeover `f5dce085c51389ac57472361d083c23abb3a76eb` on `agent/queue/ops-live-qa-journeys-sandbox` (previous holder GPT-6.1 Sol · 2431; prior receipt retained below). Implementation and dispatched live acceptance remain **UNVERIFIED**. Preserve `agent/queue/ops-live-qa-journeys-acceptance-2431` as the future acceptance carrier until implementation merges; the task remains `todo` under D-373 (6), so the implementation merge cannot prematurely release `LAUNCH-live-qa`.
 
-### Current execution receipt (November 25, 2026)
+### Previous execution receipt (November 25, 2026)
 
 - Read main `f7020bb3789e562f3e7b970da6d45469fc9fbc18`; official takeover `7cd23a49d`, integrated and pushed as `37cb59172`. Checked `BRIEF`, `AGENTS`, decisions through D-405 (including D-389/D-390/D-393 and D-398–D-403), `BUILD_CONTINUITY`, `COLLABORATION`, build plan §§3–6, `BUGFREE_GATE`, `DELEGATION` and `PAYMENTS_TEST_RUNBOOK`.
 - Prior PR #1558 (`f25eb09c7`) is preserved. The outstanding goal is reliable demo-only proof of seeker/referrer privacy and transitions, supporting L4 without public QA posts. Initial regressions: `liveQaJourneys.test.ts`, 19 passed / 2 failed, proving public opportunity calls and missing withdrawal after a preview-privacy failure.
 - The target directory read returned Wipro with `domains: ["wipro.com"]` on November 25. The URL `https://careers.wipro.com/job/product-designer-123` is a repository routing fixture (`server/planGateRoutes.test.ts:40`), not evidence of a current vacancy; the runner validates the directory entry before creating anything.
 - Contract checks follow current endpoints: claim stays pending with locked files; approval opens access; accepted step-back revokes access and ends the latest pickup. Decline returns `passed` and keeps the debit spent. Cleanup releases a pending claim through decline before withdrawal; step-back alone does not release it.
 - Targets: `scripts/live-qa-journeys.mjs`, `scripts/liveQaJourneys.test.ts`, `scripts/liveQaJourneyContracts.mjs`, `scripts/liveQaJourneyContracts.test.ts`, `scripts/liveQaJourneyBrowser.mjs`, `scripts/liveQaJourneyHarness.ts`, this packet and its existing registry row. No dependency, environment, schema, production setting, price or login-rule change. Live acceptance requires a successful manual journeys run, its release SHAs, sanitized results, cleanup and inspected captures at 1280/390.
+
+### Current read receipt (November 25, 2026)
+
+- Read current main `8951b1518faa6089a86c29a2eaae78bb93d47951`; `.zcode/agents/worker.md`, `docs/BRIEF.md`, `AGENTS.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, `docs/KIT_V4_BUILD_PLAN.md` §§3–6, `docs/BUGFREE_GATE.md`, and available decision entries D-388–D-396, D-398–D-403 and D-405 (D-397 and D-404 are absent).
+- Inspected prior implementation helper `10ce5b5d3` and prior PR #1558 (`f25eb09c7`); PR #1558's public walk-in routing predates D-393. The goal remains L4 demo-only launch proof. The implementation targets listed in the previous receipt remain unchanged; this handoff edits only this packet.
+- Fixture baseline `LANG=en_US.UTF-8 pnpm vitest run scripts/liveQaJourneys.test.ts scripts/liveQaJourneyContracts.test.ts scripts/liveQaSignedIn.test.ts scripts/liveQaWorkflows.test.ts`: 4 files and 159 tests passed in 5.49s. No live network or browser was used; live acceptance remains **UNVERIFIED**.
 
 ### Historical build notes (DeepSeek V4.1 Flash · e9e1, 2026-11-24; routing superseded by D-393)
 
