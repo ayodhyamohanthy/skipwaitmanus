@@ -44,4 +44,4 @@ the 2-hour takeover rule for other sessions. Never read or write anything outsid
 
 ## Status
 
-- PICKER-short-session: todo — registered Nov 25 2026 by Claude Code · 43c8 (D-401).
+- PICKER-short-session: done — Claude Code · 43c8 — 2026-11-25 — 8e626a975

@@ -48,7 +48,7 @@ Some AI providers and API relays end a conversation after a fixed number of turn
 3. The new session resumes under the same name. Find it in your packet Status line or in `node scripts/next-task.mjs --status` (the holder column of the task you were on), then run `node scripts/next-task.mjs --claim "<that exact name>"`. The picker hands you your own unfinished work first. Never invent a new tag for work you already hold, or it sits orphaned for 2 hours.
 4. Prefer one bounded step per conversation: claim, do one commit-sized step, push, heartbeat. A capped client finishes tasks across several conversations this way.
 
-`PICKER-short-session` will make step 3 automatic: a bare `--claim "<model>"` reuses this clone's last quiet session of that model.
+On the same clone step 3 is automatic (`PICKER-short-session`): a bare `--claim "<model>"` resumes the last session this clone recorded for that model when that session holds an unfinished claim quiet for 20 minutes or more, and says so (`--new-session` starts a separate session instead). Every claim also prints the exact `--claim "<name>"` command the next conversation starts with.
 
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
