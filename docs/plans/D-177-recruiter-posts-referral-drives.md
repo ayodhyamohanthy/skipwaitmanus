@@ -31,7 +31,7 @@ There is **no employee-only vacancy type**. A post whose only source is an inter
 
 1. ~~What does "internal" mean~~ **RESOLVED Oct 24 1:18 IST** (phonemsg-01M5N4XQX4YY5R18T59S38BYJ5): outside-candidate-visible, email-shared referral opportunities. See §2.
 2. **Who verifies a recruiter/HR identity at a company?** The existing employer account and approval path (`employerAccounts.approvalStatus = "approved"` for the post's company domain). No new role, no new approval mechanism. A recruiter post is `career_portal_confirmed` only with a resolving public link; a recruiter has no employee-shared provenance, so a recruiter post without a link is refused.
-3. **Does a referral drive carry reward/terms fields?** No. D-132/D-152 stay frozen: no price, fee, credit, reward or payout field in a post or a drive. If rewards are ever wanted, that is a new owner decision.
+3. **Does a referral drive carry reward/terms fields?** No. Current money rules and frozen prices (D-219/D-367) stay unchanged: no price, fee, credit, reward or payout field in a post or a drive. If rewards are ever wanted, that is a new owner decision.
 4. **Can a company admin unpublish an employee's drive?** Yes. The company's approved employer admin may unpublish any post for its own domain, the poster may unpublish their own, and the SkipWait admin may remove any post. Unpublishing hides the post from every surface; it never deletes the poster's account or the ask history.
 
 ## 4. Current behaviour, verified in code
@@ -122,17 +122,17 @@ Focused tests, `pnpm check`, required CI green; the migration is additive and re
 
 ## Relation to existing work (context, not presumed satisfied)
 
-- D-048-p3-post (todo): /post-opportunity + My openings + server posting verdict. D-177 extends this lane; it does not replace it. Reconciliation of scopes rides the implementation PR.
-- D-048-P-employer (architect): employer lane packet; recruiter/HR roles likely live here.
-- D-174-seeker-journey-build (todo): the company -> job -> ask journey these posts feed.
+- D-048-p3-post (done in the current registry): /post-opportunity + My openings + server posting verdict. D-177 extends this lane; it does not replace it. Reconciliation of scopes rides the implementation PR.
+- D-048-P-employer (historical architecture context): employer lane packet; current recruiter authorization must be verified against the source, not inferred from this row.
+- D-174-seeker-journey-build (done in the current registry): the company -> job -> ask journey these posts feed.
 - #596/#597 (in review): send-ask/post-copy fixes; wording only, not posting supply.
 - Coverage caution (Main, Oct 24): the founder's premise "we are showing jobs like career portals and LinkedIn" is NOT confirmed; current job coverage is limited. This packet adds supply paths; it does not assert existing coverage.
 
 ## Money boundary
 
-No pricing, fee, credit, or reward amounts in this packet or its copy. Money lines stay byte-identical to D-132/D-152 until their audit. If referral drives later carry rewards, that is a new owner decision.
+No pricing, fee, credit, or reward amounts in this packet or its copy. Current money rules and frozen prices follow `docs/PRICING.md` and D-219/D-367; the superseded D-132/D-152 model is not restored. Existing money paths stay unchanged. If referral drives later carry rewards, that is a new owner decision.
 
 ## Status
 
-- D-177-recruiter-posts-referral-drives: in progress — GPT-6.1 Sol · a52c — 2026-11-25 — branch `agent/queue/d177-recruiter-drives`; official claim `86b46841b`, base main `aeac51ac2`, decisions checked through D-398. Read `AGENTS.md`, `COLLABORATION.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, this packet and the current register. The prior packet-only outcome by DeepSeek V4.1 Flash · f2a2 is preserved; no posting implementation or production acceptance is recorded. Inspect the approved employer-to-domain boundary (§11) and register the D-223 migration/runtime slices before source work. Growth loop L4: verified employees supply shareable opportunities that outside candidates can request.
-- Previous outcome: packet written — DeepSeek V4.1 Flash · f2a2 — 2026-11-25 — the four questions have packet rulings in §3; their claimed existing approval path still needs source verification.
+- D-177-recruiter-posts-referral-drives: in progress — GPT-6.1 Sol · b7bb — 2026-11-25 — official takeover `42a003ca1` preserves claim `86b46841b` and the prior documentation checkpoint `47abe63c7` on `agent/queue/d177-recruiter-drives`. Current main `89d2d1616` is integrated in `1cbb11a0f`; decisions checked through D-400. Read `AGENTS.md`, `COLLABORATION.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, this packet and the current register. Both declared dependencies are done. The registry's former internal-restricted/unresolved wording is stale; sections 1–3 already resolve the two outside-visible types. Inspect the approved employer-to-domain boundary (§11) and register the D-223 migration/runtime slices before source work. Growth loop L4: verified employees supply shareable opportunities that outside candidates can request. No runtime implementation, migration application or production acceptance is recorded.
+- Previous outcome: GPT-6.1 Sol · a52c — `47abe63c7` — claim and acceptance documentation only; no source implementation. Earlier packet: DeepSeek V4.1 Flash · f2a2 — 2026-11-25 — the four questions have packet rulings in §3; their claimed existing approval path still needs source verification.

@@ -8521,20 +8521,22 @@
     },
     {
       "id": "D-177-recruiter-posts-referral-drives",
-      "title": "Recruiter/HR job posts (public + internal) and employee-published referral drives feeding the company -> job -> ask journey",
+      "title": "Recruiter job posts and employee-shared referral drives in the company -> job -> referral-request journey",
       "status": "todo",
-      "syncedTo": "D-396",
+      "syncedTo": "D-400",
       "lane": "employer",
       "branch": "agent/queue/d177-recruiter-drives",
       "packet": "docs/plans/D-177-recruiter-posts-referral-drives.md",
       "owns": [
-        "docs/plans/D-177-recruiter-posts-referral-drives.md"
+        "docs/plans/D-177-recruiter-posts-referral-drives.md",
+        "docs/plans/assignments.json",
+        "docs/KIT_V4_BUILD_PLAN.md"
       ],
       "dependsOn": [
         "D-048-p3-post",
         "D-174-seeker-journey-build"
       ],
-      "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0). Audience model must hold before build: public vs internal-restricted (never public) vs referral-drive (shareable by design). 'Internal' meaning unresolved - open questions in the packet. No money fields (D-132/D-152 frozen). D-189: the old branch name carried #605 (the direction record), which made the picker read this row done. The build packet comes first: answer or route the open questions in docs/plans/D-177-recruiter-posts-referral-drives.md, then owned paths, tests and tiers.",
+      "note": "Founder direction Oct 24 00:57 IST (phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0), with the internal-job meaning resolved in packet section 2. Exactly two outside-visible types: career_portal_confirmed requires a resolving company link; employee_shared is verified-employee provenance and may be linkless. No employee-only vacancy or money/reward fields. Both dependencies are done. Verify the existing employer approval-to-company-domain boundary under section 11 and register bounded D-223 migration/runtime slices before source work; never infer posting permission from a company name or billing email. D-400 founder access remains superior for SkipWait-admin removal. D-189: #605 recorded direction only, not implementation. This row's docs, runtime, migration and live acceptance remain separate evidence.",
       "row": "D-177",
       "tier": 2
     },
