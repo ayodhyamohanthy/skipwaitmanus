@@ -401,9 +401,9 @@
       "packet": "docs/plans/OPS-live-qa-journeys.md",
       "tier": 1,
       "lane": "live-qa-journeys",
-      "branch": "agent/queue/ops-live-qa-journeys",
+      "branch": "agent/queue/ops-live-qa-journeys-sandbox",
       "status": "todo",
-      "syncedTo": "D-395",
+      "syncedTo": "D-398",
       "dependsOn": [
         "OPS-live-qa-hardening",
         "QA-sandbox-requests"
@@ -417,7 +417,7 @@
         "scripts/liveQaWorkflows.test.ts",
         "docs/plans/OPS-live-qa-journeys.md"
       ],
-      "note": "Owner-approved Nov 24 (D-389): live demo-account journeys rather than the QA preview. Proves the LAUNCH-live-qa gaps listed in docs/qa/launch-live-qa-2026-11-24.md (PR #1540). workflow_dispatch only, fail closed on any non-demo identity, stop if no free referral, never a payment or provider call. Read server code for every endpoint before writing a step. D-393 (Nov 24): depends on QA-sandbox-requests; steps 3-9 run as sandbox requests (any company, reaching only the demo referrer), so no real employee is ever notified.",
+      "note": "Owner-approved Nov 24 (D-389, D-393): live demo-account journeys prove the LAUNCH-live-qa gaps through sandbox requests only, never a payment or provider call. Reopened Nov 25 under D-373 (6): PR #1558 merged as f25eb09c7 with the pre-D-393 public walk-in routing and no dispatched journeys acceptance. Continue from current main on the fresh sandbox branch; preserve #1558's implementation and tests as history. Finish the packet's remaining work: remove public opportunity reads/writes, use a validated company/job link through the deployed demo sandbox, assert the current transition/ledger contracts with cleanup on failure, then record one successful workflow_dispatch journeys run and its exact release/captures. No navigation-only run substitutes. LAUNCH-live-qa remains dependent on this row and PR #1540 must not land before that evidence exists. Read every endpoint before writing a step; the two demo identities, workflow concurrency, masked secrets, no admin or real recipient, and all D-389/D-393 limits remain.",
       "epic": "D-212"
     },
     {
