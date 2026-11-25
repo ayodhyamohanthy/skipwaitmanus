@@ -9417,6 +9417,26 @@
       "syncedTo": "D-399"
     },
     {
+      "id": "PICKER-blocked-wait-fallthrough",
+      "title": "A blocked WAIT falls through to eligible D-399 build-ahead work without releasing its lane",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-blocked-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker-blocked-wait-fallthrough",
+      "branch": "agent/queue/picker-blocked-wait-fallthrough",
+      "status": "todo",
+      "syncedTo": "D-405",
+      "dependsOn": [],
+      "note": "Current-main repro on 8951b1518: --claim and --as returned WAIT at blocked D-089.ui before D-399 aheadPick, despite an earlier packet-backed, in-sync BANDED-release row with no open PR. Follow-up to the done PICKER-never-wait row; packet records bounded behavior and regression coverage.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskBlockedWaitFallthrough.test.ts",
+        "docs/plans/PICKER-blocked-wait-fallthrough.md",
+        "docs/plans/assignments.json"
+      ]
+    },
+    {
       "id": "SYNC-auto-pull",
       "title": "A clone pulls within about 30 seconds of any change on GitHub (a watcher replaces the 15-minute timer, on macOS and Linux) and fast-forwards branches that are strictly behind (owner, Nov 25)",
       "row": "SYNC",
