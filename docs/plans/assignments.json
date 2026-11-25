@@ -9498,7 +9498,7 @@
       "tier": 2,
       "lane": "agent-client-config",
       "branch": "agent/queue/agent-client-config",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Owner, Nov 25 2026: 'whatever can be automatically fixed we should do'. Formats checked against opencode.ai/docs/agents and zcode.z.ai/en/docs/subagents. Being built by Claude Code · 43c8.",
       "epic": "D-212",
