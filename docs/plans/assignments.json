@@ -9366,7 +9366,7 @@
     },
     {
       "id": "SYNC-auto-pull",
-      "title": "A clone pulls as well as pushes: a branch strictly behind origin fast-forwards in its clean worktree, and the 15-minute sync installs itself on Linux too (owner, Nov 25)",
+      "title": "A clone pulls within about 30 seconds of any change on GitHub (a watcher replaces the 15-minute timer, on macOS and Linux) and fast-forwards branches that are strictly behind (owner, Nov 25)",
       "row": "SYNC",
       "packet": "docs/plans/SYNC-auto-pull.md",
       "tier": 2,
@@ -9374,7 +9374,7 @@
       "branch": "agent/queue/sync-auto-pull",
       "status": "todo",
       "dependsOn": [],
-      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync'. Extends D-373 (5)/D-375 (push already automatic). Never force, rebase, reset or touch a dirty worktree or a diverged branch.",
+      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync' and 'the local pull requests are set for a timing cant it be as soon as a commmit or pull is available'. Push on commit already exists (D-375 hook). Never force, rebase, reset or touch a dirty worktree or a diverged branch.",
       "epic": "D-212",
       "owns": [
         "scripts/syncCloneCore.mjs",

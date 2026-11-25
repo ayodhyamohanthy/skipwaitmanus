@@ -1,4 +1,4 @@
-# SYNC-auto-pull: a clone pulls as well as pushes, so local and GitHub stay the same without anyone typing git
+# SYNC-auto-pull: a clone pulls within about 30 seconds of any change on GitHub, and pushes the moment it commits
 
 Tier 2 · lane `sync-auto-pull` · branch `agent/queue/sync-auto-pull` · epic D-212 · no dependencies
 
@@ -11,8 +11,10 @@ deletes merged branches. Two gaps remain.
 1. **A branch behind origin is only reported.** `planBranch` (`scripts/syncCloneCore.mjs:59`) answers "origin has commits
    this branch lacks ... pull in its worktree" even when the local branch is a strict ancestor of `origin/<name>` and
    nothing would be lost. That happens every time another session or a takeover pushes to a branch this clone has.
-2. **The timer installs itself only on macOS.** Elsewhere `launchAgent` (`scripts/syncCloneSetup.mjs:71`) prints a cron
-   line for a person to add.
+2. **Pulling waits up to 15 minutes.** The full sync runs on a 15-minute timer (`INTERVAL_SECONDS = 900`,
+   `scripts/syncCloneSetup.mjs`), and it installs itself only on macOS: elsewhere `launchAgent`
+   (`scripts/syncCloneSetup.mjs:71`) prints a cron line for a person to add. Owner, Nov 25: "the local pull requests are
+   set for a timing cant it be as soon as a commmit or pull is available".
 
 ## The build
 
@@ -24,12 +26,26 @@ deletes merged branches. Two gaps remain.
    - with `git update-ref` (old value checked) when no worktree has it checked out;
    - a dirty worktree is reported, never touched.
    Never a rebase, reset, force or merge commit.
-2. **Install the timer on Linux too.** Where `crontab` exists and no `skipwait` sync line is present, add the same
-   15-minute line with `crontab -` (read the current table first and append; never replace other lines). Keep every
-   existing guard of `--auto-setup`: never in CI, a test run or a cloud session container, never once a person opted out
-   (`git config skipwait.autoSync false` or `SKIPWAIT_AUTO_SYNC=off`). Windows keeps the printed instruction.
+2. **Watch instead of a timer: pull within about 30 seconds.** Git has no way to tell a clone that GitHub moved, and a
+   webhook into a person's computer would need a public endpoint (rejected: cost and attack surface). So add
+   `node scripts/sync-clone.mjs --watch`, a long-running loop:
+   - every interval (default 30 s; `git config skipwait.syncInterval <seconds>`, minimum 10) run
+     `git ls-remote --heads origin`, one small request that downloads no objects;
+   - compare the answer with the clone's `refs/remotes/origin/*` in a pure function (`remoteMoved(remoteHeads,
+     trackingRefs)`); only when a head differs, is new or is gone, run the existing full sync once (fetch, push, the
+     fast-forwards in rule 1, merged-branch cleanup);
+   - also run it once when the clone's own refs change (the post-commit hook already pushes; this catches a pull, a
+     merge or a checkout done by hand);
+   - never two syncs at once (reuse the picker's single-flight lock pattern); on a network error back off 30 s, 1, 2,
+     then 5 min, and return to the interval after one success; log one line per sync, not per poll.
+   Install it as a service that restarts itself, replacing the 15-minute timer: on macOS the existing LaunchAgent label
+   with `KeepAlive` and `RunAtLoad` running `--watch` (unload the old `StartInterval` agent first); on Linux a
+   `systemd --user` unit when `systemctl --user` works, else an `@reboot` crontab line (read the table, append once,
+   never replace other lines); Windows keeps the printed instruction. Keep every existing guard of `--auto-setup`: never
+   in CI, a test run or a cloud session container, never once a person opted out (`git config skipwait.autoSync false`
+   or `SKIPWAIT_AUTO_SYNC=off`). `--uninstall-timer` removes the watcher too.
 3. **Docs.** `AGENTS.md` (the `sync-check.sh` line under Commands) and `scripts/sync-check.sh`'s comment say it pulls
-   behind branches too.
+   behind branches and watches GitHub every ~30 s instead of every 15 minutes.
 
 ## Hard limits
 
@@ -40,9 +56,13 @@ worktree. Main's existing rules are unchanged.
 
 `planBranch`: behind (pull), diverged (report, as today), ahead (push, as today), equal (none). Runner fixture with
 local Git origins: a clean behind worktree fast-forwards; a dirty one is reported and unchanged; a branch checked out
-nowhere moves by `update-ref`; a diverged branch is unchanged. Setup: a Linux crontab is appended once and never
-duplicated, other lines are kept, and nothing is installed under `SKIPWAIT_AUTO_SYNC=off` or in CI.
+nowhere moves by `update-ref`; a diverged branch is unchanged. Watch: `remoteMoved` for equal, moved, new and deleted
+heads; one sync per change, none while nothing moved (count the sync calls with an injected clock and runner); the
+backoff schedule; no second sync while one runs. Setup: the macOS agent becomes `KeepAlive` and the old interval agent
+is unloaded; the Linux unit or `@reboot` line is added once and never duplicated, other crontab lines are kept; nothing
+is installed under `SKIPWAIT_AUTO_SYNC=off`, in CI or in a cloud container. A local proof: a commit pushed to the
+fixture origin is fast-forwarded into a clean clone within two intervals.
 
 ## Status
 
-- SYNC-auto-pull: todo — registered Nov 25 2026 by Claude Code · 43c8 from the owner's request.
+- SYNC-auto-pull: todo — registered Nov 25 2026 by Claude Code · 43c8 from the owner's requests (auto pull and push; no fixed timing).
