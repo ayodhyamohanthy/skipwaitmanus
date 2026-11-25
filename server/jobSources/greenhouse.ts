@@ -4,6 +4,7 @@
 // is validated with Zod before any field is read.
 
 import { z } from "zod";
+import { plainTextSnippet } from "./plainText";
 import { fetchGuardedJson, type GuardedFetchFailure } from "./fetch";
 import type { fetch as undiciFetch } from "undici";
 
@@ -133,18 +134,6 @@ export function parseGreenhouseLocation(raw: string | null | undefined): {
   return { locations: parts, workMode };
 }
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 export function parseGreenhouseJobs(payload: unknown): NormalizedCatalogJob[] {
   const parsed = greenhouseBoardResponseSchema.parse(payload);
@@ -164,7 +153,7 @@ export function parseGreenhouseJobs(payload: unknown): NormalizedCatalogJob[] {
       workMode,
       department: job.departments?.[0]?.name ?? null,
       applyUrl: job.absolute_url,
-      snippet: stripHtml(job.content ?? "").slice(0, 400),
+      snippet: plainTextSnippet(job.content),
       publishedAt: updatedAt && !Number.isNaN(updatedAt.getTime()) ? updatedAt.toISOString() : null,
     };
   });

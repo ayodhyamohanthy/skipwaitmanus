@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { JOB_CATALOG_ENABLED, companyJobsResponseSchema } from "../shared/jobCatalog";
+import { sourceLookupWithSeed } from "./jobCatalogRoutes";
 import { assignJobLevel } from "../shared/jobLevel";
 import { registerJobCatalogRoutes, type JobCatalogRouteDeps, type StoredCatalogJob } from "./jobCatalogRoutes";
 import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
@@ -60,13 +61,14 @@ function appWith(over: Partial<JobCatalogRouteDeps> = {}, rows: StoredCatalogJob
 }
 
 describe("GET /api/companies/:slug/jobs (D-174-job-catalog)", () => {
-  it("answers unavailable with the switch off (default is the shipped flag)", async () => {
-    const { app } = appWith({ enabled: undefined });
+  it("answers unavailable with the switch off", async () => {
+    const { app } = appWith({ enabled: false });
     const res = await request(app).get("/api/companies/acme/jobs");
     expect(res.status).toBe(200);
     expect(res.body.completeness).toBe("unavailable");
     expect(res.body.jobs).toEqual([]);
-    expect(JOB_CATALOG_ENABLED).toBe(false);
+    // D-394 release: the shipped switch is on; the off answer above is what any later switch-off returns.
+    expect(JOB_CATALOG_ENABLED).toBe(true);
     companyJobsResponseSchema.parse(res.body);
   });
 
@@ -198,5 +200,36 @@ describe("job catalog error reporting (PR #650 review finding)", () => {
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("We could not load the job catalog right now");
     expect(captureServerError).toHaveBeenCalled();
+  });
+});
+
+// D-394 release: on the day the switch goes on, a company read seeds the reviewed boards once instead of waiting a day.
+describe("sourceLookupWithSeed", () => {
+  it("returns a found source without seeding", async () => {
+    const seed = vi.fn(async () => undefined);
+    const lookup = sourceLookupWithSeed(async () => ({ id: 1 }), seed);
+    expect(await lookup(10)).toEqual({ id: 1 });
+    expect(seed).not.toHaveBeenCalled();
+  });
+
+  it("seeds once on a miss, looks again, and never seeds twice in the same process", async () => {
+    const rows = new Map<number, { id: number }>();
+    const seed = vi.fn(async () => { rows.set(10, { id: 7 }); });
+    const lookup = sourceLookupWithSeed(async (companyId: number) => rows.get(companyId) ?? null, seed);
+    const [first, second] = await Promise.all([lookup(10), lookup(10)]);
+    expect(first).toEqual({ id: 7 });
+    expect(second).toEqual({ id: 7 });
+    expect(await lookup(99)).toBeNull(); // a company with no reviewed board stays unavailable
+    expect(seed).toHaveBeenCalledTimes(1);
+  });
+
+  it("a failed seed answers no source and lets a later read try again", async () => {
+    let attempts = 0;
+    const rows = new Map<number, { id: number }>();
+    const seed = vi.fn(async () => { attempts += 1; if (attempts === 1) throw new Error("db down"); rows.set(10, { id: 7 }); });
+    const lookup = sourceLookupWithSeed(async (companyId: number) => rows.get(companyId) ?? null, seed);
+    expect(await lookup(10)).toBeNull();
+    expect(await lookup(10)).toEqual({ id: 7 });
+    expect(seed).toHaveBeenCalledTimes(2);
   });
 });
