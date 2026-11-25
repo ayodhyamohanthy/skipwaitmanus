@@ -40,8 +40,9 @@ A **per-clone single-flight lock** in `scripts/next-task.mjs`:
 2. A run that finds the lock and whose recorded pid is **alive** prints one plain line
    (`another picker run is in progress on this clone; wait for it, or rerun in a minute`) and exits
    with the existing WAIT code (4), writing no marker. It does not queue, so no pile-up can form.
-3. A **stale** lock (recorded pid dead, or older than 30 minutes) is taken over, so a crash cannot
-   block the clone forever.
+3. A lock whose recorded pid is **dead or unparseable** is taken over immediately. An unreadable or
+   partial lock is respected until its mtime passes 30 minutes, then taken over as a crash leftover.
+   A **live pid is never taken over because of age**, even when its timestamp is missing or old.
 4. The lock is released on every exit path, including `fail()` and an uncaught throw.
 
 Bounds: this governs one clone only. Two clones still race, which is correct (the claim ref is the
@@ -51,15 +52,22 @@ real arbiter) and already tested by the ownership suites.
 
 - Two simultaneous CLI runs against one fixture clone: exactly **one** reaches `NEXT:`; the other
   exits 4 with the plain message and writes no marker.
-- A lock whose pid is alive refuses; the same lock with a dead pid is taken over.
-- A lock older than the takeover age is taken over even when its pid looks alive (pid reuse).
-- The lock file is gone after a normal exit, after a WAIT exit and after a `fail()` STOP.
+- A live pid refuses whether its lock is fresh, hours old or missing a timestamp, and its record is
+  left untouched; a dead or unparseable pid is taken over immediately.
+- A fresh unreadable lock is respected; the same lock is taken over after its mtime passes the
+  takeover age.
+- The lock file is gone after a normal exit.
 
 ## Verification
 
 `pnpm check`, the focused suite, `scripts/nextTask.test.ts` and the other picker suites,
 `pnpm build`, design-token audit, migration lint, deploy-trigger checks; exact-head required CI is
 the landing gate (D-370).
+
+Verified on PR #1625 head `5a33a5d381e214b9572904b7beaffbb6e1e877fc`: focused suite 9/9; the
+old-live, missing-timestamp and fresh-unreadable regressions each fail against the previous rule;
+all exact-head required checks pass. Merge `ae57f6cc86bedb62e9474b334235175aa0061eea` has green
+main CI (`45592467105`) and its pushed task files are unchanged on `main`.
 
 ## Owns
 
@@ -70,4 +78,4 @@ the landing gate (D-370).
 
 ## Status
 
-- PICKER-single-flight: review — agent/queue/picker-single-flight — Qoder · 9c14 — 2026-11-24. Per-clone run lock: an alive pid refuses with exit 4, WAIT copy and no marker; a dead pid or a lock past 30 minutes is taken over; released on every exit path. `--report` and `--heartbeat` are exempt so a heartbeat can never be blocked behind a long scan (D-085). Mutation-checked: 5/5 fail without the fix, 5/5 pass with it.
+- PICKER-single-flight: done — #1557 (lock) and #1625 (live-pid rule) merged; the latter landed as `ae57f6cc86bedb62e9474b334235175aa0061eea` — HungerG · e6a2 — 2026-11-25. A live pid refuses at any age or with a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; all three critical regressions fail against the previous rule; exact-head required CI and main CI are green. `--report` and `--heartbeat` remain exempt (D-085).

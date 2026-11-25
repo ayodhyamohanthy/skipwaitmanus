@@ -75,6 +75,7 @@ import { askInviteActiveRequestKey } from "../shared/askInvites";
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
+import { MCP_GRANT_PROVIDER } from "../shared/seekerAgents";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { PAID_CREDITS_NEVER_EXPIRE, referralLevelForJobLevel } from "../shared/planFamily";
@@ -729,7 +730,7 @@ export async function listMyUnattachedResumes(userId: number) {
  * here by the server; nothing the assistant supplies sets it. The referrer is never chosen by the assistant:
  * the request goes through the normal company routing when (and only if) the owner approves.
  */
-export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown; provider?: unknown }) {
+export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown; provider?: unknown }, grant?: { grantId: number }) {
   const rawUrl = typeof input.targetRoleUrl === "string" ? input.targetRoleUrl.trim() : "";
   if (!rawUrl || rawUrl.length > 2048 || !isValidTargetRoleUrl(rawUrl)) throw new Error("Add a complete public job link for the role");
   const ids = Array.isArray(input.attachmentIds) ? Array.from(new Set(input.attachmentIds.filter((v): v is number => typeof v === "number" && Number.isInteger(v) && v > 0))) : [];
@@ -743,13 +744,17 @@ export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl
   if (pending.length >= MAX_PENDING_ASSISTANT_ASKS) throw new Error("The member already has several asks waiting for approval. Ask them to review those first");
   const targetRoleUrl = normalizeTargetRoleUrl(rawUrl);
   const companyDomain = directEmployerDomainFromTargetUrl(targetRoleUrl) ?? null;
-  const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  // D-178.mcp-grant: a grant's proposal carries the grant (provider "mcp"), so its approve runs the
+  // grant path (revoke, expiry, pause, caps under lock, the D-142 label); that path re-quotes and
+  // refuses a changed cost, so the row stores the quote the approve route computes (quoteApprovalCost).
+  const provider = grant ? MCP_GRANT_PROVIDER : typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  const creditCount = grant ? (askLevelCostEnabled() ? creditsForLevel(assignJobLevel({ url: targetRoleUrl }).level) : FLAT_ASK_COST) : ASSISTANT_ASK_CREDIT_COST;
   const inserted = await db.insert(assistantApprovals).values({
-    userId, connectionId: null, kind: "ask_send", provider, companyDomain, role: null, note: message,
-    creditCount: ASSISTANT_ASK_CREDIT_COST, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
+    userId, connectionId: null, grantId: grant?.grantId ?? null, kind: "ask_send", provider, companyDomain, role: null, note: message,
+    creditCount, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
     idempotencyKey: randomBytes(24).toString("base64url").slice(0, 40), expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())),
   });
-  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: ASSISTANT_ASK_CREDIT_COST, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
+  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: creditCount, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
 }
 
 export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
