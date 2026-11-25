@@ -31,6 +31,12 @@ later; both receive alerts.
 - `adminUsers.test.ts`: 403, audited as denied, no suspension recorded.
 - Alert call counts and recipients; the outbox legacy and new envelopes.
 
+## Test integrity
+
+`server/paymentAmountMismatch.test.ts` is a pinned money test. Its `toHaveBeenCalledTimes(4)` becomes `(6)` because
+each of the two alerts now also sends the D-400 administrator copy. The primary recipient assertion is unchanged, and a
+new assertion requires `admin@skipwait.me` among the recipients. Recorded with a `test-integrity` commit naming D-400.
+
 ## Hard limits
 
 No password, hash or token anywhere. No change to seeker or referrer sign-in or the demo reviewer accounts. No database
@@ -44,4 +50,4 @@ write that demotes an account.
 
 ## Status
 
-- ADMIN-email-switch: todo — registered Nov 25 2026 by Claude Code · 43c8 (D-400). Code ready on `agent/queue/admin-email-switch`.
+- ADMIN-email-switch: done — Claude Code · 43c8 — 2026-11-25 — landed from `agent/queue/admin-email-switch`. Focused suites green (adminIdentity, roleSync, suspendReview, adminUsers, workosAuth, billingReviewOutbox, errorAlerting, paymentAmountMismatch, daily checks); `tsc --noEmit` clean. Live acceptance (owner signs in as admin@skipwait.me) is pending the deploy: UNVERIFIED until then.

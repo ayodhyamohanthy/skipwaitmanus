@@ -298,16 +298,16 @@
       "packet": "docs/plans/PICKER-single-flight.md",
       "tier": 2,
       "lane": "picker-single-flight",
-      "branch": "agent/queue/picker-single-flight",
+      "branch": "agent/queue/picker-lock-liveness",
       "status": "todo",
-      "syncedTo": "D-388",
+      "syncedTo": "D-396",
       "dependsOn": [],
       "owns": [
         "scripts/next-task.mjs",
         "scripts/nextTaskSingleFlight.test.ts",
         "docs/plans/PICKER-single-flight.md"
       ],
-      "note": "Measured: 114 concurrent picker processes, oldest 2h56m, load 624-1006, and two of my own --claim runs took 75m and 17m without finishing; sample shows active JS, so the clone is starved, not deadlocked. Add a per-clone single-flight lock: alive pid refuses with exit 4 and no marker, dead pid or over 30 minutes is taken over, released on every exit path. Red-first scripts/nextTaskSingleFlight.test.ts. Lands on green required CI (D-370).",
+      "note": "Remaining step (found live after #1557): the takeover rule treats a LIVE pid as stale once the lock passes 30 minutes, so my own 40-minute run was taken over and two picker runs overlapped on one clone, which is the livelock the lock exists to prevent. Change the rule so a live pid is never taken over; only a dead or unparseable pid is, with RUN_LOCK_TAKEOVER_MS governing only the unverifiable case. Red-first: an old lock with a live pid must refuse (the current suite asserts the buggy takeover and must be corrected), and a dead pid must still be taken over immediately.",
       "epic": "D-212"
     },
     {
@@ -395,6 +395,27 @@
       "note": "D-377: waits at owner only for the two QA repository secrets (REVIEWER_SEEKER_PASSWORD, REVIEWER_REFERRER_PASSWORD; OPS-live-qa-runner section 4 step 1), the owner's own settings change; runs 44941125936 and 44948082959 said not set. Release: once the owner adds them, any session runs section 4 steps 2 (reset) and 3 (Live QA run), and the pull request recording a run that signs in as both demo accounts sets this row back to todo with that run link. D-373 (3): the signed-in evidence comes from OPS-live-qa-runner's run on the current release (run link, artifact, summary of both demo sign-ins and every captured route at 1280 and 390), plus one full e2e journeys run (D-353 (4)) and docs/BUGFREE_GATE.md sections 1-4 updated with the exact web/API release. Until the runner lands, a session that holds the current plaintext and has a browser may still run the packet steps by hand. Never post a password, hash, cookie or raw authenticated response. Keep the D-214 account exclusions and payment restrictions; unexecuted transitions are recorded as gaps. File each defect as its own row. D-388 (Nov 24): the owner action is done. Both QA secrets are set and the reset deployed (Deploy API run 45361666119: \"Secrets uploaded with this release: REVIEWER_SEEKER_PASSWORD_HASH, REVIEWER_REFERRER_PASSWORD_HASH, DATABASE_URL\"); signed-in Live QA run 45364628436 signed in as both demo accounts, 12 seeker and 7 referrer routes answered 200 at 1280 and 390, 38 captures in artifact 14906556581 (one 400 console error per page, tracked by OPS-live-qa-hardening). Status todo on fresh branch agent/queue/launch-live-qa-acceptance: attach that run (or a newer one on the current release), the e2e journeys run and docs/BUGFREE_GATE.md sections 1-4 with the remaining wallet, document-isolation and safe-transition checks from the packet. PR #710 is superseded: the builder closes it with a comment linking the new pull request. D-390 (Nov 24) clears the Claude Code · c2ed block: the wallet, document-isolation, transition and job-link gaps are proven by the OPS-live-qa-journeys dispatched run (D-389), now a dependency. PR #1540 keeps its render evidence and must not land before that run is recorded (auto-merge turned off); then add the run to docs/qa/ and BUGFREE_GATE 2.8, 3.6, 4.20 plus a job-link preview line, and land on green required CI. The WorkOS 400 is AUTH-workos-refresh-scope, not a dependency; BUGFREE_GATE 1.1-1.10 are owner tests outside this row."
     },
     {
+      "id": "P0-sandbox-isolation",
+      "title": "P0: real employees never see or preview the demo seeker's sandbox requests, and the demo referrer can preview them at any company (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/P0-sandbox-isolation.md",
+      "tier": 1,
+      "lane": "p0-sandbox-isolation",
+      "branch": "agent/queue/p0-sandbox-isolation",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Found and fixed Nov 25 2026 by Claude Code · 43c8: inbox and preview use a two-way sandbox scope, save refuses a sandbox request for real employees, the in-memory test kit reads aliased tables. Follow-ups (waiting-pool count edge, personal-link sandbox assignment) recorded in the packet.",
+      "epic": "D-212",
+      "owns": [
+        "server/db.ts",
+        "server/db.sandboxIsolation.test.ts",
+        "server/inMemoryDrizzle.testkit.ts",
+        "docs/plans/P0-sandbox-isolation.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-400"
+    },
+    {
       "id": "OPS-live-qa-journeys",
       "title": "Signed-in live QA proves the wallet, document privacy and send/claim/accept/withdraw rules on skipwait.me with the two demo accounts only, never a payment (D-389)",
       "row": "D-212",
@@ -406,7 +427,8 @@
       "syncedTo": "D-398",
       "dependsOn": [
         "OPS-live-qa-hardening",
-        "QA-sandbox-requests"
+        "QA-sandbox-requests",
+        "P0-sandbox-isolation"
       ],
       "owns": [
         ".github/workflows/live-qa.yml",
@@ -9329,26 +9351,15 @@
       "id": "GROUP-plan-split",
       "title": "Group Plan: write the slice plan (seats and one-seat additions, server quote with the 10% institution discount, checkout intent, verified-payment activation and email, candidate-approved delegation) and register its rows",
       "row": "GROUP",
-      "packet": "docs/plans/GROUP-plan-split.md",
+      "packet": null,
       "tier": 1,
       "lane": "group-plan-split",
       "branch": "agent/queue/group-plan-split",
-      "status": "done",
+      "status": "architect",
       "dependsOn": [],
-      "note": "Packet-only output under D-200/D-223/D-321 (8): GROUP-plan-split.md records the inspected checkout, identity and ledger boundaries and appends 20 file-owned rows at the FIFO tail. GROUP-recipients and every existing claim/order stay unchanged. GROUP-terms alone holds the commercial question batch; other slices build disabled against explicit policy fixtures. No Group runtime, SQL allocation/application, payment, email, new price or production activation. Completion is the protected merge of this registration, not a claim that Group Plan is implemented.",
+      "note": "Packet-only task: its work is the rows it adds (D-223, D-321 (8)). Read docs/plans/GROUP-bulk-oct31.md in full, docs/PRICING.md, D-219, D-367 and the existing banded checkout, grants and ledger code it names. Write docs/plans/GROUP-plan-split.md: one row per owned-file slice that one session finishes alone, each behind a switch that starts off, migration rows first, red-first tests and the packet's proof gates. Resolve the open items (discount stacking with volume discounts, single-seat additions and proration, delegation scope and institute visibility) from existing rules with stated, changeable assumptions; a point that would change a price, plan content, legal text or the login rule goes to the owner as one batched question and only the rows that need it wait. Never a real payment or email.",
       "epic": "GROUP",
-      "owns": [
-        "docs/plans/GROUP-plan-split.md",
-        "docs/plans/GROUP-bulk-oct31.md",
-        "docs/plans/assignments.json",
-        "docs/plans/README.md",
-        "docs/DECISIONS.md",
-        "docs/PRD.md",
-        "docs/BRIEF.md",
-        "docs/PRICING.md",
-        "AGENTS.md"
-      ],
-      "syncedTo": "D-400"
+      "syncedTo": "D-398"
     },
     {
       "id": "PICKER-never-wait",
@@ -9406,9 +9417,9 @@
       "tier": 1,
       "lane": "admin-email-switch",
       "branch": "agent/queue/admin-email-switch",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built by Claude Code · 43c8; code lands from this branch once this registration is on main. No password anywhere; no demotion write.",
+      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built and landed by Claude Code · 43c8 from this branch: adminIdentity (founder fixed in code, seat from SKIPWAIT_ADMIN_EMAIL=admin@skipwait.me), founder suspension guard (403, audited), alerts to both. After deploy: owner signs in as admin@ and confirms /admin.",
       "epic": "D-212",
       "owns": [
         "wrangler.jsonc",
@@ -9429,10 +9440,78 @@
         "server/billingReviewOutbox.ts",
         "server/billingReviewOutbox.test.ts",
         "server/paymentAmountMismatch.test.ts",
+        "server/httpErrorCapture.test.ts",
         "docs/plans/ADMIN-email-switch.md",
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-400"
+    },
+    {
+      "id": "PICKER-short-session",
+      "title": "A session a client forced to end (20-turn caps in Z Code, OpenCode, Cline) is continued under the same name instead of orphaning its claim for 2 hours (D-401)",
+      "row": "PICKER",
+      "packet": "docs/plans/PICKER-short-session.md",
+      "tier": 2,
+      "lane": "picker-short-session",
+      "branch": "agent/queue/picker-short-session",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-401). The cap is the provider's; this row makes it harmless. Picker files and a new test only.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskShortSession.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/PICKER-short-session.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-401"
+    },
+    {
+      "id": "AGENT-LOOP-supervisor",
+      "title": "Turn-capped agents restart themselves: a supervisor loop reruns the agent's headless mode as each conversation ends, so nobody types /new (D-402)",
+      "row": "PICKER",
+      "packet": "docs/plans/AGENT-LOOP-supervisor.md",
+      "tier": 2,
+      "lane": "agent-loop",
+      "branch": "agent/queue/agent-loop-supervisor",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-402): 'i want a automatic solution for this error no manual'. Being built by Claude Code · 43c8 right after registration lands.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/agent-loop.mjs",
+        "scripts/agentLoop.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/AGENT-LOOP-supervisor.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-402"
+    },
+    {
+      "id": "AGENT-CLIENT-config",
+      "title": "OpenCode and ZCode load turn-bounded worker subagents and the delegation rule from the repository, so Xingchi's 20-turn cap is avoided with no per-machine setup (D-402 (6))",
+      "row": "PICKER",
+      "packet": "docs/plans/AGENT-CLIENT-config.md",
+      "tier": 2,
+      "lane": "agent-client-config",
+      "branch": "agent/queue/agent-client-config",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026: 'whatever can be automatically fixed we should do'. Formats checked against opencode.ai/docs/agents and zcode.z.ai/en/docs/subagents. Being built by Claude Code · 43c8.",
+      "epic": "D-212",
+      "owns": [
+        "opencode.json",
+        ".opencode/agents/worker.md",
+        ".zcode/agents/worker.md",
+        "docs/agents/TURN-CAPPED-CLIENTS.md",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/AGENT-CLIENT-config.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-402"
     },
     {
       "id": "GROUP-terms",
@@ -9446,7 +9525,15 @@
       "syncedTo": "D-400",
       "dependsOn": [],
       "epic": "GROUP",
-      "owns": ["docs/plans/GROUP-plan-split.md", "docs/plans/GROUP-bulk-oct31.md", "docs/DECISIONS.md", "docs/PRICING.md", "docs/PRD.md", "docs/BRIEF.md", "AGENTS.md"],
+      "owns": [
+        "docs/plans/GROUP-plan-split.md",
+        "docs/plans/GROUP-bulk-oct31.md",
+        "docs/DECISIONS.md",
+        "docs/PRICING.md",
+        "docs/PRD.md",
+        "docs/BRIEF.md",
+        "AGENTS.md"
+      ],
       "note": "Packet section 8. Release condition: an authenticated owner answer to institution eligibility/discount interaction including additions, payer/renewal/term and unclaimed or existing-plan handling, and founding-cap/minimum treatment, recorded before any policy activation. The recommendations are unapproved. This owner-only pricing/plan call holds payable terms and GROUP-release, not contract/store/provider/consent work. D-399 build-ahead may prepare the answer record, never invent the answer. No legal edit, runtime or provider action."
     },
     {
@@ -9459,9 +9546,21 @@
       "branch": "agent/queue/group-contracts",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-recipients"],
+      "dependsOn": [
+        "GROUP-recipients"
+      ],
       "epic": "GROUP",
-      "owns": ["shared/groupPlan.ts", "shared/groupPlan.test.ts", "server/groupPlanFlags.ts", "server/groupPlanFlags.test.ts", "server/configContract.test.ts", ".env.example", "src/worker.ts", "docs/plans/GROUP-schema-contract.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "shared/groupPlan.ts",
+        "shared/groupPlan.test.ts",
+        "server/groupPlanFlags.ts",
+        "server/groupPlanFlags.test.ts",
+        "server/configContract.test.ts",
+        ".env.example",
+        "src/worker.ts",
+        "docs/plans/GROUP-schema-contract.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts."
     },
     {
@@ -9474,9 +9573,16 @@
       "branch": "agent/queue/group-provider",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-contracts"],
+      "dependsOn": [
+        "GROUP-contracts"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanProvider.ts", "server/groupPlanProvider.test.ts", "docs/qa/group-provider-contract.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanProvider.ts",
+        "server/groupPlanProvider.test.ts",
+        "docs/qa/group-provider-contract.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.2. Current official source URLs/dates, mock HTTP first: quantities, recurring/one-time components, fixed discounts, paid invoices/terms/refunds, timeouts and idempotency. No new SKU, live write, automated card attempt, copied API assumption or commercial default. TEST credentials remain Actions-only; unsupported composition is explicit, never a fixture-only success claim."
     },
     {
@@ -9489,9 +9595,16 @@
       "branch": "agent/queue/group-migration",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-contracts"],
+      "dependsOn": [
+        "GROUP-contracts"
+      ],
       "epic": "GROUP",
-      "owns": ["drizzle/deploy/*_group_plan.sql", "e2e/group-plan-schema.e2e.ts", "docs/plans/GROUP-schema-contract.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "drizzle/deploy/*_group_plan.sql",
+        "e2e/group-plan-schema.e2e.ts",
+        "docs/plans/GROUP-schema-contract.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates."
     },
     {
@@ -9504,9 +9617,16 @@
       "branch": "agent/queue/group-schema",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-migration"],
+      "dependsOn": [
+        "GROUP-migration"
+      ],
       "epic": "GROUP",
-      "owns": ["drizzle/schema.ts", "server/schemaReconcile.ts", "server/groupPlanSchema.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "drizzle/schema.ts",
+        "server/schemaReconcile.ts",
+        "server/groupPlanSchema.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.3. Exact matching models/readiness only after production SQL acceptance; compare constraints, indexes, nullability and retained receipts with the migration. No order, grant, provider action or activation. Other schema work may proceed on isolated branches; preserve both changes on integration."
     },
     {
@@ -9519,9 +9639,17 @@
       "branch": "agent/queue/group-orders",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-schema"],
+      "dependsOn": [
+        "GROUP-schema"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanStore.ts", "server/groupPlanStore.test.ts", "server/groupPlanOrders.ts", "server/groupPlanOrders.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanStore.ts",
+        "server/groupPlanStore.test.ts",
+        "server/groupPlanOrders.ts",
+        "server/groupPlanOrders.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.4. Typed repositories, immutable snapshot/fingerprint and allocation ownership. Same-key additions count once; a failed addition changes no original seat; foreign group/order/allocation 404. No account-existence answer or wallet grant. Red-first real store races/rollback plus buyer/candidate isolation; no production commercial default."
     },
     {
@@ -9534,9 +9662,16 @@
       "branch": "agent/queue/group-quote",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-contracts"],
+      "dependsOn": [
+        "GROUP-contracts"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanQuote.ts", "server/groupPlanQuote.test.ts", "shared/groupPlan.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanQuote.ts",
+        "server/groupPlanQuote.test.ts",
+        "shared/groupPlan.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.4. Consume existing parser/catalog, server-only approved-policy witness and deterministic minor-unit allocations; bind recipients, quantities, site, currency, catalog and policy. Missing commercial dimensions return group_terms_unconfirmed before a payable intent. Build explicit policy fixtures now; never silently choose stacking, pooled thresholds, institution qualification, proration or founding terms."
     },
     {
@@ -9549,9 +9684,22 @@
       "branch": "agent/queue/group-checkout",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-orders", "GROUP-quote", "GROUP-provider"],
+      "dependsOn": [
+        "GROUP-orders",
+        "GROUP-quote",
+        "GROUP-provider"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanCheckout.ts", "server/groupPlanCheckout.test.ts", "server/groupPlanCheckoutRoutes.ts", "server/groupPlanCheckoutRoutes.test.ts", "server/groupPlanFounding.ts", "server/groupPlanFounding.test.ts", "server/bandedCheckoutStore.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanCheckout.ts",
+        "server/groupPlanCheckout.test.ts",
+        "server/groupPlanCheckoutRoutes.ts",
+        "server/groupPlanCheckoutRoutes.test.ts",
+        "server/groupPlanFounding.ts",
+        "server/groupPlanFounding.test.ts",
+        "server/bandedCheckoutStore.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.5. Disabled route factory; confirmed immutable intent before provider action, same-key fingerprint, catalog/policy/application/band/founding checks, atomic site/plan counter ordering and page-loss recovery. Reject unconfirmed terms and unauthorized group before provider calls. Shared group subscription ids cannot be copied into the consumer membership unique index. No live activation or new cap."
     },
     {
@@ -9564,9 +9712,19 @@
       "branch": "agent/queue/group-payments",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-checkout"],
+      "dependsOn": [
+        "GROUP-checkout"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanPayments.ts", "server/groupPlanPayments.test.ts", "server/groupPlanPaymentStore.ts", "server/groupPlanPaymentStore.test.ts", "server/chargebeeRoutes.ts", "server/chargebeeRoutes.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanPayments.ts",
+        "server/groupPlanPayments.test.ts",
+        "server/groupPlanPaymentStore.ts",
+        "server/groupPlanPaymentStore.test.ts",
+        "server/chargebeeRoutes.ts",
+        "server/chargebeeRoutes.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.5. One settlement service for authenticated webhook, return and reconcile. Bind real site/customer/intent/item/quantity/paid invoice/term/amount/currency; subscription active or browser return is insufficient. Duplicate/reordered/refund-before-paid/partial component/transaction rollback tests; no group event falls into legacy crediting or an unrelated account. Existing non-group obligations remain."
     },
     {
@@ -9579,9 +9737,17 @@
       "branch": "agent/queue/group-claim",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-payments"],
+      "dependsOn": [
+        "GROUP-payments"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanClaim.ts", "server/groupPlanClaim.test.ts", "server/groupPlanClaimRoutes.ts", "server/groupPlanClaimRoutes.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanClaim.ts",
+        "server/groupPlanClaim.test.ts",
+        "server/groupPlanClaimRoutes.ts",
+        "server/groupPlanClaimRoutes.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.6. Exact verified alias, canonical owner, paid/refund state, hashed claim token and authenticated POST; no consumption on GET, automatic user creation, alias merge, login method or buyer account-existence disclosure. Red-first theft/replay/concurrency/unverified/deleted/suspended/cross-candidate tests. Paid allocation and candidate consent are separate durable states."
     },
     {
@@ -9594,9 +9760,19 @@
       "branch": "agent/queue/group-grants",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-claim"],
+      "dependsOn": [
+        "GROUP-claim"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanGrants.ts", "server/groupPlanGrants.test.ts", "server/groupPlanGrantStore.ts", "server/groupPlanGrantStore.test.ts", "server/bandedSpend.ts", "server/groupPlanLedger.integration.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanGrants.ts",
+        "server/groupPlanGrants.test.ts",
+        "server/groupPlanGrantStore.ts",
+        "server/groupPlanGrantStore.test.ts",
+        "server/bandedSpend.ts",
+        "server/groupPlanLedger.integration.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.6. No existing subscription overwrite or invented term extension. Keys distinguish site/allocation/invoice or term/level/kind; same invoice can fund different candidates once each. Execute actual grant/spend/withdraw/decline/refund/later-purchase tests, concurrent claim/refund, old/new term order and expired cycle controls. Use existing balances and keyed ledger, typed adapters, no duplicate scalar crediting."
     },
     {
@@ -9609,9 +9785,15 @@
       "branch": "agent/queue/group-notifications",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-payments"],
+      "dependsOn": [
+        "GROUP-payments"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanNotifications.ts", "server/groupPlanNotifications.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanNotifications.ts",
+        "server/groupPlanNotifications.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.7. Existing transactional sender/canonical origin, durable activation obligation only after payment, per-person/day cap and preferences, leases/backoff/five-attempt review and separate provider acceptance from inbox delivery. Crash/response-loss and duplicate payment tests with fake recipients/provider only. No marketing, real email, passwords or claim tokens in logs."
     },
     {
@@ -9624,9 +9806,26 @@
       "branch": "agent/queue/group-recovery",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-grants", "GROUP-notifications"],
+      "dependsOn": [
+        "GROUP-grants",
+        "GROUP-notifications"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanRecovery.ts", "server/groupPlanRecovery.test.ts", "server/groupPlanRefunds.ts", "server/groupPlanRefunds.test.ts", "server/dailyMoneyCheck.ts", "server/dailyMoneyCheck.group.test.ts", "server/groupPlanReviewRoutes.ts", "server/groupPlanReviewRoutes.test.ts", "client/src/components/admin/GroupPlanReview.tsx", "client/src/components/admin/GroupPlanReview.test.tsx", "client/src/pages/goal/admin-money/GoalAdminPayments.tsx", "client/src/pages/goal/admin-money/adminMoney.goal.test.tsx", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanRecovery.ts",
+        "server/groupPlanRecovery.test.ts",
+        "server/groupPlanRefunds.ts",
+        "server/groupPlanRefunds.test.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyMoneyCheck.group.test.ts",
+        "server/groupPlanReviewRoutes.ts",
+        "server/groupPlanReviewRoutes.test.ts",
+        "client/src/components/admin/GroupPlanReview.tsx",
+        "client/src/components/admin/GroupPlanReview.test.tsx",
+        "client/src/pages/goal/admin-money/GoalAdminPayments.tsx",
+        "client/src/pages/goal/admin-money/adminMoney.goal.test.tsx",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.7. Bounded recovery through the same settlement/grant services, allocation-owned unspent revocation, spent/partial/unknown review, no negative wallet or later-purchase seizure. Refund-before-paid/claim, delayed renewal/cancellation, restart and alert-ack tests. Review is admin-only with audit. New-creation switches off never disable existing money/outbox recovery. No new refund promise or automated real-money refund."
     },
     {
@@ -9639,9 +9838,18 @@
       "branch": "agent/queue/group-delegation",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-claim"],
+      "dependsOn": [
+        "GROUP-claim"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanDelegation.ts", "server/groupPlanDelegation.test.ts", "server/groupPlanDelegationRoutes.ts", "server/groupPlanDelegationRoutes.test.ts", "shared/groupPlan.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanDelegation.ts",
+        "server/groupPlanDelegation.test.ts",
+        "server/groupPlanDelegationRoutes.ts",
+        "server/groupPlanDelegationRoutes.test.ts",
+        "shared/groupPlan.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.8 and 4.5 changeable assumption under D-200/D-141: candidate approves every send, buyer only drafts/proposes. Bind group/buyer/candidate/scope/expiry/revision, immediate revocation; paid seat is not consent or document access. Cross-buyer, revoked/regranted/expired/suspended and response-field privacy tests. No API key, impersonation, auto-send or purchase scope."
     },
     {
@@ -9654,9 +9862,20 @@
       "branch": "agent/queue/group-send",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-delegation", "GROUP-grants"],
+      "dependsOn": [
+        "GROUP-delegation",
+        "GROUP-grants"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanSend.ts", "server/groupPlanSend.test.ts", "server/groupPlanSendRoutes.ts", "server/groupPlanSendRoutes.test.ts", "server/db.ts", "server/db.groupPlanSend.test.ts", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanSend.ts",
+        "server/groupPlanSend.test.ts",
+        "server/groupPlanSendRoutes.ts",
+        "server/groupPlanSendRoutes.test.ts",
+        "server/db.ts",
+        "server/db.groupPlanSend.test.ts",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.8. Fresh candidate approval selects owned resume/final note/company/job/current quote and rechecks grant revision, block, cap, availability and creator rules. Serialize revoke versus send, replay response loss to the same request, record preparer and candidate separately, no second charge or early name/file reveal. Preserve waiting/free/decline/refund behavior and every real-account limit."
     },
     {
@@ -9669,9 +9888,21 @@
       "branch": "agent/queue/group-api",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-recovery", "GROUP-send"],
+      "dependsOn": [
+        "GROUP-recovery",
+        "GROUP-send"
+      ],
       "epic": "GROUP",
-      "owns": ["server/groupPlanRoutes.ts", "server/groupPlanRoutes.test.ts", "server/_core/index.ts", "server/scheduledJobRegistry.ts", "shared/scheduledJobs.ts", "server/scheduledJobsContract.test.ts", "AGENTS.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "server/groupPlanRoutes.ts",
+        "server/groupPlanRoutes.test.ts",
+        "server/_core/index.ts",
+        "server/scheduledJobRegistry.ts",
+        "shared/scheduledJobs.ts",
+        "server/scheduledJobsContract.test.ts",
+        "AGENTS.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.9. Sole service/job mount owner: real identity/storage/provider/sender adapters under /api/group-plans; no placeholder wiring. Full Express auth/owner/privacy/off-before-read tests, same-origin mutation gates, recovery while sales off, one registered bounded job per obligation. Update living map. Preserve non-group webhook and scheduled job contracts."
     },
     {
@@ -9684,9 +9915,20 @@
       "branch": "agent/queue/group-buyer-ui",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-api"],
+      "dependsOn": [
+        "GROUP-api"
+      ],
       "epic": "GROUP",
-      "owns": ["client/src/pages/goal/groups/buyer/**", "client/src/App.tsx", "client/src/components/AccountMenu.tsx", "client/src/components/accountMenu.test.tsx", "design/goal-ui/captures/groups/buyer/**", "docs/PRD.md", "docs/BRIEF.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "client/src/pages/goal/groups/buyer/**",
+        "client/src/App.tsx",
+        "client/src/components/AccountMenu.tsx",
+        "client/src/components/accountMenu.test.tsx",
+        "design/goal-ui/captures/groups/buyer/**",
+        "docs/PRD.md",
+        "docs/BRIEF.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.10. Existing Goal design, reference research, real API, one next step/black commit, full loading/empty/error/offline/stale-price/pending/partial/email-review states and actual 1280/390 captures. Feature off hides entry. Preview all invalid/duplicate recipients before checkout; show exact cost/renewal/payment components and recover original group/add one. No live-looking sample data or account-existence leak."
     },
     {
@@ -9699,9 +9941,20 @@
       "branch": "agent/queue/group-candidate-ui",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-api"],
+      "dependsOn": [
+        "GROUP-api"
+      ],
       "epic": "GROUP",
-      "owns": ["client/src/pages/goal/groups/candidate/**", "client/src/App.tsx", "client/src/pages/MyRequests.tsx", "client/src/pages/myRequests.test.tsx", "design/goal-ui/captures/groups/candidate/**", "docs/PRD.md", "docs/BRIEF.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "client/src/pages/goal/groups/candidate/**",
+        "client/src/App.tsx",
+        "client/src/pages/MyRequests.tsx",
+        "client/src/pages/myRequests.test.tsx",
+        "design/goal-ui/captures/groups/candidate/**",
+        "docs/PRD.md",
+        "docs/BRIEF.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.10. Existing sign-in, private paid claim and separate consent/expiry/revoke; candidate selects own resume and exact final note/job/cost for every send. Existing Goal design/research and real routes; both viewport captures and loading/empty/refusal/pending/error/offline controls. No new auth method, automatic consent, buyer resume access or hidden price change. Preserve buyer App routes on merge."
     },
     {
@@ -9714,9 +9967,18 @@
       "branch": "agent/queue/group-qa",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-buyer-ui", "GROUP-candidate-ui"],
+      "dependsOn": [
+        "GROUP-buyer-ui",
+        "GROUP-candidate-ui"
+      ],
       "epic": "GROUP",
-      "owns": ["e2e/group-plan.e2e.ts", "e2e/group-plan-fixtures.ts", "docs/qa/group-plan-acceptance.md", "design/goal-ui/captures/groups/acceptance/**", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        "e2e/group-plan.e2e.ts",
+        "e2e/group-plan-fixtures.ts",
+        "docs/qa/group-plan-acceptance.md",
+        "design/goal-ui/captures/groups/acceptance/**",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.11. Real stack and QA MySQL, fictional buyer/two candidates/referrer, mock email/provider TEST or mocks only. Initial/add-one, partial payment, claim/grant, included/free/purchased spend, privacy, approve/decline/revoke, duplicate/refund/cancel/restart evidence at exact SHA with 1280/390 pixels. No production SQL, actual recipients, real payment or captcha workaround. Keep flags shipped off; fixture checks alone are not provider acceptance."
     },
     {
@@ -9729,9 +9991,25 @@
       "branch": "agent/queue/group-release",
       "status": "todo",
       "syncedTo": "D-400",
-      "dependsOn": ["GROUP-qa", "GROUP-terms", "BANDED-release"],
+      "dependsOn": [
+        "GROUP-qa",
+        "GROUP-terms",
+        "BANDED-release"
+      ],
       "epic": "GROUP",
-      "owns": [".github/workflows/deploy-pages.yml (switch only)", "wrangler.jsonc (switch only)", ".env.example", "server/configContract.test.ts", "scripts/checkDeployTriggers.test.ts", "docs/qa/group-plan-acceptance.md", "docs/PRICING.md", "docs/PRD.md", "docs/BRIEF.md", "AGENTS.md", "docs/plans/GROUP-plan-split.md"],
+      "owns": [
+        ".github/workflows/deploy-pages.yml (switch only)",
+        "wrangler.jsonc (switch only)",
+        ".env.example",
+        "server/configContract.test.ts",
+        "scripts/checkDeployTriggers.test.ts",
+        "docs/qa/group-plan-acceptance.md",
+        "docs/PRICING.md",
+        "docs/PRD.md",
+        "docs/BRIEF.md",
+        "AGENTS.md",
+        "docs/plans/GROUP-plan-split.md"
+      ],
       "note": "Packet section 6.11. Group-specific activation is not granted by consumer BANDED-release. Require recorded section 8 answers, exact owner Group sales/consent activation authority, all child acceptance and TEST/provider proof first. Only then protected config release, canonical exact web/API/readiness and 1280/390 proof; live hosted-page handshake stops before paying. Rollback stops creation/send, retains paid/refund/email recovery. Never mark shipped from packet/fixtures or missing evidence."
     }
   ]

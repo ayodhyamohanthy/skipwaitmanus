@@ -1,6 +1,6 @@
 // D-083: what the queue picker prints for each decision. Pure: the same pick
 // and context always print the same steps, which scripts/nextTask.test.ts pins.
-import { epicSummaries, releaseLandingHold, slugOf } from "./nextTaskCore.mjs";
+import { epicSummaries, releaseLandingHold, sanitizeName, slugOf } from "./nextTaskCore.mjs";
 
 export function renderReleaseLights(release) {
   return [
@@ -391,6 +391,21 @@ function pickText(pick, { who, date, claimed, register = null, requestedTask = n
 }
 
 /** D-311: never ask an operator to impersonate the external model. */
+/**
+ * PICKER-short-session (D-401): the session-name line a claim prints first: why a recorded session is resumed, or the
+ * newly minted name; empty for a name given with its tag, which prints nothing here, as before.
+ */
+export function renderSessionChoice(choice, requested) {
+  if (choice.resumed) return `Resuming as "${choice.name}": ${choice.task} was quiet for ${choice.quietMin} min (your client likely ended the conversation). Pass --new-session to start a separate session instead.\n`;
+  if (choice.name !== sanitizeName(requested)) return `Your session name is "${choice.name}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`;
+  return "";
+}
+
+/** D-401: the last line of every claim: the exact command a replacement conversation starts with. */
+export function renderResumeCommand(name) {
+  return `If your client ends this conversation, start the next one with: node scripts/next-task.mjs --claim "${name}"`;
+}
+
 export function renderPick(pick, context) {
   const base = renderPickLegacy(pick, context);
   // D-324: work goes on while main is red; landings do not.
