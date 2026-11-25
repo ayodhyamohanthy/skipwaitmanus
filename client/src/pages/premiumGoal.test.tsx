@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Premium from "./Premium";
-// Load the lazy page graph before DOM waits; the tests still render the real switch.
+// Load the lazy page graph before DOM waits; route cases render the public entrypoint.
 import GoalPremium from "./goal/premium/GoalPremium";
 import { assertGoalPage } from "@/test/goalPageContract";
 import type { Mock } from "vitest";
@@ -15,7 +15,6 @@ const auth = vi.hoisted(() => ({ isLoaded: true, isSignedIn: true, userId: "seek
 const flags = vi.hoisted(() => ({ sales: false, oneTap: false }));
 const catalog = vi.hoisted(() => ({ data: { packs: [{ available: false }] }, isPending: false, isError: false, refetch: vi.fn() }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => auth }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: () => true }));
 vi.mock("@shared/planCatalog", async original => ({ ...(await original<typeof PlanCatalog>()), get CREDIT_PACKS_ON_SALE() { return flags.sales; } }));
 vi.mock("@/lib/oneTap", () => ({ get ONE_TAP_PAY_SIGNIN() { return flags.oneTap; } }));
 vi.mock("@/components/plans/plansCatalogApi", () => ({ usePlansCatalog: () => catalog }));
