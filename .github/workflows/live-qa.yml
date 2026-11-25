@@ -13,6 +13,12 @@ on:
         type: choice
         options: [both, seeker, referrer]
         default: both
+      mode:
+        description: "navigate (default) or journeys (demo accounts only, no money)"
+        required: false
+        type: choice
+        options: [navigate, journeys]
+        default: navigate
   workflow_run:
     workflows: ["Deploy API (Cloudflare Containers)", "Deploy Web (Cloudflare Pages)"]
     types: [completed]
@@ -59,12 +65,23 @@ jobs:
           done
       - name: Sign in and capture
         id: qa
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'journeys' }}
         env:
           REVIEWER_SEEKER_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
           REVIEWER_REFERRER_PASSWORD: ${{ secrets.REVIEWER_REFERRER_PASSWORD }}
           LIVE_QA_ROLES: ${{ inputs.roles || 'both' }}
           LIVE_QA_TRIGGER: ${{ github.event_name }}
         run: node scripts/live-qa-signed-in.mjs
+      # OPS-live-qa-journeys (D-389): the wallet, document privacy and the send/claim/accept/withdraw rules with
+      # the two demo accounts only. Manual dispatch only: never after a release, never a payment or checkout.
+      - name: Sign in and run the journeys
+        id: journeys
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'journeys' }}
+        env:
+          REVIEWER_SEEKER_PASSWORD: ${{ secrets.REVIEWER_SEEKER_PASSWORD }}
+          REVIEWER_REFERRER_PASSWORD: ${{ secrets.REVIEWER_REFERRER_PASSWORD }}
+          LIVE_QA_TRIGGER: ${{ github.event_name }}
+        run: node scripts/live-qa-journeys.mjs
       - name: Upload screenshots and summary
         if: ${{ always() && hashFiles('live-qa/summary.json') != '' }}
         uses: actions/upload-artifact@v4

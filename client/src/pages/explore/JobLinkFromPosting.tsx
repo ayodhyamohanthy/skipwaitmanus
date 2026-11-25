@@ -2,7 +2,8 @@
 // by the ask drawer and /ask. It says only what a preview we actually fetched
 // showed; it is text, never an input, and the field stays editable. Ships
 // silent because the switch in jobLinkPrefill.ts is false.
-import { jobLinkLine, jobLinkPrefillEnabled, useJobLinkPreview, type JobLinkCompany } from "./jobLinkPrefill";
+import { GoalFieldError } from "@/components/goal";
+import { jobLinkLine, jobLinkMismatch, jobLinkPrefillEnabled, useJobLinkPreview, type JobLinkCompany } from "./jobLinkPrefill";
 
 export function JobLinkFromPosting({ url, company, companies }: { url: string; company: JobLinkCompany | null; companies?: readonly JobLinkCompany[] }) {
   const enabled = jobLinkPrefillEnabled();
@@ -10,5 +11,9 @@ export function JobLinkFromPosting({ url, company, companies }: { url: string; c
   if (!enabled || pending) return null;
   const line = jobLinkLine({ url, preview, company, companies });
   if (!line) return null;
+  // Another company's posting blocks Send on a company door: that is an input error, shown in crimson.
+  if (company && preview && jobLinkMismatch(preview, company, companies) === line) {
+    return <div data-testid="job-link-from-posting" className="-mt-3"><GoalFieldError>{line}</GoalFieldError></div>;
+  }
   return <p data-testid="job-link-from-posting" className="-mt-3 text-pretty text-g-meta text-g-ink-2">{line}</p>;
 }

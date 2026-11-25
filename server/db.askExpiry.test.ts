@@ -2,13 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { askInviteLinks, jobs, notifications, planCreditGrants, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { expireStalePendingReferralRequest, withdrawCompanyReferralRequest } from "./db";
+import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { coverageWaitExpiredNotice } from "./coverageDelivery";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
+// D-174/D-385: off for every existing case; the no-expiry cases flip it.
+const noExpiryFlags = vi.hoisted(() => ({ noExpiry: false }));
+vi.mock("../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../shared/askNoExpiry")>(),
+  get ASK_NO_EXPIRY_ENABLED() { return noExpiryFlags.noExpiry; },
+}));
 
 const dialect = new MySqlDialect();
 const NOW = new Date("2026-10-08T12:00:00.000Z");
@@ -138,7 +144,7 @@ beforeEach(() => {
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());
 });
-afterEach(() => { vi.unstubAllEnvs(); });
+afterEach(() => { vi.unstubAllEnvs(); noExpiryFlags.noExpiry = false; });
 
 describe("ask expiry", () => {
   it("expires a stale unclaimed ask, refunds monthly credit, and notifies", async () => {
@@ -308,5 +314,29 @@ describe("ask expiry", () => {
     expect((await expireStalePendingReferralRequest(7, 503, NOW.getTime())).expired).toBe(false);
     expect(tables.wallets[0].monthlyCreditsRemaining).toBe(2);
     expect(tables.txns.filter(t => t.reversesTransactionId != null).map(t => [t.kind, t.reversesTransactionId, t.tokenCount])).toEqual([["withdrawal_refund", 21, 1], ["expiry_refund", 22, 1]]);
+  });
+
+  // D-174/D-385: with the clocks off nothing closes and no money moves, on the read path or the sweep.
+  it("switch on: a 10-day-old unclaimed visible ask stays pending with no ledger row and no notice", async () => {
+    noExpiryFlags.noExpiry = true;
+    tables.txns = [debitRow("monthly_allowance", "2026-10")];
+    tables.requests = [requestRow(new Date(NOW.getTime() - 10 * DAY))];
+    const result = await expireStalePendingReferralRequest(7, 501, NOW.getTime());
+    expect(result).toMatchObject({ expired: false, status: "pending" });
+    expect(tables.requests[0].status).toBe("pending");
+    expect(tables.txns.some(t => t.kind === "expiry_refund")).toBe(false);
+    expect(tables.events).toEqual([]);
+    expect(tables.notes).toEqual([]);
+    expect(tables.wallets[0].monthlyCreditsRemaining).toBe(2);
+  });
+
+  it("switch on: the read-path reconcile closes nothing and refunds nothing", async () => {
+    noExpiryFlags.noExpiry = true;
+    tables.txns = [debitRow("monthly_allowance", "2026-10")];
+    tables.requests = [requestRow(new Date(NOW.getTime() - 10 * DAY))];
+    expect(await reconcileExpiredPendingReferrals(7, NOW.getTime())).toEqual({ expiredRequestIds: [] });
+    expect(tables.requests[0].status).toBe("pending");
+    expect(tables.txns.some(t => t.kind === "expiry_refund")).toBe(false);
+    expect(tables.notes).toEqual([]);
   });
 });

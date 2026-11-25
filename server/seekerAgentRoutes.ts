@@ -23,15 +23,18 @@ import {
   type AgentEventView,
   type AgentGrantView,
   type AgentLimits,
+  type AgentRequestView,
   type AgentScope,
   type AgentSendRequestView,
   createAgentGrantInputSchema,
   agentDraftInputSchema,
+  setAgentAutoSendInputSchema,
 } from "../shared/seekerAgents";
 import { getApprovalExpiresAtMs } from "../shared/assistant";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import type { PlanCatalogResponse } from "../shared/billingCatalog";
 import type { PublicCompany } from "../shared/companies";
+import { AgentSendRefusal, decideAssistantApprovalWithAgentSend, type AgentSendApprovalDeps } from "./agentSendApproval";
 
 export type GrantRow = {
   id: number;
@@ -41,6 +44,7 @@ export type GrantRow = {
   canLookup: boolean;
   canDraft: boolean;
   canSend: boolean;
+  autoSend: boolean;
   maxCreditsPerAsk: number;
   maxCreditsPerDay: number;
   maxCreditsPerWeek: number;
@@ -59,6 +63,7 @@ export type SeekerAgentStore = {
   getGrantForUser: (userId: number, id: number) => Promise<GrantRow | undefined>;
   findGrantByKeyHash: (keyHash: string) => Promise<GrantRow | undefined>;
   revokeGrant: (userId: number, id: number, now: Date) => Promise<boolean>;
+  setAutoSend: (userId: number, id: number, enabled: boolean) => Promise<boolean>;
   touchLastUsed: (id: number, now: Date) => Promise<void>;
   isPaused: (userId: number) => Promise<boolean>;
   setPaused: (userId: number, paused: boolean, now: Date) => Promise<void>;
@@ -76,6 +81,11 @@ export type SeekerAgentStore = {
 
 export type SeekerAgentRouteDeps = {
   enabled: () => boolean;
+  /**
+   * SKIPPY-7: the auto-send switch. Optional so an unwired or older caller fails safe — a missing
+   * switch means off, never a thrown route. `server/_core/index.ts` wires the real environment flag.
+   */
+  autoSendEnabled?: () => boolean;
   allowedUserIds: () => ReadonlySet<number>;
   resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
   store: SeekerAgentStore;
@@ -89,17 +99,26 @@ export type SeekerAgentRouteDeps = {
   getCompanyDirectoryEntry: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
   /** SKIPPY-6: the seeker's own unattached resumes, newest first, for the approval card's default. */
   listResumes: (userId: number) => Promise<Array<{ id: number; fileName: string; createdAt: Date }>>;
+  /**
+   * D-178.read: the seeker's own referral requests, the same rows their
+   * /requests page lists (`listJobSeekerCompanyReferrals`). The route whitelists
+   * fields and never returns referrer identity (D-019(e)).
+   */
+  listRequests: (userId: number) => Promise<Array<Record<string, unknown>>>;
   /** SKIPPY-6: one in-app notice, plus at most one email a day with a direct link (D-060). */
   notifySendRequest: (input: { userId: number; agentName: string; approvalId: number; companyName: string; cost: number; origin: string }) => Promise<void>;
+  /** Optional override for testing auto-send approval execution. Defaults to decideAssistantApprovalWithAgentSend. */
+  decideApproval?: typeof decideAssistantApprovalWithAgentSend;
   now?: () => number;
 };
 
-const grantView = (grant: GrantRow, paused: boolean, nowMs: number): AgentGrantView => ({
+const grantView = (grant: GrantRow, paused: boolean, nowMs: number, autoSendActive = true): AgentGrantView => ({
   id: grant.id,
   name: grant.name,
   keyPrefix: grant.keyPrefix,
   scopes: [...(grant.canLookup ? ["lookup" as const] : []), ...(grant.canDraft ? ["draft" as const] : []), ...(grant.canSend ? ["send" as const] : [])],
   limits: { creditsPerAsk: grant.maxCreditsPerAsk, creditsPerDay: grant.maxCreditsPerDay, creditsPerWeek: grant.maxCreditsPerWeek, asksPerDay: grant.maxAsksPerDay },
+  autoSend: autoSendActive ? Boolean(grant.autoSend) : false,
   status: grant.revokedAt ? "revoked" : grant.expiresAt.getTime() <= nowMs ? "expired" : paused ? "paused" : "active",
   expiresAt: grant.expiresAt.toISOString(),
   lastUsedAt: grant.lastUsedAt ? grant.lastUsedAt.toISOString() : null,
@@ -107,6 +126,35 @@ const grantView = (grant: GrantRow, paused: boolean, nowMs: number): AgentGrantV
 });
 const draftView = (row: DraftRow): AgentDraftView => ({ id: row.id, companySlug: row.companySlug, targetRoleUrl: row.targetRoleUrl, note: row.note, jobLevel: row.jobLevel, creditCost: row.creditCost, status: row.status, createdAt: row.createdAt.toISOString() });
 const eventView = (row: EventRow): AgentEventView => ({ id: row.id, agentName: row.agentName, action: row.action, outcome: row.outcome, detail: row.detail, createdAt: row.createdAt.toISOString() });
+
+const isoOf = (value: unknown): string | null => {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === "string" && !Number.isNaN(new Date(value).getTime())) return new Date(value).toISOString();
+  return null;
+};
+const textOf = (value: unknown, max: number): string | null => (typeof value === "string" ? value.slice(0, max) : null);
+const countOf = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0);
+
+/**
+ * D-178.read (D-019(e)): a field whitelist, so a new column never reaches an
+ * agent by accident. Referrer id, name and title are deliberately absent: the
+ * agent never learns who the referrer is, before or after acceptance.
+ */
+const requestView = (row: Record<string, unknown>): AgentRequestView => ({
+  id: typeof row.id === "number" ? row.id : 0,
+  title: textOf(row.title, 200),
+  targetRoleUrl: textOf(row.targetRoleUrl, 2048),
+  companyDomain: textOf(row.companyDomain, 255) ?? "",
+  compensation: textOf(row.compensation, 200),
+  status: textOf(row.status, 40) ?? "pending",
+  queueStatus: row.queueStatus === "available_for_review" || row.queueStatus === "waiting_for_coverage" || row.queueStatus === "held_for_credit" ? row.queueStatus : null,
+  waitingForCoverage: row.waitingForCoverage === true,
+  referrerMessage: textOf(row.referrerMessage, 2000),
+  unreadMessageCount: countOf(row.unreadMessageCount),
+  attachmentCount: countOf(row.attachmentCount),
+  createdAt: isoOf(row.createdAt) ?? "",
+  updatedAt: isoOf(row.updatedAt) ?? "",
+});
 
 const newKey = () => `${AGENT_KEY_PREFIX}${randomBytes(32).toString("hex")}`;
 const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
@@ -156,6 +204,8 @@ async function authenticateAgent(req: Request, deps: SeekerAgentRouteDeps, nowMs
 
 export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDeps) {
   const nowMs = () => (deps.now ? deps.now() : Date.now());
+  /** SKIPPY-7: an unwired switch reads as off, so a missing dep can never throw inside a route. */
+  const autoSendOn = () => deps.autoSendEnabled?.() === true;
   const noStore = (res: Response) => res.set("Cache-Control", "private, no-store");
   const event = (input: Parameters<SeekerAgentStore["recordEvent"]>[0]) => { void deps.store.recordEvent(input).catch(() => undefined); };
 
@@ -178,7 +228,27 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     const grant = await agentGuard(req, res, "agent.me");
     if (!grant) return;
     event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.me", outcome: "success" });
-    noStore(res).json({ agent: grantView(grant, false, nowMs()) });
+    noStore(res).json({ agent: grantView(grant, false, nowMs(), autoSendOn()) });
+  });
+
+  /**
+   * D-178.read (D-290 R9 parity): the same list MCP's `list_my_requests` returns,
+   * with the fields the seeker's own /requests page shows. Read-only, the token
+   * owner's own rows only, and never referrer identity (D-019(e)). Any live
+   * grant may read it, as with the MCP tool; no scope is required.
+   */
+  app.get("/api/agent/v1/requests", async (req, res) => {
+    if (!deps.enabled()) return res.status(404).json({ error: "Not found" });
+    const grant = await agentGuard(req, res, "agent.requests");
+    if (!grant) return;
+    try {
+      const rows = await deps.listRequests(grant.userId);
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.requests", outcome: "success" });
+      noStore(res).json({ requests: rows.map(requestView) });
+    } catch {
+      event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.requests", outcome: "failure" });
+      noStore(res).status(503).json({ error: "Your referral requests are unavailable right now. Try again in a moment." });
+    }
   });
 
   app.get("/api/agent/v1/companies", async (req, res) => {
@@ -293,6 +363,45 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
         expiresAt: new Date(getApprovalExpiresAtMs(nowMs())),
       });
       event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.send_request", outcome: "success", detail: `approval ${created.id} for draft ${draft.id}` });
+
+      // SKIPPY-7 (D-201 (4), D-141): opt-in auto-send runs through the exact SKIPPY-6 approve path.
+      if (autoSendOn() && grant.autoSend) {
+        try {
+          const decide = deps.decideApproval ?? decideAssistantApprovalWithAgentSend;
+          const result = await decide(grant.userId, created.id, "approved", { actor: "agent_auto" }) as { id: number; status: "approved"; requestId: number };
+          event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.auto_send", outcome: "success", detail: `request ${result.requestId}` });
+          const view: AgentSendRequestView = {
+            approvalId: created.id,
+            status: "approved",
+            creditCost: draft.creditCost,
+            expiresAt: created.expiresAt.toISOString(),
+            requestId: result.requestId,
+          };
+          return noStore(res).status(201).json({ request: view });
+        } catch (err) {
+          if (err instanceof AgentSendRefusal) {
+            event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.auto_send", outcome: "denied", detail: err.code });
+            const view: AgentSendRequestView = {
+              approvalId: created.id,
+              status: "pending",
+              creditCost: draft.creditCost,
+              expiresAt: created.expiresAt.toISOString(),
+              note: err.message,
+            };
+            return noStore(res).status(201).json({ request: view });
+          }
+          event({ userId: grant.userId, grantId: grant.id, agentName: grant.name, action: "agent.auto_send", outcome: "failure", detail: err instanceof Error ? err.message.slice(0, 500) : "unexpected error" });
+          const view: AgentSendRequestView = {
+            approvalId: created.id,
+            status: "pending",
+            creditCost: draft.creditCost,
+            expiresAt: created.expiresAt.toISOString(),
+            note: "An error occurred during auto-send",
+          };
+          return noStore(res).status(201).json({ request: view });
+        }
+      }
+
       // D-060: one in-app notice, and at most one email a day with a direct link.
       await deps.notifySendRequest({ userId: grant.userId, agentName: grant.name, approvalId: created.id, companyName: company.name, cost: draft.creditCost, origin: publicOutboundOrigin(req) }).catch(() => undefined);
       const view: AgentSendRequestView = { approvalId: created.id, status: "pending", creditCost: draft.creditCost, expiresAt: created.expiresAt.toISOString() };
@@ -317,7 +426,11 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     const userId = await seekerGuard(req, res);
     if (userId === undefined) return;
     const [grants, paused] = await Promise.all([deps.store.listGrants(userId), deps.store.isPaused(userId)]);
-    noStore(res).json({ agents: grants.map(g => grantView(g, paused, nowMs())), paused });
+    noStore(res).json({
+      agents: grants.map(g => grantView(g, paused, nowMs(), autoSendOn())),
+      paused,
+      autoSendAvailable: autoSendOn(),
+    });
   });
 
   /** SKIPPY-6: the resumes the approval card can offer, newest first (the card's default). */
@@ -353,7 +466,7 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
       });
       event({ userId, grantId: grant.id, agentName: grant.name, action: "grant.create", outcome: "success", detail: `expires in ${days} day(s)` });
       // The one and only time the key is shown.
-      noStore(res).status(201).json({ agent: grantView(grant, false, nowMs()), key });
+      noStore(res).status(201).json({ agent: grantView(grant, false, nowMs(), autoSendOn()), key });
     } catch {
       event({ userId, grantId: null, agentName: input.name.slice(0, 120), action: "grant.create", outcome: "failure" });
       noStore(res).status(500).json({ error: "The agent could not be created" });
@@ -371,6 +484,33 @@ export function registerSeekerAgentRoutes(app: Express, deps: SeekerAgentRouteDe
     await deps.store.revokeGrant(userId, id, new Date(nowMs()));
     event({ userId, grantId: id, agentName: grant.name, action: "grant.revoke", outcome: "success" });
     noStore(res).json({ ok: true });
+  });
+
+  /**
+   * SKIPPY-7 (D-201 (4), D-141): opt-in auto-send within the grant's limits.
+   * Turned on only by the seeker in their session; requires the `send` scope.
+   * Turning off is always allowed, including on a revoked or expired grant.
+   */
+  app.post("/api/seeker/agents/:id/auto-send", async (req, res) => {
+    if (!deps.enabled() || !autoSendOn()) return res.status(404).json({ error: "Not found" });
+    const userId = await seekerGuard(req, res);
+    if (userId === undefined) return;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return noStore(res).status(400).json({ error: "Unknown agent" });
+    const grant = await deps.store.getGrantForUser(userId, id);
+    if (!grant) return noStore(res).status(404).json({ error: "Unknown agent" });
+
+    const parsed = setAgentAutoSendInputSchema.safeParse(req.body);
+    if (!parsed.success) return noStore(res).status(400).json({ error: parsed.error.issues[0]?.message ?? "Check the details and try again" });
+    const { enabled } = parsed.data;
+
+    if (enabled && !grant.canSend) {
+      return noStore(res).status(400).json({ error: AGENT_ERROR.autoSendScope });
+    }
+
+    await deps.store.setAutoSend(userId, id, enabled);
+    event({ userId, grantId: id, agentName: grant.name, action: "grant.auto_send", outcome: "success", detail: enabled ? "on" : "off" });
+    noStore(res).json({ ok: true, autoSend: enabled });
   });
 
   app.post("/api/seeker/agents/pause-all", async (req, res) => {

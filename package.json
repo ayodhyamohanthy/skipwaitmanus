@@ -130,10 +130,10 @@
     "tsx": "^4.19.1",
     "tw-animate-css": "^1.4.0",
     "typescript": "5.9.3",
-    "vite": "^7.3.6",
+    "vite": "^7.3.7",
     "vite-plugin-manus-runtime": "0.0.59",
     "vite-plugin-pwa": "^1.3.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "packageManager": "pnpm@10.34.7",
   "pnpm": {
@@ -142,9 +142,9 @@
     },
     "overrides": {
       "tailwindcss>nanoid": "3.3.7",
-      "follow-redirects": ">=1.16.1",
+      "follow-redirects": "^1.16.2",
       "katex": ">=0.18.2",
-      "qs": "6.16.0",
+      "qs": "6.16.1",
       "proxy-addr": ">=2.0.8",
       "postcss-selector-parser": ">=7.1.6",
       "@esbuild-kit/core-utils>esbuild": "0.25.10",
@@ -154,13 +154,14 @@
       "tar": "^7.5.22",
       "rollup": ">=4.59.0",
       "form-data": ">=4.0.6",
-      "fast-uri": ">=3.1.7",
+      "fast-uri": "^4.2.3",
       "picomatch": ">=4.0.4",
       "browserslist": ">=4.28.7",
       "baseline-browser-mapping": ">=2.11.0",
       "@babel/core": ">=7.29.6",
-      "jsdom>undici": ">=8.10.2",
-      "dompurify": ">=3.4.17"
+      "jsdom>undici": "^8.12.2",
+      "dompurify": ">=3.4.17",
+      "serialize-javascript": "^7.1.3"
     }
   },
   "engines": {

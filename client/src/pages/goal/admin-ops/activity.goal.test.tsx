@@ -152,3 +152,53 @@ describe("goal admin-ops sources", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ADMIN-activity-log (D-393): filters, older pages, following one person and their request history. Synthetic data.
+describe("goal /admin/activity: following a person (ADMIN-activity-log)", () => {
+  const SIGN_IN_FAILURE = { id: 30, action: "auth.password_sign_in", outcome: "failure", resourceType: "auth", resourceId: null, companyDomain: null, metadata: '{"reason":"wrong_password","method":"password","maskedEmail":"n***@gmail.com","ip":"203.0.113.0/24","country":"IN","browser":"Chrome","os":"macOS","device":"desktop"}', createdAt: CREATED_AT, actorUserId: null, actorName: null, actorEmail: null };
+  const SIGN_IN = { id: 29, action: "auth.social_sign_in", outcome: "success", resourceType: "auth", resourceId: null, companyDomain: null, metadata: '{"method":"google"}', createdAt: CREATED_AT, actorUserId: 41, actorName: "Asha Rao", actorEmail: "asha@example.com" };
+  const TRANSITION = { id: 3, referralRequestId: 88, action: "lapse", fromStatus: "claimed", resultingStatus: "pending", actorUserId: 41, role: "seeker", createdAt: CREATED_AT };
+  function routed(pages: Array<{ events: unknown[]; nextBefore: number | null }> = [{ events: [SIGN_IN_FAILURE, SIGN_IN], nextBefore: 29 }, { events: [EVENTS[0]], nextBefore: null }]) {
+    let page = 0;
+    const fetchMock = vi.fn(async (url: string) => (url.startsWith("/api/admin/activity/requests") ? reply({ transitions: [TRANSITION] }) : reply(pages[Math.min(page++, pages.length - 1)])) as unknown as Response);
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+  const urls = (fetchMock: ReturnType<typeof routed>) => fetchMock.mock.calls.map(call => String(call[0]));
+
+  it("reads a sign-in row as one line and shows the masked email of an attempt with no account", async () => {
+    routed();
+    renderPage(<GoalAdminActivity />);
+    const row = await screen.findByRole("row", { name: /auth.password_sign_in/ });
+    expect(within(row).getByText("No account")).toBeTruthy();
+    expect(within(row).getByText("n***@gmail.com")).toBeTruthy();
+    expect(within(row).getByText("wrong password · password · 203.0.113.0/24 IN · Chrome · macOS · desktop")).toBeTruthy();
+  });
+
+  it("sends the person, kind and dates, and loads older events with the cursor", async () => {
+    const first = { events: [SIGN_IN_FAILURE, SIGN_IN], nextBefore: 29 };
+    const fetchMock = routed([first, first, { events: [EVENTS[0]], nextBefore: null }]);
+    renderPage(<GoalAdminActivity />);
+    await screen.findByRole("row", { name: /auth.social_sign_in/ });
+    fireEvent.change(screen.getByLabelText(/^Person$/), { target: { value: "asha@example.com" } });
+    fireEvent.change(screen.getByLabelText(/^Kind$/), { target: { value: "auth" } });
+    fireEvent.change(screen.getByLabelText(/^From$/), { target: { value: "2026-09-01" } });
+    fireEvent.change(screen.getByLabelText(/^To$/), { target: { value: "2026-09-30" } });
+    fireEvent.click(within(nextStep()).getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(urls(fetchMock)).toContain("/api/admin/activity?limit=250&person=asha%40example.com&family=auth&from=2026-09-01&to=2026-09-30"));
+    fireEvent.click(await screen.findByRole("button", { name: "Load older events" }));
+    await waitFor(() => expect(urls(fetchMock).some(url => url.includes("&before=29"))).toBe(true));
+    expect(await screen.findByText("admin.referral_ledger_exported")).toBeTruthy();
+  });
+
+  it("follows a person from a row and shows their referral request history", async () => {
+    const fetchMock = routed([{ events: [SIGN_IN], nextBefore: null }]);
+    renderPage(<GoalAdminActivity />);
+    fireEvent.click(await screen.findByRole("button", { name: "Follow this person" }));
+    await waitFor(() => expect(urls(fetchMock)).toContain("/api/admin/activity?limit=250&person=41"));
+    const history = await screen.findByRole("region", { name: "Referral request history" });
+    expect(await within(history).findByText("#88")).toBeTruthy();
+    expect(within(history).getByText("claimed → pending")).toBeTruthy();
+    expect(urls(fetchMock)).toContain("/api/admin/activity/requests?person=41");
+  });
+});

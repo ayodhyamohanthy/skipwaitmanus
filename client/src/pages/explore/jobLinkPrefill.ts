@@ -49,7 +49,7 @@ export function domainBelongsToCompany(domain: string, companyDomains: readonly 
 }
 
 export type JobLinkCompany = Pick<PublicCompany, "name" | "domains">;
-const possessive = (name: string) => `${name}${name.toLowerCase().endsWith("s") ? "’" : "’s"}`;
+export const possessive = (name: string) => `${name}${name.toLowerCase().endsWith("s") ? "’" : "’s"}`;
 
 /** The one mismatch sentence (§4.3/§4.4), or null when the preview names this door's company. */
 export function jobLinkMismatch(preview: JobLinkPreview, company: JobLinkCompany, companies: readonly JobLinkCompany[] = []): string | null {

@@ -8,6 +8,7 @@ import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
 import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
+import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_TTL_MS } from "../shared/referral";
 import { assignedAskNotHeldCondition } from "./heldAsk";
 import type { AcceptedAskCost } from "../shared/acceptedAskCost";
@@ -44,8 +45,12 @@ export function openAskCondition(userId: number, nowMs: number): SQL {
     eq(referralRequests.waitingForCoverage, false),
     or(
       and(isNotNull(referralRequests.referrerId), assignedAskNotHeldCondition()),
-      and(isNotNull(referralRequests.coverageVisibleAt), gt(referralRequests.coverageVisibleAt, cutoff)),
-      and(isNull(referralRequests.coverageVisibleAt), gt(referralRequests.createdAt, cutoff)),
+      // D-174: with the ask clocks off an unclaimed visible ask keeps its slot until it is claimed
+      // or withdrawn, so the age windows drop out and the ask stays counted.
+      ...(ASK_NO_EXPIRY_ENABLED ? [] : [
+        and(isNotNull(referralRequests.coverageVisibleAt), gt(referralRequests.coverageVisibleAt, cutoff)),
+        and(isNull(referralRequests.coverageVisibleAt), gt(referralRequests.createdAt, cutoff)),
+      ]),
     ),
   );
   if (!condition) throw new Error("Open-ask condition could not be built");

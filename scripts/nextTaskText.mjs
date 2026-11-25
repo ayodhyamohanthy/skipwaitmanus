@@ -17,7 +17,7 @@ const CMD = "node scripts/next-task.mjs";
 const land = [
   "Run `node scripts/scope-check.mjs <id>` before you push: it reads the task's declared `owns` from origin/main and fails on any change outside them (PICKER-owns-scope).",
   "Probe every other open branch of the same goal for conflicts: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must print 0.",
-  "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
+  "Land under D-082: push the branch, open the pull request, mark it ready and turn on auto-merge (merge commit), and wait until every check on that exact commit is green and main's own CI is green.",
   "Then land it with GitHub's merge-commit button (`gh pr merge <number> --merge`; never `--admin`, `--squash` or `--rebase`, D-134 (6), D-200). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and merge again; never force-push.",
   "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
@@ -29,13 +29,25 @@ const INSTALL = "pnpm install --frozen-lockfile";
 const INSTALL_WHY = "a fresh worktree has no packages, and missing ones fail as TS2688/TS5101 or 'vitest not found' (REGISTER-520, Oct 24). It installs only the versions pinned in pnpm-lock.yaml, so it is always allowed, whatever your session says about installing (D-200 (5)).";
 const head = (title, lines) => [`NEXT: ${title}`, ...lines, ""].join("\n");
 const steps = list => list.map((s, i) => `${i + 1}. ${s}`).join("\n");
-const worktree = branch => `Work in your own worktree, never by switching branches in a shared checkout: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(branch)} ${branch} (if it already exists, use it). Then run \`${INSTALL}\` before your first \`pnpm check\`: ${INSTALL_WHY}`;
+/** PICKER-session-worktree (D-388): the session tag after " · " (else the whole name), as a safe folder suffix. */
+const tagOf = who => {
+  const name = String(who ?? "");
+  const raw = name.includes(" · ") ? name.split(" · ").pop() : name;
+  return raw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "session";
+};
+/** One helper builds every printed worktree folder, so two sessions on one machine never share one (D-388). */
+export const worktreeDirFor = (base, who) => `../skipwaitmanus-wt/${base}-${tagOf(who)}`;
+/** The picker never touches a folder itself; the session checks it before using it (D-388). */
+const REUSE = "(if it already exists and is clean, use it; if it holds uncommitted changes, stop and report instead of using it)";
+const worktree = (branch, who) => `Work in your own worktree, never by switching branches in a shared checkout: git fetch origin && git worktree add ${worktreeDirFor(slugOf(branch), who)} ${branch} ${REUSE}. Then run \`${INSTALL}\` before your first \`pnpm check\`: ${INSTALL_WHY}`;
 /** D-085: origin is the only place other agents can see; a claim nobody pushes to for 2 hours is free again. */
 const keepAlive = who => `Push your branch after every commit. Before any step that may take over an hour without a commit (the full gate, a long test run), run \`${CMD} --heartbeat --as "${who}"\`: a claim nobody has pushed to for 2 hours is handed to the next agent (D-085). Before you stop for any reason, commit (a WIP commit is fine) and push.`;
 const unclear = "If anything is unclear, a test fails for a reason the packet does not give, or the call is the owner's: stop, write the question in your status line (your §3b row, or your line in the packet's Status section when the row is shared), push the branch and ask the owner. Never guess about money, sign-in, identity or privacy.";
 /** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
 const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with \`--avoid ${task.id}\` added (repeat the flag, or use one comma list, \`--avoid a,b\`), and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
+/** D-235: after a bounded handoff the session reports, reruns the preflight and takes the next eligible task. */
+const nextTask = `Then rerun the preflight (\`docs/BUILD_CONTINUITY.md\`) and take the next eligible task \`${CMD}\` hands you (D-235; one packet at a time).`;
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
 const statusAt = task => task.sharedRow ? `its line in the Status section of ${task.packet ?? "its packet"} (\"${task.id}: ...\"; the §3b row \"${task.row}\" is shared by several tasks, so never edit it)` : `the §3b row \"${task.row}\"`;
@@ -43,13 +55,13 @@ const statusAt = task => task.sharedRow ? `its line in the Status section of ${t
 const aheadLines = pick => (pick.ahead?.length ? [`AHEAD OF ITS DEPENDENCIES (D-315): ${pick.ahead.join(", ")} ${pick.ahead.length === 1 ? "is" : "are"} not done yet, and nothing else was free, so you start this now instead of waiting. Work only on its own branch from current origin/main and open a draft pull request; never land it, never mark it done and never edit a dependency's files to make it pass. The picker withholds its review and landing until every dependency is done; then merge origin/main into the branch and adapt to what they changed. If the packet truly needs a dependency's output to go further, push what you have, report it with \`${CMD} --report review\`, and run the picker again for your next task.`] : []);
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
-function workSteps(task, who, branch) {
+function workSteps(task, who) {
   return [
     "Follow docs/DELEGATION.md §4 steps 4-8 exactly: the packet's tests first (they must fail for its reason), one step per commit, only the packet's files, then the full gate on your branch merged with the latest origin/main.",
     keepAlive(who),
-    task.tier === 1
-      ? `Tier 1: push the branch, open a DRAFT pull request, set ${statusAt(task)} to "review — ${branch} — <sha>", report, then rerun the preflight (\`docs/BUILD_CONTINUITY.md\`) and take the next eligible task \`${CMD}\` hands you (D-235; one packet at a time). Never land it yourself: \`${CMD}\` hands the review to a different session.`
-      : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>".`,
+    // D-370 (owner, Nov 20 2026): green required CI alone lands every pull request at every tier, so a
+    // Tier 1 hand-out prints the same landing instruction Tier 2/3 does (PICKER-tier1-wording, D-389).
+    `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>". ${nextTask}`,
     unclear,
     report(task, who),
   ];
@@ -57,19 +69,19 @@ function workSteps(task, who, branch) {
 
 function buildSteps(task, who, date, branch) {
   return steps([
-    worktree(branch),
+    worktree(branch, who),
     `Read docs/BRIEF.md, then ${task.packet}. Read nothing else unless the packet names it. The branch above replaces the packet's agent/<model>/... name.`,
     `First commit: set ${task.sharedRow ? statusAt(task) : `the docs/KIT_V4_BUILD_PLAN.md §3b row "${task.row}"`} to "in progress — ${who} — ${date} — branch ${branch}".`,
-    ...workSteps(task, who, branch),
+    ...workSteps(task, who),
   ]);
 }
 
 /** Where a half-built branch stopped: its row, its commits, its pull request. */
 function resumeSteps(task, who, branch) {
   return steps([
-    worktree(branch),
+    worktree(branch, who),
     `See where it stopped before touching anything: ${statusAt(task)}, \`git log --oneline origin/main..origin/${branch}\`, and any uncommitted changes in your worktree. Read docs/BRIEF.md and ${task.packet ?? "the row"}.`,
-    ...workSteps(task, who, branch),
+    ...workSteps(task, who),
   ]);
 }
 
@@ -80,7 +92,7 @@ const unreviewed = pick => `Before you land, take the head commit the pass verdi
 const fixedUnchanged = pick => `Before you land, take the head the newest Fixed marker names (the \`fixed <sha>\` line in its body on ${pick.lock}) as <fixed> and run \`git fetch origin && git log --no-merges --name-only --format="%h %s" <fixed>..origin/${pick.work} ^origin/main\`. Every commit it lists, except the status commit a landing makes (only docs/plans/assignments.json) and an empty picker marker, came after the fix: do not land, and report it blocked to the CEO with --report blocked. The CI review gate applies the same check.`;
 
 const reviewSteps = (pick, who) => steps([
-  `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit, whatever arrives later, in its own worktree: \`git worktree add --detach ../skipwaitmanus-wt/review-${slugOf(pick.work)} <reviewed>\`, then \`${INSTALL}\` there before any test: ${INSTALL_WHY}`,
+  `Before reading any code, record the head you review: \`git fetch origin && git rev-parse origin/${pick.work}\` gives <reviewed>; review exactly that commit, whatever arrives later, in its own worktree: \`git worktree add --detach ${worktreeDirFor(`review-${slugOf(pick.work)}`, who)} <reviewed>\` ${REUSE}, then \`${INSTALL}\` there before any test: ${INSTALL_WHY}`,
   pick.packet ? `Review the packet and its rows (not implementation code) on ${pick.work}; read docs/BRIEF.md and follow docs/DELEGATION.md §6, reproducing its claims.` : `Read docs/BRIEF.md and ${pick.task.packet}, then review exactly as docs/DELEGATION.md §6 says, reproducing every claim yourself.`,
   `Before posting, run \`git fetch origin && git log --no-merges --format="%h %s" <reviewed>..origin/${pick.work} ^origin/main\`: if it lists anything, review those commits too and record the new head as <reviewed>, or return findings. Name <reviewed> with your verdict, never a fresh rev-parse: a lander checks that nothing but clean merges of main came after it. Post it on the pull request if your tools can; if they cannot (git-only access), put "reviewed <reviewed>" in the note of a \`${CMD} --report review\` instead. The \`--verdict\` marker below is the record and is a plain git push: a GitHub review is never required.`,
   pick.packet ? `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. Then re-run the failed CI jobs on the same exact head of ${pick.pr}. Keep the row at its packet stage; the existing D-190 packet landing follows only green CI and its independent pass.` : `Pass: run \`${CMD} --verdict pass --task ${pick.task.id} --as "${who}"\`. If you land it, first run the check in the landing steps: a commit after the one you reviewed, other than merges of main and the status commit, means do not land; report it blocked (D-074). Merge the latest origin/main into ${pick.work}, set this task's "status" to "done" in docs/plans/assignments.json, push, then: ${land.join(" ")} Set ${statusAt(pick.task)} to "done — <sha>".`,
@@ -90,7 +102,7 @@ const reviewSteps = (pick, who) => steps([
 ]);
 
 const fixSteps = (pick, who) => steps([
-  `git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(pick.work)}-fix ${pick.work} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24).`,
+  `git fetch origin && git worktree add ${worktreeDirFor(`${slugOf(pick.work)}-fix`, who)} ${pick.work} ${REUSE}. Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24).`,
   `Read docs/BRIEF.md, ${pick.task.packet} and the findings on the pull request. Fix each one red-first on ${pick.work}, then re-run the full gate merged with the latest origin/main and push.`,
   keepAlive(who),
   `Run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` once every fix is pushed, so the next run hands it back for review. Do not land it.`,
@@ -98,20 +110,19 @@ const fixSteps = (pick, who) => steps([
 ]);
 
 const greenSteps = (pick, who) => steps([
-  worktree(pick.work),
+  worktree(pick.work, who),
   `Read the failing checks on ${pick.pr} and the §3b row "${pick.task.row}", then docs/BRIEF.md and ${pick.task.packet}.`,
   "Fix the failure red-first on the same branch (never skip, weaken or delete a test), merge the latest origin/main, re-run the full gate, push, and wait until every check on that exact commit is green.",
   keepAlive(who),
-  pick.task.tier === 1
-    ? `Tier 1: once green, set ${statusAt(pick.task)} to "review — ${pick.work} — <sha>" and stop; \`${CMD}\` hands the review to a different session.`
-    : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
+  // D-370 (owner, Nov 20 2026): a green Tier 1 pull request lands like Tier 2/3; no review stage is handed out.
+  `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>". ${nextTask}`,
   report(pick.task, who),
 ]);
 
 // D-190 (3), D-183: a packet pull request on its architect lock lands by the docs path, by anyone but its writer.
 const packetLandSteps = (pick, who) => steps([
   `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
-  worktree(pick.work),
+  worktree(pick.work, who),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} (never rebase). In docs/plans/assignments.json keep every row main has unchanged and add only the packet's rows (D-183); never push to the lock branch except that merge and its conflict resolution.`,
   "Run `node -e \"import('./scripts/nextTaskCore.mjs').then(async c => { const fs = await import('node:fs'); console.log(JSON.stringify(c.validateAssignments(JSON.parse(fs.readFileSync('docs/plans/assignments.json', 'utf8')), p => fs.existsSync(p), c.parseDecisionRegister(fs.readFileSync('docs/DECISIONS.md', 'utf8'))))) })\"` (validateAssignments must print []) and `pnpm vitest run scripts/`; both must pass before you land.",
   `Land under D-082: wait until every check on that exact head of ${pick.pr} is green and main's own CI is green, then merge with GitHub's "Create a merge commit" button pinned to that head (never squash or rebase-merge, D-134 (6)). If main moved, merge it again, re-run the two checks above and wait for the new head's checks; never force-push. If anything goes red, revert your merge before anything else.`,
@@ -122,7 +133,7 @@ const packetLandSteps = (pick, who) => steps([
 
 const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : steps([
   `Take the landing slot first: agent/queue/landing (first push wins; a quiet slot is free after 30 minutes). Keep it alive during deploys with \`${CMD} --heartbeat --as "${who}"\`.`,
-  worktree(pick.work),
+  worktree(pick.work, who),
   `Read docs/BRIEF.md and the §3b row "${pick.task.row}". Merge the latest origin/main into ${pick.work} and re-run the full gate yourself; never land on someone else's word.`,
   ...(pick.tier1 ? [pick.fixed ? fixedUnchanged(pick) : unreviewed(pick)] : []),
   pick.tier1
@@ -135,7 +146,7 @@ const landSteps = (pick, who) => pick.packet ? packetLandSteps(pick, who) : step
 
 // A claimed lock always exists on origin (the claim pushed it), so the worktree tracks it; branching from main would lose the claim marker.
 const architectSteps = (pick, who, claimed) => steps([
-  `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
+  `git fetch origin && git worktree add ${worktreeDirFor(`architect-${slugOf(pick.lock)}`, who)} ${pick.lockExists || claimed ? pick.lock : `-b ${pick.lock} origin/main`} ${REUSE}. Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push this branch: its first commit is your claim.`,
   `Read the §3b row "${pick.task.row}", the task's note in docs/plans/assignments.json and every decision it names in docs/DECISIONS.md.`,
   ...(pick.packetFindingsCommit ? [
     `Address the recorded packet findings (verdict ${pick.packetFindingsCommit.slice(0, 8)}) on ${pick.lock} and push your correction. Then run \`${CMD} --fixed --task ${pick.task.id} --as "${who}"\` to bind the fix to the published packet head. Required CI and the existing review gate decide whether it can land.`,
@@ -149,7 +160,7 @@ const architectSteps = (pick, who, claimed) => steps([
 
 // D-085: the fix is committed on the lock branch itself, so every commit keeps the lock alive.
 const fixMainSteps = (pick, who) => steps([
-  `Work on the lock branch itself: git fetch origin && git worktree add ../skipwaitmanus-wt/${slugOf(pick.lock)} ${pick.lock} (if it already exists, use it). Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push it: its first commit is your claim.`,
+  `Work on the lock branch itself: git fetch origin && git worktree add ${worktreeDirFor(slugOf(pick.lock), who)} ${pick.lock} ${REUSE}. Then run \`pnpm install\` before your first \`pnpm check\`: a fresh worktree has no dependencies, and missing ones fail as TS2688/TS5101 (REGISTER-520, Oct 24). Never force-push it: its first commit is your claim.`,
   "Find the commit that turned main red (the run above and `gh run list --branch main --workflow CI`).",
   `Fix it red-first on ${pick.lock}, or revert that commit if the fix is not obvious. Nothing else: no other change rides along.`,
   keepAlive(who),
@@ -189,7 +200,7 @@ const resyncSteps = (pick, who, register = null) => {
   const newest = register?.at(-1)?.id ?? "the newest entry in docs/DECISIONS.md";
   const since = pick.decisions?.length ? pick.decisions.join(", ") : "every entry after its stamp";
   return steps([
-    `git fetch origin && git worktree add ../skipwaitmanus-wt/architect-${slugOf(pick.lock)} ${pick.lockExists ? pick.lock : `-b ${pick.lock} origin/main`} (if it already exists, use it). Never force-push this branch: its first commit is the claim.`,
+    `git fetch origin && git worktree add ${worktreeDirFor(`architect-${slugOf(pick.lock)}`, who)} ${pick.lockExists ? pick.lock : `-b ${pick.lock} origin/main`} ${REUSE}. Never force-push this branch: its first commit is the claim.`,
     `Read the decisions newer than this task's stamp (${since}), then the task's packet and the code paths it changes. If one of them changes what the packet says, the decision wins (D-032).`,
     `Re-sync the packet in docs/plans/: record how each newer decision changes it, or that the rule is unaffected, and set this task's "syncedTo" to "${newest}" in docs/plans/assignments.json in the same commit. This is a docs change only: no code, no new behaviour.`,
     `Land it like any docs change: a pull request with every check green on that exact commit (D-082; a conflict-free docs change uses focused checks, Oct 23). ${keepAlive(who)}`,

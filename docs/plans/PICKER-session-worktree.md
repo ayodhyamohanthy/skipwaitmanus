@@ -33,4 +33,4 @@ Focused tests, `scripts/nextTask.test.ts` and `pnpm check` green; required CI gr
 
 ## Status
 
-- PICKER-session-worktree: todo
+- PICKER-session-worktree: review — agent/queue/picker-session-worktree — 383482e5a (Claude Code · 83fe, 2026-11-24). Red-first `scripts/nextTaskWorktree.test.ts` failed 20/20, then 20/20 green; `scripts/nextTask.test.ts` 180/180 with its two old-path pins updated to the tagged path; every picker-text suite passes except the 4 `nextTaskCliOutputDrain` cases that also fail on unmodified main in this container; `pnpm check` and scope-check pass; no conflict with HYGIENE-picker-bootstrap (#1535). Lands on green required CI (D-370).

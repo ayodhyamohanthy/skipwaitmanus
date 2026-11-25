@@ -20,6 +20,7 @@
 // imported, never retyped (D-063, D-134); "Do credits expire?" is mirrored kit
 // money wording kept byte-identical (see the note on it below).
 import { ASK_COST_SENTENCE, CREDIT_RULE, MONEY_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_NO_EXPIRY_ENABLED } from "@shared/askNoExpiry";
 import { FREE_PLAN } from "@shared/planCatalog";
 import { EMPLOYER_RULES_LEAD, EMPLOYER_RULES_QUESTION } from "@shared/employerRulesCopy";
 
@@ -32,7 +33,10 @@ export const HELP_ANSWERS: ReadonlyArray<HelpAnswer> = [
   // D-063: the money sentence, then the credit rule exactly as the ledger keeps it.
   { category: "Asking", question: "Does asking for a referral cost anything?", answer: `${ASK_COST_SENTENCE} ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}` },
   { category: "Asking", question: "How many referral requests can I have open?", answer: `Free: ${FREE_PLAN.openRequests} at a time. An answered, withdrawn or expired referral request frees its slot.` },
-  { category: "Asking", question: "Why did my referral request expire?", answer: "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note." },
+  // D-174: with the ask clocks off nothing expires, so the question and its answer change together.
+  ASK_NO_EXPIRY_ENABLED
+    ? { category: "Asking", question: "Does my referral request expire?", answer: "No. It stays open until a verified employee answers it or you withdraw it. Withdrawing before someone picks it up returns the charge." }
+    : { category: "Asking", question: "Why did my referral request expire?", answer: "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note." },
   { category: "Asking", question: "Does a referral guarantee an interview?", answer: "No. Referrers recommend; companies decide. We never promise outcomes." },
   { category: "Referring", question: "How do I become a referrer?", answer: "Verify your work email with a one-time code, then choose your job areas and monthly capacity." },
   { category: "Referring", question: "My company uses a different email domain.", answer: "Contact support with your company name and work email domain." },

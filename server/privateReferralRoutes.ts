@@ -1,7 +1,10 @@
 import { setRetryAfter } from "./retryAfter";
 import { ASK_RECONFIRM_ENABLED, askReconfirmBodySchema, askReconfirmParamsSchema, askReconfirmResponseSchema } from "../shared/askReconfirm";
 import { ASK_RECONFIRM_ERROR } from "../shared/moneyCopy";
-import { AskReconfirmError, reconfirmWaitingAsk } from "./db";
+import { AskReconfirmError, countWaitingPoolRequestsForReferrer as defaultCountWaitingPoolRequestsForReferrer, reconfirmWaitingAsk } from "./db";
+import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
+import { REQUEST_INBOX_LINK_ENABLED, publicScreenName, screenNameInputSchema, screenNameRefusalFor, type PublicReferralLinkPayload } from "../shared/requestInboxLink";
+import { ScreenNameRefusedError, screenNameRefusalStatus } from "./referrerScreenName";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
@@ -46,6 +49,8 @@ import { resolveAskNote } from "../shared/askNote";
 import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 import type { AskInviteMine } from "../shared/askInvites";
+import { registerAdminActivityRoutes, type ActivityListInput, type AdminActivityDeps } from "./adminActivity";
+import { registerAdminSupportRoutes } from "./adminSupportRoutes";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -87,9 +92,13 @@ export type PrivateReferralRouteDeps = {
   getCompanyDirectoryEntry?: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
   createCompanyReferralRequest: (userId: number, input: { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl?: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; catalogJobId?: number; workItemIds?: number[]; expectedCoverage?: "waiting_for_company_coverage" }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; chargedCost?: AcceptedAskCost; replayed?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
-  getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
-  getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
+  getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<PublicReferralLinkPayload | undefined>;
+  getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<PublicReferralLinkPayload | undefined>;
   deactivateReferrerFastTrackLink?: (userId: number) => Promise<{ deactivated: boolean }>;
+  /** D-089.server (§4.3): set the link's screen name; refusals throw ScreenNameRefusedError. */
+  setReferrerScreenName?: (userId: number, input: { screenName: string }) => Promise<{ vanityAlias: string; renamed: boolean }>;
+  /** D-089.server (§4.5): turn a paused link back on with a fresh code and the same alias. */
+  resumeReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean; resumed: boolean }>;
   openCompanyReferralAvailability?: (userId: number, input: { slotCount?: number }) => Promise<{ companyDomain: string; requestedSlotCount: number; allocatedRequestIds: number[]; allocatedCount: number }>;
   getSlotOpenedAlertRecipients?: (referrerId: number, requestIds: number[]) => Promise<Array<{ requestId: number; jobSeekerId: number; email: string | null; companyDomain: string }>>;
   sendSlotOpenedAlertEmail?: (input: { to: string; companyDomain: string; requestsUrl: string }) => Promise<{ sent: boolean; reason: string }>;
@@ -122,6 +131,8 @@ export type PrivateReferralRouteDeps = {
   reconcileExpiredPendingReferrals?: (userId: number, nowMs?: number) => Promise<{ expiredRequestIds: number[] }>;
   /** The caller's own open-ask slots against the plan cap (shared/openAskSlots.ts). */
   getOpenAskSlots?: (userId: number, nowMs?: number) => Promise<OpenAskSlots>;
+  /** D-174-pool-nudges: requests waiting in the pool at the caller's own verified company (a count only). */
+  countWaitingPoolRequestsForReferrer?: (userId: number) => Promise<number>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown; creditRefunded?: boolean }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
@@ -171,7 +182,10 @@ export type PrivateReferralRouteDeps = {
   closeCompanyOpportunity?: (userId: number, opportunityId: number) => Promise<{ id: number; closed: true } | undefined>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   listMyUploadStarts?: (userId: number, since: Date) => Promise<Array<{ sessionId: string | null; clientUploadId: string | null; fileName: string | null; createdAt: Date }>>;
-  listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
+  listOperationalActivity?: (input: ActivityListInput) => Promise<unknown[]>;
+  /** ADMIN-activity-log (D-393): the accounts (and sign-in attempts) an admin's person filter names. */
+  resolveActivityPerson?: AdminActivityDeps["resolveActivityPerson"];
+  listPersonRequestTransitions?: AdminActivityDeps["listPersonRequestTransitions"];
   getReferralFlowHealth?: () => Promise<unknown>;
   /** D-018 aggregate baseline; absent in partial test apps, never faked. */
   getReferralFlowBaseline?: () => Promise<unknown>;
@@ -1047,8 +1061,46 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const vanityUrl = `${origin}/refer/${encodeURIComponent(link.companyDomain.split(".")[0] || link.companyDomain)}/${encodeURIComponent(link.vanityAlias)}`;
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via skipwait.me.` } });
+      // D-089.server (§4.6): the screen name the referrer chose, only while the switch is on.
+      const screenName = REQUEST_INBOX_LINK_ENABLED ? { screenName: publicScreenName(link.vanityAlias) } : {};
+      res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via skipwait.me.`, ...screenName } });
     } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not create your link" }); }
+  });
+  // D-089.server (§4.3, D-398): choose the link's screen name. 404 while REQUEST_INBOX_LINK_ENABLED is off.
+  app.put("/api/referrer-fast-track/me/screen-name", async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!REQUEST_INBOX_LINK_ENABLED) return res.status(404).json({ error: "Not found" });
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to name your link" });
+      if (!deps.setReferrerScreenName) return res.status(503).json({ error: "Your link is unavailable right now" });
+      const parsed = screenNameInputSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(422).json(screenNameRefusalFor("screen_name_invalid"));
+      const result = await deps.setReferrerScreenName(identity.account.id, parsed.data);
+      // §7: no name or alias in the metadata.
+      record({ actorUserId: identity.account.id, action: "referrer_fast_track.screen_name_set", outcome: "success", resourceType: "referrer_fast_track", metadata: { renamed: result.renamed } });
+      res.json({ screenName: publicScreenName(result.vanityAlias), renamed: result.renamed });
+    } catch (error) {
+      if (error instanceof ScreenNameRefusedError) return res.status(screenNameRefusalStatus(error.code)).json(screenNameRefusalFor(error.code));
+      if (/verify your company email/i.test(error instanceof Error ? error.message : "")) return res.status(403).json({ error: "Verify your company email before naming your link" });
+      res.status(500).json({ error: "We could not save your screen name" });
+    }
+  });
+  // D-089.server (§4.5): turn a paused link back on. 404 while REQUEST_INBOX_LINK_ENABLED is off.
+  app.post("/api/referrer-fast-track/me/resume", async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!REQUEST_INBOX_LINK_ENABLED) return res.status(404).json({ error: "Not found" });
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to turn your link back on" });
+      if (!deps.resumeReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
+      const result = await deps.resumeReferrerFastTrackLink(identity.account.id);
+      record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_resumed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: result.companyDomain, metadata: { resumed: result.resumed } });
+      res.json({ resumed: result.resumed, isActive: result.isActive });
+    } catch (error) {
+      if (/verify your company email/i.test(error instanceof Error ? error.message : "")) return res.status(403).json({ error: "Verify your company email before turning your link back on" });
+      res.status(500).json({ error: "We could not turn your link back on" });
+    }
   });
   app.post("/api/referrer-fast-track/me/deactivate", async (req, res) => {
     try {
@@ -1066,7 +1118,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackLink(req.params.linkCode);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
-      record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
+      record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true, ...("screenName" in link ? { named: link.screenName !== null } : {}) } });
       res.set("Cache-Control", "no-store");
       res.json({ link });
     } catch { res.status(500).json({ error: "We could not open this private referral link" }); }
@@ -1076,7 +1128,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackVanityLink(req.params.companySlug, req.params.vanityAlias);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
-      record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
+      record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true, ...("screenName" in link ? { named: link.screenName !== null } : {}) } });
       res.set("Cache-Control", "no-store");
       res.json({ link });
     } catch { res.status(500).json({ error: "We could not open this private referral link" }); }
@@ -1249,7 +1301,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // W1: referrers quote the HMAC public ref, never the sequential id.
       return Number.isInteger(id) && id > 0 ? { ...(parsed as Record<string, unknown>), publicRef: publicAskRef(id) } : parsed;
     });
-    return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed };
+    // D-174-pool-nudges part 1: a count only, at the caller's own verified company, and only while the switch is on.
+    // Fail-soft: a count that cannot be read never hides the inbox.
+    let waitingCount: number | undefined;
+    if (POOL_NUDGES_ENABLED) {
+      try { waitingCount = await (deps.countWaitingPoolRequestsForReferrer ?? defaultCountWaitingPoolRequestsForReferrer)(userId); }
+      catch (error) { captureServerError(error, { area: "referrer_inbox_waiting_count" }); }
+    }
+    return { requests: await withCompanyIdentities(withRefs), scope, hasEverReviewed, ...(waitingCount === undefined ? {} : { waitingCount }) };
   };
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {
@@ -1674,7 +1733,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.send(csv);
     } catch { res.status(500).json({ error: "We could not export the referral ledger" }); }
   });
-  app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
+  registerAdminActivityRoutes(app, { resolveIdentity: deps.resolveIdentity, listOperationalActivity: deps.listOperationalActivity, resolveActivityPerson: deps.resolveActivityPerson, listPersonRequestTransitions: deps.listPersonRequestTransitions, record });
+  // ADMIN-support-view (D-393): one person's whole state on one admin page. Read-only and admin-gated.
+  registerAdminSupportRoutes(app, { resolveIdentity: deps.resolveIdentity, record });
   app.get("/api/admin/approval-queue", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

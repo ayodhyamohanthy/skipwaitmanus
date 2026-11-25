@@ -6,6 +6,7 @@ import * as db from "../db";
 import type { TransactionalEmailInput, TransactionalEmailResult } from "../emailDelivery";
 import type { PasswordWitnessStore } from "../passwordWitness";
 import { captureServerError } from "../sentry";
+import { recordAuthEvent, type AuthAction, type AuthReason } from "../authEvents";
 import { configuredPublicOrigin, isTrustedAuthPost } from "./authPostGuard";
 import { activeDurableLock, consumeDurableLimits, type DurableLimit, type DurableLimitStore } from "./durableRateLimit";
 import type { PasswordWorkosClient } from "./passwordWorkosClient";
@@ -133,11 +134,21 @@ export function holdAnswersUntilFloor(res: Response, floorMs: number): void {
   }) as Response["json"];
 }
 
-/** D-054 funnel events: never the email, password, token or WorkOS ids. */
-export function recordPasswordActivity(action: string, outcome: "success" | "failure" | "denied", metadata: Record<string, string>, actorUserId?: number): void {
-  void Promise.resolve()
-    .then(() => db.recordOperationalActivity({ action, outcome, resourceType: "auth", ...(actorUserId ? { actorUserId } : {}), metadata }))
-    .catch(() => undefined);
+const PASSWORD_REASONS: Readonly<Record<string, AuthReason>> = {
+  invalid_credentials: "wrong_password", invalid_code: "wrong_code", expired: "code_expired", weak_password: "weak_password", rate_limited: "rate_limited",
+  locked: "locked", use_work_email_code: "use_work_email_code", use_another_method: "use_another_method", account_review: "account_review",
+  account_inactive: "account_inactive", password_sign_in_unavailable: "unavailable", temporarily_unavailable: "unavailable", email_taken: "email_taken",
+  check_email: "check_email", signed_in: "signed_in", not_signed_in_after_reset: "not_signed_in_after_reset",
+};
+
+/**
+ * D-054 funnel events, and the admin activity log (ADMIN-activity-log, D-393): through recordAuthEvent, so a row
+ * carries the account or a masked email, the coarse device and a closed reason code; never the email, password,
+ * token or WorkOS ids. `res.req` is the request this answer belongs to.
+ */
+export function recordPasswordActivity(res: Response, email: string | undefined, action: AuthAction, outcome: "success" | "failure" | "denied", detail: { readonly code?: string; readonly userId?: number } = {}): void {
+  const reason = detail.code === undefined ? undefined : PASSWORD_REASONS[detail.code] ?? "other";
+  void recordAuthEvent(res.req, { action, outcome, method: "password", plane: "seeker", ...(email ? { email } : {}), ...(reason ? { reason } : {}), ...(detail.userId ? { userId: detail.userId } : {}) });
 }
 
 /**

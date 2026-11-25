@@ -28,9 +28,9 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
       if (!body) return;
       const client = ctx.client;
       if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
-      if (!(await passLimits(ctx, res, forgotLimits(body.email, requestIp(req))))) return;
+      if (!(await passLimits(ctx, res, forgotLimits(body.email, requestIp(req))))) return recordPasswordActivity(res, body.email, "auth.password_forgot", "denied", { code: "rate_limited" });
       res.set("Cache-Control", "no-store").status(200).json({ ok: true });
-      recordPasswordActivity("auth.password_forgot", "success", {});
+      recordPasswordActivity(res, body.email, "auth.password_forgot", "success");
       ctx.defer(() => startPasswordReset(ctx, client, body.email));
     } catch (error) {
       failUnexpectedly(res, "forgot", error);
@@ -45,13 +45,13 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
       if (policy) return sendPasswordError(res, "weak_password", { message: `${policy}.` });
       const client = ctx.client;
       if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
-      if (!(await passLimits(ctx, res, resetConfirmLimits(requestIp(req))))) return;
+      if (!(await passLimits(ctx, res, resetConfirmLimits(requestIp(req))))) return recordPasswordActivity(res, undefined, "auth.password_reset", "denied", { code: "rate_limited" });
       let user: PasswordUser;
       try {
         ({ user } = await client.resetPassword({ token: body.token, newPassword: body.password }));
       } catch (error) {
         const failure = classifyWorkosPasswordError(error, "reset");
-        recordPasswordActivity("auth.password_reset", "failure", { code: failure.kind });
+        recordPasswordActivity(res, undefined, "auth.password_reset", "failure", { code: failure.kind });
         if (failure.kind === "expired") return sendPasswordError(res, "expired");
         if (failure.kind === "weak_password") return sendPasswordError(res, "weak_password");
         if (failure.kind === "rate_limited") return sendPasswordError(res, "rate_limited", { retryAfterSeconds: failure.retryAfterSeconds });
@@ -69,11 +69,11 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
         const outcome = user.emailVerified === true ? await finishPasswordLogin(req, res, { authentication: { user }, mode: "reset", emailStanding: ctx.emailStanding, witness: ctx.witness }) : undefined;
         // A referrer's work email gets the work-email-code answer: no session, nobody signed out (D-078 ruling 3).
         if (outcome?.status === "refused" && outcome.code === "use_work_email_code") {
-          recordPasswordActivity("auth.password_reset", "denied", { code: outcome.code });
+          recordPasswordActivity(res, user.email, "auth.password_reset", "denied", { code: outcome.code });
           return sendPasswordError(res, "use_work_email_code");
         }
         const signedIn = outcome?.status === "signed_in";
-        recordPasswordActivity("auth.password_reset", "success", { signedIn: signedIn ? "yes" : "no" }, outcome?.status === "signed_in" ? outcome.userId : undefined);
+        recordPasswordActivity(res, user.email, "auth.password_reset", "success", { code: signedIn ? "signed_in" : "not_signed_in_after_reset", ...(outcome?.status === "signed_in" ? { userId: outcome.userId } : {}) });
         return sendResetDone(res, signedIn);
       } catch (error) {
         reportPasswordFailure("reset", "session_not_issued", error);

@@ -1,3 +1,8 @@
+// D-174/D-385: the ask's own death clocks are suspended behind this switch. It lives in a leaf
+// module so the sweep and server/db.ts read one binding without a cycle, and a test can force it.
+import { ASK_NO_EXPIRY_ENABLED } from "./askNoExpiry";
+export { ASK_NO_EXPIRY_ENABLED };
+
 export const referralStatuses = ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"] as const;
 export type ReferralStatus = (typeof referralStatuses)[number];
 
@@ -175,12 +180,18 @@ export function getAskVisibleSinceMs(input: { createdAt: Date | string | number 
 
 /** Absolute expiry instant for an ask, or null when it cannot be established (fail open: never strand). Creation-based: the D-050 held-ask shelf life. */
 export function getAskExpiresAtMs(createdAt: Date | string | number | null | undefined): number | null {
+  // D-174: while the ask clocks are suspended there is no deadline to report (D-385 §3.2).
+  if (ASK_NO_EXPIRY_ENABLED) return null;
   const base = createdAtMs(createdAt);
   return base === null ? null : base + ASK_TTL_MS;
 }
 
 /** D-061 deadline of an unclaimed ask: waiting asks close COVERAGE_WAIT_DAYS after creation at no cost; everything else ASK_TTL_DAYS after first visibility. */
 export function getAskShelfLifeEndsAtMs(input: { createdAt: Date | string | number | null | undefined } & AskExpiryWindow): number | null {
+  // D-174: the one choke point every expiry decision reads (D-385 §3.2). Null means no deadline:
+  // isAskExpired stays false, countdowns and "expiring soon" chips disappear, the demand count keeps
+  // the ask and the payload sends expiresAt: null.
+  if (ASK_NO_EXPIRY_ENABLED) return null;
   if (input.waitingForCoverage) {
     const base = createdAtMs(input.createdAt);
     return base === null ? null : base + COVERAGE_WAIT_MS;

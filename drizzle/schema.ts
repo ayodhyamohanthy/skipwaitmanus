@@ -373,6 +373,8 @@ export const assistantApprovals = mysqlTable("assistantApprovals", {
   // approve can check that grant's live state and count its sends. Null for
   // seeker-initiated approvals, which keep today's behaviour.
   grantId: int("grantId").references(() => seekerAgentGrants.id, { onDelete: "set null" }),
+  // SKIPPY-7 (D-201 (4)): 'seeker' | 'agent_auto'. Null for rows created before SKIPPY-7.
+  decidedBy: varchar("decidedBy", { length: 16 }),
   expiresAt: timestamp("expiresAt").notNull(),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1345,6 +1347,8 @@ export const seekerAgentGrants = mysqlTable("seekerAgentGrants", {
   // SKIPPY-6 (D-290 (1)): off by default. Only lets the agent *request* a send;
   // the seeker approves every one in their own session.
   canSend: boolean("canSend").default(false).notNull(),
+  // SKIPPY-7 (D-201 (4), D-141): opt-in auto-send within the grant's limits.
+  autoSend: boolean("autoSend").default(false).notNull(),
   maxCreditsPerAsk: int("maxCreditsPerAsk").notNull(),
   maxCreditsPerDay: int("maxCreditsPerDay").notNull(),
   maxCreditsPerWeek: int("maxCreditsPerWeek").notNull(),

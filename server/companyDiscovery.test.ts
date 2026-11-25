@@ -49,6 +49,25 @@ describe("discoverCompanies", () => {
     expect(results).toEqual([{ name: "Google", domain: "google.com", logoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_2015_logo.svg?width=64", source: "wikidata" }]);
   });
 
+  // SEARCH-work-domain (D-394): Wikidata gives Google's official site as about.google; its employees verify with @google.com.
+  it("answers the work-email domain, not the official-site host: about.google becomes google.com", async () => {
+    const entities = { entities: { Q95: { ...ENTITIES_GOOGLE.entities.Q95, claims: { ...ENTITIES_GOOGLE.entities.Q95.claims, P856: [{ mainsnak: { datavalue: { value: "https://about.google/" } } }] } }, Q8093: ENTITIES_GOOGLE.entities.Q8093 } };
+    const results = await discover(`google-about-${Date.now()}`, { fetchImpl: fakeFetch({ search: () => SEARCH_GOOGLE, entities }) });
+    expect(results.map(candidate => candidate.domain)).toEqual(["google.com"]);
+  });
+
+  it("dedupes on the resolved domain: about.google and google.com are one company", async () => {
+    const fetchImpl = fakeFetch({
+      search: () => ({ search: [{ id: "Q1" }, { id: "Q2" }] }),
+      entities: { entities: {
+        Q1: { labels: { en: { value: "Google" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://about.google/" } } }] } },
+        Q2: { labels: { en: { value: "Google LLC" } }, claims: { P856: [{ mainsnak: { datavalue: { value: "https://www.google.com/" } } }] } },
+      } },
+    });
+    const results = await discover(`google-dedupe-${Date.now()}`, { fetchImpl });
+    expect(results.map(candidate => [candidate.name, candidate.domain])).toEqual([["Google", "google.com"]]);
+  });
+
   it("dedupes candidates by domain and keeps source rank order", async () => {
     const fetchImpl = fakeFetch({
       search: () => ({ search: [{ id: "Q1" }, { id: "Q2" }, { id: "Q3" }] }),
@@ -190,7 +209,8 @@ describe("company qualification (D-174-worldwide-discovery review: never suggest
       },
     });
     const results = await discover(`google-qualify-${Date.now()}`, { fetchImpl });
-    expect(results).toEqual([{ name: "Google", domain: "about.google", source: "wikidata" }]);
+    // D-394: Google's official site is about.google, but the company carries its employees' work-email domain.
+    expect(results).toEqual([{ name: "Google", domain: "google.com", source: "wikidata" }]);
   });
 
   it("keeps a long-tail company qualified by its description when its instance-of is not a company class", async () => {

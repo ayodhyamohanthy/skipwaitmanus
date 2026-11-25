@@ -83,7 +83,10 @@ export default function GoalAdminSchema() {
                 {current.results.map((item, index) => (
                   <li key={`${item.statement}-${index}`} className="border border-g-hairline p-3">
                     <GoalStatus status={item.ok ? "accepted" : "expired"} label={item.ok ? "Ran" : "Failed"} />
-                    <p className="mt-1 break-words text-g-meta text-g-ink"><span className="g-num">{item.statement}</span></p>
+                    {/* font-g-mono, not .g-num: the global .g-num rule keeps numerals on one line
+                        (white-space: nowrap), which pushes a long allowlisted statement past a
+                        phone viewport. The statement keeps the mono face and wraps here. */}
+                    <p className="mt-1 break-words text-g-meta text-g-ink"><span data-testid="schema-statement" className="font-g-mono">{item.statement}</span></p>
                     {item.error ? <p className="mt-1 break-words text-g-meta text-g-crimson">{item.error}</p> : null}
                   </li>
                 ))}

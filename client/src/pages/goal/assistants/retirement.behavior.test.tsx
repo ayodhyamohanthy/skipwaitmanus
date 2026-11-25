@@ -123,6 +123,8 @@ describe("released goal assistants", () => {
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({
       client_id: "swc_fixture_client", redirect_uri: "https://chatgpt.com/callback", code_challenge: "challenge123",
       code_challenge_method: "S256", state: "opaque-state", decision: "approve",
+      // D-178.screen (D-290 R1): the consent page's default grant length rides with the approval.
+      expires_in_days: 7,
     });
   });
 

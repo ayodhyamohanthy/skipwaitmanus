@@ -87,6 +87,9 @@ jobs:
           VITE_GIT_COMMIT_SHA: ${{ github.sha }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_CLARITY_PROJECT_ID: ${{ secrets.VITE_CLARITY_PROJECT_ID }}
+          # D-394 (owner, Nov 24): company search-as-you-type with worldwide discovery is live.
+          # Rollback: set "false" (or remove the line) and redeploy (client/src/pages/explore/useCompanySearch.ts).
+          VITE_COMPANY_TYPEAHEAD: "true"
 
       # REL-rollback-skew (D-212): new client code must not reach an API that is still
       # rolling out (15 to 40 minutes). Wait until /api/health/ready reports this SHA or a

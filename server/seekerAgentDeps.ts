@@ -4,7 +4,7 @@
 import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { assistantApprovals, notifications, referralAttachments, seekerAgentControls, seekerAgentDrafts, seekerAgentEvents, seekerAgentGrants, users } from "../drizzle/schema";
 import { getDb } from "./db";
-import { askLevelCostEnabled } from "./db";
+import { askLevelCostEnabled, listJobSeekerCompanyReferrals } from "./db";
 import { listCompanyDirectory, getCompanyDirectoryEntry } from "./companyDirectory";
 import { planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
 import { priceAvailability } from "./billingAvailability";
@@ -17,7 +17,7 @@ import type { PublicCompany } from "../shared/companies";
 import type { PlanCatalogResponse } from "../shared/billingCatalog";
 import type { Request } from "express";
 import type { AgentLimits } from "../shared/seekerAgents";
-import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_EXPIRY_MAX_DAYS, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
 import { hashAgentKey, mintAgentKey } from "./agentGrantAuth";
 import type { DraftRow, EventRow, GrantRow, SeekerAgentRouteDeps, SeekerAgentStore } from "./seekerAgentRoutes";
 
@@ -26,6 +26,7 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 const toGrant = (row: typeof seekerAgentGrants.$inferSelect): GrantRow => ({
   id: row.id, userId: row.userId, name: row.name, keyPrefix: row.keyPrefix,
   canLookup: row.canLookup, canDraft: row.canDraft, canSend: row.canSend,
+  autoSend: row.autoSend ?? false,
   maxCreditsPerAsk: row.maxCreditsPerAsk, maxCreditsPerDay: row.maxCreditsPerDay, maxCreditsPerWeek: row.maxCreditsPerWeek, maxAsksPerDay: row.maxAsksPerDay,
   expiresAt: row.expiresAt, revokedAt: row.revokedAt, lastUsedAt: row.lastUsedAt, createdAt: row.createdAt,
 });
@@ -75,6 +76,12 @@ export function createSeekerAgentStore(): SeekerAgentStore {
     async touchLastUsed(id, now) {
       const db = await requireDb();
       await db.update(seekerAgentGrants).set({ lastUsedAt: now }).where(eq(seekerAgentGrants.id, id));
+    },
+    async setAutoSend(userId, id, enabled) {
+      const db = await requireDb();
+      // Ownership is in the WHERE clause, so another seeker's grant can never be written even if a caller skips its own check.
+      const result = await db.update(seekerAgentGrants).set({ autoSend: enabled }).where(and(eq(seekerAgentGrants.id, id), eq(seekerAgentGrants.userId, userId)));
+      return Number(result[0]?.affectedRows ?? 0) > 0;
     },
     async isPaused(userId) {
       const db = await requireDb();
@@ -156,12 +163,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * D-178.grant (D-290 R1): the OAuth exchange creates the canonical D-141 grant
- * and returns its `swa_` key. Default scopes and limits, 7-day expiry; the
- * consent page's up-to-30-day choice lands with D-178.screen. No new column.
+ * and returns its `swa_` key. Default scopes and limits; D-178.screen carries
+ * the consent page's 1-30 day choice here (7 when absent). No new column.
  */
 export async function createOAuthAgentGrant(input: {
   userId: number;
   clientName: string;
+  expiresInDays?: number;
   store?: Pick<SeekerAgentStore, "createGrant">;
   now?: () => number;
 }): Promise<{ token: string; grantId: number; expiresAt: Date }> {
@@ -169,7 +177,9 @@ export async function createOAuthAgentGrant(input: {
   const nowMs = (input.now ?? Date.now)();
   const token = mintAgentKey();
   const name = (input.clientName.replace(/\s+/g, " ").trim() || "Assistant").slice(0, 120);
-  const expiresAt = new Date(nowMs + AGENT_EXPIRY_DEFAULT_DAYS * DAY_MS);
+  // The route validates too; this clamp keeps a direct caller from minting a longer grant.
+  const days = Number.isInteger(input.expiresInDays) ? Math.min(Math.max(input.expiresInDays!, 1), AGENT_EXPIRY_MAX_DAYS) : AGENT_EXPIRY_DEFAULT_DAYS;
+  const expiresAt = new Date(nowMs + days * DAY_MS);
   const grant = await store.createGrant({
     userId: input.userId,
     name,
@@ -186,7 +196,7 @@ export async function createOAuthAgentGrant(input: {
   return { token, grantId: grant.id, expiresAt };
 }
 
-/** Live read-only sources + pricing helpers for the route module. */export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry" | "listResumes" | "notifySendRequest"> {
+/** Live read-only sources + pricing helpers for the route module. */export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry" | "listResumes" | "listRequests" | "notifySendRequest"> {
   return {
     listCompanies: async (): Promise<PublicCompany[]> => (await listCompanyDirectory()).companies,
     prices: async (req: Request, region: "IN" | "INTL"): Promise<PlanCatalogResponse> => {
@@ -214,6 +224,12 @@ export async function createOAuthAgentGrant(input: {
         .where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId)))
         .orderBy(desc(referralAttachments.createdAt)).limit(25);
     },
+    /**
+     * D-178.read: the same rows the seeker's /requests page lists, scoped to the
+     * seeker (`jobSeekerId = userId`). The route whitelists fields and drops
+     * every referrer identity field (D-019(e)).
+     */
+    listRequests: async (userId: number) => listJobSeekerCompanyReferrals(userId),
     /**
      * SKIPPY-6 / D-060: one in-app notice, and at most one email a day with a
      * direct link to the approval. The daily check reads before this call's own

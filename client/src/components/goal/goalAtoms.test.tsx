@@ -31,6 +31,20 @@ describe("GoalButton", () => {
     expect(reason?.textContent).toMatch(/offline/i);
   });
 
+  // P0 (Nov 24): a swallowed press tells the screen, so it can show why in the seeker's view.
+  it("reports a press it swallowed for its disabled reason, but not while busy", async () => {
+    const onClick = vi.fn();
+    const onBlockedClick = vi.fn();
+    const { rerender } = render(<GoalButton disabledReason="This posting looks like another company's" onClick={onClick} onBlockedClick={onBlockedClick}>Send ask</GoalButton>);
+    await userEvent.click(screen.getByTestId("goal-button"));
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onBlockedClick).toHaveBeenCalledTimes(1);
+    rerender(<GoalButton busy busyLabel="Sending your ask…" disabledReason="Blocked" onClick={onClick} onBlockedClick={onBlockedClick}>Send ask</GoalButton>);
+    await userEvent.click(screen.getByTestId("goal-button"));
+    expect(onBlockedClick).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it("never uses the native disabled attribute, even when busy", () => {
     render(<GoalButton busy busyLabel="Sending your ask…">Send ask</GoalButton>);
     const button = screen.getByTestId("goal-button");

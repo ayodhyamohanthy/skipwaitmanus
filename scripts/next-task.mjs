@@ -26,7 +26,7 @@
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
@@ -35,7 +35,6 @@ import {
 import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
-import { changedPathsOf, findGateRow, reviewGateViolation } from "./review-gate.mjs";
 import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
 import { MODEL_ROUTES_ENFORCED } from "./sessionPolicy.mjs";
 import { classifyTier, tierReasonPaths } from "./tierClassifyCore.mjs";
@@ -48,6 +47,27 @@ if ((process.env.HTTPS_PROXY || process.env.https_proxy) && process.env.NODE_USE
   const rerun = spawnSync(process.execPath, ["--disable-warning=UNDICI-EHPA", ...process.argv.slice(1)], { stdio: "inherit", env: { ...process.env, NODE_USE_ENV_PROXY: "1" } });
   process.exit(rerun.status ?? 1);
 }
+
+// HYGIENE-picker-bootstrap (D-387): the review gate needs installed packages (zod). A static import of it
+// failed before any line of the picker ran, so a fresh clone got a Node stack trace. Load it here instead and,
+// when a package is missing, print the one command that fixes it.
+/** The bare package an ERR_MODULE_NOT_FOUND names, or null for a missing relative module or any other error. */
+export function missingPackageOf(error) {
+  if (!error || error.code !== "ERR_MODULE_NOT_FOUND") return null;
+  return /Cannot find package '([^']+)'/.exec(String(error.message))?.[1] ?? null;
+}
+/** Loads a picker module; a missing package prints one install line and exits 1, every other failure is rethrown. */
+export async function loadPickerModule(load, { err = console.error, exit = process.exit } = {}) {
+  try {
+    return await load();
+  } catch (error) {
+    const pkg = missingPackageOf(error);
+    if (!pkg) throw error;
+    err(`next-task: dependencies are not installed (missing package "${pkg}"); run pnpm install --frozen-lockfile, then run the picker again`);
+    return exit(1);
+  }
+}
+const { changedPathsOf, findGateRow, reviewGateViolation } = await loadPickerModule(() => import("./review-gate.mjs"));
 
 const LIST = "docs/plans/assignments.json";
 const REGISTER = "docs/DECISIONS.md";
@@ -73,6 +93,54 @@ const fail = (message, code = 1) => {
   console.error(`next-task: ${message}`);
   throw new CliFailure(message, code);
 };
+
+/**
+ * PICKER-single-flight (D-324, D-321 (11)): one picker run per clone. Measured on the owner's Mac,
+ * 114 concurrent runs (oldest 2 h 56 min) drove load average to 624-1006 and starved each other:
+ * `sample` showed them running JavaScript, not deadlocked, and no session could pick work.
+ * A second run now waits instead of piling on, and a lock left by a crashed run is taken over.
+ */
+export const RUN_LOCK_TAKEOVER_MS = 30 * 60 * 1000;
+
+const lockPathOf = () => path.join(tryGit("rev-parse", "--git-dir") ?? ".git", "next-task-run.lock");
+
+const pidAlive = pid => {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch (error) { return error?.code === "EPERM"; }
+};
+
+/**
+ * Takes the per-clone run lock, or returns the record of the run that holds it.
+ * Takeover: the recorded process is gone, or the lock is older than RUN_LOCK_TAKEOVER_MS
+ * (a reused pid must not block the clone forever).
+ */
+export function acquireRunLock(file, nowMs = Date.now()) {
+  const take = () => {
+    try {
+      const body = readFileSync(file, "utf8");
+      const held = JSON.parse(body);
+      const startedAt = Date.parse(String(held?.startedAt ?? ""));
+      const stale = !pidAlive(Number(held?.pid)) || !Number.isFinite(startedAt) || nowMs - startedAt > RUN_LOCK_TAKEOVER_MS;
+      return stale ? null : held;
+    } catch { return null; } // unreadable or partial lock: treat as stale
+  };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      writeFileSync(file, JSON.stringify({ pid: process.pid, startedAt: new Date(nowMs).toISOString() }), { flag: "wx" });
+      return { acquired: true };
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const held = take();
+      if (held) return { acquired: false, held };
+      rmSync(file, { force: true });
+    }
+  }
+  return { acquired: false, held: null };
+}
+
+export function releaseRunLock(file) { try { rmSync(file, { force: true }); } catch { /* nothing to release */ } }
+
+let heldRunLock = null;
 
 class RefSnapshotChanged extends Error {
   /** The scoped refs that moved since the snapshot, so a caller can tell a lost claim race from churn. */
@@ -165,10 +233,21 @@ function fetchWithRetry(args) {
   return false;
 }
 
+/**
+ * HYGIENE-picker-bootstrap (D-387): a shallow clone is unshallowed once, automatically, instead of stopping a
+ * fresh cloud session. If that fetch fails, or history is still incomplete, the existing STOP stands unchanged.
+ */
+export function ensureCompleteHistory({ tryGit: read, fail: stop, log = console.log }) {
+  if (read("rev-parse", "--is-shallow-repository") === "false") return;
+  log("next-task: this clone has shallow history; fetching the full history once (git fetch --unshallow origin)");
+  read("fetch", "-q", "--unshallow", "origin");
+  if (read("rev-parse", "--is-shallow-repository") !== "false") stop("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+}
+
 function refreshAuthoritativeRefs() {
   // Explicit destinations update and prune tracking refs even in a main-only clone; config stays untouched.
   if (!fetchWithRetry(["-c", "fetch.pruneTags=false", "-c", "remote.origin.pruneTags=false", "fetch", "-q", "--prune", "--no-tags", "--refmap=", "origin", ...refspecs])) fail("STOP: authoritative ref refresh failed; check origin access and run again; no marker written", 2);
-  if (tryGit("rev-parse", "--is-shallow-repository") !== "false") fail("STOP: complete history is required; run git fetch --unshallow origin, then run the picker again", 2);
+  ensureCompleteHistory({ tryGit, fail, log: console.log });
   runLocalCleanup({ tryGit, log: console.log, err: console.error });
   return trackingRefs();
 }
@@ -408,11 +487,66 @@ async function autoLandFrom({ doc, mainCi, openPrs, prCi, board, release }) {
 }
 
 /**
- * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
- * commit that changes files is work, whatever its subject says (D-190).
+ * D-237: the per-ref read, shared by the marker list and the `work` flag. Marker commits are empty: a commit that
+ * changes files is work, whatever its subject says (D-190). Three git processes for one tip: it is the exact reference
+ * the batched scan must equal, the path for a range that holds a merge commit (whose `git log` order is git's own date
+ * walk), and the fallback when a batched read fails. read(...args) returns the output, or null when git fails.
  */
-function commitsOn(ref) {
-  return parseProvenanceLog(tryGit("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
+export function branchFactsPerRef(tip, read = tryGit) {
+  const merged = read("merge-base", "--is-ancestor", tip, "origin/main") !== null;
+  const commits = rangeCommits(tip, read);
+  const merges = Number(read("rev-list", "--merges", "--count", `origin/main..${tip}`) ?? NaN);
+  return { merged, commits, merges };
+}
+
+/** `git log --reverse` of `origin/main..<tip>` without merge commits, in git's own order; unreadable is empty. */
+const rangeCommits = (tip, read) => parseProvenanceLog(read("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${tip}`) ?? "");
+
+/** Tips per batched read: keeps each command line far below the OS argument limit. */
+export const BRANCH_SCAN_CHUNK = 200;
+
+/**
+ * PICKER-branch-scan-batch (D-324): the same { merged, commits, merges } as branchFactsPerRef for every tip, from two
+ * git processes per BRANCH_SCAN_CHUNK tips instead of three per tip (~500 refs cost ~97 s a run, serialized behind the
+ * clone lock). One `rev-list --parents <tips> --not origin/main` lists every commit beyond main with its parents: a tip
+ * is merged exactly when it is not among them, and its range `origin/main..<tip>` is what it reaches inside that set.
+ * One `git log --no-merges --name-only` over the same tips gives each commit's subject, body and files, which do not
+ * depend on the range. A range with no merge commit is one parent chain, so its `git log --reverse` order is that chain
+ * oldest first; a range with a merge commit keeps one per-ref log read for git's own order. A failed or over-bound batched
+ * read falls back to the per-ref read for its chunk, never to a guess.
+ */
+export function branchFactsBatched(tips, read = tryGit) {
+  const facts = new Map();
+  const unique = [...new Set(tips)];
+  for (let at = 0; at < unique.length; at += BRANCH_SCAN_CHUNK) {
+    const chunk = unique.slice(at, at + BRANCH_SCAN_CHUNK);
+    const graph = read("rev-list", "--parents", ...chunk, "--not", "origin/main");
+    const log = graph === null ? null : read("log", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", ...chunk, "--not", "origin/main");
+    if (graph === null || log === null) {
+      for (const tip of chunk) facts.set(tip, branchFactsPerRef(tip, read));
+      continue;
+    }
+    const parents = new Map(graph.split("\n").filter(Boolean).map(line => { const [sha, ...ps] = line.trim().split(" "); return [sha, ps]; }));
+    const details = new Map(parseProvenanceLog(log).map(c => [c.sha, c]));
+    for (const tip of chunk) {
+      if (!parents.has(tip)) { facts.set(tip, { merged: true, commits: [], merges: 0 }); continue; }
+      const seen = new Set([tip]);
+      const stack = [tip];
+      let merges = 0;
+      while (stack.length) {
+        const ps = parents.get(stack.pop());
+        if (ps.length > 1) merges += 1;
+        for (const p of ps) if (parents.has(p) && !seen.has(p)) { seen.add(p); stack.push(p); }
+      }
+      // merged and merges are already exact; only the order of a non-linear range needs git's own walk.
+      if (merges > 0) { facts.set(tip, { merged: false, commits: rangeCommits(tip, read), merges }); continue; }
+      const chain = [];
+      for (let sha = tip; parents.has(sha); sha = parents.get(sha)[0]) chain.push(sha);
+      const commits = chain.reverse().map(sha => details.get(sha));
+      facts.set(tip, commits.every(Boolean) ? { merged: false, commits, merges: 0 } : branchFactsPerRef(tip, read));
+    }
+  }
+  return facts;
 }
 
 const markersOn = commits => commits.flatMap(({ sha, subject, body, files }) => {
@@ -424,17 +558,17 @@ function loadBranches(tasks) {
   const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
   const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
   const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)%09%(objectname)", "refs/remotes/origin/agent");
-  const branches = new Map();
-  for (const line of refs.split("\n").filter(Boolean)) {
-    const [name, unix, sha] = line.split("\t");
+  const scanned = refs.split("\n").filter(Boolean).map(line => line.split("\t")).filter(([name]) => {
     const fixMain = name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-");
-    if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
-    const ref = `refs/remotes/origin/${name}`;
-    const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    const commits = commitsOn(ref);
+    return wanted.has(name) || slugs.some(s => name.endsWith(s)) || fixMain;
+  });
+  // PICKER-branch-scan-batch: each ref's tip as listed, read in one batch with the per-ref read's exact answers.
+  const facts = branchFactsBatched(scanned.map(([, , sha]) => sha));
+  const branches = new Map();
+  for (const [name, unix, sha] of scanned) {
+    const { merged, commits, merges } = facts.get(sha);
     // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
     // PICKER-landed-marker-continuity: only provably empty, recognized markers (and no merge commit) beyond main.
-    const merges = Number(tryGit("rev-list", "--merges", "--count", `origin/main..${ref}`) ?? NaN);
     branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markerOnly: markerOnlyOf(commits, merges), markers: markersOn(commits) });
   }
   return branches;
@@ -845,6 +979,22 @@ async function main() {
     refspecs.push(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
   }
   const args = argsOf(process.argv.slice(2));
+  // PICKER-single-flight: one run per clone, taken before any Git or GitHub read and released on
+  // every exit path below, so a second run waits instead of starving the first (D-324). The two
+  // short marker writes are exempt: blocking a --heartbeat behind a long scan would let the very
+  // claim it protects decay (D-085), and neither one does the expensive reads.
+  const lightMarker = Boolean(args.report || args.heartbeat);
+  const lockFile = lockPathOf();
+  if (!lightMarker) {
+    const lock = acquireRunLock(lockFile);
+    if (!lock.acquired) {
+      const mine = lock.held ? ` (pid ${lock.held.pid}, since ${lock.held.startedAt})` : "";
+      console.log(`NEXT: WAIT\nanother picker run is in progress on this clone${mine}; wait for it to finish, or rerun in a minute. Nothing was picked.\n`);
+      process.exitCode = EXIT.wait;
+      return;
+    }
+    heldRunLock = lockFile;
+  }
   if (args.claim) {
     autoSyncSetup();
     const who = sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4));
@@ -1052,5 +1202,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     console.error(`next-task: ${error.stack ?? String(error)}`);
     process.exitCode = 1;
+  }).finally(() => {
+    // PICKER-single-flight: released on every exit path, so a crash cannot block the clone.
+    if (heldRunLock) releaseRunLock(heldRunLock);
   });
 }

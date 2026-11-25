@@ -1,0 +1,57 @@
+name: Dependabot auto-merge
+
+# SEC-deps-nov24 (D-388): safe Dependabot updates land on green required CI without a person.
+# This workflow only turns GitHub auto-merge on (merge commit, D-134 (6)); the main ruleset's
+# required checks still decide the merge, so nothing red ever lands (D-082, D-370).
+# Allowed: semver-patch updates of any dependency, and semver-minor updates of direct
+# devDependencies. Everything else (runtime minors, every major, indirect minors) waits for a person.
+# Known limit: a merge made with GITHUB_TOKEN starts no push-triggered workflow, so a runtime patch
+# reaches production with the next ordinary merge to main (docs/plans/SEC-deps-nov24.md).
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read the update's metadata
+        id: metadata
+        # dependabot/fetch-metadata v2.4.0, pinned to its commit
+        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decide
+        id: decide
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_TYPE: ${{ steps.metadata.outputs.dependency-type }}
+        shell: bash
+        run: |
+          allow=false
+          if [ "$UPDATE_TYPE" = "version-update:semver-patch" ]; then
+            allow=true
+          elif [ "$UPDATE_TYPE" = "version-update:semver-minor" ] && [ "$DEPENDENCY_TYPE" = "direct:development" ]; then
+            allow=true
+          fi
+          echo "update: ${UPDATE_TYPE:-unknown}; dependency: ${DEPENDENCY_TYPE:-unknown}; auto-merge: $allow"
+          echo "allow=$allow" >> "$GITHUB_OUTPUT"
+
+      - name: Turn on auto-merge (merge commit; required CI still gates it)
+        if: steps.decide.outputs.allow == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --merge "$PR_URL"
