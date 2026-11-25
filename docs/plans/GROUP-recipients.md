@@ -68,4 +68,12 @@ not here: report it instead of building it.
 
 ## Status
 
-- GROUP-recipients: todo — registered Nov 25 2026 by Claude Code · 43c8 (queue had run dry, D-321 (8)).
+- GROUP-recipients: in progress — GPT-6.1 Sol · ddfb — 2026-11-25 — branch `agent/queue/group-recipients`.
+- Read receipt: claimed at `430b1e118`, based on current main `753c1374f`; read `docs/BRIEF.md`, `AGENTS.md`,
+  `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, this packet and its parent packet; decisions checked
+  through D-399, including D-394–D-398 and the original October 31 Group Plan direction. No prior implementation or PR
+  exists for this row; registration is `f367011b0` / PR #1601. No scope or decision conflict found.
+- Plan: export `GROUP_RECIPIENT_LIMIT`, `recipientListResultSchema`, inferred readonly `RecipientListResult` and
+  `parseRecipientList(text: string): RecipientListResult` from `shared/groupPlanRecipients.ts`. Add the packet's red-first
+  cases in `shared/groupPlanRecipients.test.ts`; record completion in this packet and `docs/plans/assignments.json`.
+  The 500-address limit remains changeable; overflow returns every valid address. No I/O or runtime integration.
