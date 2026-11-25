@@ -9295,7 +9295,7 @@
       "tier": 2,
       "lane": "picker-branch-scan",
       "branch": "agent/queue/picker-branch-scan-batch",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-396",
       "dependsOn": [],
       "owns": [
