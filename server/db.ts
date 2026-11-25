@@ -10,6 +10,7 @@ import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { publicDisplayName } from "../shared/publicDisplayName";
+import { REQUEST_INBOX_LINK_ENABLED, isChosenScreenName, isSafeFastTrackAlias, publicScreenName, type PublicReferralLinkPayload } from "../shared/requestInboxLink";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
@@ -1412,7 +1413,6 @@ export type ReferrerFastTrackLink = { linkCode: string; vanityAlias: string; com
 
 const createFastTrackCode = () => randomUUID().replace(/-/g, "");
 const createFastTrackAlias = () => `ref-${randomUUID().replace(/-/g, "").slice(0, 10)}`;
-const reservedFastTrackAliases = new Set(["admin", "api", "auth", "fast", "inbox", "login", "notifications", "refer", "request", "settings", "start"]);
 
 export function companySlugFromDomain(companyDomain: string) {
   const normalized = companyDomain.trim().toLowerCase().replace(/^www\./, "");
@@ -1420,9 +1420,17 @@ export function companySlugFromDomain(companyDomain: string) {
   return (parts.length > 1 ? parts[0] : normalized).replace(/[^a-z0-9-]/g, "").slice(0, 48);
 }
 
-export function isSafeFastTrackAlias(alias: string) {
-  const normalized = alias.trim().toLowerCase();
-  return /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(normalized) && !reservedFastTrackAliases.has(normalized);
+/** D-089.server §5.1 step 1: the alias rule lives in `shared/requestInboxLink.ts`; re-exported for existing callers. */
+export { isSafeFastTrackAlias };
+
+/**
+ * §4.6: what both public resolvers return. While REQUEST_INBOX_LINK_ENABLED is false the payload is
+ * byte-identical to before (no `screenName` key); with it on, `screenName` is the chosen alias or
+ * null for a generated `ref-` one. Nothing about the person is ever read for it.
+ */
+function publicReferralLinkPayload(companyDomain: string, vanityAlias: string | null): PublicReferralLinkPayload {
+  if (!REQUEST_INBOX_LINK_ENABLED) return { companyDomain, isActive: true };
+  return { companyDomain, isActive: true, screenName: vanityAlias ? publicScreenName(vanityAlias) : null };
 }
 
 export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink> {
@@ -1432,9 +1440,14 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
   const companyDomain = profile.workEmailDomain.trim().toLowerCase();
   const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
   if (existing[0] && existing[0].companyDomain === companyDomain && existing[0].vanityAlias) return { ...existing[0], vanityAlias: existing[0].vanityAlias };
+  // D-398 (§4.4, T10): a chosen screen name moves with its person to a new company instead of being
+  // freed, so a link shared under it reaches them (at the new company) or nobody (the old company's
+  // URL no longer matches), never a colleague who took the name. Only a generated `ref-` alias,
+  // which nobody can choose, is re-minted.
+  const previousAlias = existing[0]?.vanityAlias;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const linkCode = existing[0]?.companyDomain === companyDomain ? existing[0].linkCode : createFastTrackCode();
-    const vanityAlias = createFastTrackAlias();
+    const vanityAlias = isChosenScreenName(previousAlias) ? previousAlias : createFastTrackAlias();
     try {
       if (existing[0]) await db.update(referrerFastTrackLinks).set({ companyDomain, linkCode, vanityAlias, isActive: true, deactivatedAt: null }).where(eq(referrerFastTrackLinks.referrerId, userId));
       else await db.insert(referrerFastTrackLinks).values({ referrerId: userId, companyDomain, linkCode, vanityAlias, isActive: true });
@@ -1446,25 +1459,25 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
   throw new Error("We could not create your link");
 }
 
-export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<PublicReferralLinkPayload | undefined> {
   const normalizedCode = linkCode.trim().slice(0, 64);
   if (!normalizedCode) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, vanityAlias: referrerFastTrackLinks.vanityAlias, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true };
+  return publicReferralLinkPayload(link.companyDomain, link.vanityAlias);
 }
 
-export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<PublicReferralLinkPayload | undefined> {
   const normalizedSlug = companySlug.trim().toLowerCase();
   const normalizedAlias = vanityAlias.trim().toLowerCase();
   if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, vanityAlias: referrerFastTrackLinks.vanityAlias, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true };
+  return publicReferralLinkPayload(link.companyDomain, link.vanityAlias);
 }
 
 async function getActiveReferrerFastTrackLink(linkCode: string) {
@@ -1486,6 +1499,42 @@ async function getActiveReferrerFastTrackVanityLink(companySlug: string, vanityA
   const link = result[0];
   if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
   return { referrerId: link.referrerId, companyDomain: link.companyDomain };
+}
+
+/**
+ * D-089.server (§4.5, T1): turn a paused link back on. It gets a fresh `/fast/` code (the old one
+ * stays dead) and keeps its alias, so a chosen screen name survives a pause and a pause never frees
+ * a name. Verified employees only, exactly as minting. A link at a former company, or no link yet,
+ * goes through the one mint path, which turns it on. Idempotent: an active link is returned as is.
+ */
+export async function resumeReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink & { resumed: boolean }> {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating your link");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const companyDomain = profile.workEmailDomain.trim().toLowerCase();
+  const readLink = async () => (await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1))[0];
+  const existing = await readLink();
+  if (!existing || existing.companyDomain !== companyDomain || !existing.vanityAlias) {
+    const minted = await getOrCreateReferrerFastTrackLink(userId);
+    return { ...minted, resumed: !existing || !existing.isActive };
+  }
+  const vanityAlias = existing.vanityAlias;
+  if (existing.isActive) return { ...existing, vanityAlias, resumed: false };
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const linkCode = createFastTrackCode();
+    try {
+      const result = await db.update(referrerFastTrackLinks).set({ linkCode, isActive: true, deactivatedAt: null })
+        .where(and(eq(referrerFastTrackLinks.referrerId, userId), eq(referrerFastTrackLinks.isActive, false), eq(referrerFastTrackLinks.vanityAlias, vanityAlias)));
+      if (Number(result[0].affectedRows) === 1) return { linkCode, vanityAlias, companyDomain, isActive: true, resumed: true };
+      // Another request changed the row first: answer with what is there now, never a guess.
+      const current = await readLink();
+      if (!current?.vanityAlias) throw new Error("We could not turn your link back on");
+      return { ...current, vanityAlias: current.vanityAlias, resumed: false };
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
+  throw new Error("We could not turn your link back on");
 }
 
 export async function deactivateReferrerFastTrackLink(userId: number): Promise<{ deactivated: boolean }> {
@@ -2584,7 +2633,7 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   const companyScope = sandboxViewer
     ? or(eq(jobs.company, profile.workEmailDomain), eq(seekerUsers.email, SANDBOX_SEEKER_EMAIL))
     : eq(jobs.company, profile.workEmailDomain);
-  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(companyScope, isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
+  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, opportunityId: referralRequests.opportunityId, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(companyScope, isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.opportunityId, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopeNowMs = Date.now();
   // D-050 / P0-allocated-ask-stuck: an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is
   // unclaimed, so past its window it leaves that employee's inbox like any stale unclaimed ask. Fail-soft and reported: the
@@ -2617,6 +2666,10 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   // Fail-soft: the list never depends on it, and every lapse re-decides under its own row lock.
   const decisionDueAtByRequest = new Map<number, string>();
   const ownPending = scopedRows.filter(row => row.status === "pending" && row.referrerId === userId);
+  // D-089.server (§4.7): a pending ask of the viewer's own is "asked you directly" only when no claim
+  // by them stands since the latest release. Unknown (the read failed) is never shown as direct.
+  const claimedSinceRelease = new Set<number>();
+  let pickupEventsRead = false;
   if (ownPending.length) {
     try {
       const events = await db.select({ id: referralTransitionEvents.id, requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt }).from(referralTransitionEvents)
@@ -2626,6 +2679,8 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
         const previous = latestByRequest.get(event.requestId);
         if (!previous || Number(event.id) > previous.id) latestByRequest.set(event.requestId, { id: Number(event.id), action: event.action, createdAt: event.createdAt });
       }
+      for (const row of ownPending) if (latestByRequest.get(row.id)?.action === "claim") claimedSinceRelease.add(row.id);
+      pickupEventsRead = true;
       for (const row of ownPending) {
         const latest = latestByRequest.get(row.id);
         if (latest?.action === "claim") {
@@ -2640,12 +2695,28 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
       }
     } catch (error) { console.warn("[inbox] decision deadline skipped", { name: error instanceof Error ? error.name : "unknown" }); }
   }
-  return scopedRows.map(({ firstLookReferrerId: _firstLookReferrerId, firstLookUntil: _firstLookUntil, ...row }) => {
+  // D-398 (§4.7 with D-090-BYOR): BYOR delivery writes an allocated slot, so a one-time-link ask the
+  // viewer took is told apart from a pool allocation by its invite row: delivered to this viewer.
+  const byorDeliveredToYou = new Set<number>();
+  const allocatedOwn = ownPending.filter(row => row.queueAllocationId !== null && row.opportunityId === null);
+  if (REQUEST_INBOX_LINK_ENABLED && allocatedOwn.length) {
+    try {
+      const delivered = await db.select({ requestId: askInviteLinks.referralRequestId }).from(askInviteLinks)
+        .where(and(inArray(askInviteLinks.referralRequestId, allocatedOwn.map(row => row.id)), eq(askInviteLinks.claimedByUserId, userId), eq(askInviteLinks.status, "delivered")));
+      for (const item of delivered) byorDeliveredToYou.add(Number(item.requestId));
+    } catch (error) { console.warn("[inbox] direct-ask invite read skipped", { name: error instanceof Error ? error.name : "unknown" }); }
+  }
+  const askedYouDirectly = (row: (typeof scopedRows)[number]) => row.status === "pending" && row.referrerId === userId && row.opportunityId === null
+    && pickupEventsRead && !claimedSinceRelease.has(row.id) && (row.queueAllocationId === null || byorDeliveredToYou.has(row.id));
+  return scopedRows.map(original => {
+    const { firstLookReferrerId: _firstLookReferrerId, firstLookUntil: _firstLookUntil, opportunityId: _opportunityId, ...row } = original;
+    // Switch off: no key at all, so the row is byte-identical to before (T4).
+    const direct = REQUEST_INBOX_LINK_ENABLED ? { askedYouDirectly: askedYouDirectly(original) } : {};
     // D-061: the shown deadline follows the ask's own window (7 days from first visibility).
     const expiresAtMs = getAskShelfLifeEndsAtMs(row);
     const detail = extra.get(row.id);
     const enrichment = detail ? enrichInboxRow({ title: detail.title, pitch: detail.pitch, targetRoleUrl: row.targetRoleUrl, attachmentCount: row.attachmentCount }) : {};
-    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), decisionDueAt: decisionDueAtByRequest.get(row.id) ?? null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
+    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), decisionDueAt: decisionDueAtByRequest.get(row.id) ?? null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0, ...direct };
   });
 }
 

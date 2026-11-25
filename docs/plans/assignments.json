@@ -7707,7 +7707,7 @@
       "lane": "request-inbox-server",
       "branch": "agent/queue/d089-server",
       "status": "todo",
-      "syncedTo": "D-354",
+      "syncedTo": "D-398",
       "dependsOn": [
         "D-090-BYOR",
         "D-086-demand-list",
