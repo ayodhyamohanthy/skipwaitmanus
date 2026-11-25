@@ -460,7 +460,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-migration: todo — §6.3; migration number unallocated.
 - GROUP-schema: todo — §6.3; production migration proof required first.
 - GROUP-orders: todo — §6.4.
-- GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
+- GROUP-quote: build-ahead checkpoint — Cline GPT-6 · 73d8 — 2026-11-25 — branch `agent/queue/group-quote`, claim `0fd637d10`, main `3a5499212`, decisions through D-402. Read BRIEF, AGENTS, BUILD_CONTINUITY, COLLABORATION, PRD, DECISIONS, PRICING, PAYMENTS_TEST_RUNBOOK, this packet and GROUP-bulk-oct31. Parser #1606 and split #1609 merged; GROUP-contracts draft #1629 has no shared schema yet. Catalog-derived integer pricing and deterministic largest-remainder allocation implemented; red-first missing-module reproduction, then 45/45 focused tests passed. Token audit, migration lint, deploy-trigger check and diff check passed. Typecheck/build pending (BigInt literal target error repaired using constructors). Full `quoteGroupPlan`, approved-policy/fingerprint boundary, recipient and stale-policy/application tests await shared contracts. No commercial default, payable intent, provider call or activation. Local disk exhaustion reproduced; own partial clone removed, sparse checkout retained. Draft only; row remains todo.
 - GROUP-checkout: todo — §6.5; disabled.
 - GROUP-payments: todo — §6.5.
 - GROUP-claim: todo — §6.6.
