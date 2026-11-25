@@ -14,7 +14,7 @@ function store(overrides: Partial<ScreenNameStore> = {}): ScreenNameStore & { up
   const base: ScreenNameStore = {
     ensureLink: async () => ({ vanityAlias: "ref-a1b2c3d4e5", companyDomain: "acme-corp.com" }),
     readIdentity: async () => ({ fullName: "Ada Lovelace", workEmail: "ada.lovelace@acme-corp.com" }),
-    updateAlias: async (_userId, alias) => { updates.push(alias); },
+    updateAlias: async (_userId, _from, alias) => { updates.push(alias); },
   };
   return Object.assign({ ...base, ...overrides }, { updates });
 }
@@ -58,8 +58,9 @@ describe("setReferrerScreenName refusals (§4.3, T3)", () => {
     expect(await refusal("a".repeat(31))).toBe("screen_name_invalid");
   });
 
-  it("maps a taken name to 409 and the other refusals to 422", () => {
+  it("maps a taken or locked name to 409 and the other refusals to 422", () => {
     expect(screenNameRefusalStatus("screen_name_taken")).toBe(409);
+    expect(screenNameRefusalStatus("screen_name_locked")).toBe(409);
     expect(screenNameRefusalStatus("screen_name_identifying")).toBe(422);
     expect(screenNameRefusalStatus("screen_name_invalid")).toBe(422);
   });
@@ -89,7 +90,7 @@ describe("setReferrerScreenName writes (§4.3, T2)", () => {
 
   it("lets exactly one of two concurrent sets of the same name win", async () => {
     const taken = new Set<string>();
-    const updateAlias = vi.fn(async (_userId: number, alias: string) => {
+    const updateAlias = vi.fn(async (_userId: number, _from: string, alias: string) => {
       if (taken.has(alias)) throw Object.assign(new Error("Duplicate entry"), { code: "ER_DUP_ENTRY" });
       taken.add(alias);
     });
@@ -117,5 +118,29 @@ describe("setReferrerScreenName writes (§4.3, T2)", () => {
     await expect(setReferrerScreenName(USER, { screenName: "backend-buddy" }, fake))
       .rejects.toThrow("Verify your company email");
     expect(updateAlias).not.toHaveBeenCalled();
+  });
+});
+
+describe("a chosen name stays with its person (D-398, §4.4 T9)", () => {
+  const chosen = (overrides: Partial<ScreenNameStore> = {}) =>
+    store({ ensureLink: async () => ({ vanityAlias: "backend-buddy", companyDomain: "acme-corp.com" }), ...overrides });
+
+  it("refuses a different name once one is chosen, before any read of the person or any write", async () => {
+    const readIdentity = vi.fn(async () => ({ fullName: "Ada Lovelace", workEmail: "ada.lovelace@acme-corp.com" }));
+    const fake = chosen({ readIdentity });
+    await expect(setReferrerScreenName(USER, { screenName: "frontend-friend" }, fake)).rejects.toMatchObject({ code: "screen_name_locked" });
+    expect(fake.updates).toEqual([]);
+    expect(readIdentity).not.toHaveBeenCalled();
+  });
+
+  it("writes only over the generated alias it read, so the compare-and-set names the old alias", async () => {
+    const updateAlias = vi.fn(async () => {});
+    await setReferrerScreenName(USER, { screenName: "backend-buddy" }, store({ updateAlias }));
+    expect(updateAlias).toHaveBeenCalledWith(USER, "ref-a1b2c3d4e5", "backend-buddy");
+  });
+
+  it("passes on a lost compare-and-set as screen_name_locked, never as success", async () => {
+    const fake = store({ updateAlias: async () => { throw new ScreenNameRefusedError("screen_name_locked"); } });
+    await expect(setReferrerScreenName(USER, { screenName: "backend-buddy" }, fake)).rejects.toMatchObject({ code: "screen_name_locked" });
   });
 });

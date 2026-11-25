@@ -105,9 +105,33 @@ export const SCREEN_NAME_REFUSALS = {
     code: "screen_name_invalid",
     error: "Use 3 to 30 lowercase letters, numbers or dashes, starting and ending with a letter or number.",
   },
+  /**
+   * D-398 (§4.4 recipient stability, migration-free): a chosen name stays with its person, so a link
+   * already shared under it reaches them or nobody. Renaming needs a retired-names store first.
+   */
+  locked: {
+    code: "screen_name_locked",
+    error: "Your screen name is set and stays the same, so links you already shared keep reaching you.",
+  },
 } as const;
 
-export type ScreenNameRefusalCode = keyof typeof SCREEN_NAME_REFUSALS;
+export type ScreenNameRefusalKey = keyof typeof SCREEN_NAME_REFUSALS;
+export type ScreenNameRefusalCode = (typeof SCREEN_NAME_REFUSALS)[ScreenNameRefusalKey]["code"];
+
+/** The refusal entry for a wire code. */
+export function screenNameRefusalFor(code: ScreenNameRefusalCode): (typeof SCREEN_NAME_REFUSALS)[ScreenNameRefusalKey] {
+  const entry = Object.values(SCREEN_NAME_REFUSALS).find(item => item.code === code);
+  if (!entry) throw new Error(`Unknown screen-name refusal ${code}`);
+  return entry;
+}
+
+/** True for a name the referrer chose (not the generated `ref-` form). */
+export function isChosenScreenName(vanityAlias: string | null | undefined): vanityAlias is string {
+  return typeof vanityAlias === "string" && vanityAlias.trim() !== "" && !vanityAlias.trim().toLowerCase().startsWith(GENERATED_SCREEN_NAME_PREFIX);
+}
+
+/** §4.6: what both public resolvers return. `screenName` is present only while the switch is on. */
+export type PublicReferralLinkPayload = { companyDomain: string; isActive: true; screenName?: string | null };
 
 /** §4.9: the goal line on the seeker landing. */
 export function linkLandingGoalLine(companyName: string, screenName: string | null): string {
