@@ -457,7 +457,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-terms: owner — pending the single §8 commercial answer batch; no policy default approved.
 - GROUP-contracts: todo — §6.1.
 - GROUP-provider: todo — §6.2.
-- GROUP-migration: todo — §6.3; migration number unallocated.
+- GROUP-migration: in progress — GPT-6.1 Sol · deb9 — 2026-11-25 — branch agent/queue/group-migration; D-398–D-402 checked; building ahead of GROUP-contracts under D-315. Migration number remains unallocated until the dependency-owned DDL blueprint and current main/open-PR collision check are verified. Claim d8493b7be; main preflight 3a5499212; no SQL or production effects yet.
 - GROUP-schema: todo — §6.3; production migration proof required first.
 - GROUP-orders: todo — §6.4.
 - GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
