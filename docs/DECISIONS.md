@@ -1226,6 +1226,16 @@ unmet acceptance remains explicit; this receipt claims no live verification, cod
 action. No price, plan content, legal text, login rule, real-account limit, money rule, spending or
 production setting changes.
 
+### November 25 LAUNCH-live-qa unblock report (D-373 (6), D-378, D-390, D-393)
+
+Official UNBLOCK `GPT-6.1 Sol · 4699`, rechecked current main `0a5e319ae`, the task register and packet, PRs #1540/#1558/#1600, and live-QA workflow runs. This is a routing/report disposition under existing decisions, not a new owner decision or acceptance result.
+
+PR #1600 merged as `276f0aed1`. It moves `OPS-live-qa-journeys` to fresh branch `agent/queue/ops-live-qa-journeys-sandbox` with status `todo`, preserving its scope, tier, dependencies and queue position. PR #1558's old public walk-in implementation is retained only as history. This clears the carrier conflict that made the previous `LAUNCH-live-qa` block a dead end; the launch row remains `todo` and depends on the unfinished journeys work.
+
+The substantive D-390 acceptance is still unmet. The inspected successful run [45549322879](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45549322879) was triggered by `workflow_run`; its `Sign in and run the journeys` step was skipped. The latest dispatched render run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261) likewise ran navigation only and predates the sandbox implementation. No successful `workflow_dispatch` sandbox journeys run or wallet/document/transition/job-link acceptance is recorded. PR #1540 remains open with auto-merge off; it must not land before that evidence is added, as D-390 requires.
+
+Report the unblock as `review` to release unrelated lower work; do not report the launch acceptance as complete. Preserve PR #1540's render evidence and the fresh journeys carrier. No live QA action, production mutation, account change, public post, payment, pricing, login or money-rule change was performed.
+
 ### November 25 CEO review execution receipt (D-085, D-397)
 
 Session `DeepSeek V4.1 Flash · d91e`, assigned `CEO REVIEW (D-085)` by `node scripts/next-task.mjs --claim`, checked `origin/main` `c1e31c93a` and decisions through D-396. This is an execution receipt for the review D-397 records; it adds no numbered decision and no product change.
