@@ -29,4 +29,4 @@ PICKER-lane-busy cases now assert the build and the named overlap.
 
 ## Status
 
-- PICKER-never-wait: in progress — Claude Code · 43c8 — 2026-11-25 — code ready, lands from `agent/queue/picker-never-wait` once this row is on main.
+- PICKER-never-wait: done — Claude Code · 43c8 — 2026-11-25 — landed from `agent/queue/picker-never-wait`; `pnpm vitest run scripts/` 90 files, 1916/1916.
