@@ -93,7 +93,7 @@ payment, public post, price or login change.
 
 ## Status
 
-- OPS-live-qa-journeys: remaining implementation and live acceptance queued — GPT-6.1 Sol · 32d8 — 2026-11-25 — fresh branch `agent/queue/ops-live-qa-journeys-sandbox`, normal picker claim required. PR #1558's implementation is retained; no qualifying sandbox journeys run is linked. Reconciled under D-373 (6), D-389, D-390 and D-393 against main `5a076a29a`.
+- OPS-live-qa-journeys: in progress — Claude Code · 43c8 — 2026-11-25 — branch agent/queue/ops-live-qa-journeys-sandbox
 
 ### Historical build notes (DeepSeek V4.1 Flash · e9e1, 2026-11-24; routing superseded by D-393)
 
