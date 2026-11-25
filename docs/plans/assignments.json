@@ -526,7 +526,7 @@
       "tier": 2,
       "lane": "search-job-sources",
       "branch": "agent/queue/search-job-sources",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [],
       "owns": [
@@ -569,7 +569,7 @@
       "tier": 1,
       "lane": "d174-journey",
       "branch": "agent/queue/d174-seeker-journey",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-394",
       "dependsOn": [
         "D-166-journey-decisions-sync",
@@ -691,7 +691,7 @@
       "tier": 1,
       "lane": "admin-activity-log",
       "branch": "agent/queue/admin-activity-log",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-395",
       "dependsOn": [],
       "owns": [
@@ -707,7 +707,29 @@
         "shared/scheduledJobs.ts",
         "client/src/pages/AdminActivity.tsx",
         "client/src/pages/goal/admin/**",
-        "docs/plans/ADMIN-activity-log.md"
+        "docs/plans/ADMIN-activity-log.md",
+        "server/adminActivity.ts",
+        "server/adminActivity.test.ts",
+        "server/authActivityRetention.ts",
+        "server/authActivityRetention.test.ts",
+        "shared/adminActivity.ts",
+        "server/_core/passwordSignIn.ts",
+        "server/_core/passwordSignIn.test.ts",
+        "server/_core/passwordResponses.ts",
+        "server/_core/passwordSteps.ts",
+        "server/passwordResetRoutes.ts",
+        "server/_core/seekerEmailCode.ts",
+        "server/_core/passkeyLogin.ts",
+        "server/_core/workosSession.ts",
+        "server/_core/index.ts",
+        "server/_core/otpLogin.test.ts",
+        "server/_core/reviewerLogin.test.ts",
+        "server/_core/workosAuth.test.ts",
+        "server/scheduledJobsContract.test.ts",
+        "client/src/pages/goal/admin-ops/**",
+        "client/src/pages/goal/admin-people/GoalAdminUsers.tsx",
+        "AGENTS.md",
+        "docs/plans/assignments.json"
       ],
       "note": "Owner-approved Nov 24 (D-393). No auth.* action exists on main. Privacy: no password, code, token or link stored; unknown emails masked + HMAC; IPs truncated; 90-day auth retention. The privacy-policy sentence is listed for the owner, not written.",
       "epic": "D-212"
@@ -2050,8 +2072,8 @@
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium-repair",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2079,8 +2101,8 @@
       "tier": 1,
       "lane": "d048-premium",
       "branch": "agent/queue/d048-p3-premium",
-      "status": "todo",
-      "syncedTo": "D-371",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "D-048-F-harness",
         "D-048-F-primitives",
@@ -2338,7 +2360,7 @@
       "tier": 1,
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -2357,7 +2379,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands. Closed Nov 24 (Claude Code · 695b): PR #1245 merged Nov 17 (head 2fa2b361) and D-048-R-sign-in is done.",
       "epic": "D-048-p3"
     },
     {
@@ -3864,10 +3886,10 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/instinct/doctrine-benefit-copy-oct27",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar.",
+      "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar. Closed Nov 24 (Claude Code · 695b): the amendment is on main in design/goal-ui/DOCTRINE.md (\"Amendment - goal-oriented design + benefit-oriented copy\"); its branch is merged and deleted.",
       "owns": [
         "design/goal-ui/DOCTRINE.md"
       ]
@@ -6851,8 +6873,8 @@
       "tier": 1,
       "lane": "skippy-agents",
       "branch": "agent/queue/skippy-auto-send",
-      "status": "todo",
-      "syncedTo": "D-383",
+      "status": "done",
+      "syncedTo": "D-395",
       "dependsOn": [
         "SKIPPY-6"
       ],
@@ -8500,11 +8522,11 @@
     {
       "id": "D-177-recruiter-posts-referral-drives",
       "title": "Recruiter/HR job posts (public + internal) and employee-published referral drives feeding the company -> job -> ask journey",
-      "status": "architect",
-      "syncedTo": "D-227",
+      "status": "todo",
+      "syncedTo": "D-396",
       "lane": "employer",
       "branch": "agent/queue/d177-recruiter-drives",
-      "packet": null,
+      "packet": "docs/plans/D-177-recruiter-posts-referral-drives.md",
       "owns": [
         "docs/plans/D-177-recruiter-posts-referral-drives.md"
       ],
@@ -9164,7 +9186,7 @@
       "tier": 2,
       "lane": "d048-post",
       "branch": "agent/queue/d048-p3-post-link-parity",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-368",
       "dependsOn": [
         "D-048-p3-post",
@@ -9263,6 +9285,26 @@
         "AGENTS.md"
       ],
       "note": "D-324/D-321 (11) same-day dead-end fix, measured 2026-11-24 under 5+ concurrent claims. Red-first test plus fix in one commit; required CI on the pull request head is the landing gate. No product, money, flag, workflow, settings or spending change."
+    },
+    {
+      "id": "PICKER-branch-scan-batch",
+      "title": "One bounded git read for the picker branch scan instead of four processes per branch, so a claim does not cost minutes of serialized work",
+      "row": "D-324",
+      "packet": "docs/plans/PICKER-branch-scan-batch.md",
+      "epic": "D-212",
+      "tier": 2,
+      "lane": "picker-branch-scan",
+      "branch": "agent/queue/picker-branch-scan-batch",
+      "status": "todo",
+      "syncedTo": "D-396",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskAuthoritativeRefs.test.ts",
+        "scripts/nextTask.test.ts",
+        "docs/plans/PICKER-branch-scan-batch.md"
+      ],
+      "note": "CEO review 2026-11-25 (DeepSeek v4.1 Flash · ce4b): measured ~0.2s per branch ref x ~500 refs = ~97s of branch scanning per picker run, serialized behind one clone lock across 84 sessions; host load reached 974. Behaviour-preserving batching with an exact-equality test. No product, money, flag, workflow, settings or spending change."
     }
   ]
 }

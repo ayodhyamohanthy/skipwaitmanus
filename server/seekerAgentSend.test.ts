@@ -293,6 +293,7 @@ describe("SKIPPY-6 send request route", () => {
     };
     registerSeekerAgentRoutes(app, {
       enabled: () => true,
+      autoSendEnabled: () => false,
       allowedUserIds: () => new Set([7]),
       resolveIdentity: async () => ({ account: { id: 7 } }),
       store: store as never,

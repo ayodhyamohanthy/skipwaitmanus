@@ -16,6 +16,9 @@ import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
 import { accountPreferences, askCosts, askInviteLinks, askOrigins, seekerLevels, seekerAgentGrants, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, bandedCheckoutIntents, canonicalPeople, catalogJobs, companies, companyDomains, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { ACTIVITY_FAMILY_PREFIXES, ACTIVITY_PAGE_MAX, type ActivityPersonMatch, type RequestTransitionRow } from "../shared/adminActivity";
+import type { ActivityListInput } from "./adminActivity";
+import { authEmailKey, isEmailShape } from "./authEvents";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -1497,19 +1500,68 @@ export async function recordOperationalActivity(input: OperationalActivityInput)
   const metadata = input.metadata ? JSON.stringify(Object.fromEntries(Object.entries(input.metadata).filter(([, value]) => value !== undefined))) : null;
   await db.insert(operationalActivityLogs).values({ actorUserId: input.actorUserId ?? null, action: input.action.slice(0, 100), outcome: input.outcome, resourceType: input.resourceType?.slice(0, 80) ?? null, resourceId: input.resourceId === undefined ? null : String(input.resourceId).slice(0, 120), companyDomain: input.companyDomain?.toLowerCase().slice(0, 255) ?? null, metadata });
 }
+/** ADMIN-activity-log (D-393): the canonical user whose verified login alias is this exact address. Never an unverified email. */
+export async function findVerifiedUserIdByEmail(normalizedEmail: string): Promise<number | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const rows = await db.select({ userId: verifiedLoginAliases.canonicalUserId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.normalizedVerifiedEmail, normalizedEmail)).limit(1);
+  return rows[0]?.userId;
+}
 export async function listMyUploadStarts(userId: number, since: Date) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ sessionId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), eq(operationalActivityLogs.action, "document.upload_started"), gt(operationalActivityLogs.createdAt, since))).orderBy(desc(operationalActivityLogs.createdAt)).limit(30);
   return rows.map(row => { let metadata: Record<string, unknown> = {}; try { metadata = row.metadata ? JSON.parse(row.metadata) : {}; } catch {} return { sessionId: row.sessionId, clientUploadId: typeof metadata.clientUploadId === "string" ? metadata.clientUploadId : null, fileName: typeof metadata.fileName === "string" ? metadata.fileName : null, createdAt: row.createdAt }; });
 }
 
-export async function listOperationalActivity(input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" } = {}) {
+export async function listOperationalActivity(input: Partial<ActivityListInput> = {}) {
   const db = await getDb(); if (!db) return [];
-  const limit = Math.max(1, Math.min(input.limit ?? 100, 250));
+  const limit = Math.max(1, Math.min(input.limit ?? 100, ACTIVITY_PAGE_MAX + 1));
   const term = input.query?.trim();
-  const conditions = [input.action?.trim() ? like(operationalActivityLogs.action, `%${input.action.trim()}%`) : undefined, input.outcome ? eq(operationalActivityLogs.outcome, input.outcome) : undefined, term ? or(like(operationalActivityLogs.action, `%${term}%`), like(operationalActivityLogs.resourceId, `%${term}%`), like(operationalActivityLogs.companyDomain, `%${term}%`), like(users.name, `%${term}%`), like(users.email, `%${term}%`)) : undefined].filter(Boolean);
+  const family = input.family ? or(...ACTIVITY_FAMILY_PREFIXES[input.family].map(prefix => like(operationalActivityLogs.action, `${prefix}%`))) : undefined;
+  // ADMIN-activity-log (D-393): a person is their account ids, plus (for sign-in attempts with no account) the HMAC key of
+  // the email the admin typed; the key is 32 hex characters, so it is safe inside the LIKE pattern.
+  const person = input.userIds || input.emailKey
+    ? or(...(input.userIds?.length ? [inArray(operationalActivityLogs.actorUserId, input.userIds)] : []), ...(input.emailKey && /^[0-9a-f]{32}$/.test(input.emailKey) ? [like(operationalActivityLogs.metadata, `%"emailKey":"${input.emailKey}"%`)] : []))
+    : undefined;
+  const conditions = [
+    input.action?.trim() ? like(operationalActivityLogs.action, `%${input.action.trim()}%`) : undefined,
+    input.outcome ? eq(operationalActivityLogs.outcome, input.outcome) : undefined,
+    term ? or(like(operationalActivityLogs.action, `%${term}%`), like(operationalActivityLogs.resourceId, `%${term}%`), like(operationalActivityLogs.companyDomain, `%${term}%`), like(users.name, `%${term}%`), like(users.email, `%${term}%`)) : undefined,
+    family,
+    person,
+    input.from ? gte(operationalActivityLogs.createdAt, input.from) : undefined,
+    input.to ? lt(operationalActivityLogs.createdAt, input.to) : undefined,
+    input.before ? lt(operationalActivityLogs.id, input.before) : undefined,
+  ].filter(Boolean);
   const where = conditions.length ? and(...conditions) : undefined;
-  return db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome, resourceType: operationalActivityLogs.resourceType, resourceId: operationalActivityLogs.resourceId, companyDomain: operationalActivityLogs.companyDomain, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt, actorUserId: operationalActivityLogs.actorUserId, actorName: users.name, actorEmail: users.email }).from(operationalActivityLogs).leftJoin(users, eq(operationalActivityLogs.actorUserId, users.id)).where(where).orderBy(desc(operationalActivityLogs.createdAt)).limit(limit);
+  // Newest first by id, so `before` pages back without skipping rows that share a second.
+  return db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome, resourceType: operationalActivityLogs.resourceType, resourceId: operationalActivityLogs.resourceId, companyDomain: operationalActivityLogs.companyDomain, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt, actorUserId: operationalActivityLogs.actorUserId, actorName: users.name, actorEmail: users.email }).from(operationalActivityLogs).leftJoin(users, eq(operationalActivityLogs.actorUserId, users.id)).where(where).orderBy(desc(operationalActivityLogs.id)).limit(limit);
+}
+
+/** ADMIN-activity-log (D-393): the accounts an admin's person filter names: by account email or a verified login alias. */
+export async function resolveActivityPerson(person: string): Promise<ActivityPersonMatch> {
+  const email = person.trim().toLowerCase();
+  if (!isEmailShape(email)) return { userIds: [] };
+  const secret = process.env.JWT_SECRET;
+  const emailKey = secret ? authEmailKey(email, secret) : undefined;
+  const db = await getDb(); if (!db) return { userIds: [], ...(emailKey ? { emailKey } : {}) };
+  const [byAccount, byAlias] = await Promise.all([
+    db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(20),
+    db.select({ id: verifiedLoginAliases.canonicalUserId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.normalizedVerifiedEmail, email)).limit(20),
+  ]);
+  const userIds = Array.from(new Set([...byAccount, ...byAlias].map(row => row.id)));
+  return { userIds, ...(emailKey ? { emailKey } : {}) };
+}
+
+/** ADMIN-activity-log (D-393): every transition of the requests a person sent, received or acted on, newest first. */
+export async function listPersonRequestTransitions(userIds: number[], limit: number): Promise<RequestTransitionRow[]> {
+  if (!userIds.length) return [];
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: referralTransitionEvents.id, referralRequestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, fromStatus: referralTransitionEvents.fromStatus, resultingStatus: referralTransitionEvents.resultingStatus, actorUserId: referralTransitionEvents.actorUserId, createdAt: referralTransitionEvents.createdAt, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId })
+    .from(referralTransitionEvents).innerJoin(referralRequests, eq(referralTransitionEvents.referralRequestId, referralRequests.id))
+    .where(or(inArray(referralRequests.jobSeekerId, userIds), inArray(referralRequests.referrerId, userIds), inArray(referralTransitionEvents.actorUserId, userIds)))
+    .orderBy(desc(referralTransitionEvents.id)).limit(Math.max(1, Math.min(limit, 500)));
+  const ids = new Set(userIds);
+  return rows.map(({ jobSeekerId, referrerId, ...row }) => ({ ...row, role: ids.has(jobSeekerId) ? "seeker" as const : referrerId !== null && ids.has(referrerId) ? "referrer" as const : "actor" as const }));
 }
 
 export function companyDomainFromTargetUrl(targetRoleUrl: string): string | undefined {

@@ -22,10 +22,73 @@ only (D-031, D-170/D-175); respect each provider's rate limits and Lever's crawl
 
 ## Acceptance
 
-Sources verified with evidence; after `JOB_CATALOG_ENABLED` is on (the release row), `job-catalog-sync` fills
+Sources verified with evidence; `JOB_CATALOG_ENABLED` is on since the release row `D-174-seeker-journey-build` (Nov 24), so `job-catalog-sync` fills
 jobs and `GET /api/companies/<slug>/jobs` answers real jobs with `completeness` other than `unavailable` for
 every covered company.
 
+## Verified Job Board Sources (Greenhouse, Ashby, Lever)
+
+The following companies have public, verified job boards on supported ATS providers (`shared/jobSourceSeed.ts`):
+
+| Company Slug | Name | Provider | Board Token | Evidence Careers URL | Verified Openings |
+| --- | --- | --- | --- | --- | --- |
+| `stripe` | Stripe | `greenhouse` | `stripe` | https://stripe.com/jobs | ~768 |
+| `openai` | OpenAI | `ashby` | `openai` | https://openai.com/careers | ~866 |
+| `coinbase` | Coinbase | `greenhouse` | `coinbase` | https://www.coinbase.com/careers | ~249 |
+| `discord` | Discord | `greenhouse` | `discord` | https://discord.com/careers | ~29 |
+| `mongodb` | MongoDB | `greenhouse` | `mongodb` | https://www.mongodb.com/company/careers | ~418 |
+| `pinterest` | Pinterest | `greenhouse` | `pinterest` | https://www.pinterestcareers.com/ | ~167 |
+| `snowflake` | Snowflake | `ashby` | `snowflake` | https://careers.snowflake.com/ | ~374 |
+| `1password` | 1Password | `ashby` | `1password` | https://jobs.1password.com/ | ~80 |
+| `sofi` | SoFi | `greenhouse` | `sofi` | https://www.sofi.com/careers/ | ~54 |
+| `gemini` | Gemini | `greenhouse` | `gemini` | https://www.gemini.com/careers | ~26 |
+| `nintendo` | Nintendo | `greenhouse` | `nintendo` | https://careers.nintendo.com/ | ~76 |
+| `upstart` | Upstart | `greenhouse` | `upstart` | https://www.upstart.com/careers | ~76 |
+| `figma` | Figma | `greenhouse` | `figma` | https://www.figma.com/careers/ | ~145 |
+| `notion` | Notion | `ashby` | `notion` | https://www.notion.so/careers | ~172 |
+| `airbnb` | Airbnb | `greenhouse` | `airbnb` | https://careers.airbnb.com/ | ~199 |
+| `lyft` | Lyft | `greenhouse` | `lyft` | https://www.lyft.com/careers | ~144 |
+| `datadog` | Datadog | `greenhouse` | `datadog` | https://www.datadoghq.com/careers/ | ~385 |
+| `reddit` | Reddit | `greenhouse` | `reddit` | https://www.redditinc.com/careers | ~147 |
+
+## Uncovered Companies (Recorded as Not Covered)
+
+The following directory companies use proprietary or unsupported ATS providers (Workday, SuccessFactors, Taleo, iBegin, etc.) with no public Greenhouse, Ashby, or Lever API boards. In accordance with D-175 and D-394, these are recorded as not covered rather than faked or shown as empty:
+
+- **Launch Companies (`shared/companyDirectorySeed.ts`):**
+  - `skipwait` (skipwait.me): Internal hiring team; no external public board.
+  - `wipro` (Wipro): Enterprise proprietary portal (Phenom / SuccessFactors).
+  - `go-neutrinos` (Neutrinos): No public Greenhouse/Ashby/Lever board.
+  - `tcs` (TCS): Proprietary career portal (iBegin: `ibegin.tcs.com`). Note: the unrelated UK healthcare "tcs" Greenhouse board is excluded.
+  - `merkle` (Merkle): Dentsu enterprise / SmartRecruiters.
+
+- **Expansion Companies (`shared/companyDirectoryExpansionSeed.ts`):**
+  - `kpmg`: Enterprise portal (BrassRing).
+  - `accenture`: Enterprise portal (Workday).
+  - `capgemini`: Enterprise portal (SuccessFactors).
+  - `infosys`: Enterprise portal (SuccessFactors).
+  - `cognizant`: Enterprise portal (Workday).
+  - `kraken`: No public postings currently active on Lever.
+  - `korn-ferry`: Proprietary portal.
+  - `blackrock`: Enterprise portal (Workday).
+  - `hashicorp`: IBM careers portal (acquired by IBM).
+  - `varonis`: Proprietary portal (Comeet).
+  - `lenovo`: Enterprise portal.
+  - `capco`: Wipro / proprietary portal.
+  - `blackstone`: Enterprise portal (Workday).
+  - `citiustech`: Proprietary portal.
+  - `ibm`: Enterprise portal (Kenexa).
+  - `bnp-paribas`: Enterprise portal.
+  - `servicenow`: Enterprise portal (SmartRecruiters).
+  - `iqvia`: Enterprise portal (Workday).
+  - `maersk`: Enterprise portal (Workday).
+  - `ford`: Enterprise portal.
+  - `concentrix`: Enterprise portal (Workday).
+  - `societe-generale`: Enterprise portal.
+
 ## Status
 
-- SEARCH-job-sources: todo
+- SEARCH-job-sources: follow-up fix — Claude Code · 695b — 2026-11-25. Live check of the D-174 release (#1575, `ee03cabb7`): Stripe, OpenAI and MongoDB each answer 50 real jobs, but Greenhouse snippets showed raw HTML (`<h2><strong>Who we are…`) because `?content=true` is entity-encoded and the helper stripped tags before decoding. `server/jobSources/plainText.ts` now decodes entities first, then strips tags (block tags as spaces), for Greenhouse directly and Ashby/Lever through `stripHtml`; stored rows heal on the next refresh.
+- SEARCH-job-sources: follow-up 2 — Claude Code · 695b — 2026-11-25. #1595 live (`6a6df79d3`); after the 1-hour refresh at 02:06 UTC no Stripe, MongoDB or OpenAI snippet contains a tag, but MongoDB read "AI &amp; People": Greenhouse escapes its HTML twice, so the text between tags still carries entities. `plainTextSnippet` now decodes the remaining text once more after removing tags.
+
+- SEARCH-job-sources: done — 7544ac29e

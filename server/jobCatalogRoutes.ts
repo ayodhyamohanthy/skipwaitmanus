@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { JOB_CATALOG_ENABLED, JOB_CATALOG_PAGE_SIZE, companyJobsResponseSchema, jobCatalogProviderSchema } from "../shared/jobCatalog";
 import { catalogJobs, companies, companyJobSources } from "../drizzle/schema";
 import { getDb } from "./db";
+import { seedJobSourcesIfMissing } from "./jobSources/seed";
 import { createDrizzleCatalogSyncStore, syncOneSource, type CatalogSourceRow } from "./jobSources/sync";
 import { captureServerError } from "./sentry";
 
@@ -228,6 +229,22 @@ export function createJobCatalogRefresher(): (source: CatalogSourceRow) => void 
   };
 }
 
+/**
+ * D-394 release: the reviewed boards are seeded by the daily job-catalog-sync, so on the day the switch goes on
+ * no company has a source until the next run. When a company has none, seed the reviewed boards once per process
+ * (insert-if-missing, idempotent) and look again; the existing stale-source refresh then fetches that board. A
+ * failed seed is reported and may be retried by a later read.
+ */
+export function sourceLookupWithSeed<T>(getSource: (companyId: number) => Promise<T | null>, seed: () => Promise<unknown>): (companyId: number) => Promise<T | null> {
+  let seeded: Promise<boolean> | null = null;
+  return async (companyId) => {
+    const found = await getSource(companyId);
+    if (found) return found;
+    seeded ??= seed().then(() => true, (error: unknown) => { seeded = null; captureServerError(error, { lane: "job-catalog-seed-on-read" }); return false; });
+    return (await seeded) ? getSource(companyId) : null;
+  };
+}
+
 /** Production wiring: drizzle-backed store + refresher behind one call, so
  *  server/_core/index.ts registers the catalog with a single line (switch
  *  only). */
@@ -242,7 +259,10 @@ export function registerJobCatalogRoutesWithDrizzle(
     recordActivity: deps.recordActivity,
     store: {
       findCompanyBySlug: async (slug) => (await store()).findCompanyBySlug(slug),
-      getSourceForCompany: async (companyId) => (await store()).getSourceForCompany(companyId),
+      getSourceForCompany: sourceLookupWithSeed(
+        async (companyId) => (await store()).getSourceForCompany(companyId),
+        async () => { const db = await getDb(); if (db) await seedJobSourcesIfMissing(db); },
+      ),
       listCatalogJobs: async (companyId) => (await store()).listCatalogJobs(companyId),
       createJobSource: async (input) => (await store()).createJobSource(input),
     },

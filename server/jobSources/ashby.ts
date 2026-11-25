@@ -3,6 +3,7 @@
 // Location parsing and HTML stripping are aligned with the catalog contracts.
 
 import { z } from "zod";
+import { plainTextSnippet } from "./plainText";
 import { fetchGuardedJson, type GuardedFetchFailure, ALLOWED_JOB_SOURCE_HOSTS } from "./fetch";
 import { parseGreenhouseLocation, type NormalizedCatalogJob, type FetchJobBoardResult } from "./greenhouse";
 import type { fetch as undiciFetch } from "undici";
@@ -21,33 +22,26 @@ const ashbyBoardResponseSchema = z.object({
       secondaryLocations: z
         .array(
           z.object({
-            location: z.string().optional(),
+            location: z.string().nullable().optional(),
           })
         )
+        .nullable()
         .optional(),
-      isRemote: z.boolean().optional(),
+      isRemote: z.boolean().nullable().optional(),
       workplaceType: z.string().nullable().optional(),
-      isListed: z.boolean().optional(),
-      jobUrl: z.string().url().optional(),
-      applyUrl: z.string().url().optional(),
+      isListed: z.boolean().nullable().optional(),
+      jobUrl: z.string().url().nullable().optional(),
+      applyUrl: z.string().url().nullable().optional(),
       publishedAt: z.string().nullable().optional(),
-      descriptionPlain: z.string().optional(),
-      descriptionHtml: z.string().optional(),
+      descriptionPlain: z.string().nullable().optional(),
+      descriptionHtml: z.string().nullable().optional(),
     })
   ),
 });
 
+/** Plain text from provider HTML (kept for callers; see plainText.ts for why decoding comes first). */
 export function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+  return plainTextSnippet(html, Number.MAX_SAFE_INTEGER);
 }
 
 export function parseAshbyJobs(payload: unknown): NormalizedCatalogJob[] {

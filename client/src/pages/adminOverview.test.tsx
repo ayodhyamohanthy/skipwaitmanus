@@ -35,6 +35,8 @@ function stub(overrides: Partial<Record<"health" | "queue" | "reports", Reply>> 
     if (url.includes("flow-health")) return overrides.health ?? reply(HEALTH);
     if (url.includes("approval-queue")) return overrides.queue ?? reply(QUEUE);
     if (url.includes("safety-reports")) return overrides.reports ?? reply(REPORTS);
+    // ADMIN-support-view (D-393): the trouble-signals block reads its own endpoint; empty counts are a real answer.
+    if (url.includes("support/signals")) return reply({ windows: { "24h": { signInFailures: [], sendRefusals: [], checkoutRefusals: [], heldRequests: 0, reviewEmailFailures: 0, clientErrors: 0 }, "7d": { signInFailures: [], sendRefusals: [], checkoutRefusals: [], heldRequests: 0, reviewEmailFailures: 0, clientErrors: 0 } } });
     return reply({ error: "unexpected" }, 404);
   });
   vi.stubGlobal("fetch", fetchMock);

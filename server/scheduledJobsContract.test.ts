@@ -69,7 +69,8 @@ describe("scheduled jobs contract", () => {
     // the D-067 recovery adds billing-review-retry (durable retired-plan review transport);
     // D-038 adds referral-timers (48 h claim and allocation lapses; referred deadline behind its switch).
     // D-384 adds pool-review-email (one review email per pool delivery, one per referrer per day; off with POOL_NUDGES_ENABLED).
-    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "ask-invite-expiry", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "daily-ops-check", "billing-review-retry", "job-catalog-sync", "review-delivery-retry", "pool-review-email"]);
+    // ADMIN-activity-log (D-393) adds auth-activity-retention (sign-in rows kept 90 days).
+    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "ask-invite-expiry", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "daily-ops-check", "billing-review-retry", "job-catalog-sync", "review-delivery-retry", "agent-auto-send-digest", "pool-review-email", "auth-activity-retention"]);
     expect(new Set(SCHEDULED_JOB_NAMES).size).toBe(SCHEDULED_JOB_NAMES.length);
     expect(Math.max(...SCHEDULED_JOB_NAMES.map(name => name.length))).toBeLessThanOrEqual(64);
   });
