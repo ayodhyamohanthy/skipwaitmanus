@@ -68,7 +68,7 @@ not here: report it instead of building it.
 
 ## Status
 
-- GROUP-recipients: in progress — GPT-6.1 Sol · ddfb — 2026-11-25 — branch `agent/queue/group-recipients`.
+- GROUP-recipients: done — `ed03bb166` — GPT-6.1 Sol · ddfb — 2026-11-25 — [PR #1606](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1606).
 - Read receipt: claimed at `430b1e118`, based on current main `753c1374f`; read `docs/BRIEF.md`, `AGENTS.md`,
   `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, this packet and its parent packet; decisions checked
   through D-399, including D-394–D-398 and the original October 31 Group Plan direction. No prior implementation or PR
@@ -80,4 +80,15 @@ not here: report it instead of building it.
 - Checkpoint: the new suite first failed to resolve the absent module (2026-11-25, 05:50 UTC); after implementation,
   `pnpm vitest run shared/groupPlanRecipients.test.ts` passed 23/23 and `pnpm check` passed (05:52 UTC).
   Duplicate diagnostics carry the normalized address; invalid diagnostics retain the original trimmed input, capped
-  at 120 characters. Results, arrays and diagnostic objects are readonly and frozen. Full gate and required CI pending.
+  at 120 characters. Results, arrays and diagnostic objects are readonly and frozen.
+- Validation on `d10bf800a` (main `47e8f6645` integrated): typecheck, production build, scope check, design-token
+  audit, migration lint and deployment-trigger coverage passed. Full local Vitest: 850 files / 9,352 tests passed,
+  5 files / 19 tests skipped, one existing Git-history fixture timed out at its unchanged 20-second limit
+  (`scripts/classifyCiChange.test.ts`, 400-commit marker case). That exact test passed unchanged in isolation
+  (12.96 seconds, 2026-11-25 06:17 UTC); no assertion, timeout or test configuration was changed.
+- [GitHub CI 45557322454](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45557322454) passed all three
+  unit-test shards, their aggregate, typecheck, production build and e2e journeys on `d10bf800a`.
+  Main `30d2f6ebe` was subsequently integrated without conflicts or changes to either parser file; D-400 was read
+  and leaves this contract unaffected. The final docs/registry revision still lands only after its required CI.
+- Delivery scope: pure shared contract only. No route, UI, account lookup, payment, email, configuration or migration
+  changed; no live Group Plan flow is claimed. The later GROUP rows own runtime integration and its acceptance.
