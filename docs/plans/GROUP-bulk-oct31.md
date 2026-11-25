@@ -36,24 +36,29 @@ Read current main before implementation. Initial research base: `c78379131280a94
 7. Goal UI throughout, one clear next step, mobile390 and desktop1280. Handle loading, empty, validation errors, payment pending/refused, partial activation, email retry and offline. No promised guaranteed referral/interview/job, no fake counts or live-looking sample data.
 
 ## Ownership and legitimate implementation route
-This is a new explicit founder feature, not permission to take another row's files. No implementation row or writer is claimed by this docs PR. Register bounded Tier 1 build slices through the existing ownership/review process before writers start; retain the one durable feature outcome and do not substitute an advisory-only task.
+The executable split is [GROUP-plan-split.md](GROUP-plan-split.md), registered under D-200/D-223 on November 25.
+`GROUP-recipients` retains its existing row and holder; the new slices append at the FIFO tail. Each has its own
+branch, owned paths, output dependencies, red-first tests and acceptance. The split covers actual purchases,
+initial seats and later one-seat additions, candidate activation, transactional email, refunds/recovery and
+candidate-approved referrals on behalf; it does not reduce the feature to gifting or a contact-sales form.
 
-Proposed new-file first slice, subject to path collision check: `shared/instituteBulk.ts` and tests, `server/instituteBulkService.ts` and tests, `server/instituteBulkRoutes.ts` and tests, `client/src/pages/goal/institutes/**` and captures. These are proposed paths, not an owns grant. Contract/service tests can use dependency injection and synthetic fixtures while integration handoffs are pending; no fake production adapter completion.
-
-Shared integration must obtain exact limited-hunk ACK / scope registration BEFORE edit:
-- PR #666 pricing holder: approved catalog / institutional quote adapter, no frozen consumer change.
-- Payment/webhook and identity holders: route registration, verified provider reconciliation, candidate activation and refund integration.
-- Shared DB/schema and notification holders: durable purchase/allocation/outbox schema and ledger writes, email delivery; no migration execution or shared lifecycle edit on this packet alone.
-- App routing/goal shell holders: navigation registration and new route, no parallel shell/settings rewrite.
-Record actual accepted holder, owned paths and exact source head. No forced claim/lease release, self-review, manual pass or review-gate waiver. Claude reasons; verified available development models implement, with actual model-history-independent Tier 1 review.
+New modules use `groupPlan` names, not the old proposed `instituteBulk` paths. Shared-file overlap is coordinated
+on isolated branches, with the later lander integrating current main (D-309/D-314); no particular model's ACK or
+independent review is a gate (D-370). Required CI, exact-release proof, ownership and all owner-reserved calls remain.
+The split's §8 keeps commercial questions together on `GROUP-terms`; implementation can proceed disabled with
+explicit policy fixtures, but unresolved terms refuse a payable quote. Only the release row can activate after
+recorded Group authority and acceptance. Registration performs no runtime, schema, payment or email action.
 
 ## Proof and delivery gates
 - Red-first list parser/duplicates/invalid input, initial seat quantity and later one-seat additions, 10% quote arithmetic/tampering, cross-group access and identity binding. Test concurrent/replayed additions, unchanged original seats after failed add-on, and no activation before verified payment.
 - Payment-negative and duplicate/reordered webhook tests; partial failure/restart/idempotent grants and notification outbox tests; refunds and recovery without duplicated balances.
 - Candidate activation collision/verified alias/revoked delegation and privacy negatives; no request without the accepted delegation scope.
 - Real local full-stack flow with synthetic recipients/provider TEST or mocks, exact base/head and limitations. No real charge/email/production DB test without its separate authority.
-- Inspect actual390/1280 pixels and retain screenshots; full current-main gate, independent review and exact required CI. Verify deployment only after normal authorization and landing. Schema-dependent code cannot activate before its migration is separately approved/applied/verified.
+- Inspect actual390/1280 pixels and retain screenshots; full current-main gate and exact required CI (D-370: no independent-review gate). Verify deployment only after normal authorization and landing. Schema-dependent code cannot land before its migration is applied and verified through the ordinary migration gate.
 - Report separately: directions published, docs merged, implementation built, payment verified, entitlements activated, provider email accepted, actual user journey verified. Never label the feature shipped from this packet or a green unit suite.
 
 ## Next action
-Keep these corrected Group Plan instructions published as requested; implementation follows FIFO, not a new-feature priority jump. Resolve catalog/discount/delegation/shared-path questions through current sources and existing owners while a verified available development session receives a bounded first slice. Keep previous repair obligations intact. Bring blockers to Instinct first; no founder relay for ordinary coordination.
+Use the official picker for the registered slices in [GROUP-plan-split.md](GROUP-plan-split.md); preserve existing
+claims and FIFO. The parser and packet registration are not a shipped Group Plan. Only the recorded commercial
+answers and final activation need the owner; ordinary architecture, tests, integration and handoffs proceed
+under D-200/D-370 without waiting for a coordinator. Keep all previous acceptance obligations intact.

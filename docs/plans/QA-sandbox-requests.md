@@ -72,4 +72,37 @@ pickup, and the daily check shows no real recipient. Captures at 1280 and 390.
 
 ## Status
 
-- QA-sandbox-requests: todo
+- QA-sandbox-requests: review — agent/queue/qa-sandbox-requests — be87ed1c4
+
+### Evidence (DeepSeek V4.1 Flash · 7473, 2026-11-24)
+
+- **One definition.** `shared/sandboxRequests.ts` holds `SANDBOX_SEEKER_EMAIL`, `SANDBOX_REFERRER_EMAIL`,
+  `isSandboxAccount`, `isSandboxSeeker`, `isSandboxReferrer` and `sandboxReachableReferrers`. Every chokepoint
+  asks it; no other file compares a demo email itself. Red first: with the module absent,
+  `shared/sandboxRequests.test.ts` failed with `Cannot find module './sandboxRequests'`; with it, 7/7 pass.
+- **Creation** (`server/db.ts` `createCompanyReferralRequest`). The seeker's own `users` row decides sandbox
+  status, never request input. A sandbox request's eligible set is the demo referrer alone and it is always
+  available, so the request is created covered at any company; a missing demo referrer reaches nobody rather
+  than a real employee. The monthly, open-slot and two-per-company caps are skipped, and the free allowance is
+  topped up before the spend so the keyed ledger rows stay real. No first look is given to a real poster.
+- **Delivery, claim and review.** `deliverWaitingAskTx` refuses a real referrer for a sandbox request.
+  `claimCompanyReferralRequest` and `oneClickReviewReferralRequest` allow the demo referrer only for a sandbox
+  request, and never allow the demo referrer a real one. The demo referrer has no open-claim cap.
+  `prepareReferrerReviewEmailNotifications` prepares nothing for a sandbox request (its recipients are
+  re-derived by company domain, which would be that company's real employees), and
+  `notifyColleaguesOfReleasedRequest` nudges nobody.
+- **Invisible to real counts.** Demand (both loaders), the referrer impact card, the weekly baseline, the admin
+  flow funnel, the public accepted-referral figure and the daily ops request totals exclude the demo seeker's
+  requests through one resolved id; a fixture without the demo account is unchanged.
+- **Tests.** `shared/sandboxRequests.test.ts` (7 tests) and a new demand case in
+  `server/companyDemand.fixture.test.ts`; 94 related tests pass across 8 files, plus 66 across the claim,
+  pool-nudge and review-retry suites.
+- **Gate.** Required CI on head `be87ed1c4` is green: typecheck, production build, all three unit shards plus
+  the aggregate, e2e journeys, CodeQL and release captures. Locally `pnpm check`, the token audit, the migration
+  lint and the deploy-trigger check pass. The local full Vitest run on this machine reported 158 failures under
+  a load average above 700 with a dozen concurrent runners; a re-run of the touched suites and the ledger
+  fixtures passes 57/57, and CI's own full unit run is green, so those failures are environmental, not code.
+- **Not covered here.** The packet's live acceptance (two real companies as the demo accounts, a withdrawal
+  before pickup, captures at 1280 and 390) runs on the deployed exact SHA after this row lands; the demo
+  referrer gets the in-app notice but no review email, because `writeReviewGrantTx` only writes a grant for a
+  referrer whose own email is at the company's domain and a demo mailbox would bounce.
