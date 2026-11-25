@@ -9445,6 +9445,29 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-400"
+    },
+    {
+      "id": "PICKER-short-session",
+      "title": "A session a client forced to end (20-turn caps in Z Code, OpenCode, Cline) is continued under the same name instead of orphaning its claim for 2 hours (D-401)",
+      "row": "PICKER",
+      "packet": "docs/plans/PICKER-short-session.md",
+      "tier": 2,
+      "lane": "picker-short-session",
+      "branch": "agent/queue/picker-short-session",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-401). The cap is the provider's; this row makes it harmless. Picker files and a new test only.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskShortSession.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/PICKER-short-session.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-401"
     }
   ]
 }
