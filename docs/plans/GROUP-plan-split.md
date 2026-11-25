@@ -466,7 +466,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-claim: todo — §6.6.
 - GROUP-grants: todo — §6.6.
 - GROUP-notifications: todo — §6.7; no real recipients.
-- GROUP-recovery: todo — §6.7.
+- GROUP-recovery: in progress — GPT-6.1 Sol · b4f6 — 2026-11-25 — branch `agent/queue/group-recovery`; read receipt main `ae57f6cc86bedb62e9474b334235175aa0061eea`, decisions through D-402; build-ahead of GROUP-grants and GROUP-notifications; no previous recovery code or PR. Bounded pure refund-assessment projection and red-first tests only; full recovery/DB/production acceptance unverified.
 - GROUP-delegation: todo — §6.8; no permission by default.
 - GROUP-send: todo — §6.8; disabled.
 - GROUP-api: todo — §6.9; disabled.
