@@ -96,6 +96,22 @@ payment, public post, price or login change.
 
 ## Status
 
+- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · f5ee — 2026-11-26 — official takeover `71ef198b3` on `agent/queue/ops-live-qa-journeys-sandbox` (previous holder GPT-6.1 Sol · 930b; prior receipts retained below). Implementation and dispatched live acceptance remain **UNVERIFIED**. Preserve `agent/queue/ops-live-qa-journeys-acceptance-2431` as the future acceptance carrier until the script repair merges; the task remains `todo` under D-373 (6), so the implementation merge cannot prematurely release `LAUNCH-live-qa`. No claim on the acceptance branch is asserted.
+
+### Current execution receipt (November 26, 2026)
+
+These results record the parent session GPT-6.1 Sol · f5ee's checks; this bounded worker updates only this packet and its existing registry row.
+
+- Fetched main `495d340351076f9ae4818b1948256473ad186144`, integrated and pushed as `78192f8a90f9f0e73f2c6b198a92c1f8d118242d`. Read `docs/BRIEF.md`, `AGENTS.md`, `docs/PRD.md`, `COLLABORATION.md`, `docs/BUILD_CONTINUITY.md`, `docs/BUGFREE_GATE.md`, `docs/KIT_V4_BUILD_PLAN.md` §§3–6, `docs/plans/README.md`, `docs/DELEGATION.md`, `docs/PAYMENTS_TEST_RUNBOOK.md`, `docs/agents/TURN-CAPPED-CLIENTS.md` and `.zcode/agents/worker.md`; checked available decisions D-370–D-406, including D-389/D-390/D-393.
+- Prior PR #1558 (`f25eb09c7`) and implementation helper `10ce5b5d3` are preserved. The remaining goal is L4 demo-only proof of privacy, transitions and keyed ledger behavior without public QA posts; the script repair is pending.
+- Real regression run on November 26 at `78192f8a9`: `LANG=en_US.UTF-8 pnpm vitest run scripts/liveQaJourneys.test.ts` — **19 passed / 2 failed**. The failures reproduce the public opportunity GET/create/close path and missing withdrawal after a preview-privacy failure. The test log remains local at `/tmp/live-qa-journeys-regressions-78192f8a9-20261126.log`; raw agent logs are not published. This failing run is the current repair baseline; the older fixture results below do not establish acceptance.
+- Source-contract verification: deployed API `21d6a368d176bb4557a839465b021291c523df04` contains sandbox `eec0fddfd` and P0 isolation `755bc1d99`; the relevant server/shared source has no diff versus main `495d34035`. This source check does not prove a live journey.
+- On November 26 the parent's live `GET /api/companies/wipro` returned the expected Wipro slug/name and `domains: ["wipro.com"]`. The parent also browser-verified Wipro's official search and the individual [Software Engineer posting](https://careers.wipro.com/job/Software-Engineer/213488-en_US) on **2026-11-26**: Singapore, posting start date displayed as `11/3/26`, with a job description and an application action. This is the real URL intended to replace the synthetic `product-designer-123` routing fixture recorded below; that replacement is in progress, not shipped.
+- D-406 leaves this task's reviewer-password proof unchanged: use only the existing protected workflow secrets, with no authentication or sales-switch change. The existing row advances to `syncedTo: "D-406"` without changing its scope, position, dependencies, `todo` status or future acceptance carrier.
+- No live journeys were dispatched by this session. Implementation and live acceptance remain **UNVERIFIED** pending script repair, protected landing, exact-release checks and a successful manual `mode=journeys` run with sanitized ledger/privacy/transition results, cleanup and inspected 1280/390 captures. `LAUNCH-live-qa` and PR #1540 still wait for that evidence (D-390).
+
+### Previous takeover receipt (November 25, 2026)
+
 - OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 930b — 2026-11-25 — official takeover `f5dce085c51389ac57472361d083c23abb3a76eb` on `agent/queue/ops-live-qa-journeys-sandbox` (previous holder GPT-6.1 Sol · 2431; prior receipt retained below). Implementation and dispatched live acceptance remain **UNVERIFIED**. Preserve `agent/queue/ops-live-qa-journeys-acceptance-2431` as the future acceptance carrier until implementation merges; the task remains `todo` under D-373 (6), so the implementation merge cannot prematurely release `LAUNCH-live-qa`.
 
 ### Previous execution receipt (November 25, 2026)
@@ -106,7 +122,7 @@ payment, public post, price or login change.
 - Contract checks follow current endpoints: claim stays pending with locked files; approval opens access; accepted step-back revokes access and ends the latest pickup. Decline returns `passed` and keeps the debit spent. Cleanup releases a pending claim through decline before withdrawal; step-back alone does not release it.
 - Targets: `scripts/live-qa-journeys.mjs`, `scripts/liveQaJourneys.test.ts`, `scripts/liveQaJourneyContracts.mjs`, `scripts/liveQaJourneyContracts.test.ts`, `scripts/liveQaJourneyBrowser.mjs`, `scripts/liveQaJourneyHarness.ts`, this packet and its existing registry row. No dependency, environment, schema, production setting, price or login-rule change. Live acceptance requires a successful manual journeys run, its release SHAs, sanitized results, cleanup and inspected captures at 1280/390.
 
-### Current read receipt (November 25, 2026)
+### Previous read receipt (November 25, 2026)
 
 - Read current main `8951b1518faa6089a86c29a2eaae78bb93d47951`; `.zcode/agents/worker.md`, `docs/BRIEF.md`, `AGENTS.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, `docs/KIT_V4_BUILD_PLAN.md` §§3–6, `docs/BUGFREE_GATE.md`, and available decision entries D-388–D-396, D-398–D-403 and D-405 (D-397 and D-404 are absent).
 - Inspected prior implementation helper `10ce5b5d3` and prior PR #1558 (`f25eb09c7`); PR #1558's public walk-in routing predates D-393. The goal remains L4 demo-only launch proof. The implementation targets listed in the previous receipt remain unchanged; this handoff edits only this packet.
