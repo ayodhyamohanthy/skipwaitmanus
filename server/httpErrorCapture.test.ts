@@ -90,8 +90,10 @@ describe("httpErrorCaptureMiddleware", () => {
     expect(String(message)).toBe("skipwait.me GET /api/auth/otp/send 503");
     expect(options).toMatchObject({ fingerprint: ["GET", "/api/auth/otp/send", "503"] });
 
-    // the admin alert fires too, on the same template
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    // the admin alert fires too, on the same template: the founder primary plus the owner-mailbox copy and, since
+    // D-400, the administrator copy (admin@skipwait.me)
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl.mock.calls.map(call => JSON.parse(String(call[1]?.body)).to[0])).toContain("admin@skipwait.me");
     const [, alertRequest] = fetchImpl.mock.calls[0] ?? [];
     const alertPayload = JSON.parse(String(alertRequest?.body));
     expect(alertPayload.text).toContain("GET /api/auth/otp/send");

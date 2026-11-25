@@ -395,6 +395,27 @@
       "note": "D-377: waits at owner only for the two QA repository secrets (REVIEWER_SEEKER_PASSWORD, REVIEWER_REFERRER_PASSWORD; OPS-live-qa-runner section 4 step 1), the owner's own settings change; runs 44941125936 and 44948082959 said not set. Release: once the owner adds them, any session runs section 4 steps 2 (reset) and 3 (Live QA run), and the pull request recording a run that signs in as both demo accounts sets this row back to todo with that run link. D-373 (3): the signed-in evidence comes from OPS-live-qa-runner's run on the current release (run link, artifact, summary of both demo sign-ins and every captured route at 1280 and 390), plus one full e2e journeys run (D-353 (4)) and docs/BUGFREE_GATE.md sections 1-4 updated with the exact web/API release. Until the runner lands, a session that holds the current plaintext and has a browser may still run the packet steps by hand. Never post a password, hash, cookie or raw authenticated response. Keep the D-214 account exclusions and payment restrictions; unexecuted transitions are recorded as gaps. File each defect as its own row. D-388 (Nov 24): the owner action is done. Both QA secrets are set and the reset deployed (Deploy API run 45361666119: \"Secrets uploaded with this release: REVIEWER_SEEKER_PASSWORD_HASH, REVIEWER_REFERRER_PASSWORD_HASH, DATABASE_URL\"); signed-in Live QA run 45364628436 signed in as both demo accounts, 12 seeker and 7 referrer routes answered 200 at 1280 and 390, 38 captures in artifact 14906556581 (one 400 console error per page, tracked by OPS-live-qa-hardening). Status todo on fresh branch agent/queue/launch-live-qa-acceptance: attach that run (or a newer one on the current release), the e2e journeys run and docs/BUGFREE_GATE.md sections 1-4 with the remaining wallet, document-isolation and safe-transition checks from the packet. PR #710 is superseded: the builder closes it with a comment linking the new pull request. D-390 (Nov 24) clears the Claude Code · c2ed block: the wallet, document-isolation, transition and job-link gaps are proven by the OPS-live-qa-journeys dispatched run (D-389), now a dependency. PR #1540 keeps its render evidence and must not land before that run is recorded (auto-merge turned off); then add the run to docs/qa/ and BUGFREE_GATE 2.8, 3.6, 4.20 plus a job-link preview line, and land on green required CI. The WorkOS 400 is AUTH-workos-refresh-scope, not a dependency; BUGFREE_GATE 1.1-1.10 are owner tests outside this row."
     },
     {
+      "id": "P0-sandbox-isolation",
+      "title": "P0: real employees never see or preview the demo seeker's sandbox requests, and the demo referrer can preview them at any company (D-393)",
+      "row": "D-212",
+      "packet": "docs/plans/P0-sandbox-isolation.md",
+      "tier": 1,
+      "lane": "p0-sandbox-isolation",
+      "branch": "agent/queue/p0-sandbox-isolation",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Found and fixed Nov 25 2026 by Claude Code · 43c8: inbox and preview use a two-way sandbox scope, save refuses a sandbox request for real employees, the in-memory test kit reads aliased tables. Follow-ups (waiting-pool count edge, personal-link sandbox assignment) recorded in the packet.",
+      "epic": "D-212",
+      "owns": [
+        "server/db.ts",
+        "server/db.sandboxIsolation.test.ts",
+        "server/inMemoryDrizzle.testkit.ts",
+        "docs/plans/P0-sandbox-isolation.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-400"
+    },
+    {
       "id": "OPS-live-qa-journeys",
       "title": "Signed-in live QA proves the wallet, document privacy and send/claim/accept/withdraw rules on skipwait.me with the two demo accounts only, never a payment (D-389)",
       "row": "D-212",
@@ -406,7 +427,8 @@
       "syncedTo": "D-398",
       "dependsOn": [
         "OPS-live-qa-hardening",
-        "QA-sandbox-requests"
+        "QA-sandbox-requests",
+        "P0-sandbox-isolation"
       ],
       "owns": [
         ".github/workflows/live-qa.yml",
@@ -9314,7 +9336,7 @@
       "tier": 2,
       "lane": "group-recipients",
       "branch": "agent/queue/group-recipients",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Founder direction Oct 31 (docs/plans/GROUP-bulk-oct31.md, Product contract 1; sources there). Registered Nov 25 by Claude Code · 43c8 because the queue had run dry (D-321 (8)): every other row was claimed, dependency-held or parked at owner. New files only, no I/O, no price, no account lookup.",
       "epic": "GROUP",
@@ -9323,7 +9345,7 @@
         "shared/groupPlanRecipients.test.ts",
         "docs/plans/GROUP-recipients.md"
       ],
-      "syncedTo": "D-398"
+      "syncedTo": "D-400"
     },
     {
       "id": "GROUP-plan-split",
@@ -9395,9 +9417,9 @@
       "tier": 1,
       "lane": "admin-email-switch",
       "branch": "agent/queue/admin-email-switch",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built by Claude Code · 43c8; code lands from this branch once this registration is on main. No password anywhere; no demotion write.",
+      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built and landed by Claude Code · 43c8 from this branch: adminIdentity (founder fixed in code, seat from SKIPWAIT_ADMIN_EMAIL=admin@skipwait.me), founder suspension guard (403, audited), alerts to both. After deploy: owner signs in as admin@ and confirms /admin.",
       "epic": "D-212",
       "owns": [
         "wrangler.jsonc",
@@ -9418,10 +9440,78 @@
         "server/billingReviewOutbox.ts",
         "server/billingReviewOutbox.test.ts",
         "server/paymentAmountMismatch.test.ts",
+        "server/httpErrorCapture.test.ts",
         "docs/plans/ADMIN-email-switch.md",
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-400"
+    },
+    {
+      "id": "PICKER-short-session",
+      "title": "A session a client forced to end (20-turn caps in Z Code, OpenCode, Cline) is continued under the same name instead of orphaning its claim for 2 hours (D-401)",
+      "row": "PICKER",
+      "packet": "docs/plans/PICKER-short-session.md",
+      "tier": 2,
+      "lane": "picker-short-session",
+      "branch": "agent/queue/picker-short-session",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-401). The cap is the provider's; this row makes it harmless. Picker files and a new test only.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTaskShortSession.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/PICKER-short-session.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-401"
+    },
+    {
+      "id": "AGENT-LOOP-supervisor",
+      "title": "Turn-capped agents restart themselves: a supervisor loop reruns the agent's headless mode as each conversation ends, so nobody types /new (D-402)",
+      "row": "PICKER",
+      "packet": "docs/plans/AGENT-LOOP-supervisor.md",
+      "tier": 2,
+      "lane": "agent-loop",
+      "branch": "agent/queue/agent-loop-supervisor",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-402): 'i want a automatic solution for this error no manual'. Being built by Claude Code · 43c8 right after registration lands.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/agent-loop.mjs",
+        "scripts/agentLoop.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/AGENT-LOOP-supervisor.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-402"
+    },
+    {
+      "id": "AGENT-CLIENT-config",
+      "title": "OpenCode and ZCode load turn-bounded worker subagents and the delegation rule from the repository, so Xingchi's 20-turn cap is avoided with no per-machine setup (D-402 (6))",
+      "row": "PICKER",
+      "packet": "docs/plans/AGENT-CLIENT-config.md",
+      "tier": 2,
+      "lane": "agent-client-config",
+      "branch": "agent/queue/agent-client-config",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026: 'whatever can be automatically fixed we should do'. Formats checked against opencode.ai/docs/agents and zcode.z.ai/en/docs/subagents. Being built by Claude Code · 43c8.",
+      "epic": "D-212",
+      "owns": [
+        "opencode.json",
+        ".opencode/agents/worker.md",
+        ".zcode/agents/worker.md",
+        "docs/agents/TURN-CAPPED-CLIENTS.md",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/AGENT-CLIENT-config.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-402"
     }
   ]
 }
