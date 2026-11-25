@@ -3,7 +3,7 @@ import { companyJobsResponseSchema } from "@shared/jobCatalog";
 import { readApiJson } from "@/lib/apiResponse";
 
 // D-174 jobs-list: only the separately accepted release may enable this mount.
-export const COMPANY_JOBS_ENABLED = false;
+export const COMPANY_JOBS_ENABLED = true;
 
 export interface CompanyJobsFilters {
   location: string;

@@ -31,9 +31,13 @@ test.beforeAll(async () => {
       enforce: "pre",
       transform(code, id) {
         if (!id.split("?")[0].endsWith("/pages/explore/companyJobsApi.ts")) return;
+        // The preview always runs with the jobs list on. Since the D-394 release the shipped switch is already on;
+        // before it, the preview turned it on here. Any other form of the switch is a contract change: fail loudly.
         const offSwitch = "export const COMPANY_JOBS_ENABLED = false;";
-        if (!code.includes(offSwitch)) throw new Error("Company jobs source must remain off for this synthetic preview");
-        return { code: code.replace(offSwitch, "export const COMPANY_JOBS_ENABLED = true;"), map: null };
+        const onSwitch = "export const COMPANY_JOBS_ENABLED = true;";
+        if (code.includes(onSwitch)) return;
+        if (!code.includes(offSwitch)) throw new Error("Company jobs switch not found in companyJobsApi.ts for this synthetic preview");
+        return { code: code.replace(offSwitch, onSwitch), map: null };
       },
     }],
     server: { host: "127.0.0.1", port: 3187, strictPort: true },
