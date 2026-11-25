@@ -8,7 +8,7 @@
 import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import EmployerDashboard from "../../EmployerDashboard";
 import EmployerOpportunities from "../../EmployerOpportunities";
 
@@ -25,6 +25,13 @@ const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider clien
 const stub = () => vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 401, headers: new Headers({ "content-type": "application/json" }), json: async () => ({ error: "sign in" }) })));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+// The page modules are lazy chunks. Warming them here keeps the first case from
+// racing a cold transform on a loaded host; the assertions below are unchanged.
+beforeAll(async () => {
+  await import("./GoalEmployer");
+  await import("./GoalEmployerOpportunities");
+});
 
 describe("employer routes render the goal page alone (D-048-K-employer)", () => {
   it.each([
