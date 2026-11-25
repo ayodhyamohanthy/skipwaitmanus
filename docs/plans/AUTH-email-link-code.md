@@ -53,5 +53,5 @@ open occasionally. Security is unchanged: whoever reads the inbox can already re
 
 ## Status
 
-- AUTH-email-link-code: todo — registered by Claude Code · 530c, Nov 25 2026 (D-406).
+- AUTH-email-link-code: in progress — Claude Code · 530c — 2026-11-25 — branch agent/queue/auth-email-link-code. Built behind `EMAIL_SIGN_IN_LINK_ENABLED = false`: shared link helper, sign-in email with link (code first in the subject), seeker send/verify routes with the D-081 work-email refusal, /sign-in link confirm screen, seeker email-first form with password one tap away. Also touches `server/workEmailOtp.test.ts` (one send-argument pin now includes `seeker: true`).
 - AUTH-email-link-release: todo — waits for AUTH-email-link-code.
