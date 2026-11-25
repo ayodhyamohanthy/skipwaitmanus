@@ -31,6 +31,12 @@ later; both receive alerts.
 - `adminUsers.test.ts`: 403, audited as denied, no suspension recorded.
 - Alert call counts and recipients; the outbox legacy and new envelopes.
 
+## Test integrity
+
+`server/paymentAmountMismatch.test.ts` is a pinned money test. Its `toHaveBeenCalledTimes(4)` becomes `(6)` because
+each of the two alerts now also sends the D-400 administrator copy. The primary recipient assertion is unchanged, and a
+new assertion requires `admin@skipwait.me` among the recipients. Recorded with a `test-integrity` commit naming D-400.
+
 ## Hard limits
 
 No password, hash or token anywhere. No change to seeker or referrer sign-in or the demo reviewer accounts. No database
