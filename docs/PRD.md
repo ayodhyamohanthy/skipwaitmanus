@@ -73,4 +73,12 @@ One source of truth: [`docs/PRICING.md`](PRICING.md) (D-219, owner freeze Oct 25
 
 ## Group Plan bulk purchase - approved build direction (Oct 31)
 
-Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
+Extend the existing Group Plan with bulk plans and referrals using candidate email lists, initial seats and later
+one-seat additions, a permitted institution-only 10% discount, verified-payment allocations and transactional
+activation emails. The [execution split](plans/GROUP-plan-split.md) registers the contracts, migration-first
+storage, quote/checkout, per-candidate grants, recovery, consent/send, UI and acceptance slices under the
+[owner direction](plans/GROUP-bulk-oct31.md). Candidate-approved on-behalf requests use the existing creator;
+payment never grants login, documents or application consent to the buyer. Commercial questions are batched on
+`GROUP-terms`; other slices build disabled. Implementation and live acceptance remain pending. Required CI and
+all money/privacy rules apply (D-370); this is no price change or Group sales activation. Original sources:
+`phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No real recipients or payment.
