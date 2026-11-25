@@ -9363,6 +9363,65 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-399"
+    },
+    {
+      "id": "SYNC-auto-pull",
+      "title": "A clone pulls within about 30 seconds of any change on GitHub (a watcher replaces the 15-minute timer, on macOS and Linux) and fast-forwards branches that are strictly behind (owner, Nov 25)",
+      "row": "SYNC",
+      "packet": "docs/plans/SYNC-auto-pull.md",
+      "tier": 2,
+      "lane": "sync-auto-pull",
+      "branch": "agent/queue/sync-auto-pull",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync' and 'the local pull requests are set for a timing cant it be as soon as a commmit or pull is available'. Push on commit already exists (D-375 hook). Never force, rebase, reset or touch a dirty worktree or a diverged branch.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/syncCloneCore.mjs",
+        "scripts/sync-clone.mjs",
+        "scripts/syncCloneSetup.mjs",
+        "scripts/syncClone.test.ts",
+        "scripts/sync-check.sh",
+        "AGENTS.md",
+        "docs/plans/SYNC-auto-pull.md"
+      ],
+      "syncedTo": "D-399"
+    },
+    {
+      "id": "ADMIN-email-switch",
+      "title": "Founder ayodhya@skipwait.me is the permanent super administrator nobody can remove; admin@skipwait.me is the delegable administrator; alerts reach both (D-400)",
+      "row": "ADMIN",
+      "packet": "docs/plans/ADMIN-email-switch.md",
+      "tier": 1,
+      "lane": "admin-email-switch",
+      "branch": "agent/queue/admin-email-switch",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built by Claude Code · 43c8; code lands from this branch once this registration is on main. No password anywhere; no demotion write.",
+      "epic": "D-212",
+      "owns": [
+        "wrangler.jsonc",
+        ".env.example",
+        "server/_core/adminIdentity.ts",
+        "server/_core/adminIdentity.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosAuth.test.ts",
+        "server/db.ts",
+        "server/db.roleSync.test.ts",
+        "server/db.suspendReview.test.ts",
+        "server/privateReferralRoutes.ts",
+        "server/adminUsers.test.ts",
+        "server/errorAlerting.ts",
+        "server/errorAlerting.test.ts",
+        "server/dailyMoneyCheck.ts",
+        "server/dailyOpsCheck.ts",
+        "server/billingReviewOutbox.ts",
+        "server/billingReviewOutbox.test.ts",
+        "server/paymentAmountMismatch.test.ts",
+        "docs/plans/ADMIN-email-switch.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-400"
     }
   ]
 }
