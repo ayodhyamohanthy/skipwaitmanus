@@ -1,7 +1,8 @@
 import { and, asc, count, eq, gt, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { jobRuns, operationalActivityLogs, referralRequests, referralReviewDeliveries } from "../drizzle/schema";
+import { jobRuns, operationalActivityLogs, referralRequests, referralReviewDeliveries, users } from "../drizzle/schema";
 import { JOB_RUN_MAX_ATTEMPTS, jobWindowKeySchema } from "../shared/scheduledJobs";
+import { SANDBOX_SEEKER_EMAIL } from "../shared/sandboxRequests";
 import { getDb } from "./db";
 import { sendTransactionalEmail } from "./emailDelivery";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -66,6 +67,7 @@ async function readRequests(): Promise<{ last24Hours: number; last7Days: number 
       FROM ${referralRequests}
       WHERE ${referralRequests.createdAt} >= ${weekAgo}
         AND ${referralRequests.createdAt} <= ${databaseNow}
+        AND ${referralRequests.jobSeekerId} NOT IN (SELECT ${users.id} FROM ${users} WHERE ${users.email} = ${SANDBOX_SEEKER_EMAIL})
     `))[0][0];
   } catch {
     throw new Error("The request counts could not be read");

@@ -1199,3 +1199,22 @@ Architectural rulings:
 Queue reconciliation:
 `SKIPPY-stepup` in `docs/plans/assignments.json` is updated from `status: "architect"` to `status: "todo"`, with `packet: "docs/plans/SKIPPY-stepup.md"` and `syncedTo: "D-382"`. It is unblocked for normal picker claim and builder implementation on `agent/queue/skippy-stepup`.
 This technical ruling changes no pricing, plan content, sales switch (`BANDED_SALES_ENABLED` remains false), legal text, login rule, money path or spending permission.
+
+### November 25 CEO review execution receipt (D-085, D-397)
+
+Session `DeepSeek V4.1 Flash · d91e`, assigned `CEO REVIEW (D-085)` by `node scripts/next-task.mjs --claim`, checked `origin/main` `c1e31c93a` and decisions through D-396. This is an execution receipt for the review D-397 records; it adds no numbered decision and no product change.
+
+**1. Two stale blocked markers cleared.** The registry already carried the rulings, but the report log still held the blocks, so both rows stayed RED and held their lanes (D-109). Reports posted on `agent/reports/log`:
+
+- `LAUNCH-live-qa` — green. D-390 ruled it waits on `OPS-live-qa-journeys`, and `docs/plans/assignments.json` already lists that dependency (`OPS-deploy-secrets-file`, `OPS-live-qa-runner`, `OPS-live-qa-journeys`). The Claude Code · c2ed block is cleared; the row waits and holds no lane (D-134/D-315). PR #1540 keeps its signed-in render evidence and must not land before the journeys run is recorded.
+- `OPS-live-qa-journeys` — green. D-393 made `QA-sandbox-requests` a dependency, and the registry already lists it (`OPS-live-qa-hardening`, `QA-sandbox-requests`). The DeepSeek V4.1 Flash · e9e1 block is cleared; the row waits and holds no lane. Draft PR #1558 keeps the built journeys work.
+
+**2. D-397's central claim verified.** `e2e/company-jobs.e2e.ts:34-36` on `origin/main` throws `Company jobs source must remain off for this synthetic preview` unless the shipped source contains the literal `export const COMPANY_JOBS_ENABLED = false;`. The D-394 release row therefore cannot go green while it flips that switch, exactly as D-397 (2) rules; the make-green changes the preview plugin, not the assertion's intent.
+
+**3. Launch-lane order confirmed, no takeover.** `QA-sandbox-requests` (PR #1569) is green on every required check, still a draft and behind main, held by DeepSeek V4.1 Flash · 7473 with a last push at 2026-11-25 00:04 IST (quiet 0h). D-397 (3) forbids another session taking it while that holder is active, so this review did not touch it. PR #1587 (the D-397 docs pull request) has auto-merge on with the merge-commit method and is blocked only on its running unit shards.
+
+**4. Owner-parked rows checked, none stale.** All 19 `owner` rows name a live release condition: `BANDED-release` waits on the D-392 owner TEST payment; the eight `D-048-K-*` retirement rows wait on `BANDED-release` plus their own release row (D-388 (4)); `D-093-language` waits on the owner's TrustPrivacy wording; `REL-synthetic-journeys` on the ruleset, credits hard-stop and second-container calls; `OPS-github-settings` on account settings; `D-048-dark-mode` on D-230; `D-179-ats-validation` on its one-time grant. None was released by this review.
+
+**5. Proposal to the owner, rated 7/10 — a read-only analytics readback for CEO reviews.** D-397 (4) records money and funnel as UNVERIFIED because no session has production analytics access and the D-018 panel numbers are not in the repository, so every CEO review is code-only and cannot say whether the product is converting. The strongest counter-argument: the cheapest path may need a paid tool or a new secret, which is the owner's call under D-031/D-204, and the owner can already read the panel himself. The free route is an owner-run or Actions-run read of the existing D-018 panel recorded in `docs/qa/`; that needs no new service. No row is registered here because the choice is the owner's.
+
+**6. Unchanged.** No price, plan content, sales switch (`BANDED_SALES_ENABLED` and `CREDIT_PACKS_ON_SALE` stay false), provider, ledger, legal text, login rule, money path or spending change; no real payment; no runtime code.
