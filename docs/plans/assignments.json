@@ -9512,6 +9512,27 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-402"
+    },
+    {
+      "id": "XINGCHI-turn-guard",
+      "title": "A local proxy compacts each conversation before Xingchi's turn limits (20 user turns, 100 model replies) and retries on session_turn_limit_exceeded, so no agent client stops on them (D-403)",
+      "row": "PICKER",
+      "packet": "docs/plans/XINGCHI-turn-guard.md",
+      "tier": 2,
+      "lane": "xingchi-guard",
+      "branch": "agent/queue/xingchi-turn-guard",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-403): omp CLI hit 'This conversation has reached 100 model turns ... param=session_turn_limit_exceeded'. Being built by Claude Code · 43c8.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/xingchi-guard.mjs",
+        "scripts/xingchiGuard.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/XINGCHI-turn-guard.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-403"
     }
   ]
 }
