@@ -1,3 +1,4 @@
+import { isAdministratorEmail, isFounderSuperAdmin } from "./_core/adminIdentity";
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
 import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_RECONFIRM_ENABLED, RECONFIRM_AFTER_DAYS, type AskReconfirmResponse } from "../shared/askReconfirm";
@@ -130,7 +131,6 @@ export async function getDb() {
   return _db;
 }
 
-const durableAdministratorEmail = "ayodhya@skipwait.me";
 
 /**
  * Sessions that assert their own email address rather than inheriting one an
@@ -145,7 +145,8 @@ export function resolveSyncedUserRole(input: { openId: string; email?: string | 
   // The administrator promotion is keyed on the email address, so it is only
   // safe when that address came from a provider that verified it. Otherwise a
   // self-asserted address would hand out administrator access to anyone.
-  if (normalizedEmail === durableAdministratorEmail && emailIsProviderVerified) return "admin" as const;
+  // D-400: the founder (permanent super administrator) and the configured administrator seat are always admin.
+  if (isAdministratorEmail(normalizedEmail) && emailIsProviderVerified) return "admin" as const;
   const ownerMatches = Boolean(ENV.ownerOpenId) && input.openId === ENV.ownerOpenId;
   return input.requestedRole ?? input.existingRole ?? (ownerMatches ? "admin" : "user");
 }
@@ -1141,9 +1142,26 @@ export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));
 }
+/** D-400: the founder's account can never be suspended, by any administrator or route. */
+export class FounderProtectedError extends Error {
+  constructor() { super("The founder's account cannot be suspended"); this.name = "FounderProtectedError"; }
+}
+
+/** True when the account, any account row of its canonical person, or a verified alias of that person is the founder. */
+async function belongsToFounder(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, account: { email: string | null; canonicalPersonId: number | null }): Promise<boolean> {
+  if (isFounderSuperAdmin(account.email)) return true;
+  if (!account.canonicalPersonId) return false;
+  const siblings = await db.select({ email: users.email }).from(users).where(eq(users.canonicalPersonId, account.canonicalPersonId));
+  if (siblings.some(row => isFounderSuperAdmin(row.email))) return true;
+  const aliases = await db.select({ email: verifiedLoginAliases.normalizedVerifiedEmail }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId, account.canonicalPersonId));
+  return aliases.some(row => isFounderSuperAdmin(row.email));
+}
+
 export async function setUserSuspended(userId: number, suspended: boolean) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
+  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");
+  // D-400 (owner, Nov 25 2026): "no one can takeover the access away from founder anytime". Lifting a suspension stays allowed.
+  if (suspended && await belongsToFounder(db, account)) throw new FounderProtectedError();const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
     // waiting for: clear the identity-review reason so sign-in works again.
     // Suspending never touches the reason.
     await db.update(canonicalPeople).set(suspended?{suspended,sessionsValidAfter:now}:{suspended,reviewReason:null,sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId));const aliases=await db.select({userId:verifiedLoginAliases.canonicalUserId}).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId,account.canonicalPersonId));await db.update(users).set({suspended,sessionsValidAfter:now}).where(inArray(users.id,[account.id,...aliases.map(a=>a.userId)]));}else await db.update(users).set({suspended,sessionsValidAfter:now}).where(eq(users.id,userId));return {userId,suspended};
@@ -2626,13 +2644,14 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return [];
   const db = await getDb(); if (!db) return [];
   // D-393 (a): the demo referrer acts as a verified employee of whatever company a sandbox request names, so its
-  // inbox also shows sandbox requests at any company. A real referrer's scope is unchanged.
+  // inbox also shows sandbox requests at any company. A real referrer sees its own company only, and never a
+  // sandbox request there: a sandbox request is never shown to a real person.
   const viewerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
   const sandboxViewer = isSandboxReferrer(viewerEmail);
   const seekerUsers = alias(users, "sandbox_seeker");
   const companyScope = sandboxViewer
     ? or(eq(jobs.company, profile.workEmailDomain), eq(seekerUsers.email, SANDBOX_SEEKER_EMAIL))
-    : eq(jobs.company, profile.workEmailDomain);
+    : and(eq(jobs.company, profile.workEmailDomain), or(isNull(seekerUsers.email), ne(seekerUsers.email, SANDBOX_SEEKER_EMAIL)));
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, opportunityId: referralRequests.opportunityId, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(companyScope, isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.opportunityId, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopeNowMs = Date.now();
   // D-050 / P0-allocated-ask-stuck: an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is
@@ -2726,7 +2745,15 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   const db = await getDb(); if (!db) return undefined;
   // One captured instant for both sides of the lapsed check below.
   const freshNow = new Date();
-  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch, askChannel: askOrigins.channel }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(askOrigins, eq(askOrigins.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id),
+  // D-393 (a) and (5): the inbox's two-way scope. The demo referrer previews a sandbox request at any company it
+  // names (the pre-acceptance privacy view it tests); a real referrer previews its own company only, and never a
+  // sandbox request there.
+  const viewerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+  const seekerUsers = alias(users, "sandbox_seeker");
+  const companyScope = isSandboxReferrer(viewerEmail)
+    ? or(eq(jobs.company, profile.workEmailDomain), eq(seekerUsers.email, SANDBOX_SEEKER_EMAIL))
+    : and(eq(jobs.company, profile.workEmailDomain), or(isNull(seekerUsers.email), ne(seekerUsers.email, SANDBOX_SEEKER_EMAIL)));
+  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch, askChannel: askOrigins.channel }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(askOrigins, eq(askOrigins.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), companyScope,isNull(referralRequestPasses.id),
     // D-022 first look: only the poster may preview during their 48 hours (or anyone after it lapses).
     // Lapsed = firstLookUntil <= now, kept as lt-or-eq so every row-lock fixture in this repo can evaluate it.
     or(isNull(referralRequests.firstLookReferrerId), isNull(referralRequests.firstLookUntil), lt(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookReferrerId, userId)))).limit(1);
@@ -2743,9 +2770,13 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before saving referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const request = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, companyDomain: jobs.company, passedByYou: referralRequestPasses.id, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).where(eq(referralRequests.id, requestId)).limit(1).for("update");
+    const request = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, companyDomain: jobs.company, passedByYou: referralRequestPasses.id, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).where(eq(referralRequests.id, requestId)).limit(1).for("update");
     const current = request[0];
-    if (!current || current.companyDomain !== profile.workEmailDomain || current.status !== "pending" || current.waitingForCoverage || (current.referrerId !== null && current.referrerId !== userId) || current.passedByYou || firstLookExcludesViewer(current, userId, Date.now())) throw new Error("This private referral request is no longer available to save");
+    // D-393 (a): a sandbox request reaches only the demo referrer, so a real employee of the company it names may
+    // not save it. Read after the row lock without locking the account rows; the answer is the same refusal.
+    const accountEmails = current ? await tx.select({ id: users.id, email: users.email }).from(users).where(inArray(users.id, [userId, current.jobSeekerId])) : [];
+    const sandboxHiddenFromViewer = Boolean(current) && isSandboxSeeker(accountEmails.find(row => row.id === current.jobSeekerId)?.email) && !isSandboxReferrer(accountEmails.find(row => row.id === userId)?.email);
+    if (!current || sandboxHiddenFromViewer || current.companyDomain !== profile.workEmailDomain || current.status !== "pending" || current.waitingForCoverage || (current.referrerId !== null && current.referrerId !== userId) || current.passedByYou || firstLookExcludesViewer(current, userId, Date.now())) throw new Error("This private referral request is no longer available to save");
     if (saved) await tx.insert(referralRequestSaves).values({ referralRequestId: requestId, referrerId: userId }).onDuplicateKeyUpdate({ set: { referrerId: userId } });
     else await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, userId)));
     return { requestId, saved };
