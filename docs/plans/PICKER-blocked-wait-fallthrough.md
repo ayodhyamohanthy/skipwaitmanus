@@ -42,4 +42,10 @@ Run the new focused suite, related picker suites (`scripts/nextTask.test.ts`, `s
 
 ## Status
 
+PICKER-blocked-wait-fallthrough: in progress — GPT-6.1 Sol · 3cfd — 2026-11-25 — branch agent/queue/picker-blocked-wait-fallthrough
+
+Preflight receipt: main `f425721febbf76479722b63c9574779dcd33fa40`; claim `fbd269f42f33c0fbbf8f4b8b1d60ebf76d09e9fa`. Read `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `AGENTS.md`, this packet, and relevant `docs/DECISIONS.md` entries through D-405; D-370 retains required CI with no review or model gate. Previous repo-only outcomes: PR #1654 reconciled completed Group registration; PR #1661 registered this fix. This is the first task-branch status update; picker implementation and focused test proof remain owed.
+
+Registration history (PR #1661):
+
 Registered as a D-399 follow-up after a real current-main `--claim` and `--as` reproduction. Registration base: `8951b1518faa6089a86c29a2eaae78bb93d47951`; decisions read through D-405. No picker source or test code has been changed in the registration PR. The normal picker claim must assign the implementation row after this registration lands.
