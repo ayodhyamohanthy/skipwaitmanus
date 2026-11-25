@@ -107,9 +107,28 @@ export function usage() {
   ].join("\n");
 }
 
-/** Windows only: one command line for cmd.exe, so `opencode` finds opencode.cmd. */
-function windowsCommandLine(argv) {
-  return argv.map((a) => (/[\s"&|<>^()]/.test(a) || a === "" ? `"${a.replace(/"/g, '\\"')}"` : a)).join(" ");
+/**
+ * Windows only: one argument quoted for the Microsoft C runtime's argv rules, so `opencode` finds opencode.cmd.
+ * Backslashes are literal except before a double quote or the closing quote: a run of n backslashes there becomes 2n,
+ * and a double quote becomes \". Quoting only the quote (CodeQL: incomplete escaping) let an argument ending in "\"
+ * swallow its closing quote and corrupt every argument after it.
+ */
+export function quoteWindowsArg(arg) {
+  if (arg !== "" && !/[\s"&|<>^()]/.test(arg)) return arg;
+  let out = '"';
+  let slashes = 0;
+  for (const ch of arg) {
+    if (ch === "\\") { slashes += 1; continue; }
+    if (ch === '"') { out += "\\".repeat(slashes * 2 + 1) + '"'; slashes = 0; continue; }
+    out += "\\".repeat(slashes) + ch;
+    slashes = 0;
+  }
+  return `${out}${"\\".repeat(slashes * 2)}"`;
+}
+
+/** Windows only: one command line for cmd.exe. */
+export function windowsCommandLine(argv) {
+  return argv.map(quoteWindowsArg).join(" ");
 }
 
 function commonGitDir(cwd) {

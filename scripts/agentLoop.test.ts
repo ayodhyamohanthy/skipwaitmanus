@@ -7,9 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  BACKOFF_AFTER, BACKOFF_MS, FAST_RUN_MS, STOP_AFTER, buildArgv, fastStreak, logLine, nextAction, parseArgs, usage,
-} from "./agent-loop.mjs";
+import { BACKOFF_AFTER, BACKOFF_MS, FAST_RUN_MS, STOP_AFTER, buildArgv, fastStreak, logLine, nextAction, parseArgs, usage, quoteWindowsArg, windowsCommandLine } from "./agent-loop.mjs";
 
 const root = path.resolve(__dirname, "..");
 const SCRIPT = path.join(root, "scripts/agent-loop.mjs");
@@ -155,5 +153,25 @@ describe("agent-loop.mjs as a process", () => {
     const result = spawnSync(process.execPath, [SCRIPT, "--max-runs", "1", "--", ...fakeAgent], { cwd: plain, encoding: "utf8", env: { ...process.env, GIT_CEILING_DIRECTORIES: os.tmpdir() } });
     expect(result.status).toBe(2);
     expect(result.stdout).not.toContain("hi ");
+  });
+});
+
+// CodeQL #123 (incomplete string escaping): Windows quoting follows the Microsoft C runtime's argv rules.
+describe("windows command-line quoting", () => {
+  it("leaves a plain argument alone and quotes an empty one", () => {
+    expect(quoteWindowsArg("opencode")).toBe("opencode");
+    expect(quoteWindowsArg("")).toBe('""');
+  });
+  it("doubles backslashes before the closing quote, so a trailing backslash cannot swallow it", () => {
+    expect(quoteWindowsArg("C:\\work dir\\")).toBe('"C:\\work dir\\\\"');
+  });
+  it("doubles backslashes before an embedded quote and escapes the quote", () => {
+    expect(quoteWindowsArg('say \\"hi"')).toBe('"say \\\\\\"hi\\""');
+  });
+  it("keeps backslashes that are not before a quote literal", () => {
+    expect(quoteWindowsArg("a\\b c")).toBe('"a\\b c"');
+  });
+  it("joins quoted arguments with single spaces", () => {
+    expect(windowsCommandLine(["opencode", "run", "build now"])).toBe('opencode run "build now"');
   });
 });
