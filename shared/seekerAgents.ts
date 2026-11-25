@@ -37,6 +37,15 @@ export const AGENT_SEND_DAILY_CAP = 60;
  */
 export const AGENT_SEND_PER_REQUEST_CEILING = 1;
 
+/**
+ * D-178.mcp-grant: the approvals-queue `provider` an MCP `propose_ask` writes
+ * when the caller holds a D-141 grant. Such a row was proposed under the
+ * grant's draft scope (D-290 A5: an OAuth grant is look up and draft, and the
+ * consent page promises an unverified client read and draft only), so its
+ * approve needs `canDraft`; a REST send request (provider "agent") needs `canSend`.
+ */
+export const MCP_GRANT_PROVIDER = "mcp";
+
 export const AGENT_EXPIRY_DEFAULT_DAYS = 7;
 export const AGENT_EXPIRY_MAX_DAYS = 30;
 

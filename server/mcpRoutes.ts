@@ -59,7 +59,8 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
       }
       const body: unknown = req.body;
       if (Array.isArray(body)) return res.status(400).json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Send one request at a time" } });
-      const reply = await handleMcpMessage(body, { userId }, deps);
+      const ctx = auth.principal.kind === "grant" ? { userId, grant: { grantId: auth.principal.grantId, canDraft: auth.principal.canDraft } } : { userId };
+      const reply = await handleMcpMessage(body, ctx, deps);
       const method = body && typeof body === "object" ? (body as { method?: unknown; params?: { name?: unknown } }) : {};
       if (method.method === "tools/call") {
         const tool = typeof method.params?.name === "string" ? method.params.name.slice(0, 40) : "unknown";
