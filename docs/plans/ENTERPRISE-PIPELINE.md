@@ -104,3 +104,24 @@ D-205 sets the rule: a branch is deleted once it is done and merged (its tip is 
 
 ## Status
 The tasks are listed in the two packets; each writes its status line there (D-134).
+OPS-github-settings: in progress — GPT-6.1 Sol · 966b — 2026-11-25 — branch agent/queue/ops-github-settings
+
+This is an evidence-only draft, not an approval or settings change. Under D-399, the task remains owner-held and synced to D-222; this draft is not landable. No account transfer, paid plan, or settings mutation is authorized. D-370 requires CI, not a review or model gate.
+
+### Read-only GitHub snapshot (2026-11-25)
+Parent-verified readback: baseline `main` `f7020bb37`, empty claim `5455e67bd`, no prior task PR; parent rechecked `origin/main` `8951b1518`, with only an unrelated `GROUP-plan-split` registry reconciliation and no change to decisions or this target. Reproducible authenticated REST GETs against `https://api.github.com`: `/repos/ayodhyamohanthy/skipwaitmanus`; `/repos/ayodhyamohanthy/skipwaitmanus/rulesets?includes_parents=true` and detail `/repos/ayodhyamohanthy/skipwaitmanus/rulesets/25733248`, `/repos/ayodhyamohanthy/skipwaitmanus/rulesets/25433342`; `/repos/ayodhyamohanthy/skipwaitmanus/branches/main/protection`; `/repos/ayodhyamohanthy/skipwaitmanus/code-scanning/default-setup` and `/repos/ayodhyamohanthy/skipwaitmanus/code-scanning/analyses?ref=refs/heads/main`; `/repos/ayodhyamohanthy/skipwaitmanus/actions/runs/44781797738`.
+
+- Repository is public and `owner.type=User`; merge commits, auto-merge, and delete-on-merge are enabled; squash and rebase are disabled. Both active ruleset details explicitly have `bypass_actors: []`; neither has a merge-queue rule. Ruleset `25433342` requires strict status checks: `typecheck`, `unit + component + route tests`, `production build`, and `e2e journeys`. Main-protection reports review count 0 and allows merge/squash/rebase; repo settings disable the latter two.
+- Legacy branch-protection GET explicitly has `enforce_admins.enabled=false`. Raw `required_pull_request_reviews`, `required_status_checks`, and `restrictions` are omitted (`has(required_pull_request_reviews)=false`, `has(required_status_checks)=false`, `has(restrictions)=false`), not explicit nulls or disabled settings; this response does not establish ruleset bypass.
+- Secret scanning and push protection are enabled; validity checks and non-provider patterns are disabled. This does not establish free-tier eligibility. CodeQL default setup is weekly; JS/TS and Actions analyses at `f7020bb37` report `error=""`, `warning=""`.
+- Watchdog run `44781797738` is a historical successful run (Nov 20, head `bebf5723e`); there is no proof here of current secrets, bindings, token scope, or delivery. `watchdog/src/index.ts` also lacks the admin alert copy; that separate code repair is unresolved and out of scope. Sentry's current rule and delivery are unverified, with no verified read access.
+- Parent verified HTTP 200 for GitHub's merge-queue guidance on Nov 25: [reusable eligibility text](https://raw.githubusercontent.com/github/docs/main/data/reusables/gated-features/merge-queue.md) and [merge-queue documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue). Public merge queues require organization ownership; private organization repositories require Enterprise Cloud. This public User-owned repository is ineligible.
+
+### Owner questions
+1. Do the two explicit empty `bypass_actors` arrays close the bypass-scope item while preserving mandatory required CI for every actor?
+2. Given this repository is ineligible for a merge queue, should the plan treat queueing as unavailable under current ownership, or should the owner separately authorize an organization-ownership change?
+3. Should main-protection's allowed methods be aligned to merge-only to match the repository settings, or should the current method list remain?
+4. Are secret scanning, push protection, and weekly CodeQL sufficient, or which exact additional free-only security setting is wanted? No free eligibility is inferred from the disabled checks.
+5. After three consecutive green `main` days are evidenced (proof is not assembled), are any further required checks wanted?
+6. Should the owner securely verify/provision watchdog secrets `ZEPTOMAIL_API_KEY` and optional repository-only `GITHUB_ISSUES_TOKEN` (Issues read/write; Actions read/write only for self-heal), then provide scrubbed proof of delivery to the founder primary and admin copy per D-400?
+7. Should the owner confirm/provision free-tier Sentry new-issue and regression alerts to the founder primary and admin copy, and provide scrubbed evidence of the current rule and delivery?
