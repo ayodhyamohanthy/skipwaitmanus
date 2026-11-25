@@ -73,4 +73,4 @@ cancelled; a real account's `/plans` still reads `onSale:false`. Captures at 128
 
 ## Status
 
-- QA-demo-test-billing: todo
+- QA-demo-test-billing: in progress — DeepSeek V4.1 Flash · f2a2 — 2026-11-24 — branch agent/queue/qa-demo-test-billing
