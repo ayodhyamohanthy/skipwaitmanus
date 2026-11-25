@@ -49,4 +49,4 @@ auto-compaction is token-based, so it does not fire in time. A guard in front of
 
 ## Status
 
-- XINGCHI-turn-guard: todo — registered Nov 25 2026 by Claude Code · 43c8 (D-403).
+- XINGCHI-turn-guard: done — Claude Code · 43c8 — 2026-11-25 — b24cc6511
