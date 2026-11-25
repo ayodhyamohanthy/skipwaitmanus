@@ -10013,6 +10013,27 @@
         "docs/plans/GROUP-plan-split.md"
       ],
       "note": "Packet section 6.11. Group-specific activation is not granted by consumer BANDED-release. Require recorded section 8 answers, exact owner Group sales/consent activation authority, all child acceptance and TEST/provider proof first. Only then protected config release, canonical exact web/API/readiness and 1280/390 proof; live hosted-page handshake stops before paying. Rollback stops creation/send, retains paid/refund/email recovery. Never mark shipped from packet/fixtures or missing evidence."
+    },
+    {
+      "id": "XINGCHI-turn-guard",
+      "title": "A local proxy compacts each conversation before Xingchi's turn limits (20 user turns, 100 model replies) and retries on session_turn_limit_exceeded, so no agent client stops on them (D-403)",
+      "row": "PICKER",
+      "packet": "docs/plans/XINGCHI-turn-guard.md",
+      "tier": 2,
+      "lane": "xingchi-guard",
+      "branch": "agent/queue/xingchi-turn-guard",
+      "status": "todo",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-403): omp CLI hit 'This conversation has reached 100 model turns ... param=session_turn_limit_exceeded'. Being built by Claude Code · 43c8.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/xingchi-guard.mjs",
+        "scripts/xingchiGuard.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/XINGCHI-turn-guard.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-403"
     }
   ]
 }
