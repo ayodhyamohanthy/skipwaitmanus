@@ -9477,7 +9477,7 @@
       "tier": 2,
       "lane": "agent-loop",
       "branch": "agent/queue/agent-loop-supervisor",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Owner, Nov 25 2026 (D-402): 'i want a automatic solution for this error no manual'. Being built by Claude Code · 43c8 right after registration lands.",
       "epic": "D-212",
