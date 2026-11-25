@@ -183,3 +183,36 @@ describe("MCP data exposure", () => {
     expect(JSON.stringify(activity)).not.toMatch(/private words/);
   });
 });
+
+describe("D-178.mcp-grant: a grant's MCP proposal is bound to its grant", () => {
+  const GRANT_KEY = `swa_${"c".repeat(64)}`;
+  const grantSetup = (principal: { canLookup: boolean; canDraft: boolean }, calls: unknown[]) => setup({
+    resolveBearer: async token => (token === GRANT_KEY
+      ? { ok: true, capKey: 11, principal: { kind: "grant", grantId: 11, userId: 7, ...principal } }
+      : { ok: false, status: 401, error: "This token is not valid. It may have been revoked." }),
+    proposeAsk: async (userId, input, grant) => { calls.push({ userId, input, grant }); return { id: 56, status: "pending" as const, creditCost: 1, expiresAt: "2026-10-10T00:00:00.000Z" }; },
+  });
+  const propose = { jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "propose_ask", arguments: { targetRoleUrl: "https://boards.example.com/j/1", attachmentIds: [21] } } };
+
+  it("passes the grant to the queue so revoke, pause, limits and the assistant label apply at approve", async () => {
+    const calls: unknown[] = [];
+    const { app } = grantSetup({ canLookup: true, canDraft: true }, calls);
+    const res = await rpc(app, propose, GRANT_KEY);
+    expect(JSON.parse(res.body.result.content[0].text)).toMatchObject({ approvalId: 56, status: "pending" });
+    expect(calls).toEqual([{ userId: 7, input: { targetRoleUrl: "https://boards.example.com/j/1", attachmentIds: [21], message: undefined }, grant: { grantId: 11 } }]);
+  });
+  it("refuses a grant without the draft scope and writes nothing", async () => {
+    const calls: unknown[] = [];
+    const { app } = grantSetup({ canLookup: true, canDraft: false }, calls);
+    const res = await rpc(app, propose, GRANT_KEY);
+    expect(res.body.result.isError).toBe(true);
+    expect(res.body.result.content[0].text).toMatch(/permission/);
+    expect(calls).toHaveLength(0);
+  });
+  it("a legacy sw_ token keeps today's unbound proposal", async () => {
+    const calls: unknown[] = [];
+    const { app } = setup({ proposeAsk: async (userId, input, grant) => { calls.push({ userId, grant }); return { id: 57, status: "pending" as const, creditCost: 1, expiresAt: "2026-10-10T00:00:00.000Z" }; } });
+    await rpc(app, propose);
+    expect(calls).toEqual([{ userId: 7, grant: undefined }]);
+  });
+});

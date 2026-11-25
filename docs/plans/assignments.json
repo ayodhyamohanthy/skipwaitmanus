@@ -8673,7 +8673,7 @@
       "tier": 1,
       "lane": "d178-mcp-grant",
       "branch": "agent/queue/d178-mcp-grant",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-405",
       "epic": "D-178",
       "owns": [
