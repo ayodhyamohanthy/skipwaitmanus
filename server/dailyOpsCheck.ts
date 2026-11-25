@@ -16,6 +16,7 @@ const FINDINGS_ID_LIMIT = 50;
 const PURGE_BATCH = 200;
 const OWNER_EMAIL = "ayodhya@skipwait.me";
 const OWNER_COPY_EMAIL = "ayodhya@mail.instinct.com";
+const ADMIN_COPY_EMAIL = "admin@skipwait.me"; // D-400
 const ALL_CLEAR_EMAIL = { subject: "skipwait.me daily ops check · all clear", text: "All clear: no ops invariants failed." };
 
 const purgeMetadataSchema = z.strictObject({ consumed: z.number().int().nonnegative(), expiredUnused: z.number().int().nonnegative() });
@@ -112,7 +113,9 @@ async function readPurgeCounts(since: Date, now: Date): Promise<PurgeCounts> {
 async function sendOpsEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: OWNER_EMAIL, ...input });
-    try { await sendTransactionalEmail({ to: OWNER_COPY_EMAIL, ...input }); } catch { /* the owner copy is best effort */ }
+    for (const copy of [OWNER_COPY_EMAIL, ADMIN_COPY_EMAIL]) {
+      try { await sendTransactionalEmail({ to: copy, ...input }); } catch { /* the copies are best effort */ }
+    }
     return delivery.sent;
   } catch {
     return false;

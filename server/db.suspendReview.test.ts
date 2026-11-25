@@ -98,3 +98,33 @@ describe("setUserSuspended identity-review clearing", () => {
     expect(personRows[0]).toMatchObject({ suspended: true, reviewReason: "ambiguous_historic_verified_email" });
   });
 });
+
+// D-400 (owner, Nov 25 2026): "no one can takeover the access away from founder anytime". The founder's account, any
+// account row of the founder's canonical person, or a person holding the founder's verified alias is never suspended.
+describe("setUserSuspended founder protection (D-400)", () => {
+  const founder = () => ({ ...structuredClone(baseUser), id: 1, openId: "workos_founder", email: "ayodhya@skipwait.me", loginMethod: "workos", role: "admin" as const, suspended: false, canonicalPersonId: 5 });
+  beforeEach(() => {
+    userRows = [founder(), { ...founder(), id: 2, openId: "google_founder", email: "founder.personal@example.com", loginMethod: "google" }];
+    personRows = [{ ...structuredClone(basePerson), id: 5, normalizedVerifiedEmail: "ayodhya@skipwait.me", suspended: false, reviewReason: null }];
+    aliasRows = [];
+  });
+  it("refuses to suspend the founder and changes nothing", async () => {
+    await expect(setUserSuspended(1, true)).rejects.toMatchObject({ name: "FounderProtectedError" });
+    expect(userRows[0].suspended).toBe(false);
+    expect(personRows[0].suspended).toBe(false);
+  });
+  it("refuses to suspend another login of the founder's canonical person", async () => {
+    await expect(setUserSuspended(2, true)).rejects.toMatchObject({ name: "FounderProtectedError" });
+    expect(userRows.every(row => row.suspended === false)).toBe(true);
+  });
+  it("refuses a person that holds the founder's verified alias", async () => {
+    userRows = [{ ...founder(), id: 3, email: "someone@example.com", canonicalPersonId: 6 }];
+    personRows = [{ ...structuredClone(basePerson), id: 6, normalizedVerifiedEmail: "someone@example.com", suspended: false, reviewReason: null }];
+    aliasRows = [{ id: 9, provider: "workos", subject: "user_founder", openId: "workos_founder", canonicalPersonId: 6, canonicalUserId: 3, normalizedVerifiedEmail: "ayodhya@skipwait.me", verifiedAt: now }];
+    await expect(setUserSuspended(3, true)).rejects.toMatchObject({ name: "FounderProtectedError" });
+  });
+  it("still allows lifting a suspension on the founder", async () => {
+    userRows[0].suspended = true; personRows[0].suspended = true;
+    await expect(setUserSuspended(1, false)).resolves.toEqual({ userId: 1, suspended: false });
+  });
+});
