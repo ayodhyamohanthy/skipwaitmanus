@@ -98,7 +98,7 @@ const ownsOverlapHere = (a: unknown[], b: unknown[]) =>
  * The first version of this property returned early on `stop`/`wait` (zero assertions), asserted `build`
  * unconditionally (so a legitimate architect-first registry failed) and let a `resync`/`architect` re-hand of a
  * closed row through. This restatement has no early return, treats every handable kind as first-class, and is
- * pinned by 14 fixed boards and an assertion count. It imports nothing from the picker: the staleness and `owns`
+ * pinned by 16 fixed boards and an assertion count. It imports nothing from the picker: the staleness and `owns`
  * rules below are restated from their prose, so a production mistake cannot satisfy both sides of the comparison.
  */
 const emptyBoardEligibleRow = (tasks: ReturnType<typeof task>[], register: RegisterEntry[] = []): Outcome => {
@@ -120,6 +120,10 @@ const emptyBoardEligibleRow = (tasks: ReturnType<typeof task>[], register: Regis
     if (laneHeld || filesHeld) continue;
     return { kind: "build", id: t.id };
   }
+  // D-399: with nothing else eligible, the first in-sync row parked at `owner` that has a packet is built ahead
+  // (never landed: an `owner` row gets no review, fix or landing). A stale one stays with the owner (D-202).
+  const parked = tasks.find(t => t.status === "owner" && typeof t.packet === "string" && !stale(t));
+  if (parked) return { kind: "build", id: parked.id };
   return { kind: "none", id: null };
 };
 
@@ -181,7 +185,7 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
     expect(ran).toBe(10);
   });
 
-  it("restates the first-pick property on 14 fixed boards, each rejecting a specific wrong picker", () => {
+  it("restates the first-pick property on 16 fixed boards, each rejecting a specific wrong picker", () => {
     // The wrong pickers the first version of the property let through (owner findings, PR #952, 2026-11-02):
     // returning the second or the last eligible row, handing a closed, `in-review` or `owner` row, handing a row
     // whose dependency is not done, answering `none`/`wait` while work is outstanding, never answering `architect`,
@@ -195,7 +199,9 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
       { name: "first row closed", tasks: [task("A", { status: "done" }), task("B")], expect: { kind: "build", id: "B" } },
       { name: "only the last row is open", tasks: [task("A", { status: "done" }), task("B", { status: "done" }), task("C")], expect: { kind: "build", id: "C" } },
       { name: "two todo rows", tasks: [task("A"), task("B")], expect: { kind: "build", id: "A" } },
-      { name: "owner row is never handed", tasks: [task("A", { status: "owner" }), task("B")], expect: { kind: "build", id: "B" } },
+      { name: "owner row is never handed before a todo row", tasks: [task("A", { status: "owner" }), task("B")], expect: { kind: "build", id: "B" } },
+      { name: "owner row alone is built ahead (D-399)", tasks: [task("A", { status: "done" }), task("B", { status: "owner" })], expect: { kind: "build", id: "B" } },
+      { name: "owner row without a packet is never handed", tasks: [task("A", { status: "owner", packet: null })], expect: { kind: "none", id: null } },
       { name: "in-review row is never handed", tasks: [task("A", { status: "in-review" }), task("B")], expect: { kind: "build", id: "B" } },
       { name: "dependency not done, hand the dependency", tasks: [task("A", { dependsOn: ["B"] }), task("B")], expect: { kind: "build", id: "B" } },
       { name: "dependency done, hand the row", tasks: [task("A", { dependsOn: ["B"] }), task("B", { status: "done" })], expect: { kind: "build", id: "A" } },
@@ -214,8 +220,8 @@ describe("the task list Claude Code keeps (docs/plans/assignments.json)", () => 
       return `${actual.kind}:${actual.id}`;
     });
     // The boards pin every handable kind and are not one repeated answer, so a property that answered a constant —
-    // `none`, `wait`, or always the first or the last row — cannot satisfy all 14 lines above.
-    expect(answers).toHaveLength(14);
+    // `none`, `wait`, or always the first or the last row — cannot satisfy all 16 lines above.
+    expect(answers).toHaveLength(16);
     expect(new Set(answers).size).toBeGreaterThanOrEqual(6);
     for (const kind of ["none", "build", "architect", "resync"]) expect(answers.some(a => a.startsWith(`${kind}:`))).toBe(true);
   });
@@ -278,8 +284,10 @@ describe("main's CI decides first (D-082)", () => {
     const other = pick([task("A")], { ci: red, branches: [held] });
     expect(other).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
     expect(renderPick(other, { who: "Qwen · s1", date: "2026-11-11", claimed: false })).toContain("land nothing and merge nothing into main until main's CI is green");
-    // With nothing else eligible the honest answer is still red main's wait.
-    expect(pick([task("A", { status: "owner" })], { ci: red, branches: [held] })).toMatchObject({ kind: "wait", mainRed: true });
+    // With nothing else eligible the honest answer is still red main's wait (an owner row with no packet has nothing to build).
+    expect(pick([task("A", { status: "owner", packet: null })], { ci: red, branches: [held] })).toMatchObject({ kind: "wait", mainRed: true });
+    // D-399 with D-324: red main holds landings only, so a parked row with a packet is built ahead on its branch meanwhile.
+    expect(pick([task("A", { status: "owner" })], { ci: red, branches: [held] })).toMatchObject({ kind: "build", task: { id: "A" }, parked: "it waits for the owner" });
     const stale: [string, Branch] = ["agent/queue/fix-main-cccccccc", claimBy("Kimi · s2", "fix-main-cccccccc", 30)];
     expect(pick([task("A")], { ci: red, branches: [stale] })).toMatchObject({ kind: "fix-main", parent: "agent/queue/fix-main-cccccccc" });
   });
@@ -287,7 +295,7 @@ describe("main's CI decides first (D-082)", () => {
   it("stops when CI cannot be read; while CI re-runs after a failure, work goes on and landings wait (D-324)", () => {
     expect(pick([task("A")], { ci: { state: "unknown" } }).kind).toBe("stop");
     expect(pick([task("A")], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "build", task: { id: "A" }, mainRedNote: true });
-    expect(pick([task("A", { status: "owner" })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
+    expect(pick([task("A", { status: "owner", packet: null })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
     expect(pick([task("A")], { ci: { state: "running" } })).toMatchObject({ kind: "build", ciRunning: true });
   });
 });
@@ -320,7 +328,7 @@ describe("new work: order, dependencies, lanes and claims", () => {
   });
 
   it("says why nothing is pickable", () => {
-    const result = pick([task("A", { status: "done" }), task("B", { status: "owner" })]);
+    const result = pick([task("A", { status: "done" }), task("B", { status: "owner", packet: null })]);
     expect(result).toEqual({ kind: "none", skipped: [{ id: "A", reason: "done" }, { id: "B", reason: "waits for the owner" }] });
   });
 });

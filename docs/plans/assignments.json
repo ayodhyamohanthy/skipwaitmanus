@@ -9338,6 +9338,25 @@
       "note": "Packet-only task: its work is the rows it adds (D-223, D-321 (8)). Read docs/plans/GROUP-bulk-oct31.md in full, docs/PRICING.md, D-219, D-367 and the existing banded checkout, grants and ledger code it names. Write docs/plans/GROUP-plan-split.md: one row per owned-file slice that one session finishes alone, each behind a switch that starts off, migration rows first, red-first tests and the packet's proof gates. Resolve the open items (discount stacking with volume discounts, single-seat additions and proration, delegation scope and institute visibility) from existing rules with stated, changeable assumptions; a point that would change a price, plan content, legal text or the login rule goes to the owner as one batched question and only the rows that need it wait. Never a real payment or email.",
       "epic": "GROUP",
       "syncedTo": "D-398"
+    },
+    {
+      "id": "PICKER-never-wait",
+      "title": "No session is told to wait while a row has work: build ahead on rows parked at owner or waiting on a block, on their own branch, never landed from there (D-399)",
+      "row": "PICKER",
+      "packet": null,
+      "tier": 2,
+      "lane": "picker-never-wait",
+      "branch": "agent/queue/picker-never-wait",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 (D-399). Built and landed by Claude Code · 43c8 in the pull request that records D-399: aheadPick's second pass, the BUILD AHEAD OF A HOLD hand-out text, the property oracle and 16 boards. Follow-up: the lane hold on builds (owner: 'any number of parallel agents can build dont keep any restrictions') needs its own row because D-314 tests pin it.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/nextTask.test.ts"
+      ],
+      "syncedTo": "D-399"
     }
   ]
 }
