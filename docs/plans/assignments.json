@@ -443,6 +443,54 @@
       "epic": "D-212"
     },
     {
+      "id": "AUTH-email-link-code",
+      "title": "Anyone signs in by entering an email: one email with a sign-in link and a six-digit code, seekers and referrers, behind a switch that starts off (D-406)",
+      "row": "D-212",
+      "packet": "docs/plans/AUTH-email-link-code.md",
+      "tier": 1,
+      "lane": "auth-email-link",
+      "branch": "agent/queue/auth-email-link-code",
+      "status": "todo",
+      "syncedTo": "D-406",
+      "dependsOn": [],
+      "owns": [
+        "shared/emailSignIn.ts",
+        "shared/emailSignIn.test.ts",
+        "server/_core/seekerEmailCode.ts",
+        "server/_core/seekerEmailCode.test.ts",
+        "server/workEmailOtp.ts",
+        "server/emailSignInLink.test.ts",
+        "client/src/pages/goal/sign-in/",
+        "client/src/pages/loginRule.test.tsx",
+        "client/src/pages/signIn.test.tsx",
+        "docs/plans/AUTH-email-link-code.md"
+      ],
+      "note": "Owner D-406 (Nov 25, explicit say-so on the founder-locked login rule). Build only; the switch stays false. No schema, migration, env key or dependency. Referrer surfaces keep work-email code only.",
+      "epic": "D-212"
+    },
+    {
+      "id": "AUTH-email-link-release",
+      "title": "Release email link + code sign-in: set EMAIL_SIGN_IN_LINK_ENABLED true and prove it live at 1280 and 390 (D-406)",
+      "row": "D-212",
+      "packet": "docs/plans/AUTH-email-link-code.md",
+      "tier": 1,
+      "lane": "auth-email-link",
+      "branch": "agent/queue/auth-email-link-release",
+      "status": "todo",
+      "syncedTo": "D-406",
+      "dependsOn": [
+        "AUTH-email-link-code"
+      ],
+      "owns": [
+        "shared/emailSignIn.ts",
+        "shared/emailSignIn.test.ts",
+        "docs/plans/AUTH-email-link-code.md",
+        "docs/BUGFREE_GATE.md"
+      ],
+      "note": "Owner D-406. Flip only after the build row lands; live proof with a real inbox (send, link, code), captures at 1280 and 390.",
+      "epic": "D-212"
+    },
+    {
       "id": "AUTH-workos-refresh-scope",
       "title": "The client asks WorkOS to refresh only a session WorkOS issued, ending the 400 from api.workos.com on every cookie-session page (D-389)",
       "row": "D-212",
@@ -9381,15 +9429,15 @@
       "id": "GROUP-plan-split",
       "title": "Group Plan: write the slice plan (seats and one-seat additions, server quote with the 10% institution discount, checkout intent, verified-payment activation and email, candidate-approved delegation) and register its rows",
       "row": "GROUP",
-      "packet": null,
+      "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-plan-split",
       "branch": "agent/queue/group-plan-split",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [],
-      "note": "Packet-only task: its work is the rows it adds (D-223, D-321 (8)). Read docs/plans/GROUP-bulk-oct31.md in full, docs/PRICING.md, D-219, D-367 and the existing banded checkout, grants and ledger code it names. Write docs/plans/GROUP-plan-split.md: one row per owned-file slice that one session finishes alone, each behind a switch that starts off, migration rows first, red-first tests and the packet's proof gates. Resolve the open items (discount stacking with volume discounts, single-seat additions and proration, delegation scope and institute visibility) from existing rules with stated, changeable assumptions; a point that would change a price, plan content, legal text or the login rule goes to the owner as one batched question and only the rows that need it wait. Never a real payment or email.",
+      "note": "Original packet/registry registration by GPT-6.1 Sol · 01aa on 2026-11-25 (claim d16a563a7), implementation 369f8d1dd; PR #1609 merged from exact head c0cc452c8c84cb02a1ad937a5a4c55f885e87067 as dadc0528975dc4bc7fc6fefb8adc1799fe36acee with required CI run 45579946145 green. Packet-only reconciliation; no Group runtime, payment, email, migration or activation.",
       "epic": "GROUP",
-      "syncedTo": "D-398"
+      "syncedTo": "D-405"
     },
     {
       "id": "PICKER-never-wait",
@@ -9415,6 +9463,26 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-399"
+    },
+    {
+      "id": "PICKER-blocked-wait-fallthrough",
+      "title": "A blocked WAIT falls through to eligible D-399 build-ahead work without releasing its lane",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-blocked-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker-blocked-wait-fallthrough",
+      "branch": "agent/queue/picker-blocked-wait-fallthrough",
+      "status": "todo",
+      "syncedTo": "D-405",
+      "dependsOn": [],
+      "note": "Current-main repro on 8951b1518: --claim and --as returned WAIT at blocked D-089.ui before D-399 aheadPick, despite an earlier packet-backed, in-sync BANDED-release row with no open PR. Follow-up to the done PICKER-never-wait row; packet records bounded behavior and regression coverage.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskBlockedWaitFallthrough.test.ts",
+        "docs/plans/PICKER-blocked-wait-fallthrough.md",
+        "docs/plans/assignments.json"
+      ]
     },
     {
       "id": "SYNC-auto-pull",
