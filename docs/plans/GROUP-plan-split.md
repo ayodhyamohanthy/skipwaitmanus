@@ -467,7 +467,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-grants: todo — §6.6.
 - GROUP-notifications: todo — §6.7; no real recipients.
 - GROUP-recovery: todo — §6.7.
-- GROUP-delegation: todo — §6.8; no permission by default.
+- GROUP-delegation: in progress — GPT-6.1 Sol · c767 — 2026-11-25 — branch `agent/queue/group-delegation`; preflight main `ae57f6cc8`, read D-370 through D-402, BUILD_CONTINUITY/BRIEF/PRD; D-315 build-ahead while GROUP-claim unfinished; default no permission, no landing/completion.
 - GROUP-send: todo — §6.8; disabled.
 - GROUP-api: todo — §6.9; disabled.
 - GROUP-buyer-ui: todo — §6.10; hidden.
