@@ -1243,3 +1243,39 @@ Session `DeepSeek V4.1 Flash · d91e`, assigned `CEO REVIEW (D-085)` by `node sc
 **5. Proposal to the owner, rated 7/10 — a read-only analytics readback for CEO reviews.** D-397 (4) records money and funnel as UNVERIFIED because no session has production analytics access and the D-018 panel numbers are not in the repository, so every CEO review is code-only and cannot say whether the product is converting. The strongest counter-argument: the cheapest path may need a paid tool or a new secret, which is the owner's call under D-031/D-204, and the owner can already read the panel himself. The free route is an owner-run or Actions-run read of the existing D-018 panel recorded in `docs/qa/`; that needs no new service. No row is registered here because the choice is the owner's.
 
 **6. Unchanged.** No price, plan content, sales switch (`BANDED_SALES_ENABLED` and `CREDIT_PACKS_ON_SALE` stay false), provider, ledger, legal text, login rule, money path or spending change; no real payment; no runtime code.
+
+### November 25 Group Plan execution split (decided under D-200/D-223)
+
+Official packet task `GROUP-plan-split`, claimed by `GPT-6.1 Sol · 01aa` at `d16a563a7`, continues the
+October 31 Group Plan instruction and PR #1601's registration. Source inspection used main `47e8f6645`;
+instructions were refreshed through D-400 on main `20632bc09`. Read receipt: `AGENTS.md`, `docs/BRIEF.md`,
+`docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, `docs/PRD.md`, the decision register, `docs/PRICING.md`,
+`docs/PAYMENTS_TEST_RUNBOOK.md`, `docs/DELEGATION.md` and the two existing Group packets.
+
+`docs/plans/GROUP-plan-split.md` supplies 20 file-owned rows, appended after existing queued work: one
+owner-only commercial answer row and 19 disabled implementation, integration, QA and release rows.
+The existing recipient-parser row, its branch/holder and every other row's order remain unchanged.
+Contracts and an exact schema blueprint precede additive SQL; verified production migration precedes
+runtime models. The code audit names the single-owner checkout/intent, invoice-keyed grants, canonical
+verified aliases, founding uniqueness and existing creator/spend boundaries that require group-specific
+receipts and per-candidate idempotency. No schema number or production write is allocated here.
+
+Changeable technical assumptions under D-200: confirmed recipients define initial/additional seats;
+payment creates a recoverable allocation, never a candidate login; canonical candidates claim using their
+own verified alias; buyers may draft/propose only after scoped, expiring, revocable candidate consent;
+the candidate approves each exact request, document and current cost in their own session. The real
+referral creator preserves limits, blocks, spend order and pre-acceptance privacy. Buyer progress exposes
+no unrelated account, document or referrer information. Paid grants, refunds and email recovery remain
+idempotent and recoverable with new creation off. New admin work consumes D-400's existing settings/helpers.
+
+Commercial choices remain unresolved, not technical defaults: institution qualification and discount
+interaction/addition eligibility; payer, renewal/proration/term and unclaimed/existing-plan handling;
+founding allocation and minimum initial quantity. The single question batch and rated proposals are in
+packet §8 and `GROUP-terms`. Other rows build against explicit policy fixtures and refuse unconfirmed
+payable terms; only affected sale/activation waits. Group production activation remains a separate
+owner word after acceptance; consumer BANDED-release approval does not supply it.
+
+This execution receipt records implementation routing within existing authority, not a new numbered
+owner decision, price, plan content, login, legal text, refund promise or live switch. Required CI and
+protected auto-merge apply (D-370). Registration is not a shipped Group Plan; no runtime code, SQL,
+provider call, payment or recipient email is performed by this change.
