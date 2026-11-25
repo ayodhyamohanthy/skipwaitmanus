@@ -42,9 +42,9 @@ Run the new focused suite, related picker suites (`scripts/nextTask.test.ts`, `s
 
 ## Status
 
-PICKER-blocked-wait-fallthrough: requeued for implementation — PR #1663 merged as `bf5d91a46` after adding packet status notes only; source fix and tests remain owed. Fresh implementation branch `agent/queue/picker-blocked-wait-fallthrough-build-902e`.
+PICKER-blocked-wait-fallthrough: in progress — GPT-6.1 Sol · 902e — 2026-11-26 — branch agent/queue/picker-blocked-wait-fallthrough-build-902e.
 
-Preflight receipt: current main `bf5d91a467ee12daa92004f4593fed895db3b1ee`; session `GPT-6.1 Sol · 902e`. Read `AGENTS.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, this packet, and decisions D-400–D-403, D-405 and D-406. D-406 affects auth tasks only; D-370 keeps required CI without a review/model gate. Previous repo-only outcome: PR #1663 merged the prior branch with packet status notes only; PR #1661 registered this implementation task. Both the official `--claim` and read-only `--as` reproduced WAIT at blocked `D-048-K-admin-money` before `aheadPick()`. The implementation and focused regression proof remain owed.
+Preflight receipt: main `c6c63a6274ee4f6b43195320e1d9961340c2d110`; claim `ba3532f081fe76dc4a09bec6925ab1026d98947f`. Read `AGENTS.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, this packet, `docs/DELEGATION.md` §4, and decision entries D-400–D-403, D-405 and D-406. D-406 affects auth tasks only; D-370 keeps required CI without a review/model gate. Prior repo-only outcomes: PR #1663 merged as `bf5d91a46` with status notes only and no source/test change; PR #1671 requeued the task on a fresh branch and merged as `c6c63a6`. Both `--claim` and `--as` reproduced the D-399 fallthrough defect before requeue. The source fix and regression proof remain owed.
 
 Registration history (PR #1661):
 
