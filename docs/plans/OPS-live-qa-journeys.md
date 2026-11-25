@@ -29,8 +29,10 @@ Steps, each recording status code, the relevant redacted response fields and, fo
 4. As the referrer, confirm the request is visible with no seeker name and no file links before acceptance.
 5. Claim and accept as the referrer; confirm name and files appear only after the referrer's own acceptance
    (D-019(e)).
-6. Cross-user denial: the referrer requesting a document of a request it was not accepted on, and the seeker
-   reading a request it does not own, both answer the no-access 404 (ids from the demo accounts only).
+6. Cross-role denial: the demo seeker's referrer preview/detail reads answer 403 `work_email_code_required`;
+   the demo referrer's withdrawal of the seeker's request answers 404. Referrer document reads answer 404
+   before acceptance and after step-back (ids from the demo accounts only). These are the existing middleware
+   and privacy contracts, not a weaker privacy requirement or a new policy.
 7. The withdrawal or decline path the money rules define, then read the wallet again and assert the ledger
    matches D-034 (charge at first visibility), D-147 (an employee decline keeps it spent) and the
    withdrawal-before-pickup return; record the keyed ledger rows.
@@ -77,9 +79,10 @@ for completed acceptance. The normally claimed builder finishes these existing D
    the steps. Preserve the privacy and cross-user denials. Check each response status before taking its ids;
    do not infer success from an HTTP 200 alone or replace runtime responses with fixture values.
 3. Assert first-visibility spend, pre-pickup return and the retained charge on an employee decline through the
-   keyed rows. D-393's unlimited sandbox may top up its free allowance, so explain any such grant from the
-   ledger instead of assuming the aggregate wallet must decrease by exactly one. Never spend a purchased
-   referral, buy allowance or alter real-account rules to make the run pass.
+   keyed rows: `<requestId>#1` for the one cycle debit and `<requestId>#refund#1` for its withdrawal refund.
+   D-393's sandbox raises its free balance to three before each covered send without writing a grant row;
+   an aggregate before/after delta cannot prove these transitions. Never spend a purchased referral, buy
+   allowance or alter real-account rules to make the run pass.
 4. Withdraw or close only the requests the run created, including on a failed intermediate step; report any
    cleanup failure. Preserve the manual-only trigger, shared concurrency group, redaction and two demo accounts.
 5. After protected landing and exact-release checks, dispatch `live-qa.yml` with `mode=journeys`. Record the
@@ -93,7 +96,15 @@ payment, public post, price or login change.
 
 ## Status
 
-- OPS-live-qa-journeys: in progress — Claude Code · 43c8 — 2026-11-25 — branch agent/queue/ops-live-qa-journeys-sandbox
+- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 2431 — 2026-11-25 — takeover on `agent/queue/ops-live-qa-journeys-sandbox`; implementation and dispatched live acceptance remain **UNVERIFIED** until their evidence is recorded. After the script merge, the existing row stays `todo` on `agent/queue/ops-live-qa-journeys-acceptance-2431` under D-373 (6), so that merge cannot prematurely release `LAUNCH-live-qa`.
+
+### Current execution receipt (November 25, 2026)
+
+- Read main `f7020bb3789e562f3e7b970da6d45469fc9fbc18`; official takeover `7cd23a49d`, integrated and pushed as `37cb59172`. Checked `BRIEF`, `AGENTS`, decisions through D-405 (including D-389/D-390/D-393 and D-398–D-403), `BUILD_CONTINUITY`, `COLLABORATION`, build plan §§3–6, `BUGFREE_GATE`, `DELEGATION` and `PAYMENTS_TEST_RUNBOOK`.
+- Prior PR #1558 (`f25eb09c7`) is preserved. The outstanding goal is reliable demo-only proof of seeker/referrer privacy and transitions, supporting L4 without public QA posts. Initial regressions: `liveQaJourneys.test.ts`, 19 passed / 2 failed, proving public opportunity calls and missing withdrawal after a preview-privacy failure.
+- The target directory read returned Wipro with `domains: ["wipro.com"]` on November 25. The URL `https://careers.wipro.com/job/product-designer-123` is a repository routing fixture (`server/planGateRoutes.test.ts:40`), not evidence of a current vacancy; the runner validates the directory entry before creating anything.
+- Contract checks follow current endpoints: claim stays pending with locked files; approval opens access; accepted step-back revokes access and ends the latest pickup. Decline returns `passed` and keeps the debit spent. Cleanup releases a pending claim through decline before withdrawal; step-back alone does not release it.
+- Targets: `scripts/live-qa-journeys.mjs`, `scripts/liveQaJourneys.test.ts`, `scripts/liveQaJourneyContracts.mjs`, `scripts/liveQaJourneyContracts.test.ts`, `scripts/liveQaJourneyBrowser.mjs`, `scripts/liveQaJourneyHarness.ts`, this packet and its existing registry row. No dependency, environment, schema, production setting, price or login-rule change. Live acceptance requires a successful manual journeys run, its release SHAs, sanitized results, cleanup and inspected captures at 1280/390.
 
 ### Historical build notes (DeepSeek V4.1 Flash · e9e1, 2026-11-24; routing superseded by D-393)
 
