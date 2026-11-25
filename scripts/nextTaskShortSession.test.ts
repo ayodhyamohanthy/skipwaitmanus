@@ -10,7 +10,7 @@ import { argsOf } from "./next-task.mjs";
 import {
   RESUME_QUIET_MS, chooseSessionName, modelOfSession, parseSessionRecords, recordSession, resumeDecision,
 } from "./nextTaskCore.mjs";
-import { renderSessionChoice } from "./nextTaskText.mjs";
+import { renderResumeCommand, renderSessionChoice } from "./nextTaskText.mjs";
 
 const NOW = Date.parse("2026-11-25T12:00:00Z");
 const MIN = 60_000;
@@ -108,11 +108,10 @@ describe("session record file contract", () => {
   it("the printed lines name the resume command and the reason for resuming", () => {
     const resumed = renderSessionChoice({ name: OLD, resumed: true, task: "B", quietMin: 25 }, "Claude Code");
     expect(resumed).toContain(`Resuming as "${OLD}": B was quiet for 25 min (your client likely ended the conversation). Pass --new-session to start a separate session instead.`);
-    expect(resumed).toContain(`If your client ends this conversation, start the next one with: node scripts/next-task.mjs --claim "${OLD}"`);
-    const minted = renderSessionChoice({ name: "Claude Code · n3w0", resumed: false }, "Claude Code");
-    expect(minted).toContain('Your session name is "Claude Code · n3w0"');
-    expect(minted).toContain('start the next one with: node scripts/next-task.mjs --claim "Claude Code · n3w0"');
-    expect(renderSessionChoice({ name: OLD, resumed: false }, OLD)).not.toContain("Your session name is");
+    expect(renderSessionChoice({ name: "Claude Code · n3w0", resumed: false }, "Claude Code")).toContain('Your session name is "Claude Code · n3w0"');
+    // A name given with its tag prints nothing before the board, as before.
+    expect(renderSessionChoice({ name: OLD, resumed: false }, OLD)).toBe("");
+    expect(renderResumeCommand(OLD)).toBe(`If your client ends this conversation, start the next one with: node scripts/next-task.mjs --claim "${OLD}"`);
   });
 });
 
@@ -164,7 +163,10 @@ globalThis.fetch = async input => {
     }).trim();
     git("push", "-q", "origin", `${sha}:refs/heads/agent/queue/a`);
   };
-  const remember = (name: string) => writeFileSync(recordFile, JSON.stringify(record(name)));
+  // The CLI runs on the real clock, so the record is written 30 real minutes ago.
+  const remember = (name: string) => writeFileSync(recordFile, JSON.stringify({
+    "Claude Code": { model: "Claude Code", name, at: new Date(Date.now() - 30 * MIN).toISOString() },
+  }));
   const run = (...args: string[]) => spawnSync(process.execPath, ["--import", mock, CLI, "--claim", ...args], {
     cwd: work, encoding: "utf8", env: { ...process.env, NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only" },
   });
