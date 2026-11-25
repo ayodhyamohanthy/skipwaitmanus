@@ -463,7 +463,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
 - GROUP-checkout: todo — §6.5; disabled.
 - GROUP-payments: todo — §6.5.
-- GROUP-claim: todo — §6.6.
+- GROUP-claim: in progress — Qoder · d3c4 — 2026-11-25 — branch agent/queue/group-claim. AHEAD build (D-315): GROUP-payments is not done, so this stays a draft and never lands until it is. Claim contract and routes built against an injected store: exact verified alias plus canonical person, payment alone binds nothing, token is a locator never authority, GET resolves without consuming, POST binds once and consumes. 20/20 red-first tests.
 - GROUP-grants: todo — §6.6.
 - GROUP-notifications: todo — §6.7; no real recipients.
 - GROUP-recovery: todo — §6.7.
