@@ -1,0 +1,1513 @@
+{
+  "baseline": "09626b57ac8eafe2f30c76b15c1f13b9f5d4bc3a",
+  "candidateRuntimeSha256": {
+    "client/src/pages/Landed.tsx": "d86b48a017ea1e9dfa778fb2b823741a2b6740cfe26c58c1696c683f8f4d7e33",
+    "client/src/pages/SuggestCompany.tsx": "a965701e2b110c9582f60b9eae9b1e210e6e988182da3832485bc0e81b748c88",
+    "client/src/pages/ShareHub.tsx": "d64f67a1361e036de7580db8f045df73634f978926d2286651baabbdd9b55dba"
+  },
+  "synthetic": true,
+  "surfaceOverrides": false,
+  "productionBundles": true,
+  "browser": "Clean Chromium; fixed clock, UTC, light, no service worker",
+  "limits": "Local synthetic API fixtures only; no real authentication, production business state, payment, email or external share operation.",
+  "results": [
+    {
+      "phase": "before",
+      "name": "landed-guest-1280.png",
+      "route": "landed",
+      "state": "guest",
+      "width": 1280,
+      "height": 900,
+      "sha256": "784240230ed365c02c9f93ad0eafa493f44fc3010a6def6e85d8e971ede7dbb8",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-guest-390.png",
+      "route": "landed",
+      "state": "guest",
+      "width": 390,
+      "height": 844,
+      "sha256": "6ea997c7dc09959ea663fe19f1c84571cf4e7a5ac0abca44f1469ac9e231e763",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-empty-1280.png",
+      "route": "landed",
+      "state": "empty",
+      "width": 1280,
+      "height": 900,
+      "sha256": "8e01d29c548b7d815450d87473b1c84fbf26f04cfda3b86847529c5143e85a8e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-empty-390.png",
+      "route": "landed",
+      "state": "empty",
+      "width": 390,
+      "height": 844,
+      "sha256": "e932c4f10b5c91bffd1f0895c34caf3ffec3e7f4d37b7b5586917d6d457189cf",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-hire-1280.png",
+      "route": "landed",
+      "state": "hire",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a45cbe5f7dc56f17b91ca97ca5200f14fa3134fbb65fd11e6aa8fe7a085e58b3",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-hire-390.png",
+      "route": "landed",
+      "state": "hire",
+      "width": 390,
+      "height": 844,
+      "sha256": "feb88febfa4473fec9ac2d52eea0bfbbbf7e5e98018bcd594c90202e918c5b81",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-thank-1280.png",
+      "route": "landed",
+      "state": "thank",
+      "width": 1280,
+      "height": 900,
+      "sha256": "c3c5079339dcae52d0fb652cf86be596aec891c897ac84958a413708c1d55f77",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-thank-390.png",
+      "route": "landed",
+      "state": "thank",
+      "width": 390,
+      "height": 844,
+      "sha256": "f8a3422644cd2d2846d195040152110db611f7a8e6deb3d90b6ad43d9c3fe4a3",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-forward-1280.png",
+      "route": "landed",
+      "state": "forward",
+      "width": 1280,
+      "height": 900,
+      "sha256": "5668fca63a0407c8c6adc9473ff6f7cdb265c95b2e34b8f1bd0c294e0b040b45",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-forward-390.png",
+      "route": "landed",
+      "state": "forward",
+      "width": 390,
+      "height": 844,
+      "sha256": "7f7af73dc414b625c0d79aa893023fc205d43424132c5651b01b59e5a918e774",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-done-1280.png",
+      "route": "landed",
+      "state": "done",
+      "width": 1280,
+      "height": 900,
+      "sha256": "b0241a0c1d170244defa0b274a51d4839e85f0c8fa48105027dbc8c2c1cd47d6",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/landed/journey"
+      ],
+      "mutations": [
+        {
+          "path": "/api/landed/journey",
+          "body": {
+            "referralRequestId": 12,
+            "payForward": "later"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-done-390.png",
+      "route": "landed",
+      "state": "done",
+      "width": 390,
+      "height": 844,
+      "sha256": "58e507c7f9439d978bcf2a68380fd28d0da30ba4abc8ca9d9030d937e383e888",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/landed/journey"
+      ],
+      "mutations": [
+        {
+          "path": "/api/landed/journey",
+          "body": {
+            "referralRequestId": 12,
+            "payForward": "later"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-error-1280.png",
+      "route": "landed",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "sha256": "7dc3f248103cee1b656ba9f3e45a96587534b82640639f09b91b5849d997022a",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "landed-error-390.png",
+      "route": "landed",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "sha256": "34e6c875ee8ed2125d5f77febd6725a9e4cf46615d2a0a8308001c2444e622e8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-guest-1280.png",
+      "route": "suggest-company",
+      "state": "guest",
+      "width": 1280,
+      "height": 900,
+      "sha256": "4f6f177ea2d91df191da28fbfcc258319735215808689e3e8352d17408a59c10",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-guest-390.png",
+      "route": "suggest-company",
+      "state": "guest",
+      "width": 390,
+      "height": 844,
+      "sha256": "5e70ea87d8d6fa173513c9a99c06df4a9b6834bffca46ad29934402caa03807d",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-form-1280.png",
+      "route": "suggest-company",
+      "state": "form",
+      "width": 1280,
+      "height": 900,
+      "sha256": "3db16b50aaf7eb740d08f192b9242cb1491b1e0aed5b503f3a1fd5c3268b4b5b",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-form-390.png",
+      "route": "suggest-company",
+      "state": "form",
+      "width": 390,
+      "height": 844,
+      "sha256": "e2ccd51bdb64265370b223c305700a60e4bf5c8985b67df9ec251f90640dc6c1",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-done-1280.png",
+      "route": "suggest-company",
+      "state": "done",
+      "width": 1280,
+      "height": 900,
+      "sha256": "bdcfc03ce6f3077ed3d3394d26a85eb3bd40aebef8bb3bd7eb4c1e58b277311e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-done-390.png",
+      "route": "suggest-company",
+      "state": "done",
+      "width": 390,
+      "height": 844,
+      "sha256": "4fb894ef30d16d36bfa8a18fae34c7fca838617576b597a738eaf59e89a250d7",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-error-1280.png",
+      "route": "suggest-company",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "sha256": "98f4db595ecaceaca3c49d7ac860d50eaa5e6fe29965b782c2dfdf6a986eb545",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "suggest-company-error-390.png",
+      "route": "suggest-company",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "sha256": "bff5d65874d3fa308df1426e2667038f4fd09e15541bbf8866d0b2e20b44590d",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-guest-1280.png",
+      "route": "share",
+      "state": "guest",
+      "width": 1280,
+      "height": 900,
+      "sha256": "49716928583e66806d119703cd6b314a169e688363807a7f03123b5c24c64431",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-guest-390.png",
+      "route": "share",
+      "state": "guest",
+      "width": 390,
+      "height": 844,
+      "sha256": "5d980e75606f4eab88ecd6144e9f6e01a314393c7628f13116396ac4e3e88383",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-ready-1280.png",
+      "route": "share",
+      "state": "ready",
+      "width": 1280,
+      "height": 900,
+      "sha256": "46ff0941abe2ca0ec6ccdfa942115113c9f534cda7137d9a6da5bb329ed520db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-ready-390.png",
+      "route": "share",
+      "state": "ready",
+      "width": 390,
+      "height": 844,
+      "sha256": "989d69a73bd929716105a79328187509f64ee76cdd3ae5a9aff0e8466b92be82",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-locked-1280.png",
+      "route": "share",
+      "state": "locked",
+      "width": 1280,
+      "height": 900,
+      "sha256": "7c2278980a4871ac7b5d7d6a0943b65ee520cddffb0490779f9120db6acaf8db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-locked-390.png",
+      "route": "share",
+      "state": "locked",
+      "width": 390,
+      "height": 844,
+      "sha256": "4d23a7e2f6a3a3b611ac905ccd6a90c0565afba9339eea6bee5865324a79f268",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-error-1280.png",
+      "route": "share",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "sha256": "e609de1772c0bc348db1b1aaceec039f56aab5ea598fd2bf72b995f9d4ad400c",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "share-error-390.png",
+      "route": "share",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "sha256": "bc0de1a027d4c8784776d3a9e139b536782d08c00fae3a9c5cbf0c2eb5dcf0c0",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-guest-1280.png",
+      "route": "landed",
+      "state": "guest",
+      "width": 1280,
+      "height": 900,
+      "sha256": "784240230ed365c02c9f93ad0eafa493f44fc3010a6def6e85d8e971ede7dbb8",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-guest-390.png",
+      "route": "landed",
+      "state": "guest",
+      "width": 390,
+      "height": 844,
+      "sha256": "6ea997c7dc09959ea663fe19f1c84571cf4e7a5ac0abca44f1469ac9e231e763",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-empty-1280.png",
+      "route": "landed",
+      "state": "empty",
+      "width": 1280,
+      "height": 900,
+      "sha256": "8e01d29c548b7d815450d87473b1c84fbf26f04cfda3b86847529c5143e85a8e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-empty-390.png",
+      "route": "landed",
+      "state": "empty",
+      "width": 390,
+      "height": 844,
+      "sha256": "e932c4f10b5c91bffd1f0895c34caf3ffec3e7f4d37b7b5586917d6d457189cf",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-hire-1280.png",
+      "route": "landed",
+      "state": "hire",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a45cbe5f7dc56f17b91ca97ca5200f14fa3134fbb65fd11e6aa8fe7a085e58b3",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-hire-390.png",
+      "route": "landed",
+      "state": "hire",
+      "width": 390,
+      "height": 844,
+      "sha256": "feb88febfa4473fec9ac2d52eea0bfbbbf7e5e98018bcd594c90202e918c5b81",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-thank-1280.png",
+      "route": "landed",
+      "state": "thank",
+      "width": 1280,
+      "height": 900,
+      "sha256": "c3c5079339dcae52d0fb652cf86be596aec891c897ac84958a413708c1d55f77",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-thank-390.png",
+      "route": "landed",
+      "state": "thank",
+      "width": 390,
+      "height": 844,
+      "sha256": "f8a3422644cd2d2846d195040152110db611f7a8e6deb3d90b6ad43d9c3fe4a3",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-forward-1280.png",
+      "route": "landed",
+      "state": "forward",
+      "width": 1280,
+      "height": 900,
+      "sha256": "5668fca63a0407c8c6adc9473ff6f7cdb265c95b2e34b8f1bd0c294e0b040b45",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-forward-390.png",
+      "route": "landed",
+      "state": "forward",
+      "width": 390,
+      "height": 844,
+      "sha256": "7f7af73dc414b625c0d79aa893023fc205d43424132c5651b01b59e5a918e774",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-done-1280.png",
+      "route": "landed",
+      "state": "done",
+      "width": 1280,
+      "height": 900,
+      "sha256": "7a2d5f96e260ec0312c6ba066efeaa831bf4c7324f8d2ccc4a3623c534475a28",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/landed/journey"
+      ],
+      "mutations": [
+        {
+          "path": "/api/landed/journey",
+          "body": {
+            "referralRequestId": 12,
+            "payForward": "later"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-done-390.png",
+      "route": "landed",
+      "state": "done",
+      "width": 390,
+      "height": 844,
+      "sha256": "58e507c7f9439d978bcf2a68380fd28d0da30ba4abc8ca9d9030d937e383e888",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/landed/journey"
+      ],
+      "mutations": [
+        {
+          "path": "/api/landed/journey",
+          "body": {
+            "referralRequestId": 12,
+            "payForward": "later"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-error-1280.png",
+      "route": "landed",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "sha256": "c0b5a75e367d95b691bad1fd5c1b9c26ecf73d3fdb1b8be2df7db436880bb7ba",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "landed-error-390.png",
+      "route": "landed",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "sha256": "34e6c875ee8ed2125d5f77febd6725a9e4cf46615d2a0a8308001c2444e622e8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/company-referrals/mine",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-guest-1280.png",
+      "route": "suggest-company",
+      "state": "guest",
+      "width": 1280,
+      "height": 900,
+      "sha256": "4f6f177ea2d91df191da28fbfcc258319735215808689e3e8352d17408a59c10",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-guest-390.png",
+      "route": "suggest-company",
+      "state": "guest",
+      "width": 390,
+      "height": 844,
+      "sha256": "5e70ea87d8d6fa173513c9a99c06df4a9b6834bffca46ad29934402caa03807d",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-form-1280.png",
+      "route": "suggest-company",
+      "state": "form",
+      "width": 1280,
+      "height": 900,
+      "sha256": "3db16b50aaf7eb740d08f192b9242cb1491b1e0aed5b503f3a1fd5c3268b4b5b",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-form-390.png",
+      "route": "suggest-company",
+      "state": "form",
+      "width": 390,
+      "height": 844,
+      "sha256": "e2ccd51bdb64265370b223c305700a60e4bf5c8985b67df9ec251f90640dc6c1",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-done-1280.png",
+      "route": "suggest-company",
+      "state": "done",
+      "width": 1280,
+      "height": 900,
+      "sha256": "bdcfc03ce6f3077ed3d3394d26a85eb3bd40aebef8bb3bd7eb4c1e58b277311e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-done-390.png",
+      "route": "suggest-company",
+      "state": "done",
+      "width": 390,
+      "height": 844,
+      "sha256": "4fb894ef30d16d36bfa8a18fae34c7fca838617576b597a738eaf59e89a250d7",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-error-1280.png",
+      "route": "suggest-company",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "sha256": "9a6225139ea78b6b843492cde32ef4feee4f524dd3a2b2c0dc5ef204e9d73815",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "suggest-company-error-390.png",
+      "route": "suggest-company",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "sha256": "bff5d65874d3fa308df1426e2667038f4fd09e15541bbf8866d0b2e20b44590d",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "path": "/api/company-suggestions",
+          "body": {
+            "companyName": "Synthetic Employer",
+            "website": "https://fictional.invalid",
+            "role": "seeker"
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-guest-1280.png",
+      "route": "share",
+      "state": "guest",
+      "width": 1280,
+      "height": 900,
+      "sha256": "49716928583e66806d119703cd6b314a169e688363807a7f03123b5c24c64431",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-guest-390.png",
+      "route": "share",
+      "state": "guest",
+      "width": 390,
+      "height": 844,
+      "sha256": "5d980e75606f4eab88ecd6144e9f6e01a314393c7628f13116396ac4e3e88383",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-ready-1280.png",
+      "route": "share",
+      "state": "ready",
+      "width": 1280,
+      "height": 900,
+      "sha256": "46ff0941abe2ca0ec6ccdfa942115113c9f534cda7137d9a6da5bb329ed520db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-ready-390.png",
+      "route": "share",
+      "state": "ready",
+      "width": 390,
+      "height": 844,
+      "sha256": "989d69a73bd929716105a79328187509f64ee76cdd3ae5a9aff0e8466b92be82",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-locked-1280.png",
+      "route": "share",
+      "state": "locked",
+      "width": 1280,
+      "height": 900,
+      "sha256": "7c2278980a4871ac7b5d7d6a0943b65ee520cddffb0490779f9120db6acaf8db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-locked-390.png",
+      "route": "share",
+      "state": "locked",
+      "width": 390,
+      "height": 844,
+      "sha256": "4d23a7e2f6a3a3b611ac905ccd6a90c0565afba9339eea6bee5865324a79f268",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-error-1280.png",
+      "route": "share",
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "sha256": "e609de1772c0bc348db1b1aaceec039f56aab5ea598fd2bf72b995f9d4ad400c",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "share-error-390.png",
+      "route": "share",
+      "state": "error",
+      "width": 390,
+      "height": 844,
+      "sha256": "bc0de1a027d4c8784776d3a9e139b536782d08c00fae3a9c5cbf0c2eb5dcf0c0",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    }
+  ],
+  "comparisons": [
+    {
+      "name": "landed-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "784240230ed365c02c9f93ad0eafa493f44fc3010a6def6e85d8e971ede7dbb8",
+      "afterSha256": "784240230ed365c02c9f93ad0eafa493f44fc3010a6def6e85d8e971ede7dbb8",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "6ea997c7dc09959ea663fe19f1c84571cf4e7a5ac0abca44f1469ac9e231e763",
+      "afterSha256": "6ea997c7dc09959ea663fe19f1c84571cf4e7a5ac0abca44f1469ac9e231e763",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-empty-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "8e01d29c548b7d815450d87473b1c84fbf26f04cfda3b86847529c5143e85a8e",
+      "afterSha256": "8e01d29c548b7d815450d87473b1c84fbf26f04cfda3b86847529c5143e85a8e",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-empty-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "e932c4f10b5c91bffd1f0895c34caf3ffec3e7f4d37b7b5586917d6d457189cf",
+      "afterSha256": "e932c4f10b5c91bffd1f0895c34caf3ffec3e7f4d37b7b5586917d6d457189cf",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-hire-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "a45cbe5f7dc56f17b91ca97ca5200f14fa3134fbb65fd11e6aa8fe7a085e58b3",
+      "afterSha256": "a45cbe5f7dc56f17b91ca97ca5200f14fa3134fbb65fd11e6aa8fe7a085e58b3",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-hire-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "feb88febfa4473fec9ac2d52eea0bfbbbf7e5e98018bcd594c90202e918c5b81",
+      "afterSha256": "feb88febfa4473fec9ac2d52eea0bfbbbf7e5e98018bcd594c90202e918c5b81",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-thank-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "c3c5079339dcae52d0fb652cf86be596aec891c897ac84958a413708c1d55f77",
+      "afterSha256": "c3c5079339dcae52d0fb652cf86be596aec891c897ac84958a413708c1d55f77",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-thank-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "f8a3422644cd2d2846d195040152110db611f7a8e6deb3d90b6ad43d9c3fe4a3",
+      "afterSha256": "f8a3422644cd2d2846d195040152110db611f7a8e6deb3d90b6ad43d9c3fe4a3",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-forward-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "5668fca63a0407c8c6adc9473ff6f7cdb265c95b2e34b8f1bd0c294e0b040b45",
+      "afterSha256": "5668fca63a0407c8c6adc9473ff6f7cdb265c95b2e34b8f1bd0c294e0b040b45",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-forward-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "7f7af73dc414b625c0d79aa893023fc205d43424132c5651b01b59e5a918e774",
+      "afterSha256": "7f7af73dc414b625c0d79aa893023fc205d43424132c5651b01b59e5a918e774",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-done-1280.png",
+      "differentPixels": 6,
+      "beforeSha256": "b0241a0c1d170244defa0b274a51d4839e85f0c8fa48105027dbc8c2c1cd47d6",
+      "afterSha256": "7a2d5f96e260ec0312c6ba066efeaa831bf4c7324f8d2ccc4a3623c534475a28",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-done-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "58e507c7f9439d978bcf2a68380fd28d0da30ba4abc8ca9d9030d937e383e888",
+      "afterSha256": "58e507c7f9439d978bcf2a68380fd28d0da30ba4abc8ca9d9030d937e383e888",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-error-1280.png",
+      "differentPixels": 6,
+      "beforeSha256": "7dc3f248103cee1b656ba9f3e45a96587534b82640639f09b91b5849d997022a",
+      "afterSha256": "c0b5a75e367d95b691bad1fd5c1b9c26ecf73d3fdb1b8be2df7db436880bb7ba",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "landed-error-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "34e6c875ee8ed2125d5f77febd6725a9e4cf46615d2a0a8308001c2444e622e8",
+      "afterSha256": "34e6c875ee8ed2125d5f77febd6725a9e4cf46615d2a0a8308001c2444e622e8",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "4f6f177ea2d91df191da28fbfcc258319735215808689e3e8352d17408a59c10",
+      "afterSha256": "4f6f177ea2d91df191da28fbfcc258319735215808689e3e8352d17408a59c10",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "5e70ea87d8d6fa173513c9a99c06df4a9b6834bffca46ad29934402caa03807d",
+      "afterSha256": "5e70ea87d8d6fa173513c9a99c06df4a9b6834bffca46ad29934402caa03807d",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-form-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "3db16b50aaf7eb740d08f192b9242cb1491b1e0aed5b503f3a1fd5c3268b4b5b",
+      "afterSha256": "3db16b50aaf7eb740d08f192b9242cb1491b1e0aed5b503f3a1fd5c3268b4b5b",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-form-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "e2ccd51bdb64265370b223c305700a60e4bf5c8985b67df9ec251f90640dc6c1",
+      "afterSha256": "e2ccd51bdb64265370b223c305700a60e4bf5c8985b67df9ec251f90640dc6c1",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-done-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "bdcfc03ce6f3077ed3d3394d26a85eb3bd40aebef8bb3bd7eb4c1e58b277311e",
+      "afterSha256": "bdcfc03ce6f3077ed3d3394d26a85eb3bd40aebef8bb3bd7eb4c1e58b277311e",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-done-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "4fb894ef30d16d36bfa8a18fae34c7fca838617576b597a738eaf59e89a250d7",
+      "afterSha256": "4fb894ef30d16d36bfa8a18fae34c7fca838617576b597a738eaf59e89a250d7",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-error-1280.png",
+      "differentPixels": 6,
+      "beforeSha256": "98f4db595ecaceaca3c49d7ac860d50eaa5e6fe29965b782c2dfdf6a986eb545",
+      "afterSha256": "9a6225139ea78b6b843492cde32ef4feee4f524dd3a2b2c0dc5ef204e9d73815",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "suggest-company-error-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "bff5d65874d3fa308df1426e2667038f4fd09e15541bbf8866d0b2e20b44590d",
+      "afterSha256": "bff5d65874d3fa308df1426e2667038f4fd09e15541bbf8866d0b2e20b44590d",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "49716928583e66806d119703cd6b314a169e688363807a7f03123b5c24c64431",
+      "afterSha256": "49716928583e66806d119703cd6b314a169e688363807a7f03123b5c24c64431",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "5d980e75606f4eab88ecd6144e9f6e01a314393c7628f13116396ac4e3e88383",
+      "afterSha256": "5d980e75606f4eab88ecd6144e9f6e01a314393c7628f13116396ac4e3e88383",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-ready-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "46ff0941abe2ca0ec6ccdfa942115113c9f534cda7137d9a6da5bb329ed520db",
+      "afterSha256": "46ff0941abe2ca0ec6ccdfa942115113c9f534cda7137d9a6da5bb329ed520db",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-ready-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "989d69a73bd929716105a79328187509f64ee76cdd3ae5a9aff0e8466b92be82",
+      "afterSha256": "989d69a73bd929716105a79328187509f64ee76cdd3ae5a9aff0e8466b92be82",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-locked-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "7c2278980a4871ac7b5d7d6a0943b65ee520cddffb0490779f9120db6acaf8db",
+      "afterSha256": "7c2278980a4871ac7b5d7d6a0943b65ee520cddffb0490779f9120db6acaf8db",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-locked-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "4d23a7e2f6a3a3b611ac905ccd6a90c0565afba9339eea6bee5865324a79f268",
+      "afterSha256": "4d23a7e2f6a3a3b611ac905ccd6a90c0565afba9339eea6bee5865324a79f268",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-error-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "e609de1772c0bc348db1b1aaceec039f56aab5ea598fd2bf72b995f9d4ad400c",
+      "afterSha256": "e609de1772c0bc348db1b1aaceec039f56aab5ea598fd2bf72b995f9d4ad400c",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "share-error-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "bc0de1a027d4c8784776d3a9e139b536782d08c00fae3a9c5cbf0c2eb5dcf0c0",
+      "afterSha256": "bc0de1a027d4c8784776d3a9e139b536782d08c00fae3a9c5cbf0c2eb5dcf0c0",
+      "sameRequests": true,
+      "sameMutations": true
+    }
+  ]
+}

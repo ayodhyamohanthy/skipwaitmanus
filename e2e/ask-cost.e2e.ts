@@ -9,7 +9,7 @@ test("the cost is shown before every request", async ({ context, page }) => {
   await page.goto("/ask");
   await writeAsk(page);
 
-  const send = page.getByRole("button", { name: "Send ask" });
+  const send = page.getByRole("button", { name: "Send referral request" });
   await expect(send).toBeVisible();
   await expect(costLine(page)).toBeVisible();
   expect(await quotedCost(page)).toBeGreaterThan(0);

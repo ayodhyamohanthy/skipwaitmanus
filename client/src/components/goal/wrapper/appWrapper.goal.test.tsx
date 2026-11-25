@@ -35,6 +35,11 @@ describe("route to goal surface lookup", () => {
     expect(goalSurfaceForPath("/thread/42")).toBe("conversation");
     expect(goalSurfaceForPath("/not-a-route")).toBeNull();
   });
+  it("puts the goal review queue on the admin surface that renders it, and keeps approvals on admin-approvals (D-048-p3-admin, D-284)", () => {
+    expect(goalSurfaceForPath("/admin-review")).toBe("admin");
+    expect(goalSurfaceForPath("/admin/approvals")).toBe("admin-approvals");
+    expect(goalSurfaceForPath("/admin/approvals/company/7")).toBe("admin-approvals");
+  });
   it("is on only where that surface is on", () => {
     expect(goalWrapperOnPath("/")).toBe(true);
     expect(goalWrapperOnPath("/wall")).toBe(true);

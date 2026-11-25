@@ -1,0 +1,63 @@
+{
+  "phase": "after",
+  "capturedAt": "2026-11-19T12:56:26.669Z",
+  "canonical": "https://skipwait.me",
+  "signedOut": true,
+  "businessWrites": 0,
+  "expectedWeb": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+  "api": {
+    "status": 200,
+    "commitSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4",
+    "state": "ready"
+  },
+  "results": [
+    {
+      "route": "/referrer",
+      "width": 1280,
+      "status": 200,
+      "webSha": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+      "screen": "referrer-sign-in",
+      "file": "referrer-signed-out-1280.png",
+      "pageErrors": [],
+      "privateReads": [],
+      "interceptedPosts": 4,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "route": "/referrer",
+      "width": 390,
+      "status": 200,
+      "webSha": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+      "screen": "referrer-sign-in",
+      "file": "referrer-signed-out-390.png",
+      "pageErrors": [],
+      "privateReads": [],
+      "interceptedPosts": 4,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "route": "/referrer/impact",
+      "width": 1280,
+      "status": 200,
+      "webSha": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+      "screen": "referrer-impact-sign-in",
+      "file": "impact-signed-out-1280.png",
+      "pageErrors": [],
+      "privateReads": [],
+      "interceptedPosts": 4,
+      "horizontalOverflowPx": 0
+    },
+    {
+      "route": "/referrer/impact",
+      "width": 390,
+      "status": 200,
+      "webSha": "6f1c3f6f4d296121c5db123f155098b4c24b7682",
+      "screen": "referrer-impact-sign-in",
+      "file": "impact-signed-out-390.png",
+      "pageErrors": [],
+      "privateReads": [],
+      "interceptedPosts": 4,
+      "horizontalOverflowPx": 0
+    }
+  ]
+}

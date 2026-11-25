@@ -1,5 +1,5 @@
 // Goal /developer-console (D-048-p3-dev; packet docs/plans/D-048-admin.md).
-// Same calls as the kit console: GET/POST /api/developer-apps,
+// Developer app calls: GET/POST /api/developer-apps,
 // PUT /api/developer-apps/:id/webhook, POST /api/developer-apps/:id/submit;
 // the view stays in the URL (components/developers/consoleRoute, read-only).
 // No-secret rule (Tier 1): an app is rendered only through the fields named
@@ -18,7 +18,7 @@ import { ALL_SCOPES, DEFAULT_SCOPES, KINDS, KIND_SHORT, STATUS_META, appSubtitle
 import { consoleHref, readConsoleView, type ConsoleView } from "@/components/developers/consoleRoute";
 
 export const GOAL_PAGE = { goalLine: "Register your app." } as const;
-/** The register body, the same shape the kit form posts (components/developers/RegisterAppForm, which imports the kit and so is not imported here). */
+/** Registration payload accepted by the developer-app endpoint. */
 type RegisterAppInput = { name: string; kind: AppKind; description: string; website?: string; redirectUrls: string[]; scopes: string[]; agreeToTerms: boolean };
 const LOAD_ERROR = "We could not load your apps";
 const NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
@@ -79,7 +79,6 @@ function RegisterForm({ initial, working, error, onCancel, onSubmit }: { initial
   const [redirectUrls, setRedirectUrls] = useState(initial?.redirectUrls.join(", ") ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [scopes, setScopes] = useState<string[]>(initial ? [...initial.scopes] : [...DEFAULT_SCOPES]);
-  // Kit parity: the terms box starts ticked (components/developers/RegisterAppForm).
   const [agreed, setAgreed] = useState(true);
   const [missing, setMissing] = useState("");
   const toggleScope = (key: string) => setScopes(current => (current.includes(key) ? current.filter(item => item !== key) : [...current, key]));
@@ -217,7 +216,7 @@ export default function GoalDeveloperConsole() {
   const [actionError, setActionError] = useState("");
   const [working, setWorking] = useState(false);
 
-  // An action error belongs to the screen it happened on (kit behaviour).
+  // An action error belongs to the screen it happened on.
   useEffect(() => { setActionError(""); }, [search]);
 
   const authedFetch = useCallback(async (path: string, init?: RequestInit) => {

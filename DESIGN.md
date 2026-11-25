@@ -98,7 +98,7 @@ Availability is internal routing only (D-176), not a visible directory status, l
 Import only from `@/components/goal`. Screens add layout utilities, never new colours, radii, type or shadows.
 - `GoalShell` — rail, top bar, phone bottom bar, one navigation from `goalNavFor(verifiedReferrer)`, "Give a referral" for non-referrers, credits pill (seeker pages only).
 - `GoalButton` — `primary` (one per screen), `ghost`, `outline`; 40/36/32px, 44 or 48px on phones; keycap hints on desktop; `busy` with an honest busy label; `aria-disabled`, never faded.
-- `GoalSearchInput`, `GoalField` — 44/48px search with a leading lucide `search`; labelled inputs with help, pass hint (ink + `check`) and error (crimson, seeker side only).
+- `GoalSearchInput`, `GoalField` — 44/48px search with a leading lucide `search`; labelled inputs with help, pass hint (ink + `check`) and error (crimson, seeker side only). `GoalFieldError` is that same crimson error line for a form-level error beside its action (the ask composer's Send); `goalErrorToast` (`wrapper/goalToaster.ts`) raises the matching error toast with a crimson icon, one id per source. `GoalButton`'s optional `onBlockedClick` reports a press its `disabledReason` swallowed, so the screen can show why.
 - `GoalFilterChip` — `aria-pressed`, tint when selected, never black.
 - `GoalListRow`, `GoalListSection` — selectable rows (company, queue, ask), `#f4f4f5` selected tile with the ink stripe, instant.
 - `GoalDetailPane`, `GoalLockedPanel` — opened item with eyebrow, ref, title, meta, sections and a bottom dock; the locked panel shows a document count only.

@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
-// D-048-p3-settings: the goal rebuild of /settings. Section order, every
-// privacy control and every destructive confirm stay exactly as the kit page
-// has them (packet docs/plans/D-048-account.md). The kit page stays byte
-// identical and is rendered here with the surface flag off to prove the switch.
+// D-048-K-settings: the released goal settings is the only route body.
+// Section order, privacy controls and destructive confirmations stay intact.
 import React from "react";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,14 +8,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Settings from "./Settings";
+import routeSource from "./Settings.tsx?raw";
 import { GOAL_PAGE } from "./goal/settings/GoalSettings";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { setDisplayPrefs } from "@/lib/displayPrefs";
 import { browserPaymentRoute } from "@/lib/paymentRoute";
 
-const { authState, surfaces, consent } = vi.hoisted(() => ({
+const { authState, consent } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") },
-  surfaces: { on: new Set<string>() },
   consent: { state: { data: undefined as unknown, isLoading: false } as Record<string, unknown>, grant: vi.fn(), revoke: vi.fn() },
 }));
 
@@ -26,7 +24,6 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     talentConsent: {
@@ -98,7 +95,6 @@ const nextStep = (container: HTMLElement) => container.querySelector("section[ar
 beforeEach(() => {
   authState.isLoaded = true;
   authState.isSignedIn = true;
-  surfaces.on = new Set(["settings"]);
   consent.state = { data: { active: false, policyVersion: "2026-10-01", audience: "Approved employers on skipwait.me", retentionDays: 90, unlockCreditCost: 5, unlockDays: 30 }, isLoading: false };
   consent.grant.mockReset();
   consent.revoke.mockReset();
@@ -106,20 +102,22 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  surfaces.on = new Set<string>();
   setDisplayPrefs({ timeZone: null, dateFormat: null }, false);
   window.localStorage.clear();
   window.history.replaceState({}, "", "/");
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
 });
 
-describe("Goal /settings switch", () => {
-  it("keeps the kit page when the surface flag is off", () => {
-    surfaces.on = new Set();
+describe("retired /settings route", () => {
+  it("renders the released goal page without a surface override", async () => {
     stubApi();
     renderAt();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Settings.");
-    expect(screen.queryByText(GOAL_PAGE.goalLine)).toBeNull();
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe(GOAL_PAGE.goalLine);
+    expect(screen.queryByText("Settings.")).toBeNull();
+  });
+
+  it("contains no legacy settings body, panel import or surface switch", () => {
+    expect(routeSource).not.toMatch(/goalSurfaceOn|components\/kit|AccountPanels|AppPanel|NotificationPanels|PrivacyPanels|RegionPanel|SettingsNav|SIGNED_OUT/);
   });
 
   it("renders the goal page with the sections in their existing order", async () => {

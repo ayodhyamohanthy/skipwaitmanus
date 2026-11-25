@@ -1,0 +1,83 @@
+{
+  "task": "D-048-K-developers",
+  "pullRequest": 1342,
+  "webSha": "5519d1f80874b50d3677003637ed424cbe03a369",
+  "authenticated": false,
+  "productionBusinessMutations": false,
+  "api": {
+    "state": "ready",
+    "commitSha": "53e4db638e9c40d87972baa4e22515be5d4dffd9"
+  },
+  "results": [
+    {
+      "route": "/developers",
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "webSha": "5519d1f80874b50d3677003637ed424cbe03a369",
+      "goalRoots": 1,
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "businessWrites": [],
+      "screenshot": "developers-signed-out-1280.png",
+      "sha256": "28aba33f8837e2bd18c27fcf2323c5b26eb2b5a29392aa385cd635dfdbc6d4c6",
+      "observation": "These exact public checks and screenshots completed successfully in the original canonical run before its later console locator ambiguity; they were not rerun."
+    },
+    {
+      "route": "/developers",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "webSha": "5519d1f80874b50d3677003637ed424cbe03a369",
+      "goalRoots": 1,
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "businessWrites": [],
+      "screenshot": "developers-signed-out-390.png",
+      "sha256": "1b082d55b91fe44d6e225cd91f953ace48d85244ed6df4960fd5977302e72c2c",
+      "observation": "These exact public checks and screenshots completed successfully in the original canonical run before its later console locator ambiguity; they were not rerun."
+    },
+    {
+      "route": "/developer-console",
+      "width": 1280,
+      "height": 900,
+      "httpStatus": 200,
+      "webSha": "5519d1f80874b50d3677003637ed424cbe03a369",
+      "goalRoots": 1,
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "businessWrites": [],
+      "telemetryFulfilledLocally": 5,
+      "goalPrimaryCount": 1,
+      "signInRoleCount": 2,
+      "nestedButtons": 1,
+      "screenshot": "developer-console-signed-out-1280.png",
+      "sha256": "68a4805865349b14302a6b1e92c59c3ac30ac4cbe4ce58a51f17f4dd2a7956a5",
+      "limitation": "Existing shared SignInButton only adopts native button children; the unchanged released GoalButton child is wrapped. This read-only proof targets the unique actual goal primary and records duplicate/nested DOM roles, without clicking or changing it."
+    },
+    {
+      "route": "/developer-console",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "webSha": "5519d1f80874b50d3677003637ed424cbe03a369",
+      "goalRoots": 1,
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "businessWrites": [],
+      "telemetryFulfilledLocally": 5,
+      "goalPrimaryCount": 1,
+      "signInRoleCount": 2,
+      "nestedButtons": 1,
+      "screenshot": "developer-console-signed-out-390.png",
+      "sha256": "3f5e22d31afdd19f1f1e3a467612191b22587d5033c492f57162910a254f01c9",
+      "limitation": "Existing shared SignInButton only adopts native button children; the unchanged released GoalButton child is wrapped. This read-only proof targets the unique actual goal primary and records duplicate/nested DOM roles, without clicking or changing it."
+    }
+  ],
+  "initialConsoleCheck": "Strict role locator matched existing auth wrapper and GoalButton; original failure retained. Resumed only the unfinished console states with the actual unique primary selector; no runtime change, repeated public check, authentication interaction or business write.",
+  "limits": "Fresh signed-out canonical route evidence, not real-account registration/auth QA. Pre-existing shared-auth duplicate-role limitation is recorded and routed, not presented as fixed."
+}

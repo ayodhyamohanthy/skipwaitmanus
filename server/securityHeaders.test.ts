@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { CSP_ENFORCED, CSP_POLICY, contentSecurityPolicyHeader, globalSecurityHeaders } from "./securityHeaders";
+import { CSP_ENFORCED, CSP_POLICY, contentSecurityPolicyHeader, globalSecurityHeaders, strictTransportSecurityValue } from "./securityHeaders";
 
 describe("global security headers", () => {
   it("removes server fingerprinting and returns baseline browser protection headers", async () => {
@@ -13,12 +13,12 @@ describe("global security headers", () => {
     expect(response.headers["permissions-policy"]).toContain("camera=()");
   });
 
-  it("points the report-only CSP at /api/csp-report and keeps its directives (D-100.csp-report)", async () => {
+  it("enforces the CSP, points reports at /api/csp-report, and keeps its directives (D-100.csp-release)", async () => {
     const app = express(); app.use(globalSecurityHeaders); app.get("/health", (_req, res) => res.json({ ok: true }));
     const response = await request(app).get("/health");
-    const policy = response.headers["content-security-policy-report-only"];
+    const policy = response.headers["content-security-policy"];
     expect(policy).toBe("default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; report-uri /api/csp-report");
-    expect(response.headers["content-security-policy"]).toBeUndefined();
+    expect(response.headers["content-security-policy-report-only"]).toBeUndefined();
   });
 
   it("answers POST /api/csp-report itself, before any later middleware or body parser, with no cookie", async () => {
@@ -41,16 +41,35 @@ describe("global security headers", () => {
     expect((await request(app).post("/api/other")).status).toBe(201);
   });
 
-  describe("enforcing CSP behind CSP_ENFORCED (D-100.csp-enforce)", () => {
-    it("ships switched off, so production still sends only the report-only header", async () => {
-      expect(CSP_ENFORCED).toBe(false);
-      const app = express(); app.use(globalSecurityHeaders); app.get("/", (_req, res) => res.send("ok"));
-      const response = await request(app).get("/");
-      expect(response.headers["content-security-policy-report-only"]).toBe(CSP_POLICY);
-      expect(response.headers["content-security-policy"]).toBeUndefined();
+  describe("HSTS preload preparation (D-100.hsts-preload)", () => {
+    it("preserves the existing HTTPS policy and sends no HSTS on plain HTTP", async () => {
+      const app = express();
+      app.set("trust proxy", "loopback");
+      app.use(globalSecurityHeaders);
+      app.get("/health", (_req, res) => res.json({ ok: true }));
+
+      const https = await request(app).get("/health").set("X-Forwarded-Proto", "https");
+      expect(https.headers["strict-transport-security"]).toBe("max-age=15552000; includeSubDomains");
+
+      const http = await request(app).get("/health");
+      expect(http.headers["strict-transport-security"]).toBeUndefined();
     });
 
-    it("names the report-only header while the switch is off", () => {
+    it("opts into both a two-year max-age and the preload directive together", () => {
+      expect(strictTransportSecurityValue(true)).toBe("max-age=63072000; includeSubDomains; preload");
+    });
+  });
+
+  describe("enforcing CSP after collection (D-100.csp-release)", () => {
+    it("ships switched on, so production sends only the enforcing header", async () => {
+      expect(CSP_ENFORCED).toBe(true);
+      const app = express(); app.use(globalSecurityHeaders); app.get("/", (_req, res) => res.send("ok"));
+      const response = await request(app).get("/");
+      expect(response.headers["content-security-policy"]).toBe(CSP_POLICY);
+      expect(response.headers["content-security-policy-report-only"]).toBeUndefined();
+    });
+
+    it("keeps the report-only rollback available while the switch is false", () => {
       expect(contentSecurityPolicyHeader(false)).toEqual({ name: "Content-Security-Policy-Report-Only", value: CSP_POLICY });
     });
 

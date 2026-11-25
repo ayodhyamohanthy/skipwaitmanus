@@ -1,0 +1,36 @@
+{
+  "task": "D-048-K-inplace",
+  "command": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=1",
+  "startedSource": "83fe7c261",
+  "completedSource": "cc823debb025571651d7f8eca5abd48a1bd12ca1",
+  "result": "failed",
+  "exitCode": 1,
+  "testFiles": {
+    "failed": 2,
+    "passed": 736,
+    "skipped": 5,
+    "total": 743
+  },
+  "tests": {
+    "failed": 2,
+    "passed": 7750,
+    "skipped": 18,
+    "total": 7770
+  },
+  "durationSeconds": 6378.03,
+  "failures": [
+    "scripts/classifyCiChange.test.ts > H1: the workflow's fetch step resolves a merge base far behind main > a marker branch forked 400 commits behind main still reads empty from a merge base",
+    "server/referrerStepUp.test.ts > §0b.7 item 6: logout, revocation, suspension and employer change end the proof > an employer change (a new workEmailDomain) ends it"
+  ],
+  "observedError": "Both final failure blocks report: Error: Test timed out in 20000ms.",
+  "unchangedFailingTestPaths": [
+    "scripts/classifyCiChange.test.ts",
+    "server/referrerStepUp.test.ts"
+  ],
+  "limitations": [
+    "No failed test was rerun, skipped or changed; no timeout was increased.",
+    "Unchanged test files do not prove the failures are pre-existing, harmless or caused by machine load. Cause is not established by this result.",
+    "The separate earlier focused timeout, successful 12-test run, compiler, builds and synthetic parity are distinct outcomes; none turns this full-local result green.",
+    "Required exact-head CI and canonical acceptance are not supplied by this local receipt."
+  ]
+}

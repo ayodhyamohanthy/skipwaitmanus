@@ -2,13 +2,14 @@
 // D-048-p3-email-review: flag-off parity and flag-on goal rebuild for
 // /email-review/:linkToken.
 import React from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertGoalPage } from "@/test/goalPageContract";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import EmailReviewAction from "../../EmailReviewAction";
 import { GOAL_PAGE } from "./GoalEmailReviewAction";
-
 const { authState, go, surfaces, routeToken, sentryMock } = vi.hoisted(() => ({
   authState: { isSignedIn: true, isLoaded: true },
   go: vi.fn(),
@@ -51,13 +52,31 @@ afterEach(() => {
   authState.isLoaded = true;
 });
 
-describe("Goal /email-review flag gate", () => {
-  it("renders the kit card untouched when the flag is off", async () => {
+describe("Goal /email-review entry retirement", () => {
+  it("renders the goal page directly, regardless of the local surface override", async () => {
     surfaces.on = new Set();
     vi.stubGlobal("fetch", vi.fn(async () => ok({ review: { ready: true } })));
+    const { container } = render(<EmailReviewAction />);
+    expect(await screen.findByText("PRIVATE REVIEW")).toBeTruthy();
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+  });
+
+  it("removes the fallback page, switch and kit-only sign-in import", () => {
+    const entry = readFileSync(resolve(process.cwd(), "client/src/pages/EmailReviewAction.tsx"), "utf8");
+    expect(entry).toContain('export { default } from "./goal/email-review/GoalEmailReviewAction";');
+    expect(entry).not.toMatch(/goalSurfaceOn|KitEmailReviewAction|components\/WorkEmailSignIn/);
+  });
+});
+
+describe("Goal /email-review signed-out safety", () => {
+  it("keeps signed-out visitors on work-email sign-in without private reads", async () => {
+    authState.isSignedIn = false;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     render(<EmailReviewAction />);
-    expect(await screen.findByText("Choose your decision.")).toBeTruthy();
-    expect(screen.queryByText("PRIVATE REVIEW")).toBeNull();
+    const signIn = await screen.findByRole("link", { name: "Sign in with work email" });
+    expect(signIn.getAttribute("href")).toBe(referrerSignInHref("/email-review/tok-1"));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -137,6 +156,28 @@ describe("Goal /email-review states", () => {
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.queryByText("Passed privately.")).toBeNull();
     expect(screen.queryByText("Request accepted.")).toBeNull();
+  });
+
+  it("passes privately after an explicit confirmation, never terminates the referral request", async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith("/decision")) return ok({ status: "passed", declineReason: "timing" });
+      return ok({ review: { ready: true } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<EmailReviewAction />);
+    expect(await screen.findByRole("button", { name: "Decline - not now" })).toBeTruthy();
+    expect(() => assertGoalPage(container, GOAL_PAGE)).not.toThrow();
+    fireEvent.click(screen.getByRole("button", { name: "Decline - not now" }));
+    expect(await screen.findByText("Passed")).toBeTruthy();
+    expect(screen.getByText("This referral request remains open to other verified colleagues.")).toBeTruthy();
+    expect(screen.queryByText("Request declined.")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Passed privately.");
+    expect(container.querySelectorAll("h1")).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ decision: "declined", declineReason: "timing" }),
+    });
   });
 
   it("supports offline detection, scrubbed telemetry on network failure, and retry recovery", async () => {

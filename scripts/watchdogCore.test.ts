@@ -6,6 +6,7 @@ import {
   decide,
   evaluateProbe,
   initialState,
+  parseState,
   roundFailed,
   settle,
   weeklyDue,
@@ -31,6 +32,7 @@ const passing: Record<ProbeName, Fetched> = {
   home: html(200, '<html><head><meta name="git-commit" content="abc" /></head></html>'),
   ready: json(200, { ok: true, state: "ready" }),
   latency: json(200, { ok: true, dbRoundTripMs: 50 }),
+  jobs: json(200, { ok: true, jobs: [{ name: "daily-money-check", overdue: false }] }),
   catalog: json(200, { packs: [{ id: "pack_5", available: true }, { id: "pack_25", available: false }] }),
   "signin-google": res(302, "", "text/plain", okLocation),
   "otp-send": json(400, { error: "Enter a valid work email address" }),
@@ -46,7 +48,8 @@ const MIN = 60_000;
 
 describe("probes", () => {
   it("are all read-only requests against the base URL with no credentials", () => {
-    expect(PROBES.map(p => p.name)).toEqual(["home", "ready", "latency", "catalog", "signin-google", "otp-send", "email-code-send"]);
+    expect(PROBES.map(p => p.name)).toEqual(["home", "ready", "latency", "jobs", "catalog", "signin-google", "otp-send", "email-code-send"]);
+    expect(spec("jobs")).toEqual({ name: "jobs", method: "GET", path: "/api/health/jobs", redirect: "follow" });
     for (const p of PROBES) {
       expect(p.path.startsWith("/")).toBe(true);
       if (p.method === "POST") expect(JSON.parse(p.body ?? "")).toEqual({ email: "watchdog-probe" });
@@ -76,6 +79,16 @@ describe("probes", () => {
   it("latency fails when the database round trip is null or the body is HTML", () => {
     expect(evaluate("latency", json(200, { ok: true, dbRoundTripMs: null })).pass).toBe(false);
     expect(evaluate("latency", html(200)).pass).toBe(false);
+  });
+
+  it("jobs requires HTTP 200 and a boolean true without copying response content", () => {
+    expect(evaluate("jobs", passing.jobs)).toMatchObject({ pass: true, status: "200" });
+    for (const fetched of [
+      json(200, { ok: false }), json(200, {}), json(200, { ok: "true" }),
+      res(200, "not-json"), json(200, []), json(200, null), html(200),
+      json(503, { ok: true }), res(302, ""),
+      { kind: "error", error: "timeout" }, { kind: "error", error: "network" },
+    ] satisfies Fetched[]) expect(evaluate("jobs", fetched).pass).toBe(false);
   });
 
   it("catalog fails on an HTML body and counts the packs on sale without ever failing on them", () => {
@@ -203,6 +216,38 @@ describe("alert rules", () => {
   });
 });
 
+describe("scheduler health alerts", () => {
+  const stopped = { jobs: json(200, { ok: false, jobs: [{ name: "daily-money-check", overdue: true }] }) };
+
+  it("keeps one failed jobs round quiet and opens an outage only after both rounds fail", () => {
+    const state = initialState(T0);
+    expect(decide(state, [round(stopped), round()], T0).actions).toEqual([]);
+    const result = decide(state, [round(stopped), round(stopped)], T0);
+    expect(result.next).toMatchObject({ state: "down", failing: ["jobs"], weekOutages: 1 });
+    expect(result.actions).toEqual([
+      { channel: "email", subject: "SkipWait DOWN: jobs (200 body)", text: expect.any(String) },
+      { channel: "issue", op: "open", title: "SkipWait DOWN: jobs", body: expect.any(String) },
+    ]);
+    expect(parseState(JSON.stringify(result.next), T0).failing).toEqual(["jobs"]);
+  });
+
+  it("retries failed delivery and sends one recovery when jobs become healthy", () => {
+    const initial = initialState(T0);
+    const outage = decide(initial, [round(stopped), round(stopped)], T0);
+    const undelivered = settle(initial, outage.next, false);
+    expect(undelivered).toEqual(initial);
+    expect(decide(undelivered, [round(stopped), round(stopped)], T0 + 5 * MIN).actions).toHaveLength(2);
+    const downState = settle(initial, outage.next, true);
+    expect(decide(downState, [round(stopped), round(stopped)], T0 + 5 * MIN).actions).toEqual([]);
+    const recovery = decide(downState, [round()], T0 + 10 * MIN);
+    expect(recovery.next).toMatchObject({ state: "up", failing: [] });
+    expect(recovery.actions).toEqual([
+      { channel: "email", subject: "SkipWait recovered after 10 min", text: expect.any(String) },
+      { channel: "issue", op: "close", title: "SkipWait DOWN:", body: expect.any(String) },
+    ]);
+  });
+});
+
 describe("weekly note", () => {
   const monday = Date.UTC(2026, 10, 2, 3, 30, 0); // Monday 03:30 UTC = 09:00 IST
 
@@ -250,6 +295,7 @@ describe("content", () => {
     const secretish = "user@example.com token=abc123 <script>";
     const nasty: Partial<Record<ProbeName, Fetched>> = {
       ready: json(503, { ok: false, state: "failed", error: secretish }),
+      jobs: json(200, { ok: false, jobs: [{ name: secretish, overdue: true }], error: secretish }),
       catalog: html(500, `<html>${secretish}</html>`),
       "signin-google": res(302, secretish, "text/plain", `https://evil.example/?redirect_uri=${encodeURIComponent(secretish)}`),
       "otp-send": json(500, { error: secretish }),

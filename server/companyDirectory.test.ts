@@ -40,9 +40,12 @@ const domains: CompanyDomainRecord[] = [
 describe("company directory availability", () => {
   it("opens a company for one verified, unpaused, unsuspended referrer with free capacity", async () => {
     const directory = createCompanyDirectory(source({ companies: [acme, beta], domains, candidates: [referrer(10, "acme.com")], allocated: { 10: 2 } }));
+    // D-174 public-payload (D-176): availability is internal, so it is read from the admin record, never the public list.
+    expect((await directory.adminList()).map(entry => [entry.slug, entry.openToReferrals])).toEqual([["acme", true], ["beta", false]]);
+    expect((await directory.record("acme"))?.openToReferrals).toBe(true);
     const listed = await directory.list();
-    expect(listed.companies.map(entry => [entry.slug, entry.openToReferrals])).toEqual([["acme", true], ["beta", false]]);
-    expect(listed.openCount).toBe(1);
+    expect(listed.companies.map(entry => entry.slug)).toEqual(["acme", "beta"]);
+    expect(listed).not.toHaveProperty("openCount");
     expect(companyDirectoryResponseSchema.safeParse(listed).success).toBe(true);
   });
 
@@ -59,37 +62,97 @@ describe("company directory availability", () => {
     ["verified at an unlisted domain", referrer(10, "acme.org"), 0],
   ])("a referrer who is %s does not open the company", async (_label, candidate, allocated) => {
     const directory = createCompanyDirectory(source({ companies: [acme], domains, candidates: [candidate], allocated: { 10: allocated } }));
+    expect((await directory.adminList())[0]?.openToReferrals).toBe(false);
+    expect((await directory.record("acme"))?.openToReferrals).toBe(false);
     const listed = await directory.list();
-    expect(listed.companies[0]?.openToReferrals).toBe(false);
-    expect(listed.openCount).toBe(0);
-    expect((await directory.get("acme"))?.openToReferrals).toBe(false);
+    expect(listed.companies[0]).not.toHaveProperty("openToReferrals");
+    expect(listed).not.toHaveProperty("openCount");
+    expect(await directory.get("acme")).not.toHaveProperty("openToReferrals");
   });
 
   it("uses the default capacity of 3 when none is saved, and counts alias domains", async () => {
     expect(isOpenReferrer(referrer(10, "acme.com", { referralCapacity: null }), "acme.com", 2)).toBe(true);
     expect(isOpenReferrer(referrer(10, "acme.com", { referralCapacity: null }), "acme.com", 3)).toBe(false);
     const directory = createCompanyDirectory(source({ companies: [acme], domains, candidates: [referrer(11, "ACME.CO.UK")] }));
-    expect((await directory.get("acme"))?.openToReferrals).toBe(true);
+    expect((await directory.record("acme"))?.openToReferrals).toBe(true);
   });
 
   it("one open referrer is enough even when colleagues are closed", async () => {
     const candidates = [referrer(10, "acme.com", { paused: true }), referrer(11, "acme.com", { referralCapacity: 1 }), referrer(12, "acme.co.uk")];
     const directory = createCompanyDirectory(source({ companies: [acme], domains, candidates, allocated: { 11: 1 } }));
-    expect((await directory.list()).openCount).toBe(1);
+    expect((await directory.adminList())[0]?.openToReferrals).toBe(true);
   });
 
   it("never exposes referrer ids, counts or names", async () => {
     const candidates = [referrer(4242, "acme.com"), referrer(4343, "acme.com")];
     const directory = createCompanyDirectory(source({ companies: [acme], domains, candidates, allocated: { 4242: 1 } }));
     const serialized = JSON.stringify([await directory.list(), await directory.get("acme")]);
-    expect(serialized).not.toMatch(/4242|4343|userId|referrerId|capacity|allocated|paused|suspended|referrerCount/);
-    expect(Object.keys((await directory.list()).companies[0]!).sort()).toEqual(["blurb", "domains", "functions", "industry", "initials", "location", "name", "openToReferrals", "slug"]);
+    expect(serialized).not.toMatch(/4242|4343|userId|referrerId|capacity|allocated|paused|suspended|referrerCount|openToReferrals|openCount/);
+    expect(serialized).not.toMatch(/"(?:count|referrers|referrerNames?)"/);
+    expect(Object.keys((await directory.list()).companies[0]!).sort()).toEqual(["blurb", "domains", "functions", "industry", "initials", "location", "name", "slug"]);
+    expect(Object.keys((await directory.get("acme"))!).sort()).toEqual(["blurb", "domains", "functions", "industry", "initials", "location", "name", "referrerPresence", "slug"]);
   });
 
   it("only asks for referrers on the requested company's domains", async () => {
     const fake = source({ companies: [acme, beta], domains });
     await createCompanyDirectory(fake).get("beta");
     expect(fake.candidateQueries).toEqual([["beta.io"]]);
+  });
+});
+
+describe("company referrer presence (D-174 public-payload, D-360 (5)/D-363)", () => {
+  const presenceOf = async (candidates: ReferrerCandidate[], allocated: Record<number, number> = {}) =>
+    (await createCompanyDirectory(source({ companies: [acme, beta], domains, candidates, allocated })).get("acme"))?.referrerPresence;
+
+  it.each([
+    ["available", referrer(10, "acme.com"), 0],
+    ["paused", referrer(10, "acme.com", { paused: true }), 0],
+    ["at capacity", referrer(10, "acme.com", { referralCapacity: 2 }), 2],
+    ["over capacity", referrer(10, "acme.com"), 5],
+    ["zero capacity", referrer(10, "acme.com", { referralCapacity: 0 }), 0],
+    ["verified on an alias domain", referrer(10, "ACME.CO.UK"), 0],
+  ])("is present for a verified, unsuspended referrer who is %s", async (_label, candidate, allocated) => {
+    expect(await presenceOf([candidate], { 10: allocated })).toBe("present");
+  });
+
+  it.each([
+    ["nobody", []],
+    ["an unverified profile", [referrer(10, "acme.com", { workEmailVerifiedAt: null })]],
+    ["a seeker, not a referrer", [referrer(10, "acme.com", { accountType: "job_seeker" })]],
+    ["a referrer verified at another company", [referrer(10, "beta.io")]],
+    ["a referrer verified at an unlisted domain", [referrer(10, "acme.org")]],
+    ["a suspended account", [referrer(10, "acme.com", { userSuspended: true })]],
+    ["a suspended canonical person", [referrer(10, "acme.com", { personSuspended: true })]],
+  ])("is none for %s", async (_label, candidates) => {
+    expect(await presenceOf(candidates)).toBe("none");
+  });
+
+  it("one joined referrer is enough even when a colleague is suspended", async () => {
+    expect(await presenceOf([referrer(10, "acme.com", { userSuspended: true }), referrer(11, "acme.com", { paused: true })])).toBe("present");
+  });
+
+  it("is a single-company fact: the list and admin views never carry it, and no count or name leaks", async () => {
+    const directory = createCompanyDirectory(source({ companies: [acme, beta], domains, candidates: [referrer(4242, "acme.com"), referrer(4343, "acme.com", { paused: true })] }));
+    const listed = await directory.list();
+    for (const entry of listed.companies) expect(entry).not.toHaveProperty("referrerPresence");
+    const detail = await directory.get("acme");
+    expect(detail?.referrerPresence).toBe("present");
+    expect(JSON.stringify(detail)).not.toMatch(/4242|4343|:2[,}]|userId|referrerId|capacity|allocated|paused|suspended|openToReferrals/);
+    expect((await directory.get("beta"))?.referrerPresence).toBe("none");
+  });
+
+  it("reuses the candidates already loaded: one candidate read per lookup, no extra query", async () => {
+    const fake = source({ companies: [acme, beta], domains, candidates: [referrer(10, "acme.com")] });
+    await createCompanyDirectory(fake).get("acme");
+    expect(fake.candidateQueries).toEqual([["acme.com", "acme.co.uk"]]);
+  });
+
+  it("the internal record keeps availability for a listed company only", async () => {
+    const hidden = company(3, "gamma", { status: "hidden" });
+    const directory = createCompanyDirectory(source({ companies: [acme, hidden], domains: [...domains, { companyId: 3, domain: "gamma.dev", isPrimary: true }], candidates: [referrer(10, "acme.com"), referrer(11, "gamma.dev")] }));
+    expect(await directory.record("acme")).toMatchObject({ slug: "acme", openToReferrals: true, status: "listed" });
+    expect(await directory.record("gamma")).toBeUndefined();
+    expect(await directory.record("nope")).toBeUndefined();
   });
 });
 
@@ -129,8 +192,11 @@ describe("company directory listing", () => {
   });
 
   it("the database-less dev source is the launch seed with nobody open", async () => {
-    const listed = await createCompanyDirectory(seedCompanySource()).list();
-    expect(listed.openCount).toBe(0);
+    const directory = createCompanyDirectory(seedCompanySource());
+    const listed = await directory.list();
+    expect(listed).not.toHaveProperty("openCount");
+    expect((await directory.adminList()).every(entry => entry.openToReferrals === false)).toBe(true);
+    expect((await directory.get(LAUNCH_COMPANY_SEED[1]!.slug))?.referrerPresence).toBe("none");
     expect(listed.companies.map(entry => ({ slug: entry.slug, name: entry.name, initials: entry.initials, domains: entry.domains }))).toEqual(LAUNCH_COMPANY_SEED.map(seed => ({ slug: seed.slug, name: seed.name, initials: seed.initials, domains: [...seed.domains] })));
   });
 });

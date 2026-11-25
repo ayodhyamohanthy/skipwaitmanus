@@ -1,0 +1,284 @@
+{
+  "synthetic": true,
+  "base": "http://127.0.0.1:4317",
+  "results": [
+    {
+      "scenario": "paused",
+      "width": 1280,
+      "file": "paused-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Extra referral requests are paused.Your next stepWe are not selling extra referral requests right now. Referral requests already in your account still work.Back to my referral requestYour referral requests8 referral requests left5 from purchases, included in your total.3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/credits/summary"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "paused",
+      "width": 390,
+      "file": "paused-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Extra referral requests are paused.Your next stepWe are not selling extra referral requests right now. Referral requests already in your account still work.Back to my referral requestYour referral requests8 referral requests left5 from purchases, included in your total.3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/credits/summary"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "signed-out",
+      "width": 1280,
+      "file": "signed-out-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Extra referral requests are paused.Your next stepWe are not selling extra referral requests right now. Referral requests already in your account still work.Back to my referral request3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "signed-out",
+      "width": 390,
+      "file": "signed-out-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Extra referral requests are paused.Your next stepWe are not selling extra referral requests right now. Referral requests already in your account still work.Back to my referral request3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "balance-error",
+      "width": 1280,
+      "file": "balance-error-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Extra referral requests are paused.Your next stepWe are not selling extra referral requests right now. Referral requests already in your account still work.Back to my referral requestYour referral requestsYour balance did not load.Retry balance3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/credits/summary"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "balance-error",
+      "width": 390,
+      "file": "balance-error-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Extra referral requests are paused.Your next stepWe are not selling extra referral requests right now. Referral requests already in your account still work.Back to my referral requestYour referral requestsYour balance did not load.Retry balance3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/credits/summary"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "referrer",
+      "width": 1280,
+      "file": "referrer-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Referrers never pay on skipwait.me.Your next stepReview referral requests and refer through your company’s process, with nothing to buy.Back to referring3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "referrer",
+      "width": 390,
+      "file": "referrer-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.Referrers never pay on skipwait.me.Your next stepReview referral requests and refer through your company’s process, with nothing to buy.Back to referring3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "pending",
+      "width": 1280,
+      "file": "pending-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We’re confirming your payment.Your next stepWe will update your balance only after the server confirms the provider’s payment record. Do not pay again.Continue3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "pending",
+      "width": 390,
+      "file": "pending-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We’re confirming your payment.Your next stepWe will update your balance only after the server confirms the provider’s payment record. Do not pay again.Continue3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "credited",
+      "width": 1280,
+      "file": "credited-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.5 referral requests are ready.Your next stepYour verified payment is complete. Your available referral requests are updated.Use my referral requests3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "credited",
+      "width": 390,
+      "file": "credited-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.5 referral requests are ready.Your next stepYour verified payment is complete. Your available referral requests are updated.Use my referral requests3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "review",
+      "width": 1280,
+      "file": "review-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.This payment needs a review.Your next stepSupport can check the provider record. Do not pay again for this purchase.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "review",
+      "width": 390,
+      "file": "review-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.This payment needs a review.Your next stepSupport can check the provider record. Do not pay again for this purchase.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "recovery-error",
+      "width": 1280,
+      "file": "recovery-error-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We could not confirm this payment.Your next stepYour payment is not confirmed here. Keep your receipt and contact Support; do not pay again.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "recovery-error",
+      "width": 390,
+      "file": "recovery-error-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We could not confirm this payment.Your next stepYour payment is not confirmed here. Keep your receipt and contact Support; do not pay again.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "recovery-timeout",
+      "width": 1280,
+      "file": "recovery-timeout-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We could not confirm this payment.Your next stepYour payment is not confirmed here. Keep your receipt and contact Support; do not pay again.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "recovery-timeout",
+      "width": 390,
+      "file": "recovery-timeout-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We could not confirm this payment.Your next stepYour payment is not confirmed here. Keep your receipt and contact Support; do not pay again.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    }
+  ]
+}

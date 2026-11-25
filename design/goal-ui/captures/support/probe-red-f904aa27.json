@@ -1,0 +1,262 @@
+{
+  "source": "f904aa27+worktree",
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "help-policy-targets",
+      "width": 390,
+      "pass": false,
+      "detail": {
+        "boxes": [
+          {
+            "href": "/guidelines",
+            "height": 44,
+            "visualHeight": 19
+          },
+          {
+            "href": "/terms",
+            "height": 44,
+            "visualHeight": 19
+          },
+          {
+            "href": "/privacy",
+            "height": 44,
+            "visualHeight": 19
+          },
+          {
+            "href": "/safety",
+            "height": 44,
+            "visualHeight": 19
+          }
+        ],
+        "overlaps": [
+          [
+            "/guidelines",
+            "/terms"
+          ],
+          [
+            "/terms",
+            "/privacy"
+          ],
+          [
+            "/privacy",
+            "/safety"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "help-policy-taps",
+      "width": 390,
+      "pass": false,
+      "detail": [
+        {
+          "href": "/guidelines",
+          "dy": 17,
+          "hit": "/terms"
+        },
+        {
+          "href": "/terms",
+          "dy": 17,
+          "hit": "/privacy"
+        },
+        {
+          "href": "/privacy",
+          "dy": 17,
+          "hit": "/safety"
+        }
+      ]
+    },
+    {
+      "name": "report-control-edges",
+      "width": 390,
+      "pass": false,
+      "detail": {
+        "canvas": "rgb(255, 255, 255)",
+        "controls": [
+          {
+            "name": "unselected tile",
+            "border": "rgb(235, 235, 235)",
+            "ratio": 1.19
+          },
+          {
+            "name": "Also block this person",
+            "border": "rgb(235, 235, 235)",
+            "ratio": 1.19
+          },
+          {
+            "name": "I feel unsafeReviewed ",
+            "border": "rgb(235, 235, 235)",
+            "ratio": 1.19
+          }
+        ]
+      }
+    },
+    {
+      "name": "safety-disclosure-keys",
+      "width": 390,
+      "pass": false,
+      "detail": {
+        "count": 0,
+        "results": []
+      }
+    },
+    {
+      "name": "offline-notice-overlap",
+      "width": 390,
+      "pass": false,
+      "detail": {
+        "noticePresent": true,
+        "noticeBox": {
+          "x": 122.078125,
+          "y": 740,
+          "width": 145.828125,
+          "height": 36
+        },
+        "targets": [
+          {
+            "x": 33,
+            "y": 655,
+            "width": 142.484375,
+            "height": 44
+          },
+          {
+            "x": 33,
+            "y": 707,
+            "width": 324,
+            "height": 40
+          }
+        ],
+        "covered": 1
+      }
+    },
+    {
+      "name": "help-policy-targets",
+      "width": 1280,
+      "pass": false,
+      "detail": {
+        "boxes": [
+          {
+            "href": "/guidelines",
+            "height": 44,
+            "visualHeight": 19
+          },
+          {
+            "href": "/terms",
+            "height": 44,
+            "visualHeight": 19
+          },
+          {
+            "href": "/privacy",
+            "height": 44,
+            "visualHeight": 19
+          },
+          {
+            "href": "/safety",
+            "height": 44,
+            "visualHeight": 19
+          }
+        ],
+        "overlaps": [
+          [
+            "/guidelines",
+            "/terms"
+          ],
+          [
+            "/terms",
+            "/privacy"
+          ],
+          [
+            "/privacy",
+            "/safety"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "help-policy-taps",
+      "width": 1280,
+      "pass": false,
+      "detail": [
+        {
+          "href": "/guidelines",
+          "dy": 17,
+          "hit": "/terms"
+        },
+        {
+          "href": "/terms",
+          "dy": 17,
+          "hit": "/privacy"
+        },
+        {
+          "href": "/privacy",
+          "dy": 17,
+          "hit": "/safety"
+        }
+      ]
+    },
+    {
+      "name": "report-control-edges",
+      "width": 1280,
+      "pass": false,
+      "detail": {
+        "canvas": "rgb(255, 255, 255)",
+        "controls": [
+          {
+            "name": "unselected tile",
+            "border": "rgb(235, 235, 235)",
+            "ratio": 1.19
+          },
+          {
+            "name": "Also block this person",
+            "border": "rgb(235, 235, 235)",
+            "ratio": 1.19
+          },
+          {
+            "name": "I feel unsafeReviewed ",
+            "border": "rgb(235, 235, 235)",
+            "ratio": 1.19
+          }
+        ]
+      }
+    },
+    {
+      "name": "safety-disclosure-keys",
+      "width": 1280,
+      "pass": false,
+      "detail": {
+        "count": 0,
+        "results": []
+      }
+    },
+    {
+      "name": "offline-notice-overlap",
+      "width": 1280,
+      "pass": true,
+      "detail": {
+        "noticePresent": true,
+        "noticeBox": {
+          "x": 1110.171875,
+          "y": 840,
+          "width": 145.828125,
+          "height": 36
+        },
+        "targets": [
+          {
+            "x": 397,
+            "y": 720,
+            "width": 142.484375,
+            "height": 40
+          },
+          {
+            "x": 397,
+            "y": 768,
+            "width": 590,
+            "height": 20
+          }
+        ],
+        "covered": 0
+      }
+    }
+  ]
+}

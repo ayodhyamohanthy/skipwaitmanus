@@ -125,8 +125,12 @@ describe("goal /wall renders the goal share, never the kit one", () => {
     await screen.findByRole("heading", { level: 3, name: "Product Designer" });
     const share = container.querySelector("[data-goal-share]") as HTMLElement;
     expect(share).toBeTruthy();
-    const text = encodeURIComponent(`${PROPS.message}\n\n${window.location.origin}/wall?opening=4`);
+    const link = `${window.location.origin}/wall?opening=4`;
+    const text = encodeURIComponent(`${PROPS.message}\n\n${link}`);
     expect(within(share).getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href")).toBe(`https://wa.me/?text=${text}`);
+    expect(within(share).getByRole("link", { name: "Share by email" }).getAttribute("href")).toBe(`mailto:?subject=${encodeURIComponent(PROPS.title)}&body=${text}`);
+    expect(within(share).getByRole("link", { name: "Share on LinkedIn" }).getAttribute("href")).toBe(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`);
+    expect(within(share).getByRole("link", { name: "Share on X" }).getAttribute("href")).toBe(`https://x.com/intent/post?text=${text}`);
     expect(kitClassesIn(container)).toEqual([]);
   });
 
@@ -152,7 +156,7 @@ describe("goal /jobs renders no kit UI", () => {
     expect(openSignIn).toHaveBeenCalled();
   });
 
-  it("a failed save says so in the goal status line, not a kit toast", async () => {
+  it("shows an optimistic saved marker, then rolls it back with a visible error rather than a kit toast", async () => {
     auth.isSignedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -163,7 +167,9 @@ describe("goal /jobs renders no kit UI", () => {
     render(<GoalJobs />);
     await screen.findByRole("heading", { level: 3, name: "Senior Product Designer" });
     fireEvent.click(screen.getByRole("button", { name: "Save Senior Product Designer" }));
+    expect(screen.getByRole("button", { name: "Saved Senior Product Designer", pressed: true })).toBeTruthy();
     expect((await screen.findByRole("alert")).textContent).toContain("We could not update your saved roles");
+    expect(screen.getByRole("button", { name: "Save Senior Product Designer", pressed: false })).toBeTruthy();
     expect(toast).not.toHaveBeenCalled();
   });
 });

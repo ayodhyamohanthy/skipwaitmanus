@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // D-048-p3-verify: the goal rebuild of /verify, the work-email code step a
 // referrer must pass before they can review a referral request (packet
-// docs/plans/D-048-auth.md sections 6-7). The kit page stays byte-identical
-// and is rendered here with the surface flag off to prove the switch.
+// docs/plans/D-048-auth.md sections 6-7). The released goal page is now the only
+// verification body, with no design-switch forcing in these tests.
 import React from "react";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,13 +15,11 @@ import Verify from "./Verify";
 import { GOAL_PAGE } from "./goal/verify/GoalVerify";
 import { assertGoalPage } from "@/test/goalPageContract";
 
-const { authState, surfaces } = vi.hoisted(() => ({
+const { authState } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") },
-  surfaces: { on: new Set<string>() },
 }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
 }));
@@ -81,25 +79,22 @@ const primary = (container: HTMLElement) => container.querySelectorAll("[data-g-
 beforeEach(() => {
   authState.isLoaded = true;
   authState.isSignedIn = true;
-  surfaces.on = new Set(["verify"]);
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.useRealTimers();
-  surfaces.on = new Set<string>();
 });
 
-describe("Goal /verify switch", () => {
-  it("keeps the kit page when the surface flag is off", async () => {
-    surfaces.on = new Set();
+describe("Released goal /verify", () => {
+  it("renders the goal page without a surface override", async () => {
     stubApi();
     renderVerify();
-    expect(await screen.findByText(/Prove you're inside/)).toBeTruthy();
-    expect(screen.queryByText(GOAL_PAGE.goalLine)).toBeNull();
+    expect(await screen.findByText(GOAL_PAGE.goalLine)).toBeTruthy();
+    expect(screen.queryByText(/Prove you're inside/)).toBeNull();
   });
 
-  it("renders the goal body when the surface flag is on", async () => {
+  it("renders the goal body from the existing Verify export", async () => {
     stubApi();
     renderVerify();
     expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();

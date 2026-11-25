@@ -26,13 +26,22 @@ export function GoalField({ label, htmlFor, help, hint, error, children }: {
           {hint.text}
         </p>
       ) : null}
-      {error ? (
-        <p id={errorId} className="flex items-center gap-2 text-g-meta text-g-crimson">
-          <CircleAlert aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />
-          {error}
-        </p>
-      ) : null}
+      {error ? <GoalFieldError id={errorId}>{error}</GoalFieldError> : null}
     </div>
+  );
+}
+
+/**
+ * The crimson input-error line (icon + text) GoalField draws under a control,
+ * for a form-level error beside its action (the ask composer's Send). Seeker
+ * side only, never in the referrer queue (DESIGN.md rule 5).
+ */
+export function GoalFieldError({ id, role, children }: { id?: string; role?: "alert"; children: ReactNode }) {
+  return (
+    <p id={id} role={role} data-testid="goal-field-error" className="flex items-start gap-2 text-g-meta text-g-crimson">
+      <CircleAlert aria-hidden="true" className="mt-[2px] size-4 shrink-0" strokeWidth={1.75} />
+      <span className="text-pretty">{children}</span>
+    </p>
   );
 }
 

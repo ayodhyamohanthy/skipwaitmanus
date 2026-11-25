@@ -1,7 +1,6 @@
 // Goal /messages (D-048-p3-messages; packet docs/plans/D-048-account.md).
-// Same calls and send path as the kit page: GET /api/dms/threads, GET and
-// POST /api/dms/threads/:id with the idempotent pending-send record
-// (lib/idempotentSend, read-only). The pre-acceptance lock is the server's:
+// GET /api/dms/threads and GET or POST /api/dms/threads/:id; sends keep an
+// idempotent pending-send record (lib/idempotentSend). The pre-acceptance lock is the server's:
 // a parsed sendBlock (on open, or a 403 on send) replaces the composer with
 // the rule in the server's own words; nothing on the client guesses it. A
 // failed load renders its error with a retry, never an empty inbox.
@@ -9,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, CircleAlert, LockKeyhole, Send, UserPlus } from "lucide-react";
 import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { GoalButton, GoalNextStep, GoalNum, useOnlineStatus } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { DM_SEND_WORKFLOW, beginPendingSend, clearPendingSend, normalizeMessageBody, readPendingSend } from "@/lib/idempotentSend";
@@ -61,7 +60,7 @@ function OfflineNotice() {
   );
 }
 
-/** The server's acceptance rule in place of a composer (kit ReferrerRuleCard behaviour). */
+/** The server's acceptance rule in place of a composer. */
 function AcceptanceRule({ block, unsent }: { block: DmSendBlock; unsent: string }) {
   const isReferrer = block.senderRole === "referrer";
   return (
@@ -108,7 +107,7 @@ function ChatRow({ item, onOpen }: { item: DmThreadSummary; onOpen: () => void }
 }
 
 export default function GoalMessages() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const online = useOnlineStatus();
   const [threads, setThreads] = useState<DmThreadSummary[] | null>(null);
   const [listError, setListError] = useState("");
@@ -231,7 +230,8 @@ export default function GoalMessages() {
       <h1 className="text-g-display text-g-ink">{GOAL_PAGE.goalLine}</h1>
       <p className="mt-2 text-g-meta text-g-ink-2">{DM_REFERRER_ACCEPTANCE_ERROR}</p>
       <div className="mt-5"><GoalNextStep reason="Sign in to see your messages.">
-        <div className="mt-4"><SignInButton><GoalButton variant="primary" touch="large">Sign in</GoalButton></SignInButton></div>
+        {/* One real button: SignInButton adopts only literal <button> children, so wrapping GoalButton would nest buttons. */}
+        <div className="mt-4"><GoalButton variant="primary" touch="large" onClick={() => openSignIn()}>Sign in</GoalButton></div>
       </GoalNextStep></div>
     </>);
   }

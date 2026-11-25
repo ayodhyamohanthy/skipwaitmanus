@@ -1,0 +1,56 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops-admin@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/token-recovery/adjustments",
+      "status": 200,
+      "body": {
+        "adjustments": [
+          {
+            "id": 12,
+            "recipientUserId": 9,
+            "recipientName": "Fixture Account",
+            "recipientEmail": "fixture-account@example.com",
+            "role": "job_seeker",
+            "tokenCount": 2,
+            "caseReference": "SUP-0001",
+            "reason": "Fixture support case",
+            "createdAt": "2026-11-04T00:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ]
+}

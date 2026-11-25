@@ -40,6 +40,7 @@ describe("approved referral conversation HTTP routes", () => {
       return stored.map(message => ({ id: message.id, body: message.body, createdAt: message.createdAt, isMine: message.senderId === userId }));
     };
     registerPrivateReferralRoutes(app, {
+      getBlockedReferralRequestIds: async () => new Set<number>(),
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))),
       dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",

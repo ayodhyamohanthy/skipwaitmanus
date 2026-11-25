@@ -1,4 +1,5 @@
-import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import { bigint, boolean, check, customType, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const canonicalPeople = mysqlTable("canonicalPeople", {
@@ -28,6 +29,32 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 }, table => [index("users_canonical_person_idx").on(table.canonicalPersonId)]);
+
+// DEVICE-SIGNIN-passkeys: passkey credentials for seeker sign-in (owner, Oct 26).
+// A credential belongs to exactly one account (openId). Public key and counter are
+// server state; the private key never leaves the person's device.
+export const passkeyCredentials = mysqlTable("passkeyCredentials", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }).notNull(),
+  credentialId: varchar("credentialId", { length: 255 }).notNull(),
+  publicKey: text("publicKey").notNull(),
+  counter: bigint("counter", { mode: "number" }).notNull().default(0),
+  transports: varchar("transports", { length: 255 }),
+  deviceName: varchar("deviceName", { length: 120 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+}, table => [uniqueIndex("passkey_credential_id_unique").on(table.credentialId), index("passkey_openid_idx").on(table.openId)]);
+
+// Short-lived WebAuthn challenges (registration and login). Expired rows are
+// ignored and swept on write.
+export const passkeyChallenges = mysqlTable("passkeyChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }),
+  challenge: varchar("challenge", { length: 255 }).notNull(),
+  kind: mysqlEnum("kind", ["registration", "login"]).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("passkey_challenge_idx").on(table.challenge)]);
 
 export const verifiedLoginAliases = mysqlTable("verifiedLoginAliases", {
   id: int("id").autoincrement().primaryKey(),
@@ -143,6 +170,10 @@ export const accountPreferences = mysqlTable("accountPreferences", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   timeZone: varchar("timeZone", { length: 64 }),
   dateFormat: varchar("dateFormat", { length: 8 }),
+  // D-093.capture (0121): the chosen visible language and the write-once
+  // signup subtag. Both stay null until capture is enabled by the release row.
+  language: varchar("language", { length: 16 }),
+  signupLanguage: varchar("signupLanguage", { length: 16 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
 
@@ -338,10 +369,16 @@ export const assistantApprovals = mysqlTable("assistantApprovals", {
   attachmentIds: text("attachmentIds"),
   idempotencyKey: varchar("idempotencyKey", { length: 64 }),
   executedRequestId: int("executedRequestId"),
+  // SKIPPY-6 (D-290 (1)): set when a seeker's own agent requested the send, so
+  // approve can check that grant's live state and count its sends. Null for
+  // seeker-initiated approvals, which keep today's behaviour.
+  grantId: int("grantId").references(() => seekerAgentGrants.id, { onDelete: "set null" }),
+  // SKIPPY-7 (D-201 (4)): 'seeker' | 'agent_auto'. Null for rows created before SKIPPY-7.
+  decidedBy: varchar("decidedBy", { length: 16 }),
   expiresAt: timestamp("expiresAt").notNull(),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("assistant_approvals_user_idx").on(table.userId), index("assistant_approvals_status_idx").on(table.status), index("assistant_approvals_expiry_idx").on(table.expiresAt)]);
+}, table => [index("assistant_approvals_user_idx").on(table.userId), index("assistant_approvals_status_idx").on(table.status), index("assistant_approvals_expiry_idx").on(table.expiresAt), index("assistant_approvals_grant_idx").on(table.grantId, table.createdAt)]);
 
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
@@ -618,12 +655,16 @@ export const referralReviewDeliveries = mysqlTable("referralReviewDeliveries", {
   leaseOwner: varchar("leaseOwner", { length: 64 }),
   leaseExpiresAt: timestamp("leaseExpiresAt"),
   nextAttemptAt: timestamp("nextAttemptAt"),
+  ownerAlertStatus: mysqlEnum("ownerAlertStatus", ["pending", "leased", "sent"]),
+  ownerAlertLeaseOwner: varchar("ownerAlertLeaseOwner", { length: 64 }),
+  ownerAlertLeaseExpiresAt: timestamp("ownerAlertLeaseExpiresAt"),
+  ownerAlertSentAt: timestamp("ownerAlertSentAt"),
   providerMessageId: varchar("providerMessageId", { length: 255 }),
   lastError: varchar("lastError", { length: 255 }),
   sentAt: timestamp("sentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [ foreignKey({ name: "referralReviewDeliveries_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt)]);
+}, table => [ foreignKey({ name: "referralReviewDeliveries_referralRequestId_fk", columns: [table.referralRequestId], foreignColumns: [referralRequests.id] }).onDelete("cascade"),uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt), index("referral_review_owner_alert_idx").on(table.ownerAlertStatus, table.ownerAlertLeaseExpiresAt, table.id)]);
 
 export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   id: int("id").autoincrement().primaryKey(),
@@ -753,8 +794,8 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // from subscription activation alone.
   lastPaidAt: timestamp("lastPaidAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
-  // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
-  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
+  // 0091 appended the Oct 14 plans; 0123 appends dormant D-367 banded ids.
+  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge", "early_to_mid", "mid_to_senior", "senior_to_executive"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),
@@ -985,8 +1026,8 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
-  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0090 added the kit plans, 0091 the Oct 14 2026 plans.
-  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).notNull(),
+  // Stored ids retain 0090/0091 ordering; 0123 appends dormant D-367 banded ids.
+  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge", "early_to_mid", "mid_to_senior", "senior_to_executive"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
@@ -1090,6 +1131,22 @@ export const askWorkItems = mysqlTable("askWorkItems", {
   position: int("position").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("ask_work_items_request_piece_unique").on(table.referralRequestId, table.workItemId), index("ask_work_items_request_idx").on(table.referralRequestId, table.position)]);
+
+/** D-090 BYOR (0111): one private one-time link per waiting ask, which the seeker sends to an insider they already know. Only the token's SHA-256 is stored — never the token. `activeRequestKey` is `link:<requestId>` while the link is live and NULL otherwise, the house pattern for "at most one active row" (referralAvailabilitySlots). */
+export const askInviteLinks = mysqlTable("askInviteLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  linkTokenHash: varchar("linkTokenHash", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["active", "claimed", "delivered", "revoked", "expired"]).default("active").notNull(),
+  claimedByUserId: int("claimedByUserId").references(() => users.id, { onDelete: "set null" }),
+  claimedAt: timestamp("claimedAt"),
+  reservationExpiresAt: timestamp("reservationExpiresAt"),
+  activeRequestKey: varchar("activeRequestKey", { length: 64 }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_invites_token_hash_unique").on(table.linkTokenHash), uniqueIndex("ask_invites_active_request_unique").on(table.activeRequestKey), index("ask_invites_request_idx").on(table.referralRequestId), index("ask_invites_status_expiry_idx").on(table.status, table.expiresAt), index("ask_invites_creator_created_idx").on(table.createdByUserId, table.createdAt)]);
 
 /** D-132 audit item 2 (0106): the job level and credit cost an ask was priced at, stored once at creation. Written only while ASK_LEVEL_COST is on; no row means the flat 1-credit price. */
 export const askCosts = mysqlTable("askCosts", {
@@ -1287,6 +1344,11 @@ export const seekerAgentGrants = mysqlTable("seekerAgentGrants", {
   keyHash: varchar("keyHash", { length: 64 }).notNull(),
   canLookup: boolean("canLookup").default(true).notNull(),
   canDraft: boolean("canDraft").default(true).notNull(),
+  // SKIPPY-6 (D-290 (1)): off by default. Only lets the agent *request* a send;
+  // the seeker approves every one in their own session.
+  canSend: boolean("canSend").default(false).notNull(),
+  // SKIPPY-7 (D-201 (4), D-141): opt-in auto-send within the grant's limits.
+  autoSend: boolean("autoSend").default(false).notNull(),
   maxCreditsPerAsk: int("maxCreditsPerAsk").notNull(),
   maxCreditsPerDay: int("maxCreditsPerDay").notNull(),
   maxCreditsPerWeek: int("maxCreditsPerWeek").notNull(),
@@ -1335,6 +1397,19 @@ export const seekerAgentEvents = mysqlTable("seekerAgentEvents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("seeker_agent_events_grant_idx").on(table.grantId, table.createdAt), index("seeker_agent_events_user_idx").on(table.userId, table.createdAt)]);
 
+/**
+ * SKIPPY-6 (D-142 label): how an ask was started. `agent` means a seeker's own
+ * AI agent drafted it and the seeker approved the send, so the referrer sees
+ * "Sent via the seeker's assistant". `skippy` is Skippy's own send, for
+ * analytics only. One row per ask; an ask without a row is a normal page send.
+ */
+export const askOrigins = mysqlTable("askOrigins", {
+  referralRequestId: int("referralRequestId").primaryKey().references(() => referralRequests.id, { onDelete: "cascade" }),
+  channel: mysqlEnum("channel", ["skippy", "agent"]).notNull(),
+  agentGrantId: int("agentGrantId").references(() => seekerAgentGrants.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("ask_origins_channel_idx").on(table.channel, table.createdAt)]);
+
 /** D-148 (0107): the level a seeker picks for themselves (1-10). Display only (plans "Who you can ask"); never inferred. */
 export const seekerLevels = mysqlTable("seekerLevels", {
   id: int("id").autoincrement().primaryKey(),
@@ -1342,3 +1417,114 @@ export const seekerLevels = mysqlTable("seekerLevels", {
   level: int("level").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("seeker_levels_user_unique").on(table.userId)]);
+
+/**
+ * D-057-session-gate (D-245, 0116): one row per in-session work-email step-up
+ * challenge, which may become one proof bound to the account, the session key
+ * (stored as a SHA-256 digest), the exact work email (its HMAC fingerprint) and
+ * the purpose. Written only by server/referrerStepUp.ts.
+ */
+export const referrerStepUps = mysqlTable("referrerStepUps", {
+  id: int("id").autoincrement().primaryKey(),
+  challengeIdHash: varchar("challengeIdHash", { length: 64 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionKeyHash: varchar("sessionKeyHash", { length: 64 }).notNull(),
+  purpose: mysqlEnum("purpose", ["referrer_actions"]).notNull(),
+  emailFingerprint: varchar("emailFingerprint", { length: 80 }).notNull(),
+  workEmailDomain: varchar("workEmailDomain", { length: 255 }).notNull(),
+  codeHash: varchar("codeHash", { length: 64 }).notNull(),
+  codeExpiresAt: timestamp("codeExpiresAt").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  proofExpiresAt: timestamp("proofExpiresAt"),
+  revokedAt: timestamp("revokedAt"),
+  revokedReason: mysqlEnum("revokedReason", ["superseded", "logout"]),
+  createdAt: timestamp("createdAt").notNull(),
+}, table => [uniqueIndex("referrer_step_ups_challenge_unique").on(table.challengeIdHash), index("referrer_step_ups_proof_idx").on(table.userId, table.sessionKeyHash, table.purpose, table.verifiedAt)]);
+
+// BANDED-schema (D-367): storage only. Included referrals belong to one paid
+// cycle; purchased referrals never acquire that cycle's expiry. No reader yet.
+export const bandedReferralBalances = mysqlTable("bandedReferralBalances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  level: mysqlEnum("level", ["early", "mid", "senior", "executive"]).notNull(),
+  includedRemaining: int("includedRemaining", { unsigned: true }).default(0).notNull(),
+  includedCycleKey: varchar("includedCycleKey", { length: 128 }),
+  includedExpiresAt: timestamp("includedExpiresAt"),
+  purchasedRemaining: int("purchasedRemaining", { unsigned: true }).default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  uniqueIndex("banded_balances_user_level_unique").on(table.userId, table.level),
+  check("banded_balances_included_cycle", sql`${table.includedRemaining} = 0 OR (${table.includedCycleKey} IS NOT NULL AND ${table.includedExpiresAt} IS NOT NULL)`),
+]);
+
+// Counts are separate for Chargebee TEST and LIVE. Checkout/grants must lock
+// this row and update it in the same transaction as its membership row.
+export const bandedFoundingCounters = mysqlTable("bandedFoundingCounters", {
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  planId: mysqlEnum("planId", ["early_to_mid", "mid_to_senior", "senior_to_executive"]).notNull(),
+  issuedCount: int("issuedCount", { unsigned: true }).default(0).notNull(),
+  reservedCount: int("reservedCount", { unsigned: true }).default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  primaryKey({ columns: [table.site, table.planId] }),
+  check("banded_founding_counter_cap", sql`${table.issuedCount} + ${table.reservedCount} <= CASE ${table.planId} WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END`),
+]);
+
+// Only a reservation can be released. An issued row is retained through lapse,
+// cancellation and account deletion; it must never reopen a founding place.
+export const bandedFoundingMemberships = mysqlTable("bandedFoundingMemberships", {
+  id: int("id").autoincrement().primaryKey(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  planId: mysqlEnum("planId", ["early_to_mid", "mid_to_senior", "senior_to_executive"]).notNull(),
+  userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+  checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  status: mysqlEnum("status", ["reserved", "issued", "released"]).default("reserved").notNull(),
+  issuedSequence: int("issuedSequence", { unsigned: true }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  issuedAt: timestamp("issuedAt"),
+  releasedAt: timestamp("releasedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  uniqueIndex("banded_founding_checkout_unique").on(table.site, table.checkoutIntentId),
+  uniqueIndex("banded_founding_subscription_unique").on(table.site, table.subscriptionId),
+  uniqueIndex("banded_founding_sequence_unique").on(table.site, table.planId, table.issuedSequence),
+  index("banded_founding_expiry_idx").on(table.status, table.expiresAt),
+  foreignKey({ name: "banded_founding_counter_fk", columns: [table.site, table.planId], foreignColumns: [bandedFoundingCounters.site, bandedFoundingCounters.planId] }),
+  check("banded_founding_sequence_cap", sql`${table.issuedSequence} IS NULL OR ${table.issuedSequence} BETWEEN 1 AND CASE ${table.planId} WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END`),
+  check("banded_founding_state", sql`(${table.status} = 'reserved' AND ${table.issuedSequence} IS NULL AND ${table.issuedAt} IS NULL AND ${table.releasedAt} IS NULL) OR (${table.status} = 'issued' AND ${table.issuedSequence} IS NOT NULL AND ${table.issuedAt} IS NOT NULL AND ${table.releasedAt} IS NULL) OR (${table.status} = 'released' AND ${table.issuedSequence} IS NULL AND ${table.issuedAt} IS NULL AND ${table.releasedAt} IS NOT NULL)`),
+]);
+
+// 0124: BANDED-grants-intents-migration: durable checkout ownership before fulfillment.
+export const bandedCheckoutIntents = mysqlTable("bandedCheckoutIntents", {
+  id: int("id").autoincrement().primaryKey(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
+  userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+  kind: mysqlEnum("kind", ["plan", "referral"]).notNull(),
+  planId: mysqlEnum("planId", ["early_to_mid", "mid_to_senior", "senior_to_executive"]),
+  billingRoute: mysqlEnum("billingRoute", ["IN", "INTL"]).notNull(),
+  currency: mysqlEnum("currency", ["INR", "USD"]).notNull(),
+  expectedTotal: int("expectedTotal", { unsigned: true }).notNull(),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+  cart: json("cart").notNull(),
+  hostedPageId: varchar("hostedPageId", { length: 128 }),
+  invoiceId: varchar("invoiceId", { length: 128 }),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  status: mysqlEnum("status", ["creating", "pending", "fulfilled", "requires_review", "cancelled"]).default("creating").notNull(),
+  failureReason: varchar("failureReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  replayDeadline: timestamp("replayDeadline").notNull(),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  fulfilledAt: timestamp("fulfilledAt"),
+}, table => [
+  uniqueIndex("banded_intents_checkout_unique").on(table.site, table.checkoutIntentId),
+  uniqueIndex("banded_intents_hosted_page_unique").on(table.site, table.hostedPageId),
+  uniqueIndex("banded_intents_invoice_unique").on(table.site, table.invoiceId),
+  index("banded_intents_reconcile_idx").on(table.status, table.lastCheckedAt, table.createdAt),
+  index("banded_intents_recovery_idx").on(table.userId, table.site, table.createdAt),
+  check("banded_intents_expected_total_positive", sql`${table.expectedTotal} > 0`),
+]);

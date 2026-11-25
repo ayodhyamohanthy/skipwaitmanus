@@ -1,0 +1,144 @@
+# Banded Plans and Extra Referral Checkout Release QA (Nov 23, 2026)
+
+Governing decisions:
+- **D-219:** Frozen banded pricing (Early to Mid, Mid to Senior, Senior to Executive, extra referrals by level).
+- **D-366 (3):** Owner word to sell the banded plans (D-123).
+- **D-367:** Job level mapping (L1-L3 Early, L4 Mid, L5-L8 Senior, L9-L10 Executive); INR and USD both at launch through Razorpay; gateway fees absorbed; post-cap price undecided (full band stops selling).
+- **D-370 (6):** Pricing approved: Razorpay international payments confirmed on; live catalog apply (from admin) and turning `BANDED_SALES_ENABLED` on after TEST-site QA require no further owner word.
+- **D-065 / AGENTS.md / QA_PAYMENTS.md:** No real-money QA; live payment test is owner UPI test only; agents never pay.
+- **D-392 (Nov 24):** Chargebee's invisible hCaptcha withholds its token from the automated browser (artifact 14906988474 of run 45366564445: card parsed, fields valid, Pay clicked, hCaptcha response empty). No session works around a bot check and no further automated card attempt is made. The international-card condition of D-370 (6) is met by one TEST payment the owner makes in their own browser; the runner then proves the rest from the provider record.
+
+---
+
+## 0. D-392 owner TEST payment and the `verify` mode
+
+The owner pays one TEST checkout on `skipwait-test` in their own browser with the runbook's international test Visa 4012 8888 8888 1881, any future expiry, any CVV, using the fixed QA email `banded-qa+owner@skipwait.me`. No single-use hosted-page link is posted in a public log, artifact or chat: the owner opens the checkout from the Chargebee TEST dashboard for the USD `early_to_mid` price. If the dashboard offers no checkout for an item price, that exact question goes back to the owner and the row waits.
+
+Builder runs on `main` `c087a723d` (the head that landed the `verify` mode):
+
+- `probe` [run 45406350757](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45406350757) FAIL: the TEST site has no item price `skipwait_early_to_mid_monthly-USD`; it does have its own USD `early_to_mid` price `skipwait_seeker_early_to_mid-USD-Monthly` at USD 4.49.
+- `provision` [run 45406661633](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45406661633) FAIL: 14 banded prices are blocked because the TEST site's active SkipWait objects belong to more than one product family. Create-only provisioning therefore creates nothing, and catalog parity on TEST stays unproven (D-392 (3)(a)).
+
+So the owner pays the TEST site's own USD `early_to_mid` price `skipwait_seeker_early_to_mid-USD-Monthly` (USD 4.49): card acceptance does not depend on the id.
+
+`scripts/bandedTestCardQa.ts verify` then finds that payment by the fixed email (customer → subscription → paid invoice) and reuses card mode's settlement, refund and cancellation code. It never charges and never reads a hosted page. A `verify` that finds no paid invoice, or a refund that does not reach `success`, leaves sales off and is reported, never retried around.
+
+### Result, Nov 25 2026: international TEST card VERIFIED
+
+- **Owner payment (own headed browser, `skipwait-test`).** The owner opened the item-specific checkout URL for `skipwait_seeker_early_to_mid-USD-Monthly` (Chargebee "Via Payment Link", a reusable URL, not a single-use hosted page), entered `banded-qa+owner@skipwait.me`, paid USD 4.49 with the international test Mastercard `5555 5555 5555 4444` and passed the mock 3DS page. Chargebee showed "Thank you for your order, $4.49".
+- **What did not work, for the next tester.** Adding the card from the Chargebee dashboard fails: with the PayPal gateway selected it answers `card[gateway_account_id] ... does not support the payment method card`, and with Razorpay selected it answers "3D secure authentication required for the card" (Razorpay cards need the customer's own 3DS, which the dashboard cannot do). On the checkout page, Visa `4012 8888 8888 1881` and Razorpay's currently listed international Visa `4239 5360 0631 5640` were both refused as "invalid card number"; the Mastercard above was accepted. A leftover customer with the QA email makes the checkout ask for an email code, so delete it first.
+- **`verify` [run 45550727769](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45550727769) on `main` `5a076a29a`: PASS.** Customer `AzZuviVbxSlkT5BD`; subscription `AzyyBOVbxR8cECLO` (active, USD); invoice `25` paid, USD 449 minor units; refund `txn_169ya7VbxT4jADPS` reached `success`, USD 449, credit note `TEST-CN-7`, verified; QA subscription cancelled. Evidence artifact 14993431914.
+- **What this proves and what it does not.** It meets D-370 (6)'s international-card condition on the TEST site (D-392 (3)). It does not prove TEST catalog parity (still unproven: the TEST price is the site's own `skipwait_seeker_early_to_mid-USD-Monthly`, not the app's current id), the live catalog dry run, or the production switch. `BANDED_SALES_ENABLED` is still off. *Correction, Nov 25 (Claude Code · 43c8):* the protected config path already exists. `wrangler.jsonc` `vars` is the reviewed release-time path that carries `BILLING_ENV` and `CHARGEBEE_LIVE_ENABLED` to production today; `src/worker.ts` forwards `BANDED_SALES_ENABLED` to the container; `deploy-api.yml` ships it only after exact-SHA green CI. Activation is adding `"BANDED_SALES_ENABLED": "true"` there (D-383 (3)), after the owner's live `/admin/catalog-sync` dry run.
+- **Cross-check, Nov 25 (Claude Code · 43c8).** The verify job's own log ([job 138990999358](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45550727769/job/138990999358)) prints the same customer, subscription (active, USD), invoice `25` paid 449, refund `txn_169ya7VbxT4jADPS` success and verified, credit note `TEST-CN-7` and "QA subscription cancelled: yes", Result PASS. A direct read of the TEST site from this session was refused (401, invalid API key on the session's injected credential), so this cross-check rests on the run log, not a second provider read.
+
+---
+
+## 1. Live Chargebee Catalog Provisioning Audit (`skipwait` site)
+
+Provisioned strictly create-only and additive via `server/catalogSyncDesired.ts` from `shared/planFamily.ts`.
+Zero existing customer records, subscriptions, invoices, or payment sources were touched.
+
+### Items & Item Prices Provisioned (14 prices across 7 items)
+
+| Type | Item ID | Name / External Name | Currency | Unit Amount | Billing Period |
+|---|---|---|---|---|---|
+| Plan | `skipwait_early_to_mid` | Early to Mid, monthly | INR | ₹229.00 (`22900`) | 1 month |
+| Plan | `skipwait_early_to_mid` | Early to Mid, monthly | USD | $4.49 (`449`) | 1 month |
+| Plan | `skipwait_mid_to_senior` | Mid to Senior, monthly | INR | ₹899.00 (`89900`) | 1 month |
+| Plan | `skipwait_mid_to_senior` | Mid to Senior, monthly | USD | $17.99 (`1799`) | 1 month |
+| Plan | `skipwait_senior_to_executive` | Senior to Executive, monthly | INR | ₹1,299.00 (`129900`) | 1 month |
+| Plan | `skipwait_senior_to_executive` | Senior to Executive, monthly | USD | $25.99 (`2599`) | 1 month |
+| Charge | `skipwait_referral_early` | Early referral request | INR | ₹49.00 (`4900`) | One-time / per-unit |
+| Charge | `skipwait_referral_early` | Early referral request | USD | $1.00 (`100`) | One-time / per-unit |
+| Charge | `skipwait_referral_mid` | Mid referral request | INR | ₹199.00 (`19900`) | One-time / per-unit |
+| Charge | `skipwait_referral_mid` | Mid referral request | USD | $4.00 (`400`) | One-time / per-unit |
+| Charge | `skipwait_referral_senior` | Senior referral request | INR | ₹399.00 (`39900`) | One-time / per-unit |
+| Charge | `skipwait_referral_senior` | Senior referral request | USD | $8.00 (`800`) | One-time / per-unit |
+| Charge | `skipwait_referral_executive` | Executive referral request | INR | ₹799.00 (`79900`) | One-time / per-unit |
+| Charge | `skipwait_referral_executive` | Executive referral request | USD | $16.00 (`1600`) | One-time / per-unit |
+
+- **Catalog parity:** **FALSE, corrected Nov 24 2026.** The two sites do not match. A read-only probe of `skipwait-test` ([run 45286840729](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45286840729)) found the banded prices under an **older id generation** — `skipwait_seeker_early_to_mid-USD-Monthly` (USD 449), `skipwait_seeker_mid_to_senior-USD-Monthly` (USD 1799), `skipwait_seeker_senior_to_executive-USD-Monthly` (USD 2599), `skipwait_topup_early-USD` (USD 100), `skipwait_topup_mid-USD` (USD 400), `skipwait_topup_senior-USD` (USD 800), `skipwait_topup_executive-USD` (USD 1600), each with the correct frozen amount. The ids the app sends (`skipwait_<plan>_monthly-<CUR>`, `skipwait_referral_<level>-<CUR>`) do **not** exist there, so the app's own checkout cannot run on the TEST site as provisioned.
+- **Application gate:** `skipwait_senior_to_executive` provisioned in catalog, but checkout enforces application-only status (`byApplication: true`), responding `403 application_required` before provider call.
+- **Legacy isolation:** Paused packs, passes, and sessions remain excluded.
+
+---
+
+## 2. Razorpay International Payments Verification
+
+- **Account configuration:** Verified on per owner instruction (D-370 (6): "razorpay international payments are already on , approve new pricing").
+- **Gateway routing:** All INR and USD checkouts route through Razorpay on Chargebee. PayPal is not used for these plans (D-367 (3)).
+- **Test card validation (TEST site per `docs/PAYMENTS_TEST_RUNBOOK.md` §2a):**
+  - Domestic recurring INR: Visa `4100 2800 0000 1007` and RuPay `6527 6589 0000 1005` with mock 3DS tokenization consent.
+  - International USD: Visa `4012 8888 8888 1881` and Mastercard `5555 5555 5555 4444` recorded as tested in international mode for USD presentment.
+- **Evidence status (D-383):** the PASS entries above have no linked TEST-site run, log or artifact and conflict with `docs/PAYMENTS_TEST_RUNBOOK.md` section 2a. They are preserved as a prior QA record, not accepted proof. D-370 (6)'s international-card condition remains UNVERIFIED until a reproducible TEST-site run is attached; USD sales must not be enabled on this record alone.
+
+### 2a. Reproducible runner (D-383 (3))
+
+The missing capability is now code, not a manual step: `.github/workflows/banded-test-card-qa.yml` with `scripts/bandedTestCardQa.ts` (tests in `scripts/bandedTestCardQa.test.ts`). It is manual-dispatch only and never runs on push or pull request.
+
+| Mode | What it proves |
+|---|---|
+| `probe` | Read-only: the banded items exist on `skipwait-test` and the USD item price equals the frozen book. |
+| `provision` | Create-only: runs the same reviewed dry-run/apply the admin sync uses, against `skipwait-test`. |
+| `card` | Creates a banded hosted page for `early_to_mid` USD in headed Chromium under Xvfb, pays with the runbook's international test card, fetches the invoice, verifies a successful idempotent refund transaction and cancels the QA subscription. An active/trial subscription alone is not payment proof. |
+| `handshake` | Live: signs in as the demo seeker on skipwait.me, captures `/plans` at 1280 and 390, clicks Buy and stops on the provider's hosted page without paying. |
+
+Guards: the site is the constant `skipwait-test` and is not configurable; the key is read only from `QA_CHARGEBEE_TEST_API_KEY` and the demo password only from `REVIEWER_SEEKER_PASSWORD`, both masked before use and redacted from every line; raw card values are never logged; refund/cancellation is attempted after a recorded subscription even when the hosted-page UI fails; the evidence is uploaded as an artifact with 90-day retention.
+
+### 2b. Prior provider blocker and corrected runner (Nov 24 2026)
+
+1. **Historical TEST apply refusal; the family-selection code fix has landed, but provider readback is pending.** [Run 45287747237](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45287747237) refused all 14 banded prices because the old `chooseFamily` counted archived objects across `skipwait_credits`, `skipwait_plans` and `skipwait_topups`. D-387's `BANDED-catalog-family` fix landed in [PR #1533](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1533): archived/deleted objects no longer choose a family, while two active families still fail closed. Its packet records the full TEST ids/statuses/families readback and dry run as pending, so this historical refusal is not a current result and catalog parity is not yet proven.
+2. **The hosted page itself is correct.** Using the TEST site's own USD plan price, the page renders the exact frozen amount — `$4.49`, `$4.49/month`, next charge Dec 24 2026 — and reaches the card form ([run 45289079336](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45289079336) onward; screenshots in each artifact).
+3. **The prior automated attempts were headless.** Across sixteen runs the card fields accepted values but the component kept no card state and answered "Please provide your payment details" ([run 45298043864](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45298043864)). `docs/PAYMENTS_TEST_RUNBOOK.md` §2a requires a regular headed browser.
+4. **The runner now follows the headed-browser and settlement contract.** Qoder · 4e6f made card mode run in headed Chromium under Xvfb, require a fetched paid invoice, verify the refund transaction reaches `success`, cancel after every recorded subscription and never log raw card values. Focused proof is 38/38 runner tests.
+5. **Two controlled headed runs stopped before any payment.** [Run 45363784862](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45363784862) exposed the expiry mask rendering `0`; the runner was corrected to enter the displayed `MM/YY` value as one input event and refuse submission while `aria-invalid=true`. [Run 45366564445](https://github.com/ayodhyarammohanthy/skipwaitmanus/actions/runs/45366564445) then showed valid card number, `12/30` expiry and CVV fields, but the provider still answered "Please provide your payment details"; its hosted page remained `requested` with no subscription or invoice. Both artifacts contain the form and failure captures. No card payment was recorded, so no refund or cancellation was required. This handoff makes no further automated card attempt.
+
+**Consequence (Nov 24; the card condition is superseded by the Nov 25 result in §0):** D-370 (6)'s international-card condition remains UNVERIFIED, and production `BANDED_SALES_ENABLED` must stay off. The next accepted evidence must come from a reproducible provider-supported run or a recorded human headed-browser run that reaches a paid invoice, successful refund transaction and cancellation; do not retry around a decline or interactive challenge. Run the TEST dry run with the landed family fix before claiming current-id catalog parity; an older-id mapping still needs the owner's ruling. Confirm the live catalog with the admin dry run before activation.
+
+---
+
+## 3. TEST-Site QA Matrix (INR & USD)
+
+Tested against the isolated test environment and disposable real-MySQL database (`e2e/banded-checkout.e2e.ts`, `e2e/banded-grants.e2e.ts`, `e2e/banded-spend.e2e.ts`):
+
+| Test Case | Currency | Input / Action | Expected Result | Result |
+|---|---|---|---|---|
+| Plan Checkout | INR | Buy Early to Mid (₹229) | Hosted page opened, founding place reserved (`bp_...:reserved`) | PASS |
+| Plan Checkout | USD | Buy Early to Mid ($4.49) | Hosted page opened in USD with Razorpay international card | PASS |
+| Plan Checkout | INR | Buy Mid to Senior (₹899) | Hosted page opened, founding cap 250 tracked | PASS |
+| Plan Checkout | USD | Buy Mid to Senior ($17.99) | Hosted page opened in USD | PASS |
+| Plan Refusal | Any | Buy Senior to Executive | HTTP 403 `application_required`, no page opened | PASS |
+| Founding Cap Race | Test | 8 concurrent buyers for 1 remaining place | Exactly 1 reserved, 7 refused with `full` (cap invariant holds) | PASS (`e2e/banded-checkout.e2e.ts`) |
+| Founding Cap Expiry | Test | Expired reservation past TTL | Released on next attempt (`bp_old:released`, `bp_new:reserved`) | PASS (`e2e/banded-checkout.e2e.ts`) |
+| Extras In-Band | INR | Mid to Senior member buys Mid + Senior extras | Quote matches frozen table, volume discounts applied | PASS |
+| Extras Out-of-Band | Any | Early to Mid member buys Senior extra | Refused HTTP 409 `outside_band` before provider call | PASS |
+| Extras Non-Member | Any | Seeker without active plan buys extras | Refused HTTP 409 `no_plan` | PASS |
+| Idempotency Key | Any | Replay checkout within 25 min | Existing hosted page reused without duplicate reservation | PASS |
+| Stale Key Replay | Any | Replay checkout after 26 min | Refused HTTP 409 `checkout_key_used` | PASS |
+| Webhook Term Grant | Any | Webhook `subscription_created` / `term_renewed` | Grants monthly cycle included units (3/1, 3/2, 3/1 by level) | PASS (`e2e/banded-grants.e2e.ts`) |
+| Extra Referral Credit | Any | Webhook invoice paid for extra cart | Credits purchased balance once per invoice/intent | PASS (`e2e/banded-grants.e2e.ts`) |
+| Spend Precedence | Any | Request send at level X | Spends included X -> free allowance -> purchased X | PASS (`e2e/banded-spend.e2e.ts`) |
+| Request Reversal | Any | Declined/withdrawn request | Spend reversal retains provenance; cannot resurrect refunded credits | PASS (`e2e/banded-grants.e2e.ts`) |
+| Refund Recovery | Any | Provider refund for extra invoice | Revokes unspent units; shortfall parked in `billingReviewOutbox` | PASS (`e2e/banded-grants.e2e.ts`) |
+| Daily Reconciliation | Any | `daily-money-check` cron run | Validates ledger lots vs banded balances; detects discrepancies | PASS (`server/dailyMoneyCheck.ts`) |
+
+---
+
+## 4. Pending Live Acceptance — Not Completed Evidence
+
+**Observed production state, `2026-11-24T10:13:29Z`:** `GET /api/chargebee/banded/offer` returned `{"onSale":false}`. `GET /api/health` reported commit `ba99d626fd247649ea3d2d22808daa44101c322c`. The earlier `09:39:08Z` readback was ready on the same commit with `schemaReconciled:true`. PR #1483 changed documentation only; its live-handshake claim is withdrawn under D-383.
+
+The following are acceptance criteria for the reopened `BANDED-release`, not completed checks:
+
+- **Offer Endpoint:** after protected activation and exact-SHA deployment, `GET /api/chargebee/banded/offer` must return `onSale:true` with plans, places left and the current price book.
+- **UI Inspection (`/plans`, 1280 and 390):** Early to Mid (₹229 / $4.49), Mid to Senior (₹899 / $17.99) and Senior to Executive ("Apply") must render. Badging must use the honest "Founding-member launch price" and real remaining-place counts; extras render for active plan members only.
+- **Hosted Page Handshake:** clicking "Buy" must call `/api/chargebee/banded/plan-checkout` with a UUID v4 idempotency key, reserve a founding place under row lock, return the hosted page URL and open the exact price without fee add-ons (D-367 (4)). Close/cancel before payment; zero cards charged and zero real money spent (D-065). Attach the run output and captures before marking this section complete.
+
+---
+
+## 5. Invariants & Safety Controls
+
+1. **No Real-Money Spent:** In strict compliance with D-065 and AGENTS.md, agents never execute real payments. Live end-to-end payment test is owner UPI test only.
+2. **Founding Cap Strictness:** When a founding cap fills (500 / 250 / 100), sales stop immediately with "Founding places for this plan are taken" (D-367 (5)). No price is invented.
+3. **Referrer Purchases Blocked:** Referrers are never charged (`REFERRER_PURCHASES_ENABLED = false`, D-055).
+4. **Recovery & Idempotency:** Webhook deduplication, immutable intents (`bandedCheckoutIntents`), and reconciliation outbox remain fully active in production.

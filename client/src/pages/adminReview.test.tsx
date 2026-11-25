@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminReview from "./AdminReview";
+import "./goal/admin/GoalAdminReview";
 
 const { authState, go, search } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn(), search: { value: "" } }));
 
@@ -52,12 +53,12 @@ describe("AdminReview console", () => {
     expect(screen.getByText("New company: Acme Corp")).toBeTruthy();
     expect(screen.getByText("Work-email enrollment @wipro.co.in")).toBeTruthy();
     expect(screen.queryByText(/tcs\.com/)).toBeNull();
-    expect(screen.getByRole("tab", { name: /All 3/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All3" })).toBeTruthy();
     expect(screen.queryByText("R-2048")).toBeNull();
-    // Kit refs: the real id zero-padded to 3 digits.
-    expect(screen.getByText(/^R-048 · /)).toBeTruthy();
-    expect(screen.getByText(/^V-031 · /)).toBeTruthy();
-    expect(screen.getByText(/^C-005 · /)).toBeTruthy();
+    // Real case references are shown separately from the case description.
+    expect(screen.getByText("R-048")).toBeTruthy();
+    expect(screen.getByText("V-031")).toBeTruthy();
+    expect(screen.getByText("C-005")).toBeTruthy();
     expect(screen.queryByText(/Freshworks/)).toBeNull();
     expect(screen.queryByText(/EXAMPLE CASES/)).toBeNull();
   });
@@ -70,9 +71,10 @@ describe("AdminReview console", () => {
     });
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Spam or repeated asks/ }));
-    expect(screen.getByRole("button", { name: /Resolve with action/ }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Record decision" }).getAttribute("aria-disabled")).toBe("true");
     fireEvent.change(screen.getByPlaceholderText(/Why this decision/), { target: { value: "Confirmed spam pattern." } });
-    fireEvent.click(screen.getByRole("button", { name: /Resolve with action/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Resolve with action/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Record decision" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/safety-reports/48/decision", expect.objectContaining({ method: "POST" })));
   });
 
@@ -85,7 +87,8 @@ describe("AdminReview console", () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "Work-email enrollment @wipro.co.in" })).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText(/Why this decision/), { target: { value: "Domain belongs to Wipro." } });
-    fireEvent.click(screen.getByRole("button", { name: /^Approve/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /^Approve/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Record decision" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/approval-queue/referrer_enrollment/31/decision", expect.objectContaining({ method: "POST" })));
   });
 
@@ -93,7 +96,7 @@ describe("AdminReview console", () => {
     stubQueue();
     search.value = "tab=companies";
     renderPage();
-    expect((await screen.findByRole("tab", { name: /Companies 1/ })).getAttribute("aria-selected")).toBe("true");
+    expect((await screen.findByRole("button", { name: "Companies1" })).getAttribute("aria-pressed")).toBe("true");
     expect(await screen.findByRole("heading", { name: "New company: Acme Corp" })).toBeTruthy();
   });
 
@@ -103,7 +106,7 @@ describe("AdminReview console", () => {
     renderPage();
     expect(await screen.findByText("Administrator access is required.")).toBeTruthy();
     expect(screen.queryByText("Spam or repeated asks")).toBeNull();
-    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByRole("group", { name: "Review kinds" })).toBeNull();
   });
 
   it("treats a signed-out session (401) as the access gate too", async () => {
@@ -118,8 +121,8 @@ describe("AdminReview console", () => {
     stubQueue(undefined, { reports: reply({ reports: [] }), companies: reply({ suggestions: [] }), queue: reply({ items: [] }) });
     renderPage();
     expect(await screen.findByText("Nothing to review right now.")).toBeTruthy();
-    expect(screen.getByRole("tab", { name: /All 0/ })).toBeTruthy();
-    expect(screen.getByText("No cases here right now.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All0" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Record decision" })).toBeNull();
   });
 
   it("shows a recorded decision instead of decision controls for a closed case", async () => {
@@ -127,7 +130,7 @@ describe("AdminReview console", () => {
     search.value = "tab=reports";
     renderPage();
     expect(await screen.findByText("Decision: Resolved")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Resolve with action/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Record decision" })).toBeNull();
     expect(screen.queryByPlaceholderText(/Why this decision/)).toBeNull();
   });
 
@@ -141,7 +144,8 @@ describe("AdminReview console", () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "New company: Acme Corp" })).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText(/Why this decision/), { target: { value: "Real employer, domain checked." } });
-    fireEvent.click(screen.getByRole("button", { name: /Approve for listing/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Approve for listing/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Record decision" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/company-suggestions/5/decision", expect.objectContaining({ method: "POST" })));
   });
 
@@ -162,7 +166,8 @@ describe("AdminReview console", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Spam or repeated asks/ }));
     fireEvent.change(screen.getByPlaceholderText(/Why this decision/), { target: { value: "Confirmed spam pattern." } });
-    fireEvent.click(screen.getByRole("button", { name: /Dismiss, no violation/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Dismiss, no violation/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Record decision" }));
     expect((await screen.findByText("This report was already resolved")).getAttribute("role")).toBe("alert");
     expect((screen.getByPlaceholderText(/Why this decision/) as HTMLTextAreaElement).value).toBe("Confirmed spam pattern.");
   });
@@ -172,7 +177,7 @@ describe("AdminReview console", () => {
     renderPage();
     const alert = await screen.findByRole("alert", {}, { timeout: 4000 });
     expect(alert.textContent).toContain("We could not reach skipwait.me");
-    expect(screen.getByRole("tab", { name: /All 0/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All0" })).toBeTruthy();
   });
 
   it("shows a failed load with a retry while other cases stay reviewable", async () => {

@@ -1,0 +1,12 @@
+{
+  "task": "D-048-K-support",
+  "recordedAt": "2026-11-19T15:54:44Z",
+  "project": "skipwait/skipwait-webapp",
+  "readOnly": true,
+  "results": [
+    {"route": "/help", "query": "is:unresolved environment:production transaction:/help", "issues": [], "hasMore": false},
+    {"route": "/report", "query": "is:unresolved environment:production transaction:/report", "issues": [], "hasMore": false},
+    {"route": "/safety", "query": "is:unresolved environment:production transaction:/safety", "issues": [], "hasMore": false}
+  ],
+  "limits": "Route-scoped unresolved production issues as returned by the authenticated Sentry CLI after the Pages deployment; not a claim of exhaustive error absence. No event payloads or private account data retained."
+}

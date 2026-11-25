@@ -2,6 +2,7 @@ import { registerCompanyClaimRoutes } from "../companyClaimRoutes";
 import { jsonBodyError } from "../bodyErrors";
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
+import { registerReasonsCoachRoutes } from "../reasonsCoachRoutes";
 
 initServerSentry();
 if (process.env.NODE_ENV !== "production") {
@@ -46,16 +47,21 @@ import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
+import { askInviteFeatureGateMiddleware, registerAskInviteRoutes } from "../askInviteRoutes";
 import { registerJobCatalogRoutesWithDrizzle } from "../jobCatalogRoutes";
 import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
+import { registerSearchRoutes } from "../searchRoutes";
+import { createUniversalSearch } from "../search";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
 import { dispatchReferralReviewDeliveries } from "../referralReviewDispatch";
 import { publicOutboundOrigin } from "./authPostGuard";
 import { registerSkippieSeekerRoutes, skippieSeekerAllowedIds } from "../skippieSeekerRoutes";
+import { parseSkippieAllowedIds } from "../skippieAllowList";
 import { createSkippieSeekerDeps } from "../skippieSeekerDeps";
+import { createSkippieCardStore } from "../skippieMoneyCards";
 import { createSkippieAdminDeps } from "../skippieAdminDeps";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { employerSponsorshipEnabled } from "../billingSettings";
@@ -63,23 +69,28 @@ import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerAssistantRoutes } from "../assistantRoutes";
 import { registerSeekerAgentRoutes } from "../seekerAgentRoutes";
-import { createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAgentDeps";
+import { createOAuthAgentGrant, createSeekerAgentSourceDeps, createSeekerAgentStore } from "../seekerAgentDeps";
 import { registerOAuthRoutes } from "../oauthRoutes";
 import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
+import { agentPortalEnabled } from "../agentPortalAccess";
+import { resolveAgentBearer } from "../agentGrantAuth";
 import { registerProfileRoutes } from "../profileRoutes";
 import { registerAskDraftRoutes } from "../askDraftRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerBlocksRoutes } from "../blocksRoutes";
 import { createCardValidationPageForUser, reconcileCardValidationFromProvider } from "../cardValidation";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
+import { bandedCheckoutStore } from "../bandedCheckoutStore";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { registerAdminCatalogSyncRoutes } from "../adminCatalogSyncRoutes";
 import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
+import { registerLanguageFunnelRoutes } from "../languageFunnel";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createCardValidationAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { httpErrorCaptureMiddleware, markErrorReported, isClientTrpcCode } from "../httpErrorCapture";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -91,12 +102,16 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { registerPasskeyLoginRoutes } from "./passkeyLogin";
+import { registerReferrerStepUpRoutes } from "../referrerStepUpRoutes";
+import { setReferrerScreenName } from "../referrerScreenName";
 import { registerReviewerLoginRoutes } from "./reviewerLogin";
 import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
-import { registerPasswordResetRoutes } from "../passwordResetRoutes";
+import { registerPasswordAuthRoutes } from "./passwordAuthRoutes";
+import { apiTiming } from "./apiTiming";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
 import { AssistantPlanRequiredError } from "../planGates";
@@ -144,6 +159,9 @@ async function startServer() {
   app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
+  // Every API 5xx must reach Sentry and the owner, sign-in and webhooks included.
+  app.use(httpErrorCaptureMiddleware);
+  app.use(materialErrorAlertMiddleware);
   // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register
   // before the global JSON parser: the Razorpay handler must HMAC the exact
   // raw request bytes the provider signed, so it parses its own body.
@@ -163,26 +181,17 @@ async function startServer() {
     : async (req: express.Request) => {
     const identity = await resolveDevIdentity(req);
     if (!identity) return undefined;
-    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
+    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses, sessionAmr: identity.sessionAmr, sessionKey: identity.sessionKey };
   };
   registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
+  registerReasonsCoachRoutes(app, { resolveIdentity });
+  // BYOR off must answer before body parsers and session renewal can reach any user/database state.
+  app.use(askInviteFeatureGateMiddleware);
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
-  // Timing only, no behavior change: Server-Timing header on /api responses and a log line for slow ones (path only, no query or user data).
-  app.use("/api", (req, res, next) => {
-    const started = performance.now();
-    const writeHead = res.writeHead.bind(res) as (...args: unknown[]) => typeof res;
-    res.writeHead = ((...args: unknown[]) => {
-      if (!res.headersSent) res.setHeader("Server-Timing", `app;dur=${Math.round(performance.now() - started)}`);
-      return writeHead(...args);
-    }) as typeof res.writeHead;
-    res.on("finish", () => {
-      const ms = Math.round(performance.now() - started);
-      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${req.baseUrl}${req.path} ${res.statusCode} ${ms}ms`);
-    });
-    next();
-  });
+  // Server-Timing on /api answers (never on /api/auth/*) and a slow-answer log line: server/_core/apiTiming.ts.
+  app.use("/api", apiTiming);
   app.use((req, res, next) => {
     if (req.path === "/api/documents" || req.path === "/api/documents/opaque") return next();
     smallJson(req, res, error => error ? res.status(jsonBodyError(error).status).json(jsonBodyError(error).body) : next());
@@ -212,20 +221,26 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Referrer OTP-first login is a public surface, always registered.
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
+  registerPasskeyLoginRoutes(app, { resolveIdentity });
+  // D-057-session-gate: the in-session work-email step-up and the referrer session gate, before the routes it guards.
+  registerReferrerStepUpRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerReviewerLoginRoutes(app);
-  registerPasswordResetRoutes(app);
+  // Seeker email + password (D-049) registers with the WorkOS routes; without WorkOS keys it answers 503.
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
-  else registerDevAuthRoutes(app);
-  app.use(materialErrorAlertMiddleware);
+  else { registerDevAuthRoutes(app); registerPasswordAuthRoutes(app, { client: null }); }
+  registerAskInviteRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerStorageProxy(app);
   registerDbDocumentRoute(app, { resolveIdentity });
-  registerPrivateReferralRoutes(app, { resolveIdentity, dataUrlToBuffer, sanitizeDocumentName, storagePut, storageGetSignedUrl, storageGetBytes, createReferralAttachment: db.createReferralAttachment, getAccessibleReferralAttachment: db.getAccessibleReferralAttachment, createResumeUploadSession: db.createResumeUploadSession, getResumeUploadSession: db.getResumeUploadSession, appendResumeUploadChunk: db.appendResumeUploadChunk, claimResumeUploadFinalization: db.claimResumeUploadFinalization, clearUnattachedResumeUploads: db.clearUnattachedResumeUploads, completeResumeUploadSession: db.completeResumeUploadSession, saveVerifiedWorkEmail: db.saveVerifiedWorkEmail, getVerifiedWorkEmailAccess: db.getVerifiedWorkEmailAccess, fulfillCompanyCoverageInvitation: db.fulfillCompanyCoverageInvitation, createCompanyReferralRequest: db.createCompanyReferralRequest, prepareReferrerReviewEmailNotifications: db.prepareReferrerReviewEmailNotifications, claimReferralReviewDelivery: db.claimReferralReviewDelivery, completeReferralReviewDelivery: db.completeReferralReviewDelivery, resolveReferrerReviewEmailLink: db.resolveReferrerReviewEmailLink, consumeReferrerReviewEmailLink: db.consumeReferrerReviewEmailLink, oneClickReviewReferralRequest: db.oneClickReviewReferralRequest, sendReferrerReviewEmail, saveReferrerSlackWebhook: db.saveReferrerSlackWebhook, getReferrerSlackWebhookStatus: db.getReferrerSlackWebhookStatus, deactivateReferrerSlackWebhook: db.deactivateReferrerSlackWebhook, getActiveReferrerSlackWebhooks: db.getActiveReferrerSlackWebhooks, sendWorkEmailOtp: ({ email, ip }) => workEmailOtpService.sendCode(email, { ip }), verifyWorkEmailOtp: ({ email, code, ip }) => workEmailOtpService.verifyCode(email, code, { ip }), registerWorkEmailOtpFailure: ({ email, code }) => workEmailOtpService.registerFailedAttempt(email, code), issueWorkEmailEnrollmentReceipt: ({ email, userId }) => workEmailOtpService.issueEnrollmentReceipt(email, userId), completeWorkEmailOtpEnrollment: db.completeWorkEmailOtpEnrollment, getSlotOpenedAlertRecipients: db.getSlotOpenedAlertRecipients, sendSlotOpenedAlertEmail, getPublicReferralImpact: db.getPublicReferralImpact, getReferrerImpactSummary: db.getReferrerImpactSummary, getOwnedResumeAttachmentForPitch: db.getOwnedResumeAttachmentForPitch, draftSmartReferralPitch, getOrCreateReferralShareCard: db.getOrCreateReferralShareCard, revokeReferralShareCard: db.revokeReferralShareCard, getPublicReferralShareCard: db.getPublicReferralShareCard, getOrCreateReferrerFastTrackLink: db.getOrCreateReferrerFastTrackLink, getPublicReferrerFastTrackLink: db.getPublicReferrerFastTrackLink, getPublicReferrerFastTrackVanityLink: db.getPublicReferrerFastTrackVanityLink, deactivateReferrerFastTrackLink: db.deactivateReferrerFastTrackLink, openCompanyReferralAvailability: db.openCompanyReferralAvailability, listCompanyReferralInbox: db.listCompanyReferralInbox, listCompanyReferralInboxByState: db.listCompanyReferralInboxByState, getUnclaimedCompanyReferralPreview: db.getUnclaimedCompanyReferralPreview, listJobSeekerCompanyReferrals: db.listJobSeekerCompanyReferrals, hasEverCreatedReferralRequest: db.hasEverCreatedReferralRequest, hasEverReviewedReferral: db.hasEverReviewedReferral, reconcileExpiredPendingReferrals: db.reconcileExpiredPendingReferrals, getOpenAskSlots: db.getOpenAskSlots, saveCompanyReferralRequest: db.saveCompanyReferralRequest, withdrawCompanyReferralRequest: db.withdrawCompanyReferralRequest, listRequiresReviewPayments: db.listRequiresReviewPayments, resolveRequiresReviewPayment: db.resolveRequiresReviewPayment, listRecentPayments: db.listRecentPayments, revokeCreditedPaymentCredits: db.revokeCreditedPaymentCredits, getRevenueSummary: db.getRevenueSummary, claimCompanyReferralRequest: db.claimCompanyReferralRequest, getClaimedCompanyReferralDetail: db.getClaimedCompanyReferralDetail, reviewReferralRequest: db.reviewReferralRequest, updateReferralProgress: db.updateReferralProgress, getApprovedReferralProgressStatus: db.getApprovedReferralProgressStatus, extendReferredDeadlineTx: db.extendReferredDeadlineForUser, stepBackFromReferral: db.stepBackFromReferralForUser, confirmReferredBySeeker: db.confirmReferredBySeekerForUser, lapseReferredTx: db.lapseReferredTx, listReferralConversation: db.listReferralConversation, sendReferralConversationMessage: db.sendReferralConversationMessage, recordLandedJourney: db.recordLandedJourney, listReferrerThankYous: db.listReferrerThankYous, listPublicCompanyOpportunities: db.listPublicCompanyOpportunitiesWithSponsorship, publishCompanyOpportunity: db.publishCompanyOpportunity, listMyCompanyOpportunities: db.listMyCompanyOpportunities, renewCompanyOpportunity: db.renewCompanyOpportunity, closeCompanyOpportunity: db.closeCompanyOpportunity, recordActivity: db.recordOperationalActivity, listOperationalActivity: db.listOperationalActivity, listMyUploadStarts: db.listMyUploadStarts, getReferralFlowHealth: db.getReferralFlowHealth, getReferralFlowBaseline, getCreditLedgerAudit: db.getCreditLedgerAudit, getDomainIntegrity: db.getDomainIntegrity, findUsersForTokenRecovery: db.findUsersForTokenRecovery, listAdminTokenAdjustments: db.listAdminTokenAdjustments, grantAdminTokenAdjustment: db.grantAdminTokenAdjustment, getCreditSummary: db.getTokenWallet, reconcileCardValidation: async (userId: number) => { try { await reconcileCardValidationFromProvider({ userId }); } catch (error) { console.error("[Chargebee] card-validation reconcile failed", error); void createCardValidationAlerter()({ reason: "provider_reconcile_failed" }).catch(() => undefined); } }, getOrCreatePersonalReferralInvite: db.getOrCreatePersonalReferralInvite, getPersonalReferralInviteState: db.getPersonalReferralInviteState, claimPersonalReferralInvite: db.claimPersonalReferralInvite, exportUserData: db.exportUserData, requestDataExport: userId => requestDataExport(userId), getLatestDataExport, getDataExportFile: (userId, id) => getDataExportFile(userId, id), listMyPrivacyRequests: db.listMyPrivacyRequests, createPrivacyErasureRequest: db.createPrivacyErasureRequest, listAdminPrivacyRequests: db.listAdminPrivacyRequests, reviewPrivacyRequest: db.reviewPrivacyRequest, listNotifications: db.listNotifications, markNotificationRead: db.markNotificationRead, countRecentMessagesBySender: db.countRecentMessagesBySender, listReferralLedger: db.listReferralLedger, getUserEmailById: db.getUserEmailById, createNotification: db.createNotification, listJobs: publicCatalogJobs(db.listJobs), listSavedRoles: db.listSavedRoles, setSavedRole: db.setSavedRole, listUsersAdmin: db.listUsersAdmin, setUserSuspended: db.setUserSuspended, sendEmail: async ({ to, subject, html }) => sendTransactionalEmail({ to, subject, html, text: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() }) });
+  registerPrivateReferralRoutes(app, { resolveIdentity, dataUrlToBuffer, sanitizeDocumentName, storagePut, storageGetSignedUrl, storageGetBytes, createReferralAttachment: db.createReferralAttachment, getAccessibleReferralAttachment: db.getAccessibleReferralAttachment, createResumeUploadSession: db.createResumeUploadSession, getResumeUploadSession: db.getResumeUploadSession, appendResumeUploadChunk: db.appendResumeUploadChunk, claimResumeUploadFinalization: db.claimResumeUploadFinalization, clearUnattachedResumeUploads: db.clearUnattachedResumeUploads, completeResumeUploadSession: db.completeResumeUploadSession, saveVerifiedWorkEmail: db.saveVerifiedWorkEmail, getVerifiedWorkEmailAccess: db.getVerifiedWorkEmailAccess, fulfillCompanyCoverageInvitation: db.fulfillCompanyCoverageInvitation, createCompanyReferralRequest: db.createCompanyReferralRequest, prepareReferrerReviewEmailNotifications: db.prepareReferrerReviewEmailNotifications, claimReferralReviewDelivery: db.claimReferralReviewDelivery, completeReferralReviewDelivery: db.completeReferralReviewDelivery, resolveReferrerReviewEmailLink: db.resolveReferrerReviewEmailLink, consumeReferrerReviewEmailLink: db.consumeReferrerReviewEmailLink, oneClickReviewReferralRequest: db.oneClickReviewReferralRequest, sendReferrerReviewEmail, saveReferrerSlackWebhook: db.saveReferrerSlackWebhook, getReferrerSlackWebhookStatus: db.getReferrerSlackWebhookStatus, deactivateReferrerSlackWebhook: db.deactivateReferrerSlackWebhook, getActiveReferrerSlackWebhooks: db.getActiveReferrerSlackWebhooks, sendWorkEmailOtp: ({ email, ip }) => workEmailOtpService.sendCode(email, { ip }), verifyWorkEmailOtp: ({ email, code, ip }) => workEmailOtpService.verifyCode(email, code, { ip }), registerWorkEmailOtpFailure: ({ email, code }) => workEmailOtpService.registerFailedAttempt(email, code), issueWorkEmailEnrollmentReceipt: ({ email, userId }) => workEmailOtpService.issueEnrollmentReceipt(email, userId), completeWorkEmailOtpEnrollment: db.completeWorkEmailOtpEnrollment, getSlotOpenedAlertRecipients: db.getSlotOpenedAlertRecipients, sendSlotOpenedAlertEmail, getPublicReferralImpact: db.getPublicReferralImpact, getReferrerImpactSummary: db.getReferrerImpactSummary, getOwnedResumeAttachmentForPitch: db.getOwnedResumeAttachmentForPitch, draftSmartReferralPitch, getOrCreateReferralShareCard: db.getOrCreateReferralShareCard, revokeReferralShareCard: db.revokeReferralShareCard, getPublicReferralShareCard: db.getPublicReferralShareCard, getOrCreateReferrerFastTrackLink: db.getOrCreateReferrerFastTrackLink, getPublicReferrerFastTrackLink: db.getPublicReferrerFastTrackLink, getPublicReferrerFastTrackVanityLink: db.getPublicReferrerFastTrackVanityLink, deactivateReferrerFastTrackLink: db.deactivateReferrerFastTrackLink, setReferrerScreenName: (userId, input) => setReferrerScreenName(userId, input), resumeReferrerFastTrackLink: db.resumeReferrerFastTrackLink, openCompanyReferralAvailability: db.openCompanyReferralAvailability, listCompanyReferralInbox: db.listCompanyReferralInbox, listCompanyReferralInboxByState: db.listCompanyReferralInboxByState, getUnclaimedCompanyReferralPreview: db.getUnclaimedCompanyReferralPreview, listJobSeekerCompanyReferrals: db.listJobSeekerCompanyReferrals, hasEverCreatedReferralRequest: db.hasEverCreatedReferralRequest, hasEverReviewedReferral: db.hasEverReviewedReferral, reconcileExpiredPendingReferrals: db.reconcileExpiredPendingReferrals, getOpenAskSlots: db.getOpenAskSlots, saveCompanyReferralRequest: db.saveCompanyReferralRequest, withdrawCompanyReferralRequest: db.withdrawCompanyReferralRequest, listRequiresReviewPayments: db.listRequiresReviewPayments, resolveRequiresReviewPayment: db.resolveRequiresReviewPayment, listRecentPayments: db.listRecentPayments, revokeCreditedPaymentCredits: db.revokeCreditedPaymentCredits, getRevenueSummary: db.getRevenueSummary, claimCompanyReferralRequest: db.claimCompanyReferralRequest, getClaimedCompanyReferralDetail: db.getClaimedCompanyReferralDetail, reviewReferralRequest: db.reviewReferralRequest, updateReferralProgress: db.updateReferralProgress, getApprovedReferralProgressStatus: db.getApprovedReferralProgressStatus, extendReferredDeadlineTx: db.extendReferredDeadlineForUser, stepBackFromReferral: db.stepBackFromReferralForUser, confirmReferredBySeeker: db.confirmReferredBySeekerForUser, lapseReferredTx: db.lapseReferredTx, listReferralConversation: db.listReferralConversation, sendReferralConversationMessage: db.sendReferralConversationMessage, recordLandedJourney: db.recordLandedJourney, listReferrerThankYous: db.listReferrerThankYous, listPublicCompanyOpportunities: db.listPublicCompanyOpportunitiesWithSponsorship, publishCompanyOpportunity: db.publishCompanyOpportunity, listMyCompanyOpportunities: db.listMyCompanyOpportunities, renewCompanyOpportunity: db.renewCompanyOpportunity, closeCompanyOpportunity: db.closeCompanyOpportunity, recordActivity: db.recordOperationalActivity, listOperationalActivity: db.listOperationalActivity, resolveActivityPerson: db.resolveActivityPerson, listPersonRequestTransitions: db.listPersonRequestTransitions, listMyUploadStarts: db.listMyUploadStarts, getReferralFlowHealth: db.getReferralFlowHealth, getReferralFlowBaseline, getCreditLedgerAudit: db.getCreditLedgerAudit, getDomainIntegrity: db.getDomainIntegrity, findUsersForTokenRecovery: db.findUsersForTokenRecovery, listAdminTokenAdjustments: db.listAdminTokenAdjustments, grantAdminTokenAdjustment: db.grantAdminTokenAdjustment, getCreditSummary: db.getTokenWallet, reconcileCardValidation: async (userId: number) => { try { await reconcileCardValidationFromProvider({ userId }); } catch (error) { console.error("[Chargebee] card-validation reconcile failed", error); void createCardValidationAlerter()({ reason: "provider_reconcile_failed" }).catch(() => undefined); } }, getOrCreatePersonalReferralInvite: db.getOrCreatePersonalReferralInvite, getPersonalReferralInviteState: db.getPersonalReferralInviteState, claimPersonalReferralInvite: db.claimPersonalReferralInvite, exportUserData: db.exportUserData, requestDataExport: userId => requestDataExport(userId), getLatestDataExport, getDataExportFile: (userId, id) => getDataExportFile(userId, id), listMyPrivacyRequests: db.listMyPrivacyRequests, createPrivacyErasureRequest: db.createPrivacyErasureRequest, listAdminPrivacyRequests: db.listAdminPrivacyRequests, reviewPrivacyRequest: db.reviewPrivacyRequest, listNotifications: db.listNotifications, markNotificationRead: db.markNotificationRead, countRecentMessagesBySender: db.countRecentMessagesBySender, listReferralLedger: db.listReferralLedger, getUserEmailById: db.getUserEmailById, createNotification: db.createNotification, listJobs: publicCatalogJobs(db.listJobs), listSavedRoles: db.listSavedRoles, setSavedRole: db.setSavedRole, listUsersAdmin: db.listUsersAdmin, setUserSuspended: db.setUserSuspended, sendEmail: async ({ to, subject, html }) => sendTransactionalEmail({ to, subject, html, text: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() }) });
   // D-174-job-catalog: the route answers "unavailable" while JOB_CATALOG_ENABLED
   // (shared/jobCatalog.ts) is false, and the sync job does nothing.
   registerJobCatalogRoutesWithDrizzle(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // SEARCH-universal (D-394): one public box for a job title, a job link, a
+  // company name or a company website (server/searchRoutes.ts).
+  registerSearchRoutes(app, { search: createUniversalSearch(db.resolveEmployerDomainFromTargetUrl) });
   registerCompanyClaimRoutes(app, { resolveIdentity });
   // skipwait.me/sitemap.xml routes to the Worker (wrangler routes), which
   // forwards it here: the sitemap's live reads come straight from the DB.
@@ -233,11 +248,18 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, skippie: { enabled: () => process.env.SKIPPIE_ADMIN_ENABLED === "true", deps: () => createSkippieAdminDeps() } }); // Worker cron tick + admin job status
   // Seeker Skippy (D-136..D-142, step 2): ask-only chat. Off unless SKIPPIE_SEEKER_ENABLED=true,
   // and then only for the account ids in SKIPPIE_SEEKER_USER_IDS (the test seeker).
+  // SKIPPY-3: one money-card store per process, shared by the chat turns and the approve route,
+  // and the same banded checkout wiring the Chargebee routes use.
+  const skippieMoneyCards = createSkippieCardStore();
+  const bandedCheckout = bandedCheckoutStore(db.getDb);
   registerSkippieSeekerRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
     enabled: () => process.env.SKIPPIE_SEEKER_ENABLED === "true",
     allowedUserIds: () => skippieSeekerAllowedIds(),
+    moneyCards: skippieMoneyCards,
+    bandedCheckout: () => bandedCheckout.checkout,
+    purchaseEnabled: () => process.env.SKIPPIE_PURCHASE_ENABLED === "true",
     deps: () => {
       // The storagePut selection above is a union of three backends with slightly different
       // signatures (dbStoragePut takes no content type and returns no URL). Adapt once here.
@@ -245,6 +267,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       return createSkippieSeekerDeps({
         storagePut: async (key, data, contentType) => { const stored = await put(key, Buffer.from(data), contentType); return { key: stored.key, url: stored.url ?? "" }; },
         storageGetBytes: async key => { const bytes = await storageGetBytes(key); if (!bytes) throw new Error("Stored file is missing."); return bytes; },
+        moneyCards: skippieMoneyCards,
       });
     },
     listOwnedResumes: userId => db.listOwnedResumeAttachments(userId),
@@ -263,26 +286,39 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // tokens, assistant approvals and the developer app console.
   registerAssistantRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   // Skippy step 5 (D-141): seeker agents, draft-only. Off unless SKIPPIE_AGENT_ENABLED.
-  registerSeekerAgentRoutes(app, { enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true", resolveIdentity, store: createSeekerAgentStore(), ...createSeekerAgentSourceDeps() });
+  registerSeekerAgentRoutes(app, {
+    enabled: () => process.env.SKIPPIE_AGENT_ENABLED === "true",
+    autoSendEnabled: () => process.env.SKIPPIE_AGENT_AUTOSEND_ENABLED === "true",
+    allowedUserIds: () => parseSkippieAllowedIds(process.env.SKIPPIE_AGENT_USER_IDS),
+    resolveIdentity,
+    store: createSeekerAgentStore(),
+    ...createSeekerAgentSourceDeps(),
+  });
   // MCP endpoint for connected assistants (read tools plus propose_ask, which only creates a pending approval) (bearer-token auth, skipwait.me/api/mcp).
+  // D-178.gate (D-290 R2): the Skippy agent switch and the account allow-list gate both transports, never a plan.
+  const agentGrantStore = createSeekerAgentStore();
   registerMcpRoutes(app, {
-    verifyBearer: db.verifyAssistantBearer,
-    hasAccess: db.hasAssistantAccess,
+    enabled: () => agentPortalEnabled(),
+    allowed: db.hasAssistantAccess,
+    // D-178.grant (D-290 R1): one verifier for a D-141 grant key and a legacy sw_ token.
+    resolveBearer: token => resolveAgentBearer(token, { store: { findGrantByKeyHash: agentGrantStore.findGrantByKeyHash, isPaused: agentGrantStore.isPaused, touchGrantLastUsed: agentGrantStore.touchLastUsed, verifyLegacyBearer: db.verifyAssistantBearer }, allowed: db.hasAssistantAccess }),
     recordActivity: db.recordOperationalActivity,
     searchJobs: publicCatalogJobs(db.listJobs),
     listRequests: async userId => (await db.listReferralRequests(userId)).filter(row => row.jobSeekerId === userId),
     listAlerts: userId => db.listSeekerAlerts(userId),
     listResumes: userId => db.listMyUnattachedResumes(userId),
-    proposeAsk: (userId, input) => db.proposeAssistantAsk(userId, input),
+    proposeAsk: (userId, input, grant) => db.proposeAssistantAsk(userId, input, grant),
   });
   // OAuth (authorization code + PKCE) so ChatGPT/Claude can connect without pasting a token.
   registerOAuthRoutes(app, {
+    enabled: () => agentPortalEnabled(),
+    allowed: db.hasAssistantAccess,
     resolveIdentity,
     registerClient: registerOAuthClient,
     getClient: getOAuthClient,
     issueCode: async (userId, input) => { if (!(await db.hasAssistantAccess(userId))) throw new AssistantPlanRequiredError(); return issueAuthCode(userId, input); },
     consumeCode: consumeAuthCode,
-    mintToken: (userId, name) => db.createAssistantToken(userId, { name }),
+    mintToken: async (userId, name, expiresInDays) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name, expiresInDays })).token }),
     recordActivity: db.recordOperationalActivity,
   });
   // Seeker/referrer profiles, work showcases, and shareable public profiles.
@@ -313,9 +349,13 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
   registerPlansCatalogRoutes(app);
   registerAdminBillingLedgerRoutes(app, { resolveIdentity, loadRows: db.listBillingLedgerRows });
+  // D-093.metrics: admin-only language funnel (aggregate only; 404 while capture is off).
+  registerLanguageFunnelRoutes(app, { resolveIdentity });
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
+    // BANDED-checkout (D-367): routes answer 409 not_on_sale until BANDED_SALES_ENABLED is true.
+    banded: bandedCheckout,
     createPaymentIntent: db.createChargebeePaymentIntent,
     fulfillPayment: db.fulfillChargebeePayment,
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
@@ -355,6 +395,10 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       router: appRouter,
       createContext,
       onError({ error, path, req }) {
+        // Caller-fixable codes never spend Sentry quota, and a captured
+        // error is marked so the finish-hook does not report it twice.
+        if (isClientTrpcCode(error.code)) return;
+        if (req.res) req.res.locals.errorReported = true;
         captureServerError(error, {
           trpcPath: scrubSentryPath(typeof path === "string" ? `/${path}` : req.path),
           code: error.code,
@@ -382,6 +426,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   }
   // Error-reporting middleware sits after every route so forwarded errors are
   // captured by Sentry (when configured) before the final handlers respond.
+  app.use(markErrorReported);
   app.use(sentryErrorMiddleware);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {

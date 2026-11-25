@@ -1,0 +1,52 @@
+{
+  "readAt": "2026-11-20T18:11:28.279097+00:00",
+  "webSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+  "apiSha": "dc1ce93f791e201c6460b6e18beceb229067c68d",
+  "runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 44783969161,
+      "headSha": "f68df99989c5ca0d12441a82ca69f1e1167a0115",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44783969161"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44784659638,
+      "headSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44784659638"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44784659390,
+      "headSha": "612640a7addce30d6d88c2b3b6e28fd6481c4977",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44784659390"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44783779373,
+      "headSha": "dc1ce93f791e201c6460b6e18beceb229067c68d",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44783779373"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44787928172,
+      "headSha": "ebb520cadf73166c4aecaa5f418e36ffb02f3b8d",
+      "status": "completed",
+      "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44787928172"
+    }
+  ],
+  "apiCommitReleaseStatus": {
+    "context": "release/verified",
+    "state": "success",
+    "target_url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44787928172"
+  },
+  "runtimeVerifier": {
+    "result": "RUNTIME CONVERGED",
+    "state": "ready",
+    "directOrigin": "closed"
+  }
+}

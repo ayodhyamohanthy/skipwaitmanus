@@ -3,8 +3,8 @@
 // docs/plans/D-048-admin.md). Tier 1 until the no-secret proof: whatever extra
 // field the server might send with an app (a secret, a token, a signing key),
 // the goal console renders only the fields it names, and the client secret
-// line stays "Not issued yet". Same calls as the kit console; loading, empty
-// and error states are honest; flag off, both kit pages render unchanged.
+// line stays "Not issued yet". The unconditional public entrypoints exercise
+// the real goal pages; loading, empty and error states remain honest.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,19 +12,14 @@ import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { DOCUMENTED_MCP_TOOLS, MCP_ENDPOINT } from "@/components/developers/mcpTools";
 
-const { authState, flagState } = vi.hoisted(() => ({
+const { authState } = vi.hoisted(() => ({
   authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") },
-  flagState: { on: true },
 }));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
   useUser: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, user: authState.isSignedIn ? { primaryEmailAddress: { emailAddress: "dev@example.test" } } : null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
 }));
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "developers" };
-});
 
 import Developers from "../../Developers";
 import DeveloperConsole from "../../DeveloperConsole";
@@ -50,7 +45,7 @@ function respond(reply: Reply) {
   return { ok: reply.status >= 200 && reply.status < 300, status: reply.status, json: async () => reply.body } as Response;
 }
 beforeEach(() => {
-  flagState.on = true; authState.isSignedIn = true;
+  authState.isSignedIn = true;
   server.apps = [app(1, "Trackwise", "test")]; server.listReplies = []; server.writeReply = null; server.calls = [];
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
@@ -80,13 +75,6 @@ const goalPage = (id: string) => document.querySelector(`[data-goal-page="${id}"
 const noSecretOnScreen = () => { for (const value of SECRET_VALUES) expect(document.body.textContent ?? "").not.toContain(value); for (const value of SECRET_VALUES) expect(document.body.innerHTML).not.toContain(value); };
 
 describe("goal /developers", () => {
-  it("flag off keeps the kit page", () => {
-    flagState.on = false;
-    render(<Router><Developers /></Router>);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Use skipwait.me from ChatGPT, Claude, or your own code");
-    expect(goalPage("developers")).toBeNull();
-  });
-
   it("opens on the goal with one black commit to connect an assistant, and fetches nothing", async () => {
     render(<Router><Developers /></Router>);
     expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Connect your assistant or build your app.");
@@ -110,13 +98,6 @@ describe("goal /developers", () => {
 });
 
 describe("goal /developer-console: list", () => {
-  it("flag off keeps the kit page", async () => {
-    flagState.on = false;
-    renderConsole();
-    expect(await screen.findByText("AI agent · Test mode")).toBeTruthy();
-    expect(goalPage("developer-console")).toBeNull();
-  });
-
   it("signed out: one next step to sign in, nothing fetched", async () => {
     authState.isSignedIn = false;
     renderConsole();
@@ -263,5 +244,35 @@ describe("goal /developer-console: app", () => {
     renderConsole("/developer-console?app=99");
     expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("App not found");
     expect(screen.getByRole("link", { name: "Your apps" }).getAttribute("href")).toBe("/developer-console");
+  });
+});
+
+describe("developer console: retained consumer contracts", () => {
+  it("keeps app deep links and browser-back navigation without issuing credentials", async () => {
+    const location = renderConsole();
+    const list = await screen.findByRole("list", { name: "Your apps" });
+    expect(screen.getByRole("link", { name: "dev@example.test" }).getAttribute("href")).toBe("/settings");
+    fireEvent.click(within(list).getByRole("button", { name: /Trackwise/ }));
+    expect(await screen.findByText("sw_app_test1")).toBeTruthy();
+    expect(screen.getByLabelText("Webhook URL")).toBeTruthy();
+    expect(screen.getByTestId("goal-client-secret").textContent).toBe("Not issued yet");
+    expect(screen.queryByRole("button", { name: "Rotate" })).toBeNull();
+    expect(location.history).toEqual(["/developer-console", "/developer-console?app=1"]);
+    fireEvent.click(screen.getByRole("link", { name: "Your apps" }));
+    expect(await screen.findByRole("list", { name: "Your apps" })).toBeTruthy();
+    expect(server.calls.filter(call => call.method !== "GET")).toEqual([]);
+  });
+
+  it("resubmits a rejected app as-is from its details URL, without creating another app", async () => {
+    server.apps = [app(1, "Trackwise", "rejected", { rejectReasons: ["Add a privacy policy link"] })];
+    const location = renderConsole("/developer-console?app=1&details=1");
+    fireEvent.click(await screen.findByRole("button", { name: "Submit for review" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Trackwise is in review" })).toBeTruthy();
+    expect(location.history?.at(-1)).toBe("/developer-console?app=1");
+    expect(server.calls.filter(call => call.method !== "GET")).toEqual([
+      { url: "/api/developer-apps/1/submit", method: "POST", body: undefined },
+    ]);
+    expect(screen.queryByText("Credentials")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Submit for review" })).toBeNull();
   });
 });

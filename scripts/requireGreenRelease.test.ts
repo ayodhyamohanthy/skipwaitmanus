@@ -527,7 +527,8 @@ describe.each([
 describe("deploy-api.yml migrations", () => {
   it("apply only after the release gate passed, never merely before the deploy job", () => {
     const wf = workflow("deploy-api.yml");
-    expect(wf.needs("migrate-db")).toEqual(["release-gate", "source-retirement"]);
+    expect(wf.needs("migrate-db")).toEqual(["release-gate", "source-retirement", "reviewer-reset-preflight"]);
+    expect(wf.needs("reviewer-reset-preflight")).toEqual(["release-gate"]);
     expect(wf.needs("source-retirement")).toEqual(["release-gate"]);
     expect(wf.needs("deploy")).toEqual(["migrate-db"]);
   });

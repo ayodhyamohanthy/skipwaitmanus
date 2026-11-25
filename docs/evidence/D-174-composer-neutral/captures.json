@@ -1,0 +1,72 @@
+{
+  "task": "D-174-seeker-journey-build.composer-neutral",
+  "sourceCommit": "b40946c102e8eeb188090a027a3fcbc418ce6528",
+  "synthetic": true,
+  "captureCount": 16,
+  "captures": [
+    {
+      "file": "compose-open-balance0-1280.png",
+      "sha256": "00e9e702baf34757f2b28285cb5eae3ed25cc3efdff2c1996b479e9b5d4d00d2"
+    },
+    {
+      "file": "compose-open-balance0-390.png",
+      "sha256": "f4003441a0611d8bd377c033cc80ab7724f0409ee9a42b3f4ec6f7ffa5560b52"
+    },
+    {
+      "file": "compose-waiting-balance0-390.png",
+      "sha256": "ebc178f6211cd06bc556bcb79cc8f96a2da6417950eb8aba8bb86eddfd8d0794"
+    },
+    {
+      "file": "compose-open-balance3-390.png",
+      "sha256": "f4003441a0611d8bd377c033cc80ab7724f0409ee9a42b3f4ec6f7ffa5560b52"
+    },
+    {
+      "file": "compose-waiting-balance3-390.png",
+      "sha256": "f4003441a0611d8bd377c033cc80ab7724f0409ee9a42b3f4ec6f7ffa5560b52"
+    },
+    {
+      "file": "compose-waiting-balance0-1280.png",
+      "sha256": "00e9e702baf34757f2b28285cb5eae3ed25cc3efdff2c1996b479e9b5d4d00d2"
+    },
+    {
+      "file": "compose-open-balance3-1280.png",
+      "sha256": "00e9e702baf34757f2b28285cb5eae3ed25cc3efdff2c1996b479e9b5d4d00d2"
+    },
+    {
+      "file": "compose-waiting-balance3-1280.png",
+      "sha256": "00e9e702baf34757f2b28285cb5eae3ed25cc3efdff2c1996b479e9b5d4d00d2"
+    },
+    {
+      "file": "pool-1280.png",
+      "sha256": "ea99ca262bc8327e640d68e65018529c6476621674a75179f40470584b636b8d"
+    },
+    {
+      "file": "pool-390.png",
+      "sha256": "926c915a47c954290717ca71cb4a85ca70c1c84bb12134cc2c041c5c8779318c"
+    },
+    {
+      "file": "delivered-390.png",
+      "sha256": "7f048afe0aea84d46d81156b6f241f1d172d501a40c4bf50249ab21cc5d10ab9"
+    },
+    {
+      "file": "delivered-1280.png",
+      "sha256": "304c7753af2cf42938284dafecfd20ac39f4476ead6035b835b7f28a8c17870f"
+    },
+    {
+      "file": "loading-1280.png",
+      "sha256": "2fe64b102184a3746f5771049882a5b3a6bc1c51307ca1bd05824ee7b3733049"
+    },
+    {
+      "file": "loading-390.png",
+      "sha256": "719eae368bb51cd0075c57c1689a3375dbe82a7ad211f8f5f68a5fdb7f442574"
+    },
+    {
+      "file": "send-error-390.png",
+      "sha256": "a1e8264fccfbe03e2a27e43e914a6485c9804347dec69281323e2649df3c0961"
+    },
+    {
+      "file": "send-error-1280.png",
+      "sha256": "5af436329803a80589d66f5b7b49e1a12aa335848872430602f7769f5f1acdef"
+    }
+  ]
+}

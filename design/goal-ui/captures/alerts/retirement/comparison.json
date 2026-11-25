@@ -1,0 +1,223 @@
+{
+  "synthetic": true,
+  "beforeEntrySha256": "cd456a2b2444d641873556054d6348ef9a984aaeb4a5cc6258fb6c336cbfa80c",
+  "afterEntrySha256": "e2a18a33fcd3aed6dd67a30918a7af375ff07f347117032b5f6fcbbb6e89b58e",
+  "comparisons": [
+    {
+      "file": "signed-out-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "4de801065f5a7a4c5f36fb3558271f2ee12976c62935e5a852c0ccb394e64252",
+      "afterSha256": "4de801065f5a7a4c5f36fb3558271f2ee12976c62935e5a852c0ccb394e64252",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "signed-out-390.png",
+      "differentPixels": 1,
+      "beforeSha256": "3551b414367a298cdddee75187a14cf32944b31fd453dcdc00c5048a7b14bdc7",
+      "afterSha256": "684b9053c74acc66acda1efcca61ce792346299ca5b8ee745877180965f58d7b",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "auth-loading-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "764e3d5e3a83a8658699090ddff388c30088e48caec512189568fd752519b322",
+      "afterSha256": "764e3d5e3a83a8658699090ddff388c30088e48caec512189568fd752519b322",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "auth-loading-390.png",
+      "differentPixels": 1,
+      "beforeSha256": "47d990cc62ce5252faf40dbd70eb93a4207d05aa554487435cf47a8f2054421f",
+      "afterSha256": "7e8afb38e2e921ad94d216e396b9ad3c2bd217b609914d218d919c346c5a1b51",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "loading-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "67b00af6ce9c82abef584a7d8f08902890e37a3459c3fc2e651d192b4950ec0b",
+      "afterSha256": "67b00af6ce9c82abef584a7d8f08902890e37a3459c3fc2e651d192b4950ec0b",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "loading-390.png",
+      "differentPixels": 74,
+      "beforeSha256": "8a0ca1196985fe5a2f08f64d307a7874a6384928005d4cbfdda8d5284596c766",
+      "afterSha256": "aba245c6aa7aaa1f2cfe57eb53043385b5854645628fe188ea3f61340129bcee",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "empty-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "fa091754ae6a04bcfb5bfcc977246dc57a7ed5f8cd3475c7b4317376678f8cc8",
+      "afterSha256": "fa091754ae6a04bcfb5bfcc977246dc57a7ed5f8cd3475c7b4317376678f8cc8",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "empty-390.png",
+      "differentPixels": 74,
+      "beforeSha256": "3edbf6712e27c49730c373959b1399dd65d85f027c545c592971b54b0fbc2530",
+      "afterSha256": "b6b6bd7bd6444eb3fc2d7b06aee82e6c9b9bb14af8240ca887f2db9bd11494a9",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "unread-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "94dce3d01d8d119211b4eceb9603d41aead1c2bdda77362fbc289a97bf68cf67",
+      "afterSha256": "94dce3d01d8d119211b4eceb9603d41aead1c2bdda77362fbc289a97bf68cf67",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "unread-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "6125567283889c962ca71dc06fd5579160d2792237463f4c4f945f10cbac998b",
+      "afterSha256": "6125567283889c962ca71dc06fd5579160d2792237463f4c4f945f10cbac998b",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "filtered-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "4fad60ef00597952d5c2771eb65a8ef72d09199da424e06d082fb6dad2443859",
+      "afterSha256": "4fad60ef00597952d5c2771eb65a8ef72d09199da424e06d082fb6dad2443859",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "filtered-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "b110095c271a51e2dbf1aec1d1300a71a41974c9a17459909676015d3349437b",
+      "afterSha256": "b110095c271a51e2dbf1aec1d1300a71a41974c9a17459909676015d3349437b",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "marked-read-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "ebaf86402cfa24389b9648faf02bf4c0ad3ef0cdba068638fa8b2bdfce4349bc",
+      "afterSha256": "ebaf86402cfa24389b9648faf02bf4c0ad3ef0cdba068638fa8b2bdfce4349bc",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "marked-read-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "9cdb4beec01b76158efe4015993e7c62ffbf60309d6627ff10720aadb835edf3",
+      "afterSha256": "9cdb4beec01b76158efe4015993e7c62ffbf60309d6627ff10720aadb835edf3",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "partial-read-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "b436dff46151462b73b017c1cff9cff6e0f7c3e31a6856ee3e8bde0c321c6138",
+      "afterSha256": "b436dff46151462b73b017c1cff9cff6e0f7c3e31a6856ee3e8bde0c321c6138",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "partial-read-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "dcd74d847881cba3f8354a9cc08c87f1e2aa81ed59ad9411ac0f8589da82a869",
+      "afterSha256": "dcd74d847881cba3f8354a9cc08c87f1e2aa81ed59ad9411ac0f8589da82a869",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "load-error-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "5c5efeaa0e520a8bf1941404a04019c5ec22d82f422a273e8cf875e654f294a0",
+      "afterSha256": "5c5efeaa0e520a8bf1941404a04019c5ec22d82f422a273e8cf875e654f294a0",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "load-error-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "543759ca43c20bd0f3d3d65ecdb8cb29f44633b1ddfb488bde50d11c73984deb",
+      "afterSha256": "543759ca43c20bd0f3d3d65ecdb8cb29f44633b1ddfb488bde50d11c73984deb",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "saved-empty-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "721d4d47a6423b38bb80c63eae2633d4467d2dc689021f7a08320a0d5acf700e",
+      "afterSha256": "721d4d47a6423b38bb80c63eae2633d4467d2dc689021f7a08320a0d5acf700e",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "saved-empty-390.png",
+      "differentPixels": 37,
+      "beforeSha256": "abd6c841814f76af601ed4bb71bcd7027760a6f26bc1b7cdf3c6a81f09b60117",
+      "afterSha256": "b524e246d50ca1d44b0aa50f72731255f9caee1b58a7a2cf83571ecdf47e9224",
+      "sameApiCalls": false,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "saved-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "c9f169d2a912d25713146b8c4b476698128aa8f89afaf128a099c95b80b7a197",
+      "afterSha256": "c9f169d2a912d25713146b8c4b476698128aa8f89afaf128a099c95b80b7a197",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "saved-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "7dcb4bbf8ecf5d9d11bdc5a9261a4bc531f1db1c025c6888ea25415eb8ce8d48",
+      "afterSha256": "7dcb4bbf8ecf5d9d11bdc5a9261a4bc531f1db1c025c6888ea25415eb8ce8d48",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "step-up-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "1165b66b702eec91e50162db03cf45b5bdc121215754bdd237a2228f9878594a",
+      "afterSha256": "1165b66b702eec91e50162db03cf45b5bdc121215754bdd237a2228f9878594a",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    },
+    {
+      "file": "step-up-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "49df0fb26b2505a723359a271acd30f35371b392fe2c2d41ca644659c43ea02a",
+      "afterSha256": "49df0fb26b2505a723359a271acd30f35371b392fe2c2d41ca644659c43ea02a",
+      "sameApiCalls": true,
+      "sameReadPaths": true,
+      "sameMutations": true
+    }
+  ]
+}

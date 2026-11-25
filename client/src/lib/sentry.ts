@@ -1,38 +1,193 @@
 import * as Sentry from "@sentry/react";
-import { scrubTelemetryUrl } from "@shared/telemetryScrub";
+import {
+  scrubTelemetryBreadcrumb,
+  scrubTelemetryEvent,
+  scrubTelemetryPath,
+} from "@shared/telemetryScrub";
 
 declare global {
   interface Window {
+    __COMMIT_HASH__?: string;
     __sentryTest?: () => boolean;
   }
 }
 
 let initialized = false;
 
+// Single-use link prefixes that must never leave the device in error telemetry.
+// Mirrors the route list in client/src/App.tsx, the Clarity deny-list in
+// client/src/lib/clarity.ts, and the token-scrubbing rules in
+// shared/telemetryScrub.ts (FND-4: one shared scrubber for every token-bearing
+// browser and API route).
+const SENSITIVE_PREFIXES = [
+  "/email-review/",
+  "/share-card/",
+  "/fast/",
+  "/refer/",
+  "/r/",
+  "/api/ask-invites/",
+  "/api/referrer-fast-track/",
+  "/api/referral-share-cards/",
+  "/api/referrer-review-links/",
+  "/api/documents/by-key/",
+] as const;
+
+const MAX_DECODE_PASSES = 2;
+
+// Decodes only well-formed escapes, so one broken escape cannot stop the rest
+// of a hostile string from being inspected (D-090 post-fix regression round).
+function decodeValidEscapes(value: string): string {
+  return value.replace(/%([0-9a-f]{2})/gi, match => {
+    try {
+      return decodeURIComponent(match);
+    } catch {
+      return match;
+    }
+  });
+}
+
+function hasSensitivePrefix(value: string): boolean {
+  const lower = value.toLowerCase();
+  return SENSITIVE_PREFIXES.some(prefix => lower.includes(prefix));
+}
+
+// True for a raw token path, a percent-encoded one, a nested/double-encoded
+// return target, or a string left encoded after two passes (fail safe).
+export function containsSensitivePath(value: string): boolean {
+  let current = value;
+  for (let pass = 0; pass < MAX_DECODE_PASSES; pass++) {
+    if (hasSensitivePrefix(current)) return true;
+    const decoded = decodeValidEscapes(current);
+    if (decoded === current) return false;
+    current = decoded;
+  }
+  if (hasSensitivePrefix(current)) return true;
+  return /%[0-9a-f]{2}/i.test(current);
+}
+
 // Single-use links carry secrets in the path (referral review tokens, share
 // cards, fast-track codes, vanity aliases, storage keys), in browser and API
 // URLs alike. These must never leave the device in an event (FND-4).
 export function scrubSentryUrl(value: string, origin: string): string {
-  return scrubTelemetryUrl(value, origin);
+  try {
+    const url = new URL(value, origin);
+    const pathname = decodeURIComponent(url.pathname);
+    const scrubbed = scrubTelemetryPath(pathname);
+    if (scrubbed !== pathname) return scrubbed;
+    // Not an anchored route but still carrying a sensitive path: fail safe.
+    return containsSensitivePath(pathname) ? "/[redacted]" : pathname;
+  } catch {
+    return "[redacted]";
+  }
 }
 
-export function initClientSentry(): boolean {
+// Free text never keeps its shape around a secret, so the whole value goes.
+export function scrubSentryText(value: string): string {
+  return containsSensitivePath(value) ? "[redacted]" : value;
+}
+
+function scrubDeepValue(value: unknown, scrub: (input: string) => string, depth = 0): unknown {
+  if (typeof value === "string") return scrub(value);
+  if (depth >= 8 || value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(item => scrubDeepValue(item, scrub, depth + 1));
+  const scrubbed: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) scrubbed[key] = scrubDeepValue(item, scrub, depth + 1);
+  return scrubbed;
+}
+
+// Breadcrumbs (navigation from/to, fetch/xhr url) record the same paths as the
+// event URL, so each one goes through the same scrub (D-090 re-review F2).
+const BREADCRUMB_URL_KEYS = ["url", "from", "to"] as const;
+export function scrubBreadcrumb<T extends { data?: Record<string, unknown>; message?: string }>(breadcrumb: T, origin: string): T {
+  const next: T = { ...breadcrumb };
+  if (typeof next.message === "string") next.message = scrubSentryText(next.message);
+  const data = next.data;
+  if (!data) return next;
+  const scrubbed: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    scrubbed[key] =
+      (BREADCRUMB_URL_KEYS as readonly string[]).includes(key) && typeof value === "string"
+        ? scrubSentryUrl(value, origin)
+        : scrubDeepValue(value, scrubSentryText);
+  }
+  next.data = scrubbed;
+  return next;
+}
+
+/**
+ * Breadcrumb, span and referer URLs: a same-site URL becomes its scrubbed path (no query, no fragment, no
+ * single-use token path); another site keeps its origin. Query strings carry what people type and the
+ * WorkOS reset token on /reset-password.
+ */
+export function scrubClientTelemetryUrl(value: string, origin: string): string {
+  try {
+    const url = new URL(value, origin);
+    const path = scrubSentryUrl(url.href, origin);
+    return url.origin === origin ? path : `${url.origin}${path}`;
+  } catch {
+    return "[redacted]";
+  }
+}
+
+/** Tests only: a capturing transport, so a privacy test sees exactly what would be sent. */
+export type ClientSentryTestOverrides = Pick<Sentry.BrowserOptions, "transport">;
+
+export function initClientSentry(overrides: ClientSentryTestOverrides = {}): boolean {
   if (initialized || typeof window === "undefined") return initialized;
   const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
   if (!dsn) return false;
   const origin = window.location.origin;
+  const scrubUrl = (value: string) => scrubClientTelemetryUrl(value, origin);
   Sentry.init({
     dsn,
     release: (import.meta.env.VITE_GIT_COMMIT_SHA as string | undefined) || undefined,
     environment: window.location.hostname === "localhost" ? "development" : "production",
     tracesSampleRate: 0.1,
+    sendDefaultPii: false,
     beforeSend(event) {
-      if (event.request?.url) event.request.url = scrubSentryUrl(event.request.url, origin);
-      return event;
+      const scrubbed = scrubEvent(event, origin);
+      if (scrubbed.user) {
+        delete scrubbed.user.ip_address;
+        delete scrubbed.user.email;
+      }
+      return scrubbed;
     },
+    beforeSendTransaction: event => scrubTelemetryEvent(event, scrubUrl),
+    beforeBreadcrumb: breadcrumb => {
+      const scrubbed = scrubBreadcrumb(breadcrumb, origin);
+      return scrubTelemetryBreadcrumb(scrubbed, scrubUrl);
+    },
+    ...overrides,
   });
   initialized = true;
   return true;
+}
+
+// Every field that can echo a page URL, a request or a caught error goes
+// through the same scan, so a token cannot ride in beside the event URL
+// (D-090 post-fix regression round).
+function scrubEvent(event: Sentry.ErrorEvent, origin: string): Sentry.ErrorEvent {
+  if (typeof event.message === "string") event.message = scrubSentryText(event.message);
+  if (typeof event.transaction === "string") event.transaction = scrubSentryText(event.transaction);
+  if (event.tags) event.tags = scrubDeepValue(event.tags, scrubSentryText) as typeof event.tags;
+  if (event.extra) event.extra = scrubDeepValue(event.extra, scrubSentryText) as typeof event.extra;
+  if (event.contexts) event.contexts = scrubDeepValue(event.contexts, scrubSentryText) as typeof event.contexts;
+  const request = event.request;
+  if (request) {
+    if (typeof request.url === "string") request.url = scrubSentryUrl(request.url, origin);
+    if (request.query_string !== undefined) {
+      request.query_string = scrubDeepValue(request.query_string, scrubSentryText) as typeof request.query_string;
+    }
+    if (request.headers) request.headers = scrubDeepValue(request.headers, scrubSentryText) as typeof request.headers;
+    if (request.data !== undefined) request.data = scrubDeepValue(request.data, scrubSentryText) as typeof request.data;
+    if (request.cookies) request.cookies = scrubDeepValue(request.cookies, scrubSentryText) as typeof request.cookies;
+  }
+  for (const value of event.exception?.values ?? []) {
+    if (typeof value.value === "string") value.value = scrubSentryText(value.value);
+  }
+  // Backstop: anything that reached the event without passing beforeBreadcrumb.
+  if (event.breadcrumbs) event.breadcrumbs = event.breadcrumbs.map(crumb => scrubBreadcrumb(crumb, origin));
+  return event;
 }
 
 export function captureClientError(error: unknown, context?: Record<string, unknown>): void {

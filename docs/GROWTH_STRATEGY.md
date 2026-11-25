@@ -117,6 +117,7 @@ Supply is 0: live `/api/companies` lists 39 companies (Oct 18) and only skipwait
   - After the build, if the accept rate falls by more than 10 points over 30 decisions, remove the extra tap.
 
 ## Rejected (and why)
+- **D-323 (Nov 11) makes the next line the public story, not only an outreach rule:** every referrer message and page uses `docs/POSITIONING.md` (trust and matching, the employee's own decision, the employer's process, nobody paid). The employer-rules answer in its section 4 is the reply to any recruiter or employee who asks.
 - **Bonus-led referrer pitch** ("your company already rewards you"; v1 move 2): near-fatal on ethics. It markets the "refer strangers for bonuses" side hustle that Google and Goldman police (Bloomberg, Jan 2025). Bigger bonuses mean more but worse referrals (Friebel et al.). Keep only "follow your company's referral policy".
 - **Employed seekers verifying as referrers:** wait until queue task 3 stores work emails only as HMACs. A leak today would expose people as job hunting.
 - **Employer-sanctioned pilot now, and waiting-demand counts shown to employers:** an HR "no" can produce a policy memo that closes corridors before their employees verify. D-028 recorded employer programmes as "not chosen now".

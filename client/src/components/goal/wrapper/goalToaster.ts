@@ -5,6 +5,7 @@
 // sonner's default durations are untouched. Goal tokens are light-only until
 // D-048-dark-mode lands, so the goal variant pins sonner's light theme.
 import type { CSSProperties } from "react";
+import { toast } from "sonner";
 
 export const GOAL_TOASTER_PROPS = {
   theme: "light",
@@ -17,3 +18,11 @@ export const GOAL_TOASTER_PROPS = {
     fontFamily: "var(--g-font-sans)",
   } as CSSProperties,
 } as const;
+
+/**
+ * An error toast in the goal UI: the crimson input-error hue on its icon (DESIGN.md rule 5), the problem as the
+ * title in ink for legibility, the fix in the description. Pass one id per source so a repeat press replaces the toast instead of stacking it.
+ */
+export function goalErrorToast(message: string, options: { id: string; description?: string }) {
+  return toast.error(message, { ...options, classNames: { icon: "text-g-crimson" } });
+}

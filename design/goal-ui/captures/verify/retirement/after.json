@@ -1,0 +1,250 @@
+{
+  "synthetic": true,
+  "checkoutBase": "55edc720a23b0043ca38a9c7f26c362172fbde62",
+  "entryPath": "client/src/pages/Verify.tsx",
+  "sourceSha256": "3e86ab6faf59675126feaf2bb22de753e5251b1e79316f27b46b649d2778348c",
+  "results": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "file": "signed-out-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "fed73999bca3e98e6b4d7dbc0a160c35ebff4e59ca3e379b8d767bdddb6e124d"
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "file": "signed-out-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "50e76ae21d2568d54f8279219930f74bed25eef76057a67fa0a148b5b8f240df"
+    },
+    {
+      "state": "auth-loading",
+      "width": 1280,
+      "file": "auth-loading-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "905fcd56ccb833aadab4349de1535fb50c988fe6d1af8e9e7303c3a4955f0cc7"
+    },
+    {
+      "state": "auth-loading",
+      "width": 390,
+      "file": "auth-loading-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "a830dc84a780a630d6823517be6151b369816d7f9558cf173f4ffd49513750b5"
+    },
+    {
+      "state": "directory-loading",
+      "width": 1280,
+      "file": "directory-loading-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "48aa58a4d7a62f33c63b5b80c51e6ae3ab641c2c208706590c75d87f57c19d49"
+    },
+    {
+      "state": "directory-loading",
+      "width": 390,
+      "file": "directory-loading-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "0272958224087135aec4b90eaf09e979c2d2f3378656affd73fb430444419ec6"
+    },
+    {
+      "state": "directory-error",
+      "width": 1280,
+      "file": "directory-error-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "5587c242e2f7a193eb9707bd7705c13d0a675bbf3cbf2c44e2699133db04121c"
+    },
+    {
+      "state": "directory-error",
+      "width": 390,
+      "file": "directory-error-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "76175842843f1c36af78eae1e87bf53163c718cdbe14f06760d8801e4111be8d"
+    },
+    {
+      "state": "empty",
+      "width": 1280,
+      "file": "empty-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "ddc09895f4b925e94b0eb177d9007681f9e2e170f8e35e4459f724cb9c40448a"
+    },
+    {
+      "state": "empty",
+      "width": 390,
+      "file": "empty-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "7037b66481b6bf2928b278acb0d740802b5f305e1a45dbdc395710eac8c31c97"
+    },
+    {
+      "state": "company",
+      "width": 1280,
+      "file": "company-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "2913caf74c2d69449e8f8350d872dc824a861e46b76c7edddb523f7d40280c40"
+    },
+    {
+      "state": "company",
+      "width": 390,
+      "file": "company-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "f6f623ac355b1b3ef5e4841bbcf6c585483a780f9d57f58839784688f2380568"
+    },
+    {
+      "state": "email",
+      "width": 1280,
+      "file": "email-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "285d0dc606ec46c3eb4ee4dce4b82999595b7710fd4f291b21582d33abe739d3"
+    },
+    {
+      "state": "email",
+      "width": 390,
+      "file": "email-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "6325cba5a223a8ca7fc4200d197e9a61020b93eff0bad5c4ed59ff816be41731"
+    },
+    {
+      "state": "invalid-email",
+      "width": 1280,
+      "file": "invalid-email-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "d855993cd0250f7a90b37a9606326934426a8d98c00e27609fb5801a0e6f723c"
+    },
+    {
+      "state": "invalid-email",
+      "width": 390,
+      "file": "invalid-email-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [],
+      "sha256": "b0f8927d61cb273c338e66f2c002b88bcb4a444585f3ffaa8be7954560f28bdb"
+    },
+    {
+      "state": "code",
+      "width": 1280,
+      "file": "code-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send"
+      ],
+      "sha256": "e2b430ff3a1c941096676039a0fab8129962fc2eaa1140ae50c372bf52e88d4b"
+    },
+    {
+      "state": "code",
+      "width": 390,
+      "file": "code-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send"
+      ],
+      "sha256": "a8ac82acfcc04815701d294000931d55d13d72f6f9834f167c07e8cecdd9349f"
+    },
+    {
+      "state": "locked",
+      "width": 1280,
+      "file": "locked-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send",
+        "verify"
+      ],
+      "sha256": "af4e47fb7c21b06b7e333f2e580f7f4f1c04949b18c53c80c3873bc87e456e7d"
+    },
+    {
+      "state": "locked",
+      "width": 390,
+      "file": "locked-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send",
+        "verify"
+      ],
+      "sha256": "5e9462100c9d3ac4eff542777a70c3b2ccdcc65bb137f3cf8e02f2a9df8ab810"
+    },
+    {
+      "state": "enrollment-error",
+      "width": 1280,
+      "file": "enrollment-error-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send",
+        "verify",
+        "enroll"
+      ],
+      "sha256": "b2fd48c463abcecb7e183a4ddbc4ccf523f799f87be1f1611562e0d46c8b6101"
+    },
+    {
+      "state": "enrollment-error",
+      "width": 390,
+      "file": "enrollment-error-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send",
+        "verify",
+        "enroll"
+      ],
+      "sha256": "83b3f6dd4884346b7be427b6c4ca35dca7a8140ad56b0bd6a3a4647b65012094"
+    },
+    {
+      "state": "verified",
+      "width": 1280,
+      "file": "verified-1280.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send",
+        "verify",
+        "enroll"
+      ],
+      "sha256": "ec573499a49eedd9dbb232b9e945814cc9d77e3be302dd4f8f1c92fc1e41b32e"
+    },
+    {
+      "state": "verified",
+      "width": 390,
+      "file": "verified-390.png",
+      "overflow": 0,
+      "errors": [],
+      "calls": [
+        "send",
+        "verify",
+        "enroll"
+      ],
+      "sha256": "96e1ba76e519714ddd3d167195b79f19d5eb5600e689ceee8afd5a35c5193a5f"
+    }
+  ]
+}

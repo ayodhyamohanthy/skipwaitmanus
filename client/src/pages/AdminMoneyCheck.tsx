@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AdminSignInCta } from "@/components/admin/AdminSignInCta";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+const GoalAdminMoneyCheck = lazy(() => import("./goal/admin-money/GoalAdminMoneyCheck"));
 
 type Result = { ranAt: string; findingsFound: boolean; emailSent: boolean; subject: string | null; findings: string | null };
 
@@ -8,6 +11,7 @@ type AlertStatus = { latestOutcome: string | null; latestAt: string | null; last
 
 /** One button for the founder: runs the read-only money check and shows the findings here. */
 export default function AdminMoneyCheck() {
+  if (goalSurfaceOn("admin-money")) return <Suspense fallback={null}><GoalAdminMoneyCheck /></Suspense>;
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [needsSignIn, setNeedsSignIn] = useState(false);

@@ -26,6 +26,12 @@ export type DevIdentity = {
   account: { id: number; openId: string; role?: "user" | "admin"; name: string | null; email: string | null; loginMethod: string | null };
   primaryEmail: DevEmailAddress | null;
   emailAddresses: DevEmailAddress[];
+  /** D-057-session-gate: set only when this request's own session was made by the work-email code login. */
+  sessionAmr?: "work_email_otp";
+  /** D-057-session-gate §0b.2: `workos:<sid>` or `app:<ssid>`, from the verified credential only. */
+  sessionKey?: string;
+  /** D-140 / D-382: Unix epoch seconds of interactive authentication; undefined when legacy or absent. */
+  authTime?: number;
 };
 
 function readSessionToken(req: Request): string | undefined {
@@ -80,7 +86,16 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
     // hand. Returning undefined maps to the routes' existing 401 handling.
     if (account.suspended) return undefined;
     const primaryEmail = emailField(account.email);
-    return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+    // D-057: the session's own claim and key, copied from the verified cookie only (never the openId or subject).
+    const sessionKey = session.sid ? `workos:${session.sid}` : session.ssid ? `app:${session.ssid}` : undefined;
+    return {
+      account,
+      primaryEmail,
+      emailAddresses: primaryEmail ? [primaryEmail] : [],
+      ...(session.amr ? { sessionAmr: session.amr } : {}),
+      ...(sessionKey ? { sessionKey } : {}),
+      ...(session.authTime ? { authTime: session.authTime } : {}),
+    };
   } catch {
     return undefined;
   }

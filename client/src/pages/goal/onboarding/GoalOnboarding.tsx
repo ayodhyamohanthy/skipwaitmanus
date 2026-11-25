@@ -14,11 +14,13 @@ type Sync = "idle" | "loading" | "saving" | "saved" | "failed";
 
 export default function GoalOnboarding() {
   const { isSignedIn, getToken, openSignIn } = useAuth();
-  const [state, setState] = useState<OnboardingState>(emptyOnboarding);
+  const [{ state, revision }, setDraft] = useState(() => ({ state: emptyOnboarding(), revision: 0 }));
   const [sync, setSync] = useState<Sync>(isSignedIn ? "loading" : "idle");
   const [saveNonce, setSaveNonce] = useState(0);
   const loadedRef = useRef(false);
-  const dirtyRef = useRef(false);
+  const latestEditRef = useRef(0);
+  const savedRevisionRef = useRef(0);
+  const saveQueueRef = useRef(Promise.resolve());
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [focus, setFocus] = useState<number | null>(null);
@@ -40,37 +42,60 @@ export default function GoalOnboarding() {
         if (!response.ok) throw new Error("load failed");
         const saved = (await response.json()) as OnboardingState;
         if (cancelled) return;
-        if (!dirtyRef.current) setState(saved);
         loadedRef.current = true;
-        if (dirtyRef.current) setSaveNonce(n => n + 1); else setSync("saved");
+        if (latestEditRef.current === savedRevisionRef.current) {
+          setDraft({ state: saved, revision: savedRevisionRef.current });
+          setSync("saved");
+        } else {
+          setSaveNonce(n => n + 1);
+        }
       } catch { if (!cancelled) setSync("failed"); }
     })();
     return () => { cancelled = true; };
   }, [isSignedIn, authHeaders]);
 
   useEffect(() => {
-    if (!isSignedIn || !loadedRef.current || !dirtyRef.current) return;
+    if (!isSignedIn || !loadedRef.current || revision === savedRevisionRef.current) return;
     let cancelled = false;
+    const isCurrentEdit = () => !cancelled && revision === latestEditRef.current;
     setSync("saving");
-    const timer = setTimeout(async () => {
-      try {
-        const response = await fetch("/api/profile/setup", { method: "PATCH", headers: await authHeaders(), credentials: "include", body: JSON.stringify(toSetupPatch(state)) });
-        if (!response.ok) throw new Error("save failed");
-        if (!cancelled) { dirtyRef.current = false; setSync("saved"); }
-      } catch { if (!cancelled) setSync("failed"); }
+    const timer = setTimeout(() => {
+      // Each PATCH sends a full snapshot. Finish the previous write before sending the next one.
+      saveQueueRef.current = saveQueueRef.current.then(async () => {
+        if (!isCurrentEdit()) return;
+        try {
+          const headers = await authHeaders();
+          if (!isCurrentEdit()) return;
+          const response = await fetch("/api/profile/setup", {
+            method: "PATCH", headers, credentials: "include", body: JSON.stringify(toSetupPatch(state)),
+          });
+          if (!response.ok) throw new Error("save failed");
+          if (isCurrentEdit()) {
+            savedRevisionRef.current = revision;
+            setSync("saved");
+          }
+        } catch {
+          if (isCurrentEdit()) setSync("failed");
+        }
+      });
     }, 500);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [state, isSignedIn, authHeaders, saveNonce]);
+  }, [state, revision, isSignedIn, authHeaders, saveNonce]);
 
-  const patch = (update: Partial<OnboardingState>) => { dirtyRef.current = true; setState(current => ({ ...current, ...update })); };
-  const toggleRole = (role: OnboardingState["roles"][number]) => { dirtyRef.current = true; setState(current => ({
+  const edit = (apply: (current: OnboardingState) => OnboardingState) => {
+    // Record the edit before React commits so an older response cannot acknowledge it.
+    const revision = ++latestEditRef.current;
+    setDraft(current => ({ state: apply(current.state), revision }));
+  };
+  const patch = (update: Partial<OnboardingState>) => edit(current => ({ ...current, ...update }));
+  const toggleRole = (role: OnboardingState["roles"][number]) => edit(current => ({
     ...current,
     roles: current.roles.includes(role) ? current.roles.filter(item => item !== role) : current.roles.length >= MAX_ROLES ? current.roles : [...current.roles, role],
-  })); };
-  const toggleLink = (link: LinkKind) => { dirtyRef.current = true; setState(current => ({
+  }));
+  const toggleLink = (link: LinkKind) => edit(current => ({
     ...current,
     links: current.links.includes(link) ? current.links.filter(item => item !== link) : [...current.links, link],
-  })); };
+  }));
   const uploadPicked = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file || uploading || !isSignedIn) return;
@@ -91,7 +116,7 @@ export default function GoalOnboarding() {
   const status = !isSignedIn
     ? <>Not saved yet. Sign in to keep these answers.</>
     : sync === "failed"
-      ? <>We could not save your answers. <button type="button" className="g-linklike" onClick={() => { dirtyRef.current = true; setSaveNonce(n => n + 1); }}>Try again</button>.</>
+      ? <>We could not save your answers. <button type="button" className="g-linklike" onClick={() => setSaveNonce(n => n + 1)}>Try again</button>.</>
       : sync === "saving" || sync === "loading"
         ? <>Saving to your account.</>
         : <>Saved to your account.</>;

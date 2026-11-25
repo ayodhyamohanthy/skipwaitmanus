@@ -74,13 +74,12 @@ describe("PICKER-avoid-unblock", () => {
       .toMatchObject({ kind: "build", task: { id: "B" } });
   });
 
-  it("keeps the blocked builder from clearing its own block", () => {
+  it("keeps the blocked builder from clearing its own block; it gets other work (D-315), else the wait", () => {
     const builder = "Builder · s1";
-    expect(pick([task("A"), task("B")], {
-      branches: [["agent/queue/a", claim(builder, "A")]],
-      reports: [blocked(builder)],
-      claimant: builder,
-      avoid: ["A"],
-    })).toMatchObject({ kind: "wait", gate: "A", blocked: true });
+    const opts = { branches: [["agent/queue/a", claim(builder, "A")]] as [string, ReturnType<typeof claim>][], reports: [blocked(builder)], claimant: builder, avoid: ["A"] };
+    const other = pick([task("A"), task("B")], opts);
+    expect(other).toMatchObject({ kind: "build", task: { id: "B" } });
+    expect(other.kind).not.toBe("unblock");
+    expect(pick([task("A")], opts)).toMatchObject({ kind: "wait", gate: "A", blocked: true });
   });
 });

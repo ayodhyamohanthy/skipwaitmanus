@@ -19,11 +19,14 @@ describe("notification center interface safeguards", () => {
     expect(notifications).toContain("/api/notifications/${notification.id}/read");
     expect(notifications).toContain('data-skipwait-notifications-empty="true"');
     expect(notifications).not.toContain("demoNotifications");
-    // The center moved to /alerts (kit IA); /notifications redirects there.
+    // The center moved to /alerts; /notifications redirects there.
     // The same safeguards hold on the new surface.
     expect(app).toContain('path="/alerts"');
     expect(app).toContain('path="/notifications"><Redirect to="/alerts"');
-    const alerts = source("client/src/pages/Alerts.tsx");
+    const alertsEntry = source("client/src/pages/Alerts.tsx");
+    expect(alertsEntry).toContain('import("./goal/alerts/GoalAlerts")');
+    expect(alertsEntry).not.toContain("goalSurfaceOn");
+    const alerts = source("client/src/pages/goal/alerts/GoalAlerts.tsx");
     expect(alerts).toContain('fetch("/api/notifications"');
     expect(alerts).toContain("/api/notifications/${item.id}/read");
     expect(alerts).toContain("data-skipwait-screen=\"alerts\"");

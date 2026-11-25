@@ -1,9 +1,9 @@
 // Goal /billing (D-048-p3-plans, D-048-money.md §4): the seeker's plan, their
 // referral-request balance, honest payment facts and settled receipts, around
-// one next step. `goalSurfaceOn("plans")` switches Billing.tsx here; /plans
-// stays on its own frozen path and nothing here enables a price or a purchase
-// path (D-042, D-123, D-146). The summary and receipts contracts are the live
-// ones in components/plans/billingApi.ts, imported read-only.
+// one next step. The released Billing.tsx entry exports this page directly;
+// /plans stays on its own frozen path and nothing here enables a price or a
+// purchase path (D-042, D-123, D-146). The summary and receipts contracts are
+// the live ones in components/plans/billingApi.ts, imported read-only.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";

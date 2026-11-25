@@ -1,0 +1,25 @@
+{
+  "task": "D-048-K-developers",
+  "command": "LANG=en_US.UTF-8 pnpm exec vitest run --maxWorkers=1",
+  "commandGroup": "Official next-task heartbeat followed by the one Vitest invocation",
+  "termination": "Tool command-group deadline after 3600 seconds",
+  "heartbeatRecorded": true,
+  "vitestStarted": true,
+  "completed": false,
+  "finalSummaryPresent": false,
+  "finalTotalsAvailable": false,
+  "green": false,
+  "rerun": false,
+  "testsTimeoutsOrAssertionsWeakened": false,
+  "observedFailureProgress": [
+    {"file": "scripts/nextTaskLandExactHead.test.ts", "cases": ["(k3) when head_sha query returns HTTP 500, hands no LAND and logs next-task error"]},
+    {"file": "client/src/pages/goal/post-opportunity/goalPostOpportunity.test.tsx", "cases": ["holds unverified employees at the work-email gate"]},
+    {"file": "client/src/components/shellParts.goal.test.tsx", "cases": ["keeps every menu entry and where it goes"]},
+    {"file": "client/src/pages/onboardingGoal.test.tsx", "cases": ["opens on the goal with the next step focused", "checklist rows focus their editor", "ready state commits to finding a referrer", "tells the seeker when saving failed and offers a retry", "asks signed-out visitors to sign in for uploads and warns answers are not saved", "renders the goal page by default without a surface override"]},
+    {"file": "client/src/pages/unifiedInbox.test.tsx", "cases": ["lists asking threads with unread state linking to the thread"]}
+  ],
+  "logEvidence": "The terminated local log contains 175 lines and no final Vitest summary. The last output is a jsdom navigation-not-implemented message following test-fixture duplicate-key warnings; neither is inferred to be the cause.",
+  "scope": "These five files were not edited by this retirement. The progress lines are observations, not complete failure traces or final totals; no cause or environment diagnosis is inferred.",
+  "separateCompletedEvidence": {"focusedPassed": 33, "sourceCI": 44589186613, "mainCI": 44590222165, "sourceAndMainAllThreeShardsPassed": true, "canonicalWebSha": "5519d1f80874b50d3677003637ed424cbe03a369"},
+  "limits": "The 3600-second tool deadline includes the heartbeat; exact Vitest elapsed time is not claimed. This is an incomplete, not-green local gate, not a full-pass claim. No restart, deadline change, assertion suppression or runtime modification was used to obtain a local pass. Complete source/main CI and canonical proof remain separate observations. Raw local paths and the complete transient log are not published."
+}

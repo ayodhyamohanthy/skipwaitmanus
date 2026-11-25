@@ -26,10 +26,10 @@ describe("server plan gates", () => {
     expect(showcaseLimitViolation(ent("start"), items(9), { adding: true, pinning: false })).toBeNull();
   });
 
-  it("assistant refusals carry the kit copy and a stable code", () => {
+  it("assistant refusals carry the plain agent-access copy and a stable code", () => {
     const error = new AssistantPlanRequiredError();
-    expect(error).toMatchObject({ code: "assistant_plan_required", message: "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account." });
-    // Review round 2 (D-067): nothing sells Land yet, so the refusal (shown by MCP and OAuth clients) never says to upgrade.
-    expect(error.message).not.toMatch(/upgrade/i);
+    expect(error).toMatchObject({ code: "assistant_plan_required", message: "Agent access is not open for this account." });
+    // D-178.gate (D-290 R2): the gate is the switch and the allow-list, never a plan, so the refusal names no plan or upgrade.
+    expect(error.message).not.toMatch(/upgrade|land|concierge|plan/i);
   });
 });

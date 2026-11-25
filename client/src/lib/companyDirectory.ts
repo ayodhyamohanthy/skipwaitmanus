@@ -82,8 +82,12 @@ export function numberWord(value: number): string {
   return word ?? String(value);
 }
 
-/** "Find people open to referral requests at A, B, and C." from the live directory. */
+/**
+ * "Request a referral at A, B, and C." from the live directory (D-176, D-180):
+ * availability is backend routing, so the copy names where a seeker can ask and
+ * never claims that an employee there is open to referrals.
+ */
 export function exploreDescription(companies: readonly PublicCompany[]): string | undefined {
   if (companies.length === 0) return undefined;
-  return `Find people open to referral requests at ${new Intl.ListFormat("en-US", { type: "conjunction" }).format(companies.map(company => company.name))}.`;
+  return `Request a referral at ${new Intl.ListFormat("en-US", { type: "conjunction" }).format(companies.map(company => company.name))}.`;
 }

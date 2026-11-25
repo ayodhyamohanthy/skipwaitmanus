@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-// Goal /landed (D-048-p3-seeker-small, dark): one-task journey, thank-you
-// send, pay-it-forward, no-hire + signed-out states, flags-off kit control.
+// Goal landed journey: thank-you delivery, pay-it-forward, and access states.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
@@ -8,18 +7,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authState = { isLoaded: true, isSignedIn: true };
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ ...authState, userId: "u1", getToken: async () => "tok" }), SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
-const flagState = { on: true };
-vi.mock("@/lib/goalSurfaces", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/goalSurfaces")>();
-  return { ...actual, goalSurfaceOn: (id: string) => flagState.on && id === "landed" };
-});
 vi.mock("@/hooks/usePersistFn", () => ({ usePersistFn: (fn: unknown) => fn }));
 
 const hire = { id: "r1", status: "closed", referrerId: "ref-1", referrerName: "Asha Rao", title: "Frontend Engineer", companyName: "Quillmint", companyDomain: "quillmint.ai", updatedAt: "2026-10-20T00:00:00Z" };
-const requestsState = { requests: [hire] };
+const requestsState = { requests: [hire], fail: false };
 vi.mock("@/components/requests/requestsApi", () => ({
   LOAD_ERROR: "We could not load your referral requests.",
-  fetchMyRequests: vi.fn(async () => ({ requests: requestsState.requests })),
+  fetchMyRequests: vi.fn(async () => {
+    if (requestsState.fail) throw new Error("We could not load your referral requests.");
+    return { requests: requestsState.requests };
+  }),
 }));
 const sendState = { delivered: true, fail: false };
 vi.mock("@/components/landed/landedModel", async (importOriginal) => {
@@ -29,13 +26,15 @@ vi.mock("@/components/landed/landedModel", async (importOriginal) => {
 
 import Landed from "@/pages/Landed";
 
+import "./GoalLanded";
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><Landed /></QueryClientProvider>);
 }
 
 describe("goal landed", () => {
-  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; flagState.on = true; requestsState.requests = [hire]; sendState.delivered = true; sendState.fail = false; });
+  beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; requestsState.requests = [hire]; requestsState.fail = false; sendState.delivered = true; sendState.fail = false; });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("opens on the goal with one commit for the hire", async () => {
@@ -57,6 +56,19 @@ describe("goal landed", () => {
     fireEvent.click(screen.getByRole("button", { name: /Yes, I will pay it forward/ }));
     expect(await screen.findByRole("heading", { name: /other side of the door/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Verify work email/ }).getAttribute("href")).toBe("/verify");
+    // The closing ghost action is referral-only too.
+    expect(screen.getByRole("link", { name: "Close my other referral requests" }).getAttribute("href")).toBe("/requests");
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
+  });
+
+  it("keeps the reassurance referral-only when the requests cannot be loaded", async () => {
+    requestsState.fail = true;
+    renderPage();
+    // The title and the thrown detail both read the referral-only LOAD_ERROR.
+    expect((await screen.findAllByText(/We could not load your referral requests/)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Nothing was lost - your referral requests and this thank-you wait for you/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
   });
 
   it("says when the thank-you could not be delivered", async () => {
@@ -80,12 +92,14 @@ describe("goal landed", () => {
     authState.isSignedIn = false;
     renderPage();
     expect(await screen.findByRole("button", { name: "Secure sign in" })).toBeTruthy();
+    // The signed-out teaser is referral-only (D-180).
+    expect(screen.getByText(/find the referral request and send your thank-you/)).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toMatch(/\basks?\b/);
   });
 
-  it("flags off keeps the kit journey", async () => {
-    flagState.on = false;
+  it("renders the goal journey without a surface override", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "You did it." })).toBeTruthy();
-    expect(screen.queryByTestId("goal-landed")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Close the loop on your new role." })).toBeTruthy();
   });
 });

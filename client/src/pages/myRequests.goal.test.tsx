@@ -107,7 +107,7 @@ describe("My asks on the goal shell", () => {
     stub([openAsk(42)], slots(1));
     renderPage();
     expect(screen.getByTestId("goal-shell")).toBeTruthy();
-    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 referrals left"));
     const pill = screen.getAllByTestId("goal-credits-pill");
     expect(pill[0].getAttribute("href")).toBe("/plans");
     // My asks is the current destination; the avatar identifies the account.
@@ -135,7 +135,7 @@ describe("My asks on the goal shell", () => {
     await waitFor(() => expect(pill.textContent).toContain("Balance didn't load"), { timeout: 3000 });
     expect(pill.textContent).not.toMatch(/\b0\b/);
     fireEvent.click(within(pill).getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 credits"));
+    await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 referrals left"));
   });
 
   it("a verified referrer keeps their queue and sees no credits pill", async () => {

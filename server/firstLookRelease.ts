@@ -9,8 +9,9 @@
 // notifies the rest of the company in-app exactly once per colleague. A
 // repeated sweep, a concurrent claim or a decision can never release twice.
 // Anything left over is picked up by the next window.
-import { and, asc, eq, gt, isNotNull, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull, isNull, lte, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
+import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_TTL_MS } from "../shared/referral";
 import { getDb, releaseFirstLookForRequest } from "./db";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -25,6 +26,15 @@ export type FirstLookReleaseDeps = {
   release: (requestId: number, nowMs: number) => Promise<{ released: boolean }>;
 };
 
+/**
+ * D-174: the shelf-life bound only keeps this sweep off asks the expiry job owns. With the ask clocks
+ * off nothing owns them, so an old ask's lapsed first look still releases — otherwise it would stay
+ * with a poster who never answered and never reach the rest of the company (D-220).
+ */
+export function firstLookShelfLifeCondition(now: Date, noExpiry: boolean = ASK_NO_EXPIRY_ENABLED): SQL[] {
+  return noExpiry ? [] : [gt(referralRequests.createdAt, new Date(now.getTime() - ASK_TTL_MS))];
+}
+
 export async function listLapsedFirstLooks(now: Date, limit: number): Promise<LapsedFirstLook[]> {
   const db = await getDb();
   if (!db) throw new JobRunStoreUnavailableError();
@@ -37,7 +47,7 @@ export async function listLapsedFirstLooks(now: Date, limit: number): Promise<La
       isNull(referralRequests.referrerId),
       isNotNull(referralRequests.firstLookReferrerId),
       lte(referralRequests.firstLookUntil, now),
-      gt(referralRequests.createdAt, new Date(now.getTime() - ASK_TTL_MS)),
+      ...firstLookShelfLifeCondition(now),
     ))
     .orderBy(asc(referralRequests.firstLookUntil), asc(referralRequests.id))
     .limit(limit);

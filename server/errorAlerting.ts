@@ -1,16 +1,29 @@
 import { createTransactionalEmailSender } from "./emailDelivery";
 import type { RequestHandler } from "express";
+import * as Sentry from "@sentry/node";
 import { recordOperationalActivity } from "./db";
+import { isServerSentryActive } from "./sentry";
 import { scrubTelemetryPath } from "../shared/telemetryScrub";
+import { routeTemplateOf } from "./httpErrorCapture";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
-// Second recipient: the owner mailbox. Best effort: the primary result decides success.
+// Copies: the owner mailbox and, since D-400, the administrator mailbox. Best effort: the primary result decides success.
 export const ADMIN_ALERT_COPY_RECIPIENT = "ayodhya@mail.instinct.com";
+export const ADMIN_MAILBOX_COPY_RECIPIENT = "admin@skipwait.me";
 
 export async function sendAdminAlertEmail(fetchImpl: typeof fetch | undefined, input: { subject: string; text: string }) {
+  // An email outage still leaves a trace in Sentry; the message carries only the fixed part of the subject.
+  const subjectBase = input.subject.split(" · ")[0];
+  try {
+    if (isServerSentryActive()) {
+      Sentry.captureMessage(subjectBase, { level: "error", fingerprint: ["admin-alert", subjectBase] });
+    }
+  } catch { /* the alert path must never fail because of Sentry */ }
   const send = createTransactionalEmailSender({ fetchImpl });
   const primary = await send({ to: ADMIN_ERROR_RECIPIENT, ...input });
-  try { await send({ to: ADMIN_ALERT_COPY_RECIPIENT, ...input }); } catch { /* copy is best effort */ }
+  for (const copy of [ADMIN_ALERT_COPY_RECIPIENT, ADMIN_MAILBOX_COPY_RECIPIENT]) {
+    try { await send({ to: copy, ...input }); } catch { /* copy is best effort */ }
+  }
   return primary;
 }
 const DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000;
@@ -31,6 +44,7 @@ type AlertDependencies = {
 function normalizedPath(path: string) {
   // FND-4: tokens, aliases and storage keys become :token; query and hash are dropped.
   const pathname = scrubTelemetryPath(path);
+  if (pathname === "unmatched") return "unmatched";
   return pathname.startsWith("/api/") ? pathname.slice(0, 180) : "";
 }
 
@@ -39,12 +53,13 @@ function alertKey(input: AlertInput) {
 }
 
 export function createMaterialErrorEscalator(dependencies: AlertDependencies = {}) {
-  const fetchImpl = dependencies.fetchImpl ?? fetch;
+  const fetchImpl = dependencies.fetchImpl;
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   const now = dependencies.now ?? Date.now;
   const recentAlerts = new Map<string, number>();
 
   return async function escalateMaterialError(input: AlertInput) {
+    const impl = fetchImpl ?? fetch;
     const route = normalizedPath(input.path);
     if (!route || input.statusCode < 500) return { alerted: false, reason: "not_material" as const };
 
@@ -66,7 +81,7 @@ export function createMaterialErrorEscalator(dependencies: AlertDependencies = {
     ].join("\n");
 
     try {
-      const delivery = await sendAdminAlertEmail(fetchImpl, { subject, text });
+      const delivery = await sendAdminAlertEmail(impl, { subject, text });
       if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
 
       await recordActivity({
@@ -94,11 +109,16 @@ export function createMaterialErrorEscalator(dependencies: AlertDependencies = {
 const escalateMaterialError = createMaterialErrorEscalator();
 
 export const materialErrorAlertMiddleware: RequestHandler = (req, res, next) => {
+  const fullPath = `${req.baseUrl ?? ""}${req.path}`;
+  // Readiness answers 503 on every rollout; the watchdog and release verify own those routes.
+  if (fullPath === "/api/health" || fullPath.startsWith("/api/health/")) return next();
   const startedAt = Date.now();
   res.once("finish", () => {
+    // Read the matched route at finish, never the raw URL: no tokens or ids reach the owner's inbox.
+    const template = routeTemplateOf(req);
     void escalateMaterialError({
       method: req.method,
-      path: req.originalUrl,
+      path: template,
       statusCode: res.statusCode,
       durationMs: Date.now() - startedAt,
     });

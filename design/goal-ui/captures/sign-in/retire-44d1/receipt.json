@@ -1,0 +1,137 @@
+{
+  "task": "D-048-K-sign-in",
+  "date": "2026-11-19",
+  "session": "GPT-6.1 Sol · 44d1",
+  "runtimeCommit": "7929529ed",
+  "testRepairCommit": "ceed69015",
+  "baselineMain": "253b9a20d",
+  "baselineIntegration": "87934fa33",
+  "production": false,
+  "syntheticApis": true,
+  "viewports": [
+    {
+      "width": 1280,
+      "height": 900
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "captures": [
+    {
+      "file": "before-seeker-1280.png",
+      "width": 1280,
+      "height": 1056,
+      "format": "png"
+    },
+    {
+      "file": "after-seeker-1280.png",
+      "width": 1280,
+      "height": 1056,
+      "format": "png"
+    },
+    {
+      "file": "before-seeker-phone-scrollbar.png",
+      "width": 380,
+      "height": 1212,
+      "format": "png"
+    },
+    {
+      "file": "after-seeker-390.png",
+      "width": 390,
+      "height": 1212,
+      "format": "png"
+    },
+    {
+      "file": "before-referrer-1280.png",
+      "width": 1270,
+      "height": 1084,
+      "format": "png"
+    },
+    {
+      "file": "after-referrer-1280.png",
+      "width": 1270,
+      "height": 1084,
+      "format": "png"
+    },
+    {
+      "file": "before-referrer-phone-scrollbar.png",
+      "width": 380,
+      "height": 1171,
+      "format": "png"
+    },
+    {
+      "file": "after-referrer-390.png",
+      "width": 390,
+      "height": 1125,
+      "format": "png"
+    }
+  ],
+  "comparisons": [
+    {
+      "before": "before-seeker-1280.png",
+      "after": "after-seeker-1280.png",
+      "comparable": true,
+      "changedPixels": 0
+    },
+    {
+      "before": "before-referrer-1280.png",
+      "after": "after-referrer-1280.png",
+      "comparable": true,
+      "changedPixels": 0
+    },
+    {
+      "before": "before-seeker-phone-scrollbar.png",
+      "after": "after-seeker-390.png",
+      "comparable": false,
+      "reason": "Browser scrollbar capture widths differ; not a valid pixel comparison."
+    },
+    {
+      "before": "before-referrer-phone-scrollbar.png",
+      "after": "after-referrer-390.png",
+      "comparable": false,
+      "reason": "Browser scrollbar capture widths differ; not a valid pixel comparison."
+    }
+  ],
+  "sourceHashes": [
+    {
+      "file": "client/src/pages/goal/sign-in/GoalSignInPage.tsx",
+      "sha256": "81d1ff273575eb1037ec05b27205353df023edcc8307d07dbe74a183849d1d4a",
+      "unchangedFromMain": true
+    },
+    {
+      "file": "client/src/pages/goal/sign-in/GoalForgotPassword.tsx",
+      "sha256": "84ece94d69bf2384f97e7f338446282cd0b7026ebbbad70250de4ec81c889e84",
+      "unchangedFromMain": true
+    },
+    {
+      "file": "client/src/pages/goal/sign-in/GoalResetPassword.tsx",
+      "sha256": "123591f5f75639cd590fa4a37f5a9a8e9f7cbaae9cba8aa1fecc51c11d66e6ad",
+      "unchangedFromMain": true
+    },
+    {
+      "file": "client/src/pages/goal/sign-in/GoalReviewerSignIn.tsx",
+      "sha256": "cdcb843c64c06b3a1f464371c183ee17c7a03a6cfc1cff07960050905acda303",
+      "unchangedFromMain": true
+    },
+    {
+      "file": "client/src/pages/GoalSignIn.tsx",
+      "sha256": "e4d092881b5d684e26f33862c6ad6093fcb587b53f55d30a24a729ebc432481b",
+      "unchangedFromMain": true
+    },
+    {
+      "file": "client/src/pages/loginRule.test.tsx",
+      "sha256": "d23e0b41459cea803f96cd4ca33f665729499abaffb578919736ce861d86fb0e",
+      "unchangedFromMain": true
+    }
+  ],
+  "verification": {
+    "visualInspection": "UNVERIFIED: primary and delegated checker both lack image input; screenshot media omitted by provider.",
+    "phoneParity": "UNVERIFIED: baseline image widths are 380px because of a 10px scrollbar; candidate actual viewport and client width were 390px with no overflow. Normalized baseline recapture hit repeated browser surface timeouts.",
+    "desktopParity": "Two pairs have zero changed decoded pixels. Pixel equality is not claimed as visual inspection.",
+    "otherRoutes": "Forgot/reset/reviewer and passkey routing covered by real component tests; browser captures remain incomplete.",
+    "sentry": "UNVERIFIED: no Sentry credentials in this session.",
+    "liveRelease": "Not attempted; draft PR requires independent Tier 1 review."
+  }
+}

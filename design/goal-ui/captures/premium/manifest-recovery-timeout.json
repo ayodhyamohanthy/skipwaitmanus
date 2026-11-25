@@ -1,0 +1,38 @@
+{
+  "synthetic": true,
+  "base": "http://127.0.0.1:4328",
+  "results": [
+    {
+      "scenario": "recovery-timeout",
+      "width": 1280,
+      "file": "recovery-timeout-1280.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We could not confirm this payment.Your next stepYour payment is not confirmed here. Keep your receipt and contact Support; do not pay again.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    },
+    {
+      "scenario": "recovery-timeout",
+      "width": 390,
+      "file": "recovery-timeout-390.png",
+      "horizontalOverflowPx": 0,
+      "primaries": 1,
+      "text": "BackGet more referral requests.We could not confirm this payment.Your next stepYour payment is not confirmed here. Keep your receipt and contact Support; do not pay again.Get help with this payment3 free referrals every month; extra referral requests use your balance. Referrers are never paid.Contact SupportRefund policyTerms",
+      "apiCalls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "POST /api/chargebee/credit-recovery"
+      ],
+      "errors": []
+    }
+  ]
+}

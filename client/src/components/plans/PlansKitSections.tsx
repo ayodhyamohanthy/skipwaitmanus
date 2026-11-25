@@ -12,7 +12,6 @@ import type { PlanCatalogResponse } from "@shared/billingCatalog";
 import type { CatalogCurrency } from "@shared/planCatalog";
 import { CREDIT_RULE_SHORT } from "@shared/moneyCopy";
 import { Button } from "@/components/kit/button";
-import { fetchCompanyDirectory } from "@/lib/companyDirectory";
 import { useAuth } from "@/_core/auth";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { plansCatalogKeys } from "./plansCatalogApi";
@@ -206,10 +205,21 @@ const COVERAGE_COPY: Record<CoverageRow["state"], string> = {
 
 const rowIcon = (state: CoverageRow["state"]) => state === "visible" ? <Check /> : state === "held" ? <Pause /> : <Clock3 />;
 
+/** The server's own word on one pending request; null when it said nothing we can read (the row is left out, never guessed). */
+function coverageStateOf(ask: { waitingForCoverage?: boolean | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null }): CoverageRow["state"] | null {
+  if (ask.queueStatus === "held_for_credit") return "held";
+  if (ask.queueStatus === "available_for_review") return "visible";
+  if (ask.queueStatus === "waiting_for_coverage" || ask.waitingForCoverage === true) return "waiting";
+  // Not waiting for coverage: the server already made it visible to a verified employee (D-034).
+  if (ask.waitingForCoverage === false) return "visible";
+  return null;
+}
+
 /**
- * Where the seeker's asks stand: live companies are covered, uncovered asks
- * wait at no cost, held asks need one credit. Shown on /plans so buying a pack
- * or pass is never a guess about whether it will be used.
+ * Where the seeker's own pending asks stand: visible to a verified employee,
+ * waiting at no cost, or held for a credit. Read only from the seeker's own
+ * requests (D-174 public-payload, D-176): no directory company is listed and
+ * no availability is read. Hidden when the seeker has no pending ask.
  */
 export function CoverageBlock({ isSignedIn, getToken }: { isSignedIn: boolean; getToken: () => Promise<string | null> }) {
   const mine = useQuery({
@@ -223,29 +233,18 @@ export function CoverageBlock({ isSignedIn, getToken }: { isSignedIn: boolean; g
       return mineAskSchema.parse(await response.json());
     },
   });
-  const directory = useQuery({ queryKey: ["plans-coverage", "directory"], queryFn: fetchCompanyDirectory, staleTime: 5 * 60_000 });
 
   if (!isSignedIn || !mine.data) return null;
-  const openByDomain = new Map((directory.data?.companies ?? []).flatMap(company => company.domains.map(domain => [domain.toLowerCase(), company.openToReferrals] as const)));
 
   const rows: CoverageRow[] = [];
   for (const ask of mine.data.requests) {
     if (rows.length >= 5) break;
     if (ask.status && ask.status !== "pending") continue;
+    const state = coverageStateOf(ask);
+    if (state === null) continue;
     const domain = (ask.companyDomain ?? "").toLowerCase();
-    const open = openByDomain.get(domain) === true;
-    const state: CoverageRow["state"] = ask.queueStatus === "held_for_credit" ? "held"
-      : ask.queueStatus === "available_for_review" ? "visible"
-      : ask.queueStatus === "waiting_for_coverage" || ask.waitingForCoverage === true || !open ? "waiting"
-      : "visible";
     const name = ask.companyName?.trim() || domain;
     rows.push({ key: `ask-${ask.id}`, name, mark: (name.charAt(0) || "?").toUpperCase(), state });
-  }
-  // Fill the block with waitlisted companies so the no-cost wait is visible before an ask exists.
-  for (const company of directory.data?.companies ?? []) {
-    if (rows.length >= 5) break;
-    if (company.openToReferrals || rows.some(row => row.name === company.name)) continue;
-    rows.push({ key: `co-${company.slug}`, name: company.name, mark: company.initials, state: "waiting" });
   }
   if (rows.length === 0) return null;
 

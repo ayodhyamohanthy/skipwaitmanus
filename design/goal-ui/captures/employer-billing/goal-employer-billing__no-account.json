@@ -1,0 +1,49 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "account": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/spend-history",
+      "match": "prefix",
+      "status": 403,
+      "body": {
+        "error": "Employer access is required"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/employer/unlock-credits/purchase",
+      "match": "prefix",
+      "status": 200,
+      "body": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=No employer account yet"
+    }
+  ]
+}

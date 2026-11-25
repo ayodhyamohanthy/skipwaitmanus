@@ -118,6 +118,11 @@ describe("the guides are pages, not link stubs", () => {
       expect(guide.sections.length, `${guide.route} needs real sections`).toBeGreaterThanOrEqual(4);
     }
   });
+
+  it("prerenders the employer-rules section on /how-employees-refer-candidates (D-323)", () => {
+    const html = readFileSync(path.join(dist, "how-employees-refer-candidates.html"), "utf8");
+    expect(html).toMatch(/Does this fit my employer(&#x27;|&#39;|')s referral rules\?/);
+  });
 });
 
 /**

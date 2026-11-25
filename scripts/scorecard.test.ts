@@ -118,11 +118,11 @@ describe("PROCESS-scorecard: Tier 1 review on a merged head (the review gate's r
     expect(status([verdict("pass", "Reviewer · 0002", null)])).toBe("unpinned");
   });
 
-  it("no review, findings last, or a pass by the builder's model is no independent pass", () => {
+  it("no review, findings last, or a pass by the builder's own session is no independent pass (D-344 (1))", () => {
     expect(status([])).toBe("none");
     expect(status([verdict("findings", "Reviewer · 0002", HEAD)])).toBe("none");
-    expect(status([verdict("pass", "Builder · 0009", null)])).toBe("none");
-    expect(status([verdict("pass", "Builder · 0009", HEAD)])).toBe("none");
+    expect(status([verdict("pass", "Builder · 0001", null)])).toBe("none");
+    expect(status([verdict("pass", "Builder · 0001", HEAD)])).toBe("none");
   });
 });
 

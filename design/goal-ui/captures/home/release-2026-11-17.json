@@ -1,0 +1,38 @@
+{
+  "task": "D-048-R-home-signed-in",
+  "sourceCommit": "789c4eadcd388283b8bd7d4980fbb118c2c393f1",
+  "mergeCommit": "0dc1b07d29a180e9b1b3697720e82c6d2cd780c9",
+  "pullRequest": "https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1255",
+  "ci": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44105048473",
+  "artifact": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44105048473/artifacts/14337577321",
+  "artifactName": "release-captures-home-signed-in",
+  "captureKind": "synthetic E2E harness, real browser and local API",
+  "captures": [
+    {
+      "id": "home-signed-in",
+      "persona": "seeker",
+      "route": "/",
+      "path": "/",
+      "finalPath": "/explore",
+      "status": 200,
+      "viewport": "1280x900@1x",
+      "file": "root@1280.png"
+    },
+    {
+      "id": "home-signed-in",
+      "persona": "seeker",
+      "route": "/",
+      "path": "/",
+      "finalPath": "/explore",
+      "status": 200,
+      "viewport": "390x844@2x",
+      "file": "root@390.png"
+    }
+  ],
+  "releaseVerification": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44110594208",
+  "liveWebCommit": "0dc1b07d29a180e9b1b3697720e82c6d2cd780c9",
+  "liveApiCommit": "9d6543b33b2f79c3b4db1568565e66a79f41cd17",
+  "liveApiState": "ready",
+  "authenticatedProductionAcceptance": "unverified: reviewer credentials unavailable and paired browser offline",
+  "sentryWatch": "24-hour route-specific watch still pending"
+}

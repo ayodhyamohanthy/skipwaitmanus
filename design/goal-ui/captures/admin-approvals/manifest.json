@@ -1,0 +1,2064 @@
+{
+  "tool": "design/goal-ui/captures/admin-approvals/capture.mjs",
+  "base": "http://localhost:3000",
+  "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+  "flag": "VITE_GOAL_SURFACES=admin-approvals",
+  "captures": [
+    {
+      "file": "queue-default-1280.png",
+      "state": "queue-default",
+      "route": "/admin/approvals",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "63a4460bccfb3646295a14e3fe1ddd8e5f38bf00",
+      "takenAtUtc": "2026-11-16T12:18:12.619Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-default.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Open the oldest record"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1308,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 419,
+          "docBottom": 455,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 419,
+          "docBottom": 455,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 616,
+          "docBottom": 652,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 616,
+          "docBottom": 652,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 813,
+          "docBottom": 849,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 813,
+          "docBottom": 849,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1010,
+          "docBottom": 1046,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1010,
+          "docBottom": 1046,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1207,
+          "docBottom": 1243,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 1207,
+          "docBottom": 1243,
+          "ariaDisabled": "true"
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "queue-default-390.png",
+      "state": "queue-default",
+      "route": "/admin/approvals",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "f69b5fc7ecc326519aaaaf704bb9e3598e1bd7f2",
+      "takenAtUtc": "2026-11-16T12:18:14.959Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-default.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Open the oldest record"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1658,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 685,
+          "docBottom": 729,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 685,
+          "docBottom": 729,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 934,
+          "docBottom": 978,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 934,
+          "docBottom": 978,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1139,
+          "docBottom": 1183,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1139,
+          "docBottom": 1183,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1344,
+          "docBottom": 1388,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1344,
+          "docBottom": 1388,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1549,
+          "docBottom": 1593,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 1549,
+          "docBottom": 1593,
+          "ariaDisabled": "true"
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "queue-denied-1280.png",
+      "state": "queue-denied",
+      "route": "/admin/approvals",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "5685673716a0aaa933a81a25df0cb3cef817c703",
+      "takenAtUtc": "2026-11-16T12:18:17.376Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-denied.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Sign in as administrator"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ]
+    },
+    {
+      "file": "queue-denied-390.png",
+      "state": "queue-denied",
+      "route": "/admin/approvals",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "6592d2c31383dd4626c3043f739c93b257ef434b",
+      "takenAtUtc": "2026-11-16T12:18:19.754Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-denied.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Sign in as administrator"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 844,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ]
+    },
+    {
+      "file": "queue-empty-1280.png",
+      "state": "queue-empty",
+      "route": "/admin/approvals",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "9215bd25dd357d9b1cabceda73c9bfbfb7cf2995",
+      "takenAtUtc": "2026-11-16T12:18:22.042Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-empty.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Open the review queue"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "queue-empty-390.png",
+      "state": "queue-empty",
+      "route": "/admin/approvals",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "2811a55a6115a4ec472e9e36f84fac701f8b8645",
+      "takenAtUtc": "2026-11-16T12:18:24.323Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-empty.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Open the review queue"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 844,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "queue-error-1280.png",
+      "state": "queue-error",
+      "route": "/admin/approvals",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "5fd25ef8923e3edbe1555b760bac682b5c045b5d",
+      "takenAtUtc": "2026-11-16T12:18:26.650Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-error.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Try again"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "queue-error-390.png",
+      "state": "queue-error",
+      "route": "/admin/approvals",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "245f80afa1a79b03a6166f7d0d63a63c391ee8dc",
+      "takenAtUtc": "2026-11-16T12:18:29.013Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-error.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Try again"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 844,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "queue-signed-out-1280.png",
+      "state": "queue-signed-out",
+      "route": "/admin/approvals",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "fda9e9be9b15ef18be18986e8f3a0a2f66e4b5f5",
+      "takenAtUtc": "2026-11-16T12:18:31.148Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-signed-out.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Sign in"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [],
+      "calls": [],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "queue-signed-out-390.png",
+      "state": "queue-signed-out",
+      "route": "/admin/approvals",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "d4518f5ab49370445766d406bab7fb77fab44d91",
+      "takenAtUtc": "2026-11-16T12:18:33.336Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-signed-out.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Sign in"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 844,
+      "actions": [],
+      "calls": [],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "queue-with-employer-1280.png",
+      "state": "queue-with-employer",
+      "route": "/admin/approvals",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "7e73dcca6969024de2a09a0a684aefdf97edb491",
+      "takenAtUtc": "2026-11-16T12:18:35.713Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-with-employer.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Open the oldest record"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1505,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 419,
+          "docBottom": 455,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 419,
+          "docBottom": 455,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 616,
+          "docBottom": 652,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 616,
+          "docBottom": 652,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 813,
+          "docBottom": 849,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 813,
+          "docBottom": 849,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1010,
+          "docBottom": 1046,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1010,
+          "docBottom": 1046,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1207,
+          "docBottom": 1243,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 1207,
+          "docBottom": 1243,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Approve",
+          "docTop": 1404,
+          "docBottom": 1440,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1404,
+          "docBottom": 1440,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "queue-with-employer-390.png",
+      "state": "queue-with-employer",
+      "route": "/admin/approvals",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "d53245368d3153d8cea7d629d1696e1156d10399",
+      "takenAtUtc": "2026-11-16T12:18:38.107Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__queue-with-employer.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Open the oldest record"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1883,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 705,
+          "docBottom": 749,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 705,
+          "docBottom": 749,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 954,
+          "docBottom": 998,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 954,
+          "docBottom": 998,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1159,
+          "docBottom": 1203,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1159,
+          "docBottom": 1203,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1364,
+          "docBottom": 1408,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1364,
+          "docBottom": 1408,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Approve",
+          "docTop": 1569,
+          "docBottom": 1613,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 1569,
+          "docBottom": 1613,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Approve",
+          "docTop": 1774,
+          "docBottom": 1818,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1774,
+          "docBottom": 1818,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-claimed-refusal-1280.png",
+      "state": "record-claimed-refusal",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "154c831413b4aa024ee2f629c5541f8788775bef",
+      "takenAtUtc": "2026-11-16T12:18:41.337Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-claimed-refusal.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1084,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 631,
+          "docBottom": 671,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 631,
+          "docBottom": 671,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ]
+    },
+    {
+      "file": "record-claimed-refusal-390.png",
+      "state": "record-claimed-refusal",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "40757612567f7962b16f18c85d8f1f76807a65a2",
+      "takenAtUtc": "2026-11-16T12:18:44.574Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-claimed-refusal.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1740,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1421,
+          "docBottom": 1465,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1421,
+          "docBottom": 1465,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ]
+    },
+    {
+      "file": "record-decision-failed-1280.png",
+      "state": "record-decision-failed",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "ad8256e8fddd99cf913a8ddea4d2954602fb8ccd",
+      "takenAtUtc": "2026-11-16T12:18:47.740Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-decision-failed.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgba(0, 0, 0, 0)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1084,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 611,
+          "docBottom": 651,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 611,
+          "docBottom": 651,
+          "ariaDisabled": "true"
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ]
+    },
+    {
+      "file": "record-decision-failed-390.png",
+      "state": "record-decision-failed",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "ecdf5d380baa740fadbb62167e2160d97bedd6c3",
+      "takenAtUtc": "2026-11-16T12:18:50.981Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-decision-failed.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgba(0, 0, 0, 0)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1700,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1381,
+          "docBottom": 1425,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 1381,
+          "docBottom": 1425,
+          "ariaDisabled": "true"
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ]
+    },
+    {
+      "file": "record-decision-uncertain-1280.png",
+      "state": "record-decision-uncertain",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "69bcc92d142dc6176cee343b3329d4457c9437db",
+      "takenAtUtc": "2026-11-16T12:18:54.209Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-decision-uncertain.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgba(0, 0, 0, 0)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1084,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 591,
+          "docBottom": 631,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 591,
+          "docBottom": 631,
+          "ariaDisabled": "true"
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "record-decision-uncertain-390.png",
+      "state": "record-decision-uncertain",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "92c192fb37f64babb92920e4ae83239a5af35153",
+      "takenAtUtc": "2026-11-16T12:18:57.420Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-decision-uncertain.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgba(0, 0, 0, 0)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1700,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1381,
+          "docBottom": 1425,
+          "ariaDisabled": "true"
+        },
+        {
+          "name": "Reject",
+          "docTop": 1381,
+          "docBottom": 1425,
+          "ariaDisabled": "true"
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250",
+        "POST /api/admin/approval-queue/referral_request/501/decision {\"decision\":\"approved\"}"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "record-employer-history-1280.png",
+      "state": "record-employer-history",
+      "route": "/admin/approvals/employer_application/901",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": true,
+      "sha1": "a39dde946df778f120b66ccc1419e58a5b67ce92",
+      "takenAtUtc": "2026-11-16T12:18:59.755Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-employer-history.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1056,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-employer-history-390.png",
+      "state": "record-employer-history",
+      "route": "/admin/approvals/employer_application/901",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": true,
+      "sha1": "3453a515bb5a9e1e6da9f64dc369a1a8a24bfca3",
+      "takenAtUtc": "2026-11-16T12:19:02.147Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-employer-history.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1436,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1093,
+          "docBottom": 1137,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1093,
+          "docBottom": 1137,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-employer-1280.png",
+      "state": "record-employer",
+      "route": "/admin/approvals/employer_application/901",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": true,
+      "sha1": "2645f816e6f5ffa988e2c450654de9a44e9551c7",
+      "takenAtUtc": "2026-11-16T12:19:04.509Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-employer.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 976,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-employer-390.png",
+      "state": "record-employer",
+      "route": "/admin/approvals/employer_application/901",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": true,
+      "sha1": "21815f1bb7e908df22ddead6874363578fde0c0b",
+      "takenAtUtc": "2026-11-16T12:19:06.942Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-employer.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1356,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1093,
+          "docBottom": 1137,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1093,
+          "docBottom": 1137,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-enrollment-1280.png",
+      "state": "record-enrollment",
+      "route": "/admin/approvals/referrer_enrollment/77",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": true,
+      "sha1": "8ef4a2cbc0ffa08533cb417d6511019b58e7a7dd",
+      "takenAtUtc": "2026-11-16T12:19:09.336Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-enrollment.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-enrollment-390.png",
+      "state": "record-enrollment",
+      "route": "/admin/approvals/referrer_enrollment/77",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": true,
+      "sha1": "d448c2b31676411a299ff95525b4c027a8b2fe73",
+      "takenAtUtc": "2026-11-16T12:19:11.686Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-enrollment.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1200,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 937,
+          "docBottom": 981,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 937,
+          "docBottom": 981,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-error-1280.png",
+      "state": "record-error",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "aad8a0dcd571336746284343c51e8d2a5ba0813f",
+      "takenAtUtc": "2026-11-16T12:19:13.951Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-error.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Try again"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "record-error-390.png",
+      "state": "record-error",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "fc68f37db3d4a03a52730c8170f8ba396b30fda6",
+      "takenAtUtc": "2026-11-16T12:19:16.231Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-error.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Try again"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 844,
+      "actions": [],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    },
+    {
+      "file": "record-payment-full-1280.png",
+      "state": "record-payment-full",
+      "route": "/admin/approvals/payment/33",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": true,
+      "sha1": "f45bb2953179eaa4c3eff3a48e2e8d219cb6e7f0",
+      "takenAtUtc": "2026-11-16T12:19:18.540Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-payment-full.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-payment-full-390.png",
+      "state": "record-payment-full",
+      "route": "/admin/approvals/payment/33",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": true,
+      "sha1": "bdd5dc55f869f63d502ee4793e8aacda4004d602",
+      "takenAtUtc": "2026-11-16T12:19:20.896Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-payment-full.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1180,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 897,
+          "docBottom": 941,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 897,
+          "docBottom": 941,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-payment-1280.png",
+      "state": "record-payment",
+      "route": "/admin/approvals/payment/33",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "f45bb2953179eaa4c3eff3a48e2e8d219cb6e7f0",
+      "takenAtUtc": "2026-11-16T12:19:23.147Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-payment.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-payment-390.png",
+      "state": "record-payment",
+      "route": "/admin/approvals/payment/33",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "4506e5004060d5b0eed69109183c96b7f0a701bc",
+      "takenAtUtc": "2026-11-16T12:19:25.506Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-payment.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1180,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 897,
+          "docBottom": 941,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 897,
+          "docBottom": 941,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-request-1280.png",
+      "state": "record-request",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "e22bcc011466782d9b545cc187da200d10cce527",
+      "takenAtUtc": "2026-11-16T12:19:27.784Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-request.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1084,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-request-390.png",
+      "state": "record-request",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "0209428b51a35205660f511350a42cacbf120734",
+      "takenAtUtc": "2026-11-16T12:19:30.066Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-request.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1596,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1277,
+          "docBottom": 1321,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1277,
+          "docBottom": 1321,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-signed-out-1280.png",
+      "state": "record-signed-out",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": false,
+      "sha1": "129eb8f6e9f7bb4c09744598a224077cdedcf3f1",
+      "takenAtUtc": "2026-11-16T12:19:32.219Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-signed-out.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Sign in"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 900,
+      "actions": [],
+      "calls": [],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "record-signed-out-390.png",
+      "state": "record-signed-out",
+      "route": "/admin/approvals/referral_request/501",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": false,
+      "sha1": "5cff49c6c40490dcbc88a10e6e4fbac5b60ec412",
+      "takenAtUtc": "2026-11-16T12:19:34.347Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-signed-out.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Sign in"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 844,
+      "actions": [],
+      "calls": [],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ]
+    },
+    {
+      "file": "record-uncovered-1280.png",
+      "state": "record-uncovered",
+      "route": "/admin/approvals/referral_request/514",
+      "cssWidth": 1280,
+      "cssHeight": 900,
+      "dpr": 1,
+      "fullPage": true,
+      "sha1": "6e930c6d2eeaeedcd9e146b6884a987e86036682",
+      "takenAtUtc": "2026-11-16T12:19:36.837Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-uncovered.json",
+      "innerWidth": 1280,
+      "innerHeight": 900,
+      "devicePixelRatio": 1,
+      "docClientWidth": 1280,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1068,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 495,
+          "docBottom": 535,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "record-uncovered-390.png",
+      "state": "record-uncovered",
+      "route": "/admin/approvals/referral_request/514",
+      "cssWidth": 390,
+      "cssHeight": 844,
+      "dpr": 2,
+      "fullPage": true,
+      "sha1": "53ae08b33447ff563bceae815ac67b227dc6381e",
+      "takenAtUtc": "2026-11-16T12:19:39.294Z",
+      "head": "35f3afef9067eca954a4f1049c3a0f2f8a704cf2",
+      "fixture": "fixtures/admin-approvals__record-uncovered.json",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "devicePixelRatio": 2,
+      "docClientWidth": 390,
+      "overflowX": 0,
+      "h1": [
+        "Decide this approval."
+      ],
+      "goalPage": true,
+      "primaries": [
+        "Approve"
+      ],
+      "nextStepRegions": 1,
+      "primaryInNextStep": true,
+      "primaryBg": "rgb(10, 10, 10)",
+      "fontLoaded": true,
+      "bodyFont": "\"Instrument Sans\", sans-serif",
+      "scrollHeight": 1560,
+      "actions": [
+        {
+          "name": "Approve",
+          "docTop": 1297,
+          "docBottom": 1341,
+          "ariaDisabled": null
+        },
+        {
+          "name": "Reject",
+          "docTop": 1297,
+          "docBottom": 1341,
+          "ariaDisabled": null
+        }
+      ],
+      "calls": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue?limit=250",
+        "GET /api/admin/activity?limit=250"
+      ],
+      "errors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    }
+  ]
+}

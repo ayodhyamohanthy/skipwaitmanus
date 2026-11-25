@@ -36,6 +36,25 @@ export function createMemoryDurableLimitStore(): MemoryDurableLimitStore {
             return Boolean(row && row.expiresAt > now.getTime());
           },
           async remove(key, windowStart) { draft.delete(id(key, windowStart)); },
+          async countHit(key, windowStart, expiresAt) {
+            const row = draft.get(id(key, windowStart));
+            if (row) { row.hitCount += 1; return row.hitCount; }
+            draft.set(id(key, windowStart), { hitCount: 1, expiresAt: expiresAt.getTime() });
+            return 1;
+          },
+          async removeKeys(keys) {
+            const wanted = new Set(keys);
+            Array.from(draft.keys()).forEach(rowId => { if (wanted.has(rowId.slice(0, rowId.lastIndexOf("|")))) draft.delete(rowId); });
+          },
+          async latestExpiry(keys, now) {
+            const wanted = new Set(keys);
+            let latest: number | null = null;
+            draft.forEach((row, rowId) => {
+              const key = rowId.slice(0, rowId.lastIndexOf("|"));
+              if (wanted.has(key) && row.expiresAt > now.getTime() && (latest === null || row.expiresAt > latest)) latest = row.expiresAt;
+            });
+            return latest === null ? null : new Date(latest);
+          },
         };
         const result = await work(tx);
         committed = draft;

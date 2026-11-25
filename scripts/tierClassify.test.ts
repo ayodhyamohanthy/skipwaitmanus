@@ -81,6 +81,15 @@ describe("GATE-tier-floor: server/db.ts by its changed lines and the function ea
     expect(classifyTier(change(["  const row = 1;"], ["  const row = 0;"], ["export async function markCoverageVisible("])).tier).toBe(1);
   });
 
+  it("checks every server/db.ts hunk before deduplicating the path", () => {
+    const changed = [
+      change(["  return rows;"], [], ["export async function listCompanyAlertsByUser("])[0],
+      change(["  await spendCreditsTx(tx, seekerId, 1);"], [], ["export async function createCompanyReferralRequest("])[0],
+    ];
+    expect(classifyTier(changed).tier).toBe(1);
+    expect(tierReasonPaths(changed)).toEqual(["server/db.ts"]);
+  });
+
   it("classifies an unrelated server/db.ts change as Tier 2", () => {
     const changed = change(["  return rows;"], [], ["export async function listCompanyAlertsByUser("]);
     expect(classifyTier(changed).tier).toBe(2);
@@ -107,6 +116,13 @@ describe("GATE-tier-floor: tests-only and docs-only changes", () => {
   });
 });
 
+describe("GATE-tier-floor: credit-cycle money modules", () => {
+  it.each(["server/creditCycles.ts", "server/planCreditCycleJob.ts"])("classifies %s as Tier 1", path => {
+    expect(classifyTier([path]).tier).toBe(1);
+    expect(tierReasonPaths([path])).toEqual([path]);
+  });
+});
+
 describe("GATE-tier-floor: everything else", () => {
   it("classifies a plain server, shared, client, functions or workflow path as Tier 2", () => {
     for (const path of ["server/jobLinkPreviewRoutes.ts", "shared/askNote.ts", "client/src/pages/Home.tsx", "functions/[[path]].ts", ".github/workflows/deploy-api.yml"]) {
@@ -124,5 +140,4 @@ describe("GATE-tier-floor: everything else", () => {
     expect(tierReasonPaths(changed)).toEqual(["server/payments.ts"]);
   });
 });
-
 

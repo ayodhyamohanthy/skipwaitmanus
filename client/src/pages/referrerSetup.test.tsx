@@ -46,7 +46,7 @@ describe("ReferrerSetup", () => {
     expect(screen.getByRole("button", { name: "Senior" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Engineering" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
-    expect(screen.getByText("How many asks a month?")).toBeTruthy();
+    expect(screen.getByText("How many referral requests can you review each month?")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Back/ })).toBeTruthy();
   });
 
@@ -72,20 +72,20 @@ describe("ReferrerSetup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mid-level" }));
     fireEvent.click(screen.getByRole("button", { name: "Senior" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
-    expect(screen.getByText("asks per month · about 15 minutes")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Monthly capacity"), { target: { value: "5" } });
-    expect(screen.getByText("asks per month · about 25 minutes")).toBeTruthy();
+    expect(screen.getByText(/minutes of review time/).textContent).toBe("About 15 minutes of review time");
+    fireEvent.change(screen.getByRole("slider", { name: "Monthly referral capacity" }), { target: { value: "5" } });
+    expect(screen.getByText(/minutes of review time/).textContent).toBe("About 25 minutes of review time");
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
-    fireEvent.click(screen.getByRole("switch", { name: /Email when a new ask arrives/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Email when a new referral request arrives/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
-    expect(await screen.findByText("You're open for asks.")).toBeTruthy();
+    expect(await screen.findByText("You’re ready to review referral requests.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Go to referrer home/ }).getAttribute("href")).toBe("/referrer-home");
     // No handle yet: the profile opens on the handle field instead of a dead /p/ link.
     expect(screen.getByRole("link", { name: "Share my profile" }).getAttribute("href")).toBe("/profile?focus=handle");
     expect(fetchMock).toHaveBeenCalledWith("/api/referrer-preferences", expect.objectContaining({ method: "PUT" }));
   });
 
-  it("does not claim you are open for asks while new asks are paused", async () => {
+  it("does not claim setup is ready for new referrals when paused", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (init?.method === "PUT") return ok({ preferences: { ...PREFS, ...JSON.parse(String(init.body)), paused: true } });
@@ -95,8 +95,8 @@ describe("ReferrerSetup", () => {
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
     for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
-    expect(await screen.findByText("Setup saved. New asks are paused.")).toBeTruthy();
-    expect(screen.queryByText("You're open for asks.")).toBeNull();
+    expect(await screen.findByText("Your setup is saved. New referral requests are paused.")).toBeTruthy();
+    expect(screen.queryByText("You’re ready to review referral requests.")).toBeNull();
   });
 
   it("shares the real public profile handle on the ready step", async () => {
@@ -124,14 +124,14 @@ describe("ReferrerSetup", () => {
     for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("Capacity is 1 to 15 asks")).toBeTruthy();
-    expect(screen.getByText("When should we tell you?")).toBeTruthy();
+    expect(screen.getByText("When should we notify you?")).toBeTruthy();
   });
 
   it("requires at least one area before continuing", async () => {
     stubSetup();
     renderSetup();
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Continue/ }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: /Continue/ }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("shows a retryable error, not the verify gate, when settings cannot load", async () => {
@@ -154,7 +154,7 @@ describe("ReferrerSetup", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     renderSetup();
-    expect(screen.getByRole("link", { name: "Sign in with work email" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sign in with work email" }).getAttribute("href")).toBe("/sign-in?intent=referrer&returnTo=%2Freferrer-setup");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

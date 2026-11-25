@@ -44,6 +44,7 @@ function setup(overrides: Partial<Deps> = {}) {
     getClaimedCompanyReferralDetail: async () => undefined,
     listPublicCompanyOpportunities: async () => [],
     publishCompanyOpportunity: async (userId, input) => ({ id: 92, userId, ...input }),
+    getBlockedReferralRequestIds: async () => new Set<number>(),
     recordActivity: async input => { activity.push(input); },
     ...overrides,
   });

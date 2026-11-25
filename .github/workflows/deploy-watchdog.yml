@@ -12,10 +12,12 @@ on:
     paths:
       - "watchdog/**"
       - ".github/workflows/deploy-watchdog.yml"
+      - "scripts/waitWatchdogJobs.ts"
   pull_request:
     paths:
       - "watchdog/**"
       - ".github/workflows/deploy-watchdog.yml"
+      - "scripts/waitWatchdogJobs.ts"
   workflow_dispatch:
 
 concurrency:
@@ -28,7 +30,7 @@ permissions:
 jobs:
   watchdog:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +46,10 @@ jobs:
 
       - name: Typecheck the watchdog
         run: npx tsc -p watchdog --noEmit
+
+      - name: Wait for the public jobs contract
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: pnpm exec tsx scripts/waitWatchdogJobs.ts
 
       - name: Ensure the WATCHDOG_STATE KV namespace and use its id
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
