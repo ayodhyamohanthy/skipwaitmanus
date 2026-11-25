@@ -1167,24 +1167,6 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       if (v.info) { if (quiet(workAt(v))) return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), ahead }; continue; }
       return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ahead };
     }
-    // D-399 (owner, Nov 25: "dont stop agents ... let agents build anytime the tasks"): with nothing held only by
-    // dependencies left, build ahead on a row parked at `owner` (with a packet), then on a row whose block waits for
-    // new evidence, on the row's own branch. Nothing lands from it: an `owner` row is never `open`, so it gets no
-    // review, fix or landing until it returns to `todo`, and a block stands until it is cleared. A row with a pull
-    // request is already built and is passed over; a live branch is its holder's, who resumes it here.
-    const parkedOf = v => (v.task.status === "owner" ? "owner" : v.blockWaitingForEvidence ? "blocked" : null);
-    const parked = view.filter(v => (!only || v.task.id === only) && !v.done && !avoid.has(v.task.id) && typeof v.task.packet === "string" && parkedOf(v));
-    for (const v of [...parked.filter(v => parkedOf(v) === "owner"), ...parked.filter(v => parkedOf(v) === "blocked")]) {
-      const why = parkedOf(v) === "owner" ? "it waits for the owner" : `it is blocked (${reportWhy(v.said)})`;
-      // D-202: an out-of-sync row is never built, and a stale owner row stays with the owner (not even a re-sync).
-      if (v.pr || staleOf(v)) continue;
-      if (v.info) {
-        if (claimant && v.owner === claimant) return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", parked: why };
-        if (quiet(workAt(v))) return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), parked: why };
-        continue;
-      }
-      return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", parked: why };
-    }
     return null;
   };
 
