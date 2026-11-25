@@ -469,7 +469,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-recovery: todo — §6.7.
 - GROUP-delegation: todo — §6.8; no permission by default.
 - GROUP-send: todo — §6.8; disabled.
-- GROUP-api: todo — §6.9; disabled.
+- GROUP-api: in progress — GPT-6.1 Sol · 3043 — 2026-11-25 — branch `agent/queue/group-api`; build-ahead only (D-315), implementation UNVERIFIED. Main `ae57f6cc8`, claim `f39e93e1d`; instructions/decisions through D-402 read. Prior outcomes: parser #1606, packet #1609; no prior API implementation. `GROUP-recovery`/`GROUP-send` unfinished; shared contracts, flag readers, schema blueprint/migration/readiness and service/route/job factories absent. Resume §6.9 with real adapters: strict DTOs, canonical ownership/origin denials, off-before-account-read gate, schema/config-before-provider checks, preserved consumer webhooks, recovery with creation off, and bounded unique reconcile/activation/email jobs. Runtime tests/typecheck/build unrun: implementation has not started. No runtime/schema/payment/email/activation change. Keep task unfinished and PR draft.
 - GROUP-buyer-ui: todo — §6.10; hidden.
 - GROUP-candidate-ui: todo — §6.10; hidden.
 - GROUP-qa: todo — §6.11; full-stack acceptance unverified.
