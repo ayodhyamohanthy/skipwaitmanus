@@ -11,14 +11,18 @@
  */
 export const MCP_PROTOCOL_VERSION = "2025-03-26";
 
-export type McpContext = { userId: number };
+/**
+ * D-178.mcp-grant: `grant` is set when the bearer is a D-141 grant key. A
+ * legacy `sw_` token has none and keeps today's unbound proposal (D-290 R1).
+ */
+export type McpContext = { userId: number; grant?: { grantId: number; canDraft: boolean } };
 
 export type McpDeps = {
   searchJobs: (input: { query?: string; company?: string }) => Promise<Array<Record<string, unknown>>>;
   listRequests: (userId: number) => Promise<Array<Record<string, unknown>>>;
   listAlerts: (userId: number) => Promise<Array<Record<string, unknown>>>;
   listResumes: (userId: number) => Promise<Array<Record<string, unknown>>>;
-  proposeAsk: (userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown }) => Promise<{ id: number; status: "pending"; creditCost: number; expiresAt: string }>;
+  proposeAsk: (userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown }, grant?: { grantId: number }) => Promise<{ id: number; status: "pending"; creditCost: number; expiresAt: string }>;
 };
 
 type RpcId = string | number | null;
@@ -112,8 +116,13 @@ export async function callMcpTool(name: unknown, args: unknown, ctx: McpContext,
     return textResult({ resumes: rows.slice(0, MAX_RESULTS).map(shapeResume) });
   }
   if (name === "propose_ask") {
+    // A grant proposes under its draft scope (D-290 A5); the row carries the
+    // grant so the approve path re-checks revoke, expiry, pause and limits and
+    // labels the ask as the assistant's (D-142).
+    if (ctx.grant && !ctx.grant.canDraft) return toolError("This agent does not have that permission");
     try {
-      const created = await deps.proposeAsk(ctx.userId, { targetRoleUrl: input.targetRoleUrl, attachmentIds: input.attachmentIds, message: input.message });
+      const fields = { targetRoleUrl: input.targetRoleUrl, attachmentIds: input.attachmentIds, message: input.message };
+      const created = ctx.grant ? await deps.proposeAsk(ctx.userId, fields, { grantId: ctx.grant.grantId }) : await deps.proposeAsk(ctx.userId, fields);
       return textResult({ approvalId: created.id, status: created.status, creditCostIfApproved: created.creditCost, expiresAt: created.expiresAt, nextStep: "Nothing has been sent and no credit has been spent. Tell the member to open skipwait.me > Approve and approve it there." });
     } catch (error) {
       return toolError(error instanceof Error ? error.message.slice(0, 200) : "We could not create that proposal.");
