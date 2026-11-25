@@ -1,0 +1,55 @@
+{
+  "task": "D-048-K-employer-talent",
+  "synthetic": true,
+  "pending": true,
+  "browserProof": "pending; main agent owns browser verification",
+  "acceptance": "not claimed",
+  "runtimeEdits": false,
+  "baseline": {
+    "root": "/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-wt/d048-k-employer-talent-baseline-ca30",
+    "sha": "8951b1518faa6089a86c29a2eaae78bb93d47951",
+    "buildStatus": "running; check exit marker before starting captures",
+    "buildWrapperPid": 85111,
+    "buildVitePidAtLastCheck": 85236,
+    "buildTask": "exec_1b2356be-2ad4-46d0-bd31-bd1899d5b489",
+    "buildLog": "/tmp/sw-ca30-baseline-build.log",
+    "buildExitMarker": "/tmp/sw-ca30-baseline-build.exit",
+    "dependencySource": "/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus/node_modules",
+    "dependencyReuse": "symlink only; no install; source and installed lock bytes matched before build"
+  },
+  "candidate": {
+    "root": "/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-wt/d048-k-employer-talent-fresh-ca30",
+    "shaAtSourceAudit": "b78d801d8f66f00781e205ac1b626aa84b8fe692",
+    "buildStatus": "pending; other worker owns source edits and dependency installation"
+  },
+  "sourceAudit": {
+    "path": "client/src/pages/goal/employer-talent/GoalEmployerTalent.tsx",
+    "baselineAndCandidateSourceSha256": "7d8c6a64a4b93708508eb3c6d84e2b8cd4e1b6c5187ad5b825182f9b450aff2f",
+    "baselineAndCandidateRuntimeAstSha256": "9a7bf6313103768bb511dbe73a0c1f18dd7db578275f0cc51c151a278ef31cf2",
+    "baselineCandidateMainAndInstalledLockSha256": "cb3e3eaa67ff06e540001cc2128e638338a2784a7ad9fbad80d1e48f473e5d17",
+    "fixtureServerSha256": "03594ad259808685c5a317f092fd8672d1f6058d63f95cb90d032fb9d42e48d3",
+    "fixtureTestSha256": "a0ff40f0ae0c9534a3e3808dc829801d13ec75e95246f694ced270031b775b1f",
+    "note": "Point-in-time source evidence only; final candidate build and browser captures remain pending. AST uses existing TypeScript printer with removeComments:true."
+  },
+  "checks": {
+    "syntax": "node --check fixture-server.mjs passed",
+    "httpSmoke": "1 test passed, 0 failed, 0 skipped; two disposable loopback roots; no browser",
+    "httpSmokeLog": "/tmp/sw-ca30-fixture-smoke.log",
+    "httpSmokeExitMarker": "/tmp/sw-ca30-fixture-smoke.exit",
+    "httpSmokeCommand": "NODE_PATH=/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus/node_modules node --test /Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-wt/d048-k-employer-talent-fresh-ca30/docs/evidence/D-048-K-employer-talent/retire-ca30/fixture-server.test.mjs"
+  },
+  "usage": {
+    "launchAfterBothBuilds": "NODE_PATH=/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus/node_modules node /Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-wt/d048-k-employer-talent-fresh-ca30/docs/evidence/D-048-K-employer-talent/retire-ca30/fixture-server.mjs /Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-wt/d048-k-employer-talent-baseline-ca30/dist/public /Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-wt/d048-k-employer-talent-fresh-ca30/dist/public",
+    "temporaryBaselineOnly": "After baseline build exit 0, both positional roots may explicitly name the baseline dist/public while candidate build is pending. Both origins then serve baseline bytes; never label the second origin candidate proof.",
+    "output": "Two JSON lines with phase, root, ephemeral 127.0.0.1 origin, pid and entry URL. No default production root, app server, proxy or provider calls.",
+    "entry": "/employer/talent?fixture=default",
+    "scenario": "Navigate to /employer/talent?fixture=<scenario> before each case. This resets synthetic per-session state. Separate cookie names keep baseline and candidate ports independent.",
+    "scenarios": ["default", "profile", "profile-cleared", "intro-sent", "intro-refused", "unlock-pending", "unlock-confirmed", "unlock-error", "unlock-402", "search", "loading", "empty", "load-error", "retry", "denied", "profile-error"],
+    "interactions": "Use actual UI controls: unlocked row B View profile/Send intro request; locked row A Unlock profile; Search talent Go and Filter by location Pune then Search; retry case starts with 503 then succeeds through Try again. Profile/profile-cleared/search/intro-sent/unlock-confirmed are normal starting responses; their named state requires the UI action.",
+    "pendingRequests": "loading and unlock-pending hold their API response until GET /__fixture/release in the SAME synthetic cookie session. /__fixture/status shows pending count, method/path calls, refused calls and balance; no provider or identity secrets.",
+    "isolation": "Use a clean browser with no old service worker. CSP blocks remote connections/scripts/styles/fonts, frames and workers; sw.js is deliberately unavailable. All unlisted /api requests, including checkout and unlisted tRPC procedures, return 501 and are logged. Static index/assets are served byte-for-byte unchanged.",
+    "captureRequirement": "Main agent verifies before/after at 1280 and 390, records actual method/path failures and screenshots, and checks /__fixture/status refused list. This receipt is not browser evidence."
+  },
+  "liveOrigins": [],
+  "remaining": ["Wait for exact baseline build exit marker and inspect complete output", "Build candidate after its owning worker finishes edits", "Start both local origins with completed build roots", "Main agent performs browser interaction and before/after visual evidence", "Final candidate acceptance and release holds remain with main agent"]
+}
