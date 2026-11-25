@@ -9,7 +9,7 @@ import type { RetiredPlanAlertInput } from "./errorAlerting";
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 const inputSchema = z.object({ reason: z.enum(["plan_retired", "unsupported_plan", "gift_claimed", "gift_claim_refused"]), eventId: z.string().min(1).max(255).optional(), eventType: z.string().min(1).max(100).optional(), subscriptionId: z.string().min(1).max(255).optional(), giftId: z.string().min(1).max(255).optional(), itemPriceId: z.string().min(1).max(255).optional() }).strict();
-const envelopeSchema = z.object({ from: z.string().email().max(320), to: z.tuple([z.literal("ayodhya@skipwait.me")]), subject: z.string().max(512), text: z.string().max(8192) }).strict();
+const envelopeSchema = z.object({ from: z.string().email().max(320), to: z.union([z.tuple([z.literal("ayodhya@skipwait.me"), z.literal("admin@skipwait.me")]), z.tuple([z.literal("ayodhya@skipwait.me")])]), subject: z.string().max(512), text: z.string().max(8192) }).strict();
 const payloadSchema = z.object({ version: z.literal(1), classification: z.enum(["retired", "unsupported"]), trigger: z.enum(["subscription", "gift"]), evidence: inputSchema }).strict();
 const frozenEnvelopeSchema = z.object({ version: z.literal(1), bytes: z.string().max(16384) }).strict();
 export const reviewStateSchema = z.object({
@@ -33,7 +33,7 @@ function providerConfigured() { return Boolean(process.env.ZEPTOMAIL_API_KEY || 
 function providerRequest(bytes: string, obligationKey: string): [string, RequestInit] {
   if (process.env.ZEPTOMAIL_API_KEY) {
     const e = envelopeSchema.parse(JSON.parse(bytes));
-    return ["https://api.zeptomail.com/v1.1/email", { method: "POST", headers: { Authorization: `Zoho-enczapikey ${process.env.ZEPTOMAIL_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: { address: e.from, name: process.env.ZEPTOMAIL_FROM_NAME || "skipwait.me" }, to: [{ email_address: { address: e.to[0] } }], subject: e.subject, textbody: e.text, client_reference: obligationKey.slice(0, 64) }), signal: AbortSignal.timeout(10_000) }];
+    return ["https://api.zeptomail.com/v1.1/email", { method: "POST", headers: { Authorization: `Zoho-enczapikey ${process.env.ZEPTOMAIL_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: { address: e.from, name: process.env.ZEPTOMAIL_FROM_NAME || "skipwait.me" }, to: e.to.map(address => ({ email_address: { address } })), subject: e.subject, textbody: e.text, client_reference: obligationKey.slice(0, 64) }), signal: AbortSignal.timeout(10_000) }];
   }
   return ["https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `billing-review-v1/${obligationKey}` }, body: bytes, signal: AbortSignal.timeout(10_000) }];
 }
@@ -72,7 +72,7 @@ export async function enqueueBillingReviewTx(tx: Tx, value: RetiredPlanAlertInpu
 }
 export function reviewEnvelope(input: RetiredPlanAlertInput, sender: string) {
   const unsupported = input.reason === "unsupported_plan";
-  return { from: sender, to: ["ayodhya@skipwait.me"], subject: `SkipWait billing review ${input.giftId ?? input.eventId}`, text: JSON.stringify(input) + "\n" + (unsupported ? "Unrecognised item price. Review the subscription; do not cancel or refund until classified." : "Retired plan. In Chargebee, cancel the subscription and refund any payment taken.") };
+  return { from: sender, to: ["ayodhya@skipwait.me", "admin@skipwait.me"], subject: `SkipWait billing review ${input.giftId ?? input.eventId}`, text: JSON.stringify(input) + "\n" + (unsupported ? "Unrecognised item price. Review the subscription; do not cancel or refund until classified." : "Retired plan. In Chargebee, cancel the subscription and refund any payment taken.") };
 }
 export async function runBillingReviewOutbox(options: { now?: () => Date; fetchImpl?: typeof fetch; database?: Db } = {}) {
   const db = options.database ?? await getDb();
