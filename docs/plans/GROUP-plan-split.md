@@ -468,7 +468,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-notifications: todo — §6.7; no real recipients.
 - GROUP-recovery: todo — §6.7.
 - GROUP-delegation: todo — §6.8; no permission by default.
-- GROUP-send: in progress — GPT-6.1 Sol · b91a — 2026-11-25 — branch `agent/queue/group-send`; claim `75e5c5a39`, main `ae57f6cc8`, instructions checked through D-402; D-315 build-ahead of `GROUP-delegation` and `GROUP-grants`, draft only; runtime, permission and request-creation acceptance unverified.
+- GROUP-send: in progress, build-ahead checkpoint — GPT-6.1 Sol · b113 — 2026-11-25 — `agent/queue/group-send`; claim `464e00f3a287c45f6958f4413aa85ba2ce372877`, main `f425721febbf76479722b63c9574779dcd33fa40`; D-315, checked through D-405: BRIEF, AGENTS, PRD, BUILD_CONTINUITY, COLLABORATION, DECISIONS, PAYMENTS_TEST_RUNBOOK, DELEGATION, GROUP-bulk-oct31 and this packet (§4.5/6.8/9). Prior b91a status-only checkpoint (`75e5c5a39`/`ae57f6cc8`, D-402; acceptance unverified) retained in history; takeovers 5c97/feae precede b113. Dependencies unfinished: GROUP-delegation draft #1642 `06859bfe83bb5e3efa944c4df57c26cf3059096d`, GROUP-grants draft #1636 `1e3dd4bdcd36ba85318960e4fc088769ced77e0e`; exact trees lack shared Group schema and delegation/grant persistence contracts. Next once outputs exist: candidate approval -> real creator; serialize revoke/refund against send; post-creator-commit replay to the same request with separate buyer/candidate audit. No source implementation; runtime, permission and request-creation acceptance UNVERIFIED. Draft only; no landing/done before dependencies.
 - GROUP-api: todo — §6.9; disabled.
 - GROUP-buyer-ui: todo — §6.10; hidden.
 - GROUP-candidate-ui: todo — §6.10; hidden.
