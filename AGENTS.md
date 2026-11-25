@@ -42,6 +42,7 @@ Money rules in `docs/DECISIONS.md`:
 - Operational alerts go to both addresses: the founder as primary, the administrator as a copy.
 
 ## Login rule (FOUNDER-LOCKED, owner, Oct 16 2026 - do not change without his explicit say-so)
+- **D-406 (owner's explicit say-so, Nov 25 2026): email link + code for everyone.** Any user enters an email and gets one SkipWait email with a six-digit code and a one-click sign-in link (code and email in the URL fragment; a button click spends the code). Seekers: this is the default, with social and "Use a password instead" kept. Referrers: the work-email code stays the sign-in on every visit and its email now also carries the link; nothing else on referrer surfaces changes. It supersedes D-049's "no six-digit code" for seekers. Built behind a switch that starts off (`AUTH-email-link-code`), released by `AUTH-email-link-release`; until then sign-in stays as described below.
 - **Amended by D-049 (owner's explicit say-so, Oct 18 2026):** seekers sign in with social logins or **personal email + password** (WorkOS password auth with forgot/reset; queue task 2). The six-digit seeker email code below is retired when task 2 ships: each code is an email SkipWait pays for, password and social sign-in are free (owner, Oct 18). Referrers are unchanged by the owner's choice: the work-email code is their sign-in on every visit — never personal email, social login or password. Until task 2 ships, sign-in stays exactly as described below.
 - **Job seeker login = personal emails + social logins**, hosted on skipwait.me (no authkit.app page): Google, Microsoft, GitHub, LinkedIn, Slack go straight to the provider via WorkOS; email uses a six-digit WorkOS magic-auth code (`SeekerSignIn`, `server/_core/seekerEmailCode.ts`). Changed Oct 16 2026 (owner: users may not trust an authkit.app address).
 - **D-057 (owner, Oct 18):** a referrer may add a personal login (personal email + password, or Google) from inside the portal so their private track record survives a job change or a gap; a new employer is added by verifying its work email with a code inside the portal. The referrer-facing sign-in stays the work-email code, and reviewing or accepting asks needs a work-email code in that session. Linking never merges two people who each have their own credits, asks or referrals. **D-245 (Oct 30):** in a personal-login session that code is an in-session step-up (`/api/referrer/step-up/send|verify`): a server-side proof bound to the account, session, exact work email and purpose, never the standalone code login (which would make another account); packet `docs/plans/D-057-session-gate.md` §0b.
@@ -600,4 +601,12 @@ Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md
 
 ## Current Group Plan build direction (Oct 31)
 
-Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](docs/plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
+The [owner direction](docs/plans/GROUP-bulk-oct31.md) covers candidate email lists, initial seats and later
+one-seat additions, an institution-only 10% discount, payment-verified allocations and activation emails.
+The [execution split](docs/plans/GROUP-plan-split.md) registers file-owned slices through recovery and
+candidate-approved on-behalf sending. It preserves the existing account, ledger, privacy and referral creator;
+payment never grants identity or application consent. `GROUP-terms` carries one commercial question batch;
+other slices build with switches off and refuse unresolved payable quotes. Required CI applies without an
+independent-review/model gate (D-370). No Group sales activation, new price, real payment or recipient email is
+authorized by packet registration. Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`,
+`phonemsg-01M6896AS74F9S9T45Y9M9FY75`.

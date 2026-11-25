@@ -49,4 +49,4 @@ action.
 
 ## Status
 
-- P0-sandbox-isolation: in progress — Claude Code · 43c8 — 2026-11-25 — branch agent/queue/p0-sandbox-isolation.
+- P0-sandbox-isolation: done — Claude Code · 43c8 — 2026-11-25 — landed from `agent/queue/p0-sandbox-isolation` (red tests `abe2b4ff6`, fix `270145318`); `vitest run server/` 406 files, 4123 passed; `tsc --noEmit` clean. Live effect UNVERIFIED until deployed.
