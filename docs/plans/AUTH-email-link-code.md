@@ -54,4 +54,4 @@ open occasionally. Security is unchanged: whoever reads the inbox can already re
 ## Status
 
 - AUTH-email-link-code: in progress — Claude Code · 530c — 2026-11-25 — branch agent/queue/auth-email-link-code. Built behind `EMAIL_SIGN_IN_LINK_ENABLED = false`: shared link helper, sign-in email with link (code first in the subject), seeker send/verify routes with the D-081 work-email refusal, /sign-in link confirm screen, seeker email-first form with password one tap away. Also touches `server/workEmailOtp.test.ts` (one send-argument pin now includes `seeker: true`).
-- AUTH-email-link-release: todo — waits for AUTH-email-link-code.
+- AUTH-email-link-release: in progress — GPT-6.1 Sol · 3553 — 2026-11-26 — branch agent/queue/auth-email-link-release. Switch and release-on test enabled; live inbox acceptance (send, link, code) and 1280/390 captures remain pending.
