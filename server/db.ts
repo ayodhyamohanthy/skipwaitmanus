@@ -1,3 +1,4 @@
+import { isAdministratorEmail, isFounderSuperAdmin } from "./_core/adminIdentity";
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
 import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_RECONFIRM_ENABLED, RECONFIRM_AFTER_DAYS, type AskReconfirmResponse } from "../shared/askReconfirm";
@@ -130,7 +131,6 @@ export async function getDb() {
   return _db;
 }
 
-const durableAdministratorEmail = "ayodhya@skipwait.me";
 
 /**
  * Sessions that assert their own email address rather than inheriting one an
@@ -145,7 +145,8 @@ export function resolveSyncedUserRole(input: { openId: string; email?: string | 
   // The administrator promotion is keyed on the email address, so it is only
   // safe when that address came from a provider that verified it. Otherwise a
   // self-asserted address would hand out administrator access to anyone.
-  if (normalizedEmail === durableAdministratorEmail && emailIsProviderVerified) return "admin" as const;
+  // D-400: the founder (permanent super administrator) and the configured administrator seat are always admin.
+  if (isAdministratorEmail(normalizedEmail) && emailIsProviderVerified) return "admin" as const;
   const ownerMatches = Boolean(ENV.ownerOpenId) && input.openId === ENV.ownerOpenId;
   return input.requestedRole ?? input.existingRole ?? (ownerMatches ? "admin" : "user");
 }
@@ -1141,9 +1142,26 @@ export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));
 }
+/** D-400: the founder's account can never be suspended, by any administrator or route. */
+export class FounderProtectedError extends Error {
+  constructor() { super("The founder's account cannot be suspended"); this.name = "FounderProtectedError"; }
+}
+
+/** True when the account, any account row of its canonical person, or a verified alias of that person is the founder. */
+async function belongsToFounder(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, account: { email: string | null; canonicalPersonId: number | null }): Promise<boolean> {
+  if (isFounderSuperAdmin(account.email)) return true;
+  if (!account.canonicalPersonId) return false;
+  const siblings = await db.select({ email: users.email }).from(users).where(eq(users.canonicalPersonId, account.canonicalPersonId));
+  if (siblings.some(row => isFounderSuperAdmin(row.email))) return true;
+  const aliases = await db.select({ email: verifiedLoginAliases.normalizedVerifiedEmail }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId, account.canonicalPersonId));
+  return aliases.some(row => isFounderSuperAdmin(row.email));
+}
+
 export async function setUserSuspended(userId: number, suspended: boolean) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
+  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");
+  // D-400 (owner, Nov 25 2026): "no one can takeover the access away from founder anytime". Lifting a suspension stays allowed.
+  if (suspended && await belongsToFounder(db, account)) throw new FounderProtectedError();const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
     // waiting for: clear the identity-review reason so sign-in works again.
     // Suspending never touches the reason.
     await db.update(canonicalPeople).set(suspended?{suspended,sessionsValidAfter:now}:{suspended,reviewReason:null,sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId));const aliases=await db.select({userId:verifiedLoginAliases.canonicalUserId}).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId,account.canonicalPersonId));await db.update(users).set({suspended,sessionsValidAfter:now}).where(inArray(users.id,[account.id,...aliases.map(a=>a.userId)]));}else await db.update(users).set({suspended,sessionsValidAfter:now}).where(eq(users.id,userId));return {userId,suspended};

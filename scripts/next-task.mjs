@@ -487,11 +487,66 @@ async function autoLandFrom({ doc, mainCi, openPrs, prCi, board, release }) {
 }
 
 /**
- * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
- * commit that changes files is work, whatever its subject says (D-190).
+ * D-237: the per-ref read, shared by the marker list and the `work` flag. Marker commits are empty: a commit that
+ * changes files is work, whatever its subject says (D-190). Three git processes for one tip: it is the exact reference
+ * the batched scan must equal, the path for a range that holds a merge commit (whose `git log` order is git's own date
+ * walk), and the fallback when a batched read fails. read(...args) returns the output, or null when git fails.
  */
-function commitsOn(ref) {
-  return parseProvenanceLog(tryGit("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
+export function branchFactsPerRef(tip, read = tryGit) {
+  const merged = read("merge-base", "--is-ancestor", tip, "origin/main") !== null;
+  const commits = rangeCommits(tip, read);
+  const merges = Number(read("rev-list", "--merges", "--count", `origin/main..${tip}`) ?? NaN);
+  return { merged, commits, merges };
+}
+
+/** `git log --reverse` of `origin/main..<tip>` without merge commits, in git's own order; unreadable is empty. */
+const rangeCommits = (tip, read) => parseProvenanceLog(read("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${tip}`) ?? "");
+
+/** Tips per batched read: keeps each command line far below the OS argument limit. */
+export const BRANCH_SCAN_CHUNK = 200;
+
+/**
+ * PICKER-branch-scan-batch (D-324): the same { merged, commits, merges } as branchFactsPerRef for every tip, from two
+ * git processes per BRANCH_SCAN_CHUNK tips instead of three per tip (~500 refs cost ~97 s a run, serialized behind the
+ * clone lock). One `rev-list --parents <tips> --not origin/main` lists every commit beyond main with its parents: a tip
+ * is merged exactly when it is not among them, and its range `origin/main..<tip>` is what it reaches inside that set.
+ * One `git log --no-merges --name-only` over the same tips gives each commit's subject, body and files, which do not
+ * depend on the range. A range with no merge commit is one parent chain, so its `git log --reverse` order is that chain
+ * oldest first; a range with a merge commit keeps one per-ref log read for git's own order. A failed or over-bound batched
+ * read falls back to the per-ref read for its chunk, never to a guess.
+ */
+export function branchFactsBatched(tips, read = tryGit) {
+  const facts = new Map();
+  const unique = [...new Set(tips)];
+  for (let at = 0; at < unique.length; at += BRANCH_SCAN_CHUNK) {
+    const chunk = unique.slice(at, at + BRANCH_SCAN_CHUNK);
+    const graph = read("rev-list", "--parents", ...chunk, "--not", "origin/main");
+    const log = graph === null ? null : read("log", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", ...chunk, "--not", "origin/main");
+    if (graph === null || log === null) {
+      for (const tip of chunk) facts.set(tip, branchFactsPerRef(tip, read));
+      continue;
+    }
+    const parents = new Map(graph.split("\n").filter(Boolean).map(line => { const [sha, ...ps] = line.trim().split(" "); return [sha, ps]; }));
+    const details = new Map(parseProvenanceLog(log).map(c => [c.sha, c]));
+    for (const tip of chunk) {
+      if (!parents.has(tip)) { facts.set(tip, { merged: true, commits: [], merges: 0 }); continue; }
+      const seen = new Set([tip]);
+      const stack = [tip];
+      let merges = 0;
+      while (stack.length) {
+        const ps = parents.get(stack.pop());
+        if (ps.length > 1) merges += 1;
+        for (const p of ps) if (parents.has(p) && !seen.has(p)) { seen.add(p); stack.push(p); }
+      }
+      // merged and merges are already exact; only the order of a non-linear range needs git's own walk.
+      if (merges > 0) { facts.set(tip, { merged: false, commits: rangeCommits(tip, read), merges }); continue; }
+      const chain = [];
+      for (let sha = tip; parents.has(sha); sha = parents.get(sha)[0]) chain.push(sha);
+      const commits = chain.reverse().map(sha => details.get(sha));
+      facts.set(tip, commits.every(Boolean) ? { merged: false, commits, merges: 0 } : branchFactsPerRef(tip, read));
+    }
+  }
+  return facts;
 }
 
 const markersOn = commits => commits.flatMap(({ sha, subject, body, files }) => {
@@ -503,17 +558,17 @@ function loadBranches(tasks) {
   const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
   const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
   const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)%09%(objectname)", "refs/remotes/origin/agent");
-  const branches = new Map();
-  for (const line of refs.split("\n").filter(Boolean)) {
-    const [name, unix, sha] = line.split("\t");
+  const scanned = refs.split("\n").filter(Boolean).map(line => line.split("\t")).filter(([name]) => {
     const fixMain = name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-");
-    if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
-    const ref = `refs/remotes/origin/${name}`;
-    const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    const commits = commitsOn(ref);
+    return wanted.has(name) || slugs.some(s => name.endsWith(s)) || fixMain;
+  });
+  // PICKER-branch-scan-batch: each ref's tip as listed, read in one batch with the per-ref read's exact answers.
+  const facts = branchFactsBatched(scanned.map(([, , sha]) => sha));
+  const branches = new Map();
+  for (const [name, unix, sha] of scanned) {
+    const { merged, commits, merges } = facts.get(sha);
     // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
     // PICKER-landed-marker-continuity: only provably empty, recognized markers (and no merge commit) beyond main.
-    const merges = Number(tryGit("rev-list", "--merges", "--count", `origin/main..${ref}`) ?? NaN);
     branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markerOnly: markerOnlyOf(commits, merges), markers: markersOn(commits) });
   }
   return branches;
