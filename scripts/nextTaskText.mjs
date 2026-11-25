@@ -1,6 +1,6 @@
 // D-083: what the queue picker prints for each decision. Pure: the same pick
 // and context always print the same steps, which scripts/nextTask.test.ts pins.
-import { epicSummaries, releaseLandingHold, slugOf } from "./nextTaskCore.mjs";
+import { epicSummaries, releaseLandingHold, sanitizeName, slugOf } from "./nextTaskCore.mjs";
 
 export function renderReleaseLights(release) {
   return [
@@ -52,6 +52,8 @@ const nextTask = `Then rerun the preflight (\`docs/BUILD_CONTINUITY.md\`) and ta
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
 const statusAt = task => task.sharedRow ? `its line in the Status section of ${task.packet ?? "its packet"} (\"${task.id}: ...\"; the §3b row \"${task.row}\" is shared by several tasks, so never edit it)` : `the §3b row \"${task.row}\"`;
 // D-315: work handed out ahead of unfinished dependencies so no session idles; it never lands before them.
+// D-399: work handed out on a row parked for the owner or waiting on a block; it never lands from here.
+const parkedLines = pick => (pick.parked ? [`BUILD AHEAD OF A HOLD (D-399): ${pick.task.id} is not landable now because ${pick.parked}, and nothing else was free, so you build it now instead of waiting. Build only what the packet already decides, on its own branch from current origin/main, and open a draft pull request; never land it, never mark it done, never clear the block yourself. Do not make an owner call in code or docs: prices, plan contents, legal text, the login rule, settings, secrets, spending, a production switch or anything posted in the owner's name stay as written, and each such question goes in ${statusAt(pick.task)} as a question. When the row returns to todo or its block clears, the picker hands its landing out as usual; then merge origin/main into the branch first. If the packet has nothing left to build without the owner's answer, push what you have, report it with \`${CMD} --report review\`, and run the picker again.`] : []);
 const aheadLines = pick => (pick.ahead?.length ? [`AHEAD OF ITS DEPENDENCIES (D-315): ${pick.ahead.join(", ")} ${pick.ahead.length === 1 ? "is" : "are"} not done yet, and nothing else was free, so you start this now instead of waiting. Work only on its own branch from current origin/main and open a draft pull request; never land it, never mark it done and never edit a dependency's files to make it pass. The picker withholds its review and landing until every dependency is done; then merge origin/main into the branch and adapt to what they changed. If the packet truly needs a dependency's output to go further, push what you have, report it with \`${CMD} --report review\`, and run the picker again for your next task.`] : []);
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
@@ -359,6 +361,7 @@ function pickText(pick, { who, date, claimed, register = null, requestedTask = n
       `Continue on the same branch and keep every commit on it. Note the takeover in ${statusAt(pick.task)}.`,
       ...holding(pick),
       ...aheadLines(pick),
+      ...parkedLines(pick),
       resumeSteps(pick.task, who, pick.work),
     ]) + take;
     case "build": return head(`BUILD ${pick.task.id} — ${pick.task.title}`, [
@@ -366,6 +369,7 @@ function pickText(pick, { who, date, claimed, register = null, requestedTask = n
       ...(pick.ciRunning ? ["main's CI is still running: you may start, but push nothing to main until it is green."] : []),
       ...(pick.overlaps?.length ? [`Shares owned files with open ${pick.overlaps.join(", ")} (D-309, D-314): build on your own branch in your own worktree, never in theirs. Whoever lands second merges origin/main and resolves the overlap, keeping both changes; never overwrite or revert their work.`] : []),
       ...aheadLines(pick),
+      ...parkedLines(pick),
       buildSteps(pick.task, who, date, pick.task.branch),
     ]) + take;
     case "continue": {
@@ -387,6 +391,21 @@ function pickText(pick, { who, date, claimed, register = null, requestedTask = n
 }
 
 /** D-311: never ask an operator to impersonate the external model. */
+/**
+ * PICKER-short-session (D-401): the session-name line a claim prints first: why a recorded session is resumed, or the
+ * newly minted name; empty for a name given with its tag, which prints nothing here, as before.
+ */
+export function renderSessionChoice(choice, requested) {
+  if (choice.resumed) return `Resuming as "${choice.name}": ${choice.task} was quiet for ${choice.quietMin} min (your client likely ended the conversation). Pass --new-session to start a separate session instead.\n`;
+  if (choice.name !== sanitizeName(requested)) return `Your session name is "${choice.name}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`;
+  return "";
+}
+
+/** D-401: the last line of every claim: the exact command a replacement conversation starts with. */
+export function renderResumeCommand(name) {
+  return `If your client ends this conversation, start the next one with: node scripts/next-task.mjs --claim "${name}"`;
+}
+
 export function renderPick(pick, context) {
   const base = renderPickLegacy(pick, context);
   // D-324: work goes on while main is red; landings do not.

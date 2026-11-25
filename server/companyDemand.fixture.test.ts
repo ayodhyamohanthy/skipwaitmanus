@@ -50,6 +50,19 @@ describe("loadCompanyDemand", () => {
     expect(await loadCompanyDemand([acme], NOW, db.db)).toEqual([{ slug: "acme", name: "Acme", people: 1 }]);
   });
 
+  // D-393 (a): the demo seeker's sandbox requests are invisible to every real count.
+  it("never counts a sandbox request from the demo seeker as demand", async () => {
+    const db = store({
+      users: [user(1), user(2), user(9, { email: "seeker@reviewer.skipwait.me" })],
+      asks: [ask(100, 10, 1), ask(101, 10, 9), ask(102, 12, 9)],
+    });
+    expect(await loadCompanyDemand([acme, globex], NOW, db.db)).toEqual([
+      { slug: "acme", name: "Acme", people: 1 },
+      { slug: "globex", name: "Globex", people: 0 },
+    ]);
+    expect(await loadUnlistedDemand(["acme.com", "acme.io", "globex.com"], NOW, db.db)).toEqual([]);
+  });
+
   it("excludes suspended accounts, suspended people, admins and non-pending requests", async () => {
     const db = store({
       users: [user(1), user(2, { suspended: true }), user(3, { canonicalPersonId: 5 }), user(4, { role: "admin" })],
