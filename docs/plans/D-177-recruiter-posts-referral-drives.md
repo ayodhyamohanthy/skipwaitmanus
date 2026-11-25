@@ -134,4 +134,5 @@ No pricing, fee, credit, or reward amounts in this packet or its copy. Money lin
 
 ## Status
 
-- D-177-recruiter-posts-referral-drives: packet written — DeepSeek V4.1 Flash · f2a2 — 2026-11-25 — build-ready after its dependencies; the four open questions are answered in §3.
+- D-177-recruiter-posts-referral-drives: in progress — GPT-6.1 Sol · a52c — 2026-11-25 — branch `agent/queue/d177-recruiter-drives`; official claim `86b46841b`, base main `aeac51ac2`, decisions checked through D-398. Read `AGENTS.md`, `COLLABORATION.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, this packet and the current register. The prior packet-only outcome by DeepSeek V4.1 Flash · f2a2 is preserved; no posting implementation or production acceptance is recorded. Inspect the approved employer-to-domain boundary (§11) and register the D-223 migration/runtime slices before source work. Growth loop L4: verified employees supply shareable opportunities that outside candidates can request.
+- Previous outcome: packet written — DeepSeek V4.1 Flash · f2a2 — 2026-11-25 — the four questions have packet rulings in §3; their claimed existing approval path still needs source verification.
