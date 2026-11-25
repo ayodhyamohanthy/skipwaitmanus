@@ -307,7 +307,7 @@
         "scripts/nextTaskSingleFlight.test.ts",
         "docs/plans/PICKER-single-flight.md"
       ],
-      "note": "Remaining step (found live after #1557): the takeover rule treats a LIVE pid as stale once the lock passes 30 minutes, so my own 40-minute run was taken over and two picker runs overlapped on one clone, which is the livelock the lock exists to prevent. Change the rule so a live pid is never taken over; only a dead or unparseable pid is, with RUN_LOCK_TAKEOVER_MS governing only the unverifiable case. Red-first: an old lock with a live pid must refuse (the current suite asserts the buggy takeover and must be corrected), and a dead pid must still be taken over immediately.",
+      "note": "Done in PR #1625 (merge ae57f6cc86bedb62e9474b334235175aa0061eea): a live pid is never taken over because of age or a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; the three critical regressions fail against the previous rule; exact-head required CI and main CI are green.",
       "epic": "D-212"
     },
     {
@@ -9381,15 +9381,15 @@
       "id": "GROUP-plan-split",
       "title": "Group Plan: write the slice plan (seats and one-seat additions, server quote with the 10% institution discount, checkout intent, verified-payment activation and email, candidate-approved delegation) and register its rows",
       "row": "GROUP",
-      "packet": null,
+      "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-plan-split",
       "branch": "agent/queue/group-plan-split",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [],
-      "note": "Packet-only task: its work is the rows it adds (D-223, D-321 (8)). Read docs/plans/GROUP-bulk-oct31.md in full, docs/PRICING.md, D-219, D-367 and the existing banded checkout, grants and ledger code it names. Write docs/plans/GROUP-plan-split.md: one row per owned-file slice that one session finishes alone, each behind a switch that starts off, migration rows first, red-first tests and the packet's proof gates. Resolve the open items (discount stacking with volume discounts, single-seat additions and proration, delegation scope and institute visibility) from existing rules with stated, changeable assumptions; a point that would change a price, plan content, legal text or the login rule goes to the owner as one batched question and only the rows that need it wait. Never a real payment or email.",
+      "note": "Original packet/registry registration by GPT-6.1 Sol · 01aa on 2026-11-25 (claim d16a563a7), implementation 369f8d1dd; PR #1609 merged from exact head c0cc452c8c84cb02a1ad937a5a4c55f885e87067 as dadc0528975dc4bc7fc6fefb8adc1799fe36acee with required CI run 45579946145 green. Packet-only reconciliation; no Group runtime, payment, email, migration or activation.",
       "epic": "GROUP",
-      "syncedTo": "D-398"
+      "syncedTo": "D-405"
     },
     {
       "id": "PICKER-never-wait",
@@ -9415,6 +9415,26 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-399"
+    },
+    {
+      "id": "PICKER-blocked-wait-fallthrough",
+      "title": "A blocked WAIT falls through to eligible D-399 build-ahead work without releasing its lane",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-blocked-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker-blocked-wait-fallthrough",
+      "branch": "agent/queue/picker-blocked-wait-fallthrough",
+      "status": "todo",
+      "syncedTo": "D-405",
+      "dependsOn": [],
+      "note": "Current-main repro on 8951b1518: --claim and --as returned WAIT at blocked D-089.ui before D-399 aheadPick, despite an earlier packet-backed, in-sync BANDED-release row with no open PR. Follow-up to the done PICKER-never-wait row; packet records bounded behavior and regression coverage.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskBlockedWaitFallthrough.test.ts",
+        "docs/plans/PICKER-blocked-wait-fallthrough.md",
+        "docs/plans/assignments.json"
+      ]
     },
     {
       "id": "SYNC-auto-pull",
