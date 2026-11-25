@@ -48,4 +48,6 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 
 ## Group Plan (Oct 31)
 
-Group bulk plans/referrals via candidate emails: 10% institution discount, verified-payment activation and emails. On-behalf consent, discount interaction and all holds remain: [packet](plans/GROUP-bulk-oct31.md). Not built or live.
+Group Plan: bulk referrals, later single seats, institution-only 10%, verified-payment activation/emails.
+[Slices](plans/GROUP-plan-split.md) preserve candidate approval; commercial terms await the owner. Build disabled;
+registration is not shipment.

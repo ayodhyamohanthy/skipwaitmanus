@@ -35,6 +35,12 @@ Money rules in `docs/DECISIONS.md`:
 - Basic referring remains free with no referrer payout (D-055). The D-196/D-219 (7) referrer priority plan is recorded but unimplemented and unsold; current checkout remains disabled behind `REFERRER_PURCHASES_ENABLED = false`. Existing started payments still recover, credit and refund.
 - The growth plan to become the go-to global referral site is `docs/GROWTH_STRATEGY.md` (D-043).
 
+## Super administrator rule (FOUNDER-LOCKED, owner, Nov 25 2026, D-400 - do not change without his explicit say-so)
+- **`ayodhya@skipwait.me` is the founder and the permanent super administrator, with superior access over every administrator.** `admin@skipwait.me` is the administrator: the one delegable seat, named by `SKIPWAIT_ADMIN_EMAIL` and handed over by changing that value alone.
+- **No administrator can remove the super administrator.** No admin, route, script, migration or job may suspend, demote, delete, merge away or lock out the founder's account or any login of the founder's canonical person (`setUserSuspended` refuses with `FounderProtectedError`, 403).
+- **One definition.** `server/_core/adminIdentity.ts` fixes the founder address in code, never in configuration; every admin check asks it. Never make the founder address configurable or add a path around it. `server/_core/adminIdentity.test.ts` pins it, so a failing pin means the rule drifted.
+- Operational alerts go to both addresses: the founder as primary, the administrator as a copy.
+
 ## Login rule (FOUNDER-LOCKED, owner, Oct 16 2026 - do not change without his explicit say-so)
 - **Amended by D-049 (owner's explicit say-so, Oct 18 2026):** seekers sign in with social logins or **personal email + password** (WorkOS password auth with forgot/reset; queue task 2). The six-digit seeker email code below is retired when task 2 ships: each code is an email SkipWait pays for, password and social sign-in are free (owner, Oct 18). Referrers are unchanged by the owner's choice: the work-email code is their sign-in on every visit — never personal email, social login or password. Until task 2 ships, sign-in stays exactly as described below.
 - **Job seeker login = personal emails + social logins**, hosted on skipwait.me (no authkit.app page): Google, Microsoft, GitHub, LinkedIn, Slack go straight to the provider via WorkOS; email uses a six-digit WorkOS magic-auth code (`SeekerSignIn`, `server/_core/seekerEmailCode.ts`). Changed Oct 16 2026 (owner: users may not trust an authkit.app address).
@@ -594,4 +600,12 @@ Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md
 
 ## Current Group Plan build direction (Oct 31)
 
-Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](docs/plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
+The [owner direction](docs/plans/GROUP-bulk-oct31.md) covers candidate email lists, initial seats and later
+one-seat additions, an institution-only 10% discount, payment-verified allocations and activation emails.
+The [execution split](docs/plans/GROUP-plan-split.md) registers file-owned slices through recovery and
+candidate-approved on-behalf sending. It preserves the existing account, ledger, privacy and referral creator;
+payment never grants identity or application consent. `GROUP-terms` carries one commercial question batch;
+other slices build with switches off and refuse unresolved payable quotes. Required CI applies without an
+independent-review/model gate (D-370). No Group sales activation, new price, real payment or recipient email is
+authorized by packet registration. Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`,
+`phonemsg-01M6896AS74F9S9T45Y9M9FY75`.
