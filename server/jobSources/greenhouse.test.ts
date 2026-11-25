@@ -187,4 +187,11 @@ describe("city-state labels (PR #650 re-review regression)", () => {
     });
     expect(parseGreenhouseLocation("London, UK")).toEqual({ locations: ["London, UK"], workMode: "onsite" });
   });
+
+  // Live on skipwait.me (Nov 25): ?content=true is entity-encoded HTML; the snippet must be plain text.
+  it("turns entity-encoded description HTML into a plain-text snippet", () => {
+    const jobs = parseGreenhouseJobs({ jobs: [{ id: 9, title: "Renewals Specialist", absolute_url: "https://boards.greenhouse.io/stripe/jobs/9", location: { name: "Dublin" }, content: "&lt;h2&gt;&lt;strong&gt;Who we are&lt;/strong&gt;&lt;/h2&gt; &lt;p&gt;Stripe is a financial infrastructure platform.&lt;/p&gt;", updated_at: "2026-11-25T00:00:00.000Z", departments: [] }] });
+    expect(jobs[0].snippet).toBe("Who we are Stripe is a financial infrastructure platform.");
+    expect(jobs[0].snippet).not.toMatch(/[<>]/);
+  });
 });
