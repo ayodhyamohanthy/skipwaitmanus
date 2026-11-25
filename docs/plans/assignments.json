@@ -299,7 +299,7 @@
       "tier": 2,
       "lane": "picker-single-flight",
       "branch": "agent/queue/picker-lock-liveness",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-396",
       "dependsOn": [],
       "owns": [
@@ -307,7 +307,7 @@
         "scripts/nextTaskSingleFlight.test.ts",
         "docs/plans/PICKER-single-flight.md"
       ],
-      "note": "Remaining step (found live after #1557): the takeover rule treats a LIVE pid as stale once the lock passes 30 minutes, so my own 40-minute run was taken over and two picker runs overlapped on one clone, which is the livelock the lock exists to prevent. Change the rule so a live pid is never taken over; only a dead or unparseable pid is, with RUN_LOCK_TAKEOVER_MS governing only the unverifiable case. Red-first: an old lock with a live pid must refuse (the current suite asserts the buggy takeover and must be corrected), and a dead pid must still be taken over immediately.",
+      "note": "Done in PR #1625 (merge ae57f6cc86bedb62e9474b334235175aa0061eea): a live pid is never taken over because of age or a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; the three critical regressions fail against the previous rule; exact-head required CI and main CI are green.",
       "epic": "D-212"
     },
     {
