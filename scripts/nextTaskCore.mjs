@@ -923,7 +923,6 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   const disjoint = (a, b) => Boolean(a.task.owns?.length && b.task.owns?.length) && !ownsOverlap(a.task.owns, b.task.owns);
   const building = o => !o.pr || !["green", "red", "running", "running-after-red"].includes(o.ci)
     || (o.ci !== "green" && !quiet(workAt(o)));
-  const laneBusy = v => view.some(o => o !== v && o.task.lane === v.task.lane && (o.task.status === "in-review" || o.open) && !dependsOnTask(o, v.task.id) && !unmetOf(o).length && !staleOf(o) && (building(o) || !disjoint(o, v)));
   // PICKER-owns-scope, amended by D-309/D-314: lanes are labels, so two lanes can edit one file. A shared
   // file no longer holds a build. The build is handed out with the open tasks (being built or waiting for
   // review) whose owns overlap, so the builder works in its own worktree and the second lander merges.
@@ -1120,7 +1119,9 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     if (v.task.status !== "todo") return skip(v, { "in-review": "being landed by its reviewer", owner: "waits for the owner" }[v.task.status]);
     const unmet = unmetOf(v);
     if (unmet.length) return skip(v, `waits for ${unmet.join(", ")}`);
-    if (laneBusy(v)) return skip(v, `lane ${v.task.lane} is busy`);
+    // D-399 (owner, Nov 25: "any number of parallel agents can build dont keep any restrictions", "n number of agents
+    // and all should get work no wait no holds"): a busy lane no longer holds a build. Lanes are labels; like shared
+    // files (D-309, D-314) the build names the open tasks whose files overlap and the second lander merges main.
     const overlaps = sharedFilesWith(v);
     return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ...(overlaps.length ? { overlaps } : {}) };
   };
@@ -1166,6 +1167,24 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       if (v.pr) continue;
       if (v.info) { if (quiet(workAt(v))) return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), ahead }; continue; }
       return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", ahead };
+    }
+    // D-399 (owner, Nov 25: "dont stop agents ... let agents build anytime the tasks"): with nothing held only by
+    // dependencies left, build ahead on a row parked at `owner` (with a packet), then on a row whose block waits for
+    // new evidence, on the row's own branch. Nothing lands from it: an `owner` row is never `open`, so it gets no
+    // review, fix or landing until it returns to `todo`, and a block stands until it is cleared. A row with a pull
+    // request is already built and is passed over; a live branch is its holder's, who resumes it here.
+    const parkedOf = v => (v.task.status === "owner" ? "owner" : v.blockWaitingForEvidence ? "blocked" : null);
+    const parked = view.filter(v => (!only || v.task.id === only) && !v.done && !avoid.has(v.task.id) && typeof v.task.packet === "string" && parkedOf(v));
+    for (const v of [...parked.filter(v => parkedOf(v) === "owner"), ...parked.filter(v => parkedOf(v) === "blocked")]) {
+      const why = parkedOf(v) === "owner" ? "it waits for the owner" : `it is blocked (${reportWhy(v.said)})`;
+      // D-202: an out-of-sync row is never built, and a stale owner row stays with the owner (not even a re-sync).
+      if (v.pr || staleOf(v)) continue;
+      if (v.info) {
+        if (claimant && v.owner === claimant) return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", parked: why };
+        if (quiet(workAt(v))) return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), parked: why };
+        continue;
+      }
+      return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", parked: why };
     }
     return null;
   };

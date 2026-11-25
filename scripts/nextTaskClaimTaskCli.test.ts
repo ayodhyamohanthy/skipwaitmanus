@@ -98,8 +98,17 @@ describe("actual --claim --task with local Git origins", () => {
     expect(f.refs()).not.toContain("refs/heads/agent/queue/a");
   }));
 
+  it("D-399: an owner row with a packet is claimed to build ahead, on its own branch, never landed", () => withFixture(f => {
+    const result = f.run("B");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD B");
+    expect(result.stdout).toContain("BUILD AHEAD OF A HOLD (D-399)");
+    expect(result.stdout).toContain("never land it");
+    expect(f.git("log", "-1", "--format=%s", "origin/agent/queue/b")).toBe(`Claim B: ${ME}`);
+  }, { status: "owner" }));
+
   it.each([
-    { extra: { status: "owner" }, id: "B", args: [], reason: "waits for the owner" },
+    { extra: { status: "owner", packet: null }, id: "B", args: [], reason: "waits for the owner" },
     { extra: { status: "done" }, id: "B", args: [], reason: "done" },
     { extra: {}, id: "MISSING", args: [], reason: "no task MISSING" },
     { extra: {}, id: "B", args: ["--avoid", "B"], reason: "you asked to avoid it" },

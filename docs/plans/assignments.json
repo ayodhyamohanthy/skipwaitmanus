@@ -9347,9 +9347,9 @@
       "tier": 2,
       "lane": "picker-never-wait",
       "branch": "agent/queue/picker-never-wait",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Owner, Nov 25 (D-399). Code is ready (Claude Code · 43c8): it lands from this row's branch once this registration is on main, because scope-check reads rows from origin/main. See the packet.",
+      "note": "Owner, Nov 25 (D-399). Built and landed by Claude Code · 43c8 from this branch: parked and blocked rows are built ahead, the BUILD AHEAD OF A HOLD hand-out, and a busy lane no longer holds a build. A red or blocked task still holds its own lane (D-109): it costs nothing on the Nov 25 board and 22 tests pin it.",
       "epic": "D-212",
       "owns": [
         "scripts/nextTaskCore.mjs",
