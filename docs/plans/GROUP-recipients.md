@@ -77,3 +77,7 @@ not here: report it instead of building it.
   `parseRecipientList(text: string): RecipientListResult` from `shared/groupPlanRecipients.ts`. Add the packet's red-first
   cases in `shared/groupPlanRecipients.test.ts`; record completion in this packet and `docs/plans/assignments.json`.
   The 500-address limit remains changeable; overflow returns every valid address. No I/O or runtime integration.
+- Checkpoint: the new suite first failed to resolve the absent module (2026-11-25, 05:50 UTC); after implementation,
+  `pnpm vitest run shared/groupPlanRecipients.test.ts` passed 23/23 and `pnpm check` passed (05:52 UTC).
+  Duplicate diagnostics carry the normalized address; invalid diagnostics retain the original trimmed input, capped
+  at 120 characters. Results, arrays and diagnostic objects are readonly and frozen. Full gate and required CI pending.
