@@ -459,7 +459,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-provider: todo — §6.2.
 - GROUP-migration: todo — §6.3; migration number unallocated.
 - GROUP-schema: todo — §6.3; production migration proof required first.
-- GROUP-orders: todo — §6.4.
+- GROUP-orders: in progress — GPT-6.1 Sol · 02e4 — 2026-11-25 — `agent/queue/group-orders`; claim `339c87283`, main receipt `3a5499212569`. Read BRIEF/AGENTS/PRD/BUILD_CONTINUITY/COLLABORATION, D-370/D-399–D-402. Build-ahead draft (§6.4): dependency readiness not met; main lacks `shared/groupPlan.ts`, `docs/plans/GROUP-schema-contract.md` and Group Drizzle models; schema `7059a3ccb55f` is claim-only; contracts draft #1629 `3b5965226db4` is status-only, without contract/blueprint. No meaningful own-file runtime work without inventing dependencies. Implementation/DB races UNVERIFIED pending dependency. Next: contracts -> verified production migration -> schema -> own `server/groupPlanStore.ts`/`server/groupPlanOrders.ts`; buyer-scoped drafts, immutable orders/allocations and add-one. Tests: buyer/site/candidate isolation, changed-body same-key replay, concurrent add-one/rollback. Picker handoff: draft, report review then next; no global block or done claim; Group switches off. Verification: status-only/unique/length assertion + `git diff --check` PASS; first `pnpm check` exit 2 (sparse input missing); after tracked input restored, rerun PASS (exit 0).
 - GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
 - GROUP-checkout: todo — §6.5; disabled.
 - GROUP-payments: todo — §6.5.
