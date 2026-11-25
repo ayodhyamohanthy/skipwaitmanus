@@ -9418,6 +9418,7 @@
         "server/billingReviewOutbox.ts",
         "server/billingReviewOutbox.test.ts",
         "server/paymentAmountMismatch.test.ts",
+        "server/httpErrorCapture.test.ts",
         "docs/plans/ADMIN-email-switch.md",
         "docs/plans/assignments.json"
       ],
