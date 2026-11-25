@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 // D-048-p3-employer-billing: the goal /employer/billing surface (packet
-// docs/plans/D-048-employer.md §3, §5). The kit page (client/src/pages/EmployerBilling.tsx)
-// has no test file of its own, so these pins hold the behaviour the goal page
-// must keep and the money contract the server actually enforces:
-// - every state the kit page can be in: loading, load failure, signed out, no
+// docs/plans/D-048-employer.md §3, §5). The retired Kit page had no test file of
+// its own, so these pins retain its useful states and money contract on the goal
+// page and the retirement wrapper contract stays in employerBillingSwitch.goal.test.tsx:
+// - every retained state from the former Kit page: loading, load failure, signed out, no
 //   employer account, restricted access, empty spend, and the spend record;
 // - exactly one black commit, and it names what the money buys (§3: "Top up for
 //   talent unlocks and sponsored roles"), never "Buy credits" (§4 rule 1a);
@@ -456,12 +456,12 @@ describe("goal employer billing money-copy integrity (rule 1a)", () => {
     expect(displayStrings(displayFiles[0])).toMatch(/Employers never buy referrals/);
   });
 
-  it("the pack values are the kit page's own numbers, never retyped", () => {
-    const kitSource = readFileSync("client/src/pages/EmployerBilling.tsx", "utf8");
-    const kitPacks = Array.from(kitSource.matchAll(/id: "(starter|growth|scale)", credits: (\d+), priceInr: (\d+), amountInPaise: (\d+)/g))
-      .map(match => ({ id: match[1], adds: Number(match[2]), priceInr: Number(match[3]), amountInPaise: Number(match[4]) }));
-    expect(kitPacks).toHaveLength(3);
-    expect(UNLOCK_PACKS.map(pack => ({ id: pack.id, adds: pack.adds, priceInr: pack.priceInr, amountInPaise: pack.amountInPaise }))).toEqual(kitPacks);
+  it("keeps the existing top-up pack values unchanged", () => {
+    expect(UNLOCK_PACKS.map(pack => ({ id: pack.id, adds: pack.adds, priceInr: pack.priceInr, amountInPaise: pack.amountInPaise }))).toEqual([
+      { id: "starter", adds: 10, priceInr: 29, amountInPaise: 2900 },
+      { id: "growth", adds: 50, priceInr: 129, amountInPaise: 12900 },
+      { id: "scale", adds: 200, priceInr: 399, amountInPaise: 39900 },
+    ]);
   });
 
   it("the rupee label comes from the pack table, so a price change cannot drift", () => {

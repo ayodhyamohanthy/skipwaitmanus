@@ -1,20 +1,14 @@
 // @vitest-environment jsdom
-// D-048-p3-employer-billing switch: /employer/billing renders the goal page only
-// when goalSurfaceOn("employer-billing") is true; with the flag off the kit page
-// stays exactly as it is (one switch line in client/src/pages/EmployerBilling.tsx,
-// the D-048 split method). The goal page's own states are pinned by
-// employerBilling.goal.test.tsx; the kit page has no test file of its own, so the
-// flag-off half of this file is the parity pin for the untouched kit surface.
+// D-048-K-employer-billing: /employer/billing always serves the released goal page.
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import EmployerBilling from "../../EmployerBilling";
 
-const { flag } = vi.hoisted(() => ({ flag: { on: false, asked: [] as string[] } }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => { flag.asked.push(id); return flag.on; } }));
-// Signed in, so the goal half reaches its billing render; SignInButton is not
-// mocked (see employerBilling.goal.test.tsx — the gate calls openSignIn instead).
+beforeAll(async () => { await import("./GoalEmployerBilling"); });
+
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: true, openSignIn: vi.fn() }),
   useUser: () => ({ user: null }),
@@ -34,29 +28,30 @@ const serve = () => vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL
   return json({});
 }) as never);
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); flag.on = false; flag.asked = []; });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const renderPage = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 
-describe("/employer/billing switch (D-048-p3-employer-billing)", () => {
-  it("renders the goal page when the goal flag is on", async () => {
-    serve(); flag.on = true;
-    const { container } = renderPage(<EmployerBilling />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Control what you spend." })).toBeTruthy();
-    expect(container.querySelector("[data-goal-page='employer']")).toBeTruthy();
-    expect(flag.asked).toContain("employer-billing");
+describe("/employer/billing retirement (D-048-K-employer-billing)", () => {
+  it("removes the surface switch and legacy billing body", () => {
+    const source = readFileSync("client/src/pages/EmployerBilling.tsx", "utf8");
+    expect(source).not.toContain("goalSurfaceOn");
+    expect(source).not.toContain("Credits and billing.");
+    expect(source).not.toContain('id: "starter", credits:');
+    expect(source).toContain('lazy(() => import("./goal/employer-billing/GoalEmployerBilling"))');
+    expect(source).toContain("fallback={null}");
   });
 
-  it("keeps the kit page, untouched, when the goal flag is off", async () => {
+  it("renders the goal billing page from the default export", async () => {
     serve();
     const { container } = renderPage(<EmployerBilling />);
-    await waitFor(() => expect(container.querySelector("[data-skipwait-screen='employer-billing']")).toBeTruthy());
-    expect(container.querySelector("[data-goal-page]")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Credits and billing." })).toBeTruthy();
-    // The kit page's three per-pack "Buy" buttons: the goal page replaces them
-    // with one commit, so this is the parity pin that the kit is untouched.
-    expect(screen.getAllByRole("button", { name: "Buy" })).toHaveLength(3);
-    expect(screen.getByText("Buy a pack, unlock talent, or sponsor a role to get started.")).toBeTruthy();
-    expect(flag.asked).toContain("employer-billing");
+    expect(await screen.findByRole("heading", { level: 1, name: "Control what you spend." })).toBeTruthy();
+    expect(await screen.findByText("Talent unlock balance")).toBeTruthy();
+    expect(container.querySelector("[data-goal-page='employer']")).toBeTruthy();
+    expect(container.querySelector("[data-skipwait-screen='employer-billing']")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Credits and billing." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Buy" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Top up for talent unlocks and sponsored roles" })).toBeTruthy();
+    expect(container.querySelectorAll("[data-g-primary]")).toHaveLength(1);
   });
 });
