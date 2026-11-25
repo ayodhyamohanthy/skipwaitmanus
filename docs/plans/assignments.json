@@ -402,9 +402,9 @@
       "tier": 1,
       "lane": "p0-sandbox-isolation",
       "branch": "agent/queue/p0-sandbox-isolation",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Found Nov 25 2026 by Claude Code · 43c8: a sandbox request (referrerId null, pending) appears in every real employee's inbox at the named company and is previewable; the demo referrer gets 404 on preview. Being fixed by Claude Code · 43c8 on its branch.",
+      "note": "Found and fixed Nov 25 2026 by Claude Code · 43c8: inbox and preview use a two-way sandbox scope, save refuses a sandbox request for real employees, the in-memory test kit reads aliased tables. Follow-ups (waiting-pool count edge, personal-link sandbox assignment) recorded in the packet.",
       "epic": "D-212",
       "owns": [
         "server/db.ts",
