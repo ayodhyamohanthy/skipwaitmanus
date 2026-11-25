@@ -9454,7 +9454,7 @@
       "tier": 2,
       "lane": "picker-short-session",
       "branch": "agent/queue/picker-short-session",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Owner, Nov 25 2026 (D-401). The cap is the provider's; this row makes it harmless. Picker files and a new test only.",
       "epic": "D-212",

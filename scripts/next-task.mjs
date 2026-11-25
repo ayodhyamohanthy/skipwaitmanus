@@ -26,13 +26,14 @@
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
+  chooseSessionName, modelOfSession, parseSessionRecords, recordSession,
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
-import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
+import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights, renderResumeCommand, renderSessionChoice } from "./nextTaskText.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
@@ -359,6 +360,7 @@ export function argsOf(argv) {
     else if (a === "--status") out.status = true;
     else if (a === "--landed") out.landed = true;
     else if (a === "--auto-land") out.autoLand = true;
+    else if (a === "--new-session") out.newSession = true;
     else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid", "--provenance", "--execution"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
@@ -369,6 +371,7 @@ export function argsOf(argv) {
   }
   for (const k of ["claim", "as"]) if (out[k] !== undefined && !sanitizeName(out[k])) fail(`--${k} needs a name`);
   if (out.as) out.as = sanitizeName(out.as);
+  if (out.newSession && !out.claim) fail("--new-session goes with --claim \"<your model name>\"");
   if (out.verdict && !["pass", "findings"].includes(out.verdict)) fail("--verdict is pass or findings");
   if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<session name>\"");
   if (out.landed && (!out.task || !out.as)) fail("--landed needs --task <id> and --as \"<session name>\"");
@@ -601,6 +604,29 @@ async function landedEvidenceFor(doc, branches, mergedHeads, closedFirst) {
   const unknown = [...out.evidence].filter(([, e]) => e.state === "unknown");
   if (unknown.length) console.error(`next-task: landed state UNKNOWN for ${unknown.length} branch(es) (${unknown[0][1].reason}); they are treated as not landed`);
   return out.evidence;
+}
+
+/**
+ * PICKER-short-session (D-401): the clone's session record, `<git common dir>/skipwait-sessions.json`, shared by every
+ * worktree of the clone and never inside a working tree. A missing or unreadable record is an empty one.
+ */
+function sessionsFile() {
+  const dir = tryGit("rev-parse", "--git-common-dir");
+  return dir ? path.join(path.resolve(dir), "skipwait-sessions.json") : null;
+}
+function readSessionRecords() {
+  const file = sessionsFile();
+  try { return file ? parseSessionRecords(readFileSync(file, "utf8")) : {}; } catch { return {}; }
+}
+/** Never stops the picker: the claim is already on origin; a failed save only means the next bare claim mints a tag. */
+function saveSession(entry) {
+  const file = sessionsFile();
+  if (!file) return;
+  try {
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, `${JSON.stringify(recordSession(readSessionRecords(), entry), null, 2)}\n`);
+    renameSync(tmp, file);
+  } catch (e) { console.error(`next-task: could not record this session for a later resume: ${e.message}`); }
 }
 
 /** D-085: every local branch with commits no origin branch has, and every worktree with uncommitted changes. */
@@ -997,9 +1023,11 @@ async function main() {
   }
   if (args.claim) {
     autoSyncSetup();
-    const who = sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4));
-    if (who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
-    args.claim = who;
+    // PICKER-short-session (D-401): the name is chosen once the claim state is loaded (runCommand), because a bare
+    // model name may resume this clone's recorded session; the fresh tag is drawn here as before.
+    args.requested = args.claim;
+    args.tag = randomBytes(3).toString("hex").slice(0, 4);
+    args.claim = sessionName(args.claim, args.tag);
   }
   for (let attempt = 1; attempt <= 3; attempt++) {
     try { return await runCommand(args); }
@@ -1128,11 +1156,23 @@ async function runCommand(args) {
     return;
   }
   // Keep the same unique session identity across every snapshot retry.
-  const who = args.claim ?? args.as ?? null;
+  let who = args.claim ?? args.as ?? null;
   // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
   for (let attempt = 1; attempt <= 6; attempt++) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const now = Date.now();
+    // PICKER-short-session (D-401): chosen once per run, on the first loaded state; every retry keeps that name.
+    if (args.claim && !args.named) {
+      const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
+      const choice = chooseSessionName({
+        requested: args.requested, newSession: Boolean(args.newSession), records: readSessionRecords(), tag: args.tag, now, mainSha,
+        tasks: doc.tasks, branches, openPrs, prCi, prFacts, mergedHeads, landedEvidence, reports,
+      });
+      args.claim = who = choice.name;
+      args.named = true;
+      const line = renderSessionChoice(choice, args.requested);
+      if (line) console.log(line);
+    }
     const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
     // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
@@ -1182,7 +1222,13 @@ async function runCommand(args) {
       console.error(`next-task: another agent claimed ${pick.task.id} first (attempt ${attempt}); picking again`);
       continue;
     }
-    if (claimed) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    if (claimed) {
+      console.log(renderPick(pick, { who, date, claimed: true, register }));
+      console.log(`${renderResumeCommand(who)}\n`);
+      // D-401: remember this session for the clone, so a replacement conversation's bare claim can continue it.
+      saveSession({ model: modelOfSession(args.requested ?? who), name: who, at: new Date(now).toISOString() });
+      return;
+    }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("six claims in a row were taken by other agents; run again in a minute");
