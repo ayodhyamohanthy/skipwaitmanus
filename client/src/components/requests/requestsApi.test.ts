@@ -21,9 +21,23 @@ describe("the Requests list parser", () => {
     expect(requests.map(request => [request.id, request.heldForReferrer])).toEqual([[12, undefined], [13, true]]);
   });
 
-  it("reads a malformed unclaimed-assignment flag as unset instead of dropping the whole list (P0-allocated-ask-stuck)", async () => {
+  it("reads a malformed unclaimed-assignment flag as unset instead of dropping the list (P0-allocated-ask-stuck)", async () => {
     stubMine({ requests: [{ ...row, unclaimedAssignment: "yes" }, { ...row, id: 13, unclaimedAssignment: true }, { ...row, id: 14 }] });
     const { requests } = await fetchMyRequests(getToken);
     expect(requests.map(request => [request.id, request.unclaimedAssignment])).toEqual([[12, undefined], [13, true], [14, undefined]]);
+  });
+
+  it("accepts older mine rows without askInvite and preserves a valid safe invite payload", async () => {
+    const invite = { state: "active", createdAt: "2026-10-22T12:00:00.000Z", expiresAt: "2026-10-29T12:00:00.000Z" };
+    stubMine({ requests: [{ ...row }, { ...row, id: 13, askInvite: invite }] });
+    const { requests } = await fetchMyRequests(getToken);
+    expect(requests[0].askInvite).toBeUndefined();
+    expect(requests[1].askInvite).toEqual(invite);
+  });
+
+  it("reads malformed askInvite data as unset without dropping the request", async () => {
+    stubMine({ requests: [{ ...row, askInvite: { state: "unknown", createdAt: 42, expiresAt: null } }, { ...row, id: 13, askInvite: { state: "revoked", createdAt: "2026-10-22T12:00:00.000Z", expiresAt: "2026-10-29T12:00:00.000Z" } }] });
+    const { requests } = await fetchMyRequests(getToken);
+    expect(requests.map(request => [request.id, request.askInvite])).toEqual([[12, undefined], [13, { state: "revoked", createdAt: "2026-10-22T12:00:00.000Z", expiresAt: "2026-10-29T12:00:00.000Z" }]]);
   });
 });

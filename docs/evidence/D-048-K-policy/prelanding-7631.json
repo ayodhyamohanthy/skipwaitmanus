@@ -1,0 +1,68 @@
+{
+  "task": "D-048-K-policy",
+  "session": "GPT-6.1 Sol · 7631",
+  "checkedAt": "2026-11-20T14:14:11.628360+00:00",
+  "main": "f759d63de16a21f9a1546eb0e6ec3a30d1ce437f",
+  "integratedSource": "d92925580f553f17a6c4f068129e5ce2e709f0c9",
+  "pullRequest": 1354,
+  "ci": {
+    "run": 44752160602,
+    "url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44752160602",
+    "head": "d92925580f553f17a6c4f068129e5ce2e709f0c9",
+    "result": "success",
+    "passed": ["typecheck and gates", "three unit shards and aggregate", "production build", "e2e journeys", "release captures plan"],
+    "conditionalPageCaptures": "not requested; retained capture evidence validated separately"
+  },
+  "localVerification": {
+    "focusedTests": { "files": 10, "passed": 91, "failed": 0 },
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "designTokenAudit": "passed",
+    "migrationLint": "passed",
+    "deployTriggerCheck": "passed",
+    "whitespace": "passed",
+    "fullSuite": "Prior local full-suite failures remain recorded in the packet; no local full-suite pass is claimed. Complete integrated-head CI passed."
+  },
+  "sourceReview": {
+    "independentSession": true,
+    "reviewedHead": "f500a8290c28a04ac97bfdf714997bfb10969251",
+    "base": "f759d63de16a21f9a1546eb0e6ec3a30d1ce437f",
+    "blockingFindings": 0,
+    "integrationRuntimeDelta": false,
+    "officialTierOneVerdict": false
+  },
+  "retainedCaptureValidation": {
+    "receipt": "design/goal-ui/captures/policy/retirement-d859/comparison.json",
+    "baseline": "9a00a9b53bff9a97922e66060fdb1bcec95dc961",
+    "candidate": "1d5ce2e03b049881b968456c1e33963c285af828",
+    "viewports": [1280, 390],
+    "pairs": 22,
+    "pixelIdenticalPairs": 22,
+    "immutableFilesMatchingCurrentMain": 15,
+    "imageHashFailures": 0,
+    "textLinkApiParityFailures": 0,
+    "inspected": ["privacy-1280.png", "contact-390.png", "job-referral-platforms-390.png"],
+    "liveAcceptance": false
+  },
+  "sentry": {
+    "project": "skipwait/skipwait-webapp",
+    "authenticated": true,
+    "queryTemplate": "is:unresolved environment:production transaction:<route>",
+    "results": [
+      { "route": "/privacy", "count": 0, "hasMore": false },
+      { "route": "/terms", "count": 0, "hasMore": false },
+      { "route": "/refunds", "count": 0, "hasMore": false },
+      { "route": "/shipping", "count": 0, "hasMore": false },
+      { "route": "/cancellations", "count": 0, "hasMore": false },
+      { "route": "/about", "count": 0, "hasMore": false },
+      { "route": "/contact", "count": 0, "hasMore": false },
+      { "route": "/guidelines", "count": 0, "hasMore": false },
+      { "route": "/job-referral-platforms", "count": 0, "hasMore": false },
+      { "route": "/choosing-a-job-referral-platform", "count": 0, "hasMore": false },
+      { "route": "/how-employees-refer-candidates", "count": 0, "hasMore": false }
+    ],
+    "meaning": "Point-in-time unresolved issue query; not a new soak or post-deployment acceptance."
+  },
+  "productionAcceptance": "pending protected merge and canonical release verification",
+  "rollback": "Protected revert of PR 1354 preserving D-365 and subsequent approved content."
+}

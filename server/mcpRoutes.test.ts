@@ -1,16 +1,22 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
-import { hashBearer, registerMcpRoutes, type McpRouteDeps } from "./mcpRoutes";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { registerMcpRoutes, type McpRouteDeps } from "./mcpRoutes";
 import { MCP_TOOL_NAMES, MCP_TOOLS, shapeAlert, shapeJob, shapeRequest } from "./mcpServer";
+import { resetAgentCallWindowsForTest } from "./agentPortalAccess";
 
 const TOKEN = `sw_${"a".repeat(32)}`;
+
+beforeEach(() => resetAgentCallWindowsForTest());
 
 function setup(over: Partial<McpRouteDeps> = {}) {
   const activity: Array<Record<string, unknown>> = [];
   const deps: McpRouteDeps = {
-    verifyBearer: async hash => (hash === hashBearer(TOKEN) ? { userId: 7, tokenId: 3 } : null),
-    hasAccess: async () => true,
+    resolveBearer: async token => (token === TOKEN
+      ? { ok: true, capKey: 3, principal: { kind: "legacy", userId: 7, tokenId: 3 } }
+      : { ok: false, status: 401, error: "This token is not valid. It may have been revoked." }),
+    enabled: () => true,
+    allowed: () => true,
     recordActivity: async input => { activity.push(input); },
     searchJobs: async () => [{ id: 1, title: "Designer", company: "Wipro", location: "Pune", seniority: "Senior", compensation: "n/a", description: "secret long text", postedBy: "hr@wipro.com" }],
     listRequests: async () => [{ id: 9, jobTitle: "Designer", company: "Wipro", status: "pending", referrerId: 88, jobSeekerId: 7, personalPitch: "my private pitch", referrerMessage: "x", createdAt: new Date("2026-10-01T00:00:00Z"), updatedAt: new Date("2026-10-02T00:00:00Z") }],
@@ -44,21 +50,49 @@ describe("MCP authentication", () => {
     const res = await request(app).post(`/api/mcp?token=${TOKEN}`).set("Cookie", `session=${TOKEN}`).send({ jsonrpc: "2.0", id: 1, method: "tools/list" });
     expect(res.status).toBe(401);
   });
-  it("refuses an owner whose plan no longer includes assistants", async () => {
-    const { app, activity } = setup({ hasAccess: async () => false });
+  it("answers 404 on every method while the agent switch is off", async () => {
+    const { app } = setup({ enabled: () => false });
+    expect((await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" })).status).toBe(404);
+    expect((await request(app).get("/api/mcp")).status).toBe(404);
+    expect((await request(app).delete("/api/mcp")).status).toBe(404);
+  });
+  it("answers 404 for a token whose owner is not on the allow-list, and records the denial", async () => {
+    const { app, activity } = setup({ allowed: async () => false });
     const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
-    expect(res.status).toBe(403);
-    expect(res.body.error.message).toBe("Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
     expect(activity[0]).toMatchObject({ action: "assistant.mcp.denied", outcome: "denied" });
   });
-  it("rate limits per token", async () => {
+  // D-178.grant (D-290 R1): MCP resolves the same D-141 grant an OAuth connection created.
+  it("accepts a swa_ grant key and keys its cap by the grant", async () => {
+    const GRANT_KEY = `swa_${"1".repeat(64)}`;
+    const { app } = setup({ resolveBearer: async token => (token === GRANT_KEY ? { ok: true, capKey: 41, principal: { kind: "grant", grantId: 41, userId: 7, canLookup: true, canDraft: true } } : { ok: false, status: 401, error: "nope" }) });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" }, GRANT_KEY);
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body)).toContain("propose_ask");
+  });
+  it("refuses an expired or revoked grant from the verifier with its plain words", async () => {
+    const { app } = setup({ resolveBearer: async () => ({ ok: false, status: 401, error: "This agent's access expired. Ask your seeker for a new key." }) });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
+    expect(res.status).toBe(401);
+    expect(res.body.error.message).toContain("expired");
+    expect(res.headers["www-authenticate"]).toMatch(/invalid_token/);
+  });
+  it("refuses every agent of a paused seeker with 403", async () => {
+    const { app } = setup({ resolveBearer: async () => ({ ok: false, status: 403, error: "Your seeker paused all agents" }) });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toBe("Your seeker paused all agents");
+  });
+  it("caps a token at 20 calls an hour, below a person's rate", async () => {
     let t = 0;
-    const { app } = setup({ limitPerMinute: 2, now: () => t });
-    expect((await rpc(app, { jsonrpc: "2.0", id: 1, method: "ping" })).status).toBe(200);
-    expect((await rpc(app, { jsonrpc: "2.0", id: 2, method: "ping" })).status).toBe(200);
-    expect((await rpc(app, { jsonrpc: "2.0", id: 3, method: "ping" })).status).toBe(429);
-    t = 61_000;
-    expect((await rpc(app, { jsonrpc: "2.0", id: 4, method: "ping" })).status).toBe(200);
+    const { app } = setup({ now: () => t });
+    for (let i = 0; i < 20; i += 1) expect((await rpc(app, { jsonrpc: "2.0", id: i, method: "ping" })).status).toBe(200);
+    const refused = await rpc(app, { jsonrpc: "2.0", id: 21, method: "ping" });
+    expect(refused.status).toBe(429);
+    expect(Number(refused.headers["retry-after"])).toBeGreaterThan(0);
+    t = 3_600_000;
+    expect((await rpc(app, { jsonrpc: "2.0", id: 22, method: "ping" })).status).toBe(200);
   });
   it("only accepts POST", async () => {
     const { app } = setup();

@@ -30,33 +30,32 @@ describe("seeker sign-in on a returning device", () => {
   it("prefills the email this device last signed in with", () => {
     window.localStorage.setItem(SEEKER_KEY, "ana@example.com");
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("ana@example.com");
     expect(screen.getByRole("button", { name: /Not you\? Forget this email/ })).toBeTruthy();
   });
 
-  it("remembers the email only after a code sign-in succeeds", async () => {
+  it("remembers the email only after a password sign-in succeeds", async () => {
     stubLocation();
-    stubFetch({ "/api/auth/workos/email-code/send": { sent: true }, "/api/auth/workos/email-code/verify": { signedIn: true } });
+    stubFetch({ "/api/auth/password/sign-in": { ok: true, step: "signed_in", redirectTo: "/explore" } });
     render(<SeekerSignIn returnTo="/explore" />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Ana@Example.com " } });
-    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/ }));
-    await settle();
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret123" } });
     expect(window.localStorage.getItem(SEEKER_KEY)).toBeNull();
-    fireEvent.change(screen.getByLabelText("Six-digit code"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
     await settle();
     expect(window.localStorage.getItem(SEEKER_KEY)).toBe("ana@example.com");
   });
 
-  it("does not remember the email when the code is wrong", async () => {
+  it("does not remember the email when password sign-in fails", async () => {
     stubLocation();
-    const fetchMock = stubFetch({ "/api/auth/workos/email-code/send": { sent: true } });
+    const fetchMock = stubFetch({ "/api/auth/password/sign-in": { ok: true, step: "signed_in", redirectTo: "/explore" } });
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "ana@example.com" } });
-    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/ }));
-    await settle();
-    fetchMock.mockImplementation(async () => ({ ok: false, status: 400, json: async () => ({ error: "That code could not be verified." }) }));
-    fireEvent.change(screen.getByLabelText("Six-digit code"), { target: { value: "000000" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrong-password" } });
+    fetchMock.mockImplementation(async () => ({ ok: false, status: 400, json: async () => ({ ok: false, code: "invalid_credentials", message: "Incorrect password." }) }));
     fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
     await settle();
     expect(window.localStorage.getItem(SEEKER_KEY)).toBeNull();
@@ -65,35 +64,35 @@ describe("seeker sign-in on a returning device", () => {
   it("Not you? forgets the remembered email and clears the field", () => {
     window.localStorage.setItem(SEEKER_KEY, "ana@example.com");
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     fireEvent.click(screen.getByRole("button", { name: /Not you\? Forget this email/ }));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("");
     expect(window.localStorage.getItem(SEEKER_KEY)).toBeNull();
     expect(screen.queryByRole("button", { name: /Not you\?/ })).toBeNull();
   });
 
-  it("opens the code field focused and shaped for the phone's code autofill", async () => {
-    stubFetch({ "/api/auth/workos/email-code/send": { sent: true } });
+  it("renders the password field shaped for current-password autofill", () => {
     render(<SeekerSignIn />);
-    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "ana@example.com" } });
-    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/ }));
-    await settle();
-    const code = screen.getByLabelText("Six-digit code") as HTMLInputElement;
-    expect(code.getAttribute("autocomplete")).toBe("one-time-code");
-    expect(code.getAttribute("inputmode")).toBe("numeric");
-    expect(code.getAttribute("pattern")).toBe("[0-9]*");
-    expect(code.maxLength).toBe(6);
-    expect(document.activeElement).toBe(code);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    const password = screen.getByLabelText("Password") as HTMLInputElement;
+    expect(password.getAttribute("autocomplete")).toBe("current-password");
+    expect(password.getAttribute("type")).toBe("password");
+    expect(password.required).toBe(true);
+    expect(screen.getByRole("button", { name: /Show password/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Forgot password\?/ })).toBeTruthy();
   });
 
   it("a storage that throws never breaks sign-in", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("");
   });
 
   it("ignores a stored value that is not an email", () => {
     window.localStorage.setItem(SEEKER_KEY, "<script>");
     render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
     expect((screen.getByLabelText("Email address") as HTMLInputElement).value).toBe("");
   });
 });

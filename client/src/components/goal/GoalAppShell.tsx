@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 import { useAuth, useUser } from "@/_core/auth";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
+import { GoalLanguageConsent } from "./GoalLanguageConsent";
+import { GoalLanguagePicker } from "./GoalLanguagePicker";
 import { GoalShell } from "./GoalShell";
 import type { GoalNavId } from "./nav";
 
@@ -26,10 +28,13 @@ export function GoalAppShell({ active, pageTitle, drawer, children }: { active: 
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const access = useReferrerAccess();
-  const verifiedReferrer = access.status === "verified";
+  // D-057 (§0b.8c): a server-verified referrer whose session is code_required keeps
+  // the referrer navigation; the surfaces themselves show the in-place step-up.
+  const verifiedReferrer = access.status === "verified" || access.status === "code_required";
   // A verified referrer never sees a credits pill (D-055); wait for the verdict
-  // instead of flashing one while it is checked.
-  const credits = useCreditBalance(isSignedIn && access.status !== "verified" && access.status !== "checking");
+  // instead of flashing one while it is checked. The same holds while the session
+  // only needs its step-up: the person is the server's verified referrer either way.
+  const credits = useCreditBalance(isSignedIn && access.status !== "verified" && access.status !== "code_required" && access.status !== "checking");
   return (
     <GoalShell
       active={active}
@@ -37,9 +42,11 @@ export function GoalAppShell({ active, pageTitle, drawer, children }: { active: 
       pageTitle={pageTitle}
       credits={credits}
       account={{ initials: isSignedIn && isLoaded ? initialsOf(user) : "" }}
+      languagePicker={isLoaded && !isSignedIn ? <GoalLanguagePicker variant="bar" className="max-w-28" /> : null}
       alertsHref="/alerts"
       drawer={drawer}
     >
+      <GoalLanguageConsent />
       {children}
     </GoalShell>
   );

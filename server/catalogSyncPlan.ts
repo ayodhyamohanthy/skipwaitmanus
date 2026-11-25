@@ -2,7 +2,6 @@
 // writes. The dry run it returns is what the admin page shows, and its planHash
 // pins exactly what an apply would create (D-069).
 import { createHash } from "node:crypto";
-import type { CatalogPrice } from "../shared/billingCatalog";
 import type { CatalogSyncAction, CatalogSyncDiff, CatalogSyncDryRun, ItemPriceSpec } from "../shared/catalogSync";
 import { itemPriceMatches } from "./billingAvailability";
 import type { DesiredCatalogEntry } from "./catalogSyncDesired";
@@ -80,7 +79,8 @@ export function priceDiffs(price: ProviderItemPrice, spec: ItemPriceSpec): Catal
   return diffs;
 }
 
-function termOf(price: CatalogPrice): CatalogSyncDryRun["correct"][number]["term"] {
+function termOf(price: DesiredCatalogEntry["price"]): CatalogSyncDryRun["correct"][number]["term"] {
+  if (price.kind === "banded_plan") return "monthly";
   if (price.kind !== "plan") return "one_time";
   if (price.interval === "yearly") return "yearly";
   if (price.interval === "90d") return "90d";
@@ -89,22 +89,33 @@ function termOf(price: CatalogPrice): CatalogSyncDryRun["correct"][number]["term
 
 type FamilyChoice = { plan: CatalogFamilyPlan; familyId: string | null };
 
+/**
+ * A retired object can never be sold again, so it does not decide where new prices go (D-387).
+ * Chargebee marks retired catalog objects "archived" (or "deleted" for item prices).
+ */
+function isRetired(status: string | undefined): boolean {
+  return status === "archived" || status === "deleted";
+}
+
 function chooseFamily(state: CatalogSiteState): FamilyChoice {
-  const used = new Set<string>();
+  // Active SkipWait object ids per product family.
+  const used = new Map<string, string[]>();
+  const note = (familyId: string, id: string) => used.set(familyId, [...(used.get(familyId) ?? []), id]);
   for (const item of state.items) {
-    if (isNamespaceId(item.id) && item.item_family_id) used.add(item.item_family_id);
+    if (isNamespaceId(item.id) && item.item_family_id && !isRetired(item.status)) note(item.item_family_id, item.id);
   }
   for (const price of state.itemPrices) {
-    if (isNamespaceId(price.id) && price.item_family_id) used.add(price.item_family_id);
+    if (isNamespaceId(price.id) && price.item_family_id && !isRetired(price.status)) note(price.item_family_id, price.id);
   }
-  const usedIds = Array.from(used).sort();
+  const usedIds = Array.from(used.keys()).sort();
   if (usedIds.length > 1) {
+    const detail = usedIds.map(familyId => `${familyId}: ${[...(used.get(familyId) ?? [])].sort().join(", ")}`).join("; ");
     return {
       familyId: null,
       plan: {
         id: null,
         action: "blocked",
-        reason: `SkipWait objects belong to more than one product family (${usedIds.join(", ")}); resolve this in Chargebee before syncing.`,
+        reason: `Active SkipWait objects belong to more than one product family (${detail}); resolve this in Chargebee before syncing.`,
       },
     };
   }
@@ -113,7 +124,8 @@ function chooseFamily(state: CatalogSiteState): FamilyChoice {
   }
   const existing = state.families.find(family => family.id === "skipwait");
   if (existing) return { familyId: existing.id, plan: { id: existing.id, action: "reuse", reason: "The SkipWait product family already exists." } };
-  const hasSkipwaitObjects = state.items.some(item => isNamespaceId(item.id)) || state.itemPrices.some(price => isNamespaceId(price.id));
+  const hasSkipwaitObjects = state.items.some(item => isNamespaceId(item.id) && !isRetired(item.status))
+    || state.itemPrices.some(price => isNamespaceId(price.id) && !isRetired(price.status));
   if (hasSkipwaitObjects) {
     return { familyId: null, plan: { id: null, action: "none", reason: "SkipWait objects exist but none belongs to a product family; new items are created without one." } };
   }
@@ -206,7 +218,9 @@ export function planCatalogSync(input: {
         price: entry.spec.price,
         term: termOf(entry.price),
         diffs,
-        sellableNow: itemPriceMatches(existing, entry.price),
+        sellableNow: entry.price.kind === "banded_plan" || entry.price.kind === "banded_referral"
+          ? false
+          : itemPriceMatches(existing, entry.price),
       });
     }
   }

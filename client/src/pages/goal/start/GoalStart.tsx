@@ -1,4 +1,4 @@
-// Goal /start (D-048-p3-start, dark behind goalSurfaceOn('start')). The whole
+// Goal /start (D-048-p3-start). The whole
 // screen is the next step: paste the job link, then one black Continue. The
 // flow logic is the kit page's verbatim - draft continuity, 450ms debounced
 // preview, ambiguous-link domain confirmation, fast-track handoff, bridge
@@ -12,7 +12,7 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { GoalButton, GoalField, GoalTextInput } from "@/components/goal";
 import { clearReferralDraft, readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
 import { clearPendingResumeFiles } from "@/lib/pendingResume";
-import { isValidTargetRoleUrl, normalizeTargetRoleUrl, reviewedEmployerFromTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { completeTargetRoleUrl, isValidTargetRoleUrl, normalizeTargetRoleUrl, reviewedEmployerFromTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
 /** Dot + text status line: emerald when the employer is known, amber when the link still needs care. */
 function StatusLine({ tone, children }: { tone: "pass" | "warn"; children: React.ReactNode }) {
@@ -103,7 +103,9 @@ export default function GoalStart() {
                 autoCorrect="off"
                 spellCheck={false}
                 value={targetUrl}
-                onChange={event => setTargetUrl(event.target.value)}
+                // A link pasted or typed without "https://" is completed, never an error (owner, Nov 19 2026).
+                onChange={event => setTargetUrl((event.nativeEvent as InputEvent).inputType === "insertFromPaste" ? completeTargetRoleUrl(event.target.value) : event.target.value)}
+                onBlur={() => setTargetUrl(current => completeTargetRoleUrl(current))}
                 onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); begin(); } }}
                 placeholder="https://company.com/careers/role"
                 invalid={showTargetUrlError}

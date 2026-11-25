@@ -21,12 +21,14 @@ describe("goal shell harness", () => {
     expect(within(shell).getByText("Surface body")).toBeTruthy();
   });
 
-  it("shows the persona's credit count to a seeker", async () => {
+  it("shows the persona's remaining-referral count to a seeker", async () => {
     await renderGoalSurface(<p>Body</p>, { signedIn: true, credits: 7 });
     expect(goalHarnessFetch).not.toHaveBeenCalled();
-    // The pill renders once in the rail and once in the bar; both carry the count.
+    // The pill renders once in the rail and once in the bar; both carry the count,
+    // as referrals left, never credits (D-344).
     for (const pill of screen.getAllByTestId("goal-credits-pill")) {
-      expect(pill.getAttribute("aria-label")).toContain("7 credits");
+      expect(pill.getAttribute("aria-label")).toContain("7 referrals left");
+      expect(pill.getAttribute("aria-label")).not.toMatch(/credit/i);
     }
   });
 

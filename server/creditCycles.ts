@@ -8,6 +8,7 @@ import { planCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/s
 import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
+import { isBandedPlan } from "../shared/acceptedAskCost";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { CreditSpendConflictError, asLedgerGrant, cycleRulesFor, digest, readGrantsTx, writeLedgerRow, type CyclePatch, type GrantRow, type LedgerTx, type WalletRole, type WalletRow } from "./creditLedger";
@@ -165,6 +166,21 @@ function paidCycleSteps(wallet: WalletRow, now: Date): number[] {
  * and expires grants (carryover, trial). Writes the wallet.
  */
 export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, now: Date): Promise<{ wallet: WalletRow; grants: GrantRow[]; changed: boolean }> {
+  // Banded included cycles live in bandedReferralBalances. The wallet cycle is
+  // exclusively the additional calendar-month free allowance, not a paid term.
+  if (isBandedPlan(locked.plan)) {
+    let wallet = locked;
+    let changed = false;
+    if (freeCycleBehind(wallet.monthlyCycleKey, now)) {
+      const next = { startsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)), key: currentMonthlyCycleKey(now) };
+      const cycle = await rollCycleTx(tx, { wallet: { ...wallet, plan: "free", subscriptionId: null }, next, plan: "free", subscriptionId: null, now });
+      const updated = await tx.update(tokenBalances).set(cycle).where(eq(tokenBalances.id, wallet.id));
+      if (Number(updated[0]?.affectedRows) !== 1) throw new CreditSpendConflictError();
+      wallet = { ...wallet, ...cycle };
+      changed = true;
+    }
+    return { wallet, grants: await readGrantsTx(tx, wallet.userId, wallet.role, true), changed };
+  }
   let wallet = locked;
   let changed = false;
   const write = async (patch: Partial<WalletRow>) => {

@@ -61,7 +61,7 @@ function enterCode(digits: string) {
 }
 
 describe("Verify work email", () => {
-  it("shows a kit loading state while sign-in resolves", () => {
+  it("shows the goal loading state while sign-in resolves", () => {
     authState.isLoaded = false;
     renderVerify();
     expect(screen.getByRole("status").textContent).toContain("Checking your sign-in");
@@ -71,22 +71,23 @@ describe("Verify work email", () => {
   it("keeps verification behind sign-in and never shows a demo code", () => {
     authState.isSignedIn = false;
     renderVerify();
-    expect(screen.getByText(/Prove you're inside/)).toBeTruthy();
+    expect(screen.getByText("Refer someone at your company.")).toBeTruthy();
     expect(screen.getByText("Sign in to verify")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Sign in with work email/ })).toBeTruthy();
     expect(screen.queryByText("Where do you work?")).toBeNull();
     expect(screen.queryByText(/123456/)).toBeNull();
   });
 
-  it("never ships preview scaffolding and states what the server really stores", async () => {
+  it("never ships preview scaffolding and states what the work-email code proves", async () => {
     stubApi({});
     renderVerify();
     expect(await screen.findAllByRole("radio")).toHaveLength(5);
     for (const scaffold of [/DESIGN PREVIEW/i, /Try states/i, /Preview code/i, /next re-check/i]) expect(screen.queryByText(scaffold)).toBeNull();
-    // Queue task 3 made the fingerprint unconditional, so the kit line is true now and ships verbatim.
-    expect(screen.getByText("A one-way fingerprint of your email")).toBeTruthy();
-    expect(screen.getByText("Company and verification date")).toBeTruthy();
-    expect(screen.getByText("Never the code or your inbox")).toBeTruthy();
+    // The retired kit storage aside is absent from the released goal design.
+    // Assert the goal page's existing privacy statement without changing its copy.
+    expect(screen.getByText(/A one-time code to your work email confirms where you work today/)).toBeTruthy();
+    expect(screen.getByText(/People see a verified badge — never your address/)).toBeTruthy();
+    expect(screen.queryByText("WE STORE")).toBeNull();
   });
 
   it("loads the companies from the directory, holding Continue until one is chosen", async () => {
@@ -94,13 +95,13 @@ describe("Verify work email", () => {
     const gate = new Promise<void>(resolve => { release = resolve; });
     vi.stubGlobal("fetch", vi.fn(async () => { await gate; return asResponse(ok(DIRECTORY)); }));
     renderVerify();
-    expect(screen.getByLabelText("Loading companies").getAttribute("aria-busy")).toBe("true");
-    expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("goal-skeleton-rows").getAttribute("aria-busy")).toBe("true");
+    expect(screen.getByRole("button", { name: /Continue/ }).getAttribute("aria-disabled")).toBe("true");
     release?.();
     const radios = await screen.findAllByRole("radio");
     expect(radios.map(radio => radio.textContent)).toEqual(["SWskipwait.me@skipwait.me", "WWipro@wipro.com", "NNeutrinos@neutrinos.com", "TTCS@tcs.com", "MMerkle@merkle.com"]);
     expect(screen.getByRole("radio", { name: /Wipro/ }).getAttribute("aria-checked")).toBe("true");
-    expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: /Continue/ }).getAttribute("aria-disabled")).not.toBe("true");
   });
 
   it("shows a directory failure with Try again instead of an empty company list", async () => {
@@ -108,7 +109,7 @@ describe("Verify work email", () => {
     renderVerify();
     const alert = await screen.findByRole("alert", {}, { timeout: 4000 });
     expect(alert.textContent).toContain("The company directory is unavailable right now");
-    expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: /Continue/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
     expect(await screen.findAllByRole("radio")).toHaveLength(5);
   });
@@ -216,7 +217,7 @@ describe("Verify work email", () => {
       if (round < 4) expect(screen.getByRole("alert").textContent).toMatch(/tries left|try left/);
     }
     expect(screen.getByRole("alert").textContent).toContain("Too many tries");
-    expect((screen.getByRole("button", { name: /Verify/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: /Verify/ }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("does not spend an attempt when the service is down", async () => {

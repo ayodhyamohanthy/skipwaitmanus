@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GoalApprovalCard } from "./GoalApprovalCard";
 import type { AssistantApproval } from "@/components/assistants/format";
 const base: AssistantApproval = { id: 9, kind: "credit_spend", status: "pending", provider: "custom", companyDomain: "fixture.invalid", role: "Draft review", note: "Only confirmed skills.", creditCount: 3, slotCount: 2, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() };
-const handlers = () => ({ editing: false, draftNote: "", working: false, actionError: "", onDraftChange: vi.fn(), onStartEdit: vi.fn(), onSaveEdit: vi.fn(), onDecide: vi.fn() });
+const handlers = () => ({ editing: false, draftNote: "", working: false, actionError: "", onDraftChange: vi.fn(), onStartEdit: vi.fn(), onSaveEdit: vi.fn(), onDecide: vi.fn(), resumes: [], resumeId: null, onResumeChange: vi.fn() });
 afterEach(cleanup);
 describe("goal approval boundary", () => {
   it("shows the exact cost and balance before the only commit", () => {

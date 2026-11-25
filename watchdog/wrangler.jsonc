@@ -1,0 +1,17 @@
+// REL-watchdog (D-212, D-100): an external probe of skipwait.me every 5 minutes.
+// A separate Worker: no routes, not on workers.dev, its own KV namespace.
+// The KV id below is a placeholder: .github/workflows/deploy-watchdog.yml writes
+// the real id in the job workspace only (never commit a resource id, D-204).
+// Secrets (owner, D-200 (6)): ZEPTOMAIL_API_KEY (required), GITHUB_ISSUES_TOKEN (optional).
+{
+  "name": "skipwait-watchdog",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": false,
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "kv_namespaces": [{ "binding": "WATCHDOG_STATE", "id": "WATCHDOG_STATE_ID" }],
+  "vars": {
+    "WATCHDOG_BASE_URL": "https://skipwait.me",
+    "WATCHDOG_REPO": "ayodhyamohanthy/skipwaitmanus"
+  }
+}

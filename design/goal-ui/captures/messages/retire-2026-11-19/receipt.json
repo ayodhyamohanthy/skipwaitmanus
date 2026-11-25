@@ -1,0 +1,28 @@
+{
+  "route": "/messages",
+  "sourceCommit": "0cb627f508c7aa9f240645ec78d1a3b073e3706d",
+  "integratedWithMain": "08dc913005ef6d6dffa91b28bdeecb862e9adcda",
+  "captured": "2026-11-19",
+  "fixture": "design/goal-ui/captures/messages/fixtures/messages__inbox.json (copied to /tmp/messages-cutover-inbox.json with the signup-language endpoint mocked)",
+  "environment": "Local Vite preview. DM and shell endpoints answered by the capture fixture; no application server, account or production write.",
+  "viewports": {
+    "desktop": {
+      "size": "1280x900",
+      "image": "live/web/messages-retire.png",
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": 0,
+      "pageErrors": 0,
+      "visualComparison": "Inspected against the released inbox-1280.png; same route and inbox content."
+    },
+    "mobile": {
+      "size": "390x844 CSS px (780x1688 screenshot at 2x)",
+      "image": "live/mobile/messages-retire.png",
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": 0,
+      "pageErrors": 0,
+      "visualComparison": "Inspected against the released inbox-390.png; same route and inbox content."
+    }
+  },
+  "console": "Only expected local server-session fallback diagnostic because VITE_WORKOS_CLIENT_ID is unset; no browser page errors.",
+  "notProductionVerification": true
+}

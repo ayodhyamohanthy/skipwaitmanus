@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-11-19T16:11:16.237Z",
+  "readOnly": true,
+  "main": "6f7f68118ff67892f43da86af642b80e2acaaba8",
+  "head": "40595a6cf438fd9cf8642ff330aba3bcb4295a64",
+  "lockHead": "4bdf3667f22a68e647bce20478a7f777a083f2c1",
+  "fixedHead": "feab2fba50510c9e2406abdc24ed5d81f0b1a8ef",
+  "gateViolation": "Tier 1: this head has no independent passing review (D-074, D-151). Run node scripts/next-task.mjs to get a review. 2 commit(s) came after the fix at feab2fba: mark it fixed again on the current head (node scripts/next-task.mjs --fixed).",
+  "currentStage": "landing",
+  "laterOwnCommits": [
+    "40595a6cf438fd9cf8642ff330aba3bcb4295a64",
+    "5fc71c404dd9f8570cb9430d7c787c44b93d9f06"
+  ],
+  "netRevertDeltaEmpty": true,
+  "ownedRepairSourceUnchanged": true,
+  "isolatedMainCondition": "green; reports and this session's architect lease omitted in memory only",
+  "ordinaryStage": {
+    "kind": "ineligible",
+    "reason": "review verdict recorded; re-run exact-head CI before any landing, not a source fix"
+  },
+  "withoutLandClaimControl": {
+    "kind": "review",
+    "scope": "in-memory counterfactual only; not a proposed marker edit"
+  },
+  "workAndReviewRefsUnchanged": true,
+  "productVerdict": false,
+  "providerCalls": 0
+}

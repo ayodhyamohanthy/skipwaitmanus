@@ -1,15 +1,16 @@
 // Seeker asks (goal UI, D-048 phase 3 pilot). The list and its numbers come only
 // from GET /api/company-referrals/mine (open asks against the plan's cap,
 // server-counted). Each row opens its thread, where an unclaimed ask can be
-// withdrawn. No preview states or invented counts ship here. Exception (owner
-// override, Oct 21 11:35 PM, verified phonemsg-01M5FT6Z0SYN6QWFVDR3J3S2CS): a
-// first-time seeker's empty list shows unmistakably-marked SAMPLE rows
-// (GoalSampleRows) that never touch counts, slots, credits or routes.
+// withdrawn. No preview states, sample asks or invented counts ship here: D-387
+// (owner, Nov 24 2026) removed the Oct 21 sample rows, so every seeker with no
+// asks gets the same honest empty state.
 import { LockKeyhole, Plus } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
+import { AskInviteSheet } from "@/components/requests/AskInviteSheet";
+import { ReconfirmRequest } from "@/components/requests/ReconfirmRequest";
 import {
   GoalAppShell,
   GoalButton,
@@ -22,12 +23,13 @@ import {
 } from "@/components/goal";
 import { askView } from "@/components/requests/askView";
 import { companyIdentity } from "@/components/inbox/inboxThreads";
-import { GoalSampleRows, type GoalSampleRow } from "@/components/goal/GoalSampleRows";
 import { canWithdrawRequest, isClosedRequest, requestNote, slotsFullCopy } from "@/components/requests/requestModel";
 import { fetchMyRequests, type ReferralRequest } from "@/components/requests/requestsApi";
+import { STATUS_HELP_ENABLED, statusHelpFor } from "@/components/requests/statusHelp";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { formatDay, useDisplayPrefs } from "@/lib/displayPrefs";
+import { BYOR_LINK } from "@/lib/flags";
 
 const SUBTITLE = "Where each ask stands and what happens next.";
 
@@ -51,24 +53,64 @@ function askNextLine(request: ReferralRequest, nowMs: number, company: string): 
   return requestNote(request, nowMs);
 }
 
+/**
+ * D-094 item 3: what the row's own state means, in plain words from the
+ * statusHelp catalogue. Closed by default, one per row, nothing else moves;
+ * a request with no entry (held_for_credit) keeps requestNote's line and gets
+ * no disclosure. Off while STATUS_HELP_ENABLED is false (D-223 (2)).
+ */
+function StatusHelpDisclosure({ request }: { request: ReferralRequest }) {
+  const [open, setOpen] = useState(false);
+  const help = statusHelpFor(request);
+  if (!STATUS_HELP_ENABLED || !help) return null;
+  const panelId = `status-help-${request.id}`;
+  return (
+    <div className="px-3 pb-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen(value => !value)}
+        className="text-g-meta text-g-ink-2 underline underline-offset-[3px] hover:text-g-ink"
+      >
+        What this means
+      </button>
+      {open ? (
+        <div id={panelId} className="mt-1 rounded-g-tile bg-g-surface-sunken px-3 py-2">
+          <p className="text-g-label text-g-ink">{help.title}</p>
+          <p className="mt-1 text-g-meta text-g-ink-2">{help.body}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Three lines as the comp draws them: company + status, role + date, then the next step. */
-function AskRow({ request, nowMs }: { request: ReferralRequest; nowMs: number }) {
+function AskRow({ request, nowMs, getToken, onInviteChanged }: { request: ReferralRequest; nowMs: number; getToken: () => Promise<string | null | undefined>; onInviteChanged: () => void | Promise<unknown> }) {
   const company = companyIdentity(request);
   const view = askView(request);
   const unclaimed = view.label === "Waiting";
+  const waitingForInvite = request.status === "pending" && request.waitingForCoverage === true && request.referrerId === null;
   const day = formatDay(unclaimed ? request.createdAt : request.updatedAt) ?? "Recorded";
   return (
     <li data-testid="goal-list-row">
-      <Link
-        href={`/conversation/${request.id}`}
-        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 rounded-g-tile px-3 py-3 text-left hover:bg-g-surface-hover"
-      >
-        <span className="min-w-0 truncate text-g-label text-g-ink">{company.name}</span>
-        <span className="justify-self-end"><GoalStatus status={view.status} label={view.label} stepper={view.stepper} /></span>
-        <span className="min-w-0 truncate text-g-meta text-g-ink-2">{request.title || "Referral request"}</span>
-        <span className="justify-self-end whitespace-nowrap text-g-meta text-g-ink-3">{view.verb} <GoalNum>{day}</GoalNum></span>
-        <span className="col-span-2 mt-1 min-w-0 text-g-meta text-g-ink-3">{askNextLine(request, nowMs, company.name)}</span>
-      </Link>
+      <div>
+        <Link
+          href={`/conversation/${request.id}`}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 rounded-g-tile px-3 py-3 text-left hover:bg-g-surface-hover"
+        >
+          <span className="min-w-0 truncate text-g-label text-g-ink">{company.name}</span>
+          <span className="justify-self-end"><GoalStatus status={view.status} label={view.label} stepper={view.stepper} /></span>
+          <span className="min-w-0 truncate text-g-meta text-g-ink-2">{request.title || "Referral request"}</span>
+          <span className="justify-self-end whitespace-nowrap text-g-meta text-g-ink-3">{view.verb} <GoalNum>{day}</GoalNum></span>
+          <span className="col-span-2 mt-1 min-w-0 text-g-meta text-g-ink-3">{askNextLine(request, nowMs, company.name)}</span>
+        </Link>
+        <StatusHelpDisclosure request={request} />
+        <ReconfirmRequest request={request} getToken={getToken} onChanged={onInviteChanged} />
+        {BYOR_LINK && (waitingForInvite || request.askInvite?.state === "claimed" || request.askInvite?.state === "delivered") ? (
+          <AskInviteSheet requestId={request.id} companyName={company.name} roleTitle={request.title || "Referral request"} waitingForInvite={waitingForInvite} invite={request.askInvite} getToken={getToken} onChanged={onInviteChanged} />
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -122,23 +164,6 @@ function NextStep({ requests }: { requests: ReferralRequest[] }) {
       </GoalButton>
     </section>
   );
-}
-
-/**
- * The three sample rows teach the FORWARD journey only (Waiting -> Accepted ->
- * Referred; no failure states in a first-run teaching moment). Next-step lines
- * reuse the shipped askNextLine copy verbatim so the teaching stays accurate
- * (mock design/goal-ui/captures/my-asks/myasks-sample-390). Placeholder-by-
- * inspection names; dates derive from today so they never stale.
- */
-function sampleAskRows(nowMs: number): GoalSampleRow[] {
-  const day = 24 * 60 * 60 * 1000;
-  const at = (offsetDays: number) => formatDay(new Date(nowMs - offsetDays * day).toISOString()) ?? "";
-  return [
-    { company: "Sample Co.", title: "Product Designer", status: "waiting", label: "Waiting", stepper: { stage: 0 }, verb: "Sent", day: at(0), next: "Expires in 7 days if nobody picks it up. The credit comes back." },
-    { company: "Example Industries", title: "Frontend Engineer", status: "accepted", label: "Accepted", stepper: { stage: 2 }, verb: "Accepted", day: at(2), next: "Your referrer submits it, then marks it Referred." },
-    { company: "Placeholder Ltd.", title: "Data Analyst", status: "referred", label: "Referred", stepper: { stage: 3 }, verb: "Referred", day: at(4), next: "Watch your email for their recruiters. Companies decide hiring." },
-  ];
 }
 
 export default function MyRequests() {
@@ -223,7 +248,7 @@ export default function MyRequests() {
         <div className="px-1 gdesk:px-2">
           {active.length > 0 ? (
             <GoalListSection label="Active" count={active.length}>
-              {active.map(request => <AskRow key={request.id} request={request} nowMs={nowMs} />)}
+              {active.map(request => <AskRow key={request.id} request={request} nowMs={nowMs} getToken={fetchToken} onInviteChanged={() => requestsQuery.refetch()} />)}
             </GoalListSection>
           ) : requests.length > 0 ? (
             <section className="px-3 pt-5" aria-labelledby="no-open-asks">
@@ -233,7 +258,7 @@ export default function MyRequests() {
           ) : null}
           {closed.length > 0 ? (
             <GoalListSection label="Closed" count={closed.length}>
-              {closed.map(request => <AskRow key={request.id} request={request} nowMs={nowMs} />)}
+              {closed.map(request => <AskRow key={request.id} request={request} nowMs={nowMs} getToken={fetchToken} onInviteChanged={() => requestsQuery.refetch()} />)}
             </GoalListSection>
           ) : requests.length === 0 ? null : (
             <section className="px-3 pt-5" aria-labelledby="nothing-closed">
@@ -243,22 +268,12 @@ export default function MyRequests() {
           )}
         </div>
         {requests.length === 0 ? (
-          requestsQuery.data?.hasEverAsked === false ? (
-            <>
-              <GoalSampleRows rows={sampleAskRows(nowMs)} caption="Samples show what a real ask looks like. They are not counted in your open asks and disappear after your first real ask." />
-              <div className="mt-3 flex flex-wrap items-center gap-4 px-3 gdesk:px-4">
-                <GoalButton variant="ghost" onClick={() => go("/explore")}>Explore companies</GoalButton>
-                <Link href="/onboarding" className="text-g-meta text-g-ink-2 underline underline-offset-[3px] hover:text-g-ink">Finish setup</Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <GoalEmptyState className="pb-3" title="No asks yet." body="Pick a company, find a verified referrer, and write one great ask." action={{ label: "Explore companies", onClick: () => go("/explore") }} />
-              <p className="px-5 pb-6 max-gdesk:px-4">
-                <Link href="/onboarding" className="text-g-meta text-g-ink-2 underline underline-offset-[3px] hover:text-g-ink">Finish setup</Link>
-              </p>
-            </>
-          )
+          <>
+            <GoalEmptyState className="pb-3" title="No asks yet." body="Pick a company, find a verified referrer, and write one great ask." action={{ label: "Explore companies", onClick: () => go("/explore") }} />
+            <p className="px-5 pb-6 max-gdesk:px-4">
+              <Link href="/onboarding" className="text-g-meta text-g-ink-2 underline underline-offset-[3px] hover:text-g-ink">Finish setup</Link>
+            </p>
+          </>
         ) : null}
       </>
     );

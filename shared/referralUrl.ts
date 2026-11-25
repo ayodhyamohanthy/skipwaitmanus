@@ -1,4 +1,7 @@
-export const TARGET_ROLE_URL_ERROR = "Paste a complete job link that starts with http:// or https://.";
+// Shown only when the field holds something that cannot be a link at all (for
+// example "product designer at Acme"). A link without "https://" is never an
+// error: completeTargetRoleUrl adds it (owner, Nov 19 2026).
+export const TARGET_ROLE_URL_ERROR = "That doesn't look like a job link yet. Copy the link from the job posting and paste it here.";
 
 export type ReviewedEmployer = { name: string; domain: string };
 
@@ -10,19 +13,63 @@ const reviewedEmployerLinks = new Map<string, ReviewedEmployer>([
   ["linkedin.com/jobs/view/4389299303", { name: "MakeMyTrip", domain: "makemytrip.com" }],
 ]);
 
+// A bare host such as "careers.acme.com", "www.linkedin.com/jobs/view/123" or
+// "acme.com:8443/jobs": dot-separated labels ending in a letters-only TLD,
+// then an optional port, then a path, query, fragment or the end.
+const BARE_HOST_LINK = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?::\d{1,5})?(?:[/?#]|$)/i;
+const EMBEDDED_WEB_LINK = /https?:\/\/[^\s<>"'`]+/i;
+const WRAPPING = /^[\s<>"'`({[]+|[\s<>"'`)}\]]+$/g;
+
+function parsedWebUrl(candidate: string): URL | null {
+  try {
+    const url = new URL(candidate);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.hostname ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Turns whatever a seeker pasted into a complete web link, so nobody is told to
+ * retype "https://" (owner, Nov 19 2026: no error, fix it automatically).
+ * Handles a bare host ("careers.acme.com/jobs/1" becomes "https://…"), a
+ * protocol-relative "//host/…", wrapping quotes or angle brackets, and a link
+ * pasted inside other text ("Apply here: https://…"). Anything it cannot turn
+ * into an http(s) link (plain words, mailto:, javascript:) comes back
+ * unchanged, so the result is always safe to put back in the field.
+ */
+export function completeTargetRoleUrl(value: string): string {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  if (parsedWebUrl(trimmed)) return trimmed;
+  const embedded = trimmed.match(EMBEDDED_WEB_LINK)?.[0];
+  if (embedded) {
+    // Sentence punctuation after a pasted link is not part of it; a closing
+    // bracket is kept only when the link opened one (Wikipedia-style paths).
+    let link = embedded.replace(/[.,;:!?]+$/, "");
+    while (/[)\]}]$/.test(link) && !/[([{]/.test(link)) link = link.slice(0, -1).replace(/[.,;:!?]+$/, "");
+    if (parsedWebUrl(link)) return link;
+  }
+  const bare = trimmed.replace(/[.,;:!?]+$/, "").replace(WRAPPING, "").replace(/[.,;:!?]+$/, "");
+  if (/\s/.test(bare)) {
+    // Text around a "www." link without its scheme ("Apply here: www.acme.com/jobs/1").
+    const www = bare.match(/(?:^|[\s(<"'`])(www\.[^\s<>"'`]+)/i)?.[1]?.replace(/[.,;:!?)\]}]+$/, "");
+    const completed = www && BARE_HOST_LINK.test(www) ? `https://${www}` : null;
+    return completed && parsedWebUrl(completed) ? completed : value;
+  }
+  const withScheme = bare.startsWith("//") ? `https:${bare}` : BARE_HOST_LINK.test(bare) ? `https://${bare}` : null;
+  return withScheme && parsedWebUrl(withScheme) ? withScheme : value;
+}
+
 export function isValidTargetRoleUrl(value: string | undefined | null) {
   if (!value?.trim()) return false;
-  try {
-    const url = new URL(value.trim());
-    return (url.protocol === "http:" || url.protocol === "https:") && Boolean(url.hostname);
-  } catch {
-    return false;
-  }
+  return parsedWebUrl(completeTargetRoleUrl(value).trim()) !== null;
 }
 
 export function normalizeTargetRoleUrl(value: string) {
   try {
-    const url = new URL(value.trim());
+    const url = new URL(completeTargetRoleUrl(value).trim());
     url.hash = "";
     const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
     url.hostname = hostname;
@@ -76,7 +123,7 @@ export const HOSTED_JOB_PLATFORMS = [
  */
 export function jobLinkFitsCompany(value: string, companyDomains: readonly string[]): boolean {
   let host: string;
-  try { host = new URL(value.trim()).hostname.toLowerCase().replace(/^www\./, ""); } catch { return false; }
+  try { host = new URL(completeTargetRoleUrl(value).trim()).hostname.toLowerCase().replace(/^www\./, ""); } catch { return false; }
   const on = (domain: string) => host === domain || host.endsWith(`.${domain}`);
   return companyDomains.some(domain => on(domain.trim().toLowerCase())) || HOSTED_JOB_PLATFORMS.some(on);
 }

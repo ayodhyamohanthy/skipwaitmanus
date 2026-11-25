@@ -7,8 +7,8 @@ import {
 } from "./jobCatalog";
 
 describe("job catalog contracts (D-174-job-catalog)", () => {
-  it("ships with the switch off (D-097)", () => {
-    expect(JOB_CATALOG_ENABLED).toBe(false);
+  it("ships with the switch on since the D-394 release (owner, Nov 24: jobs list live once sources are verified)", () => {
+    expect(JOB_CATALOG_ENABLED).toBe(true);
   });
 
   it("companyJobSourceSchema rejects unknown fields", () => {
@@ -22,15 +22,17 @@ describe("job catalog contracts (D-174-job-catalog)", () => {
     expect(() => companyJobSourceSchema.parse({ ...base, unexpected: true })).toThrow();
   });
 
-  it("companyJobSourceSchema refuses a provider this row does not cover", () => {
+  it("companyJobSourceSchema accepts greenhouse, ashby, lever and refuses others", () => {
     const base = {
       companyId: 1,
-      provider: "workday",
-      boardToken: "stripe",
-      evidenceUrl: "https://stripe.com/jobs",
+      boardToken: "test",
+      evidenceUrl: "https://example.com/jobs",
       status: "verified",
     };
-    expect(() => companyJobSourceSchema.parse(base)).toThrow();
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "greenhouse" }).success).toBe(true);
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "ashby" }).success).toBe(true);
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "lever" }).success).toBe(true);
+    expect(companyJobSourceSchema.safeParse({ ...base, provider: "workday" }).success).toBe(false);
   });
 
   it("catalogJobSchema rejects unknown fields and out-of-range levels", () => {

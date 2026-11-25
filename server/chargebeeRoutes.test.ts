@@ -2,9 +2,12 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
-// These cases test selling passes, so they run with pass sales on; the shipped
-// off state (D-084) is pinned in server/passSalesSwitch.test.ts.
-vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true }));
+// These cases test selling passes and the legacy per-credit checkout itself, so
+// they run with pass sales on and the Oct 25 2026 legacy-pricing pause lifted.
+// The shipped states are pinned elsewhere: pass sales off (D-084) in
+// server/passSalesSwitch.test.ts, and the pause keeping the single credit retired
+// (PR #666 review F1) in server/chargebeeReferrerPurchase.test.ts.
+vi.mock("../shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("../shared/planCatalog")>()), PASS_SALES_ENABLED: true, LEGACY_PACK_SALES_PAUSED: false }));
 
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;

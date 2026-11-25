@@ -1,0 +1,871 @@
+{
+  "sha": "5adfa86af1",
+  "build": "VITE_GOAL_SURFACES=sign-in pnpm build",
+  "fixtures": "fictional, scripted per state in this manifest (no shared 00_goal-* fixture signs a persona out)",
+  "persona": "signed out",
+  "deviceScaleFactor": 2,
+  "captures": [
+    {
+      "file": "sign-in/seeker-1280.png",
+      "route": "/sign-in",
+      "state": "seeker",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-390.png",
+      "route": "/sign-in",
+      "state": "seeker",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-passkey-1280.png",
+      "route": "/sign-in",
+      "state": "seeker-passkey",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-passkey-390.png",
+      "route": "/sign-in",
+      "state": "seeker-passkey",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-error-1280.png",
+      "route": "/sign-in",
+      "state": "seeker-error",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-error-390.png",
+      "route": "/sign-in",
+      "state": "seeker-error",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-code-1280.png",
+      "route": "/sign-in",
+      "state": "seeker-code",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/seeker-code-390.png",
+      "route": "/sign-in",
+      "state": "seeker-code",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/referrer-1280.png",
+      "route": "/sign-in?intent=referrer",
+      "state": "referrer",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/referrer-390.png",
+      "route": "/sign-in?intent=referrer",
+      "state": "referrer",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/referrer-error-1280.png",
+      "route": "/sign-in?intent=referrer",
+      "state": "referrer-error",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ]
+    },
+    {
+      "file": "sign-in/referrer-error-390.png",
+      "route": "/sign-in?intent=referrer",
+      "state": "referrer-error",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send sign-in code"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ]
+    },
+    {
+      "file": "sign-in/referrer-code-1280.png",
+      "route": "/sign-in?intent=referrer",
+      "state": "referrer-code",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Verify & sign in"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "sign-in/referrer-code-390.png",
+      "route": "/sign-in?intent=referrer",
+      "state": "referrer-code",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Sign in to find or give a referral."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Verify & sign in"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "forgot-password/form-1280.png",
+      "route": "/forgot-password",
+      "state": "form",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Get back into your account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send reset link"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "forgot-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "forgot-password/form-390.png",
+      "route": "/forgot-password",
+      "state": "form",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Get back into your account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send reset link"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "forgot-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "forgot-password/error-1280.png",
+      "route": "/forgot-password",
+      "state": "error",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Get back into your account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send reset link"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "forgot-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ]
+    },
+    {
+      "file": "forgot-password/error-390.png",
+      "route": "/forgot-password",
+      "state": "error",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Get back into your account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send reset link"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "forgot-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ]
+    },
+    {
+      "file": "forgot-password/sent-1280.png",
+      "route": "/forgot-password",
+      "state": "sent",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Get back into your account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Back to sign in"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "forgot-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "forgot-password/sent-390.png",
+      "route": "/forgot-password",
+      "state": "sent",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Get back into your account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Back to sign in"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "forgot-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reset-password/no-token-1280.png",
+      "route": "/reset-password",
+      "state": "no-token",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send a new link"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reset-password/no-token-390.png",
+      "route": "/reset-password",
+      "state": "no-token",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Send a new link"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reset-password/form-1280.png",
+      "route": "/reset-password?token=fixture-token",
+      "state": "form",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Update password"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reset-password/form-390.png",
+      "route": "/reset-password?token=fixture-token",
+      "state": "form",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Update password"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reset-password/unreachable-1280.png",
+      "route": "/reset-password?token=fixture-token",
+      "state": "unreachable",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Try again"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ]
+    },
+    {
+      "file": "reset-password/unreachable-390.png",
+      "route": "/reset-password?token=fixture-token",
+      "state": "unreachable",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Try again"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ]
+    },
+    {
+      "file": "reset-password/done-1280.png",
+      "route": "/reset-password?token=fixture-token",
+      "state": "done",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Go to sign in"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reset-password/done-390.png",
+      "route": "/reset-password?token=fixture-token",
+      "state": "done",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Set a new password and get back in."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Go to sign in"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reset-password",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reviewer-sign-in/form-1280.png",
+      "route": "/reviewer-sign-in",
+      "state": "form",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Review SkipWait with a demo account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in to review"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "reviewer-sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reviewer-sign-in/form-390.png",
+      "route": "/reviewer-sign-in",
+      "state": "form",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Review SkipWait with a demo account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in to review"
+      ],
+      "blackFilledControls": 0,
+      "nextStepBlocks": 1,
+      "screen": "reviewer-sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:"
+      ]
+    },
+    {
+      "file": "reviewer-sign-in/error-1280.png",
+      "route": "/reviewer-sign-in",
+      "state": "error",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Review SkipWait with a demo account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in to review"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reviewer-sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "file": "reviewer-sign-in/error-390.png",
+      "route": "/reviewer-sign-in",
+      "state": "error",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Review SkipWait with a demo account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in to review"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reviewer-sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "file": "reviewer-sign-in/switched-off-1280.png",
+      "route": "/reviewer-sign-in",
+      "state": "switched-off",
+      "width": 1280,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Review SkipWait with a demo account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in to review"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reviewer-sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "file": "reviewer-sign-in/switched-off-390.png",
+      "route": "/reviewer-sign-in",
+      "state": "switched-off",
+      "width": 390,
+      "horizontalOverflowPx": 0,
+      "h1": [
+        "Review SkipWait with a demo account."
+      ],
+      "primaryCount": 1,
+      "primaryLabel": [
+        "Sign in to review"
+      ],
+      "blackFilledControls": 1,
+      "nextStepBlocks": 1,
+      "screen": "reviewer-sign-in",
+      "unmatchedApi": [
+        "GET /api/trpc/auth.me"
+      ],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Query Error] TRPCClientError: Unable to transform response from server\n    at lu.from (http://localhost:4789/assets/index-BXk4KBlm.js:2:63168)\n    at http:",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    }
+  ]
+}

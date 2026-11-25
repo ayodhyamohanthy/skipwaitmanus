@@ -1,16 +1,22 @@
 import { ArrowLeft, BadgeCheck, Lock, Search, Send, Unlock } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
 import { readApiJson } from "@/lib/apiResponse";
+import { goalSurfaceOn } from "@/lib/goalSurfaces";
+
+// D-048-p3-employer-talent: the goal reskin of this surface (switch only; the
+// goal implementation lives under pages/goal/employer-talent).
+const GoalEmployerTalent = lazy(() => import("./goal/employer-talent/GoalEmployerTalent"));
 
 const UNLOCK_CREDIT_COST = 5;
 type TalentRow = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
 type UnlockedProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; experience: string | null; expertise: string | null };
 
 export default function TalentDiscovery() {
+  if (goalSurfaceOn("employer-talent")) return <Suspense fallback={null}><GoalEmployerTalent /></Suspense>;
   const [, go] = useLocation();
   const [talent, setTalent] = useState<TalentRow[]>([]);
   const [query, setQuery] = useState("");

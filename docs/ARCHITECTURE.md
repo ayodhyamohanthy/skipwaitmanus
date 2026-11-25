@@ -24,12 +24,12 @@ Verified against `main` `e6b87f8` (Oct 18 2026). Line numbers drift: find a func
    - `trust proxy`, then security headers.
    - **Webhook routes before any body parser**, so they get the raw body for signature checks: payment webhooks (Razorpay, PayPal), WorkOS webhooks.
    - Job-link preview routes.
-   - `Server-Timing` on `/api`, plus a log line for responses slower than 800 ms (path only).
+   - `Server-Timing` on `/api` except `/api/auth/*` (`server/_core/apiTiming.ts`), plus a log line for responses slower than 800 ms (path only).
    - JSON and form parsers capped at 256 KB (the two document upload routes have their own parser).
    - Health routes, then the admin smoke fixture (production code, enabled by a Worker var).
    - Account sessions and preferences, then session renewal on `/api`.
-   - Referrer work-email OTP login, password reset.
-   - WorkOS auth when its keys exist; otherwise the dev-auth routes.
+   - Referrer work-email OTP login.
+   - WorkOS auth when its keys exist, with the seeker password routes (`/api/auth/password/*`); otherwise the dev-auth routes, and the password routes answer 503.
    - Error-alert middleware.
    - Domain routes, in this order: `registerPrivateReferralRoutes` (the core: asks, referrals, documents, notifications, admin flow health), company directory, scheduled jobs (the Worker tick, admin job status), employer, DMs, follows, assistants, MCP, OAuth, ask drafts, profile, safety, blocks, payments (consumer order routes always answer 503, D-004), admin billing catalog, public plans catalog, admin billing ledger, Chargebee checkout and webhook.
    - tRPC at `/api/trpc` (`server/routers.ts`; the client uses it only for `auth.me`, talent consent and `profile.mine`).
@@ -156,7 +156,8 @@ Note: `closed` means hired when a referrer accepted, and expired when none did (
 - WorkOS sign-in and work-email OTP converge on that person.
 - Ambiguous cases are frozen for operator review.
 - A suspension covers every alias.
-- Referrers sign in only with a work-email code (D-030, D-049).
+- Referrers sign in only with a work-email code (D-030, D-049); their work email never gets a password or a social session.
+- Seekers sign in with a social provider or email + password, with no code: sign-up and an unconfirmed address get an emailed link, and a password opens a session only after that link (a `workos_password` alias, D-078).
 
 ## 7. Scheduled jobs
 **How they run.** The Worker cron fires hourly and POSTs `/api/internal/jobs/tick` with HMAC(`JWT_SECRET`, minute) (accepted ±1 minute). The server runs each registered job once per window: a `jobRuns` lease, a compare-and-set takeover, up to 3 attempts, Sentry on failure. Status is at `GET /api/admin/jobs`.
@@ -174,12 +175,14 @@ Note: `closed` means hired when a referrer accepted, and expired when none did (
 A new job needs its name in both registries and a contract test (`server/scheduledJobsContract.test.ts` pins the list).
 
 ## 8. Deploy and release truth
-- **Triggers.** A push to `main` starts the deploy workflows independently of CI (they do not wait for it):
-  - `deploy-api.yml` (path-filtered to server, shared, drizzle, worker and build files): `migrate-db` applies `drizzle/deploy`, then tsc, build, a two-phase `wrangler deploy`, a readiness poll, and a check that workers.dev is 404.
-  - `deploy-pages.yml` (path-filtered to client, shared, functions and prerender files): build, `wrangler pages deploy`, then a check that the live `git-commit` meta matches.
-- **CI.** `ci.yml` runs on pull requests and on pushes to `main`: typecheck + token audit + deploy-trigger check; full vitest; build.
-- **Drift and rollback.** `drift-watch.yml` checks on a schedule that live serves the newest runtime commit on main's first-parent chain: the merge commit main deployed, never the pull request's commit inside it (#475). `rollback.yml` is manual.
-- **Release truth.** A green deploy step is not proof. `EXPECTED_SHA=<sha> bash scripts/verify-live-release.sh` must print CONVERGED; for web, `https://skipwait.me` must serve `<meta name="git-commit">` with your SHA.
+This section was checked against `e8e161a06` on November 20, 2026; other sections retain their dated baselines. Full procedure and retry/recovery examples: [`DEPLOY.md`](DEPLOY.md).
+
+- **Triggers and gate.** Main pushes start only matching path-filtered workflows; API and Pages also accept dispatch on main. Before migrations or publication, `scripts/require-green-release.mjs` requires the target's own main push/dispatch CI, including successful exact-SHA typecheck, aggregate tests and production build. PR CI alone is insufficient. Red/cancelled/skipped CI, missing or pending evidence past the wait budget, persistent read errors and recorded newer releases refuse normal deployment. Each production writer rechecks the gate.
+- **API.** `deploy-api.yml`: release gate → source-retirement/reset preflights → migration gate → runtime/pipeline/skip classification. The default-off reviewer-reset boolean selects a complete protected repository-secret pair; preflight and per-job rechecks validate it without exposing credential inputs. Provisioning and same-release sign-in acceptance remain separate. Normal runs check pending `drizzle/deploy` SQL before code ships; pipeline-only does not mean no database access. A verified source-retirement-only run skips migration and rollout. Runtime deploys build, publish, check administrator sign-in and canonical exact-SHA readiness plus the closed direct origin, then move `api-runtime`.
+- **Web.** `deploy-pages.yml`: release gate → build/prerender → guarded Pages upload → exact canonical `git-commit` check. An API-runtime diff first waits for a ready API on that SHA or a descendant. A manual dispatch classifies the tip against its parent, not the live release. API and Pages serialize independently in `deploy-api` and `deploy-pages`, without cancelling in-progress runs; pending runs can be replaced.
+- **CI and liveness.** `ci.yml` runs on PRs, main pushes, dispatch and merge groups; release gates accept main push/dispatch evidence only. Its per-ref cancellation can cancel an earlier deploy's required CI when a later docs-only push starts neither deployment. There is no automatic catch-up: repair the exact failed/cancelled CI run, or dispatch missing CI for the current tip, then rerun/dispatch the affected release. A new main dispatch does not select an arbitrary older SHA.
+- **Deliberate recovery.** `rollback.yml` runs trusted workflow code from main with `target=api|web|all`, a full lowercase target SHA repeated as `commit`/`confirm`, and a reason. It records actor, workflow/target SHAs and run/attempt; the record is not authorization. Each leg keeps target CI and pre-publish checks. API also requires its schema-contract paths to match the workflow SHA and runs no migration/downgrade. Recovery shares `deploy-api`; its web leg also shares `deploy-pages`. For `all`, Web verifies first; the writes are not atomic and verification failure does not undo publication.
+- **Release truth and limits.** Verify each surface's own expected deployed SHA, not current main by assumption. `EXPECTED_SHA=<api-sha> bash scripts/verify-cloudflare-container-release.sh` checks canonical HTTP 200 ready JSON with the exact baked identity and direct-origin 404; it does not inspect Cloudflare's active version, image digest or every container instance. Obtain separately required control-plane evidence through the authorized route. Normal Web verifies its live meta tag; Web recovery also checks Pages' canonical deployment commit. `release-verify.yml` supplies separate smoke evidence but does not auto-trigger on rollback. A green skipped rollout or healthy prior release never proves the candidate deployed. `drift-watch.yml` uses runtime merge commits on main's first-parent chain, not interior PR commits.
 
 ## 9. Tests and the gate
 - **Running.** `pnpm vitest run` collects about 397 files: server, client, scripts. Vitest pins `TZ=UTC` and the `en-US` locale, and the setup fails if a worker resolves another locale.
@@ -205,7 +208,7 @@ A new job needs its name in both registries and a contract test (`server/schedul
 | WorkOS (seekers, admin) | `server/_core/workosAuth.ts`, `client/src/_core/auth.tsx` | Without keys, dev auth runs (local only) |
 | Chargebee (+ Razorpay INR, PayPal USD) | `server/chargebee*.ts` | Site and key chosen by `BILLING_ENV` only; never by host |
 | ZeptoMail, Resend | `server/emailDelivery.ts`, `server/errorAlerting.ts` | User email via ZeptoMail; admin alerts via Resend |
-| Sentry | `server/sentry.ts`, `client/src/lib/sentry.ts` | Only when a DSN is set; path scrubbing |
+| Sentry | `server/sentry.ts`, `client/src/lib/sentry.ts` | Only when a DSN is set; token paths scrubbed by `shared/telemetryScrub.ts` (also admin alerts, FND-4) |
 | AI (any OpenAI-compatible endpoint) | `server/_core/modelRouter.ts`, `server/ai.ts` | Deterministic fallback text; three env values swap the model |
 | R2 / Forge storage | `server/storageCloudflare.ts`, `server/storage.ts` | Database blobs as the last resort |
 | Microsoft Clarity | `client/src/lib/clarity.ts` | Only after "Accept all" consent; skips token pages |
@@ -219,8 +222,7 @@ A new job needs its name in both registries and a contract test (`server/schedul
 2. **Test blind spots:**
    - `*.test.ts` files are not type-checked;
 3. **Privacy hygiene:**
-   - server Sentry and admin-alert paths do not redact the token-bearing API routes (`/api/referrer-fast-track/:linkCode`, `/api/referral-share-cards/public/:shareToken`, `/api/referrer-review-links/:linkToken`);
    - the Pages CSP is report-only with nowhere to report.
-4. **Toolchain:**
-   - deploys do not wait for CI;
-   - `deploy-pages.yml` builds without running tests.
+4. **Release liveness and proof limits:**
+   - API migrations and both deploys now wait for exact-target main CI; tests run in CI rather than a duplicate Pages test step. Per-ref CI cancellation plus deploy path filters can still leave an earlier release without a retry; see §8 and `DEPLOY.md`.
+   - Canonical exact-SHA readiness does not enumerate active Cloudflare versions/images or all instances. Recovery and incident acceptance retain any separate control-plane proof their packet requires.

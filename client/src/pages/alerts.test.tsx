@@ -2,7 +2,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import Alerts from "./Alerts";
 
 const { authState, go } = vi.hoisted(() => ({
@@ -13,15 +13,14 @@ const { authState, go } = vi.hoisted(() => ({
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
   useUser: () => ({ user: null }),
-  SignInButton: ({ children, className }: { children?: React.ReactNode; className?: string }) => <button type="button" className={className}>{children}</button>,
+  SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/alerts", go],
 }));
 
-// Fixed local midday: "12 minutes ago" must be today whatever time CI runs (a run just after
-// midnight UTC used to push these onto yesterday and break the Today group).
+// Fixed local midday keeps relative timestamps stable in both notification groups.
 const now = new Date(2026, 9, 9, 12, 0, 0).getTime();
 const ITEMS = [
   { id: 1, category: "referral", title: "Your ask was accepted", body: "A verified referrer at Wipro accepted", readAt: null, createdAt: new Date(now - 12 * 60000).toISOString() },
@@ -42,65 +41,72 @@ function renderAlerts() {
 const ACCESS_PATH = "/api/company-referrals/access";
 const UNVERIFIED_ACCESS = ok({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
 
+// Load the real chunk before render assertions; the route keeps its lazy boundary.
+beforeAll(async () => { await import("./goal/alerts/GoalAlerts"); });
 beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("Alerts center", () => {
-  it("groups real notifications into Today and Earlier with the unread count on the Notifications tab", async () => {
+  it("groups real notifications into Needs you and Earlier with the unread count on Notifications", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => list()));
     renderAlerts();
-    expect(await screen.findByText("TODAY")).toBeTruthy();
-    expect(screen.getByText("EARLIER")).toBeTruthy();
-    expect(screen.getByText("Your ask was accepted")).toBeTruthy();
-    const tab = screen.getByRole("tab", { name: /Notifications, 2 unread/ });
-    expect(tab.getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Alerts.");
-    expect(screen.getByText("STAY IN THE LOOP")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /Needs you/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Earlier/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Your ask was accepted, unread" })).toBeTruthy();
+    const tab = screen.getByRole("button", { name: /^Notifications/ });
+    expect(tab.getAttribute("aria-pressed")).toBe("true");
+    expect(tab.textContent).toContain("2");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("See what needs you.");
+    expect(screen.queryByText("STAY IN THE LOOP")).toBeNull();
   });
 
-  it("lists rows in kit feed order, newest first even when a newer row is already read", async () => {
+  it("keeps newest-first order within the unread and earlier groups even when the newest row is read", async () => {
     const readNewest = { id: 4, category: "status", title: "Request updated", body: "Your ask moved to Referred", readAt: new Date(now - 2 * 60000).toISOString(), createdAt: new Date(now - 5 * 60000).toISOString() };
     vi.stubGlobal("fetch", vi.fn(async () => list([...ITEMS, readNewest])));
     renderAlerts();
     await screen.findByText("Request updated");
-    const today = screen.getByText("TODAY").parentElement as HTMLElement;
-    expect(within(today).getAllByRole("button").map(row => row.getAttribute("aria-label"))).toEqual(["Request updated", "Your ask was accepted, unread", "New message, unread"]);
+    expect(["Needs you", "Earlier"].map(label => within(screen.getByRole("region", { name: new RegExp(label) })).getAllByRole("button").map(row => row.getAttribute("aria-label")))).toEqual([
+      ["Your ask was accepted, unread", "New message, unread"],
+      ["Request updated", "Weekly summary"],
+    ]);
   });
 
-  it("draws the kit 36px toolbar controls with a 44px tap target", async () => {
+  it("uses the released goal filter controls and an available mark-all action", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => list()));
     renderAlerts();
-    await screen.findByText("Your ask was accepted");
+    await screen.findByRole("button", { name: "Your ask was accepted, unread" });
     for (const name of ["All", "Unread"]) {
-      const classes = screen.getByRole("button", { name }).className.split(" ");
-      expect(classes).toEqual(expect.arrayContaining(["min-h-9", "relative", "before:absolute", "before:-inset-y-1"]));
-      expect(classes).not.toContain("min-h-11");
+      const control = screen.getByRole("button", { name: name === "Unread" ? /^Unread/ : name });
+      const classes = control.className.split(" ");
+      expect(classes).toEqual(expect.arrayContaining(["g-hit", "h-8", "rounded-g-control"]));
+      expect(control.getAttribute("aria-pressed")).toBe(name === "All" ? "true" : "false");
     }
-    const markAll = screen.getByRole("button", { name: "Mark all read" }).className.split(" ");
-    expect(markAll).toEqual(expect.arrayContaining(["h-8", "relative", "before:absolute", "before:-inset-y-1.5"]));
-    expect(markAll).not.toContain("min-h-11");
+    const markAll = screen.getByRole("button", { name: "Mark all read" });
+    expect(markAll.getAttribute("aria-disabled")).toBeNull();
+    expect(markAll).toHaveProperty("disabled", false);
   });
 
   it("filters to unread and celebrates caught-up state honestly", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => list()));
     renderAlerts();
-    await screen.findByText("Your ask was accepted");
-    fireEvent.click(screen.getByRole("button", { name: "Unread" }));
-    expect(screen.getByRole("button", { name: "Unread" }).getAttribute("aria-pressed")).toBe("true");
+    await screen.findByRole("button", { name: "Your ask was accepted, unread" });
+    fireEvent.click(screen.getByRole("button", { name: /^Unread/ }));
+    expect(screen.getByRole("button", { name: /^Unread/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByText("Weekly summary")).toBeNull();
-    expect(screen.queryByText("You're all caught up.")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "You are all caught up." })).toBeNull();
   });
 
   it("marks every unread item read in one action", async () => {
     const fetchMock = vi.fn(async (url: string) => String(url).endsWith("/read") ? ok({ success: true }) : list());
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
-    await screen.findByText("Your ask was accepted");
+    await screen.findByRole("button", { name: "Your ask was accepted, unread" });
     fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/read")).length).toBe(2));
-    fireEvent.click(screen.getByRole("button", { name: "Unread" }));
-    expect(await screen.findByText("You're all caught up.")).toBeTruthy();
-    expect(screen.queryByRole("tab", { name: /unread/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Unread/ }));
+    expect(await screen.findByRole("heading", { name: "You are all caught up." })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Needs you/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Notifications" }).textContent).toBe("Notifications");
   });
 
   it("keeps an item unread when the server does not confirm the read", async () => {
@@ -111,12 +117,12 @@ describe("Alerts center", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
-    await screen.findByText("Your ask was accepted");
+    await screen.findByRole("button", { name: "Your ask was accepted, unread" });
     fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
     expect(await screen.findByText("Some alerts could not be marked read. Try again.")).toBeTruthy();
     expect(screen.getByRole("button", { name: /New message, unread/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Your ask was accepted" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: /Notifications, 1 unread/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Notifications/ }).textContent).toContain("1");
   });
 
   it("shows a truthful empty state with no fabricated activity", async () => {
@@ -124,13 +130,8 @@ describe("Alerts center", () => {
     renderAlerts();
     expect(await screen.findByText("No notifications yet.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Explore companies" })).toBeTruthy();
-    // Idle kit ghost (aria-disabled), not the native disabled grey pill; clicking it does nothing.
-    const markAll = screen.getByRole("button", { name: "Mark all read" });
-    expect(markAll.getAttribute("aria-disabled")).toBe("true");
-    expect(markAll).toHaveProperty("disabled", false);
-    const calls = vi.mocked(fetch).mock.calls.length;
-    fireEvent.click(markAll);
-    expect(vi.mocked(fetch).mock.calls.length).toBe(calls);
+    expect(screen.queryByRole("button", { name: "Mark all read" })).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/read"))).toEqual([]);
     expect(screen.getByText("When a referrer replies or a new one opens at your alert companies, it lands here.")).toBeTruthy();
   });
 
@@ -138,11 +139,11 @@ describe("Alerts center", () => {
     let release: (reply: FetchReply) => void = () => undefined;
     vi.stubGlobal("fetch", vi.fn((url: string) => String(url) === ACCESS_PATH ? Promise.resolve(UNVERIFIED_ACCESS) : new Promise<FetchReply>(resolve => { release = resolve; })));
     renderAlerts();
-    expect(await screen.findByText("Loading your alerts…")).toBeTruthy();
+    expect(await screen.findByText(/Loading your alerts…/)).toBeTruthy();
     expect(screen.queryByText("No notifications yet.")).toBeNull();
     release(list([]));
     expect(await screen.findByText("No notifications yet.")).toBeTruthy();
-    expect(screen.queryByText("Loading your alerts…")).toBeNull();
+    expect(screen.queryByText(/Loading your alerts…/)).toBeNull();
   });
 
   it("surfaces a load error and recovers on Try again", async () => {
@@ -154,17 +155,17 @@ describe("Alerts center", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
-    const alert = await screen.findByRole("alert");
+    const alert = await screen.findByText(/Sign in to view your private updates/);
     expect(alert.textContent).toContain("Sign in to view your private updates");
-    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("Your ask was accepted")).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("button", { name: "Your ask was accepted, unread" })).toBeTruthy();
+    expect(screen.queryByText(/Sign in to view your private updates/)).toBeNull();
   });
 
   it("explains a network failure instead of leaking the raw fetch error", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderAlerts();
-    const alert = await screen.findByRole("alert");
+    const alert = await screen.findByText(/We could not reach skipwait.me/);
     expect(alert.textContent).toContain("We could not reach skipwait.me. Check your connection and try again.");
     expect(alert.textContent).not.toContain("Failed to fetch");
   });
@@ -172,7 +173,7 @@ describe("Alerts center", () => {
   it("rejects a malformed payload instead of rendering a partial list", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok({ notifications: [{ id: "x", title: 4 }] })));
     renderAlerts();
-    expect((await screen.findByRole("alert")).textContent).toContain("We could not load your alerts");
+    expect((await screen.findByText(/We could not load your alerts/)).textContent).toContain("We could not load your alerts");
     expect(screen.queryByText("No notifications yet.")).toBeNull();
   });
 
@@ -183,24 +184,24 @@ describe("Alerts center", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
-    await screen.findByText("Your ask was accepted");
-    fireEvent.click(screen.getByRole("tab", { name: "Saved alerts" }));
-    expect(screen.getByRole("tab", { name: "Saved alerts" }).getAttribute("aria-selected")).toBe("true");
+    await screen.findByRole("button", { name: "Your ask was accepted, unread" });
+    fireEvent.click(screen.getByRole("button", { name: "Saved alerts" }));
+    expect(screen.getByRole("button", { name: "Saved alerts" }).getAttribute("aria-pressed")).toBe("true");
     expect(await screen.findByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
-    expect(await screen.findByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(await screen.findByText("Free: 3 alerts")).toBeTruthy();
     expect(screen.getByRole("button", { name: "New alert" })).toBeTruthy();
     for (const fake of [/Merkle/, /Instant · push and email/, /Saved company alerts aren't available yet/]) expect(screen.queryByText(fake)).toBeNull();
     expect(screen.queryByRole("button", { name: "Mark all read" })).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith("/api/seeker-alerts", expect.objectContaining({ credentials: "include" }));
   });
 
-  it("gates signed-out visitors without fetching private updates", () => {
+  it("gates signed-out visitors without fetching private updates", async () => {
     authState.isSignedIn = false;
     const fetchMock = vi.fn(async () => list());
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
-    expect(screen.getByText("Alerts need you signed in.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.getByText("Replies, accepted referral requests and allowance updates land here once you sign in.")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -218,9 +219,9 @@ describe("Alerts center", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
-    fireEvent.click(await screen.findByRole("tab", { name: "Saved alerts" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Saved alerts" }));
     expect(await screen.findByText("acme.com")).toBeTruthy();
-    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "New alert" }));
     fireEvent.change(screen.getByPlaceholderText("acme.com"), { target: { value: "Globex" } });
     fireEvent.click(screen.getByRole("button", { name: "Save alert" }));

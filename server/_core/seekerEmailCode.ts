@@ -1,62 +1,65 @@
 import type { Express, Request, Response } from "express";
 import { COOKIE_NAME } from "@shared/const";
+import { PASSWORD_AUTH_COPY } from "@shared/passwordAuth";
 import { resolveLoginIdentity } from "../db";
 import { OtpLockedError } from "../otpPolicy";
 import { workEmailOtpService } from "../workEmailOtp";
+import { isTrustedAuthPost } from "./authPostGuard";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { resolveTrustedClientIp } from "./trustedClientIp";
+import { isEmailShape, recordAuthEvent, type AuthReason } from "../authEvents";
 
 /**
- * Job-seeker email sign-in on skipwait.me (no hosted authkit.app screen, no WorkOS dashboard feature needed).
- * We create and verify the six-digit code ourselves with the same hardened store the referrer OTP uses
- * (hashed codes, single use, 10 minute expiry, attempt cap, send and verify rate limits, lockout), email it from
- * our own sender, then resolve the verified email to the one canonical account and issue the normal session.
- * The seeker path does NOT enrol a work email, so it never makes anyone a referrer. Referrers keep the work-email
- * OTP only (server/_core/otpLogin.ts). FOUNDER-LOCKED login rule, Oct 16 2026.
- * Send never reveals whether an account exists. Codes are never logged.
+ * The retired job-seeker email code (D-049, D-078 ruling 1). Seekers now sign in with a social provider or email +
+ * password; each code was an email SkipWait paid to send. Send answers 410 for everyone and never emails anything.
+ * Verify keeps finishing a code that was already emailed until SEEKER_CODE_VERIFY_UNTIL (cached app versions), then
+ * answers 410 too. It still uses the hardened referrer OTP store (hashed codes, single use, attempt cap, lockout),
+ * resolves the verified email to the one canonical account and never enrols a work email. Codes are never logged.
  */
+/**
+ * The last instant an already-emailed seeker code can sign anyone in. Whoever lands this branch on main sets it to
+ * the landing time + 24 hours (D-078 ruling 1); the default below is that day for a landing on Oct 21 2026.
+ */
+export const SEEKER_CODE_VERIFY_UNTIL = new Date("2026-11-25T00:00:00Z");
+export const SEEKER_CODE_RETIRED_MESSAGE = "Email codes are retired. Sign in with your password, or use Forgot password.";
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const normalizeEmail = (value: unknown) => typeof value === "string" ? value.trim().toLowerCase() : "";
 
-type Deps = { service?: Pick<typeof workEmailOtpService, "sendCode" | "verifyCode"> };
+type Deps = { service?: Pick<typeof workEmailOtpService, "verifyCode">; now?: () => number };
 
 export function registerSeekerEmailCodeRoutes(app: Express, deps: Deps = {}) {
   const service = deps.service ?? workEmailOtpService;
+  const now = deps.now ?? (() => Date.now());
+  const retired = (res: Response) => res.status(410).set("Cache-Control", "no-store").json({ error: SEEKER_CODE_RETIRED_MESSAGE });
+  // ADMIN-activity-log (D-393): a cached app still using the retired code shows up in the log, never the code.
+  const event = (req: Request, outcome: "success" | "failure" | "denied", extra: { reason?: AuthReason; userId?: number } = {}) => {
+    const email = normalizeEmail(req.body?.email);
+    void recordAuthEvent(req, { action: "auth.seeker_email_code", outcome, method: "email_code", plane: "seeker", ...(isEmailShape(email) ? { email } : {}), ...extra });
+  };
 
-  app.post("/api/auth/workos/email-code/send", async (req: Request, res: Response) => {
-    try {
-      const email = normalizeEmail(req.body?.email);
-      if (!EMAIL.test(email) || email.length > 320) return res.status(400).json({ error: "Enter a valid email address" });
-      const result = await service.sendCode(email, { ip: resolveTrustedClientIp(req) || "unknown", seeker: true });
-      if (result.sent) return res.json({ sent: true });
-      if (result.reason === "rate_limited") {
-        const retryAfterSeconds = result.retryAfterSeconds ?? 600;
-        res.set("Retry-After", String(retryAfterSeconds));
-        return res.status(429).json({ error: retryAfterSeconds <= 30 ? "Wait a moment before requesting another code." : "Too many code requests. Wait before trying again.", retryAfterSeconds });
-      }
-      if (result.reason === "invalid_domain" || result.reason === "invalid_email") return res.status(400).json({ error: "Enter a deliverable email address" });
-      if (result.reason === "not_configured") return res.status(503).json({ error: "Email delivery is not configured yet" });
-      return res.status(502).json({ error: "We could not deliver the code. Try again shortly." });
-    } catch {
-      res.status(500).json({ error: "We could not send the sign-in code" });
-    }
-  });
+  app.post("/api/auth/workos/email-code/send", (req: Request, res: Response) => { event(req, "denied", { reason: "retired" }); retired(res); });
 
   app.post("/api/auth/workos/email-code/verify", async (req: Request, res: Response) => {
+    if (now() >= SEEKER_CODE_VERIFY_UNTIL.getTime()) { event(req, "denied", { reason: "retired" }); return retired(res); }
+    // Review F3: the same login-CSRF guard as every auth POST, so a cross-site form cannot sign a victim in.
+    if (!isTrustedAuthPost(req)) return res.status(403).set("Cache-Control", "no-store").json({ error: PASSWORD_AUTH_COPY.forbidden_origin });
     const email = normalizeEmail(req.body?.email);
     const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
     if (!EMAIL.test(email) || email.length > 320 || !/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the six-digit code from your email" });
     try {
       const verified = await service.verifyCode(email, code, { ip: resolveTrustedClientIp(req) || "unknown", seeker: true });
-      if (!verified) return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
+      if (!verified) { event(req, "failure", { reason: "wrong_code" }); return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." }); }
       const openId = `emailcode_${email}`;
       const account = await resolveLoginIdentity({ provider: "email_code", subject: email, openId, email, emailVerified: true, name: email.split("@")[0], loginMethod: "email_code" });
-      if (account.suspended) return res.status(403).json({ error: "We could not complete sign-in. Contact support@skipwait.me." });
-      const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email });
+      if (account.suspended) { event(req, "denied", { reason: "suspended", userId: account.id }); return res.status(403).json({ error: "We could not complete sign-in. Contact support@skipwait.me." }); }
+      const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email, authTime: Math.floor(Date.now() / 1000) });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
+      event(req, "success", { userId: account.id });
       res.json({ signedIn: true });
     } catch (error) {
+      event(req, error instanceof OtpLockedError ? "denied" : "failure", { reason: error instanceof OtpLockedError ? "locked" : error instanceof Error && error.message === "ACCOUNT_NOT_ACTIVE" ? "suspended" : "unavailable" });
       if (error instanceof OtpLockedError) { res.set("Retry-After", String(error.retryAfterSeconds)); return res.status(429).json({ error: "Too many tries. Try again later.", retryAfterSeconds: error.retryAfterSeconds }); }
       if (error instanceof Error && (error.message === "ACCOUNT_NOT_ACTIVE" || error.message === "IDENTITY_REVIEW_REQUIRED")) return res.status(403).json({ error: "We could not complete sign-in. Contact support@skipwait.me." });
       res.status(500).json({ error: "We could not verify the code" });

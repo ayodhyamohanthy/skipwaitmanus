@@ -1,0 +1,250 @@
+{
+  "task": "D-048-K-developers",
+  "beforeSource": "b1d0882efde27470378ff8f25e107c7d5756ef3a",
+  "afterSource": "8a2c846bf5f40938a969216cc8597d28b8d2a375",
+  "pairs": [
+    {
+      "name": "public",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "signed-out",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "list",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "empty",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "load-error",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "details",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "in-review",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "rejected",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "suspended",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "not-found",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "register",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "edit-rejected",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "webhook-saved",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "submitted",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "registered",
+      "width": 1280,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "public",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "signed-out",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "list",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "empty",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "load-error",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "details",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "in-review",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "rejected",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "suspended",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "not-found",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "register",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "edit-rejected",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "webhook-saved",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "submitted",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    },
+    {
+      "name": "registered",
+      "width": 390,
+      "requestsEqual": true,
+      "metricsEqual": true,
+      "pngBytesIdentical": true,
+      "differentPixels": 0
+    }
+  ],
+  "synthetic": true,
+  "productionRequests": 0,
+  "limits": "Local Vite released-goal baseline versus unconditional adapters, all API/telemetry intercepted. Per-file source hashes identify rendered files; no clean-tree, real signed-in or canonical-live proof is claimed."
+}

@@ -1,0 +1,63 @@
+{
+  "task": "D-174-seeker-journey-build.composer-neutral",
+  "checkedAtUtc": "2026-11-20T19:46:52Z",
+  "pullRequest": 1401,
+  "finalHead": "5aff97c5b28894c8fb04e6627371e347908648ea",
+  "mergeCommit": "0ee387d5f81cdb1a288b509bb145530fd6d87e45",
+  "mergedAtUtc": "2026-11-20T19:27:06Z",
+  "requiredPrCi": {
+    "runId": 44801592838,
+    "conclusion": "success",
+    "typecheck": "success",
+    "unitShards": ["success", "success", "success"],
+    "unitAggregate": "success",
+    "productionBuild": "success",
+    "e2eJourneys": { "conclusion": "success", "passed": 13 },
+    "deployMigrations": { "firstPassApplied": 54, "secondPassApplied": 0 }
+  },
+  "mainCi": { "runId": 44802248564, "conclusion": "success" },
+  "pagesDeployment": { "runId": 44802248475, "conclusion": "success", "headSha": "0ee387d5f81cdb1a288b509bb145530fd6d87e45" },
+  "canonicalWeb": {
+    "path": "/explore/wipro?open",
+    "metaCommit": "0ee387d5f81cdb1a288b509bb145530fd6d87e45",
+    "drawerTitle": "Request a referral",
+    "sendLabel": "Send referral request",
+    "costLine": "Uses 1 from your balance when a verified employee can see it",
+    "viewports": [
+      { "width": 1280, "height": 900, "horizontalOverflow": false, "capture": "live-compose-1280.png", "sha256": "48fb80b271511802df410cb5a49e5019d00f31b4fe0e49c7b29f73fb3ecc29f4" },
+      { "width": 390, "height": 844, "horizontalOverflow": false, "capture": "live-compose-390.png", "sha256": "c47c1d23dcf18ce9819bce2105c5332da2f0c0908d809a469044af234fca5d4b" }
+    ]
+  },
+  "compatibleApi": {
+    "commitSha": "e8e161a06797a1c29d8e16fbec858bb361803c04",
+    "canonicalHttpStatus": 200,
+    "service": "skipwait-api",
+    "state": "ready",
+    "directOriginHttpStatus": 404,
+    "verificationOutput": "RUNTIME CONVERGED: release=e8e161a06797a1c29d8e16fbec858bb361803c04 state=ready direct_origin=closed",
+    "serverSharedSchemaWorkerDeltaSinceApiSource": false,
+    "newApiRolloutClaimed": false
+  },
+  "localAffectedTests": { "filesPassed": 11, "testsPassed": 146 },
+  "localFullGate": {
+    "conclusion": "stopped_incomplete",
+    "typecheck": "success",
+    "failuresObserved": [
+      { "file": "scripts/nextTask.test.ts", "case": "review-verdict refresh", "durationMs": 21403 },
+      { "file": "scripts/classifyCiChange.test.ts", "case": "400-commit classifier fixture", "durationMs": 68077 }
+    ],
+    "finalTotalsAvailable": false,
+    "chainedBuildReached": false
+  },
+  "limits": {
+    "readOnlyLiveRendering": true,
+    "existingDemoSession": true,
+    "signInOrResetPerformed": false,
+    "requestCreated": false,
+    "resumeUploaded": false,
+    "notificationSent": false,
+    "checkoutOrPayment": false,
+    "liveDeliveryOrOutcomeAnalyticsClaimed": false,
+    "initialPythonHttpProbe": "403; acceptance established by browser and curl readbacks"
+  }
+}

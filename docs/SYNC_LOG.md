@@ -1,5 +1,7 @@
 # Sync Log
 
+Frozen history: this log stopped growing on October 20, 2026 under D-082; each deploy's record now lives in its GitHub Actions run summary.
+
 Machine-appended by CI after every deploy attempt. Columns: timestamp | workflow | commit | status.
 
 | Timestamp | Workflow | Commit | Status |

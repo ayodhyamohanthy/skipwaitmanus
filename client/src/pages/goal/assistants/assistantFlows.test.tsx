@@ -103,4 +103,82 @@ describe("goal assistant flows",()=>{
      expect(screen.queryByRole("button", { name: "Send referral" })).toBeNull();
    });
  });
+
+ it("sends the cost it shows and, on 409 cost_changed, shows the new cost and re-approves at it (#644)", async () => {
+   const approval = { id: 12, kind: "ask_send", status: "pending", provider: "custom", companyDomain: "fictional.invalid", role: "Fictional role", note: "Confirmed skill", creditCount: 1, slotCount: 1, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() };
+   let current = { level: 5, cost: 5 };
+   let posts = 0;
+   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+     if (init?.method === "POST") {
+       posts += 1;
+       if (posts === 1) { current = { level: 6, cost: 6 }; return response({ error: "This referral request now costs 6 referrals. Approve again to send it at that cost.", code: "cost_changed", cost: current }, 409); }
+       return response({ approval: { id: 12, status: "approved" } });
+     }
+     if (url.includes("summary")) return response({ summary: { totalAvailable: 8 } });
+     return response({ approvals: [{ ...approval, status: posts > 1 ? "approved" : "pending", cost: current }] });
+   });
+   vi.stubGlobal("fetch", fetch);
+   render(<GoalApprove />);
+   expect(await screen.findByText("5 referrals")).toBeTruthy();
+   fireEvent.click(screen.getByRole("button", { name: "Send referral" }));
+   expect(await screen.findByText("This referral request now costs 6 referrals. Approve again to send it at that cost.")).toBeTruthy();
+   expect(await screen.findByText("6 referrals")).toBeTruthy();
+   expect(screen.queryByText("Decision recorded")).toBeNull();
+   fireEvent.click(screen.getByRole("button", { name: "Send referral" }));
+   expect(await screen.findByText("Decision recorded")).toBeTruthy();
+   const bodies = fetch.mock.calls.filter(([, init]) => init?.method === "POST").map(([, init]) => JSON.parse(String(init?.body)));
+   expect(bodies).toEqual([
+     { decision: "approved", kind: "ask_send", expectedCost: { level: 5, cost: 5 } },
+     { decision: "approved", kind: "ask_send", expectedCost: { level: 6, cost: 6 } },
+   ]);
+ });
+
+  it("renders auto-send toggle only when autoSendAvailable and grant has send scope, and confirms with limits and referral warning", async () => {
+    const agentWithoutSend = { id: 8, name: "Helper 1", keyPrefix: "sw_h1", scopes: ["lookup", "draft"], limits: { creditsPerAsk: 1, creditsPerDay: 2, creditsPerWeek: 3, asksPerDay: 1 }, autoSend: false, status: "active", expiresAt: new Date(Date.now() + 86400000).toISOString(), lastUsedAt: null, createdAt: new Date().toISOString() };
+    const agentWithSend = { id: 9, name: "Helper 2", keyPrefix: "sw_h2", scopes: ["lookup", "draft", "send"], limits: { creditsPerAsk: 2, creditsPerDay: 5, creditsPerWeek: 10, asksPerDay: 3 }, autoSend: false, status: "active", expiresAt: new Date(Date.now() + 86400000).toISOString(), lastUsedAt: null, createdAt: new Date().toISOString() };
+    const fetch = vi.fn(async (_url: string) => response({ agents: [agentWithoutSend, agentWithSend], paused: false, autoSendAvailable: true }));
+    vi.stubGlobal("fetch", fetch);
+    render(<GoalSeekerAgents />);
+    expect(await screen.findByText("Helper 1")).toBeTruthy();
+    expect(screen.getByText("Helper 2")).toBeTruthy();
+    const turnOnButtons = screen.getAllByRole("button", { name: "Turn on auto-send" });
+    expect(turnOnButtons).toHaveLength(1);
+    fireEvent.click(turnOnButtons[0]);
+    expect(screen.getByText("Turn on auto-send for Helper 2?")).toBeTruthy();
+    expect(screen.getByText(/Your assistant will send referral requests without asking you each time/)).toBeTruthy();
+    expect(screen.getByText(/Each send spends one of your referrals/)).toBeTruthy();
+  });
+
+  it("calls POST /api/seeker/agents/:id/auto-send when confirming or turning off auto-send", async () => {
+    let autoSend = false;
+    const agent = { id: 10, name: "Auto Helper", keyPrefix: "sw_ah", scopes: ["lookup", "draft", "send"], limits: { creditsPerAsk: 1, creditsPerDay: 2, creditsPerWeek: 3, asksPerDay: 1 }, get autoSend() { return autoSend; }, status: "active", expiresAt: new Date(Date.now() + 86400000).toISOString(), lastUsedAt: null, createdAt: new Date().toISOString() };
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST" && url.includes("/auto-send")) {
+        const body = JSON.parse(String(init?.body));
+        autoSend = body.enabled;
+        return response({ ok: true });
+      }
+      return response({ agents: [{ ...agent, autoSend }], paused: false, autoSendAvailable: true });
+    });
+    vi.stubGlobal("fetch", fetch);
+    render(<GoalSeekerAgents />);
+    expect(await screen.findByRole("button", { name: "Turn on auto-send" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Turn on auto-send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and turn on" }));
+    await waitFor(() => {
+      expect(screen.getByText("Auto-send is on")).toBeTruthy();
+    });
+    const postCalls = fetch.mock.calls.filter(([url, init]) => url.includes("/auto-send") && init?.method === "POST");
+    expect(postCalls).toHaveLength(1);
+    expect(JSON.parse(String(postCalls[0][1]?.body))).toEqual({ enabled: true });
+
+    // Now turn off
+    fireEvent.click(screen.getByRole("button", { name: "Turn off auto-send" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Turn on auto-send" })).toBeTruthy();
+    });
+    const postCalls2 = fetch.mock.calls.filter(([url, init]) => url.includes("/auto-send") && init?.method === "POST");
+    expect(postCalls2).toHaveLength(2);
+    expect(JSON.parse(String(postCalls2[1][1]?.body))).toEqual({ enabled: false });
+  });
 });

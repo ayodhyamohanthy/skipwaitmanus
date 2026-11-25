@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Referrer, { ReferralCoverageInviteBanner } from "./Referrer";
+// Warm the real chunk; assertions still exercise the lazy route entrypoint.
+import "./goal/referrer/GoalReferrer";
 import { REFERRER_OTP_LANDING_KEY } from "@/components/referrer/ReferrerSignInDialog";
 
 const authState = vi.hoisted(() => {
@@ -33,7 +35,7 @@ const authState = vi.hoisted(() => {
 });
 
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken: vi.fn().mockResolvedValue("test-token"), signOut: authState.signOut }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, userId: "12", getToken: vi.fn().mockResolvedValue("test-token"), signOut: authState.signOut }),
   useUser: () => ({
     isLoaded: true,
     isSignedIn: true,
@@ -63,10 +65,12 @@ function resetReferrerState() {
 
 const renderWithQuery = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>{ui}</QueryClientProvider>);
 const preferences = (preferAreas: string[] = []) => ({ preferences: { referralCapacity: 3, preferAreas, preferLevels: [], referrerVisibility: "anon", notifyNewAsk: true, paused: false } });
+const verifiedAccess = { verifiedCompanyAccess: true, workEmailDomain: "acme.com", companyName: "Acme", companyInitials: "A" };
 
 function stubReferrerFetch() {
   vi.stubGlobal("fetch", vi.fn(async (input: string) => {
     const url = String(input);
+    if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
     if (url.endsWith("/inbox")) return { ok: true, json: async () => ({ requests: [] }) };
     if (url.endsWith("/verify-work-email")) return { ok: true, json: async () => ({ verified: true, workEmailDomain: "acme.com" }) };
     return { ok: true, json: async () => ({}) };
@@ -91,9 +95,9 @@ describe("Referrer work-email OTP verification", () => {
       return { ok: true, json: async () => ({}) };
     }));
     renderWithQuery(<Referrer />);
-    // Kit overview only: no enrollment card, and an unverified personal session is not an error.
+    // An unverified personal session stays behind the server verdict without enrollment or sign-out.
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Set up as a referrer/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Set up as a referrer/ }));
     expect(screen.getByRole("dialog", { name: "Your private profile." }).textContent).toContain("REFERRER SETUP · 1 OF 3");
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     expect((await screen.findByRole("link", { name: /Verify with a one-time code/ })).getAttribute("href")).toBe("/verify");
@@ -115,7 +119,7 @@ describe("Referrer work-email OTP verification", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<Referrer />);
-    fireEvent.click(screen.getByRole("button", { name: /Set up as a referrer/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Set up as a referrer/ }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     expect(await screen.findByText("Verified · acme.com")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Verify with a one-time code/ })).toBeNull();
@@ -130,10 +134,10 @@ describe("Referrer work-email OTP verification", () => {
 
   it("opens the work-email OTP login first for signed-out visitors, with the overview behind it", async () => {
     authState.isSignedIn = false;
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     // /referrer is the employee login door: the OTP step greets visitors
     // directly instead of waiting behind the workspace overview.
-    expect(screen.getByRole("dialog", { name: "Verify work email." })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Verify work email." })).toBeTruthy();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Send sign-in code" })).toHaveLength(1);
     expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
@@ -145,19 +149,19 @@ describe("Referrer work-email OTP verification", () => {
     expect(screen.getByRole("button", { name: /Set up as a referrer/ })).toBeTruthy();
   });
 
-  it("opens the work-email step directly for ?setup=work-email links", () => {
+  it("opens the work-email step directly for ?setup=work-email links", async () => {
     authState.isSignedIn = false;
     window.history.pushState({}, "", "/referrer?setup=work-email");
-    render(<Referrer />);
-    expect(screen.getByRole("dialog", { name: "Verify work email." })).toBeTruthy();
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByRole("dialog", { name: "Verify work email." })).toBeTruthy();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     window.history.pushState({}, "", "/");
   });
 
   it("rejects a personal email before initiating private Referrer authentication", async () => {
     authState.isSignedIn = false;
-    render(<Referrer />);
-    fireEvent.click(screen.getByRole("button", { name: /Set up as a referrer/ }));
+    renderWithQuery(<Referrer />);
+    await screen.findByRole("dialog", { name: "Verify work email." });
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "Personal email providers cannot access private referral requests. Use your company address." }) })));
     fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "person@gmail.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
@@ -171,12 +175,13 @@ describe("Referrer work-email OTP verification", () => {
     sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
     const fetchMock = vi.fn(async (input: string) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/inbox")) return { ok: true, json: async () => ({ requests: [] }) };
       if (url.endsWith("/verify-work-email")) return { ok: true, json: async () => ({ verified: true, workEmailDomain: "acme.com" }) };
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
     expect(screen.queryByText(/Example only/i)).toBeNull();
     expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeNull();
@@ -191,13 +196,14 @@ describe("Referrer work-email OTP verification", () => {
     sessionStorage.setItem("skipwait:company-coverage-invite", "cov-acme-1");
     const fetchMock = vi.fn(async (input: string, _init?: RequestInit) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/inbox")) return { ok: true, json: async () => ({ requests: [] }) };
       if (url.endsWith("/verify-work-email")) return { ok: true, json: async () => ({ verified: true, workEmailDomain: "acme.com", reward: { rewarded: true, tokenCount: 1 } }) };
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<Referrer />);
-    expect(await screen.findByText("You joined from an invite. The person who invited you gets one referral credit after their next ask. skipwait.me never pays referrers.")).toBeTruthy();
+    renderWithQuery(<Referrer />);
+    expect(await screen.findByText("You joined from an invite. The person who invited you gets one referral after their next referral request reaches a referrer. skipwait.me never pays referrers.")).toBeTruthy();
     expect(screen.queryByText(/each received one referral credit|Welcome credit added/)).toBeNull();
     const enroll = fetchMock.mock.calls.find(call => String(call[0]).endsWith("/verify-work-email"));
     expect(JSON.parse(String(enroll?.[1]?.body))).toEqual({ email: "employee@acme.com", inviteCode: "cov-acme-1" });
@@ -208,11 +214,12 @@ describe("Referrer work-email OTP verification", () => {
     window.history.pushState({}, "", "/referrer?request=901");
     vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/901") && !init?.method) return { ok: true, json: async () => ({ request: { id: 901, candidateName: "Avery", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [{ id: "doc-1", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 8, key: "private/doc-1", url: "https://signed.example/avery-resume.pdf" }] } }) };
       if (url.endsWith("/901/review") && init?.method === "POST") return { ok: true, json: async () => ({ status: "approved" }) };
       return { ok: true, json: async () => ({}) };
     }));
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Approve referral" })).toBeTruthy());
     expect(screen.getByText("Reviewing costs you nothing.")).toBeTruthy();
     expect(screen.queryByText(/token per approved referral/i)).toBeNull();
@@ -231,11 +238,12 @@ describe("Referrer work-email OTP verification", () => {
     const posts: Array<{ url: string; body?: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/901") && !init?.method) return { ok: true, json: async () => ({ request: { id: 901, candidateName: "Avery", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [{ id: "doc-1", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 8, key: "private/doc-1", url: "https://signed.example/avery-resume.pdf" }] } }) };
       if (url.endsWith("/901/review") && init?.method === "POST") { posts.push({ url, body: String(init.body) }); return { ok: true, json: async () => ({ status: "passed", reopened: true }) }; }
       return { ok: true, json: async () => ({}) };
     }));
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Decline respectfully" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Decline respectfully" }));
     await waitFor(() => expect(screen.getByText("You passed privately.")).toBeTruthy());
@@ -245,13 +253,13 @@ describe("Referrer work-email OTP verification", () => {
     window.history.pushState({}, "", "/");
   });
 
-  it("explains a company-coverage invitation to the signed-out recipient before sign-in", () => {
+  it("explains a company-coverage invitation to the signed-out recipient before sign-in", async () => {
     resetReferrerState();
     stubReferrerFetch();
     authState.isSignedIn = false;
     window.history.pushState({}, "", "/referrer?company=acme.com&source=coverage&invite=abc123");
-    render(<Referrer />);
-    const banner = screen.getByRole("region", { name: "Strengthen private coverage at acme.com" });
+    renderWithQuery(<Referrer />);
+    const banner = await screen.findByRole("region", { name: "Strengthen private coverage at acme.com" });
     expect(banner.textContent).toMatch(/verify a work email and choose whether to help/i);
     const emailShare = screen.getByRole("link", { name: "Share by email" });
     expect(emailShare.getAttribute("href")).toContain(encodeURIComponent("/referrer?company=acme.com"));
@@ -279,13 +287,14 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
     authState.sessionEmail = "employee@acme.com";
     const fetchMock = vi.fn(async (input: string) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/api/company-referrals/inbox")) return { ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/physics", companyDomain: "acme.com", createdAt: "2026-01-01T00:00:00.000Z", attachmentCount: 2 }] }) };
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal("fetch", fetchMock);
     // ReferrerOtpSignIn reloads after verification; the dialog left this one-shot landing marker.
     sessionStorage.setItem(REFERRER_OTP_LANDING_KEY, "1");
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     // The redirect effect calls wouter's go("/inbox"), which pushStates the URL.
     await waitFor(() => expect(window.location.pathname).toBe("/inbox"));
     expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/api/company-referrals/inbox"))).toBe(true);
@@ -294,17 +303,18 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
     expect(sessionStorage.getItem(REFERRER_OTP_LANDING_KEY)).toBeNull();
   });
 
-  it("keeps later signed-in visits on the kit overview; the request list lives in the queue tab", async () => {
+  it("keeps later server-verified visits on the goal overview; the request list stays in the queue", async () => {
     authState.sessionEmail = "employee@acme.com";
     const fetchMock = vi.fn(async (input: string) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/api/company-referrals/inbox")) return { ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/physics", companyDomain: "acme.com", createdAt: "2026-01-01T00:00:00.000Z", attachmentCount: 2 }] }) };
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     await waitFor(() => expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/api/company-referrals/inbox"))).toBe(true));
-    expect(screen.getByRole("button", { name: /Preview incoming asks/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Preview incoming referral requests/ })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Private requests at your company" })).toBeNull();
     expect(screen.queryByRole("link", { name: "https://careers.acme.com/jobs/physics" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Review candidate" })).toBeNull();
@@ -315,10 +325,11 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
     authState.sessionEmail = "employee@acme.com";
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
       const url = String(input);
+      if (url.endsWith("/access")) return { ok: true, json: async () => verifiedAccess };
       if (url.endsWith("/api/company-referrals/inbox")) return { ok: false, status: 403, json: async () => ({ error: "Your company's private referral inbox is paused." }) };
       return { ok: true, json: async () => ({}) };
     }));
-    render(<Referrer />);
+    renderWithQuery(<Referrer />);
     expect(await screen.findByText("Your company's private referral inbox is paused.")).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain("Your company's private referral inbox is paused.");
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
@@ -327,10 +338,10 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
     expect(window.location.pathname).toBe("/");
   });
 
-  it("keeps the overview to the kit sections when the company has no private requests yet", async () => {
+  it("keeps the goal overview when the company has no private requests yet", async () => {
     authState.sessionEmail = "employee@acme.com";
-    render(<Referrer />);
-    await waitFor(() => expect(screen.getByRole("button", { name: /Preview incoming asks/ })).toBeTruthy());
+    renderWithQuery(<Referrer />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Preview incoming referral requests/ })).toBeTruthy());
     expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeNull();
     expect(screen.queryByRole("link", { name: "Share on WhatsApp" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();

@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Landed from "./Landed";
 import { UNDELIVERED_ERROR } from "@/components/landed/landedModel";
+import "./goal/seeker-small/GoalLanded";
 
 const { authState, go, search } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, userId: "user-1", getToken: vi.fn().mockResolvedValue("test-token") },
@@ -52,8 +53,6 @@ function renderLanded() {
 /** The asks have loaded and the celebrate step is on screen (past the skeleton's hold). */
 const arrive = async () => screen.findByRole("button", { name: /Thank your referrer/ });
 
-const classesOf = (element: HTMLElement) => element.className.split(" ");
-
 beforeEach(() => {
   authState.isLoaded = true; authState.isSignedIn = true; authState.userId = "user-1";
   search.value = ""; sent.length = 0;
@@ -61,27 +60,21 @@ beforeEach(() => {
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-describe("Landed journey (kit v4, live data)", () => {
-  it("celebrates the real hire with the kit muted body and kit Button, without preview scaffolding or sample people", async () => {
+describe("Landed journey (live data)", () => {
+  it("celebrates the real hire without preview scaffolding or sample people", async () => {
     stubFetch({ "/api/company-referrals/mine": mine([closedAsk]) });
     const { container } = renderLanded();
     await arrive();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("You did it.");
-    const body = screen.getByText("You did the work. Nikhil opened the door. Let's close the loop kindly.");
-    expect(classesOf(body)).toEqual(expect.arrayContaining(["text-muted-foreground"]));
-    expect(classesOf(body)).not.toContain("text-lg");
+    expect(screen.getByRole("heading", { name: "You did it." })).toBeTruthy();
     expect(screen.getByText("Data Analyst · Zensar")).toBeTruthy();
-    expect(classesOf(screen.getByRole("button", { name: /Thank your referrer/ }))).toEqual(expect.arrayContaining(["text-sm", "font-medium", "h-9"]));
     for (const scaffold of [/EXAMPLE/i, /Illustrative outcome/i, /Replay preview/i, /Wipro|Rahul|Product Designer/]) expect(container.textContent).not.toMatch(scaffold);
-    expect(container.innerHTML).not.toContain("var(--");
   });
 
-  it("asks a signed-out visitor to sign in before it names anyone", () => {
+  it("asks a signed-out visitor to sign in before it names anyone", async () => {
     authState.isSignedIn = false;
     stubFetch({ "/api/company-referrals/mine": mine([]) });
     renderLanded();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Someone helped you land it.");
-    expect(screen.getByRole("button", { name: /Secure sign in/ })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Secure sign in/ })).toBeTruthy();
   });
 
   it("shows an honest zero state when no ask has been marked hired", async () => {
@@ -96,13 +89,13 @@ describe("Landed journey (kit v4, live data)", () => {
     renderLanded();
     await arrive();
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Say thanks to Nikhil.");
+    expect(screen.getByRole("heading", { name: "Say thanks to Nikhil." })).toBeTruthy();
     cleanup();
     search.value = "request=7";
     renderLanded();
     await arrive();
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Say thanks to Meera.");
+    expect(screen.getByRole("heading", { name: "Say thanks to Meera." })).toBeTruthy();
   });
 
   it("sends the edited thanks with the wall choice, then moves to paying it forward", async () => {
@@ -110,21 +103,17 @@ describe("Landed journey (kit v4, live data)", () => {
     renderLanded();
     await arrive();
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Say thanks to Nikhil.");
+    expect(screen.getByRole("heading", { name: "Say thanks to Nikhil." })).toBeTruthy();
     expect(screen.getByText("The single message referrers remember most.")).toBeTruthy();
     const textarea = screen.getByLabelText("Thank-you message");
-    expect(textarea.getAttribute("rows")).toBeNull();
-    expect(classesOf(textarea)).toEqual(expect.arrayContaining(["min-h-36"]));
-    const gift = screen.getByText(/Gifts or payments for referrals/).closest("section") as HTMLElement;
-    expect(classesOf(gift)).toEqual(expect.arrayContaining(["bg-muted", "rounded-3xl", "mt-6"]));
-    const wall = screen.getByLabelText(/private thank-you wall/) as HTMLInputElement;
-    expect(wall.checked).toBe(true);
+    const wall = screen.getByRole("button", { name: /private thank-you wall/ });
+    expect(wall.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/That wall is visible only to them/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Copy thanks/ })).toBeNull();
     fireEvent.change(textarea, { target: { value: "Thank you, truly." } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send thanks" })); });
     expect(sent[0]).toMatchObject({ referralRequestId: 12, message: "Thank you, truly.", shareOnWall: true });
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Hold the door for the next person.");
+    expect(screen.getByRole("heading", { name: "Hold the door for the next person." })).toBeTruthy();
   });
 
   it("keeps the note on the page and says so when the server could not deliver it", async () => {
@@ -134,7 +123,7 @@ describe("Landed journey (kit v4, live data)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send thanks" })); });
     expect(screen.getByRole("alert").textContent).toBe(UNDELIVERED_ERROR);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Say thanks to Nikhil.");
+    expect(screen.getByRole("heading", { name: "Say thanks to Nikhil." })).toBeTruthy();
   });
 
   it("unticks the wall without dropping the note", async () => {
@@ -142,31 +131,25 @@ describe("Landed journey (kit v4, live data)", () => {
     renderLanded();
     await arrive();
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
-    fireEvent.click(screen.getByLabelText(/private thank-you wall/));
+    fireEvent.click(screen.getByRole("button", { name: /private thank-you wall/ }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send thanks" })); });
     expect(sent[0]).toMatchObject({ shareOnWall: false });
   });
 
-  it("states the kit pay-it-forward terms, promises no reminder, and finishes on real routes", async () => {
+  it("records pay-it-forward consent and finishes on real routes", async () => {
     stubFetch({ "/api/company-referrals/mine": mine([closedAsk]), "/api/landed/journey": journey() });
     renderLanded();
     await arrive();
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));
-    expect(classesOf(screen.getByRole("button", { name: "Skip" }))).not.toContain("brand-button");
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
-    expect(screen.getByText("Once you have your new work email, verify in 30 seconds and refer people you believe in — at your own pace.")).toBeTruthy();
-    expect(screen.getByText("Set your own capacity")).toBeTruthy();
-    expect(screen.getByText("Even 1 request a month helps.")).toBeTruthy();
-    expect(screen.getByText(/we won't message you about it/)).toBeTruthy();
     expect(screen.queryByText(/30 days after you start/i)).toBeNull();
     expect(screen.queryByText(/his private thank-you wall/i)).toBeNull();
     const back = screen.getByRole("link", { name: "Back to skipwait.me" });
     expect(back.getAttribute("href")).toBe("/explore");
-    expect(classesOf(back)).toEqual(expect.arrayContaining(["brand-button", "border-2", "text-sm"]));
-    fireEvent.click(screen.getByRole("button", { name: "Yes, I'll pay it forward" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, I will pay it forward" }));
     await waitFor(() => expect(sent[0]).toMatchObject({ referralRequestId: 12, payForward: "yes" }));
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Welcome to the other side of the door.");
-    expect(screen.getByRole("link", { name: "Close my other asks" }).getAttribute("href")).toBe("/requests");
+    expect(await screen.findByRole("heading", { name: "Welcome to the other side of the door." })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Close my other referral requests" }).getAttribute("href")).toBe("/requests");
     expect(screen.getByRole("link", { name: /Verify work email/ }).getAttribute("href")).toBe("/verify");
   });
 
@@ -178,7 +161,7 @@ describe("Landed journey (kit v4, live data)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     fireEvent.click(screen.getByRole("button", { name: "Maybe later" }));
     await waitFor(() => expect(sent[0]).toMatchObject({ payForward: "later" }));
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Done.");
+    expect(await screen.findByRole("heading", { name: "Done." })).toBeTruthy();
     expect(screen.getByText(/No reminders from us/)).toBeTruthy();
   });
 });

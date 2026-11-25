@@ -12,6 +12,9 @@ const referralLocalStorageKeys = [
   "bridge-tokens",
   "bridge-job-seeker-token-reset-3-free-v1",
   "manus-runtime-user-info",
+  // D-174-worldwide-discovery.company-context: the discovered-company pick is displayed
+  // context for one /ask visit; it must never survive sign-out.
+  "skipwait:discovery-handoff",
 ] as const;
 
 const referralSessionStorageKeys = ["skipwait-pending-resume-submit", "skipwait:employee-sign-in-email", "skipwait:company-coverage-invite", "skipwait.pending-chargebee-checkout", "skipwait:personal-invite", "manus-cookie"] as const;

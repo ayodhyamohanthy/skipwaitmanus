@@ -17,6 +17,7 @@ export const askPrefillSchema = z.strictObject({
   targetRoleUrl: z.string().max(2048),
   note: z.string().max(ASK_NOTE_LIMIT),
   savedAt: z.number().int().nonnegative(),
+  opportunityId: z.number().int().positive().optional(),
 }).refine(draft => Boolean(draft.targetRoleUrl.trim() || draft.note.trim()), { message: "A link or note is required" });
 
 export type AskPrefill = z.infer<typeof askPrefillSchema>;
@@ -29,7 +30,16 @@ function sessionStore(): StorageLike | null {
 }
 
 export function saveAskPrefill(input: Omit<AskPrefill, "savedAt">, storage: StorageLike | null = sessionStore(), now: number = Date.now()): boolean {
-  const parsed = askPrefillSchema.safeParse({ companySlug: input.companySlug, targetRoleUrl: input.targetRoleUrl.trim(), note: input.note.trim().slice(0, ASK_NOTE_LIMIT), savedAt: now });
+  const candidate: Record<string, unknown> = {
+    companySlug: input.companySlug,
+    targetRoleUrl: input.targetRoleUrl.trim(),
+    note: input.note.trim().slice(0, ASK_NOTE_LIMIT),
+    savedAt: now,
+  };
+  if (input.opportunityId !== undefined) {
+    candidate.opportunityId = input.opportunityId;
+  }
+  const parsed = askPrefillSchema.safeParse(candidate);
   if (!parsed.success || !storage) return false;
   try { storage.setItem(ASK_PREFILL_KEY, JSON.stringify(parsed.data)); return true; } catch { return false; }
 }

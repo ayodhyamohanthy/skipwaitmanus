@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "./db";
+import { validateBandedSchema } from "./bandedSchemaValidation";
 
 // Columns the running code expects. Each entry is applied idempotently at boot
 // when missing (MySQL 8.0 has no ADD COLUMN IF NOT EXISTS, so check
@@ -7,10 +8,16 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
-  { table: "seekerAgentGrants", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`name\` varchar(120) NOT NULL, \`keyPrefix\` varchar(16) NOT NULL, \`keyHash\` varchar(64) NOT NULL, \`canLookup\` boolean NOT NULL DEFAULT true, \`canDraft\` boolean NOT NULL DEFAULT true, \`maxCreditsPerAsk\` int NOT NULL, \`maxCreditsPerDay\` int NOT NULL, \`maxCreditsPerWeek\` int NOT NULL, \`maxAsksPerDay\` int NOT NULL, \`expiresAt\` timestamp NOT NULL, \`revokedAt\` timestamp NULL, \`lastUsedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentGrants_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_grants_key_hash_unique\`(\`keyHash\`), INDEX \`seeker_agent_grants_user_idx\`(\`userId\`))` },
+  // BANDED-schema: validation metadata only; deploy 0123 before readiness lands.
+  { table: "bandedReferralBalances", createSql: `CREATE TABLE IF NOT EXISTS \`bandedReferralBalances\` (\`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY, \`userId\` int NOT NULL, \`level\` enum('early','mid','senior','executive') NOT NULL, \`includedRemaining\` int unsigned NOT NULL DEFAULT 0, \`includedCycleKey\` varchar(128) NULL, \`includedExpiresAt\` timestamp NULL, \`purchasedRemaining\` int unsigned NOT NULL DEFAULT 0, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`banded_balances_user_level_unique\` (\`userId\`,\`level\`), CONSTRAINT \`banded_balances_included_cycle\` CHECK (\`includedRemaining\` = 0 OR (\`includedCycleKey\` IS NOT NULL AND \`includedExpiresAt\` IS NOT NULL))) ENGINE=InnoDB` },
+  { table: "bandedFoundingCounters", createSql: `CREATE TABLE IF NOT EXISTS \`bandedFoundingCounters\` (\`site\` enum('test','live') NOT NULL, \`planId\` enum('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL, \`issuedCount\` int unsigned NOT NULL DEFAULT 0, \`reservedCount\` int unsigned NOT NULL DEFAULT 0, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (\`site\`,\`planId\`), CONSTRAINT \`banded_founding_counter_cap\` CHECK (\`issuedCount\` + \`reservedCount\` <= CASE \`planId\` WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END)) ENGINE=InnoDB` },
+  { table: "bandedFoundingMemberships", createSql: `CREATE TABLE IF NOT EXISTS \`bandedFoundingMemberships\` (\`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY, \`site\` enum('test','live') NOT NULL, \`planId\` enum('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL, \`userId\` int NULL, \`checkoutIntentId\` varchar(96) NOT NULL, \`subscriptionId\` varchar(80) NULL, \`status\` enum('reserved','issued','released') NOT NULL DEFAULT 'reserved', \`issuedSequence\` int unsigned NULL, \`expiresAt\` timestamp NOT NULL, \`issuedAt\` timestamp NULL, \`releasedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE SET NULL, FOREIGN KEY (\`site\`,\`planId\`) REFERENCES \`bandedFoundingCounters\` (\`site\`,\`planId\`), UNIQUE INDEX \`banded_founding_checkout_unique\` (\`site\`,\`checkoutIntentId\`), UNIQUE INDEX \`banded_founding_subscription_unique\` (\`site\`,\`subscriptionId\`), UNIQUE INDEX \`banded_founding_sequence_unique\` (\`site\`,\`planId\`,\`issuedSequence\`), INDEX \`banded_founding_expiry_idx\` (\`status\`,\`expiresAt\`), CONSTRAINT \`banded_founding_sequence_cap\` CHECK (\`issuedSequence\` IS NULL OR \`issuedSequence\` BETWEEN 1 AND CASE \`planId\` WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END), CONSTRAINT \`banded_founding_state\` CHECK ((\`status\` = 'reserved' AND \`issuedSequence\` IS NULL AND \`issuedAt\` IS NULL AND \`releasedAt\` IS NULL) OR (\`status\` = 'issued' AND \`issuedSequence\` IS NOT NULL AND \`issuedAt\` IS NOT NULL AND \`releasedAt\` IS NULL) OR (\`status\` = 'released' AND \`issuedSequence\` IS NULL AND \`issuedAt\` IS NULL AND \`releasedAt\` IS NOT NULL))) ENGINE=InnoDB` },
+  { table: "bandedCheckoutIntents", createSql: `CREATE TABLE IF NOT EXISTS \`bandedCheckoutIntents\` (\`id\` int AUTO_INCREMENT NOT NULL, \`site\` enum('test','live') NOT NULL, \`checkoutIntentId\` varchar(96) NOT NULL, \`userId\` int NULL, \`kind\` enum('plan','referral') NOT NULL, \`planId\` enum('early_to_mid','mid_to_senior','senior_to_executive') NULL, \`billingRoute\` enum('IN','INTL') NOT NULL, \`currency\` enum('INR','USD') NOT NULL, \`expectedTotal\` int unsigned NOT NULL, \`fingerprint\` varchar(64) NOT NULL, \`cart\` json NOT NULL, \`hostedPageId\` varchar(128) NULL, \`invoiceId\` varchar(128) NULL, \`subscriptionId\` varchar(80) NULL, \`status\` enum('creating','pending','fulfilled','requires_review','cancelled') NOT NULL DEFAULT 'creating', \`failureReason\` varchar(255) NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, \`expiresAt\` timestamp NOT NULL, \`replayDeadline\` timestamp NOT NULL, \`lastCheckedAt\` timestamp NULL, \`fulfilledAt\` timestamp NULL, CONSTRAINT \`bandedCheckoutIntents_id\` PRIMARY KEY (\`id\`), CONSTRAINT \`banded_intents_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE SET NULL, UNIQUE INDEX \`banded_intents_checkout_unique\` (\`site\`,\`checkoutIntentId\`), UNIQUE INDEX \`banded_intents_hosted_page_unique\` (\`site\`,\`hostedPageId\`), UNIQUE INDEX \`banded_intents_invoice_unique\` (\`site\`,\`invoiceId\`), INDEX \`banded_intents_reconcile_idx\` (\`status\`,\`lastCheckedAt\`,\`createdAt\`), INDEX \`banded_intents_recovery_idx\` (\`userId\`,\`site\`,\`createdAt\`), CONSTRAINT \`banded_intents_expected_total_positive\` CHECK (\`expectedTotal\` > 0)) ENGINE=InnoDB` },
+  { table: "seekerAgentGrants", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`name\` varchar(120) NOT NULL, \`keyPrefix\` varchar(16) NOT NULL, \`keyHash\` varchar(64) NOT NULL, \`canLookup\` boolean NOT NULL DEFAULT true, \`canDraft\` boolean NOT NULL DEFAULT true, \`canSend\` boolean NOT NULL DEFAULT false, \`autoSend\` boolean NOT NULL DEFAULT false, \`maxCreditsPerAsk\` int NOT NULL, \`maxCreditsPerDay\` int NOT NULL, \`maxCreditsPerWeek\` int NOT NULL, \`maxAsksPerDay\` int NOT NULL, \`expiresAt\` timestamp NOT NULL, \`revokedAt\` timestamp NULL, \`lastUsedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentGrants_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_grants_key_hash_unique\`(\`keyHash\`), INDEX \`seeker_agent_grants_user_idx\`(\`userId\`))` },
   { table: "seekerAgentControls", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentControls\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`pausedAt\` timestamp NULL, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentControls_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_controls_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_agent_controls_user_unique\`(\`userId\`))` },
   { table: "seekerAgentDrafts", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentDrafts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`grantId\` int NOT NULL, \`userId\` int NOT NULL, \`companySlug\` varchar(48) NOT NULL, \`targetRoleUrl\` varchar(2048) NOT NULL, \`note\` varchar(2000) NOT NULL DEFAULT '', \`jobLevel\` int NOT NULL, \`creditCost\` int NOT NULL, \`status\` ENUM('draft','discarded') NOT NULL DEFAULT 'draft', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentDrafts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_drafts_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`seeker_agent_drafts_grant_idx\`(\`grantId\`,\`createdAt\`), INDEX \`seeker_agent_drafts_user_idx\`(\`userId\`,\`createdAt\`))` },
   { table: "seekerAgentEvents", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAgentEvents\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`grantId\` int NULL, \`agentName\` varchar(120) NOT NULL, \`action\` varchar(48) NOT NULL, \`outcome\` ENUM('success','denied','failure') NOT NULL, \`detail\` varchar(600) NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`seekerAgentEvents_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_agent_events_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`seeker_agent_events_grant_idx\`(\`grantId\`,\`createdAt\`), INDEX \`seeker_agent_events_user_idx\`(\`userId\`,\`createdAt\`))` },
+  { table: "askOrigins", createSql: `CREATE TABLE IF NOT EXISTS \`askOrigins\` (\`referralRequestId\` int NOT NULL, \`channel\` ENUM('skippy','agent') NOT NULL, \`agentGrantId\` int NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`askOrigins_referralRequestId\` PRIMARY KEY(\`referralRequestId\`), CONSTRAINT \`ask_origins_request_fk\` FOREIGN KEY (\`referralRequestId\`) REFERENCES \`referralRequests\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`ask_origins_grant_fk\` FOREIGN KEY (\`agentGrantId\`) REFERENCES \`seekerAgentGrants\` (\`id\`) ON DELETE SET NULL, INDEX \`ask_origins_channel_idx\`(\`channel\`,\`createdAt\`))` },
   { table: "billingReviewOutbox", createSql: `CREATE TABLE IF NOT EXISTS \`billingReviewOutbox\` (
  \`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY,
  \`obligationKey\` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -60,7 +67,7 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "assistantConnections", createSql: `CREATE TABLE IF NOT EXISTS \`assistantConnections\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`provider\` ENUM('chatgpt','claude','custom') NOT NULL, \`appName\` varchar(160) NOT NULL, \`scopes\` text NOT NULL, \`status\` ENUM('connected','declined','expired','revoked') NOT NULL DEFAULT 'connected', \`connectedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`lastUsedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantConnections_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_connections_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`assistant_connections_user_idx\`(\`userId\`), INDEX \`assistant_connections_status_idx\`(\`status\`))` },
   { table: "assistantTokens", createSql: `CREATE TABLE IF NOT EXISTS \`assistantTokens\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`name\` varchar(160) NOT NULL, \`tokenHash\` varchar(128) NOT NULL, \`prefix\` varchar(16) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`lastUsedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, CONSTRAINT \`assistantTokens_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`assistant_tokens_user_name_unique\`(\`userId\`,\`name\`), CONSTRAINT \`assistant_tokens_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`assistant_tokens_user_idx\`(\`userId\`))` },
   { table: "developerApps", createSql: `CREATE TABLE IF NOT EXISTS \`developerApps\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`name\` varchar(160) NOT NULL, \`kind\` ENUM('web_app','agent_mcp','server_integration') NOT NULL, \`description\` text NOT NULL, \`website\` varchar(512) NULL, \`redirectUrls\` text NOT NULL, \`scopes\` text NOT NULL, \`status\` ENUM('test','in_review','live','rejected','suspended') NOT NULL DEFAULT 'test', \`rejectReasons\` text NULL, \`webhookUrl\` varchar(512) NULL, \`clientId\` varchar(64) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`developerApps_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`developer_apps_client_id_unique\`(\`clientId\`), CONSTRAINT \`developer_apps_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`developer_apps_user_idx\`(\`userId\`), INDEX \`developer_apps_status_idx\`(\`status\`))` },
-  { table: "assistantApprovals", createSql: `CREATE TABLE IF NOT EXISTS \`assistantApprovals\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`connectionId\` int NULL, \`kind\` ENUM('ask_send','credit_spend') NOT NULL, \`status\` ENUM('pending','approved','declined','expired') NOT NULL DEFAULT 'pending', \`provider\` varchar(80) NOT NULL, \`companyDomain\` varchar(255) NULL, \`role\` varchar(180) NULL, \`note\` text NULL, \`creditCount\` int NULL, \`slotCount\` int NULL, \`expiresAt\` timestamp NOT NULL, \`decidedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantApprovals_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_approvals_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`assistant_approvals_connection_fk\` FOREIGN KEY (\`connectionId\`) REFERENCES \`assistantConnections\` (\`id\`) ON DELETE SET NULL, INDEX \`assistant_approvals_user_idx\`(\`userId\`), INDEX \`assistant_approvals_status_idx\`(\`status\`), INDEX \`assistant_approvals_expiry_idx\`(\`expiresAt\`))` },
+  { table: "assistantApprovals", createSql: `CREATE TABLE IF NOT EXISTS \`assistantApprovals\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`connectionId\` int NULL, \`kind\` ENUM('ask_send','credit_spend') NOT NULL, \`status\` ENUM('pending','approved','declined','expired') NOT NULL DEFAULT 'pending', \`provider\` varchar(80) NOT NULL, \`companyDomain\` varchar(255) NULL, \`role\` varchar(180) NULL, \`note\` text NULL, \`creditCount\` int NULL, \`slotCount\` int NULL, \`grantId\` int NULL, \`expiresAt\` timestamp NOT NULL, \`decidedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantApprovals_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_approvals_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`assistant_approvals_connection_fk\` FOREIGN KEY (\`connectionId\`) REFERENCES \`assistantConnections\` (\`id\`) ON DELETE SET NULL, CONSTRAINT \`assistant_approvals_grant_fk\` FOREIGN KEY (\`grantId\`) REFERENCES \`seekerAgentGrants\` (\`id\`) ON DELETE SET NULL, INDEX \`assistant_approvals_user_idx\`(\`userId\`), INDEX \`assistant_approvals_status_idx\`(\`status\`), INDEX \`assistant_approvals_expiry_idx\`(\`expiresAt\`), INDEX \`assistant_approvals_grant_idx\`(\`grantId\`,\`createdAt\`))` },
   { table: "oauthClients", createSql: `CREATE TABLE IF NOT EXISTS \`oauthClients\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`clientId\` varchar(64) NOT NULL, \`clientName\` varchar(160) NOT NULL, \`redirectUris\` text NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthClients_clientId_unique\`(\`clientId\`))` },
   { table: "oauthAuthCodes", createSql: `CREATE TABLE IF NOT EXISTS \`oauthAuthCodes\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`codeHash\` varchar(64) NOT NULL, \`clientId\` varchar(64) NOT NULL, \`userId\` int NOT NULL, \`redirectUri\` varchar(512) NOT NULL, \`codeChallenge\` varchar(64) NOT NULL, \`expiresAt\` timestamp NOT NULL, \`usedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthAuthCodes_codeHash_unique\`(\`codeHash\`), CONSTRAINT \`oauth_auth_codes_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`oauth_auth_codes_user_idx\`(\`userId\`), INDEX \`oauth_auth_codes_expiry_idx\`(\`expiresAt\`))` },
   { table: "companies", createSql: `CREATE TABLE IF NOT EXISTS \`companies\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(48) NOT NULL, \`name\` varchar(160) NOT NULL, \`initials\` varchar(4) NOT NULL, \`industry\` varchar(80) NOT NULL, \`location\` varchar(80) NOT NULL, \`functions\` text NOT NULL, \`blurb\` varchar(240) NOT NULL, \`status\` enum('listed','hidden') NOT NULL DEFAULT 'listed', \`sortOrder\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companies_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`companies_slug_unique\`(\`slug\`), INDEX \`companies_status_sort_idx\`(\`status\`,\`sortOrder\`))` },
@@ -74,6 +81,8 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "subscriptionCancellationFeedback", createSql: `CREATE TABLE IF NOT EXISTS \`subscriptionCancellationFeedback\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`subscriptionId\` varchar(80) NOT NULL, \`reason\` enum('got_job','too_expensive','not_using','missing_feature','other') NOT NULL, \`outcome\` enum('cancelled','paused') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`subscriptionCancellationFeedback_id\` PRIMARY KEY(\`id\`), INDEX \`subscription_cancellation_feedback_user_idx\`(\`userId\`,\`createdAt\`), CONSTRAINT \`subscription_cancellation_feedback_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
   // Kit landed journey + private thank-you wall (0108, §3b row 20 slices C/D).
   { table: "landedJourney", createSql: `CREATE TABLE IF NOT EXISTS \`landedJourney\` (\`id\` int AUTO_INCREMENT NOT NULL, \`referralRequestId\` int NOT NULL, \`seekerUserId\` int NOT NULL, \`referrerUserId\` int NOT NULL, \`thankYouMessage\` text NULL, \`shareOnWall\` boolean NOT NULL DEFAULT false, \`payForwardChoice\` varchar(12) NULL, \`deliveredAt\` timestamp NULL, \`conversationMessageId\` int NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`landedJourney_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`landed_journey_request_unique\`(\`referralRequestId\`), INDEX \`landed_journey_referrer_wall_idx\`(\`referrerUserId\`,\`shareOnWall\`), CONSTRAINT \`landed_journey_request_fk\` FOREIGN KEY (\`referralRequestId\`) REFERENCES \`referralRequests\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`landed_journey_seeker_fk\` FOREIGN KEY (\`seekerUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`landed_journey_referrer_fk\` FOREIGN KEY (\`referrerUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  // D-057-session-gate (0116): in-session work-email step-up challenges and proofs.
+  { table: "referrerStepUps", createSql: `CREATE TABLE IF NOT EXISTS \`referrerStepUps\` (\`id\` int AUTO_INCREMENT NOT NULL, \`challengeIdHash\` varchar(64) NOT NULL, \`userId\` int NOT NULL, \`sessionKeyHash\` varchar(64) NOT NULL, \`purpose\` enum('referrer_actions') NOT NULL, \`emailFingerprint\` varchar(80) NOT NULL, \`workEmailDomain\` varchar(255) NOT NULL, \`codeHash\` varchar(64) NOT NULL, \`codeExpiresAt\` timestamp NOT NULL, \`attempts\` int NOT NULL DEFAULT 0, \`verifiedAt\` timestamp NULL, \`proofExpiresAt\` timestamp NULL, \`revokedAt\` timestamp NULL, \`revokedReason\` enum('superseded','logout') NULL, \`createdAt\` timestamp NOT NULL, CONSTRAINT \`referrerStepUps_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`referrer_step_ups_challenge_unique\`(\`challengeIdHash\`), INDEX \`referrer_step_ups_proof_idx\`(\`userId\`,\`sessionKeyHash\`,\`purpose\`,\`verifiedAt\`), CONSTRAINT \`referrer_step_ups_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
   // Job catalog (0120, D-174-job-catalog packet section 5.5): board sources
   // registered with evidence and the catalog rows fetched from them. Both
   // start empty; the sync job writes nothing while JOB_CATALOG_ENABLED is
@@ -83,6 +92,10 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
+  { table: "referralReviewDeliveries", column: "ownerAlertStatus", definition: "ENUM('pending','leased','sent') NULL" },
+  { table: "referralReviewDeliveries", column: "ownerAlertLeaseOwner", definition: "VARCHAR(64) NULL" },
+  { table: "referralReviewDeliveries", column: "ownerAlertLeaseExpiresAt", definition: "TIMESTAMP NULL" },
+  { table: "referralReviewDeliveries", column: "ownerAlertSentAt", definition: "TIMESTAMP NULL" },
   { table: "safetyReports", column: "severity", definition: "VARCHAR(8) NOT NULL DEFAULT 'normal'" },
   { table: "safetyReports", column: "dueAt", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
@@ -117,6 +130,10 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "assistantApprovals", column: "attachmentIds", definition: "TEXT NULL" },
   { table: "assistantApprovals", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
   { table: "assistantApprovals", column: "executedRequestId", definition: "INT NULL" },
+  { table: "assistantApprovals", column: "grantId", definition: "INT NULL" },
+  { table: "assistantApprovals", column: "decidedBy", definition: "VARCHAR(16) NULL" },
+  { table: "seekerAgentGrants", column: "canSend", definition: "boolean NOT NULL DEFAULT false" },
+  { table: "seekerAgentGrants", column: "autoSend", definition: "boolean NOT NULL DEFAULT false" },
   { table: "profiles", column: "referrerVisibility", definition: "ENUM('anon','named') NOT NULL DEFAULT 'anon'" },
   { table: "profiles", column: "notifyNewAsk", definition: "boolean NOT NULL DEFAULT true" },
   { table: "profiles", column: "notifyDigest", definition: "boolean NOT NULL DEFAULT false" },
@@ -196,6 +213,49 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "users", column: "chargebeeCustomerId", definition: "VARCHAR(80) NULL" },
   // Seeker company demand (0104): the optional work function on a demand vote.
   { table: "companySuggestions", column: "jobFunction", definition: "VARCHAR(32) NULL" },
+  // Language capture (0121): the chosen language and the write-once signup
+  // subtag. Both nullable; null means behaviour exactly as before.
+  { table: "accountPreferences", column: "language", definition: "VARCHAR(16) NULL" },
+  { table: "accountPreferences", column: "signupLanguage", definition: "VARCHAR(16) NULL" },
+  { table: "bandedReferralBalances", column: "userId", definition: "INT NOT NULL" },
+  { table: "bandedReferralBalances", column: "level", definition: "ENUM('early','mid','senior','executive') NOT NULL" },
+  { table: "bandedReferralBalances", column: "includedRemaining", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedReferralBalances", column: "includedCycleKey", definition: "VARCHAR(128) NULL" },
+  { table: "bandedReferralBalances", column: "includedExpiresAt", definition: "TIMESTAMP NULL" },
+  { table: "bandedReferralBalances", column: "purchasedRemaining", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedFoundingCounters", column: "site", definition: "ENUM('test','live') NOT NULL" },
+  { table: "bandedFoundingCounters", column: "planId", definition: "ENUM('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL" },
+  { table: "bandedFoundingCounters", column: "issuedCount", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedFoundingCounters", column: "reservedCount", definition: "INT UNSIGNED NOT NULL DEFAULT 0" },
+  { table: "bandedFoundingMemberships", column: "site", definition: "ENUM('test','live') NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "planId", definition: "ENUM('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "userId", definition: "INT NULL" },
+  { table: "bandedFoundingMemberships", column: "checkoutIntentId", definition: "VARCHAR(96) NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "subscriptionId", definition: "VARCHAR(80) NULL" },
+  { table: "bandedFoundingMemberships", column: "status", definition: "ENUM('reserved','issued','released') NOT NULL DEFAULT 'reserved'" },
+  { table: "bandedFoundingMemberships", column: "issuedSequence", definition: "INT UNSIGNED NULL" },
+  { table: "bandedFoundingMemberships", column: "expiresAt", definition: "TIMESTAMP NOT NULL" },
+  { table: "bandedFoundingMemberships", column: "issuedAt", definition: "TIMESTAMP NULL" },
+  { table: "bandedFoundingMemberships", column: "releasedAt", definition: "TIMESTAMP NULL" },
+  { table: "bandedCheckoutIntents", column: "site", definition: "ENUM('test','live') NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "checkoutIntentId", definition: "VARCHAR(96) NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "userId", definition: "INT NULL" },
+  { table: "bandedCheckoutIntents", column: "kind", definition: "ENUM('plan','referral') NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "planId", definition: "ENUM('early_to_mid','mid_to_senior','senior_to_executive') NULL" },
+  { table: "bandedCheckoutIntents", column: "billingRoute", definition: "ENUM('IN','INTL') NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "currency", definition: "ENUM('INR','USD') NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "expectedTotal", definition: "INT UNSIGNED NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "fingerprint", definition: "VARCHAR(64) NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "cart", definition: "JSON NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "hostedPageId", definition: "VARCHAR(128) NULL" },
+  { table: "bandedCheckoutIntents", column: "invoiceId", definition: "VARCHAR(128) NULL" },
+  { table: "bandedCheckoutIntents", column: "subscriptionId", definition: "VARCHAR(80) NULL" },
+  { table: "bandedCheckoutIntents", column: "status", definition: "ENUM('creating','pending','fulfilled','requires_review','cancelled') NOT NULL DEFAULT 'creating'" },
+  { table: "bandedCheckoutIntents", column: "failureReason", definition: "VARCHAR(255) NULL" },
+  { table: "bandedCheckoutIntents", column: "expiresAt", definition: "TIMESTAMP NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "replayDeadline", definition: "TIMESTAMP NOT NULL" },
+  { table: "bandedCheckoutIntents", column: "lastCheckedAt", definition: "TIMESTAMP NULL" },
+  { table: "bandedCheckoutIntents", column: "fulfilledAt", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -203,6 +263,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
 // skipped, and mismatched uniqueness is dropped and recreated.
 // Keep in sync with drizzle/schema.ts.
 export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string; nonUnique?: boolean }> = [
+  { table: "referralReviewDeliveries", name: "referral_review_owner_alert_idx", columns: "`ownerAlertStatus`, `ownerAlertLeaseExpiresAt`, `id`", nonUnique: true },
   { table: "seekerAgentGrants", name: "seeker_agent_grants_key_hash_unique", columns: "`keyHash`" },
   { table: "seekerAgentGrants", name: "seeker_agent_grants_user_idx", columns: "`userId`", nonUnique: true },
   { table: "seekerAgentControls", name: "seeker_agent_controls_user_unique", columns: "`userId`" },
@@ -244,6 +305,8 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "assistantApprovals", name: "assistant_approvals_user_idx", columns: "`userId`", nonUnique: true },
   { table: "assistantApprovals", name: "assistant_approvals_status_idx", columns: "`status`", nonUnique: true },
   { table: "assistantApprovals", name: "assistant_approvals_expiry_idx", columns: "`expiresAt`", nonUnique: true },
+  { table: "assistantApprovals", name: "assistant_approvals_grant_idx", columns: "`grantId`,`createdAt`", nonUnique: true },
+  { table: "askOrigins", name: "ask_origins_channel_idx", columns: "`channel`,`createdAt`", nonUnique: true },
   { table: "oauthClients", name: "oauthClients_clientId_unique", columns: "`clientId`" },
   { table: "oauthAuthCodes", name: "oauthAuthCodes_codeHash_unique", columns: "`codeHash`" },
   { table: "oauthAuthCodes", name: "oauth_auth_codes_user_idx", columns: "`userId`", nonUnique: true },
@@ -274,13 +337,34 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   // Kit landed journey + private thank-you wall (0108).
   { table: "landedJourney", name: "landed_journey_request_unique", columns: "`referralRequestId`" },
   { table: "landedJourney", name: "landed_journey_referrer_wall_idx", columns: "`referrerUserId`,`shareOnWall`", nonUnique: true },
+  // D-057-session-gate (0116): one challenge per id; the gate reads proofs by account, session and purpose.
+  { table: "referrerStepUps", name: "referrer_step_ups_challenge_unique", columns: "`challengeIdHash`" },
+  { table: "referrerStepUps", name: "referrer_step_ups_proof_idx", columns: "`userId`,`sessionKeyHash`,`purpose`,`verifiedAt`", nonUnique: true },
   // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
   { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
   // Task 13 (0105): the pieces pinned to one ask, read in the order the seeker chose.
   { table: "askCosts", name: "ask_costs_request_unique", columns: "`referralRequestId`" },
   { table: "seekerLevels", name: "seeker_levels_user_unique", columns: "`userId`" },
   { table: "askWorkItems", name: "ask_work_items_request_piece_unique", columns: "`referralRequestId`,`workItemId`" },
+  // D-090 BYOR (0111): one live link per ask (a NULL activeRequestKey is not a row, so the
+  // unique index only binds live links), hashed tokens only, and the sweep's status+expiry scan.
+  { table: "askInviteLinks", name: "ask_invites_token_hash_unique", columns: "`linkTokenHash`" },
+  { table: "askInviteLinks", name: "ask_invites_active_request_unique", columns: "`activeRequestKey`" },
+  { table: "askInviteLinks", name: "ask_invites_request_idx", columns: "`referralRequestId`", nonUnique: true },
+  { table: "askInviteLinks", name: "ask_invites_status_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
+  { table: "askInviteLinks", name: "ask_invites_creator_created_idx", columns: "`createdByUserId`,`createdAt`", nonUnique: true },
   { table: "askWorkItems", name: "ask_work_items_request_idx", columns: "`referralRequestId`,`position`", nonUnique: true },
+  { table: "bandedReferralBalances", name: "banded_balances_user_level_unique", columns: "`userId`,`level`" },
+  { table: "bandedFoundingCounters", name: "PRIMARY", columns: "`site`,`planId`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_checkout_unique", columns: "`site`,`checkoutIntentId`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_subscription_unique", columns: "`site`,`subscriptionId`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_sequence_unique", columns: "`site`,`planId`,`issuedSequence`" },
+  { table: "bandedFoundingMemberships", name: "banded_founding_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
+  { table: "bandedCheckoutIntents", name: "banded_intents_checkout_unique", columns: "`site`,`checkoutIntentId`" },
+  { table: "bandedCheckoutIntents", name: "banded_intents_hosted_page_unique", columns: "`site`,`hostedPageId`" },
+  { table: "bandedCheckoutIntents", name: "banded_intents_invoice_unique", columns: "`site`,`invoiceId`" },
+  { table: "bandedCheckoutIntents", name: "banded_intents_reconcile_idx", columns: "`status`,`lastCheckedAt`,`createdAt`", nonUnique: true },
+  { table: "bandedCheckoutIntents", name: "banded_intents_recovery_idx", columns: "`userId`,`site`,`createdAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -313,6 +397,11 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "seekerLevels", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "askWorkItems", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
   { table: "askWorkItems", column: "workItemId", referencedTable: "workItems", referencedColumn: "id" },
+  // D-090 BYOR (0111): a deleted ask takes its links; a deleted account takes the links it
+  // created and only nulls the claimer it left behind.
+  { table: "askInviteLinks", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
+  { table: "askInviteLinks", column: "createdByUserId", referencedTable: "users", referencedColumn: "id" },
+  { table: "askInviteLinks", column: "claimedByUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "dataExports", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "accountPreferences", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "moderationEvents", column: "reportId", referencedTable: "safetyReports", referencedColumn: "id" },
@@ -322,6 +411,9 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "developerApps", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "connectionId", referencedTable: "assistantConnections", referencedColumn: "id" },
+  { table: "assistantApprovals", column: "grantId", referencedTable: "seekerAgentGrants", referencedColumn: "id" },
+  { table: "askOrigins", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
+  { table: "askOrigins", column: "agentGrantId", referencedTable: "seekerAgentGrants", referencedColumn: "id" },
   { table: "companyDomains", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
   { table: "planCreditGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "billingCustomers", column: "userId", referencedTable: "users", referencedColumn: "id" },
@@ -335,6 +427,11 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "landedJourney", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
   { table: "landedJourney", column: "seekerUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "landedJourney", column: "referrerUserId", referencedTable: "users", referencedColumn: "id" },
+  // D-057-session-gate (0116): a proof goes when its account goes.
+  { table: "referrerStepUps", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "bandedReferralBalances", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "bandedFoundingMemberships", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "bandedCheckoutIntents", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
@@ -494,6 +591,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
           ok: foreignKeys.has(`${schemaKey(item.table, item.column)}->${schemaKey(item.referencedTable, item.referencedColumn)}`),
         })),
       );
+      checks.push(...await validateBandedSchema(db, DESIRED_INDEXES));
       for (const check of checks) results.push({ statement: check.key, ok: check.ok, ...(!check.ok ? { errorCode: "SCHEMA_MISMATCH" } : {}) });
       const failed = checks.filter(check => !check.ok);
       if (failed.length) lastError = `Schema validation failed (${failed.length} checks)`;

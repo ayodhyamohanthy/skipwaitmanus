@@ -36,6 +36,8 @@ import { splitWhyMe } from "@shared/whyMe";
 import { formatDay } from "@/lib/displayPrefs";
 import { readApiJson } from "@/lib/apiResponse";
 import { cn } from "@/lib/utils";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
+import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
 type QueueItem = {
   id: number;
@@ -56,7 +58,7 @@ type QueueItem = {
   waitingForCoverage?: boolean | null;
   coverageVisibleAt?: string | null;
 };
-type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown };
+type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown; /** SKIPPY-6 (D-142): true only for an ask a seeker's own agent drafted and the seeker approved. */ sentViaAssistant?: boolean };
 type InboxPayload = { requests?: QueueItem[] };
 /** Read model for the honest empty state: paused / active (capacity left) / at_capacity. */
 type RoutingState = "paused" | "active" | "at_capacity";
@@ -118,6 +120,8 @@ export default function MyCompanyInbox() {
     const token = await getToken();
     const response = await fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
     const payload = await readApiJson<T & { error?: string }>(response, "We could not complete that private company request");
+    // D-057: a refusal for this session re-checks the verdict, so the queue flips to the step-up in place.
+    if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
     if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
     return payload;
   };
@@ -245,6 +249,8 @@ export default function MyCompanyInbox() {
     </section>
   );
   if (access.status === "error") return shell(<GoalErrorState title="We couldn’t check your verification" body={`${access.error.message || "Check your connection and try again."} Nothing changed on your account. Try again in a moment.`} retry={{ label: "Try again", onClick: access.retry }} />);
+  // D-057: a personal-login session confirms the work email in place, never through the code sign-in.
+  if (access.status === "code_required") return shell(<GoalWorkEmailStepUp access={access.access} />);
   if (!verified) return shell(<GoalEmptyState title="Verify your work email." body="A one-time code confirms your company. Your name and work email never appear to job seekers." action={{ label: "Add work email", onClick: () => go("/sign-in") }} />);
 
   const nowMs = Date.now();
@@ -382,6 +388,8 @@ function QueueDetail({ item, index, count, preview, previewLoading, previewError
         left ? <span key="left"><GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></span> : null,
         closes ? <span key="closes">Closes <GoalNum>{formatDay(closes) ?? ""}</GoalNum></span> : null,
         <span key="received">Received <GoalNum>{formatDay(item.createdAt) ?? ""}</GoalNum></span>,
+        // SKIPPY-6 (D-142): the seeker's own agent drafted this ask and the seeker approved it.
+        preview?.sentViaAssistant ? <span key="via">Sent via the seeker&apos;s assistant</span> : null,
       ] as (ReactNode | null)[]).filter(entry => entry !== null) as ReactNode[]}
       phoneBack={{ href: "/queue", label: "Referral queue" }}
       phonePosition={<GoalNum>{index + 1} / {count}</GoalNum>}

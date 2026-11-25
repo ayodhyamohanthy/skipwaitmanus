@@ -1,0 +1,99 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/me",
+      "status": 200,
+      "body": {
+        "displayName": "Meera Iyer",
+        "profile": {
+          "headline": "Product designer, checkout and payments flows",
+          "company": null,
+          "workEmailDomain": null,
+          "workEmailVerifiedAt": null,
+          "handle": "meera",
+          "profileVisibility": "private"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/work-items",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": 1,
+            "title": "Checkout redesign that cut drop-off",
+            "kind": "case_study",
+            "source": "Behance",
+            "url": "https://example.com/checkout",
+            "pinned": true,
+            "visibleOnProfile": true
+          },
+          {
+            "id": 2,
+            "title": "Design system audit",
+            "kind": "project",
+            "source": "GitHub",
+            "url": "https://example.com/audit",
+            "pinned": false,
+            "visibleOnProfile": true
+          },
+          {
+            "id": 3,
+            "title": "Private sketchbook",
+            "kind": "other",
+            "source": null,
+            "url": null,
+            "pinned": false,
+            "visibleOnProfile": false
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 2500
+    },
+    {
+      "click": "text=What a referrer sees"
+    },
+    {
+      "wait": 300
+    }
+  ]
+}

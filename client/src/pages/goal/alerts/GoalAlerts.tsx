@@ -9,6 +9,7 @@ import { notificationListSchema, orderNotifications, timeAgo, type NotificationI
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
+import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
 
 const LOAD_ERROR = "We could not load your alerts";
 const NETWORK_ERROR = "We could not reach skipwait.me. Check your connection and try again.";
@@ -129,6 +130,8 @@ export default function GoalAlerts() {
   }
 
   return <main data-skipwait-screen="alerts" data-testid="goal-alerts" className="g-scope page-content mx-auto w-full max-w-2xl pb-10">
+    {/* D-057: referral routing for a personal-login session starts with the in-session work-email step-up. */}
+    {access.status === "code_required" ? <GoalWorkEmailStepUp access={access.access} /> : null}
     <header className="px-4 pt-6 gdesk:px-5 gdesk:pt-7">
       <h1 className="text-g-display text-g-ink">See what needs you.</h1>
       <p className="mt-2 flex items-center gap-2 text-g-meta text-g-ink-2">

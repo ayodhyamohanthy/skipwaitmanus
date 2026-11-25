@@ -116,7 +116,7 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
     expect(activity).toEqual([]);
   });
 
-  it.each([{ role: "job_seeker" }, {}])("still opens every checkout for the seeker role (%o), so a seeker who is also a referrer can buy", async roleField => {
+  it.each([{ role: "job_seeker" }, {}])("seeker checkouts follow the freeze (%o): passes open, new pack purchases paused, per-credit retired", async roleField => {
     const { app, spies } = harness();
     for (const { label, path, body } of PURCHASES) {
       const response = await request(app).post(path).send({ ...body, ...roleField });
@@ -127,12 +127,42 @@ describe("referrer purchases are switched off (D-055, D-042)", () => {
         expect(response.body.code).toBe("single_credit_retired");
         continue;
       }
+      // Oct 25 2026 freeze: NEW pack purchases are paused for everyone (shared/planCatalog
+      // LEGACY_PACK_SALES_PAUSED, real module value - the harness only overrides PASS_SALES_ENABLED).
+      if (label === "a kit credit pack") {
+        expect(response.status, path).toBe(409);
+        expect(response.body.code).toBe("legacy_pricing_paused");
+        expect(response.body.error).toContain("Nothing has been charged");
+        continue;
+      }
       expect(response.status, path).toBe(200);
       expect(typeof response.body.checkoutUrl).toBe("string");
     }
-    expect(spies.createPaymentIntent).toHaveBeenCalledTimes(1);
+    expect(spies.createPaymentIntent).not.toHaveBeenCalled();
     expect(spies.createSubscriptionIntent).toHaveBeenCalledTimes(2);
-    for (const [intent] of [...spies.createPaymentIntent.mock.calls, ...spies.createSubscriptionIntent.mock.calls]) expect(intent).toMatchObject({ userId: 7, role: "job_seeker" });
+    for (const [intent] of spies.createSubscriptionIntent.mock.calls) expect(intent).toMatchObject({ userId: 7, role: "job_seeker" });
+  });
+});
+
+describe("the legacy single credit stays retired while legacy pack sales are paused (PR #666 review F1)", () => {
+  it("refuses a direct per-credit checkout even when no pack is on sale in that currency, and starts nothing", async () => {
+    // Oct 25 2026 freeze: with every pack archived at the provider, the old rule
+    // ("retired once any pack is on sale") would re-open the single credit. The
+    // pause must keep it closed: no checkout and no payment intent.
+    const { app, spies } = harness();
+    spies.isAvailable.mockReturnValue(false);
+    for (const body of [
+      { itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" },
+      { itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" },
+    ]) {
+      const response = await request(app).post("/api/chargebee/checkout").send(body);
+      expect(response.status, body.itemPriceId).toBe(410);
+      expect(response.body.code).toBe("single_credit_retired");
+      expect(response.body.error).toContain("Nothing has been charged");
+    }
+    expect(spies.createCheckout).not.toHaveBeenCalled();
+    expect(spies.createPaymentIntent).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
   });
 });
 

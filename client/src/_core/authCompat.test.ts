@@ -87,7 +87,7 @@ describe("WorkOS client and server-session compatibility", () => {
     const location = { href: "https://skipwait.me/ask?fast=abc#draft", origin: "https://skipwait.me" };
     vi.stubGlobal("window", { location });
     auth.openSignIn();
-    expect(new URL(location.href, location.origin).pathname).toBe("/api/auth/workos/sign-in");
+    expect(new URL(location.href, location.origin).pathname).toBe("/sign-in");
     expect(new URL(location.href, location.origin).searchParams.get("returnTo")).toBe("/ask?fast=abc#draft");
     vi.unstubAllGlobals();
   });

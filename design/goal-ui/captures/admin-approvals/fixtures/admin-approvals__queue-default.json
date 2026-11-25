@@ -1,0 +1,108 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ops Admin",
+    "email": "ops@example.com",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/approval-queue",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "kind": "referral_request",
+            "id": 501,
+            "status": "under_review",
+            "companyDomain": "acme.example",
+            "createdAt": "2026-11-03T09:00:00.000Z",
+            "updatedAt": "2026-11-03T09:00:00.000Z",
+            "summary": "I led a measurable product design launch.",
+            "meta": {
+              "claimTime": "2026-11-03T09:05:00.000Z",
+              "seekerName": "Avery Nair",
+              "seekerEmail": "avery@example.com",
+              "referrerName": "Blake Rao",
+              "referrerEmail": "blake@acme.example",
+              "roleTitle": "Product Designer",
+              "targetRoleUrl": "https://careers.acme.example/jobs/design",
+              "tokenCount": 1,
+              "creditReserved": true,
+              "pitch": "I led a measurable product design launch."
+            }
+          },
+          {
+            "kind": "referral_request",
+            "id": 514,
+            "status": "pending",
+            "companyDomain": "northwind.example",
+            "createdAt": "2026-11-04T06:30:00.000Z",
+            "updatedAt": "2026-11-04T06:30:00.000Z",
+            "summary": "Backend engineer with five years on payments infrastructure.",
+            "meta": {
+              "claimTime": null,
+              "seekerName": "Meera Iyer",
+              "targetRoleUrl": "https://jobs.northwind.example/backend",
+              "tokenCount": 1,
+              "creditReserved": true,
+              "waitingForCoverage": true
+            }
+          },
+          {
+            "kind": "referrer_enrollment",
+            "id": 77,
+            "status": "pending",
+            "companyDomain": "acme.example",
+            "createdAt": "2026-11-03T08:00:00.000Z",
+            "updatedAt": "2026-11-03T08:00:00.000Z",
+            "summary": "Work email verified \u00b7 awaiting a first referral action",
+            "meta": {
+              "otpTime": "2026-11-03T08:00:00.000Z",
+              "referrerName": "Sara Fernandes",
+              "referrerEmail": "sara@acme.example"
+            }
+          },
+          {
+            "kind": "payment",
+            "id": 33,
+            "status": "requires_review",
+            "companyDomain": "",
+            "provider": "chargebee",
+            "amount": 39600,
+            "currency": "INR",
+            "createdAt": "2026-11-02T07:00:00.000Z",
+            "updatedAt": "2026-11-02T07:00:00.000Z",
+            "summary": "provider_page_mismatch",
+            "meta": {
+              "tokenCount": 4,
+              "reason": "provider_page_mismatch",
+              "userEmail": "pat@example.com",
+              "role": "job_seeker"
+            }
+          },
+          {
+            "kind": "payment",
+            "id": 29,
+            "status": "approved",
+            "companyDomain": "",
+            "provider": "chargebee",
+            "amount": 9900,
+            "currency": "INR",
+            "createdAt": "2026-11-01T05:00:00.000Z",
+            "updatedAt": "2026-11-01T06:00:00.000Z",
+            "summary": "Reviewed and credited",
+            "meta": {
+              "tokenCount": 1,
+              "userEmail": "kabir@example.com",
+              "role": "job_seeker"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "route": "/admin/approvals"
+}

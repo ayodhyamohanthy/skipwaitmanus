@@ -4,10 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ReferrerImpact from "./ReferrerImpact";
+// Warm the real chunk; assertions still exercise the lazy route entrypoint.
+import "./goal/referrer/GoalReferrerImpact";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 
 const authState = vi.hoisted(() => ({ isSignedIn: false }));
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken: vi.fn().mockResolvedValue("test-token") }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, userId: "12", getToken: vi.fn().mockResolvedValue("test-token") }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
@@ -20,7 +23,7 @@ function stubFetch(handler: (url: string) => { ok: boolean; status?: number; jso
 
 /** Read one stat by its label. A bare getByText("3") passes on any stat, so it cannot prove a number is in the right slot. */
 function statValue(label: string): string | undefined {
-  const node = Array.from(screen.getByLabelText("Your private impact").querySelectorAll("span")).find(span => span.textContent?.endsWith(label));
+  const node = Array.from(screen.getByLabelText("Your private impact").children).find(stat => stat.textContent?.endsWith(label));
   return node?.querySelector("strong")?.textContent;
 }
 
@@ -28,12 +31,12 @@ beforeEach(() => { authState.isSignedIn = false; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ReferrerImpact dashboard", () => {
-  it("asks unauthenticated visitors to sign in with their work email before showing any impact", () => {
+  it("asks unauthenticated visitors to sign in with their work email before showing any impact", async () => {
     renderImpact();
-    expect(screen.getByText("Sign in with your work email to see your referral impact")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign in with work email" })).toBeTruthy();
+    expect(await screen.findByText("Sign in with your work email to see your referral impact.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sign in with work email" }).getAttribute("href")).toBe(referrerSignInHref("/referrer/impact"));
     expect(document.querySelector('[data-skipwait-screen="referrer-impact-sign-in"]')).toBeTruthy();
-    // One interactive control: the kit Button is not nested inside another button.
+    // The released sign-in door uses a direct goal link, not nested buttons.
     expect(document.querySelector("button button")).toBeNull();
   });
 
@@ -41,9 +44,9 @@ describe("ReferrerImpact dashboard", () => {
     authState.isSignedIn = true;
     stubFetch(url => url.endsWith("/api/company-referrals/access") ? { ok: true, json: async () => ({ verifiedCompanyAccess: false, workEmailDomain: null }) } : { ok: true, json: async () => ({}) });
     renderImpact();
-    expect(await screen.findByText("Verify your work email")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Set up as a referrer/ })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Add work email" }).getAttribute("href")).toBe("/referrer?setup=work-email");
+    expect(await screen.findByText("Verify your work email.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Set up as a referrer/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Add work email" }).getAttribute("href")).toBe(referrerSignInHref("/referrer/impact"));
     expect(screen.queryByText(/Accepted referrals/)).toBeNull();
   });
 
@@ -55,14 +58,14 @@ describe("ReferrerImpact dashboard", () => {
       return { ok: true, json: async () => ({}) };
     });
     renderImpact();
-    // Kit v4 impact-zero: honest zeros from the real summary, never invented numbers.
+    // Goal impact keeps honest zeros from the real summary, never invented numbers.
     expect(await screen.findByText("No invented scoreboards.")).toBeTruthy();
     expect(screen.getByText("YOUR IMPACT STARTS AT ZERO")).toBeTruthy();
     const stats = screen.getByLabelText("Your private impact");
     expect(Array.from(stats.querySelectorAll("strong")).map(node => node.textContent)).toEqual(["0", "0", "0"]);
-    // The kit's three labels, in the kit's order.
-    expect(Array.from(stats.querySelectorAll("span")).map(node => node.textContent?.replace(/^\d+/, "")).slice(0, 3)).toEqual(["introductions", "active conversations", "outcomes shared"]);
-    expect(screen.queryByText("Recent referrals")).toBeNull();
+    // Read the existing goal stat labels in their displayed order.
+    expect(Array.from(stats.children).map(node => node.querySelector("span")?.textContent)).toEqual(["introductions", "active conversations", "outcomes shared"]);
+    expect(screen.queryByRole("region", { name: "Recent referrals" })).toBeNull();
     // A verified referrer is already set up: no setup button in the workspace header.
     expect(screen.queryByRole("button", { name: /Set up as a referrer/ })).toBeNull();
     expect(screen.getByRole("link", { name: "See how a request looks" }).getAttribute("href")).toBe("/queue");
@@ -77,10 +80,8 @@ describe("ReferrerImpact dashboard", () => {
       return { ok: true, json: async () => ({}) };
     });
     renderImpact();
-    expect(await screen.findByText("Recent referrals")).toBeTruthy();
-    // Kit v4 impact: the three metrics the referrer controls come from history, then the operational counts.
-    // Read per label: a loose getByText("3") would pass on whichever stat rendered first, and D-055's
-    // "no 3 on screen" guard can no longer express anything now that a real metric can be 3.
+    expect(await screen.findByRole("region", { name: "Recent referrals" })).toBeTruthy();
+    // Read each history-derived metric by its label, not whichever number renders first.
     expect(statValue("introductions")).toBe("2");
     expect(statValue("active conversations")).toBe("1");
     expect(statValue("outcomes shared")).toBe("3");
@@ -105,8 +106,8 @@ describe("ReferrerImpact dashboard", () => {
     });
     renderImpact();
     expect(await screen.findByText("No invented scoreboards.")).toBeTruthy();
-    expect(screen.queryByText("Verify your work email")).toBeNull();
-    // This payload predates the three kit metrics; the edge normalises them to honest zeros, never "undefined".
+    expect(screen.queryByText("Verify your work email.")).toBeNull();
+    // Older payloads still normalize missing metrics to honest zeros, never undefined.
     expect(Array.from(screen.getByLabelText("Your private impact").querySelectorAll("strong")).map(node => node.textContent)).toEqual(["0", "0", "0"]);
   });
 
@@ -121,7 +122,7 @@ describe("ReferrerImpact dashboard", () => {
     renderImpact();
     expect(await screen.findByText("We could not check your verification.", undefined, { timeout: 4000 })).toBeTruthy();
     expect(document.querySelector('[data-skipwait-screen="referrer-impact-access-error"] [role="alert"]')?.textContent).toContain("We could not check your company-email access");
-    expect(screen.queryByText("Verify your work email")).toBeNull();
+    expect(screen.queryByText("Verify your work email.")).toBeNull();
     accessFails = false;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("No invented scoreboards.")).toBeTruthy();

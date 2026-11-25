@@ -4,7 +4,6 @@ import {
   createAssistantApproval,
   createAssistantToken,
   createDeveloperApp,
-  decideAssistantApproval,
   disconnectAssistant,
   editAssistantApproval,
   getAssistantAccess,
@@ -19,10 +18,24 @@ import {
   updateDeveloperAppWebhook,
 } from "./db";
 import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
+import { readApprovalCosts } from "./assistantApprovalCost";
+import { approvalCostChangedMessage, approvalCostSchema, sameApprovalCost } from "../shared/assistantApprovalCost";
+import { AgentSendRefusal, decideAssistantApprovalWithAgentSend } from "./agentSendApproval";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
 type Identity = { account: Account; primaryEmail?: EmailAddress | null; emailAddresses?: EmailAddress[] };
+
+/**
+ * SKIPPY-6: the decision route passes the resume the seeker chose on the card.
+ * The plain queue path ignores it; the agent-send path uses it.
+ */
+type DecideApproval = (
+  userId: number,
+  approvalId: number,
+  decision: "approved" | "declined",
+  options?: { attachmentIds?: number[] },
+) => Promise<{ id: number; status: "approved" | "declined"; requestId?: number }>;
 
 export type AssistantRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
@@ -35,7 +48,7 @@ export type AssistantRouteDeps = {
   listAssistantTokens?: typeof listAssistantTokens;
   createAssistantApproval?: typeof createAssistantApproval;
   listAssistantApprovals?: typeof listAssistantApprovals;
-  decideAssistantApproval?: typeof decideAssistantApproval;
+  decideAssistantApproval?: DecideApproval;
   editAssistantApproval?: typeof editAssistantApproval;
   listAssistantActivity?: typeof listAssistantActivity;
   listDeveloperApps?: typeof listDeveloperApps;
@@ -44,6 +57,7 @@ export type AssistantRouteDeps = {
   updateDeveloperAppWebhook?: typeof updateDeveloperAppWebhook;
   submitDeveloperAppForReview?: typeof submitDeveloperAppForReview;
   getAssistantAccess?: typeof getAssistantAccess;
+  readApprovalCosts?: typeof readApprovalCosts;
 };
 
 const parseId = (raw: string | undefined) => {
@@ -73,7 +87,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   const listTokens = deps.listAssistantTokens ?? listAssistantTokens;
   const doCreateApproval = deps.createAssistantApproval ?? createAssistantApproval;
   const listApprovals = deps.listAssistantApprovals ?? listAssistantApprovals;
-  const doDecide = deps.decideAssistantApproval ?? decideAssistantApproval;
+  const doDecide: DecideApproval = deps.decideAssistantApproval ?? decideAssistantApprovalWithAgentSend;
   const doEdit = deps.editAssistantApproval ?? editAssistantApproval;
   const listActivity = deps.listAssistantActivity ?? listAssistantActivity;
   const listApps = deps.listDeveloperApps ?? listDeveloperApps;
@@ -82,6 +96,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   const doUpdateWebhook = deps.updateDeveloperAppWebhook ?? updateDeveloperAppWebhook;
   const doSubmitApp = deps.submitDeveloperAppForReview ?? submitDeveloperAppForReview;
   const access = deps.getAssistantAccess ?? getAssistantAccess;
+  const readCosts = deps.readApprovalCosts ?? readApprovalCosts;
 
   app.get("/api/assistants/access", async (req, res) => {
     try {
@@ -171,8 +186,12 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to review approvals" });
+      const approvals = await listApprovals(identity.account.id);
+      // #644: each pending ask carries what it would charge if approved now, so the card
+      // shows the cost the decision route will hold the owner to.
+      const costs = await readCosts(identity.account.id, approvals.filter(approval => approval.status === "pending" && approval.kind === "ask_send").map(approval => approval.id));
       res.set("Cache-Control", "private, no-store");
-      res.json({ approvals: await listApprovals(identity.account.id) });
+      res.json({ approvals: approvals.map(approval => { const cost = costs.get(approval.id); return cost ? { ...approval, cost } : approval; }) });
     } catch { res.status(500).json({ error: "We could not load your approvals" }); }
   });
 
@@ -215,12 +234,37 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
       if (!approvalId) return res.status(400).json({ error: "Invalid approval" });
       const decision = req.body?.decision === "approved" || req.body?.decision === "declined" ? req.body.decision : null;
       if (!decision) return res.status(400).json({ error: "Choose approve or decline" });
-      const result = await doDecide(identity.account.id, approvalId, decision);
+      // #644: an approve that would charge runs only at the cost the owner saw. A missing or
+      // different cost is answered 409 with the current one before anything is charged, and the
+      // approval stays pending, so re-approving at the new cost never loops. The cost depends only
+      // on the stored job link and the deploy-time ASK_LEVEL_COST flag, so the one window left is a
+      // flag flip between this read and the executor's, which no user can trigger.
+      if (decision === "approved") {
+        const current = (await readCosts(identity.account.id, [approvalId])).get(approvalId);
+        const shown = approvalCostSchema.safeParse(req.body?.expectedCost);
+        if (current && (!shown.success || !sameApprovalCost(shown.data, current))) {
+          record({ actorUserId: identity.account.id, action: "assistant.approval_cost_changed", outcome: "denied", resourceType: "assistant_approval", resourceId: approvalId, metadata: { shownCost: shown.success ? shown.data.cost : null, shownLevel: shown.success ? shown.data.level : null, cost: current.cost, level: current.level } });
+          return res.status(409).json({ error: approvalCostChangedMessage(current), code: "cost_changed", cost: current });
+        }
+      }
+      // SKIPPY-6: the card's resume choice. Only the agent-send path reads it, and
+      // the plain queue path keeps its exact three-argument call.
+      const attachmentIds = Array.isArray(req.body?.attachmentIds)
+        ? (req.body.attachmentIds as unknown[]).filter((value): value is number => typeof value === "number" && Number.isInteger(value) && value > 0).slice(0, 5)
+        : undefined;
+      const result = attachmentIds?.length
+        ? await doDecide(identity.account.id, approvalId, decision, { attachmentIds })
+        : await doDecide(identity.account.id, approvalId, decision);
       record({ actorUserId: identity.account.id, action: `assistant.approval_${decision}`, outcome: "success", resourceType: "assistant_approval", resourceId: approvalId, metadata: { kind: req.body?.kind } });
       res.json({ approval: result });
     } catch (error) {
       // An approved ask runs the same open-ask slot cap as the in-app form; the approval stays pending.
       if (error instanceof OpenAskSlotCapError) return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
+      // SKIPPY-6: a refused agent send says why in plain words and spends nothing.
+      if (error instanceof AgentSendRefusal) {
+        const status = error.code === "grant" ? 403 : error.code === "limit" ? 429 : error.code === "needs_referrals" ? 402 : 409;
+        return res.status(status).json({ error: error.message, code: error.code });
+      }
       const { status, message } = classify(error);
       res.status(status).json({ error: message });
     }

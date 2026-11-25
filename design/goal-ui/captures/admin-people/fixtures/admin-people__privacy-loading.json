@@ -1,0 +1,20 @@
+{
+  "signedIn": { "id": 1, "name": "Ops Admin", "email": "ops@example.com", "role": "admin" },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/privacy-requests",
+      "match": "prefix",
+      "status": 200,
+      "delayMs": 5000,
+      "body": {
+        "requests": [
+          { "id": 7, "kind": "account_deletion", "status": "requested", "resolution": null, "userId": 9, "requesterName": "Avery Nair", "requesterEmail": "avery@example.com", "createdAt": "2026-10-07T04:00:00.000Z", "updatedAt": "2026-10-07T04:00:00.000Z", "reviewedAt": null }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    { "wait": 300 }
+  ]
+}

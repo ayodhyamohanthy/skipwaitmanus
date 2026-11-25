@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { claimDurableOnce, consumeDurableLimits, durableLimiterKey, isDurablyClaimed, releaseDurableClaim } from "./durableRateLimit";
+import { activeDurableLock, claimDurableOnce, clearDurableKeys, consumeDurableLimits, durableLimiterKey, isDurablyClaimed, recordDurableFailures, releaseDurableClaim } from "./durableRateLimit";
 import { createMemoryDurableLimitStore } from "./memoryDurableLimitStore";
 
 const T0 = Date.UTC(2026, 9, 14, 10, 0, 0);
@@ -62,5 +62,69 @@ describe("durable auth limiter", () => {
     expect(source).toContain("INSERT IGNORE INTO workEmailOtpRateLimits (limiterKey, windowStart, hitCount, expiresAt)");
     expect(source).toContain("lt(table.hitCount, limit)");
     expect(source).toContain("lt(table.expiresAt, now)");
+    // The failure lockout mirrors server/workEmailOtp.ts recordVerifyFailure / activeLockUntil.
+    expect(source).toContain("ON DUPLICATE KEY UPDATE hitCount = hitCount + 1");
+    expect(source).toContain("SELECT MAX(expiresAt) AS until FROM workEmailOtpRateLimits WHERE limiterKey IN");
+  });
+
+  it("an anchored window counts exactly over its own lifetime, whatever the clock boundary", async () => {
+    const store = createMemoryDurableLimitStore();
+    // A ticket issued 30 s before a 10-minute clock boundary: a clock-aligned window would reset mid-ticket.
+    const issuedAt = T0 + 9 * 60_000 + 30_000;
+    const limits = [{ key: durableLimiterKey("t-ticket", "jti-1"), windowMs: 10 * 60_000, limit: 5, anchorMs: issuedAt }];
+    for (let i = 0; i < 5; i++) expect((await consumeDurableLimits(limits, { store, now: issuedAt + i * 60_000 })).allowed).toBe(true);
+    expect(await consumeDurableLimits(limits, { store, now: issuedAt + 6 * 60_000 })).toEqual({ allowed: false, reason: "rate_limited", retryAfterSeconds: 4 * 60 });
+  });
+
+  it("an anchor is floored to whole seconds so MySQL TIMESTAMP equality holds", async () => {
+    const store = createMemoryDurableLimitStore();
+    const limits = [{ key: durableLimiterKey("t-ticket", "jti-2"), windowMs: 60_000, limit: 2, anchorMs: T0 + 1_234 }];
+    expect((await consumeDurableLimits(limits, { store, now: T0 + 2_000 })).allowed).toBe(true);
+    expect((await consumeDurableLimits(limits, { store, now: T0 + 3_000 })).allowed).toBe(true);
+    expect((await consumeDurableLimits(limits, { store, now: T0 + 4_000 })).allowed).toBe(false);
+    expect(Array.from(store.rows.keys())[0]).toContain(`|${T0 + 1_000}`);
+  });
+
+  it("locks a counter once its failures reach the threshold, and reports when the lock ends", async () => {
+    const store = createMemoryDurableLimitStore();
+    const counter = { key: durableLimiterKey("t-fail-pair", "a|ip"), windowMs: 15 * 60_000, threshold: 3, lockKey: durableLimiterKey("t-lock-pair", "a|ip"), lockMs: 15 * 60_000 };
+    expect(await activeDurableLock([counter.lockKey], { store, now: T0 })).toEqual({ locked: false });
+    for (let i = 0; i < 2; i++) expect(await recordDurableFailures([counter], { store, now: T0 + i })).toBe("recorded");
+    expect(await activeDurableLock([counter.lockKey], { store, now: T0 + 10 })).toEqual({ locked: false });
+    expect(await recordDurableFailures([counter], { store, now: T0 + 60_000 })).toBe("recorded");
+    expect(await activeDurableLock([counter.lockKey], { store, now: T0 + 60_000 })).toEqual({ locked: true, retryAfterSeconds: 15 * 60 });
+    expect(await activeDurableLock([counter.lockKey], { store, now: T0 + 60_000 + 15 * 60_000 })).toEqual({ locked: false });
+  });
+
+  it("counts failures per counter: one locked pair does not lock another", async () => {
+    const store = createMemoryDurableLimitStore();
+    const pair = (who: string) => ({ key: durableLimiterKey("t-fail-pair", who), windowMs: 60_000, threshold: 2, lockKey: durableLimiterKey("t-lock-pair", who), lockMs: 60_000 });
+    await recordDurableFailures([pair("a")], { store, now: T0 });
+    await recordDurableFailures([pair("a")], { store, now: T0 + 1 });
+    expect((await activeDurableLock([pair("a").lockKey], { store, now: T0 + 2 })).locked).toBe(true);
+    expect((await activeDurableLock([pair("b").lockKey], { store, now: T0 + 2 })).locked).toBe(false);
+  });
+
+  // S-8: a successful password reset clears that email's lock and failure count, so an attacker spraying wrong
+  // passwords cannot keep the real owner locked out after they proved the inbox.
+  it("clears every window of the given keys, and only those", async () => {
+    const store = createMemoryDurableLimitStore();
+    const counter = (who: string) => ({ key: durableLimiterKey("t-fail-email", who), windowMs: 60 * 60_000, threshold: 2, lockKey: durableLimiterKey("t-lock-email", who), lockMs: 15 * 60_000 });
+    for (const at of [T0, T0 + 1, T0 + 61 * 60_000, T0 + 61 * 60_000 + 1]) await recordDurableFailures([counter("a"), counter("b")], { store, now: at });
+    expect((await activeDurableLock([counter("a").lockKey], { store, now: T0 + 62 * 60_000 })).locked).toBe(true);
+    expect(await clearDurableKeys([counter("a").lockKey, counter("a").key], { store, now: T0 + 62 * 60_000 })).toBe("cleared");
+    expect(await activeDurableLock([counter("a").lockKey], { store, now: T0 + 62 * 60_000 })).toEqual({ locked: false });
+    expect((await activeDurableLock([counter("b").lockKey], { store, now: T0 + 62 * 60_000 })).locked).toBe(true);
+    await recordDurableFailures([counter("a")], { store, now: T0 + 62 * 60_000 });
+    expect((await activeDurableLock([counter("a").lockKey], { store, now: T0 + 62 * 60_000 })).locked).toBe(false);
+    expect(await clearDurableKeys([counter("a").key], { store: null })).toBe("unavailable");
+    const source = readFileSync(new URL("./durableRateLimit.ts", import.meta.url), "utf8");
+    expect(source).toContain("inArray(table.limiterKey, keys)");
+  });
+
+  it("fails closed: no durable store means unavailable, never unlocked", async () => {
+    const counter = { key: "x:y", windowMs: 1000, threshold: 1, lockKey: "x:z", lockMs: 1000 };
+    expect(await recordDurableFailures([counter], { store: null })).toBe("unavailable");
+    expect(await activeDurableLock(["x:z"], { store: null })).toEqual({ locked: "unavailable" });
   });
 });

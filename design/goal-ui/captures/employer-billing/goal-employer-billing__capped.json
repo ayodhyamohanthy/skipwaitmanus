@@ -1,0 +1,357 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/employer/account",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "account": {
+          "id": 7,
+          "companyName": "Northwind Robotics",
+          "billingEmail": "hire@northwind.example",
+          "credits": 8,
+          "budgetMonthlyUsdCents": 5000,
+          "approvalStatus": "approved"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/employer/spend-history",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "spend": [
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 1",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 2",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 3",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 4",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 5",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 6",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 7",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 8",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 9",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 10",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 11",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 12",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 13",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 14",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 15",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 16",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 17",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 18",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 19",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 20",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 21",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 22",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 23",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 24",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 25",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 26",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 27",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 28",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 29",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 30",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 31",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 32",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 33",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 34",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 35",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 36",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 37",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 38",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 39",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 40",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 41",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 42",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 43",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 44",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 45",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 46",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 47",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 48",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 49",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          },
+          {
+            "kind": "profile_unlock",
+            "creditsSpent": 1,
+            "displayRef": "Access record 50",
+            "createdAt": "2026-10-07T09:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/employer/unlock-credits/purchase",
+      "match": "prefix",
+      "status": 200,
+      "body": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Showing your latest 50 entries"
+    }
+  ]
+}

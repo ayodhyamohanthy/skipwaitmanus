@@ -3,12 +3,14 @@ import ipaddr from "ipaddr.js";
 import { getDomain } from "tldts";
 import { isHostedJobPlatform } from "./employerRouting";
 import { fetchPublicJobLink, isPublicAddress } from "./jobLinkPreview";
+import { completeTargetRoleUrl } from "../shared/referralUrl";
 
 const MAX_URL_LENGTH = 2048;
 function bracketless(input: string) { return input.replace(/^\[|\]$/g, ""); }
 function canonical(input: string) {
   if (!input || input.length > MAX_URL_LENGTH) throw new Error("Use a public HTTPS job link under 2,048 characters");
-  const url = new URL(input.trim());
+  let url: URL;
+  try { url = new URL(input.trim()); } catch { throw new Error("Paste the public link to the job posting"); }
   if (url.protocol !== "https:") throw new Error("Opportunity links must use HTTPS");
   if (url.username || url.password) throw new Error("Opportunity links cannot include credentials");
   if (url.port && url.port !== "443") throw new Error("Opportunity links cannot use a custom port");
@@ -38,9 +40,19 @@ export function isLegacyOpportunityUrlSafe(input: string, companyDomain: string)
     return getDomain(url.hostname, { allowPrivateDomains: false, detectIp: true }) === companyDomain.trim().toLowerCase();
   } catch { return false; }
 }
+/**
+ * What the referrer typed, made complete before the strict checks: "https://"
+ * is added when it was left off (owner, Nov 19 2026: fix it, never error).
+ * Every check below still runs on the result, and an explicit "http://" link
+ * is still refused, so nothing unsafe gets through.
+ */
+function completedOpportunityInput(input: string) {
+  return completeTargetRoleUrl(input).trim();
+}
 export async function validateOpportunityTargetUrl(input: string, companyDomain: string, resolveEmployer: (url: string) => Promise<string | undefined>, fetcher = fetchPublicJobLink) {
   const expected = companyDomain.trim().toLowerCase();
-  let url = canonical(input);
+  if (!input || input.length > MAX_URL_LENGTH) throw new Error("Use a public HTTPS job link under 2,048 characters");
+  let url = canonical(completedOpportunityInput(input));
   await requirePublicHost(url);
   const hosted = isHostedJobPlatform(url.hostname);
   if (!hosted) {

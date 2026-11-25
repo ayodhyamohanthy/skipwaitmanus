@@ -1,0 +1,754 @@
+{
+  "task": "D-048-K-invite",
+  "baseline": "a3cb9a79d8cbb6b56c0835970297387ed91a6d33",
+  "candidate": "55dfb0dd",
+  "candidateInviteSourceSha256": "c54cc5566269ca4dfa7bc7870c61804f74660489a976afd92f4c0bd76abd4c0c",
+  "synthetic": true,
+  "productionBundles": true,
+  "surfaceOverrides": false,
+  "limits": "Clean local Chromium and fixture API responses only; no real account, production write, email/share or money operation.",
+  "results": [
+    {
+      "phase": "before",
+      "name": "request-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "99e26dc2a040a44c232e93c6489d4b774bbaec20df7826cd53f701197519b3ca",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "682f333739b3537323548f647eb709e3c43b08ba455d86c2f0da18d581805533",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "invite-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "6a896e431502861753d9bff555cbaae6c6af98416b98b93c038fdc5b3bfd2f80",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "invite-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "7e47170a6d02a1a8c2a7c50451a6ebe61c965892460e1d5a361ad540b9adcb56",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-form-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "87cd7cee3d4519d204163d7c27870ef0895467d51c75de7e974a8686e42abb30",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-form-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "2322fdcd7783b3fc0218ece1e1ce72daaf6916637dc7156f85485fea511513ff",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-listed-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "556e8bea173df815158ed7e4c7b2edef1db4ecc1f4697972ec3097609a56f4b8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-listed-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "0a357f0f012d690a4a41a274428d428d76924bdcb702c511a241b3fdcd33479f",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-saved-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "f3ddea9075b53d47372ef77a6d9af69ef69baec2888549bf57239d2853cfaa1c",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-saved-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "d0d0ac5882380ad2d6345603f0625dc05956c23862e56cdeca0bf5b262bc33f8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-refused-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "460563ee2bc245ff4d163666f29d4e3003230cb037341ae0ae5b54d4d7132aef",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "request-refused-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "710cad832eb3b33dfabc0d799c261520a6a206f94309c0d68fd14a59db3a5273",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "invite-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "5516c5ebac3a4d03701349bf1df05e7c726526f2790991e585a5533890cb58db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "invite-ready-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "115444055cd34aa61bfa5eb194be2ae99512a595f98d0ce8b86b8fe50696fede",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "invite-error-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a80cc0bee64688bd17caf11c924b3b8a0d656aaaf92004ee260abcc23bdbe92e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "invite-error-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "b533367f6ee838eaaa7637b4352ac4b347ef7a0d822d7c69c60a0239b88e8cc0",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "99e26dc2a040a44c232e93c6489d4b774bbaec20df7826cd53f701197519b3ca",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "682f333739b3537323548f647eb709e3c43b08ba455d86c2f0da18d581805533",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "invite-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "6a896e431502861753d9bff555cbaae6c6af98416b98b93c038fdc5b3bfd2f80",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "invite-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "7e47170a6d02a1a8c2a7c50451a6ebe61c965892460e1d5a361ad540b9adcb56",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-form-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "87cd7cee3d4519d204163d7c27870ef0895467d51c75de7e974a8686e42abb30",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-form-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "2322fdcd7783b3fc0218ece1e1ce72daaf6916637dc7156f85485fea511513ff",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-listed-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "968885d362febd40bd075b23c5ffae18a49e98d79d486e85bbba73a97c6f9270",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-listed-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "0a357f0f012d690a4a41a274428d428d76924bdcb702c511a241b3fdcd33479f",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-saved-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "f3ddea9075b53d47372ef77a6d9af69ef69baec2888549bf57239d2853cfaa1c",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-saved-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "d0d0ac5882380ad2d6345603f0625dc05956c23862e56cdeca0bf5b262bc33f8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-refused-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "460563ee2bc245ff4d163666f29d4e3003230cb037341ae0ae5b54d4d7132aef",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "request-refused-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "710cad832eb3b33dfabc0d799c261520a6a206f94309c0d68fd14a59db3a5273",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/companies",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/company-suggestions"
+      ],
+      "mutations": [
+        {
+          "companyName": "Another Synthetic Employer",
+          "role": "seeker",
+          "jobFunction": "Design"
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "invite-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "5516c5ebac3a4d03701349bf1df05e7c726526f2790991e585a5533890cb58db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "invite-ready-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "115444055cd34aa61bfa5eb194be2ae99512a595f98d0ce8b86b8fe50696fede",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "invite-error-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a80cc0bee64688bd17caf11c924b3b8a0d656aaaf92004ee260abcc23bdbe92e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "invite-error-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "b533367f6ee838eaaa7637b4352ac4b347ef7a0d822d7c69c60a0239b88e8cc0",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/personal-invites/me",
+        "GET /api/personal-invites/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    }
+  ],
+  "comparisons": [
+    {
+      "name": "request-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "99e26dc2a040a44c232e93c6489d4b774bbaec20df7826cd53f701197519b3ca",
+      "afterSha256": "99e26dc2a040a44c232e93c6489d4b774bbaec20df7826cd53f701197519b3ca",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "682f333739b3537323548f647eb709e3c43b08ba455d86c2f0da18d581805533",
+      "afterSha256": "682f333739b3537323548f647eb709e3c43b08ba455d86c2f0da18d581805533",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "invite-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "6a896e431502861753d9bff555cbaae6c6af98416b98b93c038fdc5b3bfd2f80",
+      "afterSha256": "6a896e431502861753d9bff555cbaae6c6af98416b98b93c038fdc5b3bfd2f80",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "invite-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "7e47170a6d02a1a8c2a7c50451a6ebe61c965892460e1d5a361ad540b9adcb56",
+      "afterSha256": "7e47170a6d02a1a8c2a7c50451a6ebe61c965892460e1d5a361ad540b9adcb56",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-form-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "87cd7cee3d4519d204163d7c27870ef0895467d51c75de7e974a8686e42abb30",
+      "afterSha256": "87cd7cee3d4519d204163d7c27870ef0895467d51c75de7e974a8686e42abb30",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-form-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "2322fdcd7783b3fc0218ece1e1ce72daaf6916637dc7156f85485fea511513ff",
+      "afterSha256": "2322fdcd7783b3fc0218ece1e1ce72daaf6916637dc7156f85485fea511513ff",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-listed-1280.png",
+      "differentPixels": 34,
+      "beforeSha256": "556e8bea173df815158ed7e4c7b2edef1db4ecc1f4697972ec3097609a56f4b8",
+      "afterSha256": "968885d362febd40bd075b23c5ffae18a49e98d79d486e85bbba73a97c6f9270",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-listed-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "0a357f0f012d690a4a41a274428d428d76924bdcb702c511a241b3fdcd33479f",
+      "afterSha256": "0a357f0f012d690a4a41a274428d428d76924bdcb702c511a241b3fdcd33479f",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-saved-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "f3ddea9075b53d47372ef77a6d9af69ef69baec2888549bf57239d2853cfaa1c",
+      "afterSha256": "f3ddea9075b53d47372ef77a6d9af69ef69baec2888549bf57239d2853cfaa1c",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-saved-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "d0d0ac5882380ad2d6345603f0625dc05956c23862e56cdeca0bf5b262bc33f8",
+      "afterSha256": "d0d0ac5882380ad2d6345603f0625dc05956c23862e56cdeca0bf5b262bc33f8",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-refused-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "460563ee2bc245ff4d163666f29d4e3003230cb037341ae0ae5b54d4d7132aef",
+      "afterSha256": "460563ee2bc245ff4d163666f29d4e3003230cb037341ae0ae5b54d4d7132aef",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "request-refused-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "710cad832eb3b33dfabc0d799c261520a6a206f94309c0d68fd14a59db3a5273",
+      "afterSha256": "710cad832eb3b33dfabc0d799c261520a6a206f94309c0d68fd14a59db3a5273",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "invite-ready-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "5516c5ebac3a4d03701349bf1df05e7c726526f2790991e585a5533890cb58db",
+      "afterSha256": "5516c5ebac3a4d03701349bf1df05e7c726526f2790991e585a5533890cb58db",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "invite-ready-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "115444055cd34aa61bfa5eb194be2ae99512a595f98d0ce8b86b8fe50696fede",
+      "afterSha256": "115444055cd34aa61bfa5eb194be2ae99512a595f98d0ce8b86b8fe50696fede",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "invite-error-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "a80cc0bee64688bd17caf11c924b3b8a0d656aaaf92004ee260abcc23bdbe92e",
+      "afterSha256": "a80cc0bee64688bd17caf11c924b3b8a0d656aaaf92004ee260abcc23bdbe92e",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "invite-error-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "b533367f6ee838eaaa7637b4352ac4b347ef7a0d822d7c69c60a0239b88e8cc0",
+      "afterSha256": "b533367f6ee838eaaa7637b4352ac4b347ef7a0d822d7c69c60a0239b88e8cc0",
+      "sameRequests": true,
+      "sameMutations": true
+    }
+  ]
+}

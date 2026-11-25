@@ -3,6 +3,7 @@ import express, { type Express, type Request } from "express";
 import { randomBytes } from "node:crypto";
 import type { OAuthClient } from "./oauthStore";
 import { AssistantPlanRequiredError } from "./planGates";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_EXPIRY_MAX_DAYS } from "../shared/seekerAgents";
 
 const ISSUER = "https://skipwait.me";
 export const OAUTH_RESOURCE = `${ISSUER}/api/mcp`;
@@ -11,14 +12,18 @@ const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 const VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/;
 
 export type OAuthRouteDeps = {
+  /** D-178.gate (D-290 R2): the one agent switch. Off answers 404 on every OAuth endpoint. */
+  enabled: () => boolean;
+  /** D-178.gate (D-290 R2): the switch plus the account allow-list, never a plan. */
+  allowed: (userId: number) => boolean | Promise<boolean>;
   resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
   registerClient: (input: { clientName?: unknown; redirectUris?: unknown }) => Promise<OAuthClient>;
   getClient: (clientId: unknown) => Promise<OAuthClient | null>;
-  /** Throws AssistantPlanRequiredError when the owner's plan has no assistant entitlement. */
-  issueCode: (userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string }) => Promise<string>;
-  consumeCode: (code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }) => Promise<{ userId: number } | null>;
+  /** Throws AssistantPlanRequiredError when agent access closed for the owner. */
+  issueCode: (userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string; expiresInDays: number }) => Promise<string>;
+  consumeCode: (code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }) => Promise<{ userId: number; expiresInDays: number } | null>;
   /** Mints a normal assistant bearer (same table and checks as a pasted token). Throws when the owner has no assistant access. */
-  mintToken: (userId: number, name: string) => Promise<{ token: string }>;
+  mintToken: (userId: number, name: string, expiresInDays: number) => Promise<{ token: string }>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null> }) => Promise<unknown>;
   now?: () => number;
 };
@@ -26,6 +31,7 @@ export type OAuthRouteDeps = {
 export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
   const now = deps.now ?? Date.now;
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  const closed = (res: express.Response) => res.status(404).json({ error: "Not found" });
   const hits = new Map<string, { start: number; count: number }>();
   const limited = (key: string, max: number) => {
     const t = now(); const h = hits.get(key);
@@ -36,6 +42,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
   const oauthError = (res: express.Response, status: number, error: string, description: string, retryAfterKey?: string) => { if (retryAfterKey) setRetryAfter(res, retryAfterSecondsUntil(windowEnd(retryAfterKey), now())); return res.set("Cache-Control", "no-store").status(status).json({ error, error_description: description }); };
 
   app.get("/api/oauth/authorization-server", (_req, res) => {
+    if (!deps.enabled()) return closed(res);
     res.set("Cache-Control", "public, max-age=300").json({
       issuer: ISSUER,
       authorization_endpoint: `${ISSUER}/connect-assistant`,
@@ -49,11 +56,13 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
     });
   });
   app.get("/api/oauth/protected-resource", (_req, res) => {
+    if (!deps.enabled()) return closed(res);
     res.set("Cache-Control", "public, max-age=300").json({ resource: OAUTH_RESOURCE, authorization_servers: [ISSUER], bearer_methods_supported: ["header"], scopes_supported: ["read", "draft"] });
   });
 
   // Dynamic client registration (RFC 7591), public clients only. Registering grants nothing: every connection still needs the owner's Allow.
   app.post("/api/oauth/register", express.json({ limit: "8kb" }), async (req, res) => {
+    if (!deps.enabled()) return closed(res);
     if (limited(`reg:${req.ip ?? "?"}`, 20)) return oauthError(res, 429, "temporarily_unavailable", "Too many registrations. Try again later.", `reg:${req.ip ?? "?"}`);
     try {
       const client = await deps.registerClient({ clientName: req.body?.client_name, redirectUris: req.body?.redirect_uris });
@@ -65,6 +74,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
 
   // The consent screen asks who is connecting. Only the name is returned, and only for an exactly registered redirect.
   app.get("/api/oauth/client", async (req, res) => {
+    if (!deps.enabled()) return closed(res);
     const client = await deps.getClient(req.query.client_id);
     const redirect = typeof req.query.redirect_uri === "string" ? req.query.redirect_uri : "";
     if (!client || !client.redirectUris.includes(redirect)) return res.set("Cache-Control", "no-store").status(404).json({ error: "This connection link is not valid" });
@@ -74,8 +84,10 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
   // The signed-in owner's decision from the consent screen. Never callable without their own session.
   app.post("/api/oauth/authorize", express.json({ limit: "4kb" }), async (req, res) => {
     try {
+      if (!deps.enabled()) return closed(res);
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to connect an assistant" });
+      if (!(await deps.allowed(identity.account.id))) return closed(res);
       const client = await deps.getClient(req.body?.client_id);
       const redirectUri = typeof req.body?.redirect_uri === "string" ? req.body.redirect_uri : "";
       if (!client || !client.redirectUris.includes(redirectUri)) return res.status(400).json({ error: "This connection link is not valid" });
@@ -89,19 +101,25 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
       }
       if (req.body?.decision !== "approve") return res.status(400).json({ error: "Choose allow or deny" });
       if (req.body?.code_challenge_method !== "S256" || typeof req.body?.code_challenge !== "string" || !CHALLENGE_RE.test(req.body.code_challenge)) return res.status(400).json({ error: "This connection link is missing its security check (PKCE)" });
-      // Fail before issuing a code when the owner has no assistant access.
-      const code = await deps.issueCode(identity.account.id, { clientId: client.clientId, redirectUri, codeChallenge: req.body.code_challenge });
+      // D-178.screen (D-290 R1): the seeker chooses how long the grant lasts on the consent
+      // page. 7 days unless they pick up to 30; anything else is refused before a code exists.
+      const requestedDays = req.body?.expires_in_days;
+      const expiresInDays = requestedDays === undefined || requestedDays === null ? AGENT_EXPIRY_DEFAULT_DAYS : Number(requestedDays);
+      if (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > AGENT_EXPIRY_MAX_DAYS) return res.status(400).json({ error: `Choose an access period between 1 and ${AGENT_EXPIRY_MAX_DAYS} days` });
+      // Fail before issuing a code when agent access closed for the owner.
+      const code = await deps.issueCode(identity.account.id, { clientId: client.clientId, redirectUri, codeChallenge: req.body.code_challenge, expiresInDays });
       target.searchParams.set("code", code);
       record({ actorUserId: identity.account.id, action: "assistant.oauth_allowed", outcome: "success", resourceType: "oauth_client", resourceId: client.clientId, metadata: { client: client.clientName } });
       res.set("Cache-Control", "no-store").json({ redirectTo: target.toString() });
     } catch (error) {
-      // Not on Land: 402 so the consent screen shows the plan gate, never a code.
-      if (error instanceof AssistantPlanRequiredError) return res.set("Cache-Control", "no-store").status(402).json({ error: error.message, code: error.code, upgradePath: "/plans" });
+      // D-178.gate (D-290 R2): the gate is the switch and the allow-list, never a plan, so a closed gate is a plain 404 with no upgrade path.
+      if (error instanceof AssistantPlanRequiredError) return res.set("Cache-Control", "no-store").status(404).json({ error: "Not found" });
       res.status(500).json({ error: "We could not connect this assistant" });
     }
   });
 
   app.post("/api/oauth/token", express.urlencoded({ extended: false, limit: "4kb" }), express.json({ limit: "4kb" }), async (req, res) => {
+    if (!deps.enabled()) return closed(res);
     const b = (req.body ?? {}) as Record<string, unknown>;
     if (limited(`tok:${req.ip ?? "?"}`, 120)) return oauthError(res, 429, "temporarily_unavailable", "Too many requests.", `tok:${req.ip ?? "?"}`);
     if (b.grant_type !== "authorization_code") return oauthError(res, 400, "unsupported_grant_type", "Only authorization_code is supported");
@@ -112,7 +130,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
       if (!exchanged) return oauthError(res, 400, "invalid_grant", "This code is invalid, expired or already used");
       const client = await deps.getClient(clientId);
       let minted: { token: string };
-      try { minted = await deps.mintToken(exchanged.userId, `${(client?.clientName ?? "Assistant").slice(0, 100)} (OAuth ${randomBytes(3).toString("hex")})`); }
+      try { minted = await deps.mintToken(exchanged.userId, `${(client?.clientName ?? "Assistant").slice(0, 100)} (OAuth ${randomBytes(3).toString("hex")})`, exchanged.expiresInDays); }
       catch { return oauthError(res, 403, "access_denied", "This account no longer has assistant access"); }
       record({ actorUserId: exchanged.userId, action: "assistant.oauth_token_issued", outcome: "success", resourceType: "oauth_client", resourceId: clientId });
       res.set({ "Cache-Control": "no-store", Pragma: "no-cache" }).json({ access_token: minted.token, token_type: "Bearer", scope: "read draft" });

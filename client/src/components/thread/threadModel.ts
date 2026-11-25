@@ -1,5 +1,5 @@
 import { ASK_LEVEL_COST_CLIENT } from "@/lib/goalFlags";
-import { addCreditPhrase, creditUsedPhrase } from "@shared/moneyCopy";
+import { addCreditPhrase, creditUsedPhrase, CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
 import { askDaysLeft, askDaysShown, isPostApprovalReferralStatus } from "@shared/referral";
 import { companyIdentityOf, isUnknownCompany, type CompanyIdentitySource } from "@shared/companies";
 import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
@@ -71,10 +71,10 @@ export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" |
   const when = days === null || days < 0 ? null : days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
   if (held) {
     const lead = `Sent privately to the ${unknown ? "employee" : `${company} employee`} whose link you used.`;
-    return when ? `${lead} ${when} if they don't respond. Your credit comes back, unless its month or plan has ended by then.` : lead;
+    return when ? `${lead} ${when} if they don't respond. Your credit comes back, ${CREDIT_ENDED_CAVEAT}.` : lead;
   }
   if (!when) return `Waiting for a verified ${referrer}.`;
-  return `Waiting for a verified ${referrer}. ${when} if nobody accepts. Your credit comes back, unless its month or plan has ended by then.`;
+  return `Waiting for a verified ${referrer}. ${when} if nobody accepts. Your credit comes back, ${CREDIT_ENDED_CAVEAT}.`;
 }
 
 /** Referrer-side pending line: the real expiry first, then the existing "no reply needed" reassurance. */

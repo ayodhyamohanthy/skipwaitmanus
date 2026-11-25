@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { registerOAuthRoutes, type OAuthRouteDeps } from "./oauthRoutes";
 import { isAllowedRedirectUri, pkceChallengeFor } from "./oauthStore";
 import { AssistantPlanRequiredError } from "./planGates";
+import { createOAuthAgentGrant } from "./seekerAgentDeps";
+import { AGENT_EXPIRY_MAX_DAYS, AGENT_KEY_PATTERN, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
 
 const VERIFIER = "a".repeat(43);
 const CHALLENGE = pkceChallengeFor(VERIFIER);
@@ -11,20 +13,22 @@ const REDIRECT = "https://claude.ai/api/mcp/auth_callback";
 const client = { clientId: "swc_" + "x".repeat(24), clientName: "Claude", redirectUris: [REDIRECT] };
 
 function setup(over: Partial<OAuthRouteDeps> = {}, signedIn = true) {
-  const codes = new Map<string, { clientId: string; redirectUri: string; challenge: string; userId: number }>();
-  const minted: Array<{ userId: number; name: string }> = [];
+  const codes = new Map<string, { clientId: string; redirectUri: string; challenge: string; userId: number; expiresInDays: number }>();
+  const minted: Array<{ userId: number; name: string; expiresInDays: number }> = [];
   const activity: Array<Record<string, unknown>> = [];
   const deps: OAuthRouteDeps = {
+    enabled: () => true,
+    allowed: () => true,
     resolveIdentity: async () => (signedIn ? { account: { id: 7 } } : undefined),
     registerClient: async input => ({ clientId: client.clientId, clientName: String(input.clientName), redirectUris: input.redirectUris as string[] }),
     getClient: async id => (id === client.clientId ? client : null),
-    issueCode: async (userId, input) => { const code = `code${codes.size}`; codes.set(code, { clientId: input.clientId, redirectUri: input.redirectUri, challenge: input.codeChallenge, userId }); return code; },
+    issueCode: async (userId, input) => { const code = `code${codes.size}`; codes.set(code, { clientId: input.clientId, redirectUri: input.redirectUri, challenge: input.codeChallenge, userId, expiresInDays: input.expiresInDays }); return code; },
     consumeCode: async (code, input) => {
       const row = codes.get(code); codes.delete(code);
       if (!row || row.clientId !== input.clientId || row.redirectUri !== input.redirectUri || pkceChallengeFor(input.codeVerifier) !== row.challenge) return null;
-      return { userId: row.userId };
+      return { userId: row.userId, expiresInDays: row.expiresInDays };
     },
-    mintToken: async (userId, name) => { minted.push({ userId, name }); return { token: "sw_" + "t".repeat(32) }; },
+    mintToken: async (userId, name, expiresInDays) => { minted.push({ userId, name, expiresInDays }); return { token: "sw_" + "t".repeat(32) }; },
     recordActivity: async input => { activity.push(input); },
     ...over,
   };
@@ -95,11 +99,28 @@ describe("authorize + token", () => {
     const replay = await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code: code2, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER });
     expect(replay.status).toBe(400);
   });
-  it("answers 402 with the Land upgrade path, never a code, when the owner has no assistant entitlement", async () => {
+  it("answers 404 on every OAuth endpoint while the agent switch is off", async () => {
+    const { app } = setup({ enabled: () => false });
+    expect((await request(app).get("/api/oauth/authorization-server")).status).toBe(404);
+    expect((await request(app).get("/api/oauth/protected-resource")).status).toBe(404);
+    expect((await request(app).post("/api/oauth/register").send({ client_name: "Claude", redirect_uris: [REDIRECT] })).status).toBe(404);
+    expect((await request(app).get("/api/oauth/client").query({ client_id: client.clientId, redirect_uri: REDIRECT })).status).toBe(404);
+    expect((await authorize(app, {})).status).toBe(404);
+    expect((await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code: "c", redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER })).status).toBe(404);
+  });
+  it("answers 404 for an account that is not on the allow-list, never a code", async () => {
+    const { app, activity } = setup({ allowed: () => false });
+    const res = await authorize(app, {});
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
+    expect(res.body.redirectTo).toBeUndefined();
+    expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");
+  });
+  it("answers 404, never a code, when the gate closes between consent and issue", async () => {
     const { app, activity } = setup({ issueCode: async () => { throw new AssistantPlanRequiredError(); } });
     const res = await authorize(app, {});
-    expect(res.status).toBe(402);
-    expect(res.body).toEqual({ error: "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.", code: "assistant_plan_required", upgradePath: "/plans" });
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
     expect(res.body.redirectTo).toBeUndefined();
     expect(res.headers["cache-control"]).toBe("no-store");
     expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");
@@ -146,5 +167,93 @@ describe("static discovery files", () => {
     const res = JSON.parse(readFileSync(new URL("../client/public/.well-known/oauth-protected-resource", import.meta.url), "utf8"));
     expect(auth).toEqual((await request(app).get("/api/oauth/authorization-server")).body);
     expect(res).toEqual((await request(app).get("/api/oauth/protected-resource")).body);
+  });
+});
+
+describe("D-178.grant (D-290 R1): the exchange creates a D-141 grant", () => {
+  const NOW = new Date("2026-11-24T09:00:00.000Z").getTime();
+  const recordingStore = () => {
+    const created: Array<Record<string, unknown>> = [];
+    let next = 71;
+    const store = {
+      createGrant: async (input: Record<string, unknown>) => {
+        created.push(input);
+        return { id: next++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix as string, canLookup: input.canLookup as boolean, canDraft: input.canDraft as boolean, maxCreditsPerAsk: 10, maxCreditsPerDay: 20, maxCreditsPerWeek: 50, maxAsksPerDay: 3, expiresAt: input.expiresAt as Date, revokedAt: null, lastUsedAt: null, createdAt: new Date(NOW) };
+      },
+    };
+    return { created, store };
+  };
+
+  it("exchanges once for one grant with the default scopes, limits and a usable agent key", async () => {
+    const { created, store } = recordingStore();
+    const { app } = setup({ mintToken: async (userId, name) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name, store: store as never, now: () => NOW })).token }) });
+    const approved = await request(app).post("/api/oauth/authorize").send({ client_id: client.clientId, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", decision: "approve" });
+    const code = new URL(approved.body.redirectTo).searchParams.get("code")!;
+    const exchanged = await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER });
+    expect(exchanged.status).toBe(200);
+    expect(exchanged.body.access_token).toMatch(AGENT_KEY_PATTERN);
+    expect(exchanged.body).toMatchObject({ token_type: "Bearer", scope: "read draft" });
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ userId: 7, canLookup: true, canDraft: true });
+    expect((created[0].limits as Record<string, number>)).toEqual(AGENT_LIMIT_DEFAULTS);
+    const days = ((created[0].expiresAt as Date).getTime() - NOW) / 86_400_000;
+    expect(days).toBe(7);
+    expect(days).toBeLessThanOrEqual(AGENT_EXPIRY_MAX_DAYS);
+  });
+
+  it("creates no second grant when the same code is replayed", async () => {
+    const { created, store } = recordingStore();
+    const { app } = setup({ mintToken: async (userId, name) => ({ token: (await createOAuthAgentGrant({ userId, clientName: name, store: store as never, now: () => NOW })).token }) });
+    const approved = await request(app).post("/api/oauth/authorize").send({ client_id: client.clientId, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", decision: "approve" });
+    const code = new URL(approved.body.redirectTo).searchParams.get("code")!;
+    const form = { grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER };
+    expect((await request(app).post("/api/oauth/token").type("form").send(form)).status).toBe(200);
+    expect((await request(app).post("/api/oauth/token").type("form").send(form)).status).toBe(400);
+    expect(created).toHaveLength(1);
+  });
+});
+
+describe("D-178.screen (D-290 R1): the seeker's expiry choice reaches the grant", () => {
+  const NOW = new Date("2026-11-24T09:00:00.000Z").getTime();
+  const recordingStore = () => {
+    const created: Array<Record<string, unknown>> = [];
+    const store = { createGrant: async (input: Record<string, unknown>) => { created.push(input); return { id: 71, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix as string, canLookup: true, canDraft: true, maxCreditsPerAsk: 10, maxCreditsPerDay: 20, maxCreditsPerWeek: 50, maxAsksPerDay: 3, expiresAt: input.expiresAt as Date, revokedAt: null, lastUsedAt: null, createdAt: new Date(NOW) }; } };
+    return { created, store };
+  };
+  const exchange = async (app: express.Express, body: Record<string, unknown>) => {
+    const approved = await request(app).post("/api/oauth/authorize").send({ client_id: client.clientId, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", decision: "approve", ...body });
+    const code = new URL(approved.body.redirectTo).searchParams.get("code")!;
+    return request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER });
+  };
+
+  it("defaults to 7 days when the consent page sends no choice", async () => {
+    const { app, minted } = setup();
+    expect((await exchange(app, {})).status).toBe(200);
+    expect(minted[0]).toMatchObject({ userId: 7, expiresInDays: 7 });
+  });
+
+  it("carries the seeker's 30-day choice from consent to the grant", async () => {
+    const { created, store } = recordingStore();
+    const { app, minted } = setup({ mintToken: async (userId, name, expiresInDays) => { minted.push({ userId, name, expiresInDays }); return { token: (await createOAuthAgentGrant({ userId, clientName: name, expiresInDays, store: store as never, now: () => NOW })).token }; } });
+    expect((await exchange(app, { expires_in_days: 30 })).status).toBe(200);
+    expect(minted[0]).toMatchObject({ expiresInDays: 30 });
+    expect(created).toHaveLength(1);
+    expect(((created[0].expiresAt as Date).getTime() - NOW) / 86_400_000).toBe(30);
+  });
+
+  it("refuses an expiry outside 1-30 before any code is issued", async () => {
+    const { app, activity } = setup();
+    for (const bad of [0, 31, -1, 7.5, "x", ""]) {
+      const res = await request(app).post("/api/oauth/authorize").send({ client_id: client.clientId, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", decision: "approve", expires_in_days: bad });
+      expect(res.status).toBe(400);
+      expect(res.body.redirectTo).toBeUndefined();
+    }
+    expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");
+  });
+
+  it("clamps a bad value in the grant factory instead of trusting the caller", async () => {
+    const { created, store } = recordingStore();
+    await createOAuthAgentGrant({ userId: 7, clientName: "Claude", expiresInDays: 99, store: store as never, now: () => NOW });
+    expect(((created[0].expiresAt as Date).getTime() - NOW) / 86_400_000).toBe(AGENT_EXPIRY_MAX_DAYS);
   });
 });

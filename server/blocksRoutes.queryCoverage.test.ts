@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ db: null as ReturnType<typeof drizzle> | null }));
 vi.mock("./db", () => ({ getDb: async () => state.db }));
 
-import { getBlockedRequestIds, getThreadBlockStatus } from "./blocksRoutes";
+import { BlockCheckUnavailableError, getBlockedRequestIds, getThreadBlockStatus } from "./blocksRoutes";
 
 type Referral = { id: number; jobSeekerId: number; referrerId: number | null };
 type Block = { blockerUserId: number; blockedUserId: number };
@@ -131,9 +131,9 @@ describe("real block lookup query coverage", () => {
     expect(queries).toHaveLength(1);
   });
 
-  it("preserves unavailable-database fallback and propagates query failures to the caller", async () => {
+  it("refuses the decision when the database is unavailable and propagates query failures to the caller", async () => {
     state.db = null;
-    expect(await getBlockedRequestIds(11, [1])).toEqual(new Set());
+    await expect(getBlockedRequestIds(11, [1])).rejects.toThrow(BlockCheckUnavailableError);
     state.db = drizzle(async () => { throw new Error("fixture database unavailable"); });
     await expect(getBlockedRequestIds(11, [1])).rejects.toThrow();
   });

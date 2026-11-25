@@ -1,0 +1,323 @@
+{
+  "task": "D-093.menu",
+  "synthetic": true,
+  "productionRequests": 0,
+  "beforeRevision": "d26b995ef4e0654e8540a61dafad38b0cdd71f52",
+  "afterRevision": "b00faaadaf12f8498e2390e0292d3f88de572354",
+  "fixture": {
+    "fixtureOnly": true,
+    "sourceRevision": "b00faaadaf12f8498e2390e0292d3f88de572354",
+    "productionRegistrySha256": "d6a271f263630adfba6dbf2ecd48449238774aeeae7574bdf50ac2d609c34af5",
+    "syntheticRegistrySha256": "8ccad348f0f456a119f05b7618a1c8fafd0315e68db454ca8068566b530b1c0e",
+    "languages": [
+      "en",
+      "hi"
+    ],
+    "expandedEndonym": "हिन्दी — विस्तारित भाषा नाम",
+    "productionRegistryUnchanged": true
+  },
+  "results": [
+    {
+      "target": "before",
+      "fixtureOnly": false,
+      "state": "menu",
+      "width": 1280,
+      "route": "/start",
+      "screenshot": "before-menu-1280.png",
+      "pngSha256": "d27e5a93dcca0f193c760bf1f1ed8ea077bee9ae954d095d536f94c91e40be50",
+      "pixelSha256": "95c97c48d9668b3b660c78e8ca2bd04eca002a34ca726152c7299a5183cd72f1",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nNotifications\nDirect messages\nMy requests\nInternal openings\nEmployer dashboard\nShare skipwait.me\nSettings\nSign out",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "before",
+      "fixtureOnly": false,
+      "state": "menu",
+      "width": 390,
+      "route": "/start",
+      "screenshot": "before-menu-390.png",
+      "pngSha256": "58656801b41a1921bb38043685e037a61cdb2e5e83f123f5f0aa3c0674c44a98",
+      "pixelSha256": "76783853c3ec1a9b87573b94bae5f61229b1fbed1752450607044ed5a2ce2aa0",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nNotifications\nDirect messages\nMy requests\nInternal openings\nEmployer dashboard\nShare skipwait.me\nSettings\nSign out",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/notifications",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "after",
+      "fixtureOnly": false,
+      "state": "menu",
+      "width": 1280,
+      "route": "/start",
+      "screenshot": "after-menu-1280.png",
+      "pngSha256": "d27e5a93dcca0f193c760bf1f1ed8ea077bee9ae954d095d536f94c91e40be50",
+      "pixelSha256": "95c97c48d9668b3b660c78e8ca2bd04eca002a34ca726152c7299a5183cd72f1",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nNotifications\nDirect messages\nMy requests\nInternal openings\nEmployer dashboard\nShare skipwait.me\nSettings\nSign out",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "after",
+      "fixtureOnly": false,
+      "state": "menu",
+      "width": 390,
+      "route": "/start",
+      "screenshot": "after-menu-390.png",
+      "pngSha256": "58656801b41a1921bb38043685e037a61cdb2e5e83f123f5f0aa3c0674c44a98",
+      "pixelSha256": "76783853c3ec1a9b87573b94bae5f61229b1fbed1752450607044ed5a2ce2aa0",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nNotifications\nDirect messages\nMy requests\nInternal openings\nEmployer dashboard\nShare skipwait.me\nSettings\nSign out",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "menu",
+      "width": 1280,
+      "route": "/start",
+      "screenshot": "two-language-fixture-menu-1280.png",
+      "pngSha256": "73f5772a96c427069e35bce61916d2904c47a61ae816bd5ab5e2338597c16e15",
+      "pixelSha256": "5271914da7bf5edb56ea1a3c4aa093baaf941d350ec7029bcbd196a9c2b460e7",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nNotifications\nDirect messages\nMy requests\nInternal openings\nEmployer dashboard\nShare skipwait.me\nSettings\nLanguage\nSign out",
+      "overflow": 0,
+      "entryHeight": 44,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "picker",
+      "width": 1280,
+      "route": "/start",
+      "screenshot": "two-language-fixture-picker-1280.png",
+      "pngSha256": "c577ceba6145449eb8ee4866987521ce977647617d4b795ead6177aea7f85c04",
+      "pixelSha256": "4de6bdbc9212a065b90cfe4930220f1f3b00a80a3a77822aca48bd5cb558d614",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nLanguage\nEnglish\nहिन्दी — विस्तारित भाषा नाम\nDone",
+      "overflow": 0,
+      "popoverWidth": 288,
+      "controlHeight": 44,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "selected",
+      "width": 1280,
+      "route": "/start",
+      "screenshot": "two-language-fixture-selected-1280.png",
+      "pngSha256": "7c605395144f65baf0eda3a783c8e7d9af51692e1fa47e731ef16399537527d6",
+      "pixelSha256": "710b524b81c9620e01ec476d6b5640d7c31b9f443642915f46551c5600bf0b8d",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nLanguage\nEnglish\nहिन्दी — विस्तारित भाषा नाम\nDone",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access",
+        "PUT /api/account/preferences"
+      ],
+      "preferencesWrites": [
+        {
+          "language": "hi"
+        }
+      ],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "closed",
+      "width": 1280,
+      "route": "/start",
+      "screenshot": "two-language-fixture-closed-1280.png",
+      "pngSha256": "3e54ccc3e13dd56501d6ddf874bef3a905fa09fbdbf1949e251b137abbfbeed2",
+      "pixelSha256": "b78fb457fd9b8b247e292260a87409dc16763ef34ddc3e02c66a89b875805bf4",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access",
+        "PUT /api/account/preferences"
+      ],
+      "preferencesWrites": [
+        {
+          "language": "hi"
+        }
+      ],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "menu",
+      "width": 390,
+      "route": "/start",
+      "screenshot": "two-language-fixture-menu-390.png",
+      "pngSha256": "13305d4576f847fa9e57944fd8e6c73810ef78c6dbbc14193cfce4b18837a54b",
+      "pixelSha256": "385966bebb90bd9bfdd22290cab402aa0ad5507db73fd483e653db6c13d5d76d",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nNotifications\nDirect messages\nMy requests\nInternal openings\nEmployer dashboard\nShare skipwait.me\nSettings\nLanguage\nSign out",
+      "overflow": 0,
+      "entryHeight": 44,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "picker",
+      "width": 390,
+      "route": "/start",
+      "screenshot": "two-language-fixture-picker-390.png",
+      "pngSha256": "9d66c7df889e835e4707c955229a84c97b5b4476de354ab99f4853a880baf931",
+      "pixelSha256": "becd3ecb488f4a02ee47ca144dda7559c77c7528db0ee11ae27cfd56484fd7f3",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nLanguage\nEnglish\nहिन्दी — विस्तारित भाषा नाम\nDone",
+      "overflow": 0,
+      "popoverWidth": 288,
+      "controlHeight": 44,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access"
+      ],
+      "preferencesWrites": [],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "selected",
+      "width": 390,
+      "route": "/start",
+      "screenshot": "two-language-fixture-selected-390.png",
+      "pngSha256": "5a7cee1e96b78a663c7a92e4afdf6b61607a4eef959a57314a73c15ae47f072a",
+      "pixelSha256": "eef97f7a7fd399cbed9bdb891fcc4aa7b85aae0a0720701c505758aeb6fc910e",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue\nLanguage\nEnglish\nहिन्दी — विस्तारित भाषा नाम\nDone",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access",
+        "PUT /api/account/preferences"
+      ],
+      "preferencesWrites": [
+        {
+          "language": "hi"
+        }
+      ],
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "target": "two-language-fixture",
+      "fixtureOnly": true,
+      "state": "closed",
+      "width": 390,
+      "route": "/start",
+      "screenshot": "two-language-fixture-closed-390.png",
+      "pngSha256": "850071be77c61aaad8a695d701aed870685beff07a8f4faaa5023e634477b2d6",
+      "pixelSha256": "e7f68a7918c1430358a956d12ef95f83031f2f081f9e87095372649b4f7613f2",
+      "text": "Back\nPaste the job link.\n\nWe match it privately to the company. Your resume comes next.\n\nTarget Role URL\nContinue\nPaste the job link to continue",
+      "overflow": 0,
+      "calls": [
+        "GET /api/trpc/auth.me",
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "POST /api/account/signup-language",
+        "GET /api/notifications",
+        "GET /api/company-referrals/access",
+        "PUT /api/account/preferences"
+      ],
+      "preferencesWrites": [
+        {
+          "language": "hi"
+        }
+      ],
+      "errors": [],
+      "unexpected": []
+    }
+  ]
+}

@@ -1,13 +1,18 @@
 // Company directory service. Builds the public and admin views from the
-// directory rows and derives each company's availability on read:
-// openToReferrals is true when at least one referrer verified on one of the
-// company's domains is unpaused, unsuspended (account and canonical person)
-// and below their referral capacity. Only that boolean ever leaves the
-// server: never a count, an id or a name.
-import { adminCompanySchema, companyDirectoryResponseSchema, companyFunctionsSchema, publicCompanySchema, type AdminCompany, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
+// directory rows and derives two facts on read from the same referrer rows:
+// - availability (openToReferrals): at least one referrer verified on one of
+//   the company's domains is unpaused, unsuspended (account and canonical
+//   person) and below their referral capacity. Backend routing only (D-176):
+//   it reaches the admin view and internal readers (getCompanyDirectoryRecord),
+//   never a public response (D-174 public-payload).
+// - presence (referrerPresence): at least one verified, unsuspended referrer
+//   has joined at the company, paused or full included (D-360 (5)/D-363).
+//   Sent only on the single-company public response.
+// Never a count, an id or a name leaves the server.
+import { adminCompanySchema, companyDirectoryResponseSchema, companyFunctionsSchema, publicCompanySchema, type AdminCompany, type CompanyDirectoryResponse, type PublicCompany, type ReferrerPresence } from "../shared/companies";
 import { resolveCompanySource, type CompanyDirectorySource, type CompanyDomainRecord, type CompanyRecord } from "./companyDirectorySource";
 import { notifySeekerAlertsForCompany } from "./db";
-import { isOpenReferrer, type ReferrerCandidate } from "./referrerAvailability";
+import { isOpenReferrer, isVerifiedEmployeeOfCompany, type ReferrerAvailability, type ReferrerCandidate } from "./referrerAvailability";
 
 // The availability rule moved to server/referrerAvailability.ts (D-034/D-047/
 // D-062) so db.ts can use the exact same predicate; these re-exports keep every
@@ -28,6 +33,22 @@ export function computeOpenCompanyIds(domains: readonly CompanyDomainRecord[], c
   return open;
 }
 
+/** D-360 (5)/D-363: a verified referrer who has joined and is not suspended (account or canonical person). Pause and capacity do not matter. */
+export function isJoinedReferrer(candidate: ReferrerAvailability, companyDomain: string): boolean {
+  return isVerifiedEmployeeOfCompany(candidate, companyDomain) && !candidate.userSuspended && candidate.personSuspended !== true;
+}
+
+export function computePresentCompanyIds(domains: readonly CompanyDomainRecord[], candidates: readonly ReferrerCandidate[]): Set<number> {
+  const companyByDomain = new Map(domains.map(row => [normalize(row.domain), row.companyId]));
+  const present = new Set<number>();
+  for (const candidate of candidates) {
+    const domain = normalize(candidate.workEmailDomain ?? "");
+    const companyId = companyByDomain.get(domain);
+    if (companyId !== undefined && isJoinedReferrer(candidate, domain)) present.add(companyId);
+  }
+  return present;
+}
+
 /** Rows that fail the contract (corrupt functions JSON, no domain) are left out, never guessed. */
 export function assembleCompanies(records: readonly CompanyRecord[], domains: readonly CompanyDomainRecord[], openCompanyIds: ReadonlySet<number>): AdminCompany[] {
   const assembled: AdminCompany[] = [];
@@ -44,30 +65,40 @@ export function assembleCompanies(records: readonly CompanyRecord[], domains: re
   return assembled.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 }
 
-export function toPublicCompany(company: AdminCompany): PublicCompany {
-  return publicCompanySchema.parse({ slug: company.slug, name: company.name, initials: company.initials, industry: company.industry, location: company.location, functions: company.functions, blurb: company.blurb, domains: company.domains, openToReferrals: company.openToReferrals });
+/** The public shape: never availability (D-176); presence only when the caller passes it (the single-company read). */
+export function toPublicCompany(company: AdminCompany, referrerPresence?: ReferrerPresence): PublicCompany {
+  return publicCompanySchema.parse({ slug: company.slug, name: company.name, initials: company.initials, industry: company.industry, location: company.location, functions: company.functions, blurb: company.blurb, domains: company.domains, ...(referrerPresence ? { referrerPresence } : {}) });
 }
 
 export type CompanyIdentityRecord = { slug: string; name: string; initials: string };
 
 export function createCompanyDirectory(source: CompanyDirectorySource) {
-  async function load(only?: (record: CompanyRecord) => boolean): Promise<AdminCompany[]> {
+  // One candidate read per call; presence reuses the rows availability already loaded (no extra query).
+  async function loadWithPresence(only?: (record: CompanyRecord) => boolean): Promise<{ companies: AdminCompany[]; presentIds: ReadonlySet<number> }> {
     const [allRecords, allDomains] = await Promise.all([source.loadCompanies(), source.loadDomains()]);
     const records = only ? allRecords.filter(only) : allRecords;
     const ids = new Set(records.map(record => record.id));
     const domains = allDomains.filter(row => ids.has(row.companyId));
     const candidates = await source.loadReferrerCandidates(unique(domains.map(row => normalize(row.domain))));
     const allocated = await source.loadAllocatedSlotCounts(unique(candidates.map(candidate => candidate.userId)));
-    return assembleCompanies(records, domains, computeOpenCompanyIds(domains, candidates, allocated));
+    return { companies: assembleCompanies(records, domains, computeOpenCompanyIds(domains, candidates, allocated)), presentIds: computePresentCompanyIds(domains, candidates) };
   }
+  const load = async (only?: (record: CompanyRecord) => boolean) => (await loadWithPresence(only)).companies;
+  const listedSlug = (slug: string) => (record: CompanyRecord) => record.status === "listed" && record.slug === slug;
   return {
+    /** Public list: no availability, no count, no presence (D-176, D-174 public-payload). */
     async list(): Promise<CompanyDirectoryResponse> {
-      const companies = (await load(record => record.status === "listed")).map(toPublicCompany);
-      return companyDirectoryResponseSchema.parse({ companies, openCount: companies.filter(company => company.openToReferrals).length });
+      const companies = (await load(record => record.status === "listed")).map(company => toPublicCompany(company));
+      return companyDirectoryResponseSchema.parse({ companies });
     },
+    /** Public single company: adds referrerPresence, never availability (D-360 (5)/D-363). */
     async get(slug: string): Promise<PublicCompany | undefined> {
-      const [company] = await load(record => record.status === "listed" && record.slug === slug);
-      return company ? toPublicCompany(company) : undefined;
+      const { companies: [company], presentIds } = await loadWithPresence(listedSlug(slug));
+      return company ? toPublicCompany(company, presentIds.has(company.id) ? "present" : "none") : undefined;
+    },
+    /** Internal: one listed company with its routing availability. Never serialized to a public reader. */
+    async record(slug: string): Promise<AdminCompany | undefined> {
+      return (await load(listedSlug(slug)))[0];
     },
     async adminList(query?: string): Promise<AdminCompany[]> {
       const needle = query?.trim().toLowerCase() ?? "";
@@ -105,6 +136,8 @@ export function createCompanyDirectory(source: CompanyDirectorySource) {
 const live = async () => createCompanyDirectory(await resolveCompanySource());
 export const listCompanyDirectory = async () => (await live()).list();
 export const getCompanyDirectoryEntry = async (slug: string) => (await live()).get(slug);
+/** Internal reader (company-claim dashboard): the listed record, availability included. Not a public response. */
+export const getCompanyDirectoryRecord = async (slug: string): Promise<AdminCompany | undefined> => (await live()).record(slug);
 export const listAdminCompanies = async (query?: string) => (await live()).adminList(query);
 export const getAdminCompany = async (id: number) => (await live()).adminGet(id);
 export const resolveCompanyIdentities = async (domains: readonly string[]) => (await live()).resolveIdentities(domains);

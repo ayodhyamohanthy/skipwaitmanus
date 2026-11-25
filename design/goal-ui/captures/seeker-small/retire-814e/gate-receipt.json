@@ -1,0 +1,21 @@
+{
+  "task": "D-048-K-seeker-small",
+  "session": "GPT-6.1 Sol · 814e",
+  "baseMain": "09626b57ac8eafe2f30c76b15c1f13b9f5d4bc3a",
+  "runtimeSource": "ffe0ae5037dcf9ac1cabd1564526b6f1eee37242",
+  "command": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=1",
+  "exitCode": 1,
+  "durationSeconds": 2597.81,
+  "files": { "passed": 739, "failed": 2, "skipped": 5, "total": 746 },
+  "tests": { "passed": 7789, "failed": 2, "skipped": 18, "total": 7809 },
+  "failures": [
+    { "file": "scripts/classifyCiChange.test.ts", "line": 655, "case": "a marker branch forked 400 commits behind main still reads empty from a merge base", "reason": "Test timed out in 20000ms", "changedByTask": false },
+    { "file": "server/referrerStepUp.test.ts", "line": 210, "case": "does not let R's proof pass P, and holds P to its address of record", "reason": "Test timed out in 20000ms", "changedByTask": false }
+  ],
+  "focused": { "files": 7, "passed": 50, "failed": 0 },
+  "otherCompletedChecks": ["TypeScript", "production build", "design-token audit", "migration lint", "deploy-trigger audit", "scope check", "PR assertion-retirement integrity"],
+  "failedTestsRerun": false,
+  "testsOrTimeoutsWeakened": false,
+  "localFullSuiteGreen": false,
+  "releaseStatus": "Not landed; exact-head required CI and canonical post-deploy proof pending"
+}

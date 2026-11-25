@@ -71,6 +71,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/privacy",
   "/profile",
   "/queue",
+  "/r/:token",
   "/refer/:companySlug/:vanityAlias",
   "/referrer",
   "/referrer-home",
@@ -113,6 +114,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/admin/money-check",
   "/admin/token-recovery",
   "/admin/users",
+  "/admin/users/:id/support",
   "/skippy",
 ];
 
@@ -147,8 +149,8 @@ export function isKnownRoute(pathname: string): boolean {
 const CANONICAL_HOST = "skipwait.me";
 const REDIRECTED_HOSTS = new Set([`www.${CANONICAL_HOST}`]);
 
-/** Same-origin browser security policy for Pages, assets, errors, and API proxy responses. */
-const CSP_REPORT_ONLY = [
+/** Browser security policy for Pages, assets, errors, and API proxy responses. */
+const CSP_POLICY = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -157,10 +159,19 @@ const CSP_REPORT_ONLY = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline' https://cdn.usefathom.com",
-  "connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com",
+  "script-src 'self' 'unsafe-inline' https://cdn.usefathom.com https://static.cloudflareinsights.com",
+  "connect-src 'self' https://api.workos.com https://*.chargebee.com https://api.razorpay.com https://cdn.usefathom.com https://o4511355895676928.ingest.de.sentry.io",
   "frame-src 'self' https://*.chargebee.com https://api.razorpay.com https://*.razorpay.com",
+  "report-uri /api/csp-report",
 ].join("; ");
+
+/**
+ * The reset page's URL carries a live WorkOS password-reset token until the page drops it from the address
+ * bar; send no Referer at all from it, so the requests made before the app runs never carry the token.
+ */
+export function referrerPolicyFor(pathname: string): string {
+  return pathname === "/reset-password" || pathname === "/reset-password/" ? "no-referrer" : "strict-origin-when-cross-origin";
+}
 
 export const onRequest: PagesFunction = async context => {
   const url = new URL(context.request.url);
@@ -180,8 +191,9 @@ export const onRequest: PagesFunction = async context => {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set("X-Frame-Options", "DENY");
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  headers.set("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
+  headers.set("Referrer-Policy", referrerPolicyFor(url.pathname));
+  headers.delete("Content-Security-Policy-Report-Only");
+  headers.set("Content-Security-Policy", CSP_POLICY);
   const contentType = headers.get("content-type") || "";
   const isHtml = contentType.includes("text/html");
   if (isHtml) headers.delete("Access-Control-Allow-Origin");

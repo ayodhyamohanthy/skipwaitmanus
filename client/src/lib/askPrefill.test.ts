@@ -24,6 +24,24 @@ describe("ask prefill hand-off", () => {
     expect(readAskPrefill(storage, 1_000 + ASK_PREFILL_TTL_MS)).toEqual({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", savedAt: 1_000 });
   });
 
+  it("round-trips an optional opportunityId when provided", () => {
+    const storage = memoryStorage();
+    expect(saveAskPrefill({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", opportunityId: 42 }, storage, 1_000)).toBe(true);
+    expect(readAskPrefill(storage, 1_000)).toEqual({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", savedAt: 1_000, opportunityId: 42 });
+  });
+
+  it("rejects non-integer, negative, or non-number opportunityId", () => {
+    const storage = memoryStorage();
+    expect(saveAskPrefill({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", opportunityId: 42.5 as any }, storage, 1)).toBe(false);
+    expect(saveAskPrefill({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", opportunityId: 0 }, storage, 1)).toBe(false);
+    expect(saveAskPrefill({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", opportunityId: -5 }, storage, 1)).toBe(false);
+    expect(saveAskPrefill({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Strong fit.", opportunityId: "42" as any }, storage, 1)).toBe(false);
+    storage.setItem(ASK_PREFILL_KEY, JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://a.b/c", note: "Fit", savedAt: 1, opportunityId: 1.5 }));
+    expect(readAskPrefill(storage, 1)).toBeNull();
+    storage.setItem(ASK_PREFILL_KEY, JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://a.b/c", note: "Fit", savedAt: 1, opportunityId: -1 }));
+    expect(readAskPrefill(storage, 1)).toBeNull();
+  });
+
   it("round-trips an unresolved-company draft", () => {
     const storage = memoryStorage();
     expect(saveAskPrefill({ companySlug: null, targetRoleUrl: "https://careers.example.com/jobs/1", note: "Strong fit." }, storage, 1)).toBe(true);

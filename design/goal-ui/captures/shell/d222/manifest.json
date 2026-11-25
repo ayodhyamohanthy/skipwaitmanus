@@ -1,0 +1,556 @@
+[
+  {
+    "phase": "after",
+    "scenario": "seeker-ready",
+    "path": "/explore",
+    "width": 1280,
+    "file": "after-seeker-ready-1280.png",
+    "pill": {
+      "tag": "A",
+      "text": "9 referrals left",
+      "href": "/plans",
+      "label": "9 referrals left. Open plan details",
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "A",
+          "text": "9 referrals left",
+          "label": "9 referrals left. Open plan details",
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1109.09375,
+          "right": 1224
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 1232,
+          "right": 1268
+        }
+      ]
+    },
+    "headerBefore": 0,
+    "headerAfter": 0
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-ready",
+    "path": "/verify",
+    "width": 1280,
+    "file": "after-referrer-ready-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "9 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "SPAN",
+          "text": "9 referrals left",
+          "label": null,
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1109.09375,
+          "right": 1224
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 1232,
+          "right": 1268
+        }
+      ]
+    }
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-zero",
+    "path": "/verify",
+    "width": 1280,
+    "file": "after-referrer-zero-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "0 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "SPAN",
+          "text": "0 referrals left",
+          "label": null,
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1109.09375,
+          "right": 1224
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 1232,
+          "right": 1268
+        }
+      ]
+    }
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-error",
+    "path": "/verify",
+    "width": 1280,
+    "file": "after-referrer-error-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "SPAN",
+          "text": "Balance didn't loadRetry",
+          "label": null,
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1042.296875,
+          "right": 1224
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Retry",
+          "label": null,
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1165.75,
+          "right": 1224
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 1232,
+          "right": 1268
+        }
+      ]
+    },
+    "retryRecovered": true
+  },
+  {
+    "phase": "after",
+    "scenario": "seeker-error",
+    "path": "/explore",
+    "width": 1280,
+    "file": "after-seeker-error-1280.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "SPAN",
+          "text": "Balance didn't loadRetry",
+          "label": null,
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1042.296875,
+          "right": 1224
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Retry",
+          "label": null,
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 1165.75,
+          "right": 1224
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 1232,
+          "right": 1268
+        }
+      ]
+    },
+    "retryRecovered": true
+  },
+  {
+    "phase": "after",
+    "scenario": "seeker-ready",
+    "path": "/explore",
+    "width": 390,
+    "file": "after-seeker-ready-390.png",
+    "pill": {
+      "tag": "A",
+      "text": "9 referrals",
+      "href": "/plans",
+      "label": "9 referrals left. Open plan details",
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "BUTTON",
+          "text": "SS",
+          "label": "Account menu",
+          "top": 11.5,
+          "bottom": 43.5,
+          "left": 12,
+          "right": 44
+        },
+        {
+          "tag": "A",
+          "text": "Give a referralWork email only",
+          "label": null,
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 52,
+          "right": 145
+        },
+        {
+          "tag": "A",
+          "text": "9 referrals",
+          "label": "9 referrals left. Open plan details",
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 242.765625,
+          "right": 334
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 342,
+          "right": 386
+        }
+      ]
+    },
+    "headerBefore": 0,
+    "headerAfter": 0
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-ready",
+    "path": "/verify",
+    "width": 390,
+    "file": "after-referrer-ready-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "9 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": "Account menu",
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 12,
+          "right": 56
+        },
+        {
+          "tag": "A",
+          "text": "Give a referralWork email only",
+          "label": null,
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 64,
+          "right": 157
+        },
+        {
+          "tag": "SPAN",
+          "text": "9 referrals left",
+          "label": null,
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 242.765625,
+          "right": 334
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 342,
+          "right": 386
+        }
+      ]
+    }
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-zero",
+    "path": "/verify",
+    "width": 390,
+    "file": "after-referrer-zero-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "0 referrals left",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 56
+      },
+      "items": [
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": "Account menu",
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 12,
+          "right": 56
+        },
+        {
+          "tag": "A",
+          "text": "Give a referralWork email only",
+          "label": null,
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 64,
+          "right": 157
+        },
+        {
+          "tag": "SPAN",
+          "text": "0 referrals left",
+          "label": null,
+          "top": 9.5,
+          "bottom": 45.5,
+          "left": 242.765625,
+          "right": 334
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 5.5,
+          "bottom": 49.5,
+          "left": 342,
+          "right": 386
+        }
+      ]
+    }
+  },
+  {
+    "phase": "after",
+    "scenario": "referrer-error",
+    "path": "/verify",
+    "width": 390,
+    "file": "after-referrer-error-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 72
+      },
+      "items": [
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": "Account menu",
+          "top": 13.5,
+          "bottom": 57.5,
+          "left": 12,
+          "right": 56
+        },
+        {
+          "tag": "A",
+          "text": "Give a referralWork email only",
+          "label": null,
+          "top": 13.5,
+          "bottom": 57.5,
+          "left": 64,
+          "right": 157
+        },
+        {
+          "tag": "SPAN",
+          "text": "Balance didn't loadRetry",
+          "label": null,
+          "top": 5,
+          "bottom": 69,
+          "left": 218.546875,
+          "right": 334
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Retry",
+          "label": null,
+          "top": 25,
+          "bottom": 69,
+          "left": 218.546875,
+          "right": 276.796875
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 13.5,
+          "bottom": 57.5,
+          "left": 342,
+          "right": 386
+        }
+      ]
+    },
+    "retryRecovered": true
+  },
+  {
+    "phase": "after",
+    "scenario": "seeker-error",
+    "path": "/explore",
+    "width": 390,
+    "file": "after-seeker-error-390.png",
+    "pill": {
+      "tag": "SPAN",
+      "text": "Balance didn't loadRetry",
+      "href": null,
+      "label": null,
+      "icons": 0
+    },
+    "overflow": 0,
+    "pageErrors": [],
+    "headerControls": {
+      "header": {
+        "top": 0,
+        "bottom": 72
+      },
+      "items": [
+        {
+          "tag": "BUTTON",
+          "text": "SS",
+          "label": "Account menu",
+          "top": 19.5,
+          "bottom": 51.5,
+          "left": 12,
+          "right": 44
+        },
+        {
+          "tag": "A",
+          "text": "Give a referralWork email only",
+          "label": null,
+          "top": 13.5,
+          "bottom": 57.5,
+          "left": 52,
+          "right": 145
+        },
+        {
+          "tag": "SPAN",
+          "text": "Balance didn't loadRetry",
+          "label": null,
+          "top": 5,
+          "bottom": 69,
+          "left": 218.546875,
+          "right": 334
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Retry",
+          "label": null,
+          "top": 25,
+          "bottom": 69,
+          "left": 218.546875,
+          "right": 276.796875
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "label": "Alerts",
+          "top": 13.5,
+          "bottom": 57.5,
+          "left": 342,
+          "right": 386
+        }
+      ]
+    },
+    "retryRecovered": true
+  }
+]

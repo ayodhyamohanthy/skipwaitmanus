@@ -1,0 +1,122 @@
+{
+  "task": "D-048-K-seeker-small",
+  "pullRequest": 1312,
+  "webSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+  "authenticated": false,
+  "productionBusinessMutations": false,
+  "api": {
+    "status": 200,
+    "state": "ready",
+    "commitSha": "ac2eb04bb0e3f0c9a2011eda439eaa41ded3a7d4"
+  },
+  "results": [
+    {
+      "route": "/landed",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "expectedWebSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+      "httpStatus": 200,
+      "goalMainCount": 1,
+      "signInAction": "Secure sign in",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "landed-signed-out-1280.png",
+      "sha256": "784240230ed365c02c9f93ad0eafa493f44fc3010a6def6e85d8e971ede7dbb8"
+    },
+    {
+      "route": "/landed",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "expectedWebSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+      "httpStatus": 200,
+      "goalMainCount": 1,
+      "signInAction": "Secure sign in",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "landed-signed-out-390.png",
+      "sha256": "6ea997c7dc09959ea663fe19f1c84571cf4e7a5ac0abca44f1469ac9e231e763"
+    },
+    {
+      "route": "/suggest-company",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "expectedWebSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+      "httpStatus": 200,
+      "goalMainCount": 1,
+      "signInAction": "Sign in",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "suggest-company-signed-out-1280.png",
+      "sha256": "4f6f177ea2d91df191da28fbfcc258319735215808689e3e8352d17408a59c10"
+    },
+    {
+      "route": "/suggest-company",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "expectedWebSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+      "httpStatus": 200,
+      "goalMainCount": 1,
+      "signInAction": "Sign in",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "suggest-company-signed-out-390.png",
+      "sha256": "5e70ea87d8d6fa173513c9a99c06df4a9b6834bffca46ad29934402caa03807d"
+    },
+    {
+      "route": "/share",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "expectedWebSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+      "httpStatus": 200,
+      "goalMainCount": 1,
+      "signInAction": "Sign in to continue",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "share-signed-out-1280.png",
+      "sha256": "49716928583e66806d119703cd6b314a169e688363807a7f03123b5c24c64431"
+    },
+    {
+      "route": "/share",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "expectedWebSha": "721cbd936dda3ae39ffda172c6ae01707bfa195e",
+      "httpStatus": 200,
+      "goalMainCount": 1,
+      "signInAction": "Sign in to continue",
+      "overflow": 0,
+      "pageErrors": [],
+      "privateReads": [],
+      "mutations": [],
+      "telemetryFulfilledLocally": 5,
+      "screenshot": "share-signed-out-390.png",
+      "sha256": "5d980e75606f4eab88ecd6144e9f6e01a314393c7628f13116396ac4e3e88383"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "capturedAt": "2026-11-23T22:07:43.480Z",
+  "task": "STORY-trust-landing",
+  "summary": "Signed-out landing captures before and after at 1280 and 390",
+  "before": [
+    {
+      "phase": "before",
+      "width": 1280,
+      "height": 900,
+      "file": "before/landing-1280.png",
+      "title": "Private job referrals from verified employees — skipwait.me",
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "horizontalOverflowPx": 0,
+      "fairRulesCount": 4,
+      "kicker": "Private job referrals"
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "height": 844,
+      "file": "before/landing-390.png",
+      "title": "Private job referrals from verified employees — skipwait.me",
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "horizontalOverflowPx": 0,
+      "fairRulesCount": 4,
+      "kicker": "Private job referrals"
+    }
+  ],
+  "after": [
+    {
+      "phase": "after",
+      "width": 1280,
+      "height": 900,
+      "file": "after/landing-1280.png",
+      "title": "Request a job referral from a verified employee — skipwait.me",
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "horizontalOverflowPx": 0,
+      "fairRulesCount": 6,
+      "kicker": "Verified referral matching"
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "height": 844,
+      "file": "after/landing-390.png",
+      "title": "Request a job referral from a verified employee — skipwait.me",
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "horizontalOverflowPx": 0,
+      "fairRulesCount": 6,
+      "kicker": "Verified referral matching"
+    }
+  ]
+}

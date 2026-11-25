@@ -1,0 +1,33 @@
+{
+  "task": "D-048-p3-pricing",
+  "session": "GPT-6 Sol · b494",
+  "date": "2026-11-18",
+  "sourceCommit": "b3dee771",
+  "mainCommit": "b57a775c",
+  "route": "/pricing",
+  "baseUrl": "http://127.0.0.1:4317",
+  "builds": ["pnpm build", "VITE_GOAL_SURFACES=all pnpm build"],
+  "captures": [
+    { "file": "before-1280.png", "viewport": { "width": 1280, "height": 720 }, "state": "inherited goal page before shared-money-copy repair" },
+    { "file": "after-1280.png", "viewport": { "width": 1280, "height": 900 }, "imageWidth": 1270, "state": "final public pricing page" },
+    { "file": "after-390.png", "viewport": { "width": 390, "height": 844 }, "imageWidth": 380, "state": "final public pricing page" }
+  ],
+  "imageWidthNote": "The browser's full-page capture excludes its 10px scrollbar. CSS viewport widths were 1280 and 390, as returned by tabs.list().",
+  "layout": [
+    { "viewportWidth": 1280, "contentWidth": 1270, "requiredGutter": 24, "gutterViolations": 0, "horizontalOverflow": 0, "primaryCount": 1, "primaryHref": "/plans", "primaryCenterReachable": true },
+    { "viewportWidth": 390, "contentWidth": 380, "requiredGutter": 16, "gutterViolations": 0, "horizontalOverflow": 0, "primaryCount": 1, "primaryHref": "/plans", "primaryHeight": 48, "planCardWidth": 340 }
+  ],
+  "interaction": {
+    "action": "Pointer click on See plans and prices",
+    "before": "/pricing",
+    "after": "/plans",
+    "result": "passed",
+    "note": "The initial semantic click timed out without navigation. A fresh snapshot, scoped bounds and elementFromPoint established the action target; a pointer click then reached /plans."
+  },
+  "contentChecks": ["one goal heading", "one Your next step action", "all frozen INR/USD plan prices", "shared cost and refund copy", "paused checkout notice", "public canonical /pricing", "fetch-free page/prerender tests"],
+  "visualReview": {
+    "status": "UNVERIFIED",
+    "reason": "Screenshot images were saved by Browser Use but omitted from model input because the selected model did not support image input. DOM, responsive geometry and pointer behavior were checked; pixel-level inspection is still required by an independent reviewer."
+  },
+  "production": "not deployed; independent review and required CI pending"
+}

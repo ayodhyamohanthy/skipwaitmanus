@@ -26,7 +26,10 @@ describe("assistant access contract", () => {
     const access = (plan: string) => assistantAccessFrom(resolvePlanEntitlements({ plan, subscriptionStatus: "active", subscriptionCurrentTermEnd: termEnd }, now)).hasAccess;
     for (const plan of ["land_focus", "land_sprint", "land_concierge"]) expect(access(plan)).toBe(true);
     for (const plan of ["free", "keep_warm", "start", "momentum", "max", "pro", "land_100"]) expect(access(plan)).toBe(false);
-    expect(ASSISTANT_PLAN_REQUIRED_MESSAGE).toMatch(/Land and Concierge/);
+    // D-178.gate (D-290 R2): the refusal is the agent switch and allow-list, never a plan, so it names no plan or upgrade.
+    expect(ASSISTANT_PLAN_REQUIRED_MESSAGE).toMatch(/agent access/i);
+    expect(ASSISTANT_PLAN_REQUIRED_MESSAGE).not.toMatch(/land|concierge|plan|upgrade|credit/i);
+    expect(ASSISTANT_PLAN_REQUIRED_MESSAGE).not.toMatch(/[—–]/);
   });
 
   it("accepts only known providers, kinds and statuses", () => {

@@ -12,13 +12,30 @@ import { z } from "zod";
 export const AGENT_KEY_PREFIX = "swa_";
 export const AGENT_KEY_PATTERN = /^swa_[0-9a-f]{64}$/;
 
-/** Scopes in this step. Send is deliberately absent (step 6). */
-export const AGENT_SCOPES = ["lookup", "draft"] as const;
+/**
+ * Scopes. `send` (SKIPPY-6, D-290 (1)) is off by default and only lets an agent
+ * *request* a send: the seeker approves every one in their own session.
+ */
+export const AGENT_SCOPES = ["lookup", "draft", "send"] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
 /** Per-agent call caps, lower than a person's (a person can send 30 messages an hour). */
 export const AGENT_HOURLY_CALL_CAP = 20;
 export const AGENT_DAILY_CALL_CAP = 60;
+
+/**
+ * D-290 (3) send caps, counted per grant at approve time under the grant row
+ * lock so concurrent approvals cannot pass them. They replace MCP's 120 a
+ * minute for sends only; the call caps above still bound every agent call.
+ */
+export const AGENT_SEND_HOURLY_CAP = 20;
+export const AGENT_SEND_DAILY_CAP = 60;
+
+/**
+ * D-290 (3): one referral per request until the D-219 band mapping is settled.
+ * The approve path refuses a request whose fresh quote costs more.
+ */
+export const AGENT_SEND_PER_REQUEST_CEILING = 1;
 
 export const AGENT_EXPIRY_DEFAULT_DAYS = 7;
 export const AGENT_EXPIRY_MAX_DAYS = 30;
@@ -52,6 +69,11 @@ export const agentDraftInputSchema = z.strictObject({
 });
 export type AgentDraftInput = z.infer<typeof agentDraftInputSchema>;
 
+export const setAgentAutoSendInputSchema = z.strictObject({
+  enabled: z.boolean(),
+});
+export type SetAgentAutoSendInput = z.infer<typeof setAgentAutoSendInputSchema>;
+
 export type AgentDraftStatus = "draft" | "discarded";
 
 /** What the seeker's screen and the agent itself may know about a grant. Never the key. */
@@ -61,6 +83,7 @@ export type AgentGrantView = {
   keyPrefix: string;
   scopes: AgentScope[];
   limits: AgentLimits;
+  autoSend: boolean;
   status: "active" | "paused" | "expired" | "revoked";
   expiresAt: string;
   lastUsedAt: string | null;
@@ -76,6 +99,43 @@ export type AgentDraftView = {
   creditCost: number;
   status: AgentDraftStatus;
   createdAt: string;
+};
+
+/**
+ * SKIPPY-6: what an agent gets back when it asks the seeker to approve a send.
+ * In SKIPPY-7, if autoSend is enabled and approved by server, status is "approved"
+ * with requestId; if parked, status is "pending" with note.
+ */
+export type AgentSendRequestView = {
+  approvalId: number;
+  status: "pending" | "approved";
+  creditCost: number;
+  expiresAt: string;
+  requestId?: number;
+  note?: string;
+};
+
+/**
+ * D-178.read (D-290 R9 parity): what an agent may know about the seeker's own
+ * referral requests. These are the fields the seeker's own /requests page
+ * shows, minus every referrer identity field (D-019(e)): no referrer id, name
+ * or title, before or after acceptance. Another account's request is never
+ * listed, and the route only ever reads the token owner's own rows.
+ */
+export type AgentRequestView = {
+  id: number;
+  title: string | null;
+  targetRoleUrl: string | null;
+  companyDomain: string;
+  compensation: string | null;
+  status: string;
+  queueStatus: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null;
+  waitingForCoverage: boolean;
+  referrerMessage: string | null;
+  unreadMessageCount: number;
+  attachmentCount: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AgentEventView = {
@@ -96,4 +156,11 @@ export const AGENT_ERROR = {
   rateLimited: "This agent is calling too quickly. Wait before trying again.",
   askLimit: "This agent reached its daily draft limit",
   creditLimit: "That ask would cost more credits than this agent's per-ask limit",
+  /** SKIPPY-6: the grant has no `send` scope, so it may not even ask. */
+  sendScope: "This agent cannot request sends",
+  /** SKIPPY-7: the grant has no `send` scope, so it cannot turn on auto-send. */
+  autoSendScope: "This agent cannot send on its own",
+  sendLimit: "This agent reached its send limit. Your seeker can approve more later.",
+  needsReferrals: "This request needs referrals. Your seeker can add them on /plans.",
+  draftUnknown: "This draft is not in your account",
 } as const;

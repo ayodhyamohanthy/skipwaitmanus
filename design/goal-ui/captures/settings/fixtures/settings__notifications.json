@@ -1,0 +1,84 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera.iyer@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer-preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "referralCapacity": 3,
+          "preferAreas": [
+            "Design"
+          ],
+          "preferLevels": [
+            "Mid-level",
+            "Senior"
+          ],
+          "referrerVisibility": "anon",
+          "notifyNewAsk": true,
+          "paused": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer/slack-webhook",
+      "status": 200,
+      "body": {
+        "connected": false,
+        "active": false
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=How we reach you"
+    }
+  ]
+}

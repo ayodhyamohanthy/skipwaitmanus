@@ -4,7 +4,7 @@ import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
 import { identifyClarity } from "@/lib/clarity";
 import { smokeState } from "@/contexts/smokeRuntime";
-import { safeAuthReturnTo } from "@shared/authReturnTo";
+import { safeAuthReturnTo, signInPagePath } from "@shared/authReturnTo";
 
 /**
  * WorkOS AuthKit provider exposing the app's auth hook surface.
@@ -82,8 +82,7 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     // loading. The server still owns authentication; this only starts its flow.
     // Known signed-in users keep their existing session without another flow.
     if (signedIn) return;
-    const returnTo = safeAuthReturnTo(options?.returnTo ?? window.location.href, window.location.origin) ?? "/";
-    window.location.href = `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo })}`;
+    window.location.href = signInPagePath(options?.returnTo ?? window.location.href, window.location.origin);
   }, [signedIn]);
 
   // Publish the SDK access token for non-React API clients (tRPC link).
@@ -129,8 +128,14 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
   }, [auth.signOut, utils]);
 
   const getToken = useCallback(async () => {
+    // AUTH-workos-refresh-scope (D-389): the AuthKit SDK answers getAccessToken()
+    // with a WorkOS refresh, and WorkOS refuses that with 400 when the session was
+    // not issued by WorkOS. Cookie-only sessions (reviewer demo accounts,
+    // work-email OTP referrers, seeker email code, password, passkey) authenticate
+    // through the server cookie, so they never ask the SDK for a token.
+    if (!auth.user) return null;
     try { return await auth.getAccessToken(); } catch { return null; }
-  }, [auth.getAccessToken]);
+  }, [auth.user, auth.getAccessToken]);
 
   const value = useMemo<CompatValue>(
     () => ({ isLoaded, isSignedIn: signedIn, userId: user?.id ?? null, getToken, signOut, user, openSignIn }),
@@ -147,7 +152,7 @@ function ServerSessionCompatProvider({ children }: { children: React.ReactNode }
   const neutral = useMemo(() => ({
     isLoading: false,
     user: null,
-    signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
+    signIn: async () => { window.location.href = signInPagePath(window.location.href, window.location.origin); },
     getAccessToken: async () => null,
     signOut: async () => { /* handled by the compat signOut */ },
   }), []);

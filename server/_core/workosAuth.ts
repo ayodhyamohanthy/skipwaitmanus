@@ -1,10 +1,10 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { registerSeekerEmailCodeRoutes } from "./seekerEmailCode";
-import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
+import { HOSTED_LINK_COOKIE, readHostedLink, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
-import { safeAuthReturnTo } from "@shared/authReturnTo";
+import { safeAuthReturnTo, signInPagePath } from "@shared/authReturnTo";
 import type { Express, Request } from "express";
 import { parse as parseCookieHeader } from "cookie";
 import * as db from "../db";
@@ -12,9 +12,15 @@ import { randomUUID } from "node:crypto";
 import { BoundedTtlCache } from "../boundedTtlCache";
 const authDiagnostics = new BoundedTtlCache<string,{stage:string;errorName:string;safeMessage:string;timestamp:string}>(100);
 import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
+import { revokeReferrerStepUpsForSessionToken } from "../referrerStepUp";
+import { recordAuthEvent, type AuthMethod } from "../authEvents";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
 import { completeWorkosLogin, resolveWorkosOpenId } from "./workosSession";
+import { registerPasswordAuthRoutes, type PasswordRouteOptions } from "./passwordAuthRoutes";
+import { createPasswordWorkosClient } from "./passwordWorkosClient";
+import { passwordEmailStanding } from "../passwordAccountLookup";
+import { USE_PASSWORD_SIGN_IN_PATH, USE_WORK_EMAIL_CODE_PATH } from "@shared/passwordAuth";
 
 export { resolveWorkosOpenId };
 
@@ -28,9 +34,10 @@ export { resolveWorkosOpenId };
  * on first sight. The resulting identity has the same shape resolveDevIdentity
  * produces, so every route works unchanged.
  *
- * The server redirect routes (/api/auth/workos/sign-in, /callback, /logout)
- * remain for the admin plane and legacy flows; they issue the same
- * app_session_id cookie the dev-auth path uses.
+ * The server redirect routes issue the same app_session_id cookie the dev-auth
+ * path uses: /api/auth/workos/sign-in|sign-up start a listed social provider
+ * (anything else 302s to skipwait.me's own /sign-in, D-030/D-049), /admin starts
+ * the administrator flow, and /callback and /logout finish and end sessions.
  *
  * Registered only when WORKOS_CLIENT_ID, WORKOS_API_KEY, and
  * WORKOS_COOKIE_PASSWORD are configured.
@@ -121,6 +128,22 @@ export async function currentWorkosSessionId(req: Request): Promise<string | nul
   } catch { return null; }
 }
 
+/** D-057-session-gate §0b.2: the session key of a verified WorkOS access token is its own hosted session id. */
+export function sessionKeyFromWorkosClaims(payload: Record<string, unknown>): string | undefined {
+  return typeof payload.sid === "string" && /^session_[A-Za-z0-9]+$/.test(payload.sid) ? `workos:${payload.sid}` : undefined;
+}
+
+/** D-140 / D-382: interactive authentication timestamp from WorkOS Bearer token (auth_time or fallback to iat). */
+export function authTimeFromWorkosClaims(payload: Record<string, unknown>): number | undefined {
+  if (typeof payload.auth_time === "number" && Number.isSafeInteger(payload.auth_time) && payload.auth_time > 0) {
+    return payload.auth_time;
+  }
+  if (typeof payload.iat === "number" && Number.isSafeInteger(payload.iat) && payload.iat > 0) {
+    return payload.iat;
+  }
+  return undefined;
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
@@ -136,21 +159,25 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   // session revocation are re-checked against the DB above on every request.
   const cacheKey = `${sub}:${String(payload.iat ?? "")}`;
   const cached = workosIdentityCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing } };
+  // D-057: the Bearer identity is keyed by this token's own sid; it never carries the amr claim.
+  const sessionKey = sessionKeyFromWorkosClaims(payload);
+  const authTime = authTimeFromWorkosClaims(payload);
+  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing }, ...(sessionKey ? { sessionKey } : {}), ...(authTime ? { authTime } : {}) };
   const workos = new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
   const user = await workos.userManagement.getUser(sub);
   if (user.id !== sub) return undefined;
   const email = user.email.trim().toLowerCase();
   const emailVerified = user.emailVerified;
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || email.split("@")[0];
+  // S-11: never a name derived from the email; null leaves a new account unnamed.
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
   const account = await db.resolveLoginIdentity({ provider: "workos", subject: sub, openId, email, emailVerified, name, loginMethod: "workos" });
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
-  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [], ...(authTime ? { authTime } : {}) };
   if (workosIdentityCache.size >= WORKOS_IDENTITY_CACHE_MAX) workosIdentityCache.clear();
   workosIdentityCache.set(cacheKey, { identity, expiresAt: Date.now() + WORKOS_IDENTITY_CACHE_TTL_MS });
-  return identity;
+  return sessionKey ? { ...identity, sessionKey } : identity;
 }
 
 type IdentityResolverDependencies = {
@@ -209,13 +236,25 @@ async function resolveWorkosIdentityUncached(req: Request, dependencies: Identit
 }
 
 /** Social sign-ins verified live against the WorkOS authorize endpoint on Oct 14 2026 (LinkedIn and Slack re-verified Oct 16 2026: both 302 to the provider). Apple is not enabled in the dashboard (404), so it is not offered. */
+/**
+ * WorkOS authentication methods a seeker callback refuses (security review F1). The callback exists for the social
+ * providers above; a password, magic code or passkey finished on WorkOS's hosted page would skip SkipWait's own
+ * password checks (the workos_password witness, D-078 ruling 5). A refusal list rather than an exact provider match,
+ * so an unconfirmed method name for LinkedIn or Slack can never lock those sign-ins out.
+ */
+export const CALLBACK_REFUSED_METHODS: ReadonlySet<string> = new Set(["Password", "MagicAuth", "Passkey"]);
+
 export const SOCIAL_PROVIDERS: Record<string, "GoogleOAuth" | "MicrosoftOAuth" | "GitHubOAuth" | "LinkedInOAuth" | "SlackOAuth"> = { google: "GoogleOAuth", microsoft: "MicrosoftOAuth", github: "GitHubOAuth", linkedin: "LinkedInOAuth", slack: "SlackOAuth" };
 
-export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
+export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; password?: PasswordRouteOptions } = {}) {
   return function registerWorkosAuthRoutes(app: Express) {
     if (!workosConfigured()) return;
     const clientId = configuredWorkosClientId();
     const workos = deps.workos ?? new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
+    // Seeker email + password (D-049) uses its own WorkOS client: no SDK retries, a 10 s timeout.
+    const passwordClient = deps.password?.client !== undefined ? deps.password.client : createPasswordWorkosClient({ apiKey: process.env.WORKOS_API_KEY ?? "", clientId });
+    // Read-only standing lookup shared with the password routes (server/passwordAccountLookup.ts); throws when it cannot decide.
+    const emailStanding = deps.password?.emailStanding ?? passwordEmailStanding;
     const configuredRedirectUri = process.env.WORKOS_REDIRECT_URI;
     // In production the canonical URI is fixed (skipwait.me). In dev, derive it
     // from the request host so any local port works without env edits.
@@ -228,31 +267,35 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const hostedLinkCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos" });
     const returnCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos/callback" });
 
-    for (const screenHint of ["sign-in", "sign-up"] as const) {
-      app.get(`/api/auth/workos/${screenHint}`, async (req, res) => {
+    for (const route of ["sign-in", "sign-up"] as const) {
+      app.get(`/api/auth/workos/${route}`, async (req, res) => {
         try {
           const redirectUri = redirectUriFor(req);
+          // D-030 / D-049: seekers never see the hosted WorkOS (authkit.app) page. Only a listed social provider
+          // starts a WorkOS flow; anything else (no provider, an unknown one, cached old links) goes to the
+          // skipwait.me sign-in with the same validated destination, and no return cookie is set.
+          const requested = typeof req.query.provider === "string" ? req.query.provider : "";
+          const authProvider = Object.hasOwn(SOCIAL_PROVIDERS, requested) ? SOCIAL_PROVIDERS[requested] : undefined;
+          if (!authProvider) return res.set("Cache-Control", "no-store").redirect(302, signInPagePath(req.query.returnTo, redirectUri));
           const returnTo = safeAuthReturnTo(req.query.returnTo, redirectUri) ?? safeAuthReturnTo(process.env.WORKOS_POST_SIGNIN_PATH, redirectUri) ?? "/";
-          // The kit sign-in email step passes the typed address so AuthKit pre-fills it.
+          // A caller may pass the typed address so the provider pre-fills its account chooser.
           const hint = typeof req.query.login_hint === "string" ? req.query.login_hint.trim().toLowerCase() : "";
           const loginHint = hint.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hint) ? hint : "";
-          // Social buttons on the kit sign-in pick a WorkOS provider. Only providers enabled in the WorkOS dashboard are listed here; anything else falls back to AuthKit.
-          const authProvider = typeof req.query.provider === "string" ? SOCIAL_PROVIDERS[req.query.provider] ?? "authkit" : "authkit";
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
-          // Typed email differs from the account this browser last signed in with: end that hosted session first,
-          // so AuthKit asks for the code instead of silently signing the previous account back in. Fail-soft.
-          if (authProvider === "authkit" && loginHint) {
-            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
-            if (await revokeHostedSessionOnAccountSwitch(workos.userManagement as never, linked, loginHint, { log: message => console.warn("[workos-switch]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
-          }
-          // The /sign-in page's explicit Continue button asks for a fresh AuthKit screen (fresh=1): drop the hosted session this browser is linked to.
-          if (authProvider === "authkit" && screenHint === "sign-in" && req.query.fresh === "1") {
+          const isStepUp = route === "sign-in" && (req.query.fresh === "1" || req.query.step_up === "1");
+          if (isStepUp) {
             const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
             if (await revokeLinkedHostedSession(workos.userManagement as never, linked, { log: message => console.warn("[workos-fresh]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
           }
-          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({
+            provider: authProvider,
+            redirectUri,
+            state,
+            ...(loginHint ? { loginHint } : {}),
+            ...(isStepUp ? { prompt: "login", maxAge: 900 } : {}),
+          }));
         } catch {
           res.status(502).send("Authentication could not be started");
         }
@@ -264,7 +307,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     app.get("/api/auth/workos/admin", (req, res) => {
       const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "").trim().toLowerCase();
       const loginHint = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-      if (!durableAdmin || !loginHint || loginHint !== durableAdmin) return res.status(403).send("Administrator sign-in is restricted to the configured administrator account");
+      if (!durableAdmin || !loginHint || loginHint !== durableAdmin) {
+        // ADMIN-activity-log (D-393): a refused administrator sign-in is itself a security event.
+        void recordAuthEvent(req, { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed", plane: "admin", ...(loginHint.length <= 320 ? { email: loginHint } : {}) });
+        return res.status(403).send("Administrator sign-in is restricted to the configured administrator account");
+      }
       const bootstrap = process.env.ENABLE_ADMIN_BOOTSTRAP === "true";
       res.redirect(302, workos.userManagement.getAuthorizationUrl({
         provider: "authkit",
@@ -278,8 +325,15 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     app.get("/api/auth/workos/callback", async (req, res) => {
       const code = typeof req.query.code === "string" ? req.query.code : "";
       const state = typeof req.query.state === "string" ? req.query.state : "";
-      if (!code) return res.status(400).send("Authentication could not be completed");
       const adminState = state === "skipwait-admin" || state === "skipwait-admin-bootstrap";
+      // ADMIN-activity-log (D-393): every callback outcome is one auth row; the WorkOS code and tokens never are.
+      const action = adminState ? "auth.admin_sign_in" as const : "auth.social_sign_in" as const;
+      const plane = adminState ? "admin" as const : "seeker" as const;
+      let method: AuthMethod | undefined;
+      let signedInEmail: string | undefined;
+      const event = (outcome: "success" | "failure" | "denied", extra: { reason?: "invalid_request" | "not_allowed" | "use_another_method" | "use_work_email_code" | "account_review" | "account_inactive" | "provider_error"; userId?: number } = {}) =>
+        void recordAuthEvent(req, { action, outcome, plane, ...(method ? { method } : {}), ...(signedInEmail ? { email: signedInEmail } : {}), ...extra });
+      if (!code) { event("failure", { reason: "invalid_request" }); return res.status(400).send("Authentication could not be completed"); }
       let returnTo = "/admin/users";
       if (!adminState) {
         const token = parseCookieHeader(req.headers.cookie ?? "")[returnCookie];
@@ -290,6 +344,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
           if (!state || !destination) throw new Error("Invalid auth return");
           returnTo = destination;
         } catch {
+          event("failure", { reason: "invalid_request" });
           return res.status(400).send("Sign-in expired or could not be verified. Please start again.");
         }
       }
@@ -298,12 +353,32 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         const auth = await workos.userManagement.authenticateWithCode({ clientId, code });
         stage = "authorize";
         const user = auth.user;
+        method = authMethodOf(auth.authenticationMethod);
+        signedInEmail = typeof user.email === "string" ? user.email : undefined;
         // Administrator plane strict match (defense-in-depth): when the flow
         // started from the admin gate (state=skipwait-admin), the authenticated
         // email must exactly match the configured administrator address. Anything else
         // is rejected here at the callback, not just the entry route.
         if (state === "skipwait-admin" || state === "skipwait-admin-bootstrap") {
-          if (!adminCallbackAllowed({ email:user.email, state, configuredEmail:process.env.SKIPWAIT_ADMIN_EMAIL, bootstrapEnabled:process.env.ENABLE_ADMIN_BOOTSTRAP === "true" })) return res.status(403).send(state === "skipwait-admin-bootstrap" && process.env.ENABLE_ADMIN_BOOTSTRAP !== "true" ? "This administrator bootstrap link has expired. Start a fresh administrator sign-in." : "Administrator sign-in requires the exact configured administrator email.");
+          if (!adminCallbackAllowed({ email:user.email, state, configuredEmail:process.env.SKIPWAIT_ADMIN_EMAIL, bootstrapEnabled:process.env.ENABLE_ADMIN_BOOTSTRAP === "true" })) { event("denied", { reason: "not_allowed" }); return res.status(403).send(state === "skipwait-admin-bootstrap" && process.env.ENABLE_ADMIN_BOOTSTRAP !== "true" ? "This administrator bootstrap link has expired. Start a fresh administrator sign-in." : "Administrator sign-in requires the exact configured administrator email."); }
+        }
+        // D-030 / D-049 / D-078 ruling 4: a referrer's verified work email never gets a session from a social
+        // provider (referrers sign in with a work-email code on every visit). Decided by a read-only lookup before
+        // the resolver writes anything; the administrator plane keeps its own exact-email gate above.
+        if (!adminState) {
+          // Review F1: only a social provider's sign-in finishes here; a password goes through /api/auth/password.
+          if (typeof auth.authenticationMethod === "string" && CALLBACK_REFUSED_METHODS.has(auth.authenticationMethod)) {
+            console.warn("[workos-callback]", { stage, code: "method_refused", method: auth.authenticationMethod });
+            event("denied", { reason: "use_another_method" });
+            return res.set("Cache-Control", "no-store").redirect(302, USE_PASSWORD_SIGN_IN_PATH);
+          }
+          stage = "standing";
+          // The exact-email rule only (D-081): a seeker's own Google account at a company with referrers still signs in.
+          if ((await emailStanding(user.email, { workosUserId: user.id, rule: "social" })) === "referrer_work_email") {
+            console.warn("[workos-callback]", { stage, code: "use_work_email_code" });
+            event("denied", { reason: "use_work_email_code" });
+            return res.set("Cache-Control", "no-store").redirect(302, USE_WORK_EMAIL_CODE_PATH);
+          }
         }
         // One identity path for every sign-in (server/_core/workosSession.ts):
         // the canonical resolver links by provider subject first and only uses
@@ -319,8 +394,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         });
         if (outcome.status === "blocked") {
           console.warn("[workos-callback]", { stage, code: outcome.code });
+          event("denied", { reason: outcome.code === "IDENTITY_REVIEW_REQUIRED" ? "account_review" : "account_inactive" });
           return res.status(403).send(outcome.code === "IDENTITY_REVIEW_REQUIRED" ? "This account needs a quick review before it can sign in. Contact support@skipwait.me." : "This account is not active. Contact support@skipwait.me.");
         }
+        event("success", { userId: outcome.userId });
         res.redirect(302, returnTo);
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "unknown";
@@ -328,11 +405,14 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         const correlationId = randomUUID();
         authDiagnostics.set(correlationId,{stage,errorName,safeMessage,timestamp:new Date().toISOString()},15*60_000);
         console.error("[workos-callback]", { stage, code:errorName, correlationId });
+        event("failure", { reason: "provider_error" });
         const bootstrapDiagnostic = process.env.ENABLE_ADMIN_BOOTSTRAP === "true" && state === "skipwait-admin-bootstrap" ? ` (${stage}:${errorName}; ${correlationId})` : "";
         res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
       }
     });
+    // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.
     registerSeekerEmailCodeRoutes(app);
+    registerPasswordAuthRoutes(app, { ...deps.password, client: passwordClient });
     app.get("/api/auth/workos/admin-diagnostic/:id",(req,res)=>{
       if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
       const diagnostic=authDiagnostics.get(req.params.id);return diagnostic?res.set("Cache-Control","no-store").json(diagnostic):res.status(404).send("Not found");
@@ -347,11 +427,16 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       const { sdk } = await import("./sdk");
       // Resolve who is signing out from their own valid session only, never from client-supplied ids.
       let hostedUserIds: string[] = [];
+      let signedOutUserId: number | undefined;
       try {
         const session = await sdk.verifySession(token);
         const account = session ? await db.getUserByOpenId(session.openId) : undefined;
+        signedOutUserId = account?.id;
         if (account) hostedUserIds = await db.listWorkosSubjectsForUser(account.id);
       } catch { hostedUserIds = []; }
+      if (signedOutUserId !== undefined) void recordAuthEvent(req, { action: "auth.sign_out", outcome: "success", userId: signedOutUserId });
+      // D-057 §0b.3: mark this account's step-up proofs revoked for the audit trail (the revocation below already ends them).
+      await revokeReferrerStepUpsForSessionToken(token);
       await sdk.revokeSession(token);
       if (hostedUserIds.length) {
         const outcome = await revokeHostedSessions(workos.userManagement as never, hostedUserIds, { log: message => console.warn("[workos-logout]", message) }).catch(() => ({ revoked: 0, failed: 1 }));
@@ -363,6 +448,12 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       res.json({ signedOut: true });
     });
   };
+}
+
+/** ADMIN-activity-log (D-393): WorkOS's authenticationMethod as a closed method name for the activity log. */
+export function authMethodOf(value: unknown): AuthMethod {
+  const methods: Readonly<Record<string, AuthMethod>> = { GoogleOAuth: "google", MicrosoftOAuth: "microsoft", GitHubOAuth: "github", LinkedInOAuth: "linkedin", SlackOAuth: "slack", AppleOAuth: "apple", SSO: "sso", Password: "password", MagicAuth: "magic_auth", Passkey: "passkey" };
+  return typeof value === "string" ? methods[value] ?? "unknown" : "unknown";
 }
 
 /** Re-exported for server/_core/hostedSessionId.test.ts; the session helper lives in workosSession.ts. */
