@@ -299,7 +299,7 @@
       "tier": 2,
       "lane": "picker-single-flight",
       "branch": "agent/queue/picker-lock-liveness",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-396",
       "dependsOn": [],
       "owns": [
