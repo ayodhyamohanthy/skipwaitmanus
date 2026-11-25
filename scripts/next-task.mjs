@@ -26,7 +26,7 @@
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
@@ -111,18 +111,34 @@ const pidAlive = pid => {
 
 /**
  * Takes the per-clone run lock, or returns the record of the run that holds it.
- * Takeover: the recorded process is gone, or the lock is older than RUN_LOCK_TAKEOVER_MS
- * (a reused pid must not block the clone forever).
+ *
+ * PICKER-single-flight follow-up (found live): a LIVE pid is never taken over, whatever the lock's
+ * age. #1557 also treated a lock older than RUN_LOCK_TAKEOVER_MS as stale while its owner was alive,
+ * so a 40-minute run was seized and two runs overlapped on one clone -- the livelock the lock exists
+ * to prevent, and under load a scan legitimately runs past 30 minutes. Only a dead pid is taken over,
+ * immediately. RUN_LOCK_TAKEOVER_MS now governs just the unverifiable case: a lock file with no
+ * readable pid and an old mtime, left by a crashed writer, so a half-written file cannot block the
+ * clone. A genuinely wedged run is cleared by killing it, after which the dead-pid path takes over.
  */
 export function acquireRunLock(file, nowMs = Date.now()) {
-  const take = () => {
+  const readHeld = () => {
     try {
-      const body = readFileSync(file, "utf8");
-      const held = JSON.parse(body);
-      const startedAt = Date.parse(String(held?.startedAt ?? ""));
-      const stale = !pidAlive(Number(held?.pid)) || !Number.isFinite(startedAt) || nowMs - startedAt > RUN_LOCK_TAKEOVER_MS;
-      return stale ? null : held;
-    } catch { return null; } // unreadable or partial lock: treat as stale
+      const body = JSON.parse(readFileSync(file, "utf8"));
+      return { pid: Number(body?.pid), startedAt: Date.parse(String(body?.startedAt ?? "")) };
+    } catch { return null; } // unreadable or partial lock: no verifiable owner
+  };
+  /** null means "take it over"; otherwise the record of the live holder that must be respected. */
+  const verdict = () => {
+    const held = readHeld();
+    if (!held) {
+      // No verifiable owner. A half-written file from a crashed writer is cleared once it is old
+      // enough; until then it is respected, so two runs cannot both start off one broken file.
+      let mtimeMs = nowMs;
+      try { mtimeMs = statSync(file).mtimeMs; } catch { return null; }
+      return nowMs - mtimeMs > RUN_LOCK_TAKEOVER_MS ? null : { pid: null, startedAt: new Date(mtimeMs).toISOString() };
+    }
+    if (pidAlive(held.pid)) return { pid: held.pid, startedAt: Number.isFinite(held.startedAt) ? new Date(held.startedAt).toISOString() : null };
+    return null; // a dead pid is always taken over, at once
   };
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -130,7 +146,7 @@ export function acquireRunLock(file, nowMs = Date.now()) {
       return { acquired: true };
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
-      const held = take();
+      const held = verdict();
       if (held) return { acquired: false, held };
       rmSync(file, { force: true });
     }

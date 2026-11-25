@@ -135,15 +135,28 @@ describe("one picker run per clone", () => {
     expect(Number(seen?.pid)).toBeGreaterThan(0);
   }, 120_000);
 
-  it("refuses a fresh lock but takes over one past the takeover age", () => {
+  // Found live after #1557: its takeover rule treated a lock as stale once it passed 30 minutes
+  // even while its owner was alive, so a 40-minute run was seized and two runs overlapped on one
+  // clone -- the livelock the lock exists to prevent. Age must never override a live pid.
+  it("never takes over a lock whose owner is still alive, however old the lock is", () => {
     const f = fixture();
-    f.writeLock({ pid: alivePid(), startedAt: new Date().toISOString() });
-    expect(f.picker(["--as", "Fixture · refs"]).status).toBe(4);
-    f.writeLock({ pid: alivePid(), startedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString() });
-    const old = f.picker(["--as", "Fixture · refs"]);
-    expect(`${old.stdout}\n${old.stderr}`).toContain("NEXT:");
-    expect(old.status).not.toBe(4);
-  }, 180_000);
+    f.writeLock({ pid: alivePid(), startedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() });
+    const res = f.picker(["--as", "Fixture · refs"]);
+    const out = `${res.stdout}\n${res.stderr}`;
+    expect(res.status).toBe(4);
+    expect(out).toContain("another picker run is in progress");
+    // The live owner's record is untouched: the refusing run wrote nothing over it.
+    expect(JSON.parse(readFileSync(f.lock, "utf8")).pid).toBe(alivePid());
+  }, 120_000);
+
+  it("takes a dead owner's lock at once, so a killed run never blocks the clone", () => {
+    const f = fixture();
+    f.writeLock({ pid: deadPid(), startedAt: new Date().toISOString() });
+    const res = f.picker(["--as", "Fixture · refs"]);
+    const out = `${res.stdout}\n${res.stderr}`;
+    expect(out).toContain("NEXT:");
+    expect(out).not.toContain("another picker run is in progress");
+  }, 120_000);
 
   it("lets exactly one of two overlapping runs proceed and makes the other wait", async () => {
     const f = fixture({ delayMs: 8000 });
