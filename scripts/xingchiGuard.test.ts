@@ -158,7 +158,7 @@ describe("compactBody", () => {
   });
 
   it("responses: never separates a function_call from its output, nor a reasoning item from what follows it", () => {
-    const body = { model: "m", input: responsesConversation(60) };
+    const body = { model: "m", input: responsesConversation(100) };
     expect(countTurns("responses", body).model).toBeGreaterThanOrEqual(95);
     const result = compactBody("responses", body, LIMITS);
     expect(result.compacted).toBe(true);
