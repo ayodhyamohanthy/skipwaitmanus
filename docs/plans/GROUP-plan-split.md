@@ -464,7 +464,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-checkout: todo — §6.5; disabled.
 - GROUP-payments: todo — §6.5.
 - GROUP-claim: todo — §6.6.
-- GROUP-grants: todo — §6.6.
+- GROUP-grants: in progress — GPT-6.1 Sol · b91a — 2026-11-25 — branch `agent/queue/group-grants`; claim `fe177f427`, main `ae57f6cc8`, instructions checked through D-402; D-315 build-ahead of `GROUP-claim`, draft only; runtime and ledger acceptance unverified.
 - GROUP-notifications: todo — §6.7; no real recipients.
 - GROUP-recovery: todo — §6.7.
 - GROUP-delegation: todo — §6.8; no permission by default.
