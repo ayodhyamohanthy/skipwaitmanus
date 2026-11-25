@@ -2360,7 +2360,7 @@
       "tier": 1,
       "lane": "d048-auth",
       "branch": "agent/queue/d048-p3-signin",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-354",
       "dependsOn": [
         "D-048-F-static-frame",
@@ -2379,7 +2379,7 @@
         "client/src/lib/goalSurfaces.ts (switch only)",
         "client/src/lib/goalSurfaces.test.ts (switch only)"
       ],
-      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands.",
+      "note": "Implementation row from the D-048 auth packet; flag: goalSurfaceOn('sign-in'); signIn.test.tsx, loginRule.test.tsx and referrer.otp.test.tsx run unchanged with it on; D-048-F-goal-check per D-167; /reviewer-sign-in stays behind REVIEWER_LOGIN_ENABLED, fixed demo accounts only (D-167). Waits for DEVICE-SIGNIN-passkeys (D-209): both own sign-in page files, and the goal redesign is built around the device-saved sign-in rather than redone after it. D-349 (Nov 16, launch mode): this build pull request also turns its page on, adding its id to RELEASED and to the exact-list pin. It sets D-048-R-sign-in done in the same commit, so no separate release PR is needed. D-354 (owner, Nov 16): no longer waits for seeker-passwords; the goal pages ship on today's sign-in methods and seeker-passwords adds its fields to them when it lands. Closed Nov 24 (Claude Code · 695b): PR #1245 merged Nov 17 (head 2fa2b361) and D-048-R-sign-in is done.",
       "epic": "D-048-p3"
     },
     {
@@ -3886,10 +3886,10 @@
       "tier": 2,
       "lane": "design-core",
       "branch": "agent/instinct/doctrine-benefit-copy-oct27",
-      "status": "in-review",
+      "status": "done",
       "syncedTo": "D-227",
       "dependsOn": [],
-      "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar.",
+      "note": "Amends design/goal-ui/DOCTRINE.md only: owner steering Oct 27 12:12 IST - goal-oriented UI design; benefit-oriented UX copy/microcopy (benefit + next step + failure recovery) across headings/buttons/empty states/errors. Terminology freeze, legal and payment semantics unchanged; noun swaps are the floor, not the bar. Closed Nov 24 (Claude Code · 695b): the amendment is on main in design/goal-ui/DOCTRINE.md (\"Amendment - goal-oriented design + benefit-oriented copy\"); its branch is merged and deleted.",
       "owns": [
         "design/goal-ui/DOCTRINE.md"
       ]
