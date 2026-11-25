@@ -22,7 +22,7 @@ only (D-031, D-170/D-175); respect each provider's rate limits and Lever's crawl
 
 ## Acceptance
 
-Sources verified with evidence; after `JOB_CATALOG_ENABLED` is on (the release row), `job-catalog-sync` fills
+Sources verified with evidence; `JOB_CATALOG_ENABLED` is on since the release row `D-174-seeker-journey-build` (Nov 24), so `job-catalog-sync` fills
 jobs and `GET /api/companies/<slug>/jobs` answers real jobs with `completeness` other than `unavailable` for
 every covered company.
 

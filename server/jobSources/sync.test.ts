@@ -35,9 +35,10 @@ const okFetch = async () => new Response(JSON.stringify(boardPayload), { status:
 
 describe("catalog refresh (D-174-job-catalog)", () => {
   it("does nothing while the switch is off (D-097)", async () => {
-    expect(JOB_CATALOG_ENABLED).toBe(false);
+    // D-394 release: the shipped switch is on; the off path is still exercised with an explicit switch.
+    expect(JOB_CATALOG_ENABLED).toBe(true);
     const store = fakeStore();
-    const run = createJobCatalogSync(store);
+    const run = createJobCatalogSync(store, () => false);
     const out = await run({ nowMs: Date.now(), windowKey: "2026-10-25T11" });
     expect(out).toEqual({ processed: 0, failed: 0, skipped: "flag_off" });
     expect(store.calls.loadSources).toHaveLength(0);
