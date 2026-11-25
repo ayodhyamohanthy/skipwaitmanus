@@ -10050,7 +10050,7 @@
       "tier": 2,
       "lane": "xingchi-guard",
       "branch": "agent/queue/xingchi-turn-guard",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Owner, Nov 25 2026 (D-403): omp CLI hit 'This conversation has reached 100 model turns ... param=session_turn_limit_exceeded'. Being built by Claude Code · 43c8.",
       "epic": "D-212",
