@@ -21,18 +21,19 @@ const ashbyBoardResponseSchema = z.object({
       secondaryLocations: z
         .array(
           z.object({
-            location: z.string().optional(),
+            location: z.string().nullable().optional(),
           })
         )
+        .nullable()
         .optional(),
-      isRemote: z.boolean().optional(),
+      isRemote: z.boolean().nullable().optional(),
       workplaceType: z.string().nullable().optional(),
-      isListed: z.boolean().optional(),
-      jobUrl: z.string().url().optional(),
-      applyUrl: z.string().url().optional(),
+      isListed: z.boolean().nullable().optional(),
+      jobUrl: z.string().url().nullable().optional(),
+      applyUrl: z.string().url().nullable().optional(),
       publishedAt: z.string().nullable().optional(),
-      descriptionPlain: z.string().optional(),
-      descriptionHtml: z.string().optional(),
+      descriptionPlain: z.string().nullable().optional(),
+      descriptionHtml: z.string().nullable().optional(),
     })
   ),
 });

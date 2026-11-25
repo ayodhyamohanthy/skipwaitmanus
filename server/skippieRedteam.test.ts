@@ -205,6 +205,8 @@ function makeAgentApp() {
   app.use(express.json());
   registerSeekerAgentRoutes(app, {
     enabled: () => true,
+    // SKIPPY-7: the auto-send switch stays off here; this suite covers injection handling, not auto-send.
+    autoSendEnabled: () => false,
     allowedUserIds: () => new Set([7, 8]),
     resolveIdentity: async () => ({ account: { id: 7 } }),
     store,

@@ -12,6 +12,7 @@ import { caseAge, companyCase, enrollmentCase, reportCase, type ReviewCase } fro
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { UnlistedDemandView } from "@/components/admin/UnlistedDemandView";
 import { AdminGoalFrame, AdminGoalHeading } from "./AdminGoalFrame";
+import { AdminSupportSignals } from "./AdminSupportSignals";
 import { adminTabFor, plural } from "./adminGoalCopy";
 
 export const GOAL_PAGE = { goalLine: "See what needs a decision." } as const;
@@ -103,6 +104,7 @@ export default function GoalAdminOverview() {
         </div>
       ) : null}
       <UnlistedDemandView />
+      <AdminSupportSignals />
     </AdminGoalFrame>
   );
 }

@@ -169,6 +169,8 @@ export default function GoalAdminUsers() {
               </div>
               {/* ADMIN-activity-log (D-393): this person's sign-ins, attempts, requests and account actions. */}
               <a href={`/admin/activity?person=${selected.id}`} className="mt-3 inline-block text-g-meta text-g-ink-2 underline underline-offset-2 hover:text-g-ink">See this person's sign-ins and activity</a>
+              {/* ADMIN-support-view (D-393): the same person's whole state, what failed and the fix, on one page. */}
+              <a href={`/admin/users/${selected.id}/support`} className="mt-3 ml-4 inline-block text-g-meta text-g-ink-2 underline underline-offset-2 hover:text-g-ink">Open the support view</a>
             </>
           ) : (
             <p className="text-g-meta text-g-ink-2" aria-busy={users.isLoading || undefined}>{users.isLoading ? "Loading accounts…" : loadError ? "No account is shown while the directory failed to load." : "No account is selected."}</p>
