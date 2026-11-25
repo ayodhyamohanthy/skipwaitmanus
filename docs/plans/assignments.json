@@ -9395,9 +9395,9 @@
       "tier": 1,
       "lane": "admin-email-switch",
       "branch": "agent/queue/admin-email-switch",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built by Claude Code · 43c8; code lands from this branch once this registration is on main. No password anywhere; no demotion write.",
+      "note": "Owner, Nov 25 2026 (D-400, FOUNDER-LOCKED). Built and landed by Claude Code · 43c8 from this branch: adminIdentity (founder fixed in code, seat from SKIPWAIT_ADMIN_EMAIL=admin@skipwait.me), founder suspension guard (403, audited), alerts to both. After deploy: owner signs in as admin@ and confirms /admin.",
       "epic": "D-212",
       "owns": [
         "wrangler.jsonc",

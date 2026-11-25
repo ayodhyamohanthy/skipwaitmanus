@@ -44,4 +44,4 @@ write that demotes an account.
 
 ## Status
 
-- ADMIN-email-switch: todo — registered Nov 25 2026 by Claude Code · 43c8 (D-400). Code ready on `agent/queue/admin-email-switch`.
+- ADMIN-email-switch: done — Claude Code · 43c8 — 2026-11-25 — landed from `agent/queue/admin-email-switch`. Focused suites green (adminIdentity, roleSync, suspendReview, adminUsers, workosAuth, billingReviewOutbox, errorAlerting, paymentAmountMismatch, daily checks); `tsc --noEmit` clean. Live acceptance (owner signs in as admin@skipwait.me) is pending the deploy: UNVERIFIED until then.
