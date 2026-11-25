@@ -299,7 +299,7 @@
       "tier": 2,
       "lane": "picker-single-flight",
       "branch": "agent/queue/picker-lock-liveness",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-396",
       "dependsOn": [],
       "owns": [
@@ -307,7 +307,7 @@
         "scripts/nextTaskSingleFlight.test.ts",
         "docs/plans/PICKER-single-flight.md"
       ],
-      "note": "Remaining step (found live after #1557): the takeover rule treats a LIVE pid as stale once the lock passes 30 minutes, so my own 40-minute run was taken over and two picker runs overlapped on one clone, which is the livelock the lock exists to prevent. Change the rule so a live pid is never taken over; only a dead or unparseable pid is, with RUN_LOCK_TAKEOVER_MS governing only the unverifiable case. Red-first: an old lock with a live pid must refuse (the current suite asserts the buggy takeover and must be corrected), and a dead pid must still be taken over immediately.",
+      "note": "Done in PR #1625 (merge ae57f6cc86bedb62e9474b334235175aa0061eea): a live pid is never taken over because of age or a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; the three critical regressions fail against the previous rule; exact-head required CI and main CI are green.",
       "epic": "D-212"
     },
     {
@@ -8666,6 +8666,33 @@
       "note": "Packet section 5 row 5. Captures at 1280 and 390."
     },
     {
+      "id": "D-178.mcp-grant",
+      "title": "An MCP proposal made with a grant key is bound to its grant, so revoke, pause, expiry, send caps and the assistant label apply at approve (D-405)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-mcp-grant",
+      "branch": "agent/queue/d178-mcp-grant",
+      "status": "done",
+      "syncedTo": "D-405",
+      "epic": "D-178",
+      "owns": [
+        "server/mcpServer.ts",
+        "server/mcpRoutes.ts",
+        "server/mcpRoutes.test.ts",
+        "server/agentSendApproval.ts",
+        "server/seekerAgentSend.test.ts",
+        "server/db.ts",
+        "server/_core/index.ts",
+        "shared/seekerAgents.ts",
+        "docs/DECISIONS.md",
+        "docs/plans/assignments.json",
+        "docs/plans/D-178-agent-portal-access.md"
+      ],
+      "dependsOn": [],
+      "note": "D-405. Repairs the defect that failed the D-178.release local contract proof: propose_ask over MCP with a grant key wrote an unbound approval, so approve skipped the grant's revoke, expiry, pause and caps and the D-142 label. Red first: 2 MCP route and 2 approve-path failures. Legacy sw_ tokens unchanged; no migration, env key or flag change. Owns lists server/db.ts, server/_core/index.ts and shared/seekerAgents.ts as plain paths because scope-check only parses the '(switch only)' annotation; the change there is limited to proposeAssistantAsk, the MCP proposeAsk wiring line and MCP_GRANT_PROVIDER."
+    },
+    {
       "id": "D-178.release",
       "title": "Release D-178: allow-listed test seeker end to end on skipwait_qa (connect, propose, approve, one debit, decline, revoke, shortfall); production is the owner's word",
       "row": "D-178",
@@ -8674,7 +8701,7 @@
       "lane": "d178-release",
       "branch": "agent/queue/d178-release",
       "status": "todo",
-      "syncedTo": "D-290",
+      "syncedTo": "D-405",
       "epic": "D-178",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
@@ -8685,7 +8712,8 @@
         "SKIPPY-6",
         "D-178.read",
         "D-178.screen",
-        "SKIPPY-redteam"
+        "SKIPPY-redteam",
+        "D-178.mcp-grant"
       ],
       "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201)."
     },
@@ -9353,15 +9381,15 @@
       "id": "GROUP-plan-split",
       "title": "Group Plan: write the slice plan (seats and one-seat additions, server quote with the 10% institution discount, checkout intent, verified-payment activation and email, candidate-approved delegation) and register its rows",
       "row": "GROUP",
-      "packet": null,
+      "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-plan-split",
       "branch": "agent/queue/group-plan-split",
-      "status": "architect",
+      "status": "done",
       "dependsOn": [],
-      "note": "Packet-only task: its work is the rows it adds (D-223, D-321 (8)). Read docs/plans/GROUP-bulk-oct31.md in full, docs/PRICING.md, D-219, D-367 and the existing banded checkout, grants and ledger code it names. Write docs/plans/GROUP-plan-split.md: one row per owned-file slice that one session finishes alone, each behind a switch that starts off, migration rows first, red-first tests and the packet's proof gates. Resolve the open items (discount stacking with volume discounts, single-seat additions and proration, delegation scope and institute visibility) from existing rules with stated, changeable assumptions; a point that would change a price, plan content, legal text or the login rule goes to the owner as one batched question and only the rows that need it wait. Never a real payment or email.",
+      "note": "Original packet/registry registration by GPT-6.1 Sol · 01aa on 2026-11-25 (claim d16a563a7), implementation 369f8d1dd; PR #1609 merged from exact head c0cc452c8c84cb02a1ad937a5a4c55f885e87067 as dadc0528975dc4bc7fc6fefb8adc1799fe36acee with required CI run 45579946145 green. Packet-only reconciliation; no Group runtime, payment, email, migration or activation.",
       "epic": "GROUP",
-      "syncedTo": "D-398"
+      "syncedTo": "D-405"
     },
     {
       "id": "PICKER-never-wait",
@@ -10013,6 +10041,27 @@
         "docs/plans/GROUP-plan-split.md"
       ],
       "note": "Packet section 6.11. Group-specific activation is not granted by consumer BANDED-release. Require recorded section 8 answers, exact owner Group sales/consent activation authority, all child acceptance and TEST/provider proof first. Only then protected config release, canonical exact web/API/readiness and 1280/390 proof; live hosted-page handshake stops before paying. Rollback stops creation/send, retains paid/refund/email recovery. Never mark shipped from packet/fixtures or missing evidence."
+    },
+    {
+      "id": "XINGCHI-turn-guard",
+      "title": "A local proxy compacts each conversation before Xingchi's turn limits (20 user turns, 100 model replies) and retries on session_turn_limit_exceeded, so no agent client stops on them (D-404)",
+      "row": "PICKER",
+      "packet": "docs/plans/XINGCHI-turn-guard.md",
+      "tier": 2,
+      "lane": "xingchi-guard",
+      "branch": "agent/queue/xingchi-turn-guard",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Owner, Nov 25 2026 (D-403): omp CLI hit 'This conversation has reached 100 model turns ... param=session_turn_limit_exceeded'. Being built by Claude Code · 43c8.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/xingchi-guard.mjs",
+        "scripts/xingchiGuard.test.ts",
+        "docs/BUILD_CONTINUITY.md",
+        "docs/plans/XINGCHI-turn-guard.md",
+        "docs/plans/assignments.json"
+      ],
+      "syncedTo": "D-403"
     }
   ]
 }
