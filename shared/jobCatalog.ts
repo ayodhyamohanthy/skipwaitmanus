@@ -8,7 +8,7 @@
 import { z } from "zod";
 
 /** Launch switch. QA flips this on after the deployed-unavailable check. */
-export const JOB_CATALOG_ENABLED = false;
+export const JOB_CATALOG_ENABLED = true;
 
 export const JOB_CATALOG_PAGE_SIZE = 50;
 

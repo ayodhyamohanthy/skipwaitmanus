@@ -26,7 +26,9 @@ describe("administrator payment credit revocation", () => {
   it("shows a ledger-only action on credited rows, explains it is not a provider refund, and calls the revocation route", async () => {
     render(<AdminPaymentsReview />);
     await waitFor(() => expect(screen.getByText("Recently completed payments")).toBeTruthy());
-    const refundButton = screen.getByRole("button", { name: /^Revoke credits$/ });
+    // The completed rows arrive from their own request after the section heading renders: wait for the row's
+    // button itself, or a loaded CI shard finds the heading first and the button not yet (main 1a027590a).
+    const refundButton = await screen.findByRole("button", { name: /^Revoke credits$/ });
     fireEvent.click(refundButton);
     expect(screen.getByText(/This does not refund provider money/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Confirm credit revocation/i }));

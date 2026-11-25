@@ -345,7 +345,8 @@ describe("Explore company door (goal, W2)", () => {
     expect(screen.getByText("Respect the decision")).toBeTruthy();
     // No kit chrome survives.
     expect(document.querySelector(".company-page, .company-hero, .privacy-preview")).toBeNull();
-    expect(companyPaths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities"]);
+    // D-394 release: the door also reads the company's careers-site jobs (COMPANY_JOBS_ENABLED).
+    expect(companyPaths(fetchMock)).toEqual(["/api/companies/wipro", "/api/companies/wipro/opportunities", "/api/companies/wipro/jobs"]);
   });
 
   it("a company the directory marks closed gets the same door: no Not open yet, no Alert me, the same one primary commit (D-176, D-174 door-neutral)", async () => {
@@ -418,6 +419,8 @@ describe("Explore company door (goal, W2)", () => {
       const path = String(input);
       if (path === "/api/companies/wipro/opportunities") { if (fail) throw new TypeError("Failed to fetch"); return json(200, { opportunities: [post()] }); }
       if (path === "/api/companies/wipro") return json(200, { company: company("wipro") });
+      // The careers-site jobs read answers normally, so the only failure on the door is the openings read.
+      if (path.startsWith("/api/companies/wipro/jobs")) return json(200, { jobs: [], facets: { locations: {}, levels: {}, functions: {} }, source: null, syncedAt: null, completeness: "unavailable" });
       return json(404, { error: "not found" });
     }));
     renderWithQuery(<ExploreCompany />);
