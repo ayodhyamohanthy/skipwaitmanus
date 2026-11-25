@@ -88,4 +88,6 @@ The following directory companies use proprietary or unsupported ATS providers (
 
 ## Status
 
+- SEARCH-job-sources: follow-up fix — Claude Code · 695b — 2026-11-25. Live check of the D-174 release (#1575, `ee03cabb7`): Stripe, OpenAI and MongoDB each answer 50 real jobs, but Greenhouse snippets showed raw HTML (`<h2><strong>Who we are…`) because `?content=true` is entity-encoded and the helper stripped tags before decoding. `server/jobSources/plainText.ts` now decodes entities first, then strips tags (block tags as spaces), for Greenhouse directly and Ashby/Lever through `stripHtml`; stored rows heal on the next refresh.
+
 - SEARCH-job-sources: done — 7544ac29e
