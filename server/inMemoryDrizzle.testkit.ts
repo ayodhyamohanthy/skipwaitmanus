@@ -5,7 +5,8 @@
  * (read from drizzle/schema.ts) and upserts are evaluated against plain rows
  * instead of canned answers. It understands the operators the referral store
  * uses (eq, ne, and, or, gt/gte/lt/lte, isNull, isNotNull, inArray, `col + n`),
- * GROUP BY columns with count(col)/count(*) fields, and throws on anything else,
+ * GROUP BY columns with count(col)/count(*) fields, aliased tables (alias(users,
+ * "x") reads the users rows under the name x), and throws on anything else,
  * so an unsupported query fails loudly rather than passing by accident. Rows
  * come back in insertion order (ORDER BY is ignored), which is what makes a
  * query that relies on row order observable in a test.
@@ -30,8 +31,16 @@ function toCell(value: unknown): Cell {
   return fail("value");
 }
 
+/** The table an alias reads its rows from (drizzle's OriginalName); a plain table is its own source. */
+function sourceOf(table: Table): string {
+  const original: unknown = Reflect.get(table, Symbol.for("drizzle:OriginalName"));
+  return typeof original === "string" ? original : getTableName(table);
+}
+
 function keyOf(column: Column): { table: string; key: string } {
-  const entry = Object.entries(getTableColumns(column.table)).find(([, candidate]) => candidate === column);
+  // An aliased table hands out a fresh column proxy on every read, so its columns match by name.
+  const columns = Object.entries(getTableColumns(column.table));
+  const entry = columns.find(([, candidate]) => candidate === column) ?? columns.find(([, candidate]) => candidate.name === column.name);
   return entry ? { table: getTableName(column.table), key: entry[0] } : fail(`column ${column.name}`);
 }
 
@@ -177,15 +186,15 @@ export function createInMemoryDrizzle(seed: Seed = []) {
     const run = (): Selected[] => {
       if (!source) return fail("select without from");
       const from = getTableName(source);
-      for (const name of [from, ...joins.map(join => getTableName(join.table))]) {
+      for (const name of [sourceOf(source), ...joins.map(join => sourceOf(join.table))]) {
         if (unreadable.has(name)) throw Object.assign(new Error(`Table '${name}' doesn't exist`), { code: "ER_NO_SUCH_TABLE", errno: 1146 });
       }
-      let joined: Joined[] = rowsOf(from).map((row): Joined => new Map([[from, row]]));
+      let joined: Joined[] = rowsOf(sourceOf(source)).map((row): Joined => new Map([[from, row]]));
       for (const join of joins) {
         const name = getTableName(join.table);
         const extend = (base: Joined, row: Row | null): Joined => { const next: Joined = new Map(base); next.set(name, row); return next; };
         joined = joined.flatMap(base => {
-          const hits = rowsOf(name).map(row => extend(base, row)).filter(candidate => matches(join.on, candidate));
+          const hits = rowsOf(sourceOf(join.table)).map(row => extend(base, row)).filter(candidate => matches(join.on, candidate));
           return hits.length ? hits : join.inner ? [] : [extend(base, null)];
         });
       }
