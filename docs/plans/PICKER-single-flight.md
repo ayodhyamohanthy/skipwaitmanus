@@ -64,6 +64,11 @@ real arbiter) and already tested by the ownership suites.
 `pnpm build`, design-token audit, migration lint, deploy-trigger checks; exact-head required CI is
 the landing gate (D-370).
 
+Verified on PR #1625 head `5a33a5d381e214b9572904b7beaffbb6e1e877fc`: focused suite 9/9; the
+old-live, missing-timestamp and fresh-unreadable regressions each fail against the previous rule;
+all exact-head required checks pass. Merge `ae57f6cc86bedb62e9474b334235175aa0061eea` has green
+main CI (`45592467105`) and its pushed task files are unchanged on `main`.
+
 ## Owns
 
 - `scripts/next-task.mjs` (the lock helpers and the entry point only)
@@ -73,4 +78,4 @@ the landing gate (D-370).
 
 ## Status
 
-- PICKER-single-flight: in progress — agent/queue/picker-lock-liveness — HungerG · e6a2 — 2026-11-25. Took over the quiet branch and integrated current main without dropping its short-session `renameSync` change. A live pid now refuses at any age or with a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite: 9/9 pass. Mutation-checked: the old-live, missing-timestamp and fresh-unreadable regressions all fail against the previous takeover rule. `--report` and `--heartbeat` remain exempt (D-085).
+- PICKER-single-flight: done — #1557 (lock) and #1625 (live-pid rule) merged; the latter landed as `ae57f6cc86bedb62e9474b334235175aa0061eea` — HungerG · e6a2 — 2026-11-25. A live pid refuses at any age or with a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite 9/9; all three critical regressions fail against the previous rule; exact-head required CI and main CI are green. `--report` and `--heartbeat` remain exempt (D-085).
