@@ -52,6 +52,13 @@ On the same clone step 3 is automatic (`PICKER-short-session`): a bare `--claim 
 
 OpenCode and ZCode apply the repository's `opencode.json`, `.opencode/agents/worker.md` and `.zcode/agents/worker.md` automatically, so their sessions here delegate each step to a turn-bounded subagent under `docs/agents/TURN-CAPPED-CLIENTS.md`, with no per-machine setup (D-402 (6)).
 
+**Automatic restarts (D-402).** A client with a headless mode needs nobody to start the next conversation: `scripts/agent-loop.mjs` runs it with the prompt `build` and starts it again each time it exits. Each run is a fresh conversation, and the picker resumes the same task. Stop it with Ctrl+C, with `node scripts/agent-loop.mjs --stop` (checked before each run; `--clear-stop` allows loops again) or with `--max-runs N`. Runs that end in under 60 s back to back wait 5 minutes after 3 and stop after 10. The log is `skipwait-agent-loop.log` in the clone's git directory, never the working tree. Clients without a headless mode (the Z Code app, the Cline VS Code extension) still need their own new-chat action; delegating to subagents with bounded `steps` or `maxTurns` keeps those conversations short.
+
+```bash
+node scripts/agent-loop.mjs -- opencode run   # OpenCode: runs "opencode run build" again after each conversation
+node scripts/agent-loop.mjs -- codex exec     # Codex: runs "codex exec build" again after each conversation
+```
+
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
 
