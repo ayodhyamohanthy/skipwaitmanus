@@ -600,4 +600,12 @@ Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md
 
 ## Current Group Plan build direction (Oct 31)
 
-Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](docs/plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
+The [owner direction](docs/plans/GROUP-bulk-oct31.md) covers candidate email lists, initial seats and later
+one-seat additions, an institution-only 10% discount, payment-verified allocations and activation emails.
+The [execution split](docs/plans/GROUP-plan-split.md) registers file-owned slices through recovery and
+candidate-approved on-behalf sending. It preserves the existing account, ledger, privacy and referral creator;
+payment never grants identity or application consent. `GROUP-terms` carries one commercial question batch;
+other slices build with switches off and refuse unresolved payable quotes. Required CI applies without an
+independent-review/model gate (D-370). No Group sales activation, new price, real payment or recipient email is
+authorized by packet registration. Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`,
+`phonemsg-01M6896AS74F9S9T45Y9M9FY75`.
