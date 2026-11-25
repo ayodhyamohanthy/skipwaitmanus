@@ -60,7 +60,8 @@
     "BILLING_ENV": "live",
     "CHARGEBEE_LIVE_ENABLED": "true",
     "CHARGEBEE_LIVE_DOMAIN": "skipwait.me",
-    "CHARGEBEE_LIVE_SITE": "skipwait"
+    "CHARGEBEE_LIVE_SITE": "skipwait",
+    "BANDED_SALES_ENABLED": "true"
   },
   "observability": { "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true }, "traces": { "enabled": false } }
 }
