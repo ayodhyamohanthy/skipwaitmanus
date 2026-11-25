@@ -2,6 +2,7 @@
 // 27 goal colour tokens, keeps the approved trust/commit values, meets AA
 // against its own surfaces, and never changes the light table.
 import { existsSync, readFileSync } from "node:fs";
+import { parse, type Rule } from "postcss";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => (existsSync(path) ? readFileSync(path, "utf8") : "");
@@ -156,8 +157,37 @@ describe("the default never follows the system setting", () => {
     expect(indexCss).not.toContain("prefers-color-scheme");
   });
 
-  it("index.html applies a stored dark choice before first paint", () => {
+  it("index.html applies the saved choice before the root and app bundle", () => {
     expect(html).toMatch(/localStorage\.getItem\(\s*["']sw-theme["']\s*\)/);
-    expect(html).toMatch(/classList\.add\(\s*["']dark["']\s*\)/);
+    const themeScript = html.indexOf('localStorage.getItem("sw-theme")');
+    expect(themeScript).toBeGreaterThan(0);
+    expect(themeScript).toBeLessThan(html.indexOf('<div id="root">'));
+    expect(themeScript).toBeLessThan(html.indexOf('type="module"'));
+  });
+});
+
+describe("theme-switch transition suppression", () => {
+  it("temporarily suppresses only goal scopes, their children and pseudo-elements", () => {
+    const rules: Rule[] = [];
+    parse(indexCss).walkRules(rule => {
+      if (rule.selector.includes("g-theme-switching")) rules.push(rule);
+    });
+    expect(rules).toHaveLength(1);
+    const rule = rules[0];
+    if (!rule) throw new Error("Missing goal-scoped theme-switch suppression");
+    expect(rule.selectors.sort()).toEqual([
+      "html.g-theme-switching .g-scope",
+      "html.g-theme-switching .g-scope *",
+      "html.g-theme-switching .g-scope *::after",
+      "html.g-theme-switching .g-scope *::before",
+      "html.g-theme-switching .g-scope::after",
+      "html.g-theme-switching .g-scope::before",
+    ].sort());
+    expect(rule.nodes.map(node => node.type)).toEqual(["decl"]);
+    rule.walkDecls(declaration => {
+      expect(declaration.prop).toBe("transition");
+      expect(declaration.value).toBe("none");
+      expect(declaration.important).toBe(true);
+    });
   });
 });

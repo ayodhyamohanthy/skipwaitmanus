@@ -1,8 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useLayoutEffect, useState } from "react";
+import { usePathname } from "wouter/use-browser-location";
 
 export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "sw-theme";
+// Keep this exact policy in sync with client/index.html. /request redirects to /ask.
+const DARK_READY_ROUTES = new Set(["/", "/explore", "/ask", "/requests", "/request"]);
 
 interface ThemeContextType {
   theme: Theme;
@@ -40,24 +43,35 @@ export function ThemeProvider({
   defaultTheme = "light",
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() =>
+  const pathname = usePathname();
+  const routeSwitchable = switchable && DARK_READY_ROUTES.has(pathname.replace(/\/+$/, "") || "/");
+  const [preferredTheme, setPreferredTheme] = useState<Theme>(() =>
     switchable ? readStoredTheme() ?? defaultTheme : defaultTheme,
   );
+  const theme: Theme = routeSwitchable ? preferredTheme : "light";
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const dark = theme === "dark";
+    if (root.classList.contains("dark") === dark) return;
+    root.classList.add("g-theme-switching");
+    root.classList.toggle("dark", dark);
+    // Flush the new colours while only goal transitions are suppressed, then
+    // restore hover/focus transitions synchronously before the next paint.
+    void root.offsetHeight;
+    root.classList.remove("g-theme-switching");
   }, [theme]);
 
-  const toggleTheme = switchable
+  const toggleTheme = routeSwitchable
     ? () => {
         const next: Theme = theme === "light" ? "dark" : "light";
         writeStoredTheme(next);
-        setTheme(next);
+        setPreferredTheme(next);
       }
     : undefined;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, switchable: routeSwitchable }}>
       {children}
     </ThemeContext.Provider>
   );

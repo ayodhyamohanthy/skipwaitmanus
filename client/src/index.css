@@ -319,6 +319,13 @@ input, textarea { caret-color: var(--primary); }
 .g-scope .g-focus-inner:focus-visible { box-shadow: none; }          /* only for a field drawn inside a card that rings via :focus-within (find-a-referral.css:91,94). Same specificity (0,3,0) as the rule above, so it MUST stay after it. */
 .g-scope :is(input, textarea) { caret-color: var(--g-ink); }
 .g-scope :is(a, button) { transition-timing-function: revert-layer; }
+/* D-048-dark-mode: ThemeProvider removes this marker after committing new colours. */
+html.g-theme-switching .g-scope,
+html.g-theme-switching .g-scope::before,
+html.g-theme-switching .g-scope::after,
+html.g-theme-switching .g-scope *,
+html.g-theme-switching .g-scope *::before,
+html.g-theme-switching .g-scope *::after { transition: none !important; }
 .g-hero-warm { background: linear-gradient(180deg, var(--g-warm-1) 0%, var(--g-warm-2) 52%, var(--g-warm-3) 100%); }
 
 .g-num { font-family: var(--g-font-mono); font-weight: 500; font-size: min(1em, 13px); letter-spacing: 0; word-spacing: -0.2em; white-space: nowrap; font-variant-numeric: tabular-nums; font-variant-ligatures: none; }
