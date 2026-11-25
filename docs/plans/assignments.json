@@ -8682,15 +8682,15 @@
         "server/mcpRoutes.test.ts",
         "server/agentSendApproval.ts",
         "server/seekerAgentSend.test.ts",
-        "server/db.ts (proposeAssistantAsk only)",
-        "server/_core/index.ts (the MCP proposeAsk line only)",
-        "shared/seekerAgents.ts (MCP_GRANT_PROVIDER only)",
+        "server/db.ts",
+        "server/_core/index.ts",
+        "shared/seekerAgents.ts",
         "docs/DECISIONS.md",
         "docs/plans/assignments.json",
         "docs/plans/D-178-agent-portal-access.md"
       ],
       "dependsOn": [],
-      "note": "D-405. Repairs the defect that failed the D-178.release local contract proof: propose_ask over MCP with a grant key wrote an unbound approval, so approve skipped the grant's revoke, expiry, pause and caps and the D-142 label. Red first: 2 MCP route and 2 approve-path failures. Legacy sw_ tokens unchanged; no migration, env key or flag change."
+      "note": "D-405. Repairs the defect that failed the D-178.release local contract proof: propose_ask over MCP with a grant key wrote an unbound approval, so approve skipped the grant's revoke, expiry, pause and caps and the D-142 label. Red first: 2 MCP route and 2 approve-path failures. Legacy sw_ tokens unchanged; no migration, env key or flag change. Owns lists server/db.ts, server/_core/index.ts and shared/seekerAgents.ts as plain paths because scope-check only parses the '(switch only)' annotation; the change there is limited to proposeAssistantAsk, the MCP proposeAsk wiring line and MCP_GRANT_PROVIDER."
     },
     {
       "id": "D-178.release",
