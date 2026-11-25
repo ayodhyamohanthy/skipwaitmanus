@@ -1,10 +1,11 @@
 // D-048-p3-employer: the goal /employer/opportunities (packet
-// docs/plans/D-048-employer.md §3). Same endpoints and sponsorship flow as the
-// kit page (client/src/pages/EmployerOpportunities.tsx): list, sponsor dialog,
-// idempotency key, honest empty state. The tier costs come from the kit page's
-// own table — this file never retypes a money line (§4.1); the goal dialog
-// names what the money buys (a featured listing) and states the cost plainly
-// without the internal unit word (rule 1a, D-153/D-173/D-180).
+// docs/plans/D-048-employer.md §3). Same endpoints and sponsorship flow the kit
+// page had before D-048-K-employer deleted it: list, sponsor dialog,
+// idempotency key, honest empty state. The tier costs live in sponsorTiers.ts,
+// the only copy now that the kit page is gone — this file never retypes a money
+// line (§4.1); the goal dialog names what the money buys (a featured listing)
+// and states the cost plainly without the internal unit word (rule 1a,
+// D-153/D-173/D-180).
 import { ArrowLeft, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";

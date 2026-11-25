@@ -7,7 +7,7 @@
 // or the noun "ask", never sells or promises the unbuilt Oct 25 company plans,
 // and the sponsorship cost values are the kit's own (never retyped).
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import GoalEmployer from "./GoalEmployer";
@@ -63,13 +63,15 @@ describe("goal /employer states", () => {
     expect(() => assertGoalPage(container, EMPLOYER_GOAL)).not.toThrow();
   });
 
-  it("signed out: the sign-in gate keeps the kit headline and no state is created", async () => {
+  it("signed out: the sign-in gate keeps the goal headline and no request is made", async () => {
     authState.isSignedIn = false;
     serve({ account: null });
     const { container } = renderPage(<GoalEmployer />);
     expect(await screen.findByRole("heading", { level: 1, name: "Hire without the noise." })).toBeTruthy();
     expect(screen.getByText("Sign in to continue")).toBeTruthy();
     expect(() => assertGoalPage(container, EMPLOYER_GOAL)).not.toThrow();
+    // Ported from the retired kit test's "shows the sign-in gate for signed-out visitors".
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("account load failure: an honest error state with a retry, no fake data", async () => {
@@ -122,6 +124,8 @@ describe("goal /employer states", () => {
     }) as never);
     renderPage(<GoalEmployer />);
     expect(await screen.findByText("Your employer application is in review")).toBeTruthy();
+    // Ported from the retired kit test: a pending application shows no live-role count.
+    expect(screen.getByText("Live roles").parentElement?.querySelector("[data-testid='goal-num']")?.textContent).toBe("—");
   });
 });
 
@@ -183,16 +187,111 @@ describe("goal employer money-copy integrity (rule 1a)", () => {
     }
   });
 
-  it("the goal dialog's tier costs are the kit page's own values, never retyped", () => {
-    const kitSource = readFileSync("client/src/pages/EmployerOpportunities.tsx", "utf8");
-    const kitTiers = Array.from(kitSource.matchAll(/id: "(featured|spotlight)", label: "(\w+)", days: (\d+), cost: (\d+)/g)).map(match => ({ id: match[1], days: Number(match[3]), cost: Number(match[4]) }));
-    expect(kitTiers).toHaveLength(2);
-    expect(SPONSOR_TIERS.map(tier => ({ id: tier.id, days: tier.days, cost: tier.cost }))).toEqual(kitTiers);
+  it("the goal dialog's tier costs stay the frozen kit values now that the kit page is gone", () => {
+    // Ported from the retired kit-source comparison (D-048-K-employer): the kit
+    // page that used to be the reference no longer exists, so the two values it
+    // held are pinned here as literals. A price change is the owner's call
+    // (D-123), so this fails loudly instead of drifting.
+    expect(SPONSOR_TIERS.map(tier => ({ id: tier.id, label: tier.label, days: tier.days, cost: tier.cost }))).toEqual([
+      { id: "featured", label: "Featured", days: 7, cost: 10 },
+      { id: "spotlight", label: "Spotlight", days: 30, cost: 25 },
+    ]);
   });
 
   it("the page keeps the kit idempotency behaviour: one Idempotency-Key per sponsor attempt", async () => {
     const goalSource = readFileSync("client/src/pages/goal/employer/GoalEmployerOpportunities.tsx", "utf8");
     expect(goalSource).toContain("Idempotency-Key");
     expect(goalSource).toContain("crypto.randomUUID");
+  });
+});
+
+// Ported from the retired kit test client/src/pages/employerDashboard.test.tsx
+// (D-048-K-employer, packet §3.4). Each case keeps the kit assertion's intent
+// against the goal page that now serves /employer. The kit-only presentation
+// (its header shape, "Your hiring, warmer.", "EMPLOYER · ACME ROBOTICS",
+// "Unlock credits", "Credit activity · last 30 days", "FROM YOUR CREDIT
+// LEDGER") is dropped with the kit page; the facts those assertions proved are
+// kept here against the goal page's own labels.
+describe("ported kit assertions on the goal /employer page (D-048-K-employer)", () => {
+  it("overview: the live account, roles and ledger produce the same four stats and the 30-day window", async () => {
+    const spend = [
+      { kind: "credit_purchase", creditsAdded: 25, createdAt: new Date(Date.now() - 86_400_000).toISOString() },
+      { kind: "profile_unlock", creditsSpent: 1, createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString() },
+      { kind: "sponsorship", creditsSpent: 5, createdAt: new Date(Date.now() - 3 * 86_400_000).toISOString() },
+      { kind: "profile_unlock", creditsSpent: 1, createdAt: new Date(Date.now() - 90 * 86_400_000).toISOString() },
+    ];
+    serve({
+      account: { ...ACCOUNT, credits: 25, budgetMonthlyUsdCents: 50000 },
+      opportunities: { opportunities: [{ id: 1, isActive: true, isSponsored: true }, { id: 2, isActive: true, isSponsored: false }, { id: 3, isActive: false, isSponsored: false }] },
+      spend: { spend },
+    });
+    renderPage(<GoalEmployer />);
+    await screen.findByRole("heading", { level: 1, name: "Hire without the noise." });
+    const stat = (label: string) => screen.getByText(label).parentElement?.querySelector("[data-testid='goal-num']")?.textContent;
+    expect(stat("Talent unlock balance")).toBe("25");
+    expect(stat("Monthly budget")).toBe("$500");
+    expect(stat("Live roles")).toBe("2");
+    expect(stat("Sponsored now")).toBe("1");
+    // The 90-day-old unlock is outside the 30-day window.
+    expect(screen.getByText("Spent on talent unlocks").nextElementSibling?.textContent).toBe("1");
+  });
+
+  it("every employer door the kit nav offered is still reachable from the goal page", async () => {
+    serve({ account: ACCOUNT, opportunities: { opportunities: [] }, spend: { spend: [] } });
+    renderPage(<GoalEmployer />);
+    // Wait for the loaded overview: the doors render only once the account is
+    // known, so querying the nav during the loading frame would read an empty one.
+    await screen.findByText("Talent unlock balance");
+    const nav = screen.getByRole("navigation", { name: "Employer" });
+    expect(within(nav).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/employer", "/employer/opportunities"]);
+    // /employer/talent and /employer/billing stay reachable through the page's
+    // own next step and checklist rather than the kit header.
+    expect(screen.getAllByRole("link", { name: /Sponsor a role/ }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("just joined: the three kit checklist destinations are still the goal page's own links", async () => {
+    serve({ account: { ...ACCOUNT, credits: 0, budgetMonthlyUsdCents: 0 }, opportunities: { opportunities: [] }, spend: { spend: [] } });
+    renderPage(<GoalEmployer />);
+    await screen.findByText("Get started");
+    const destinations = (name: RegExp) => screen.getAllByRole("link", { name }).map(link => link.getAttribute("href"));
+    expect(destinations(/Top up for talent unlocks and sponsored roles/)).toEqual(["/employer/billing"]);
+    expect(destinations(/Browse opt-in talent/).every(href => href === "/employer/talent")).toBe(true);
+    expect(destinations(/Sponsor a role \(optional\)/)).toEqual(["/employer/opportunities"]);
+  });
+
+  it("activity failure: the error is retryable and the account stats stay visible", async () => {
+    serve({ account: ACCOUNT, opportunityStatus: 500, spend: { spend: [] } });
+    renderPage(<GoalEmployer />);
+    expect(await screen.findByText("We could not load your employer activity")).toBeTruthy();
+    expect(screen.getByText("Talent unlock balance")).toBeTruthy();
+    serve({ account: ACCOUNT, opportunities: { opportunities: [] }, spend: { spend: [] } });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText("Spend · last 30 days")).toBeTruthy());
+  });
+
+  it("account failure: Try again refetches and shows the overview", async () => {
+    serve({ account: null, accountStatus: 500 });
+    renderPage(<GoalEmployer />);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    serve({ account: ACCOUNT, opportunities: { opportunities: [] }, spend: { spend: [] } });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText("Talent unlock balance")).toBeTruthy());
+  });
+
+  it("open account: Get started posts the typed company name", async () => {
+    serve({ account: null });
+    renderPage(<GoalEmployer />);
+    fireEvent.change(await screen.findByLabelText("Company name"), { target: { value: "Globex" } });
+    fireEvent.click(screen.getByRole("button", { name: "Get started" }));
+    await waitFor(() => {
+      const post = vi.mocked(fetch).mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === "POST");
+      expect(JSON.parse(String((post?.[1] as RequestInit).body))).toEqual({ companyName: "Globex" });
+    });
+  });
+
+  it("loading: the goal skeleton renders before the account resolves", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+    const { container } = renderPage(<GoalEmployer />);
+    expect(container.querySelector("[data-testid='goal-skeleton-rows']")).toBeTruthy();
   });
 });

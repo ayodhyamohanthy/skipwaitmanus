@@ -1,5 +1,5 @@
 // D-048-p3-employer: the goal /employer (packet docs/plans/D-048-employer.md).
-// Same endpoints and states as the kit page (client/src/pages/EmployerDashboard.tsx):
+// Same endpoints and states the kit page had before D-048-K-employer deleted it:
 // sign-in gate, account load, open-account form, signed-in overview. No
 // employer price, credit, unlock or access rule changes (packet §4.1); display
 // wording follows rule 1a (D-153/D-173/D-180): the copy names what the money
