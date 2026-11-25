@@ -59,6 +59,13 @@ node scripts/agent-loop.mjs -- opencode run   # OpenCode: runs "opencode run bui
 node scripts/agent-loop.mjs -- codex exec     # Codex: runs "codex exec build" again after each conversation
 ```
 
+**Turn guard (D-403).** The Xingchi relay refuses a request whose history holds 20 user turns or 100 model replies (`400 ... session_turn_limit_exceeded`), and client auto-compaction counts tokens, not turns. `scripts/xingchi-guard.mjs` (Node built-ins only) sits between any client and Xingchi on 127.0.0.1: before forwarding a `chat/completions` or `responses` request it counts the turns, and from 18 user turns or 95 model replies (`--max-user`, `--max-model`) it drops the oldest middle of the conversation, keeping system and developer messages, the first user message, the latest turns and every tool call with its result, and puts one note in its place telling the agent to re-read its packet, the picker output and `git log`. If Xingchi still answers `session_turn_limit_exceeded`, it compacts to a quarter of the limits and retries once. It passes the Authorization header through, never logs or stores it or any body, streams responses (SSE included) unchanged, and logs one line per request to stderr. Start it once per machine, then point each client's base URL at the guard with the same path suffix it used for Xingchi: for `https://<xingchi-host>/v1`, use `http://127.0.0.1:8787/v1`. The API key stays in the client. No client config in this repository changes.
+
+```bash
+node scripts/xingchi-guard.mjs --upstream https://<xingchi-host>/v1           # or XINGCHI_BASE_URL=... node scripts/xingchi-guard.mjs
+node scripts/xingchi-guard.mjs --help                                        # port, limits and the base-URL rule
+```
+
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
 
