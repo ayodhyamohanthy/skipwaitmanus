@@ -1201,6 +1201,29 @@ Queue reconciliation:
 `SKIPPY-stepup` in `docs/plans/assignments.json` is updated from `status: "architect"` to `status: "todo"`, with `packet: "docs/plans/SKIPPY-stepup.md"` and `syncedTo: "D-382"`. It is unblocked for normal picker claim and builder implementation on `agent/queue/skippy-stepup`.
 This technical ruling changes no pricing, plan content, sales switch (`BANDED_SALES_ENABLED` remains false), legal text, login rule, money path or spending permission.
 
+### November 25 live-QA dependency execution receipt (D-373 (6), D-390, D-393)
+
+`GPT-6.1 Sol · 32d8`, officially assigned `LAND LAUNCH-live-qa` (takeover `7387ccf12`), checked current
+instructions, the decision register through D-398, main `5a076a29a`, PR #1540 and its dependency PR #1558.
+This is a completion-state reconciliation under existing decisions, not a new owner decision.
+
+PR #1558 merged as `f25eb09c7cc66a9dec83bae6c0b1d614f77d2173` with the public walk-in routing that its own
+description identifies as predating D-393. The same code remains in `scripts/live-qa-journeys.mjs:188-209`;
+its packet and PR link no successful dispatched sandbox journeys run. D-390 requires that run before
+PR #1540 lands. A merged implementation therefore did not satisfy this dependency's acceptance.
+
+Applying D-373 (6), the existing `OPS-live-qa-journeys` row moves to fresh branch
+`agent/queue/ops-live-qa-journeys-sandbox`, remains `todo`, and is checked through D-398. Its tier, lane,
+scope, dependencies and FIFO position are retained. The packet names the remaining D-389/D-393 work:
+sandbox-only routing, no public opportunity mutation, the actual transition and keyed-ledger assertions,
+failure cleanup, and one recorded successful `workflow_dispatch` journeys run with 1280/390 captures.
+PR #1558 and its tests remain history; the next implementation requires a normal picker claim.
+
+`LAUNCH-live-qa` keeps its branch, `todo` status, render evidence and dependency on this row. D-390's
+unmet acceptance remains explicit; this receipt claims no live verification, code repair or production
+action. No price, plan content, legal text, login rule, real-account limit, money rule, spending or
+production setting changes.
+
 ### November 25 CEO review execution receipt (D-085, D-397)
 
 Session `DeepSeek V4.1 Flash · d91e`, assigned `CEO REVIEW (D-085)` by `node scripts/next-task.mjs --claim`, checked `origin/main` `c1e31c93a` and decisions through D-396. This is an execution receipt for the review D-397 records; it adds no numbered decision and no product change.
