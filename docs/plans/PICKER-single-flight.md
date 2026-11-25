@@ -74,3 +74,4 @@ the landing gate (D-370).
 ## Status
 
 - PICKER-single-flight: in progress — agent/queue/picker-lock-liveness — HungerG · e6a2 — 2026-11-25. Took over the quiet branch and integrated current main without dropping its short-session `renameSync` change. A live pid now refuses at any age or with a missing timestamp; dead/unparseable pids are taken over immediately; only an unreadable lock uses the 30-minute mtime fallback. Focused suite: 9/9 pass. Mutation-checked: the old-live, missing-timestamp and fresh-unreadable regressions all fail against the previous takeover rule. `--report` and `--heartbeat` remain exempt (D-085).
+- PICKER-single-flight: done — #1557 (lock) and #1625 (live-pid rule) merged; code verified on main: `acquireRunLock`, the live-pid guard and `RUN_LOCK_TAKEOVER_MS` at `scripts/next-task.mjs`, 6/6 suite mutation-checked. The row is stamped done so the picker stops re-handing landed work (D-373 (6)).
