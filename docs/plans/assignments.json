@@ -8142,13 +8142,13 @@
       "tier": 1,
       "lane": "ask-flow",
       "branch": "agent/queue/d174-no-expiry-release",
-      "status": "todo",
-      "syncedTo": "D-386",
+      "status": "owner",
+      "syncedTo": "D-405",
       "dependsOn": [
         "D-174-expiry-clock-removal",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "D-385 packet section 7. QA preview first with fictional accounts and the test provider only (no real money): a 31-day-old held request with a fresh credit is not charged until the seeker confirms, then charged once. One PR flips both switches with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA. Activation authority: D-174's launch rule after QA (D-097).",
+      "note": "D-385 packet section 7. QA preview first with fictional accounts and the test provider only (no real money): a 31-day-old held request with a fresh credit is not charged until the seeker confirms, then charged once. One PR flips both switches with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA. Activation authority: D-174's launch rule after QA (D-097). UNBLOCK owner-parking disposition (Nov 25; checked through D-405): the packet's existing release blocker requires the owner's exact approved replacement wording for CREDIT_RULE and CREDIT_RULE_V2 (Terms, Refund Policy and Plans), plus CREDIT_RULE_SHORT (Plans), in shared/moneyCopy.ts before activation; expiry-refund and waiting-close promises must match the suspended clocks. ASK_RECONFIRM_ENABLED and ASK_NO_EXPIRY_ENABLED both stay false. Section 7's actual QA-preview proof for a 31-day-old held request (reconfirm before spend, then charge once) remains required before the eventual both-switch protected PR and exact deployed-SHA verification. This is no new owner decision or legal-text approval.",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts (switch only)",
