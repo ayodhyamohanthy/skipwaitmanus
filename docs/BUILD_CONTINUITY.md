@@ -50,6 +50,8 @@ Some AI providers and API relays end a conversation after a fixed number of turn
 
 On the same clone step 3 is automatic (`PICKER-short-session`): a bare `--claim "<model>"` resumes the last session this clone recorded for that model when that session holds an unfinished claim quiet for 20 minutes or more, and says so (`--new-session` starts a separate session instead). Every claim also prints the exact `--claim "<name>"` command the next conversation starts with.
 
+OpenCode and ZCode apply the repository's `opencode.json`, `.opencode/agents/worker.md` and `.zcode/agents/worker.md` automatically, so their sessions here delegate each step to a turn-bounded subagent under `docs/agents/TURN-CAPPED-CLIENTS.md`, with no per-machine setup (D-402 (6)).
+
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
 

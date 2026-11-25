@@ -41,4 +41,8 @@ OpenCode version verified. If a key is version-sensitive, prefer the Markdown ag
 
 ## Status
 
-- AGENT-CLIENT-config: todo — registered Nov 25 2026 by Claude Code · 43c8 (D-402 (6)).
+- AGENT-CLIENT-config: done — Claude Code · 43c8 — 2026-11-25 — 60262bda1
+
+Verified Nov 25 2026 with opencode-ai 1.19.6 (`npx`, sandbox only): `opencode agent list` loads `worker`, `general` and
+`explore` with no config error; `opencode debug agent` shows steps 12, 10 and 12; `opencode.json` validates against
+https://opencode.ai/config.json. ZCode is a desktop app and was not run; it ignores unknown frontmatter fields.
