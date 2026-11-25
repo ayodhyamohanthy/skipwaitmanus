@@ -22,7 +22,7 @@ only (D-031, D-170/D-175); respect each provider's rate limits and Lever's crawl
 
 ## Acceptance
 
-Sources verified with evidence; after `JOB_CATALOG_ENABLED` is on (the release row), `job-catalog-sync` fills
+Sources verified with evidence; `JOB_CATALOG_ENABLED` is on since the release row `D-174-seeker-journey-build` (Nov 24), so `job-catalog-sync` fills
 jobs and `GET /api/companies/<slug>/jobs` answers real jobs with `completeness` other than `unavailable` for
 every covered company.
 
@@ -87,5 +87,8 @@ The following directory companies use proprietary or unsupported ATS providers (
   - `societe-generale`: Enterprise portal.
 
 ## Status
+
+- SEARCH-job-sources: follow-up fix — Claude Code · 695b — 2026-11-25. Live check of the D-174 release (#1575, `ee03cabb7`): Stripe, OpenAI and MongoDB each answer 50 real jobs, but Greenhouse snippets showed raw HTML (`<h2><strong>Who we are…`) because `?content=true` is entity-encoded and the helper stripped tags before decoding. `server/jobSources/plainText.ts` now decodes entities first, then strips tags (block tags as spaces), for Greenhouse directly and Ashby/Lever through `stripHtml`; stored rows heal on the next refresh.
+- SEARCH-job-sources: follow-up 2 — Claude Code · 695b — 2026-11-25. #1595 live (`6a6df79d3`); after the 1-hour refresh at 02:06 UTC no Stripe, MongoDB or OpenAI snippet contains a tag, but MongoDB read "AI &amp; People": Greenhouse escapes its HTML twice, so the text between tags still carries entities. `plainTextSnippet` now decodes the remaining text once more after removing tags.
 
 - SEARCH-job-sources: done — 7544ac29e
