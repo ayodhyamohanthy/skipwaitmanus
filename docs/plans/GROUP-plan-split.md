@@ -461,7 +461,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-schema: todo — §6.3; production migration proof required first.
 - GROUP-orders: todo — §6.4.
 - GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
-- GROUP-checkout: todo — §6.5; disabled.
+- GROUP-checkout: in progress — GPT-6.1 Sol · fb38 — 2026-11-25 — branch `agent/queue/group-checkout`; build-ahead on latest main `ae57f6cc`. Declared dependencies `GROUP-orders`, `GROUP-quote` and `GROUP-provider` remain todo, and their modules `server/groupPlanStore.ts`, `server/groupPlanOrders.ts`, `server/groupPlanQuote.ts` and `server/groupPlanProvider.ts`, plus `shared/groupPlan.ts` from `GROUP-contracts`, are absent on main. No checkout source/tests are added before those outputs because that would define their interfaces here. Next: integrate the dependency outputs and implement the §6.5 immutable confirmed intent and recoverable page binding. No provider calls or payment activity.
 - GROUP-payments: todo — §6.5.
 - GROUP-claim: todo — §6.6.
 - GROUP-grants: todo — §6.6.
