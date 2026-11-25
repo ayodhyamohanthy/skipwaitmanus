@@ -9,7 +9,7 @@ it is not approval of new commercial terms or a production switch. No Group Plan
 | Parent / growth loop | GROUP; L6 saved progress, with candidate-approved referrals feeding L3 |
 | Registration | `GROUP-plan-split`, packet-only; `GROUP-recipients` keeps its existing branch and holder |
 | Baseline | Main `47e8f6645`, November 25, 2026; register through D-399; claim `d16a563a7`, GPT-6.1 Sol · 01aa |
-| Instruction refresh | D-400 read on main `20632bc09`: use existing configured admin/alert boundaries, never hardcode a mailbox in Group code |
+| Instruction refresh | D-400's founder-protection amendment read on main `30d2f6ebe`: preserve the fixed super administrator and consume existing admin/alert helpers |
 | Prior outcome | October 31 direction recorded; #1601 registered the parser and this packet task; no Group runtime or migration exists at this baseline |
 | Branches / files | Each row's exact `branch`, `owns` and dependencies are in `assignments.json`; every child updates only its own Status line here |
 | Landing | Protected merge-commit auto-merge and required CI, every tier; no independent-review/model gate (D-370) |
@@ -174,7 +174,8 @@ Alerts are durable and sanitized. Crash/response loss after provider acceptance 
 reconciled; never promise exactly-once inbox delivery from an SMTP/HTTP acceptance. No blind automatic retry
 around a payment failure. Recovery notes name the failing boundary and available admin action.
 Use the existing admin authorization and alert envelope/recipient helpers as updated under D-400; no Group
-module carries a literal administrator mailbox or new password/credential path.
+module carries a literal administrator mailbox or new password/credential path. The permanent founder's
+super-administrator access and canonical aliases can never be removed or suspended by a Group action.
 
 ### 4.5 Candidate-approved referrals on behalf
 
@@ -452,7 +453,7 @@ For every child, replace its own line with session, branch/head, decisions check
 PR/required-CI link and the applicable migration/QA/release evidence. Distinguish implementation, verified
 payment, claimed allocation, activated benefits, provider-accepted email and complete user journey.
 
-- GROUP-plan-split: packet and registry prepared — GPT-6.1 Sol · 01aa — 2026-11-25 — claim `d16a563a7`; source audit on main `47e8f6645`, instructions refreshed through D-400 on `20632bc09`. `pnpm check` passed; focused `nextTask`, `queueGate`, `decisionIdCheck`: 208/208 passed (three files, 24.25 s). Registry validation: zero errors; 20 appended rows, existing order/rows preserved except this assigned packet row; Group doc links resolve and BRIEF is below 10 KiB. PR/required CI and integration with concurrent main rows remain pending. No Group runtime, payment, email, migration or production activation performed.
+- GROUP-plan-split: packet and registry prepared — GPT-6.1 Sol · 01aa — 2026-11-25 — claim `d16a563a7`; source audit on main `47e8f6645`, instructions refreshed through D-400's founder-protection amendment on `30d2f6ebe`. Packet commit `369f8d1dd` is pushed. `pnpm check` passed; focused `nextTask`, `queueGate`, `decisionIdCheck`: 208/208 passed (three files, 24.25 s). After main integration, five registry integration tests passed; validation checked all 455 rows and preserved all 435 existing rows/order except this assigned packet row, with 20 Group rows appended and stamped D-400. A picker simulation selects `GROUP-contracts` after the parser completes despite `GROUP-terms` being owner-held. PR/required CI remain pending. No Group runtime, payment, email, migration or production activation performed.
 - GROUP-terms: owner — pending the single §8 commercial answer batch; no policy default approved.
 - GROUP-contracts: todo — §6.1.
 - GROUP-provider: todo — §6.2.
