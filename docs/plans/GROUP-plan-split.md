@@ -462,7 +462,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-orders: todo — §6.4.
 - GROUP-quote: todo — §6.4; unresolved production terms refuse a payable quote.
 - GROUP-checkout: todo — §6.5; disabled.
-- GROUP-payments: todo — §6.5.
+- GROUP-payments: in progress — GPT-6.1 Sol · b4f6 — 2026-11-25 — branch agent/queue/group-payments, read receipt main 3a549921256997e517486bb3d5ea83ac47a07559, docs/BRIEF.md, AGENTS.md, docs/DECISIONS.md through D-402, BUILD_CONTINUITY, COLLABORATION, payment runbook, GROUP-bulk-oct31 and packet §4/6.5. Prior output is packet #1609 and GROUP contracts draft #1629; no previous payment implementation. Picker assigned build-ahead of GROUP-checkout. Durable payment implementation awaits shared ProviderComponent/order/transaction interfaces and checkout bindings; flags stay off, no live effect/complete claim.
 - GROUP-claim: todo — §6.6.
 - GROUP-grants: todo — §6.6.
 - GROUP-notifications: todo — §6.7; no real recipients.
