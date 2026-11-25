@@ -58,7 +58,12 @@ behind the existing tests, not a rewrite.
 
 ## Status
 
-- PICKER-branch-scan-batch: in progress — DeepSeek V4.1 Flash · c45d — 2026-11-25 — branch
-  `agent/queue/picker-branch-scan-batch`. Registered by the CEO review of
-  `DeepSeek v4.1 Flash · ce4b`, 2026-11-25. No product, money, flag, workflow, settings or
-  spending change.
+- PICKER-branch-scan-batch: done — Claude Code · 1602 — 2026-11-25 — took over the quiet claim of
+  `DeepSeek V4.1 Flash · c45d` (no code had been pushed) on branch `agent/queue/picker-branch-scan-batch`.
+  `branchFactsBatched` in `scripts/next-task.mjs` reads every tip with one `rev-list --parents` and one
+  `git log --no-merges --name-only` per 200 tips; a range holding a merge commit keeps one per-ref log read for
+  git's own order, and a failed batched read falls back to the per-ref read (`branchFactsPerRef`). Measured on a
+  cloud clone with 528 agent refs: 1,584 git processes / 52 s became 84 / 2.9 s, with zero differences against the
+  per-ref read on all 528 refs. Three fixture tests in `scripts/nextTask.test.ts` (merged, marker-only, work,
+  same-second and clock-skewed markers, main merged in, side merge, deleted ref, failed batch) pin equality and
+  the process count. No product, money, flag, workflow, settings or spending change.
