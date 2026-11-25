@@ -51,6 +51,8 @@ import { askInviteFeatureGateMiddleware, registerAskInviteRoutes } from "../askI
 import { registerJobCatalogRoutesWithDrizzle } from "../jobCatalogRoutes";
 import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
+import { registerSearchRoutes } from "../searchRoutes";
+import { createUniversalSearch } from "../search";
 import { registerSitemapRoutes } from "../sitemapRoutes";
 import { listCompanyDirectory } from "../companyDirectory";
 import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
@@ -235,6 +237,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // SEARCH-universal (D-394): one public box for a job title, a job link, a
+  // company name or a company website (server/searchRoutes.ts).
+  registerSearchRoutes(app, { search: createUniversalSearch(db.resolveEmployerDomainFromTargetUrl) });
   registerCompanyClaimRoutes(app, { resolveIdentity });
   // skipwait.me/sitemap.xml routes to the Worker (wrangler routes), which
   // forwards it here: the sitemap's live reads come straight from the DB.
