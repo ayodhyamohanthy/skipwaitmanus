@@ -26,13 +26,14 @@
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
+  chooseSessionName, modelOfSession, parseSessionRecords, recordSession,
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
-import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights } from "./nextTaskText.mjs";
+import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights, renderResumeCommand, renderSessionChoice } from "./nextTaskText.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { boundedGitReader, nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { CLOUD_ROUTES, autoLandCandidates, autoLandHold, graphqlOrRest, releaseHoldLine, runAutoLand } from "./autoLand.mjs";
@@ -359,6 +360,7 @@ export function argsOf(argv) {
     else if (a === "--status") out.status = true;
     else if (a === "--landed") out.landed = true;
     else if (a === "--auto-land") out.autoLand = true;
+    else if (a === "--new-session") out.newSession = true;
     else if (["--claim", "--verdict", "--task", "--as", "--report", "--note", "--avoid", "--provenance", "--execution"].includes(a)) {
       const v = argv[++i];
       if (!v || v.startsWith("--")) fail(`${a} needs a value`);
@@ -369,6 +371,7 @@ export function argsOf(argv) {
   }
   for (const k of ["claim", "as"]) if (out[k] !== undefined && !sanitizeName(out[k])) fail(`--${k} needs a name`);
   if (out.as) out.as = sanitizeName(out.as);
+  if (out.newSession && !out.claim) fail("--new-session goes with --claim \"<your model name>\"");
   if (out.verdict && !["pass", "findings"].includes(out.verdict)) fail("--verdict is pass or findings");
   if ((out.verdict || out.fixed) && (!out.task || !out.as)) fail("--verdict and --fixed need --task <id> and --as \"<session name>\"");
   if (out.landed && (!out.task || !out.as)) fail("--landed needs --task <id> and --as \"<session name>\"");
@@ -487,11 +490,66 @@ async function autoLandFrom({ doc, mainCi, openPrs, prCi, board, release }) {
 }
 
 /**
- * D-237: one read per branch, shared by the marker list and the `work` flag. Marker commits are empty: a
- * commit that changes files is work, whatever its subject says (D-190).
+ * D-237: the per-ref read, shared by the marker list and the `work` flag. Marker commits are empty: a commit that
+ * changes files is work, whatever its subject says (D-190). Three git processes for one tip: it is the exact reference
+ * the batched scan must equal, the path for a range that holds a merge commit (whose `git log` order is git's own date
+ * walk), and the fallback when a batched read fails. read(...args) returns the output, or null when git fails.
  */
-function commitsOn(ref) {
-  return parseProvenanceLog(tryGit("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${ref}`) ?? "");
+export function branchFactsPerRef(tip, read = tryGit) {
+  const merged = read("merge-base", "--is-ancestor", tip, "origin/main") !== null;
+  const commits = rangeCommits(tip, read);
+  const merges = Number(read("rev-list", "--merges", "--count", `origin/main..${tip}`) ?? NaN);
+  return { merged, commits, merges };
+}
+
+/** `git log --reverse` of `origin/main..<tip>` without merge commits, in git's own order; unreadable is empty. */
+const rangeCommits = (tip, read) => parseProvenanceLog(read("log", "--reverse", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", `origin/main..${tip}`) ?? "");
+
+/** Tips per batched read: keeps each command line far below the OS argument limit. */
+export const BRANCH_SCAN_CHUNK = 200;
+
+/**
+ * PICKER-branch-scan-batch (D-324): the same { merged, commits, merges } as branchFactsPerRef for every tip, from two
+ * git processes per BRANCH_SCAN_CHUNK tips instead of three per tip (~500 refs cost ~97 s a run, serialized behind the
+ * clone lock). One `rev-list --parents <tips> --not origin/main` lists every commit beyond main with its parents: a tip
+ * is merged exactly when it is not among them, and its range `origin/main..<tip>` is what it reaches inside that set.
+ * One `git log --no-merges --name-only` over the same tips gives each commit's subject, body and files, which do not
+ * depend on the range. A range with no merge commit is one parent chain, so its `git log --reverse` order is that chain
+ * oldest first; a range with a merge commit keeps one per-ref log read for git's own order. A failed or over-bound batched
+ * read falls back to the per-ref read for its chunk, never to a guess.
+ */
+export function branchFactsBatched(tips, read = tryGit) {
+  const facts = new Map();
+  const unique = [...new Set(tips)];
+  for (let at = 0; at < unique.length; at += BRANCH_SCAN_CHUNK) {
+    const chunk = unique.slice(at, at + BRANCH_SCAN_CHUNK);
+    const graph = read("rev-list", "--parents", ...chunk, "--not", "origin/main");
+    const log = graph === null ? null : read("log", "--no-merges", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", ...chunk, "--not", "origin/main");
+    if (graph === null || log === null) {
+      for (const tip of chunk) facts.set(tip, branchFactsPerRef(tip, read));
+      continue;
+    }
+    const parents = new Map(graph.split("\n").filter(Boolean).map(line => { const [sha, ...ps] = line.trim().split(" "); return [sha, ps]; }));
+    const details = new Map(parseProvenanceLog(log).map(c => [c.sha, c]));
+    for (const tip of chunk) {
+      if (!parents.has(tip)) { facts.set(tip, { merged: true, commits: [], merges: 0 }); continue; }
+      const seen = new Set([tip]);
+      const stack = [tip];
+      let merges = 0;
+      while (stack.length) {
+        const ps = parents.get(stack.pop());
+        if (ps.length > 1) merges += 1;
+        for (const p of ps) if (parents.has(p) && !seen.has(p)) { seen.add(p); stack.push(p); }
+      }
+      // merged and merges are already exact; only the order of a non-linear range needs git's own walk.
+      if (merges > 0) { facts.set(tip, { merged: false, commits: rangeCommits(tip, read), merges }); continue; }
+      const chain = [];
+      for (let sha = tip; parents.has(sha); sha = parents.get(sha)[0]) chain.push(sha);
+      const commits = chain.reverse().map(sha => details.get(sha));
+      facts.set(tip, commits.every(Boolean) ? { merged: false, commits, merges: 0 } : branchFactsPerRef(tip, read));
+    }
+  }
+  return facts;
 }
 
 const markersOn = commits => commits.flatMap(({ sha, subject, body, files }) => {
@@ -503,17 +561,17 @@ function loadBranches(tasks) {
   const wanted = new Set([...tasks.flatMap(t => [t.branch, reviewLockOf(t), architectLockOf(t), heartbeatOf(slugOf(t.branch))]), LAND_SLOT]);
   const slugs = tasks.map(t => `/${slugOf(t.branch)}`);
   const refs = git("for-each-ref", "--format=%(refname:strip=3)%09%(committerdate:unix)%09%(objectname)", "refs/remotes/origin/agent");
-  const branches = new Map();
-  for (const line of refs.split("\n").filter(Boolean)) {
-    const [name, unix, sha] = line.split("\t");
+  const scanned = refs.split("\n").filter(Boolean).map(line => line.split("\t")).filter(([name]) => {
     const fixMain = name.startsWith("agent/queue/fix-main-") || name.startsWith("agent/heartbeat/fix-main-");
-    if (!wanted.has(name) && !slugs.some(s => name.endsWith(s)) && !fixMain) continue;
-    const ref = `refs/remotes/origin/${name}`;
-    const merged = tryGit("merge-base", "--is-ancestor", ref, "origin/main") !== null;
-    const commits = commitsOn(ref);
+    return wanted.has(name) || slugs.some(s => name.endsWith(s)) || fixMain;
+  });
+  // PICKER-branch-scan-batch: each ref's tip as listed, read in one batch with the per-ref read's exact answers.
+  const facts = branchFactsBatched(scanned.map(([, , sha]) => sha));
+  const branches = new Map();
+  for (const [name, unix, sha] of scanned) {
+    const { merged, commits, merges } = facts.get(sha);
     // D-237: buildView cannot call git, so the loader reports whether the ref carries a file-changing commit.
     // PICKER-landed-marker-continuity: only provably empty, recognized markers (and no merge commit) beyond main.
-    const merges = Number(tryGit("rev-list", "--merges", "--count", `origin/main..${ref}`) ?? NaN);
     branches.set(name, { tipMs: Number(unix) * 1000, tipSha: sha, merged, work: commits.some(c => c.files.length > 0), markerOnly: markerOnlyOf(commits, merges), markers: markersOn(commits) });
   }
   return branches;
@@ -546,6 +604,29 @@ async function landedEvidenceFor(doc, branches, mergedHeads, closedFirst) {
   const unknown = [...out.evidence].filter(([, e]) => e.state === "unknown");
   if (unknown.length) console.error(`next-task: landed state UNKNOWN for ${unknown.length} branch(es) (${unknown[0][1].reason}); they are treated as not landed`);
   return out.evidence;
+}
+
+/**
+ * PICKER-short-session (D-401): the clone's session record, `<git common dir>/skipwait-sessions.json`, shared by every
+ * worktree of the clone and never inside a working tree. A missing or unreadable record is an empty one.
+ */
+function sessionsFile() {
+  const dir = tryGit("rev-parse", "--git-common-dir");
+  return dir ? path.join(path.resolve(dir), "skipwait-sessions.json") : null;
+}
+function readSessionRecords() {
+  const file = sessionsFile();
+  try { return file ? parseSessionRecords(readFileSync(file, "utf8")) : {}; } catch { return {}; }
+}
+/** Never stops the picker: the claim is already on origin; a failed save only means the next bare claim mints a tag. */
+function saveSession(entry) {
+  const file = sessionsFile();
+  if (!file) return;
+  try {
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, `${JSON.stringify(recordSession(readSessionRecords(), entry), null, 2)}\n`);
+    renameSync(tmp, file);
+  } catch (e) { console.error(`next-task: could not record this session for a later resume: ${e.message}`); }
 }
 
 /** D-085: every local branch with commits no origin branch has, and every worktree with uncommitted changes. */
@@ -942,9 +1023,11 @@ async function main() {
   }
   if (args.claim) {
     autoSyncSetup();
-    const who = sessionName(args.claim, randomBytes(3).toString("hex").slice(0, 4));
-    if (who !== sanitizeName(args.claim)) console.log(`Your session name is "${who}". Use exactly this name for --heartbeat, --report, --verdict and --fixed, and claim with it when you resume.\n`);
-    args.claim = who;
+    // PICKER-short-session (D-401): the name is chosen once the claim state is loaded (runCommand), because a bare
+    // model name may resume this clone's recorded session; the fresh tag is drawn here as before.
+    args.requested = args.claim;
+    args.tag = randomBytes(3).toString("hex").slice(0, 4);
+    args.claim = sessionName(args.claim, args.tag);
   }
   for (let attempt = 1; attempt <= 3; attempt++) {
     try { return await runCommand(args); }
@@ -1073,11 +1156,23 @@ async function runCommand(args) {
     return;
   }
   // Keep the same unique session identity across every snapshot retry.
-  const who = args.claim ?? args.as ?? null;
+  let who = args.claim ?? args.as ?? null;
   // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
   for (let attempt = 1; attempt <= 6; attempt++) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const now = Date.now();
+    // PICKER-short-session (D-401): chosen once per run, on the first loaded state; every retry keeps that name.
+    if (args.claim && !args.named) {
+      const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
+      const choice = chooseSessionName({
+        requested: args.requested, newSession: Boolean(args.newSession), records: readSessionRecords(), tag: args.tag, now, mainSha,
+        tasks: doc.tasks, branches, openPrs, prCi, prFacts, mergedHeads, landedEvidence, reports,
+      });
+      args.claim = who = choice.name;
+      args.named = true;
+      const line = renderSessionChoice(choice, args.requested);
+      if (line) console.log(line);
+    }
     const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
     // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
@@ -1127,7 +1222,13 @@ async function runCommand(args) {
       console.error(`next-task: another agent claimed ${pick.task.id} first (attempt ${attempt}); picking again`);
       continue;
     }
-    if (claimed) { console.log(renderPick(pick, { who, date, claimed: true, register })); return; }
+    if (claimed) {
+      console.log(renderPick(pick, { who, date, claimed: true, register }));
+      console.log(`${renderResumeCommand(who)}\n`);
+      // D-401: remember this session for the clone, so a replacement conversation's bare claim can continue it.
+      saveSession({ model: modelOfSession(args.requested ?? who), name: who, at: new Date(now).toISOString() });
+      return;
+    }
     console.error(`next-task: another agent pushed first (attempt ${attempt}); picking again`);
   }
   fail("six claims in a row were taken by other agents; run again in a minute");

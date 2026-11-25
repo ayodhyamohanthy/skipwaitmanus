@@ -1,7 +1,8 @@
 import { and, asc, count, eq, gt, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { jobRuns, operationalActivityLogs, referralRequests, referralReviewDeliveries } from "../drizzle/schema";
+import { jobRuns, operationalActivityLogs, referralRequests, referralReviewDeliveries, users } from "../drizzle/schema";
 import { JOB_RUN_MAX_ATTEMPTS, jobWindowKeySchema } from "../shared/scheduledJobs";
+import { SANDBOX_SEEKER_EMAIL } from "../shared/sandboxRequests";
 import { getDb } from "./db";
 import { sendTransactionalEmail } from "./emailDelivery";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
@@ -15,6 +16,7 @@ const FINDINGS_ID_LIMIT = 50;
 const PURGE_BATCH = 200;
 const OWNER_EMAIL = "ayodhya@skipwait.me";
 const OWNER_COPY_EMAIL = "ayodhya@mail.instinct.com";
+const ADMIN_COPY_EMAIL = "admin@skipwait.me"; // D-400
 const ALL_CLEAR_EMAIL = { subject: "skipwait.me daily ops check · all clear", text: "All clear: no ops invariants failed." };
 
 const purgeMetadataSchema = z.strictObject({ consumed: z.number().int().nonnegative(), expiredUnused: z.number().int().nonnegative() });
@@ -66,6 +68,7 @@ async function readRequests(): Promise<{ last24Hours: number; last7Days: number 
       FROM ${referralRequests}
       WHERE ${referralRequests.createdAt} >= ${weekAgo}
         AND ${referralRequests.createdAt} <= ${databaseNow}
+        AND ${referralRequests.jobSeekerId} NOT IN (SELECT ${users.id} FROM ${users} WHERE ${users.email} = ${SANDBOX_SEEKER_EMAIL})
     `))[0][0];
   } catch {
     throw new Error("The request counts could not be read");
@@ -110,7 +113,9 @@ async function readPurgeCounts(since: Date, now: Date): Promise<PurgeCounts> {
 async function sendOpsEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: OWNER_EMAIL, ...input });
-    try { await sendTransactionalEmail({ to: OWNER_COPY_EMAIL, ...input }); } catch { /* the owner copy is best effort */ }
+    for (const copy of [OWNER_COPY_EMAIL, ADMIN_COPY_EMAIL]) {
+      try { await sendTransactionalEmail({ to: copy, ...input }); } catch { /* the copies are best effort */ }
+    }
     return delivery.sent;
   } catch {
     return false;
