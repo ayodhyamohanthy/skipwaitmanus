@@ -1,4 +1,5 @@
 import { WorkOS } from "@workos-inc/node";
+import { isAdministratorEmail } from "./adminIdentity";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { registerSeekerEmailCodeRoutes } from "./seekerEmailCode";
 import { HOSTED_LINK_COOKIE, readHostedLink, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
@@ -68,8 +69,8 @@ export function workosConfigured(): boolean {
 
 export function adminCallbackAllowed(input:{email:string;state:string;configuredEmail?:string;bootstrapEnabled?:boolean}){
   if(input.state!=="skipwait-admin"&&input.state!=="skipwait-admin-bootstrap")return true;
-  const expected=(input.configuredEmail||"").trim().toLowerCase();
-  if(!expected||input.email.trim().toLowerCase()!==expected)return false;
+  // D-400: the founder (permanent super administrator) or the configured administrator seat, exactly.
+  if(!isAdministratorEmail(input.email,input.configuredEmail??""))return false;
   return input.state!=="skipwait-admin-bootstrap"||input.bootstrapEnabled===true;
 }
 
@@ -305,9 +306,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
     app.get("/api/auth/workos/admin", (req, res) => {
-      const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "").trim().toLowerCase();
       const loginHint = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-      if (!durableAdmin || !loginHint || loginHint !== durableAdmin) {
+      // D-400: the founder (permanent super administrator) or the configured administrator seat.
+      if (!loginHint || !isAdministratorEmail(loginHint)) {
         // ADMIN-activity-log (D-393): a refused administrator sign-in is itself a security event.
         void recordAuthEvent(req, { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed", plane: "admin", ...(loginHint.length <= 320 ? { email: loginHint } : {}) });
         return res.status(403).send("Administrator sign-in is restricted to the configured administrator account");

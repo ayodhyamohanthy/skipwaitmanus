@@ -39,6 +39,26 @@ Write the handoff record described below at every handoff, not only when a sessi
 
 These instructions apply only inside an active session. They install no scheduler, cannot reopen a closed app and never bypass a platform approval prompt or usage cap. After each bounded handoff, the picker's printed Tier 1 step sends the session to the next eligible task under D-235 (one packet at a time).
 
+## Short sessions: when a client says "This conversation has reached 20 turns" (D-401)
+
+Some AI providers and API relays end a conversation after a fixed number of turns (for example "当前会话已满 20 轮对话，请新开一个会话继续" / "This conversation has reached 20 turns. Please start a new session to continue"). The limit is the provider's, not SkipWait's, and the repository cannot lift it. Nothing is lost when it fires, because every commit is already pushed (D-375). Lose no time either:
+
+1. Before each step, keep your work committed and pushed. Write your exact session name (for example `OpenCode · 3f9a`) in your packet Status line right after your first claim.
+2. When the client ends the conversation, start a new one (Codex: `/new`; other clients: a new chat) and say `build`.
+3. The new session resumes under the same name. Find it in your packet Status line or in `node scripts/next-task.mjs --status` (the holder column of the task you were on), then run `node scripts/next-task.mjs --claim "<that exact name>"`. The picker hands you your own unfinished work first. Never invent a new tag for work you already hold, or it sits orphaned for 2 hours.
+4. Prefer one bounded step per conversation: claim, do one commit-sized step, push, heartbeat. A capped client finishes tasks across several conversations this way.
+
+On the same clone step 3 is automatic (`PICKER-short-session`): a bare `--claim "<model>"` resumes the last session this clone recorded for that model when that session holds an unfinished claim quiet for 20 minutes or more, and says so (`--new-session` starts a separate session instead). Every claim also prints the exact `--claim "<name>"` command the next conversation starts with.
+
+OpenCode and ZCode apply the repository's `opencode.json`, `.opencode/agents/worker.md` and `.zcode/agents/worker.md` automatically, so their sessions here delegate each step to a turn-bounded subagent under `docs/agents/TURN-CAPPED-CLIENTS.md`, with no per-machine setup (D-402 (6)).
+
+**Automatic restarts (D-402).** A client with a headless mode needs nobody to start the next conversation: `scripts/agent-loop.mjs` runs it with the prompt `build` and starts it again each time it exits. Each run is a fresh conversation, and the picker resumes the same task. Stop it with Ctrl+C, with `node scripts/agent-loop.mjs --stop` (checked before each run; `--clear-stop` allows loops again) or with `--max-runs N`. Runs that end in under 60 s back to back wait 5 minutes after 3 and stop after 10. The log is `skipwait-agent-loop.log` in the clone's git directory, never the working tree. Clients without a headless mode (the Z Code app, the Cline VS Code extension) still need their own new-chat action; delegating to subagents with bounded `steps` or `maxTurns` keeps those conversations short.
+
+```bash
+node scripts/agent-loop.mjs -- opencode run   # OpenCode: runs "opencode run build" again after each conversation
+node scripts/agent-loop.mjs -- codex exec     # Codex: runs "codex exec build" again after each conversation
+```
+
 ## Carry the next handoff forward
 At the end of a session update its existing packet/PR with: actual completed outcome and commit, real test/review evidence, remaining goal-aligned work, current decisions checked, owned paths, and blockers. The next session reads that result before selecting work. Never replace this with raw private transcripts, an obsolete plan or an unsupported "done" claim.
 
