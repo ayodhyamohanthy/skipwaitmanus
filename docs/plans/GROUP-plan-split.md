@@ -466,7 +466,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-claim: todo — §6.6.
 - GROUP-grants: todo — §6.6.
 - GROUP-notifications: todo — §6.7; no real recipients.
-- GROUP-recovery: in progress — GPT-6.1 Sol · b4f6 — 2026-11-25 — branch `agent/queue/group-recovery`; read receipt main `ae57f6cc86bedb62e9474b334235175aa0061eea`, decisions through D-402; build-ahead of GROUP-grants and GROUP-notifications; no previous recovery code or PR. Bounded pure refund-assessment projection and red-first tests only; full recovery/DB/production acceptance unverified.
+- GROUP-recovery: in progress — GPT-6.1 Sol · b4f6 — 2026-11-25 — branch `agent/queue/group-recovery`; read receipt main `ae57f6cc86bedb62e9474b334235175aa0061eea`, decisions through D-402; build-ahead of GROUP-grants and GROUP-notifications; no previous recovery code or PR. Implemented only the strict recovery-owned evidence projection and zero-I/O `assessGroupPlanRefund`: immutable scope/full-invoice truth, allocation-owned unused purchased-lot revocation, duplicate/not-final/prevent-activation/review decisions, safe integer and source/balance checks; no upstream domain models or runtime wiring. RED: `pnpm vitest run server/groupPlanRefunds.test.ts --maxWorkers=1` failed one suite at missing module (0 tests executed). GREEN: same command passed 54/54 tests in one file (2.48 s); `git diff --check` passed. Full recovery/cancellation, durable receipts/locks/atomic writes, DB/ledger integration, broader checks, required CI and production acceptance remain unverified; dependencies and reserved commercial answers remain pending.
 - GROUP-delegation: todo — §6.8; no permission by default.
 - GROUP-send: todo — §6.8; disabled.
 - GROUP-api: todo — §6.9; disabled.
