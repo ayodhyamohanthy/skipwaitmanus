@@ -65,4 +65,4 @@ fixture origin is fast-forwarded into a clean clone within two intervals.
 
 ## Status
 
-- SYNC-auto-pull: todo — registered Nov 25 2026 by Claude Code · 43c8 from the owner's requests (auto pull and push; no fixed timing).
+- SYNC-auto-pull: in progress — GPT-6.1 Sol · 27cf — 2026-11-25 — branch `agent/queue/sync-auto-pull`, base `30d2f6ebe`. Preflight read `docs/BRIEF.md`, `AGENTS.md`, `COLLABORATION.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, the latest decision-register entries through D-400 and this packet. PR #1604 registered and expanded this packet; commit `457d9672a` changed only the packet and registry, so implementation acceptance remains open. Inspecting the existing sync runner, setup and tests before implementing the fast-forwards and watcher; no price, login, money, provider or product switch changes.

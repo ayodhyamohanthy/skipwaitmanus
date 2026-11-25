@@ -55,4 +55,12 @@ All monthly founding-member prices, India Rs / global USD. A band names the refe
 
 ## Group Plan and scoped institution discount (Oct 31)
 
-Extend the existing Group Plan with bulk plans and referrals using candidate email lists, with a permitted 10% institution discount and payment-verified activation plus transactional activation emails. This is the founder's new explicit feature direction, not a consumer-price change or automatic go-live. Preserve candidate identity/privacy, current catalog, money, ownership and independent-review gates. Discount stacking and precise on-behalf delegation are open in the [build packet](plans/GROUP-bulk-oct31.md). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No live recipients or payment were supplied.
+The [owner direction](plans/GROUP-bulk-oct31.md) extends the existing Group Plan with candidate email lists,
+initial seats and later one-seat additions, an institution-only 10% discount, payment-verified allocations and
+activation emails. The [execution split](plans/GROUP-plan-split.md) uses this frozen catalog and keeps commercial
+questions together on `GROUP-terms`: institution eligibility/discount interaction, added-seat and renewal terms,
+unclaimed/existing-plan handling and founding allocation. Its recommendations are unapproved; no stacking,
+proration, wider discount, new SKU, refund right or price is introduced. Unresolved production terms refuse a
+payable quote; Group activation requires its own recorded authority and acceptance. Other slices build disabled,
+with required CI and existing identity/money rules (D-370). Sources: `phonemsg-01M6892F33T035JZSAA1917NKY`,
+`phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No real recipients or payment were supplied.
