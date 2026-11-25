@@ -9314,7 +9314,7 @@
       "tier": 2,
       "lane": "group-recipients",
       "branch": "agent/queue/group-recipients",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
       "note": "Founder direction Oct 31 (docs/plans/GROUP-bulk-oct31.md, Product contract 1; sources there). Registered Nov 25 by Claude Code · 43c8 because the queue had run dry (D-321 (8)): every other row was claimed, dependency-held or parked at owner. New files only, no I/O, no price, no account lookup.",
       "epic": "GROUP",
@@ -9323,7 +9323,7 @@
         "shared/groupPlanRecipients.test.ts",
         "docs/plans/GROUP-recipients.md"
       ],
-      "syncedTo": "D-398"
+      "syncedTo": "D-400"
     },
     {
       "id": "GROUP-plan-split",
@@ -9418,6 +9418,7 @@
         "server/billingReviewOutbox.ts",
         "server/billingReviewOutbox.test.ts",
         "server/paymentAmountMismatch.test.ts",
+        "server/httpErrorCapture.test.ts",
         "docs/plans/ADMIN-email-switch.md",
         "docs/plans/assignments.json"
       ],
