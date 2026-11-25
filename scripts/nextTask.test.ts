@@ -11,7 +11,8 @@ import {
   IDLE_MS, ciStateFromRuns, epicSummaries, localSyncIssues, markerSubject, parseDecisionRegister, parseMarker, pickNextTask, reviewStateOf, roleOf, statusBoard, validateAssignments,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderPick } from "./nextTaskText.mjs";
-import { runLocalCleanup } from "./next-task.mjs";
+import { branchFactsBatched, branchFactsPerRef, runLocalCleanup } from "./next-task.mjs";
+import { nullableBoundedGitReader } from "./provenanceGitOutput.mjs";
 import { scopeViolations } from "./scope-check.mjs";
 
 const root = path.resolve(__dirname, "..");
@@ -2165,5 +2166,89 @@ describe("runLocalCleanup (BRANCH-HYGIENE-2)", () => {
     const res = runLocalCleanup({ tryGit: mockTryGit as any });
     expect(res.deleted).toEqual([]);
     expect(res.failed).toEqual([]);
+  });
+});
+
+// PICKER-branch-scan-batch (D-324): the picker's branch scan reads every ref in a bounded number of git processes,
+// not three per ref, and answers exactly what the per-ref read answers for the same tips.
+describe("PICKER-branch-scan-batch: batched branch scan", () => {
+  const fixture = () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "branch-scan-"));
+    const id = { GIT_AUTHOR_NAME: "Fixture", GIT_AUTHOR_EMAIL: "fixture@example.invalid", GIT_COMMITTER_NAME: "Fixture", GIT_COMMITTER_EMAIL: "fixture@example.invalid" };
+    const g = (args: string[], input?: string, env: Record<string, string> = {}) =>
+      execFileSync("git", args, { cwd: dir, encoding: "utf8", input, env: { ...process.env, ...id, ...env } }).trim();
+    g(["init", "-q"]);
+    const tree = (files: Record<string, string>) => g(["mktree"], Object.entries(files).map(([name, body]) => `100644 blob ${g(["hash-object", "-w", "--stdin"], body)}\t${name}\n`).join(""));
+    let clock = 1_790_000_000;
+    const commit = (t: string, parents: string[], subject: string, at = (clock += 60)) =>
+      g(["commit-tree", t, ...parents.flatMap(p => ["-p", p]), "-m", subject], undefined, { GIT_AUTHOR_DATE: `${at} +0000`, GIT_COMMITTER_DATE: `${at} +0000` });
+    const base = tree({ "a.txt": "a" });
+    const a = commit(base, [], "main one");
+    const mainTree = tree({ "a.txt": "a", "b.txt": "b" });
+    const b = commit(mainTree, [a], "main two");
+    g(["update-ref", "refs/remotes/origin/main", b]);
+    const tips: Record<string, string> = {};
+    tips.merged = a;
+    // Marker-only chain on main, including two markers in the same second.
+    const c1 = commit(mainTree, [b], "Claim TASK-1: Fixture · aaaa", 1_800_000_000);
+    tips.markerOnly = commit(mainTree, [c1], "Heartbeat TASK-1: Fixture · aaaa", 1_800_000_000);
+    // File-changing work then a marker.
+    const w1 = commit(tree({ "a.txt": "a", "b.txt": "b", "w.txt": "w" }), [b], "Work on TASK-2");
+    tips.work = commit(tree({ "a.txt": "a", "b.txt": "b", "w.txt": "w" }), [w1], "Claim TASK-2: Fixture · bbbb");
+    // An empty commit whose subject is not a marker.
+    tips.emptyNonMarker = commit(mainTree, [b], "just a note");
+    // Clock skew: the child is older than its parent.
+    const s1 = commit(mainTree, [b], "Claim TASK-3: Fixture · cccc", 1_900_000_000);
+    tips.skew = commit(mainTree, [s1], "Heartbeat TASK-3: Fixture · cccc", 1_700_000_000);
+    // Main merged into a branch that forked before main's second commit.
+    const f1 = commit(tree({ "a.txt": "a", "f.txt": "f" }), [a], "Fork work");
+    const m1 = commit(tree({ "a.txt": "a", "b.txt": "b", "f.txt": "f" }), [f1, b], "Merge main into fork");
+    tips.mainMergedIn = commit(tree({ "a.txt": "a", "b.txt": "b", "f.txt": "f" }), [m1], "Claim TASK-4: Fixture · dddd");
+    // Two side lines beyond main merged together (a non-linear range).
+    const x = commit(tree({ "a.txt": "a", "b.txt": "b", "x.txt": "x" }), [b], "Side x", 1_850_000_000);
+    const y = commit(tree({ "a.txt": "a", "b.txt": "b", "y.txt": "y" }), [b], "Side y", 1_850_000_000);
+    tips.sideMerge = commit(tree({ "a.txt": "a", "b.txt": "b", "x.txt": "x", "y.txt": "y" }), [x, y], "Merge side y");
+    tips.sameTip = tips.work;
+    const read = nullableBoundedGitReader({ cwd: dir, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+    let calls = 0;
+    const counted = (...args: string[]) => { calls += 1; return read(...args); };
+    return { dir, tips, commit, mainTree, b, read, counted, calls: () => calls, reset: () => { calls = 0; } };
+  };
+
+  it("equals the per-ref read for merged, marker-only, work, skewed, merge-holding and deleted refs", () => {
+    const f = fixture();
+    try {
+      const all = [...Object.values(f.tips), "0123456789abcdef0123456789abcdef01234567"];
+      const batched = branchFactsBatched(all, f.read);
+      for (const tip of all) expect(batched.get(tip)).toEqual(branchFactsPerRef(tip, f.read));
+      expect(batched.get(f.tips.merged)).toEqual({ merged: true, commits: [], merges: 0 });
+      expect(batched.get(f.tips.skew)?.commits.map(c => c.subject)).toEqual(["Claim TASK-3: Fixture · cccc", "Heartbeat TASK-3: Fixture · cccc"]);
+      expect(batched.get(f.tips.sideMerge)?.merges).toBe(1);
+      expect(batched.get(f.tips.mainMergedIn)?.commits.map(c => c.subject)).toEqual(["Fork work", "Claim TASK-4: Fixture · dddd"]);
+    } finally { rmSync(f.dir, { recursive: true, force: true }); }
+  });
+
+  it("reads N linear refs in two git processes, plus one ordered log per range that holds a merge commit", () => {
+    const f = fixture();
+    try {
+      const linear = Array.from({ length: 40 }, (_, i) => f.commit(f.mainTree, [f.b], `Heartbeat TASK-${i}: Fixture · eeee`));
+      f.reset();
+      const batched = branchFactsBatched([...linear, f.tips.merged, f.tips.work, f.tips.markerOnly], f.counted);
+      expect(f.calls()).toBe(2);
+      f.reset();
+      branchFactsBatched([...linear, f.tips.sideMerge, f.tips.mainMergedIn], f.counted);
+      expect(f.calls()).toBe(4);
+      for (const tip of linear) expect(batched.get(tip)).toEqual(branchFactsPerRef(tip, f.read));
+    } finally { rmSync(f.dir, { recursive: true, force: true }); }
+  });
+
+  it("falls back to the per-ref read when the batched read fails, never to a guess", () => {
+    const f = fixture();
+    try {
+      const failing = (...args: string[]) => (args[0] === "rev-list" && args[1] === "--parents" ? null : f.read(...args));
+      const tips = Object.values(f.tips);
+      const batched = branchFactsBatched(tips, failing);
+      for (const tip of tips) expect(batched.get(tip)).toEqual(branchFactsPerRef(tip, f.read));
+    } finally { rmSync(f.dir, { recursive: true, force: true }); }
   });
 });
