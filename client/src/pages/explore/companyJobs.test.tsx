@@ -72,7 +72,8 @@ beforeEach(() => { delete state.flag.enabled; state.selectPost.mockReset(); stat
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(navigator, "clipboard"); });
 
 describe("Company door catalog boundary", () => {
-  it("keeps the actual production switch off without a catalog request or mount", async () => {
+  it("makes no catalog request and mounts nothing when the switch is off", async () => {
+    state.flag.enabled = false;
     const fetchMock = stubCatalog();
     mount(<ExploreCompany />);
     await screen.findByRole("heading", { name: "Get referred at Example Works." });

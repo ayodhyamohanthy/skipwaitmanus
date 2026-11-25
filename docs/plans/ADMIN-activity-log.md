@@ -56,6 +56,44 @@ Focused tests, `pnpm check`, required CI, captures of `/admin/activity` at 1280 
 the deployed exact SHA: a demo sign-in, a wrong-password attempt and a demo request each appear within a
 minute in `/admin/activity`, filtered to that person.
 
+## What landed (Nov 24, Claude Code · 695b)
+
+- **One helper, every plane.** `server/authEvents.ts` (`recordAuthEvent`) writes `auth.<event>` rows: password
+  sign-in, sign-up, forgot and reset (including rate-limit and lock refusals), WorkOS social and admin callbacks
+  (closed method: google, microsoft, github, linkedin, slack, apple, sso, password, magic_auth, passkey), the
+  refused admin entry, sign-out (WorkOS and work-email), the referrer work-email code send and verify (with the
+  company domain), the retired seeker email code, passkey sign-in, add and remove, and the demo reviewer sign-in.
+  The work-email step-up keeps its existing `work_email.step_up_*` rows (already per account); the admin
+  "Sign-in" kind includes them rather than writing them twice.
+- **Privacy.** Reasons, methods and planes are closed sets (an unknown reason is stored as `other`); unknown
+  fields are dropped. An attempt is attributed to an account only through a verified login alias; otherwise the
+  row keeps a masked email and an HMAC key. IPs are /24 or /48, the country is the edge's two-letter code, the
+  user agent becomes browser, OS and device. A failed write goes to Sentry and never fails the sign-in.
+- **Admin view.** `/admin/activity`: Person (account id or email; an email also finds attempts with no account),
+  Kind (sign-in, referral requests, billing, account, admin), Outcome, From, To and the text search; "Load older
+  events" pages by id; "Export CSV" downloads the filtered range (at most 5,000 rows; formula cells neutralised);
+  "Follow this person" and `?person=` narrow the log and show the person's referral-request history from
+  `referralTransitionEvents`, which includes the transitions scheduled jobs make (lapse, expiry, delivery). The
+  users page links each account to its activity. Admin only, `private, no-store`; every read and export is logged.
+- **Retention.** Daily `auth-activity-retention` deletes the sign-in rows (`AUTH_ACTIONS`) older than 90 days.
+- **Write budget.** `recordAuthEvent` writes at most 30 rows a minute per action, outcome and /24 or /48 network in
+  one server instance, checked before any database work, so a flood of attempts or refused requests cannot become
+  one write per request; drops are reported to Sentry once a window. CodeQL `js/missing-rate-limiting` still flags
+  the sign-in routes this row edits: it accepts only npm limiters (`express-rate-limit` and similar), and adding one
+  is a dependency for the owner to approve (asked Nov 24).
+- **Request gaps (build step 2).** Route-level request events (created, claimed, accept/decline/pass, referred,
+  withdrawn, step back, extend, cap and coverage refusals) were already logged; the job-driven transitions are
+  shown from `referralTransitionEvents` in the person view instead of new writes inside the money transactions.
+  Quote refusals that answer before any request exists are not logged per attempt.
+- **For the owner (legal text is yours, nothing was changed):** a sentence the privacy policy may want: "For
+  security, we keep a record of sign-ins and sign-in attempts to your account, including a shortened network
+  address, your country, and your browser and device type, for 90 days."
+
+Tests: `server/authEvents.test.ts`, `server/adminActivity.test.ts`, `server/authActivityRetention.test.ts`, and
+sign-in event cases in `server/_core/otpLogin.test.ts`, `server/_core/reviewerLogin.test.ts`,
+`server/_core/passwordSignIn.test.ts`, `server/_core/workosAuth.test.ts`; the page in
+`client/src/pages/goal/admin-ops/activity.goal.test.tsx`.
+
 ## Status
 
-- ADMIN-activity-log: todo
+- ADMIN-activity-log: done when this pull request lands (Claude Code · 695b, 2026-11-24). Live acceptance after deploy: a demo sign-in, a wrong-password attempt and a demo request each appear in `/admin/activity` filtered to that person.

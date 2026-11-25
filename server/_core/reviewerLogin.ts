@@ -7,6 +7,7 @@ import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { resolveTrustedClientIp } from "./trustedClientIp";
+import { recordAuthEvent } from "../authEvents";
 
 /**
  * Reviewer sign-in (founder-approved Oct 22 2026, for the Razorpay website review and our own QA).
@@ -75,21 +76,25 @@ export function registerReviewerLoginRoutes(app: Express) {
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     const fail = () => res.status(401).json({ error: "Email or password is not right." });
     const now = Date.now();
-    if (!perIp(resolveTrustedClientIp(req) || "unknown", now) || !perEmail(email.slice(0, 320), now)) { res.set("Retry-After", "900"); return res.status(429).json({ error: "Too many tries. Wait 15 minutes." }); }
-    if (!password || password.length > 256) return fail();
+    // ADMIN-activity-log (D-393): every demo sign-in and attempt is logged like any other, never the password.
+    const event = (outcome: "success" | "failure" | "denied", extra: { reason?: "rate_limited" | "wrong_password" | "unavailable"; userId?: number } = {}) => void recordAuthEvent(req, { action: "auth.reviewer_sign_in", outcome, email, method: "reviewer", plane: "reviewer", ...extra });
+    if (!perIp(resolveTrustedClientIp(req) || "unknown", now) || !perEmail(email.slice(0, 320), now)) { event("denied", { reason: "rate_limited" }); res.set("Retry-After", "900"); return res.status(429).json({ error: "Too many tries. Wait 15 minutes." }); }
+    if (!password || password.length > 256) { event("failure", { reason: "wrong_password" }); return fail(); }
     const role = (Object.keys(ACCOUNTS) as ReviewerRole[]).find(r => ACCOUNTS[r].email === email && (r !== "admin" || process.env.REVIEWER_ALLOW_ADMIN === "true"));
     const ok = verifyReviewerPassword(password, role ? process.env[ACCOUNTS[role].hashEnv] : undefined);
-    if (!role || !ok) { console.warn("[ReviewerLogin] rejected sign-in"); return fail(); }
+    if (!role || !ok) { console.warn("[ReviewerLogin] rejected sign-in"); event("failure", { reason: "wrong_password" }); return fail(); }
     try {
       const account = await provision(role, email);
-      if (!account) return fail();
+      if (!account) { event("failure", { reason: "unavailable" }); return fail(); }
       // D-057 §0 item 3: the founder-approved demo referrer (off unless REVIEWER_LOGIN_ENABLED) keeps a code-session claim; no other role gets it.
       const token = await sdk.createSessionToken(account.openId, { name: account.name ?? email, ...(role === "referrer" ? { amr: "work_email_otp" as const } : {}) });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       console.info("[ReviewerLogin] signed in", { role });
+      event("success", { userId: account.id });
       res.json({ signedIn: true, role, redirectTo: ACCOUNTS[role].landing });
     } catch (error) {
       console.error("[ReviewerLogin] failed", error instanceof Error ? error.message : error);
+      event("failure", { reason: "unavailable" });
       res.status(500).json({ error: "We could not sign in." });
     }
   });

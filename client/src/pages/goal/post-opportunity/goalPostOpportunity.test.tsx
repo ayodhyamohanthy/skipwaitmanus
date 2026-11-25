@@ -105,6 +105,7 @@ describe("Goal /post-opportunity wizard", () => {
     fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Analyst" } });
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(await screen.findByRole("checkbox", { name: /Show my first name/ }));
+    fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/1" } });
     fireEvent.click(screen.getByRole("button", { name: /Publish privately/ }));
     await waitFor(() => expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities")).toBeTruthy());
     const post = fetchMock.mock.calls.find(call => call[0] === "/api/opportunities");
@@ -122,6 +123,7 @@ describe("Goal /post-opportunity wizard", () => {
     fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(await screen.findByLabelText("Compensation"), { target: { value: "30-40 LPA" } });
+    fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/1" } });
     fireEvent.click(screen.getByRole("button", { name: /Publish privately/ }));
     await waitFor(() => expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities")).toBeTruthy());
     const post = fetchMock.mock.calls.find(call => call[0] === "/api/opportunities");
@@ -138,10 +140,28 @@ describe("Goal /post-opportunity wizard", () => {
     renderPost();
     fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Publish privately/ }));
+    // A hiring-now post needs its job link (D-048-p3-post-link-parity); the compensation field stays blank.
+    fireEvent.change(await screen.findByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/1" } });
+    fireEvent.click(screen.getByRole("button", { name: /Publish privately/ }));
     await waitFor(() => expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities")).toBeTruthy());
     const post = fetchMock.mock.calls.find(call => call[0] === "/api/opportunities");
     expect(String(post?.[1]?.body)).not.toContain('"compensation"');
+  });
+
+  // D-048-p3-post-link-parity: a blank hiring-now link is stopped in the browser, before any request.
+  it("does not publish a hiring-now opportunity with a blank job link", async () => {
+    const fetchMock = vi.fn(async (url: string) => (url === ACCESS_PATH ? ok(verified) : ok({ opportunity: { companyDomain: "acme.com", roleTitle: "Designer" } })));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPost();
+    fireEvent.change(await screen.findByLabelText("Role or job title"), { target: { value: "Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await screen.findByText("Add useful details.");
+    const link = screen.getByLabelText("Public job link") as HTMLInputElement;
+    expect(link.validity.valueMissing).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /Publish privately/ }));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities")).toBe(false);
+    expect(screen.queryByText("Your opportunity is live.")).toBeNull();
   });
 
   it("labels the job link as required for hiring-now and optional for walk-in", async () => {
@@ -156,12 +176,17 @@ describe("Goal /post-opportunity wizard", () => {
     await screen.findByText("Add useful details.");
     expect(screen.getByText("Public job link", { exact: true })).toBeTruthy();
     expect(screen.queryByText("Public job link (optional)")).toBeNull();
+    // D-048-p3-post-link-parity (ported from #1297): the browser itself stops a blank hiring-now link.
+    const hiringLink = screen.getByLabelText("Public job link");
+    expect(hiringLink).toBeInstanceOf(HTMLInputElement);
+    expect(hiringLink).toHaveProperty("required", true);
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Walk-in/ }));
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Designer" } });
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     await screen.findByText("Add useful details.");
     expect(screen.getByText("Public job link (optional)", { exact: true })).toBeTruthy();
+    expect(screen.getByLabelText("Public job link")).toHaveProperty("required", false);
     expect(screen.getByText("Location", { exact: true })).toBeTruthy();
     expect(screen.queryByText("Location (optional)")).toBeNull();
     fireEvent.change(screen.getByLabelText("Starts at"), { target: { value: "2026-11-02T09:00" } });

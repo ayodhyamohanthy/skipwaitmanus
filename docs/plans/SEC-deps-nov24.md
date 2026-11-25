@@ -47,4 +47,14 @@ only for `dependabot[bot]`, uses `--merge`, and refuses majors and runtime minor
 
 ## Status
 
-- SEC-deps-nov24: todo
+- SEC-deps-nov24: done — agent/queue/sec-deps-nov24 — PR #1562 (lands on green required CI; live check on the deployed web SHA follows)
+
+### Advisories after the patch
+
+`pnpm audit` on the branch lockfile: 0 critical, 0 high, 2 moderate, 0 low (main before: 0 critical,
+6 high, 14 moderate, 4 low). The two left need a major bump, so they stay for a person:
+
+| Package | Installed | Patched | Why it stays |
+|---|---|---|---|
+| `glob` | 11.1.0 | >=14.0.2 | The patch is a major bump (11 → 14) under `vite-plugin-pwa>workbox-build`; the packet keeps patches inside the current major. |
+| `minimatch` | 10.2.6 | >=11.0.1 | The patch is a major bump (10 → 11) under the same `workbox-build>glob` path. |

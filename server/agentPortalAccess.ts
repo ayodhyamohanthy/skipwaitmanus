@@ -16,6 +16,11 @@ export function agentPortalEnabled(env: NodeJS.ProcessEnv = process.env): boolea
   return env.SKIPPIE_AGENT_ENABLED === "true";
 }
 
+/** SKIPPY-7 (D-201 (4), D-141): auto-send switch. Off unless the value is exactly "true". */
+export function agentAutoSendEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.SKIPPIE_AGENT_AUTOSEND_ENABLED === "true";
+}
+
 /** True only when the switch is on and the account is on the allow-list; an empty list allows nobody. */
 export function agentPortalAllowed(userId: number, env: NodeJS.ProcessEnv = process.env): boolean {
   if (!agentPortalEnabled(env)) return false;

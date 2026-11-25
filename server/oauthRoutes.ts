@@ -3,6 +3,7 @@ import express, { type Express, type Request } from "express";
 import { randomBytes } from "node:crypto";
 import type { OAuthClient } from "./oauthStore";
 import { AssistantPlanRequiredError } from "./planGates";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_EXPIRY_MAX_DAYS } from "../shared/seekerAgents";
 
 const ISSUER = "https://skipwait.me";
 export const OAUTH_RESOURCE = `${ISSUER}/api/mcp`;
@@ -19,10 +20,10 @@ export type OAuthRouteDeps = {
   registerClient: (input: { clientName?: unknown; redirectUris?: unknown }) => Promise<OAuthClient>;
   getClient: (clientId: unknown) => Promise<OAuthClient | null>;
   /** Throws AssistantPlanRequiredError when agent access closed for the owner. */
-  issueCode: (userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string }) => Promise<string>;
-  consumeCode: (code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }) => Promise<{ userId: number } | null>;
+  issueCode: (userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string; expiresInDays: number }) => Promise<string>;
+  consumeCode: (code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }) => Promise<{ userId: number; expiresInDays: number } | null>;
   /** Mints a normal assistant bearer (same table and checks as a pasted token). Throws when the owner has no assistant access. */
-  mintToken: (userId: number, name: string) => Promise<{ token: string }>;
+  mintToken: (userId: number, name: string, expiresInDays: number) => Promise<{ token: string }>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null> }) => Promise<unknown>;
   now?: () => number;
 };
@@ -100,8 +101,13 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
       }
       if (req.body?.decision !== "approve") return res.status(400).json({ error: "Choose allow or deny" });
       if (req.body?.code_challenge_method !== "S256" || typeof req.body?.code_challenge !== "string" || !CHALLENGE_RE.test(req.body.code_challenge)) return res.status(400).json({ error: "This connection link is missing its security check (PKCE)" });
+      // D-178.screen (D-290 R1): the seeker chooses how long the grant lasts on the consent
+      // page. 7 days unless they pick up to 30; anything else is refused before a code exists.
+      const requestedDays = req.body?.expires_in_days;
+      const expiresInDays = requestedDays === undefined || requestedDays === null ? AGENT_EXPIRY_DEFAULT_DAYS : Number(requestedDays);
+      if (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > AGENT_EXPIRY_MAX_DAYS) return res.status(400).json({ error: `Choose an access period between 1 and ${AGENT_EXPIRY_MAX_DAYS} days` });
       // Fail before issuing a code when agent access closed for the owner.
-      const code = await deps.issueCode(identity.account.id, { clientId: client.clientId, redirectUri, codeChallenge: req.body.code_challenge });
+      const code = await deps.issueCode(identity.account.id, { clientId: client.clientId, redirectUri, codeChallenge: req.body.code_challenge, expiresInDays });
       target.searchParams.set("code", code);
       record({ actorUserId: identity.account.id, action: "assistant.oauth_allowed", outcome: "success", resourceType: "oauth_client", resourceId: client.clientId, metadata: { client: client.clientName } });
       res.set("Cache-Control", "no-store").json({ redirectTo: target.toString() });
@@ -124,7 +130,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
       if (!exchanged) return oauthError(res, 400, "invalid_grant", "This code is invalid, expired or already used");
       const client = await deps.getClient(clientId);
       let minted: { token: string };
-      try { minted = await deps.mintToken(exchanged.userId, `${(client?.clientName ?? "Assistant").slice(0, 100)} (OAuth ${randomBytes(3).toString("hex")})`); }
+      try { minted = await deps.mintToken(exchanged.userId, `${(client?.clientName ?? "Assistant").slice(0, 100)} (OAuth ${randomBytes(3).toString("hex")})`, exchanged.expiresInDays); }
       catch { return oauthError(res, 403, "access_denied", "This account no longer has assistant access"); }
       record({ actorUserId: exchanged.userId, action: "assistant.oauth_token_issued", outcome: "success", resourceType: "oauth_client", resourceId: clientId });
       res.set({ "Cache-Control": "no-store", Pragma: "no-cache" }).json({ access_token: minted.token, token_type: "Bearer", scope: "read draft" });

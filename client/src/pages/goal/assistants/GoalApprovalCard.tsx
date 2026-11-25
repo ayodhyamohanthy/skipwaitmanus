@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { GoalButton, GoalNum, GoalStatus } from "@/components/goal";
-import { providerLabel, type AssistantApproval } from "@/components/assistants/format";
+import { providerLabel, costSourceLabel, type AssistantApproval } from "@/components/assistants/format";
 import { NetworkButton, NextStep, Section } from "./AssistantLayout";
 
 type Handlers = { editing: boolean; draftNote: string; working: boolean; actionError: string; onDraftChange(value: string): void; onStartEdit(): void; onSaveEdit(): void; onDecide(decision: "approved" | "declined"): void;
@@ -40,7 +40,8 @@ export function GoalApprovalCard({ approval, balance, primary, handlers: h }: { 
     {approval.kind === "ask_send" && approval.targetRoleUrl ? <p className="mt-2 break-all text-g-meta text-g-ink-2">Job link: <a className="underline" href={approval.targetRoleUrl} target="_blank" rel="noreferrer noopener">{approval.targetRoleUrl}</a></p> : null}
     <Section title="Before you decide">
       {exactCost ? <p className="text-g-label">{referralsLabel(cost)}</p> : null}
-      {approval.kind === "credit_spend" && exactCost && balance !== null ? <p className="mt-2 text-g-meta text-g-ink-2"><GoalNum>{balance}</GoalNum> available · <GoalNum>{Math.max(0, balance - cost)}</GoalNum> after this</p> : balance === null ? <p className="mt-2 text-g-meta text-g-ink-2">Balance unavailable. The server checks your balance before acting.</p> : null}
+      {exactCost && costSourceLabel(approval.costSource) ? <p className="mt-1 text-g-meta text-g-ink-2">from {costSourceLabel(approval.costSource)}</p> : null}
+      {exactCost && balance !== null ? <p className="mt-2 text-g-meta text-g-ink-2"><GoalNum>{balance}</GoalNum> available · <GoalNum>{Math.max(0, balance - cost)}</GoalNum> after this</p> : balance === null ? <p className="mt-2 text-g-meta text-g-ink-2">Balance unavailable. The server checks your balance before acting.</p> : null}
       {approval.kind === "ask_send" ? <p className="mt-2 text-g-meta text-g-ink-2">{full ? "All your slots are in use. Keep this as a draft or manage your referrals." : "The same balance checks, open-request limits and routing apply as when you send a referral yourself."}</p> : null}
       {costUnknown ? <p className="mt-2 text-g-meta text-g-ink-2">Cost unavailable. You can't approve this spend.</p> : null}
     </Section>

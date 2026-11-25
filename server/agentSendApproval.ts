@@ -74,7 +74,7 @@ export async function decideAssistantApprovalWithAgentSend(
   userId: number,
   approvalId: number,
   decision: "approved" | "declined",
-  options: { attachmentIds?: number[] } = {},
+  options: { attachmentIds?: number[]; actor?: "seeker" | "agent_auto" } = {},
   deps: AgentSendApprovalDeps = defaultDeps,
 ) {
   const db = await deps.getDb();
@@ -83,11 +83,11 @@ export async function decideAssistantApprovalWithAgentSend(
   if (!row) throw new Error("This approval is not in your account");
   // Seeker-initiated approvals, and every decline, keep today's path exactly.
   if (row.grantId == null || decision === "declined") return deps.decidePlain(userId, approvalId, decision);
-  return approveAgentSend({ userId, approvalId, row, grantId: row.grantId, chosen: options.attachmentIds, deps });
+  return approveAgentSend({ userId, approvalId, row, grantId: row.grantId, chosen: options.attachmentIds, actor: options.actor ?? "seeker", deps });
 }
 
-async function approveAgentSend(input: { userId: number; approvalId: number; row: ApprovalRow; grantId: number; chosen?: number[]; deps: AgentSendApprovalDeps }) {
-  const { userId, approvalId, row, grantId, deps } = input;
+async function approveAgentSend(input: { userId: number; approvalId: number; row: ApprovalRow; grantId: number; chosen?: number[]; actor?: "seeker" | "agent_auto"; deps: AgentSendApprovalDeps }) {
+  const { userId, approvalId, row, grantId, actor = "seeker", deps } = input;
   const nowMs = deps.now();
   if (row.status !== "pending") throw new Error("This approval was already handled");
   // The queue's own expiry retires a waiting row with nothing spent (#644).
@@ -131,7 +131,7 @@ async function approveAgentSend(input: { userId: number; approvalId: number; row
     const hourly = await sentSince(new Date(nowMs - HOUR_MS));
     const daily = await sentSince(new Date(nowMs - DAY_MS));
     if (hourly >= AGENT_SEND_HOURLY_CAP || daily >= AGENT_SEND_DAILY_CAP) throw new AgentSendRefusal(AGENT_ERROR.sendLimit, "limit");
-    const marked = await tx.update(assistantApprovals).set({ status: "approved", decidedAt: now })
+    const marked = await tx.update(assistantApprovals).set({ status: "approved", decidedAt: now, decidedBy: actor })
       .where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "pending")));
     if (Number(marked[0]?.affectedRows) !== 1) throw new Error("This approval was already handled");
     return locked;
@@ -175,6 +175,6 @@ async function approveAgentSend(input: { userId: number; approvalId: number; row
 }
 
 async function revertToPending(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, approvalId: number) {
-  await db.update(assistantApprovals).set({ status: "pending", decidedAt: null })
+  await db.update(assistantApprovals).set({ status: "pending", decidedAt: null, decidedBy: null })
     .where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "approved")));
 }

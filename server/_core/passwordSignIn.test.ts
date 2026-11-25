@@ -151,6 +151,20 @@ describe("seeker password sign-in", () => {
     for (const secret of ["Wr0ng-password!", EMAIL, "nobody@gmail.com"]) expect(everything).not.toContain(secret);
   });
 
+  // ADMIN-activity-log (D-393): the wrong password is in the admin log as a failure the admin can group by email,
+  // with a masked address (no account has it here), the truncated IP and the device, and never the password.
+  it("a wrong password leaves one failure row with a masked email and no secret", async () => {
+    const app = await buildApp();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    wos.authenticateWithPassword.mockRejectedValueOnce(wrongPassword("nobody@gmail.com"));
+    await post(app, SIGN_IN, { email: "nobody@gmail.com", password: "Wr0ng-password!" });
+    await vi.waitFor(() => expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "auth.password_sign_in", outcome: "failure" })));
+    const row = recordActivity.mock.calls.map(call => (call as unknown as [{ action: string; metadata: Record<string, string> }])[0]).find(entry => entry.action === "auth.password_sign_in");
+    expect(row?.metadata).toMatchObject({ reason: "wrong_password", method: "password", plane: "seeker", maskedEmail: "n***@gmail.com", ip: "203.0.113.0/24" });
+    expect(row?.metadata.emailKey).toMatch(/^[0-9a-f]{32}$/);
+    expect(JSON.stringify(row)).not.toContain("Wr0ng-password!");
+  });
+
   // D-049 / D-078 ruling 2: no six-digit code. An address WorkOS has not verified gets an emailed link that sets the
   // password (which verifies the email) and signs in from /reset-password; nothing is issued before that.
   it("an unverified email gets no session and no code: a link to set the password is emailed instead", async () => {

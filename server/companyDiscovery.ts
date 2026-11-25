@@ -7,6 +7,7 @@
 // Honest failure: any provider error answers with whatever a fresh or stale
 // cache holds, never an invented result and never a "no such company" claim.
 import { z } from "zod";
+import { workDomainFor } from "./companyWorkDomain";
 import { discoveredCompanySchema, type DiscoveredCompany } from "../shared/companies";
 
 export const COMPANY_DISCOVERY_ENABLED = true;
@@ -236,7 +237,10 @@ async function discoverUncached(q: string, key: string, now: number, fetchImpl: 
         if (!entity || !isCompanyCandidate(entity)) return [];
         const name = entity.labels?.en?.value ?? hit.label ?? "";
         const domain = entity.claims?.P856?.map(claim => claim.mainsnak.datavalue?.value).find(value => value && domainFromOfficialUrl(value));
-        const host = domain ? domainFromOfficialUrl(domain) : undefined;
+        // SEARCH-work-domain (D-394): the domain employees' work email uses, not the official-site host
+        // (about.google is Google's site; its employees verify with @google.com).
+        const official = domain ? domainFromOfficialUrl(domain) : undefined;
+        const host = official ? workDomainFor(official) : undefined;
         // Domain identity, subdomain-aware: play.example.com after example.com is the same door.
         if (!name || !host || seen.some(held => held === host || host.endsWith(`.${held}`) || held.endsWith(`.${host}`))) return [];
         const logo = entity.claims?.P154?.[0]?.mainsnak.datavalue?.value;

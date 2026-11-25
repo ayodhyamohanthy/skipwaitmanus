@@ -17,7 +17,7 @@ const CMD = "node scripts/next-task.mjs";
 const land = [
   "Run `node scripts/scope-check.mjs <id>` before you push: it reads the task's declared `owns` from origin/main and fails on any change outside them (PICKER-owns-scope).",
   "Probe every other open branch of the same goal for conflicts: `git merge-tree $(git merge-base origin/main origin/<a>) origin/<a> origin/<b> | grep -c '^+<<<<<<<'` must print 0.",
-  "Land under D-082: push the branch, open a pull request, and wait until every check on that exact commit is green and main's own CI is green.",
+  "Land under D-082: push the branch, open the pull request, mark it ready and turn on auto-merge (merge commit), and wait until every check on that exact commit is green and main's own CI is green.",
   "Then land it with GitHub's merge-commit button (`gh pr merge <number> --merge`; never `--admin`, `--squash` or `--rebase`, D-134 (6), D-200). If that push is refused because main moved, merge the latest origin/main into your branch, re-run the full gate, push, wait until every check on the new commit is green and merge again; never force-push.",
   "Watch main's CI and both deploys to the end and run the live check from docs/BRIEF.md \"How to ship\".",
   "If anything goes red, revert or fix your commit before anything else.",
@@ -46,6 +46,8 @@ const unclear = "If anything is unclear, a test fails for a reason the packet do
 /** D-085: the team reports every priority's status to the CEO (Claude Code), green or not. */
 const report = (task, who) => `When you stop, land, open a pull request or get blocked, report to the CEO: \`${CMD} --report <green|red|blocked|review|landed> --task ${task.id} --as "${who}" --note "<one line: what is green, what is not, what you need; no secrets or personal data>"\` (D-085). If you cannot take a task for a reason of your own session (an instruction not to touch it, a tool or permission you lack), never report it blocked: that holds it for every agent. Run this picker again with \`--avoid ${task.id}\` added (repeat the flag, or use one comma list, \`--avoid a,b\`), and it hands you something else. A red report holds its lane and the tasks that depend on it, not every lower independent task, until a newer report on the task (or a newer green CI run on its pull request) clears it; a blocked one stands until a green or landed report, or any report from a session that neither raised the block nor holds the task, clears it (D-200, D-309).`;
 const yours = who => `This is already yours (${who}): nothing new was claimed, and no other agent will be given it. Finish it before anything else (queue rule 2).`;
+/** D-235: after a bounded handoff the session reports, reruns the preflight and takes the next eligible task. */
+const nextTask = `Then rerun the preflight (\`docs/BUILD_CONTINUITY.md\`) and take the next eligible task \`${CMD}\` hands you (D-235; one packet at a time).`;
 /** D-085: pending work ranked above your own comes first; your own claim stays yours, pushed. */
 /** D-134: where a task's status goes: its own §3b row, or, when several tasks share that row, its line in its packet's Status section. */
 const statusAt = task => task.sharedRow ? `its line in the Status section of ${task.packet ?? "its packet"} (\"${task.id}: ...\"; the §3b row \"${task.row}\" is shared by several tasks, so never edit it)` : `the §3b row \"${task.row}\"`;
@@ -53,13 +55,13 @@ const statusAt = task => task.sharedRow ? `its line in the Status section of ${t
 const aheadLines = pick => (pick.ahead?.length ? [`AHEAD OF ITS DEPENDENCIES (D-315): ${pick.ahead.join(", ")} ${pick.ahead.length === 1 ? "is" : "are"} not done yet, and nothing else was free, so you start this now instead of waiting. Work only on its own branch from current origin/main and open a draft pull request; never land it, never mark it done and never edit a dependency's files to make it pass. The picker withholds its review and landing until every dependency is done; then merge origin/main into the branch and adapt to what they changed. If the packet truly needs a dependency's output to go further, push what you have, report it with \`${CMD} --report review\`, and run the picker again for your next task.`] : []);
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
-function workSteps(task, who, branch) {
+function workSteps(task, who) {
   return [
     "Follow docs/DELEGATION.md §4 steps 4-8 exactly: the packet's tests first (they must fail for its reason), one step per commit, only the packet's files, then the full gate on your branch merged with the latest origin/main.",
     keepAlive(who),
-    task.tier === 1
-      ? `Tier 1: push the branch, open a DRAFT pull request, set ${statusAt(task)} to "review — ${branch} — <sha>", report, then rerun the preflight (\`docs/BUILD_CONTINUITY.md\`) and take the next eligible task \`${CMD}\` hands you (D-235; one packet at a time). Never land it yourself: \`${CMD}\` hands the review to a different session.`
-      : `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>".`,
+    // D-370 (owner, Nov 20 2026): green required CI alone lands every pull request at every tier, so a
+    // Tier 1 hand-out prints the same landing instruction Tier 2/3 does (PICKER-tier1-wording, D-389).
+    `${land.join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(task)} to "done — <sha>". ${nextTask}`,
     unclear,
     report(task, who),
   ];
@@ -70,7 +72,7 @@ function buildSteps(task, who, date, branch) {
     worktree(branch, who),
     `Read docs/BRIEF.md, then ${task.packet}. Read nothing else unless the packet names it. The branch above replaces the packet's agent/<model>/... name.`,
     `First commit: set ${task.sharedRow ? statusAt(task) : `the docs/KIT_V4_BUILD_PLAN.md §3b row "${task.row}"`} to "in progress — ${who} — ${date} — branch ${branch}".`,
-    ...workSteps(task, who, branch),
+    ...workSteps(task, who),
   ]);
 }
 
@@ -79,7 +81,7 @@ function resumeSteps(task, who, branch) {
   return steps([
     worktree(branch, who),
     `See where it stopped before touching anything: ${statusAt(task)}, \`git log --oneline origin/main..origin/${branch}\`, and any uncommitted changes in your worktree. Read docs/BRIEF.md and ${task.packet ?? "the row"}.`,
-    ...workSteps(task, who, branch),
+    ...workSteps(task, who),
   ]);
 }
 
@@ -112,9 +114,8 @@ const greenSteps = (pick, who) => steps([
   `Read the failing checks on ${pick.pr} and the §3b row "${pick.task.row}", then docs/BRIEF.md and ${pick.task.packet}.`,
   "Fix the failure red-first on the same branch (never skip, weaken or delete a test), merge the latest origin/main, re-run the full gate, push, and wait until every check on that exact commit is green.",
   keepAlive(who),
-  pick.task.tier === 1
-    ? `Tier 1: once green, set ${statusAt(pick.task)} to "review — ${pick.work} — <sha>" and stop; \`${CMD}\` hands the review to a different session.`
-    : `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>".`,
+  // D-370 (owner, Nov 20 2026): a green Tier 1 pull request lands like Tier 2/3; no review stage is handed out.
+  `Then land it: ${land.slice(1).join(" ")} In that same pull request set this task's "status" to "done" in docs/plans/assignments.json and ${statusAt(pick.task)} to "done — <sha>". ${nextTask}`,
   report(pick.task, who),
 ]);
 

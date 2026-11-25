@@ -41,4 +41,4 @@ returns Google with `google.com`.
 
 ## Status
 
-- SEARCH-work-domain: todo
+- SEARCH-work-domain: done — agent/queue/search-work-domain — PR #1554 (workDomainFor in server/companyWorkDomain.ts; about.google resolves to google.com)
