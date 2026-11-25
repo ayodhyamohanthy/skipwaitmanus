@@ -8666,6 +8666,33 @@
       "note": "Packet section 5 row 5. Captures at 1280 and 390."
     },
     {
+      "id": "D-178.mcp-grant",
+      "title": "An MCP proposal made with a grant key is bound to its grant, so revoke, pause, expiry, send caps and the assistant label apply at approve (D-405)",
+      "row": "D-178",
+      "packet": "docs/plans/D-178-agent-portal-access.md",
+      "tier": 1,
+      "lane": "d178-mcp-grant",
+      "branch": "agent/queue/d178-mcp-grant",
+      "status": "todo",
+      "syncedTo": "D-405",
+      "epic": "D-178",
+      "owns": [
+        "server/mcpServer.ts",
+        "server/mcpRoutes.ts",
+        "server/mcpRoutes.test.ts",
+        "server/agentSendApproval.ts",
+        "server/seekerAgentSend.test.ts",
+        "server/db.ts (proposeAssistantAsk only)",
+        "server/_core/index.ts (the MCP proposeAsk line only)",
+        "shared/seekerAgents.ts (MCP_GRANT_PROVIDER only)",
+        "docs/DECISIONS.md",
+        "docs/plans/assignments.json",
+        "docs/plans/D-178-agent-portal-access.md"
+      ],
+      "dependsOn": [],
+      "note": "D-405. Repairs the defect that failed the D-178.release local contract proof: propose_ask over MCP with a grant key wrote an unbound approval, so approve skipped the grant's revoke, expiry, pause and caps and the D-142 label. Red first: 2 MCP route and 2 approve-path failures. Legacy sw_ tokens unchanged; no migration, env key or flag change."
+    },
+    {
       "id": "D-178.release",
       "title": "Release D-178: allow-listed test seeker end to end on skipwait_qa (connect, propose, approve, one debit, decline, revoke, shortfall); production is the owner's word",
       "row": "D-178",
@@ -8674,7 +8701,7 @@
       "lane": "d178-release",
       "branch": "agent/queue/d178-release",
       "status": "todo",
-      "syncedTo": "D-290",
+      "syncedTo": "D-405",
       "epic": "D-178",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
@@ -8685,7 +8712,8 @@
         "SKIPPY-6",
         "D-178.read",
         "D-178.screen",
-        "SKIPPY-redteam"
+        "SKIPPY-redteam",
+        "D-178.mcp-grant"
       ],
       "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201)."
     },
@@ -10016,7 +10044,7 @@
     },
     {
       "id": "XINGCHI-turn-guard",
-      "title": "A local proxy compacts each conversation before Xingchi's turn limits (20 user turns, 100 model replies) and retries on session_turn_limit_exceeded, so no agent client stops on them (D-403)",
+      "title": "A local proxy compacts each conversation before Xingchi's turn limits (20 user turns, 100 model replies) and retries on session_turn_limit_exceeded, so no agent client stops on them (D-404)",
       "row": "PICKER",
       "packet": "docs/plans/XINGCHI-turn-guard.md",
       "tier": 2,
