@@ -20,6 +20,14 @@ describe("plainTextSnippet", () => {
     expect(plainTextSnippet(`<p>${"word ".repeat(200)}</p>`, 400)).toHaveLength(400);
   });
 
+  it("strips nested tag fragments until no markup is left (CodeQL incomplete multi-character sanitization)", () => {
+    const out = plainTextSnippet("<scr<script>ipt>alert(1)</scr</script>ipt> Hello <<b>b>world<</b>/b>");
+    expect(out).not.toMatch(/<\s*\/?\s*[a-z]/i);
+    expect(out).toContain("Hello");
+    expect(plainTextSnippet("&lt;scr&lt;script&gt;ipt&gt;x")).not.toMatch(/<script/i);
+    expect(plainTextSnippet("salary 3 < 5 lakhs")).toBe("salary 3 < 5 lakhs");
+  });
+
   it("answers an empty string for nothing", () => {
     expect(plainTextSnippet("")).toBe("");
     expect(plainTextSnippet(undefined)).toBe("");

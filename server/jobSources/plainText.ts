@@ -15,13 +15,18 @@ function decodeEntities(text: string): string {
 
 export function plainTextSnippet(html: string | null | undefined, max = 400): string {
   if (!html) return "";
-  const decoded = decodeEntities(html);
-  const text = decoded
-    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
-    // Block-level tags separate words; inline tags (b, strong, a, span) join them ("<b>pay</b>." stays "pay.").
-    .replace(/<\/?(p|br|div|li|ul|ol|h[1-6]|tr|td|th|table|section|article|header|footer|blockquote|hr)\b[^>]*>/gi, " ")
-    .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.slice(0, max);
+  // Strip until nothing changes: one pass over "<scr<script>ipt>" would leave "<script>" behind (CodeQL
+  // js/incomplete-multi-character-sanitization). Each pass only shortens the text, so this ends; the bound is a guard.
+  let text = decodeEntities(html);
+  for (let pass = 0; pass < 10; pass += 1) {
+    const next = text
+      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
+      // Block-level tags separate words; inline tags (b, strong, a, span) join them ("<b>pay</b>." stays "pay.").
+      .replace(/<\/?(p|br|div|li|ul|ol|h[1-6]|tr|td|th|table|section|article|header|footer|blockquote|hr)\b[^>]*>/gi, " ")
+      .replace(/<[^>]*>/g, "");
+    if (next === text) break;
+    text = next;
+  }
+  // Whatever still opens a tag after the bound (pathological nesting) loses its "<", so no markup can survive.
+  return text.replace(/<(?=[a-z/!?])/gi, "").replace(/\s+/g, " ").trim().slice(0, max);
 }
