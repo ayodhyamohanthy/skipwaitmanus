@@ -28,6 +28,18 @@ A sandbox request at `acme.com` is invisible to a real acme.com employee in the 
 and previewable, with no candidate name, for the demo referrer. A real request at acme.com is unchanged for the real
 employee and invisible to the demo referrer.
 
+## Found while building (Nov 25)
+
+- **Save had the same leak.** `saveCompanyReferralRequest` checked only the company domain, so a real employee could save
+  a sandbox request at their company. It now refuses anyone but the demo referrer, after the existing row lock.
+- **Test kit.** `server/inMemoryDrizzle.testkit.ts` (test-only) now reads an aliased table's rows, because the real-viewer
+  query references the seeker alias. Without it, 17 tests in 4 existing files fail with "unsupported column email".
+- **Follow-ups, not in this row.** (1) `countWaitingPoolRequestsForReferrer` would count a sandbox request for real
+  employees if it were ever waiting. That happens only when the demo referrer account is missing, and it is a number,
+  not seeker data. (2) A sandbox request sent through a real referrer's personal link appears to be stored as
+  assigned to that real referrer (`referrerId: fastTrackLink?.referrerId`). After this fix the real referrer no longer
+  sees it in the inbox or preview and cannot claim it, but the stored assignment is wrong. Both need their own row.
+
 ## After landing
 
 `OPS-live-qa-journeys` depends on this row: its dispatched run creates sandbox requests at a real company, so it must not
