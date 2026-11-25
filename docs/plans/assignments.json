@@ -443,6 +443,54 @@
       "epic": "D-212"
     },
     {
+      "id": "AUTH-email-link-code",
+      "title": "Anyone signs in by entering an email: one email with a sign-in link and a six-digit code, seekers and referrers, behind a switch that starts off (D-406)",
+      "row": "D-212",
+      "packet": "docs/plans/AUTH-email-link-code.md",
+      "tier": 1,
+      "lane": "auth-email-link",
+      "branch": "agent/queue/auth-email-link-code",
+      "status": "todo",
+      "syncedTo": "D-406",
+      "dependsOn": [],
+      "owns": [
+        "shared/emailSignIn.ts",
+        "shared/emailSignIn.test.ts",
+        "server/_core/seekerEmailCode.ts",
+        "server/_core/seekerEmailCode.test.ts",
+        "server/workEmailOtp.ts",
+        "server/emailSignInLink.test.ts",
+        "client/src/pages/goal/sign-in/",
+        "client/src/pages/loginRule.test.tsx",
+        "client/src/pages/signIn.test.tsx",
+        "docs/plans/AUTH-email-link-code.md"
+      ],
+      "note": "Owner D-406 (Nov 25, explicit say-so on the founder-locked login rule). Build only; the switch stays false. No schema, migration, env key or dependency. Referrer surfaces keep work-email code only.",
+      "epic": "D-212"
+    },
+    {
+      "id": "AUTH-email-link-release",
+      "title": "Release email link + code sign-in: set EMAIL_SIGN_IN_LINK_ENABLED true and prove it live at 1280 and 390 (D-406)",
+      "row": "D-212",
+      "packet": "docs/plans/AUTH-email-link-code.md",
+      "tier": 1,
+      "lane": "auth-email-link",
+      "branch": "agent/queue/auth-email-link-release",
+      "status": "todo",
+      "syncedTo": "D-406",
+      "dependsOn": [
+        "AUTH-email-link-code"
+      ],
+      "owns": [
+        "shared/emailSignIn.ts",
+        "shared/emailSignIn.test.ts",
+        "docs/plans/AUTH-email-link-code.md",
+        "docs/BUGFREE_GATE.md"
+      ],
+      "note": "Owner D-406. Flip only after the build row lands; live proof with a real inbox (send, link, code), captures at 1280 and 390.",
+      "epic": "D-212"
+    },
+    {
       "id": "AUTH-workos-refresh-scope",
       "title": "The client asks WorkOS to refresh only a session WorkOS issued, ending the 400 from api.workos.com on every cookie-session page (D-389)",
       "row": "D-212",
@@ -9415,6 +9463,26 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-399"
+    },
+    {
+      "id": "PICKER-blocked-wait-fallthrough",
+      "title": "A blocked WAIT falls through to eligible D-399 build-ahead work without releasing its lane",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-blocked-wait-fallthrough.md",
+      "tier": 2,
+      "lane": "picker-blocked-wait-fallthrough",
+      "branch": "agent/queue/picker-blocked-wait-fallthrough",
+      "status": "todo",
+      "syncedTo": "D-405",
+      "dependsOn": [],
+      "note": "Current-main repro on 8951b1518: --claim and --as returned WAIT at blocked D-089.ui before D-399 aheadPick, despite an earlier packet-backed, in-sync BANDED-release row with no open PR. Follow-up to the done PICKER-never-wait row; packet records bounded behavior and regression coverage.",
+      "epic": "D-212",
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskBlockedWaitFallthrough.test.ts",
+        "docs/plans/PICKER-blocked-wait-fallthrough.md",
+        "docs/plans/assignments.json"
+      ]
     },
     {
       "id": "SYNC-auto-pull",
