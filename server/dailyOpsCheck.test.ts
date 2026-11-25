@@ -231,7 +231,8 @@ describe("daily ops invariants", () => {
     expect(requestAggregateReads).toBe(1);
     expect(requestAggregateSql).toMatch(/count\(case when .*createdat.* >= \? then 1 end\) as last24hours/);
     expect(requestAggregateSql).toMatch(/where [\s\S]*createdat[\s\S]* >= \?\s+and\s+[\s\S]*createdat[\s\S]* <= \?/);
-    expect(requestAggregateParams).toEqual([new Date(NOW - DAY), new Date(NOW - 7 * DAY), new Date(NOW)]);
+    // D-393 (a): the sandbox seeker's requests never count, so its email is the query's fourth parameter.
+    expect(requestAggregateParams).toEqual([new Date(NOW - DAY), new Date(NOW - 7 * DAY), new Date(NOW), "seeker@reviewer.skipwait.me"]);
     expect(emails).toEqual([]);
   });
 

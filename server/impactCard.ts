@@ -3,10 +3,10 @@
 // the public link path and aggregate stats. No seeker name, title, pitch, ask id
 // or company name of any seeker can leave this file: there is no field for one.
 // The min-3 gate (D-104 rule) lives in shared/shareImpactCard.ts.
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { companies, companyDomains, jobs, profiles, referralRequests, referralTransitionEvents, referrerFastTrackLinks } from "../drizzle/schema";
 import { IMPACT_DECISION_ACTIONS, IMPACT_REFERRAL_ACTIONS, impactCardVisible, summarizeImpact, type ImpactCardPayload, type ImpactEvent } from "../shared/shareImpactCard";
-import { getDb } from "./db";
+import { getDb, sandboxSeekerUserId } from "./db";
 import { isVerifiedEmployeeOfCompany } from "./referrerAvailability";
 
 export const IMPACT_CARD_FLAG = "SHARE_IMPACT_CARD_ENABLED";
@@ -70,18 +70,21 @@ export async function loadImpactCard(referrerId: number, now: Date = new Date())
   // The min-3 gate and the referred count work on DISTINCT asks via
   // shared/shareImpactCard.summarizeImpact (QA note: one ask can carry more
   // than one event from the same referrer).
+  // D-393 (a): a sandbox request never counts toward a real impact figure.
+  const sandboxSeekerId = await sandboxSeekerUserId(db);
+  const notSandbox = sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)];
   const decisionRows = await db
     .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
     .from(referralTransitionEvents)
     .innerJoin(referralRequests, eq(referralRequests.id, referralTransitionEvents.referralRequestId))
     .innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
-    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(jobs.company, companyScope), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS])));
+    .where(and(eq(referralTransitionEvents.actorUserId, referrerId), inArray(jobs.company, companyScope), inArray(referralTransitionEvents.action, [...IMPACT_DECISION_ACTIONS]), ...notSandbox));
   const referralRows = await db
     .select({ action: referralTransitionEvents.action, resultingStatus: referralTransitionEvents.resultingStatus, createdAt: referralTransitionEvents.createdAt, requestId: referralTransitionEvents.referralRequestId })
     .from(referralTransitionEvents)
     .innerJoin(referralRequests, eq(referralRequests.id, referralTransitionEvents.referralRequestId))
     .innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
-    .where(and(eq(referralRequests.referrerId, referrerId), inArray(jobs.company, companyScope), inArray(referralTransitionEvents.action, [...IMPACT_REFERRAL_ACTIONS])));
+    .where(and(eq(referralRequests.referrerId, referrerId), inArray(jobs.company, companyScope), inArray(referralTransitionEvents.action, [...IMPACT_REFERRAL_ACTIONS]), ...notSandbox));
 
   const events: ImpactEvent[] = [...decisionRows, ...referralRows].map(row => ({ requestId: row.requestId, action: row.action, resultingStatus: row.resultingStatus, createdAt: new Date(row.createdAt) }));
   const summary = summarizeImpact(events, now);

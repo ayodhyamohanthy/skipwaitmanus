@@ -63,6 +63,9 @@ import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpart
 import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
 import { notifyColleaguesOfReleasedRequest } from "./poolNudges";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
+// D-393 (a): the demo accounts test any company and any referral in a sandbox. One definition lives in
+// shared/sandboxRequests.ts; this file only asks it.
+import { SANDBOX_REFERRER_EMAIL, SANDBOX_SEEKER_EMAIL, isSandboxReferrer, isSandboxSeeker, sandboxReachableReferrers } from "../shared/sandboxRequests";
 import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredEventKey, coverageDeliveredNotice, coverageHeldEventKey, coverageHeldNotice, coverageReferrerEventKey, coverageReferrerNotice, coverageWaitExpiredNotice, isAwaitingCoverageActionAllowed, type CoverageDeliveryOutcome, type CoverageHandoffSummary } from "./coverageDelivery";
 import { askInviteActiveRequestKey } from "../shared/askInvites";
 // Re-exported for every existing caller (tests and companyDirectory.ts import
@@ -2160,11 +2163,25 @@ export async function previewBandedAskCost(userId: number, input: string | { tar
     const reconciled = await reconcileWalletTx(tx, wallet, now);
     const candidates = await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
     const counts = await readAllocatedSlotCountsTx(tx, candidates.map(candidate => candidate.userId));
-    const covered = candidates.some(candidate => isOpenReferrer(candidate, companyDomain, counts.get(candidate.userId) ?? 0));
+    // D-393 (a): a sandbox request is covered at any company, because the demo referrer acts as its verified employee.
+    const sandboxSeeker = isSandboxSeeker((await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email);
+    const covered = sandboxSeeker || candidates.some(candidate => isOpenReferrer(candidate, companyDomain, counts.get(candidate.userId) ?? 0));
     const allocation = await readBandedAllocationTx(tx, reconciled.wallet, level, now);
     const acceptedCost = covered ? allocation.cost : { ...allocation.cost, units: 0 as const, source: [] };
     return bandedAskQuoteSchema.parse({ level, cost: covered ? 1 : 0, totalAvailable: allocation.available, shortfall: covered && allocation.available === 0 ? 1 : 0, coverageStatus: covered ? "covered" : "waiting_for_company_coverage", acceptedCost });
   });
+}
+
+/**
+ * D-393 (a): the demo seeker's user id, or null when that account has not signed in yet.
+ * Every real count excludes this id, so a sandbox request never moves a real figure. Null means there is
+ * nothing to exclude, which is also what a fixture without the demo account sees.
+ */
+export async function sandboxSeekerUserId(dbOverride?: Awaited<ReturnType<typeof getDb>>): Promise<number | null> {
+  const db = dbOverride ?? await getDb();
+  if (!db) return null;
+  const row = (await db.select({ id: users.id }).from(users).where(eq(users.email, SANDBOX_SEEKER_EMAIL)).limit(1))[0];
+  return row?.id ?? null;
 }
 
 export async function createCompanyReferralRequest(userId: number, input: CreateCompanyReferralInput) {
@@ -2204,6 +2221,12 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const duplicate=await tx.select({id:referralRequests.id,fingerprint:referralRequests.requestFingerprint,companyDomain:jobs.company,jobFunction:jobs.jobFunction,waiting:referralRequests.waitingForCoverage,referrerId:referralRequests.referrerId,opportunityId:referralRequests.opportunityId,firstLookReferrerId:referralRequests.firstLookReferrerId}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(eq(referralRequests.jobSeekerId,userId),eq(referralRequests.idempotencyKey,input.idempotencyKey))).limit(1).for("update");
     if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];const chargedCost=await readBandedChargeTx(tx,userId,duplicate[0].id);return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,...(chargedCost?{chargedCost}:{}),replayed:true as const};}
     if (!bandedSalesEnabled() && (input.expectedCost || isBandedPlan(lockedWallet.plan))) throw new ReferralPricingUnavailableError();
+    // D-393 (a): a sandbox request is one whose seeker is the reviewer demo seeker. It may go to any company
+    // with no monthly, slot or per-company limit, and it reaches only the demo referrer, who acts as a verified
+    // employee of whatever company the request names — for sandbox requests only. The identity is read from the
+    // canonical account's own row, never from request input.
+    const seekerEmail=(await tx.select({email:users.email}).from(users).where(eq(users.id,userId)).limit(1))[0]?.email;
+    const sandbox=isSandboxSeeker(seekerEmail);
     // D-022: the post behind this ask is locked and re-validated here, so a
     // concurrent close or lapse cannot slip between the read and the insert,
     // and the post must be the same company the link resolved to.
@@ -2217,12 +2240,16 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       if(!lockedCatalog||lockedCatalog.closedAt)throw new Error("This opening is no longer available. Refresh the company page and choose again.");
     }
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
-    const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));
+    // D-393 (a): a sandbox request reaches the demo referrer alone. The demo referrer is a verified employee of
+    // whatever company the request names, for sandbox requests only, so the company-domain and capacity rules
+    // that pick real employees do not apply to it — and a missing demo referrer reaches nobody, never a real one.
+    const sandboxReferrer=sandbox?(await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(eq(users.email,SANDBOX_REFERRER_EMAIL)).limit(1))[0]:undefined;
+    const eligible=sandboxReachableReferrers(sandbox,sandboxReferrer,eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain)));
     // D-034/D-062: coverage means an *available* referrer (verified, unpaused, under monthly
     // capacity — the directory's own predicate), never merely a verified employee. A personal
     // link is covered by its owner alone and keeps today's single-step lifecycle.
-    const allocatedByReferrer=fastTrackLink?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
-    const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
+    const allocatedByReferrer=fastTrackLink||sandbox?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
+    const available=sandbox||fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
     if (bandedSalesEnabled() && isWaiting && input.expectedCost) {
       const currentCost: AcceptedAskCost = { units: 0, band: referralLevelForJobLevel(level), source: [] };
@@ -2232,12 +2259,13 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if((bandedSalesEnabled()||askLevelCostEnabled())&&input.expectedCoverage==="waiting_for_company_coverage"&&!isWaiting)throw new CoverageOpenedUpError(companyDomain);
     // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
     // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
-    if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
+    // D-393 (a): the demo seeker has no monthly, slot or per-company limit, so a sandbox request skips both caps.
+    if(!sandbox&&!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
     // D-006 fairness, on every plan: at most MAX_OPEN_ASKS_PER_COMPANY open asks at one company.
     // Same room rules as the plan slots: waiting asks hold none (D-061), a replay returns above.
     // Counted under the wallet lock with the same predicate as the plan cap, joined to the ask's company.
-    const openAtCompany=Number((await tx.select({open:count()}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(openAskCondition(userId,nowMs),eq(jobs.company,companyDomain.trim().toLowerCase()))))[0]?.open??0);
-    if(openAtCompany>=MAX_OPEN_ASKS_PER_COMPANY)throw new CompanyCapReachedError(companyDomain,openAtCompany);
+    const openAtCompany=sandbox?0:Number((await tx.select({open:count()}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(openAskCondition(userId,nowMs),eq(jobs.company,companyDomain.trim().toLowerCase()))))[0]?.open??0);
+    if(!sandbox&&openAtCompany>=MAX_OPEN_ASKS_PER_COMPANY)throw new CompanyCapReachedError(companyDomain,openAtCompany);
     const uniqueAttachmentIds=Array.from(new Set(input.attachmentIds));
     const owned=await tx.select({id:referralAttachments.id}).from(referralAttachments).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId))).for("update");
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
@@ -2266,7 +2294,8 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const reachable=eligible.filter(employee=>!blockedWithSeeker.has(employee.userId));
     // D-022: an ask written from a post goes to the poster alone for 48 hours
     // while they still count as an open referrer; otherwise it opens to the team.
-    const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
+    // D-393 (a): a sandbox request never gives a real poster a first look — it goes to the demo referrer.
+    const firstLookCandidate=sandbox||!opportunity?null:await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs});
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
     const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
@@ -2284,11 +2313,19 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(isWaiting){
       remaining=await creditSummaryTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoState,now:summaryNow});
     }else{
-      const askCost=bandedSalesEnabled()?1:askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
+      // D-393 (a): a sandbox request's free referrals still move through the normal ledger with keyed rows, so
+      // free/withdraw/refund behaviour is exercised; the free allowance simply never runs out. The top-up is a
+      // wallet reconciliation, not a grant: the spend below still writes its own keyed debit row.
+      let spendWallet=reconciled.wallet;
+      const askCost=sandbox?1:bandedSalesEnabled()?1:askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
+      if(sandbox&&(spendWallet.monthlyCreditsRemaining??0)<FREE_MONTHLY_ALLOWANCE){
+        await tx.update(tokenBalances).set({monthlyCreditsRemaining:FREE_MONTHLY_ALLOWANCE}).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker")));
+        spendWallet={...spendWallet,monthlyCreditsRemaining:FREE_MONTHLY_ALLOWANCE};
+      }
       const meta={idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)};
-      const banded=bandedSalesEnabled()?await spendBandedReferralTx(tx,{wallet:reconciled.wallet,level,now:summaryNow,meta,expectedCost:input.expectedCost}):null;
+      const banded=!sandbox&&bandedSalesEnabled()?await spendBandedReferralTx(tx,{wallet:spendWallet,level,now:summaryNow,meta,expectedCost:input.expectedCost}):null;
       chargedCost=banded?.chargedCost;
-      const spent=banded?{wallet:banded.wallet,grants:reconciled.grants,promoRemaining:promoState.grant?.creditsRemaining??null}:await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta,now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
+      const spent=banded?{wallet:banded.wallet,grants:reconciled.grants,promoRemaining:promoState.grant?.creditsRemaining??null}:await spendCreditsTx(tx,{wallet:spendWallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta,now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
       const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
       await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
       const promoAfter=promoState.grant&&spent.promoRemaining!==null?{grant:{...promoState.grant,creditsRemaining:spent.promoRemaining},status:spent.promoRemaining>0?promoState.status:"exhausted" as const}:promoState;
@@ -2315,7 +2352,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
     // A waiting ask has not gone out and holds no open slot (D-061): the count stays as read. A covered ask
     // adds one. `remaining` was computed in the matching branch above, under the same wallet lock.
-    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),...(chargedCost?{chargedCost}:{}),replayed:false as const};
+    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,sandbox?0:isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),...(chargedCost?{chargedCost}:{}),replayed:false as const};
   });
 }
 
@@ -2422,6 +2459,11 @@ export async function prepareReferrerReviewEmailNotifications(requestId: number)
   // delivery (deliverWaitingAskTx) writes the referrer notice the day the ask becomes visible, and its review link
   // behind POOL_NUDGES_ENABLED (D-384); the pool-review-email job then calls this function for it.
   if (current.waitingForCoverage) return [];
+  // D-393 (a): a sandbox request reaches no real person by any channel. Its recipients are re-derived here by
+  // company domain, which for a real company would be that company's real employees, so a sandbox request
+  // prepares no review email at all. The demo referrer still gets the in-app notice from creation.
+  const seekerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, current.jobSeekerId)).limit(1))[0]?.email;
+  if (isSandboxSeeker(seekerEmail)) return [];
   const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, notifyNewAsk: profiles.notifyNewAsk }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const passes = await db.select({ referrerId: referralRequestPasses.referrerId }).from(referralRequestPasses).where(eq(referralRequestPasses.referralRequestId, requestId));
   const passed = new Set(passes.map(row => row.referrerId));
@@ -2456,7 +2498,12 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
-    if (!current || !isVerifiedEmployeeOfCompany(profile, current.companyDomain) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    // D-393 (a): the demo referrer reviews a sandbox request as a verified employee of the company it names, and no
+    // one else may review a sandbox request. A real request's review rules are unchanged.
+    const reviewerEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+    const reviewedSeekerEmail = current ? (await tx.select({ email: users.email }).from(users).where(eq(users.id, current.request.jobSeekerId)).limit(1))[0]?.email : undefined;
+    const mayReview = isSandboxSeeker(reviewedSeekerEmail) ? isSandboxReferrer(reviewerEmail) : Boolean(current && isVerifiedEmployeeOfCompany(profile, current.companyDomain));
+    if (!current || !mayReview || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
     // D-022: while the poster's first look runs, nobody else can decide on the ask;
     // the poster's own approve/pass ends the first look with the decision.
     if (firstLookExcludesViewer(current.request, userId, Date.now())) throw new ReferralTransitionConflict("This referral request is still in its poster's first look", { status: current.request.status, revision: current.request.revision });
@@ -2529,7 +2576,15 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return [];
   const db = await getDb(); if (!db) return [];
-  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
+  // D-393 (a): the demo referrer acts as a verified employee of whatever company a sandbox request names, so its
+  // inbox also shows sandbox requests at any company. A real referrer's scope is unchanged.
+  const viewerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+  const sandboxViewer = isSandboxReferrer(viewerEmail);
+  const seekerUsers = alias(users, "sandbox_seeker");
+  const companyScope = sandboxViewer
+    ? or(eq(jobs.company, profile.workEmailDomain), eq(seekerUsers.email, SANDBOX_SEEKER_EMAIL))
+    : eq(jobs.company, profile.workEmailDomain);
+  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(companyScope, isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopeNowMs = Date.now();
   // D-050 / P0-allocated-ask-stuck: an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is
   // unclaimed, so past its window it leaves that employee's inbox like any stale unclaimed ask. Fail-soft and reported: the
@@ -3151,6 +3206,10 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   const referrer = (await tx.select({ userId: profiles.userId, email: users.email, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
     .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.referrerId)).limit(1).for("update"))[0];
   if (!referrer) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  // D-393 (a): a sandbox request reaches the demo referrer alone. It is created covered, so it should never reach
+  // this hand-off; if one does, a real employee is refused here rather than told about it.
+  const sandboxSeekerEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, request.jobSeekerId)).limit(1))[0]?.email;
+  if (isSandboxSeeker(sandboxSeekerEmail) && !isSandboxReferrer(referrer.email)) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   if (!isOpenReferrer(referrer, companyDomain, await readAllocatedSlotsForUpdateTx(tx, input.referrerId))) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   // P0-block-delivery: a blocked pair never receives the ask, either way; fail-open and reported (server/blockedPairs.ts).
   if ((await blockedCounterpartsFailOpen(tx, input.referrerId, [request.jobSeekerId], "coverage_delivery")).has(request.jobSeekerId)) return { outcome: "blocked", requestId: input.requestId };
@@ -3351,9 +3410,12 @@ export type PublicReferralImpact = { acceptedReferrals: number };
 // number; never relabel this one as such.
 export async function getPublicReferralImpact(): Promise<PublicReferralImpact> {
   const db = await getDb(); if (!db) return { acceptedReferrals: 0 };
-  const open = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(inArray(referralRequests.status, ["approved", "intro_made", "interview", "offer"]));
+  // D-393 (a): a sandbox request never counts toward a real public figure.
+  const sandboxSeekerId = await sandboxSeekerUserId();
+  const notSandbox = sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)];
+  const open = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(inArray(referralRequests.status, ["approved", "intro_made", "interview", "offer"]), ...notSandbox));
   const acceptedEventIds = await db.select({ id: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents).where(eq(referralTransitionEvents.resultingStatus, "approved"));
-  const closedAccepted = acceptedEventIds.length === 0 ? [] : await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(eq(referralRequests.status, "closed"), inArray(referralRequests.id, acceptedEventIds.map(row => row.id))));
+  const closedAccepted = acceptedEventIds.length === 0 ? [] : await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(eq(referralRequests.status, "closed"), inArray(referralRequests.id, acceptedEventIds.map(row => row.id)), ...notSandbox));
   return { acceptedReferrals: Number(open[0]?.acceptedReferrals ?? 0) + Number(closedAccepted[0]?.acceptedReferrals ?? 0) };
 }
 
@@ -3376,8 +3438,11 @@ export async function getDomainIntegrity(limit = 100) {
 export async function getReferralFlowHealth() {
   const db = await getDb();
   if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
+  // D-393 (a): a sandbox request is invisible to the admin funnel's real totals.
+  const sandboxSeekerId = await sandboxSeekerUserId();
+  const notSandbox = sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)];
   const [requests, verifiedProfiles, activities, domainIntegrity] = await Promise.all([
-    db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
+    db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(...notSandbox)),
     db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.accountType, "referrer")),
     db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome }).from(operationalActivityLogs).orderBy(desc(operationalActivityLogs.createdAt)).limit(1000),
     getDomainIntegrity(1),
@@ -3470,7 +3535,12 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
-    if (!current || current.request.status !== "pending" || current.request.waitingForCoverage || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    // D-393 (a): a sandbox request may be claimed only by the demo referrer, who acts as a verified employee of the
+    // company it names; a real request may never be claimed by the demo referrer. Every other claimant is unchanged.
+    const claimantEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+    const seekerEmail = current ? (await tx.select({ email: users.email }).from(users).where(eq(users.id, current.request.jobSeekerId)).limit(1))[0]?.email : undefined;
+    const mayClaim = isSandboxSeeker(seekerEmail) ? isSandboxReferrer(claimantEmail) : Boolean(current && isVerifiedEmployeeOfCompany(profile, current.company));
+    if (!current || current.request.status !== "pending" || current.request.waitingForCoverage || !mayClaim || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
     // D-061: a waiting or held ask has reached no referrer and cannot be claimed; the claim clock follows the ask's own
     // shelf life (7 days from first visibility; rows without coverageVisibleAt: creation). D-050 / P0-allocated-ask-stuck:
     // an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is unclaimed too (decided under
@@ -3495,7 +3565,8 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     // assignment and writes an exclusion, so a released ask never stays assigned to the same person.
     // R-6: repeating a claim on an ask the claimant already holds skips the cap and answers as a replay.
     await tx.select({ id: profiles.id }).from(profiles).where(eq(profiles.userId, userId)).limit(1).for("update");
-    if (current.request.referrerId !== userId) {
+    // D-393 (a): the demo referrer has no open-claim cap, so the sandbox can exercise many asks at once.
+    if (current.request.referrerId !== userId && !isSandboxReferrer(claimantEmail)) {
       const [openClaims] = await tx.select({ openClaims: count() }).from(referralTransitionEvents)
         .innerJoin(referralRequests, eq(referralTransitionEvents.referralRequestId, referralRequests.id))
         .where(and(eq(referralRequests.referrerId, userId), eq(referralRequests.status, "pending"), eq(referralTransitionEvents.action, "claim"), eq(referralTransitionEvents.actorUserId, userId)));
