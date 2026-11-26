@@ -424,7 +424,7 @@
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys-sandbox",
       "status": "todo",
-      "syncedTo": "D-398",
+      "syncedTo": "D-407",
       "dependsOn": [
         "OPS-live-qa-hardening",
         "QA-sandbox-requests",
@@ -8749,7 +8749,7 @@
       "lane": "d178-release",
       "branch": "agent/queue/d178-release",
       "status": "todo",
-      "syncedTo": "D-405",
+      "syncedTo": "D-407",
       "epic": "D-178",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
@@ -9670,7 +9670,7 @@
       "lane": "group-provider",
       "branch": "agent/queue/group-provider",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-contracts"
       ],
@@ -9714,7 +9714,7 @@
       "lane": "group-schema",
       "branch": "agent/queue/group-schema",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-migration"
       ],
