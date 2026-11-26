@@ -36,6 +36,8 @@ export const REFERRER_ACTION_FUNCTIONS: readonly string[] = [
   "openCompanyReferralAvailability", "updateReferralProgress", "publishCompanyOpportunity", "renewCompanyOpportunity", "closeCompanyOpportunity",
   "updateReferrerPreferences", "saveReferrerSlackWebhook", "getReferrerSlackWebhookStatus", "deactivateReferrerSlackWebhook", "getOrCreateReferrerFastTrackLink",
   "getPrivateReferrerImpactSummary", "getReferrerImpactSummary",
+  // D-089.server (§5.1 step 4): naming and resuming the referral link are referrer actions too.
+  "setReferrerScreenName", "resumeReferrerFastTrackLink",
 ];
 
 /** Every referrer action route (§4.4), pinned against the routers' source by referrerSessionGate.test.ts. */
@@ -49,6 +51,9 @@ export const REFERRER_ACTION_ROUTES: readonly ReferrerRoute[] = [
   { method: "get", path: "/api/referrer-impact/me" },
   { method: "get", path: "/api/referrer/impact-summary" },
   { method: "get", path: "/api/referrer-fast-track/me" },
+  // D-089.server (§5.1 step 4): the two link write routes.
+  { method: "put", path: "/api/referrer-fast-track/me/screen-name" },
+  { method: "post", path: "/api/referrer-fast-track/me/resume" },
   { method: "get", path: "/api/company-referrals/inbox" },
   { method: "get", path: "/api/referrer/home-bundle" },
   { method: "post", path: "/api/company-referrals/availability/open" },

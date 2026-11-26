@@ -173,7 +173,7 @@ function expectedBoard(f: Fixture) {
 }
 describe("actual picker CLI output drain", () => {
   it("drains exact >64KiB WAIT output to a file and a delayed pipe without remote writes", async () => {
-    await inFixture("owner", async f => {
+    await inFixture("done", async f => {
       const before = f.refs(), expected = expectedReadOnly(f, { state: "running-after-red" });
       const file = f.runFile([], "wait");
       expect(file.status, file.stderr.toString()).toBe(4);

@@ -1,4 +1,5 @@
 import { WorkOS } from "@workos-inc/node";
+import { isAdministratorEmail } from "./adminIdentity";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { registerSeekerEmailCodeRoutes } from "./seekerEmailCode";
 import { HOSTED_LINK_COOKIE, readHostedLink, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
@@ -68,8 +69,8 @@ export function workosConfigured(): boolean {
 
 export function adminCallbackAllowed(input:{email:string;state:string;configuredEmail?:string;bootstrapEnabled?:boolean}){
   if(input.state!=="skipwait-admin"&&input.state!=="skipwait-admin-bootstrap")return true;
-  const expected=(input.configuredEmail||"").trim().toLowerCase();
-  if(!expected||input.email.trim().toLowerCase()!==expected)return false;
+  // D-400: the founder (permanent super administrator) or the configured administrator seat, exactly.
+  if(!isAdministratorEmail(input.email,input.configuredEmail??""))return false;
   return input.state!=="skipwait-admin-bootstrap"||input.bootstrapEnabled===true;
 }
 
@@ -305,9 +306,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
     app.get("/api/auth/workos/admin", (req, res) => {
-      const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "").trim().toLowerCase();
       const loginHint = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-      if (!durableAdmin || !loginHint || loginHint !== durableAdmin) {
+      // D-400: the founder (permanent super administrator) or the configured administrator seat.
+      if (!loginHint || !isAdministratorEmail(loginHint)) {
         // ADMIN-activity-log (D-393): a refused administrator sign-in is itself a security event.
         void recordAuthEvent(req, { action: "auth.admin_sign_in", outcome: "denied", reason: "not_allowed", plane: "admin", ...(loginHint.length <= 320 ? { email: loginHint } : {}) });
         return res.status(403).send("Administrator sign-in is restricted to the configured administrator account");
@@ -407,7 +408,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         console.error("[workos-callback]", { stage, code:errorName, correlationId });
         event("failure", { reason: "provider_error" });
         const bootstrapDiagnostic = process.env.ENABLE_ADMIN_BOOTSTRAP === "true" && state === "skipwait-admin-bootstrap" ? ` (${stage}:${errorName}; ${correlationId})` : "";
-        res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
+        // FIX-founder-admin-role: name the step and error type (never the message, email, code or token) so a failed
+        // sign-in can be reported and matched to the server log.
+        const safeName = /^[A-Za-z][A-Za-z0-9_]{0,59}$/.test(errorName) ? errorName : "Error";
+        res.status(502).send(`Authentication could not be completed (step ${stage}, ${safeName}). Please try again.${bootstrapDiagnostic}`);
       }
     });
     // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.

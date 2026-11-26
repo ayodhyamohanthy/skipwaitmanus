@@ -80,7 +80,7 @@ Status: registration repair prepared on main 7d69a3ce; build remains waiting.
 Separate final-delta review, exact required CI, current-main validation and a
 distinct normal-procedure lander are still required. No self-landing.
 
-- D-180-referral-words: review — agent/queue/referral-words-sweep — 7e9a0dc0e
+- D-180-referral-words: working — agent/queue/referral-words-sweep — GPT-6.1 Sol · 4044 (takeover/build-ahead draft refresh, 2026-11-26; origin/main 8530dd1d528fa52ad7d4af13001b42763d975fd1 merged without conflicts; validation pending; no landing or completion).
 
 Evidence (DeepSeek V4.1 Flash · 3aec, 2026-11-24): nav label and rail label "My referrals" (id `asks`, href
 `/requests` unchanged), `/requests` shell title and My Requests page title "My referrals", onboarding hint

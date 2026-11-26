@@ -132,14 +132,20 @@ async function priceVerdict(credentials: BandedRuntime, price: BandedCatalogPric
 }
 
 /** POST /api/chargebee/banded/plan-checkout: one monthly banded plan, founding place reserved first. */
-export async function startBandedPlanCheckout(input: { userId: number; request: BandedPlanCheckoutRequest; customer: Customer; urls: ReturnUrls; deps: BandedCheckoutDeps }): Promise<BandedPlanCheckout | BandedRefusal> {
+export async function startBandedPlanCheckout(input: { userId: number; request: BandedPlanCheckoutRequest; customer: Customer; urls: ReturnUrls; deps: BandedCheckoutDeps; demo?: boolean; runtime?: BandedRuntime }): Promise<BandedPlanCheckout | BandedRefusal> {
   const { deps, userId, request } = input;
-  if (!isEnabled(deps)) return BANDED_NOT_ON_SALE;
+  // QA-demo-test-billing (D-393): the reviewer demo seeker checks out on the TEST
+  // site while sales are off for everyone else, with no plan, band or founding
+  // limit. Identity chose `demo`; no request input can.
+  const demo = input.demo === true;
+  if (!isEnabled(deps) && !demo) return BANDED_NOT_ON_SALE;
   const entry = planFamilyEntry(request.planId);
-  if (entry.byApplication) return refuse(403, BANDED_REFUSALS.applicationRequired, `${entry.label} is by application. Apply and we'll set it up with you; nothing has been charged.`);
-  const membership = await deps.membership(userId);
-  if (membership.activeSubscription || membership.bandedPlan) return refuse(409, BANDED_REFUSALS.activeSubscription, `You already have an active plan. Manage it from Billing; nothing has been charged.`);
-  const credentials = bandedRuntime(deps);
+  if (!demo && entry.byApplication) return refuse(403, BANDED_REFUSALS.applicationRequired, `${entry.label} is by application. Apply and we'll set it up with you; nothing has been charged.`);
+  if (!demo) {
+    const membership = await deps.membership(userId);
+    if (membership.activeSubscription || membership.bandedPlan) return refuse(409, BANDED_REFUSALS.activeSubscription, `You already have an active plan. Manage it from Billing; nothing has been charged.`);
+  }
+  const credentials = input.runtime ?? bandedRuntime(deps);
   if (!credentials) return outage;
   const price = bandedPlanCatalogPrice(request.planId, currencyForCountry(request.billingCountry));
   if (price.kind !== "banded_plan") return outage;
@@ -150,10 +156,14 @@ export async function startBandedPlanCheckout(input: { userId: number; request: 
   const site = credentials.environment;
   const now = (deps.now ?? (() => new Date()))();
   const checkoutIntentId = bandedCheckoutIntentId("plan", site, userId, request.idempotencyKey);
-  const reservation = await deps.reserveFoundingPlace({ site, planId: request.planId, userId, checkoutIntentId, now, expiresAt: new Date(now.getTime() + BANDED_RESERVATION_TTL_MS), replayNotBefore: new Date(now.getTime() - BANDED_REPLAY_WINDOW_MS) });
+  // A TEST founding purchase never takes a real founding place: the demo path
+  // skips the reservation entirely and only records its own intent.
+  const reservation: FoundingReservation = demo
+    ? { status: "reserved" }
+    : await deps.reserveFoundingPlace({ site, planId: request.planId, userId, checkoutIntentId, now, expiresAt: new Date(now.getTime() + BANDED_RESERVATION_TTL_MS), replayNotBefore: new Date(now.getTime() - BANDED_REPLAY_WINDOW_MS) });
   // D-367 (5): a full band stops selling; the regular price is the owner's to set, never invented here.
-  if (reservation.status === "full") return refuse(409, BANDED_REFUSALS.foundingFull, `Founding places for ${entry.label} are taken. ${NOTHING_CHARGED}`);
-  if (reservation.status === "key_used") return refuse(409, BANDED_REFUSALS.checkoutKeyUsed, `This checkout was already started. Start a new one; nothing has been charged.`);
+  if (!demo && reservation.status === "full") return refuse(409, BANDED_REFUSALS.foundingFull, `Founding places for ${entry.label} are taken. ${NOTHING_CHARGED}`);
+  if (!demo && reservation.status === "key_used") return refuse(409, BANDED_REFUSALS.checkoutKeyUsed, `This checkout was already started. Start a new one; nothing has been charged.`);
   const billingRoute = request.billingCountry === "IN" ? "IN" : "INTL";
   const cart: BandedCart = {
     kind: "plan",
@@ -221,16 +231,19 @@ export async function startBandedPlanCheckout(input: { userId: number; request: 
 }
 
 /** POST /api/chargebee/banded/referral-checkout: extra referrals at levels inside the member's band. */
-export async function startBandedReferralCheckout(input: { userId: number; request: BandedReferralCheckoutRequest; customer: Customer; urls: ReturnUrls; deps: BandedCheckoutDeps }): Promise<BandedReferralCheckout | BandedRefusal> {
+export async function startBandedReferralCheckout(input: { userId: number; request: BandedReferralCheckoutRequest; customer: Customer; urls: ReturnUrls; deps: BandedCheckoutDeps; demo?: boolean; runtime?: BandedRuntime }): Promise<BandedReferralCheckout | BandedRefusal> {
   const { deps, userId, request } = input;
-  if (!isEnabled(deps)) return BANDED_NOT_ON_SALE;
-  const { bandedPlan } = await deps.membership(userId);
-  if (!bandedPlan) return refuse(409, BANDED_REFUSALS.noPlan, `Extra referrals are for plan members. Choose a plan first; nothing has been charged.`);
-  if (request.items.some(item => !bandIncludes(bandedPlan, item.level))) {
+  // QA-demo-test-billing (D-393): the demo seeker buys any level, any quantity,
+  // with or without a plan, on the TEST site; everyone else keeps the band rule.
+  const demo = input.demo === true;
+  if (!isEnabled(deps) && !demo) return BANDED_NOT_ON_SALE;
+  const { bandedPlan } = demo ? { bandedPlan: null as PlanFamilyId | null } : await deps.membership(userId);
+  if (!demo && !bandedPlan) return refuse(409, BANDED_REFUSALS.noPlan, `Extra referrals are for plan members. Choose a plan first; nothing has been charged.`);
+  if (!demo && bandedPlan && request.items.some(item => !bandIncludes(bandedPlan, item.level))) {
     const levels = bandLevels(bandedPlan).map(level => LEVEL_DISPLAY_NAME[level]).join(" and ");
     return refuse(409, BANDED_REFUSALS.outsideBand, `Your plan covers ${levels} referral requests only. ${NOTHING_CHARGED}`);
   }
-  const credentials = bandedRuntime(deps);
+  const credentials = input.runtime ?? bandedRuntime(deps);
   if (!credentials) return outage;
   const currency = currencyForCountry(request.billingCountry);
   const quote = bandedReferralQuote(request.items, currency);
