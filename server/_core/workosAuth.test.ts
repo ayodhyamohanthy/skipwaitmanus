@@ -330,6 +330,19 @@ describe("canonical WorkOS callback session", () => {
     } finally { vi.restoreAllMocks(); standings.byEmail.clear(); standings.calls = []; restore(); }
   });
 
+  // FIX-founder-admin-role: the 502 names its step and error type, never the message, email, code or token.
+  it("a failed provider exchange answers 502 naming the step and error type only", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      class GenericServerException extends Error { constructor() { super("invalid_grant for founder@skipwait.me code=abc"); this.name = "GenericServerException"; } }
+      authenticate.mockRejectedValueOnce(new GenericServerException());
+      const callback = await signIn(app);
+      expect(callback.status).toBe(502);
+      expect(callback.text).toContain("Authentication could not be completed (step authenticate, GenericServerException)");
+      expect(callback.text).not.toMatch(/invalid_grant|@|code=/);
+    } finally { restore(); }
+  });
+
   it("mints the session for the canonical account, not the provider openId", async () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
