@@ -9619,20 +9619,21 @@
     },
     {
       "id": "PICKER-blocked-wait-fallthrough",
-      "title": "A blocked WAIT falls through to eligible D-399 build-ahead work without releasing its lane",
+      "title": "Protect production-default D-399 build-ahead past evidence-blocked rows, preserving lane holds and honest WAITs",
       "row": "D-212",
       "packet": "docs/plans/PICKER-blocked-wait-fallthrough.md",
       "tier": 2,
       "lane": "picker-blocked-wait-fallthrough",
       "branch": "agent/queue/picker-blocked-wait-fallthrough-build-902e",
-      "status": "todo",
-      "syncedTo": "D-406",
+      "status": "done",
+      "syncedTo": "D-409",
       "dependsOn": [],
-      "note": "Requeued under D-373 (6): PR #1663 merged the prior task branch but changed only packet status notes; picker source and regression tests remain owed. Fresh implementation branch agent/queue/picker-blocked-wait-fallthrough-build-902e. Reproduced on current main bf5d91a46: --claim and --as returned WAIT at blocked D-048-K-admin-money before the D-399 aheadPick pass. D-406 was checked and does not affect this picker task.",
+      "note": "Locally validated, ready for protected PR; required CI pending. GPT-6.1 Sol · 8cdf, 2026-11-26: takeover eb098e93b preserves a7043ffa8 tests and predecessor main merges; validation used the automatic, conflict-free merge of main eac7b8e4c, uncommitted at validation time. Exact serial six-suite run passed 235/235 in 120.95s; pnpm check passed in 181.84s; registry 472 tasks/380 decisions, zero errors and every other row preserved. Scope check exited 0 with its existing full-edit-rights notice for the CLI test. Packet checked through D-409; D-407 fallback preserved, D-408/D-409 leave this contract unchanged. No source defect demonstrated or repair added. Done is branch-prepared only; protected PR and required CI remain with primary, no landed/deployed claim.",
       "epic": "D-212",
       "owns": [
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskBlockedWaitFallthrough.test.ts",
+        "scripts/nextTaskClaimTaskCli.test.ts",
         "docs/plans/PICKER-blocked-wait-fallthrough.md",
         "docs/plans/assignments.json"
       ]

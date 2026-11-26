@@ -78,7 +78,13 @@ REPORT
 - **UNVERIFIED:** this session could not read back the Claude cloud task/environment or verify an enabled daily schedule. Its browser attempt redirected to Claude sign-in and no Claude cloud connector was available; a ZCode cron listing showed unrelated automations and is not evidence about Claude scheduling. This is a per-session access/evidence gap, not proof that no schedule exists and not a global task block.
 - **UNVERIFIED / pending:** saved-task settings and duplicate check in the correct cloud environment; first observed completed run with durable report, artifact/capture review, and issue links or zero-finding evidence.
 
+### Takeover receipt (2026-11-26)
+
+- GPT-6.1 Sol · 5de2 took over on `93c3f4dc6`, preserving `339b4bf9c` and the partial handoff in report `08dc93244`. Current main `6fd6ab797` was fetched and integrated; decisions D-405–D-409 and the current entry instructions, collaboration rules, build preflight, PRD, brief and bug-free gate were checked. The newer main changes only the unrelated picker build-ahead task; this packet's scope and acceptance are unchanged.
+- The official [scheduled-task page](https://claude.ai/code/routines) redirected into Claude's involuntary logout/reauthentication flow. The browser showed loading and a delayed-page status; no saved task, environment, cadence, subscription settings or run history was visible. No schedule was created or changed and **Run now** was not used.
+- **UNVERIFIED:** duplicate-task check, enabled daily schedule in `skipwaitmanus`, subscription-only usage, and the first completed run with its report and evidence. This session's authentication limit is handled with `--avoid QA-ai-explorer` under D-407; the task remains unfinished without a task-wide block.
+
 ## Status
 - QA-auto-issues: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/qa-auto-issues. `scripts/qa-file-bugs.mjs` + `scripts/qaFileBugs.test.ts` (10 cases, red first); `live-qa.yml` gains the 6-hour schedule, job-only `issues: write` and the filing step; 20 workflow-scanning suites (481 tests) pass. Live proof is the first scheduled run after landing.
 - PICKER-bug-issues: todo — registered by Claude Code · 530c, Nov 26 2026 (D-409).
-- QA-ai-explorer: in progress — GPT-6.1 Sol · 6445 — 2026-11-26 — branch `agent/queue/qa-ai-explorer`; prompt and setup checklist documented, schedule readback and first completed run UNVERIFIED and pending (D-407).
+- QA-ai-explorer: in progress — GPT-6.1 Sol · 5de2 — 2026-11-26 — branch `agent/queue/qa-ai-explorer`; published prompt and setup checklist preserved, current main `6fd6ab797` integrated. Schedule readback and first completed run remain UNVERIFIED; this session reached Claude reauthentication and will use `--avoid QA-ai-explorer` (D-407).
