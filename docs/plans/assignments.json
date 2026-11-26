@@ -644,6 +644,25 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-migration-lint-bash32",
+      "title": "The deploy-migration lint runs on macOS Bash 3.2 (no associative arrays), so agents on the owner's Mac stop failing it (agent report Nov 26)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-migration-lint-bash32.md",
+      "tier": 2,
+      "lane": "migration-lint-bash32",
+      "branch": "agent/queue/fix-migration-lint-bash32",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        "scripts/lint-deploy-migrations.sh",
+        "scripts/lintDeployMigrations.test.ts",
+        "docs/plans/FIX-migration-lint-bash32.md"
+      ],
+      "note": "Agent report Nov 26 (D-048-K-admin-people, GPT-6.1 Sol · 01ef): `declare -A` fails on macOS Bash 3.2. Same checks, portable shell.",
+      "epic": "D-212"
+    },
+    {
       "id": "AUTH-workos-refresh-scope",
       "title": "The client asks WorkOS to refresh only a session WorkOS issued, ending the 400 from api.workos.com on every cookie-session page (D-389)",
       "row": "D-212",
