@@ -556,6 +556,68 @@
       "epic": "D-172"
     },
     {
+      "id": "QA-auto-issues",
+      "title": "Live QA runs every 6 hours and files one deduplicated bug issue per failing route or step, closing it when a later run passes (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 2,
+      "lane": "qa-auto-issues",
+      "branch": "agent/queue/qa-auto-issues",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/live-qa.yml",
+        "scripts/qa-file-bugs.mjs",
+        "scripts/qaFileBugs.test.ts",
+        "scripts/liveQaWorkflows.test.ts",
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-bug-issues",
+      "title": "The picker hands open automated bug issues to agents as fix work ahead of new features (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 2,
+      "lane": "picker-bug-issues",
+      "branch": "agent/queue/picker-bug-issues",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [
+        "QA-auto-issues"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/queue-gate.mjs",
+        "scripts/nextTaskBugIssues.test.ts",
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-ai-explorer",
+      "title": "A daily AI exploratory tester walks skipwait.me like a seeker and referrer and files UX and functional bugs (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 3,
+      "lane": "qa-ai-explorer",
+      "branch": "agent/queue/qa-ai-explorer",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
       "id": "AUTH-workos-refresh-scope",
       "title": "The client asks WorkOS to refresh only a session WorkOS issued, ending the 400 from api.workos.com on every cookie-session page (D-389)",
       "row": "D-212",
