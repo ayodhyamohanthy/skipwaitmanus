@@ -12,7 +12,7 @@ import { registerSeekerEmailCodeRoutes, SEEKER_CODE_RETIRED_MESSAGE, SEEKER_CODE
 
 // Before the cutoff an already-emailed code still signs in (cached app versions); after it, nothing does.
 const BEFORE_CUTOFF = () => SEEKER_CODE_VERIFY_UNTIL.getTime() - 60_000;
-const app = (now: () => number = BEFORE_CUTOFF) => { const a = express(); a.use(express.json()); a.use(express.urlencoded({ extended: true })); registerSeekerEmailCodeRoutes(a, { now }); return a; };
+const app = (now: () => number = BEFORE_CUTOFF) => { const a = express(); a.use(express.json()); a.use(express.urlencoded({ extended: true })); registerSeekerEmailCodeRoutes(a, { now, enabled: false }); return a; };
 /** A verify call from skipwait.me itself, as a cached app version sends it. */
 const verify = (server: express.Express, body: object) => request(server).post("/api/auth/workos/email-code/verify").set("Sec-Fetch-Site", "same-origin").send(body);
 beforeEach(() => {
