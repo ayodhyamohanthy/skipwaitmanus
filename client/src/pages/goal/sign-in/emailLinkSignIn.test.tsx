@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // D-406 (owner, Nov 25 2026): enter an email, get one email with a link and a code. These cases render the real
-// goal /sign-in with the switch forced on; the switch itself starts off (shared/emailSignIn.test.ts).
+// goal /sign-in with the release switch on, preserving the existing password, social and passkey paths.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,9 +12,13 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/sign-in"],
   useSearch: () => "",
 }));
+const passkeys = vi.hoisted(() => ({ enabled: false, autofill: vi.fn() }));
 vi.mock("@/components/goal/GoalPasskeySignIn", () => ({
-  usePasskeyAvailability: () => ({ enabled: false }),
-  PasskeyAutofill: () => null,
+  usePasskeyAvailability: () => ({ enabled: passkeys.enabled }),
+  PasskeyAutofill: ({ enabled, returnTo }: { enabled: boolean; returnTo: string }) => {
+    if (enabled) passkeys.autofill(returnTo);
+    return null;
+  },
   PasskeySignInButton: () => null,
   PasskeyEnrollmentOffer: () => null,
 }));
@@ -38,7 +42,11 @@ function openAt(hash = "") {
   Object.defineProperty(window, "location", { configurable: true, value: { ...window.location, assign, hash, pathname: "/sign-in", search: "", origin: "http://localhost" } });
 }
 const realLocation = window.location;
-beforeEach(() => { try { localStorage.clear(); } catch { /* jsdom */ } });
+beforeEach(() => {
+  passkeys.enabled = false;
+  passkeys.autofill.mockClear();
+  try { localStorage.clear(); } catch { /* jsdom */ }
+});
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(window, "location", { configurable: true, value: realLocation }); });
 
 describe("D-406 emailed link", () => {
@@ -85,6 +93,17 @@ describe("D-406 emailed link", () => {
 });
 
 describe("D-406 seeker email sign-in", () => {
+  it.each([true, false])("keeps native autofill and its email hint aligned with passkey availability %s", enabled => {
+    passkeys.enabled = enabled;
+    openAt();
+    stubFetch(() => ({ status: 200, body: {} }));
+    render(<GoalSignInPage />);
+    expect(screen.getByRole("button", { name: "Email me a sign-in link" })).toBeTruthy();
+    expect(screen.getByLabelText("Email address").getAttribute("autocomplete")).toBe(enabled ? "username webauthn" : "email");
+    if (enabled) expect(passkeys.autofill).toHaveBeenCalledWith("/explore");
+    else expect(passkeys.autofill).not.toHaveBeenCalled();
+  });
+
   it("defaults to the email step with one primary button, then signs in with the code", async () => {
     openAt();
     const calls = stubFetch(url => url.endsWith("/send") ? { status: 200, body: { sent: true } } : { status: 200, body: { signedIn: true } });
@@ -122,11 +141,15 @@ describe("D-406 seeker email sign-in", () => {
     expect(await screen.findByRole("link", { name: "Sign in with your work-email code" })).toBeTruthy();
   });
 
-  it("referrer side keeps the work-email code only: no personal email, password or social control", () => {
+  it("referrer side keeps the work-email code only: no personal email, password, social or passkey control", () => {
+    passkeys.enabled = true;
     openAt();
     stubFetch(() => ({ status: 200, body: {} }));
     render(<GoalSignInPage emailLinkEnabled />);
+    passkeys.autofill.mockClear();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
+    expect(passkeys.autofill).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Company email").getAttribute("autocomplete")).toBe("email");
     expect(screen.getByTestId("referrer-work-email-otp")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Email me a sign-in link" })).toBeNull();
     expect(screen.queryByLabelText("Password")).toBeNull();
