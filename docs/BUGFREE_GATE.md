@@ -18,11 +18,13 @@ decides whether distribution may start with gaps open.
 
 Current overall gate state, how each item is tested, and its latest result follow.
 
+**Nov 26 2026 scope note:** This documentation-only refresh is not a production test or current-release verification. Items 2.8, 3.6, 4.20 and job-link previews remain **UNVERIFIED** pending the qualifying D-390 sandbox journey through `OPS-live-qa-journeys`; no successful dispatched proof is attached here. No production test was performed.
+
 ---
 
 ## 1. Login / OTP session
 
-**Nov 24 2026 signed-in pass:** the rows dated Oct 14 below are history, not current truth; the current release is web `16f2a2be`, API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)).
+**Historical Nov 24 2026 signed-in evidence (not a Nov 26/current-release verification):** run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261) recorded web `16f2a2be` and API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)). The dated results below remain historical.
 
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
@@ -41,7 +43,7 @@ Current overall gate state, how each item is tested, and its latest result follo
 
 ## 2. Referral request flow
 
-**Nov 24 2026 signed-in pass:** the rows dated Oct 14 below are history, not current truth; the current release is web `16f2a2be`, API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)).
+**Historical Nov 24 2026 signed-in evidence (not a Nov 26/current-release verification):** run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261) recorded web `16f2a2be` and API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)). The dated results below remain historical.
 
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
@@ -52,11 +54,11 @@ Current overall gate state, how each item is tested, and its latest result follo
 | 2.5 | Company-referral URL must match the selected company (PR #197) | Live Oct 14: request dialog on /explore/skipwait pre-flags a wipro.com link with role=alert "This link is not from SkipWait..." and passes a greenhouse.io link (hosted board). Authenticated `POST /api/company-referrals` with a wipro.com URL + `companySlug: skipwait` -> **400 "This job link is not from SkipWait. Paste a job link from SkipWait's own careers page."** before any credit moves (wallet 3/0 unchanged, no request created); control with a matching skipwait.me URL passes the company check and fails later at attachment ownership, proving the check fired specifically. Unknown slug -> 400. | GREEN (5:59 PM IST Oct 14, API `2264a9f0`) |
 | 2.6 | Withdraw a pending, unclaimed request | Fixed by PR #198 (`644ce81`, idempotent deploy migration 0079 adds `withdrawn` to the prod status enum; global API error sanitizer swaps driver messages for a generic 500 text). Live retest Oct 14: withdraw of request 12 by the owner -> **200 withdrawn**, creation debit **refunded** (monthly 2 -> 3); double-withdraw idempotent 200 with no second refund; cross-user withdraw still 404 friendly; no SQL in any client response. No admin-side expire route exists (noted, not gated). Scope pinned Oct 14 9:17 PM: withdraw is PRE-CLAIM only - requests 13 (approved) and 14 (declined) both 409 "This request was already claimed by a verified employee and can no longer be withdrawn". Post-claim closure is the referrer's decision or expiry, not withdraw. | GREEN (6:39 PM IST Oct 14, API `644ce81`) |
 | 2.7 | Signed-in seeker pages render on the current release | Live QA run: `/plans`, `/billing`, `/requests`, `/ask`, `/explore`, `/alerts`, `/inbox`, `/messages`, `/profile`, `/settings`, `/invite`, `/support` at 1280 and 390: document 200, no sign-in redirect, no page error, no 5xx, no sideways scroll. | GREEN (24/24 captures, run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261), Nov 24 2026) |
-| 2.8 | Request create, withdraw and cross-user/document denial on the current release | Not exercised: the runner is navigation-only. CI `e2e journeys` passes on both released commits against a disposable database (code paths, not the live release). | UNVERIFIED on the current release: needs a read-only cross-user/document 404 check with demo ids and an established no-wallet-risk scope for create/withdraw ([evidence](qa/launch-live-qa-2026-11-24.md)) |
+| 2.8 | Request create, withdraw and cross-user/document denial on the current release | Not exercised: the Nov 24 runner is navigation-only. CI `e2e journeys` passes on both released commits against a disposable database (code paths, not the live release). | UNVERIFIED pending the qualifying D-390 sandbox journey ([evidence](qa/launch-live-qa-2026-11-24.md)) |
 
 ## 3. Approval flow
 
-**Nov 24 2026 signed-in pass:** the rows dated Oct 14 below are history, not current truth; the current release is web `16f2a2be`, API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)).
+**Historical Nov 24 2026 signed-in evidence (not a Nov 26/current-release verification):** run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261) recorded web `16f2a2be` and API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)). The dated results below remain historical.
 
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
@@ -65,11 +67,11 @@ Current overall gate state, how each item is tested, and its latest result follo
 | 3.3 | Blocked list + unblock render correctly | Settings "Blocked people" section renders; `GET /api/blocks/mine` returns 200 empty. Read-only, no writes. | GREEN (empty state) |
 | 3.4 | Referrer work-email verification rejects personal providers (PR #197) | Live Oct 14: `POST /api/work-email/otp/send` rejects gmail.com, yahoo.in, outlook.in, rediffmail.com, ymail.com with 400 "Enter a valid work email address" (widened list incl. provider families + country subdomains); a corporate address (qa-sweep-1@orange.com) -> 200 sent. Client field pre-rejects gmail. /verify is additionally scoped to the selected company's own domain ("Wipro emails end in @wipro.com"). | GREEN (5:14 PM IST Oct 14, API `2264a9f0`) |
 | 3.5 | Signed-in referrer pages render on the current release | Live QA run: `/referrer-home`, `/queue`, `/referrer/impact`, `/inbox`, `/invite`, `/profile`, `/settings` at 1280 and 390, same checks as 2.7. | GREEN (14/14 captures, run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261), Nov 24 2026) |
-| 3.6 | Claim and accept transitions on the current release | Not executed (packet step 3: only within an established demo/no-money scope). | UNVERIFIED on the current release ([evidence](qa/launch-live-qa-2026-11-24.md)) |
+| 3.6 | Claim and accept transitions on the current release | Not exercised by the Nov 24 navigation-only runner. | UNVERIFIED pending the qualifying D-390 sandbox journey ([evidence](qa/launch-live-qa-2026-11-24.md)) |
 
 ## 4. Credits / payments
 
-**Nov 24 2026 signed-in pass:** the rows dated Oct 14 below are history, not current truth; the current release is web `16f2a2be`, API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)).
+**Historical Nov 24 2026 signed-in evidence (not a Nov 26/current-release verification):** run [45372954261](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45372954261) recorded web `16f2a2be` and API `ba99d626` ([evidence](qa/launch-live-qa-2026-11-24.md)). The dated results below remain historical.
 
 Every handoff is driven in a real browser from the product UI to the Chargebee hosted page and
 **stops at the payment form** - no card data is ever entered and no payment is ever completed.
@@ -93,7 +95,7 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 | 4.17 | Off-sale catalog entries refuse checkout (D-084 P0, D-146) | /plans lists legacy fixed-term/yearly entries with "Not on sale yet" and no live buy button; curl battery: signed-in `POST /api/chargebee/subscription-checkout` with a kit pass body answers 409 `not_available_yet` ("… is not on sale yet. Nothing has been charged.") with no hosted page; `/api/plans/catalog` reports every plan term `available:false`. GO-LIVE-1b landed (#359); only credit packs are currently on sale (D-146), so this stays GREEN as is. | NEW — expected GREEN from the P0 release |
 | 4.18 | Pass activation and recovery (GO-LIVE-1b) | A paid pass always activates: the seeker's return calls `POST /api/chargebee/subscription-recovery` (ownership 404 before any provider call; activated / pending / requires_review); the hourly `chargebee-subscription-reconcile` job activates pending pass checkouts older than 10 minutes; an unlinked kit subscription emails the owner at once. Live legs (only if the owner ever puts passes back on sale; D-146 keeps them off): buy a pass on the TEST site, return to `/plans?payment=pending` and see "Your pass is active. Ends <date>"; break the webhook and watch the hourly job activate; confirm an orphan subscription alerts. Signed-out probes meanwhile: `subscription-recovery` without sign-in answers 401; `/api/admin/jobs` lists `chargebee-subscription-reconcile`. | NEW — legs defined, first run pending the 1b release |
 | 4.19 | Banded sales stay off until BANDED-release | Signed-out `GET /api/chargebee/banded/offer`. | GREEN: 200 `{"onSale":false}` (Nov 24 2026, ~10:20 UTC, API `ba99d626`) |
-| 4.20 | Signed-in QA leaves the demo wallet unchanged | Not measured: the runner takes no before/after `GET /api/credits/summary` read. `/plans` and `/billing` render 200 for the demo seeker (2.7). | UNVERIFIED: add the before/after wallet read to the runner ([evidence](qa/launch-live-qa-2026-11-24.md)) |
+| 4.20 | Signed-in QA leaves the demo wallet unchanged | Not measured: the Nov 24 runner took no before/after `GET /api/credits/summary` read. `/plans` and `/billing` render 200 for the demo seeker (2.7). | UNVERIFIED pending the qualifying D-390 sandbox journey ([evidence](qa/launch-live-qa-2026-11-24.md)) |
 
 (Legs 4.1-4.4 and 4.9-4.11 latest pass 5:16-5:31 PM IST Oct 14, API `2264a9f0`, web `2264a9f0`; 4.5-4.8 retired by D-067. Legs 4.1-4.4 test the legacy per-credit route, which retires in each currency once its D-036 packs are buyable (D-046).)
 

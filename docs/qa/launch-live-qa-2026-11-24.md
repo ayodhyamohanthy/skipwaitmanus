@@ -1,5 +1,9 @@
 # LAUNCH-live-qa evidence, November 24 2026
 
+## November 26 refresh (documentation only)
+
+The runs and web/API SHAs below remain historical; they are not a current-release verification. No fresh live QA or production test was performed. The qualifying D-389/D-393 sandbox journey through `OPS-live-qa-journeys` remains pending, and no successful dispatched proof is attached here. Credential handling remains limited to the existing protected workflow secrets under D-373/D-374; none were accessed in this refresh.
+
 Session: Claude Code · c2ed, branch `agent/queue/launch-live-qa-acceptance` (D-388).
 No password, hash, cookie or authenticated response body appears here. No money moved; no
 state-changing request was made by this session or by the runner.
@@ -54,10 +58,11 @@ items from the packet stay open:
    by a read-only check that the demo referrer's `GET /api/documents/<seeker document id>` and the
    demo seeker's view of another account's request both answer 404, with ids taken from the demo
    accounts only.
-3. **Safe transitions (create, withdraw, claim, accept) on the live release.** Not executed; the
-   no-wallet-risk scope for these demo accounts is not established (packet step 2). CI `e2e
-   journeys` passes on both released commits against a disposable database, which proves the code
-   paths, not the live release.
+3. **Safe transitions (create, withdraw, claim, accept) on the live release.** Not executed by
+   this Nov 24 runner. At that time, the no-wallet-risk scope for these demo accounts had not been
+   established (packet step 2); this is historical context, not a request for new scope approval.
+   CI `e2e journeys` passes on both released commits against a disposable database, which proves
+   the code paths, not the live release. The qualifying D-389/D-393 sandbox journey remains pending.
 4. **Job-link previews** (packet step 4) were not exercised by the runner.
 5. **WorkOS SSO, password and work-email OTP sign-in** (BUGFREE_GATE 1.1-1.10) were not re-run:
    the demo accounts sign in through the reviewer endpoint only.
