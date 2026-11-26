@@ -2,6 +2,8 @@
 // AuthenticationException)". WorkOS raises that only for a closed set of reasons; the 502 names that reason as a
 // plain snake_case word and never the message, email or any other value.
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { authenticationCodeOf } from "./workosAuth";
 
 const authError = (fields: Record<string, unknown>) => Object.assign(Object.assign(new Error("Pick an org for founder@skipwait.me"), { name: "AuthenticationException" }), fields);
@@ -23,5 +25,12 @@ describe("authenticationCodeOf", () => {
     ["a value that is not an Error", { name: "AuthenticationException", code: "sso_required" }],
   ])("returns nothing for %s", (_name, error) => {
     expect(authenticationCodeOf(error)).toBeNull();
+  });
+});
+
+describe("the callback 502 body", () => {
+  it("is sent as plain text, so no error detail can ever be read as HTML", () => {
+    const source = readFileSync(path.join(__dirname, "workosAuth.ts"), "utf8");
+    expect(source).toMatch(/res\.status\(502\)\.type\("text\/plain"\)\.send\(`Authentication could not be completed \(step/);
   });
 });

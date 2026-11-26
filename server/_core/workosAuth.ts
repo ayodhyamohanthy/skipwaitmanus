@@ -422,7 +422,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         // WorkOS's AuthenticationException carries a fixed reason (email_verification_required, sso_required, ...):
         // a closed vocabulary word, never personal data, and the one fact needed to fix the sign-in path.
         const authCode = authenticationCodeOf(error);
-        res.status(502).send(`Authentication could not be completed (step ${stage}, ${safeName}${authCode ? `: ${authCode}` : ""}). Please try again.${bootstrapDiagnostic}`);
+        res.status(502).type("text/plain").send(`Authentication could not be completed (step ${stage}, ${safeName}${authCode ? `: ${authCode}` : ""}). Please try again.${bootstrapDiagnostic}`);
       }
     });
     // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.
