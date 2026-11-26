@@ -48,6 +48,14 @@ const WORKOS_ISSUER = "https://api.workos.com";
 const CLIENT_ID_PATTERN = /^client_[A-Za-z0-9]+$/;
 const workosJwksByClient = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
+/** The WorkOS AuthenticationException reason (code, or `error` for sso_required), only when it is a plain snake_case word. */
+export function authenticationCodeOf(error: unknown): string | null {
+  if (!(error instanceof Error) || error.name !== "AuthenticationException") return null;
+  const shaped = error as Error & { code?: unknown; rawData?: { code?: unknown; error?: unknown } };
+  const candidate = [shaped.code, shaped.rawData?.code, shaped.rawData?.error].find(value => typeof value === "string");
+  return typeof candidate === "string" && /^[a-z][a-z_]{2,59}$/.test(candidate) ? candidate : null;
+}
+
 export function configuredWorkosClientId(): string {
   const clientId = (process.env.WORKOS_CLIENT_ID || "").trim();
   if (!CLIENT_ID_PATTERN.test(clientId)) throw new Error("WORKOS_CLIENT_ID is missing or malformed");
@@ -411,7 +419,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         // FIX-founder-admin-role: name the step and error type (never the message, email, code or token) so a failed
         // sign-in can be reported and matched to the server log.
         const safeName = /^[A-Za-z][A-Za-z0-9_]{0,59}$/.test(errorName) ? errorName : "Error";
-        res.status(502).send(`Authentication could not be completed (step ${stage}, ${safeName}). Please try again.${bootstrapDiagnostic}`);
+        // WorkOS's AuthenticationException carries a fixed reason (email_verification_required, sso_required, ...):
+        // a closed vocabulary word, never personal data, and the one fact needed to fix the sign-in path.
+        const authCode = authenticationCodeOf(error);
+        res.status(502).send(`Authentication could not be completed (step ${stage}, ${safeName}${authCode ? `: ${authCode}` : ""}). Please try again.${bootstrapDiagnostic}`);
       }
     });
     // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.

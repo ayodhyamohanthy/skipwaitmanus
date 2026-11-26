@@ -343,6 +343,22 @@ describe("canonical WorkOS callback session", () => {
     } finally { restore(); }
   });
 
+  // A WorkOS AuthenticationException names its reason; the page shows that fixed word, never personal data.
+  it("names the WorkOS authentication reason on the 502, and only a plain snake_case word", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      class AuthenticationException extends Error { code = "organization_selection_required"; rawData = { code: "organization_selection_required", user: { email: "founder@skipwait.me" } }; constructor() { super("Pick an org for founder@skipwait.me"); this.name = "AuthenticationException"; } }
+      authenticate.mockRejectedValueOnce(new AuthenticationException());
+      const callback = await signIn(app);
+      expect(callback.status).toBe(502);
+      expect(callback.text).toContain("(step authenticate, AuthenticationException: organization_selection_required)");
+      expect(callback.text).not.toContain("@");
+      class Odd extends Error { code = "Weird Code <script>"; constructor() { super("x"); this.name = "AuthenticationException"; } }
+      authenticate.mockRejectedValueOnce(new Odd());
+      expect((await signIn(app)).text).toContain("(step authenticate, AuthenticationException)");
+    } finally { restore(); }
+  });
+
   it("mints the session for the canonical account, not the provider openId", async () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
