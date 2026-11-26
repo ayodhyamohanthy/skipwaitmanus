@@ -8914,7 +8914,7 @@
     },
     {
       "id": "D-178.release",
-      "title": "Release D-178: allow-listed test seeker end to end on skipwait_qa (connect, propose, approve, one debit, decline, revoke, shortfall); production is the owner's word",
+      "title": "Release D-178: canonical D-393 demo sandbox on skipwait.me (connect, propose, approve, one debit, decline, revoke, shortfall); D-410 demo-only proof",
       "row": "D-178",
       "packet": "docs/plans/D-178-agent-portal-access.md",
       "tier": 1,
@@ -8935,7 +8935,7 @@
         "SKIPPY-redteam",
         "D-178.mcp-grant"
       ],
-      "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201). D-410 (owner, Nov 26): section 8 is proven on skipwait.me in the D-393 sandbox with the two demo accounts (allow-list = demo seeker); no second container."
+      "note": "Packet section 5 row 6 and section 8. D-410 authorizes proof on https://skipwait.me in the D-393 sandbox with exactly the demo seeker and demo referrer; existing allow-list = demo seeker, assistant switch off for every other account, one keyed debit from the demo seeker's free allowance across retries. No real person, employer or payment, second container, new spend or other production setting change. Require OAuth/MCP -> proposal -> /approve -> demo referrer /queue assistant label; decline, revoke mid-flight, shortfall; run link, exact web/API SHAs, keyed ledger rows and inspected 1280/390 captures; withdraw created requests. Acceptance UNVERIFIED and remaining work (D-407); general activation stays the owner's word. Dependencies and required CI still gate landing (D-370; no independent review)."
     },
     {
       "id": "D-179-ats-validation",
