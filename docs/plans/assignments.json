@@ -422,7 +422,7 @@
       "packet": "docs/plans/OPS-live-qa-journeys.md",
       "tier": 1,
       "lane": "live-qa-journeys",
-      "branch": "agent/queue/ops-live-qa-journeys-sandbox",
+      "branch": "agent/queue/ops-live-qa-journeys-acceptance-2431",
       "status": "todo",
       "syncedTo": "D-407",
       "dependsOn": [
@@ -435,11 +435,16 @@
         "scripts/live-qa-signed-in.mjs",
         "scripts/live-qa-journeys.mjs",
         "scripts/liveQaJourneys.test.ts",
+        "scripts/liveQaJourneyContracts.mjs",
+        "scripts/liveQaJourneyContracts.test.ts",
+        "scripts/liveQaJourneyBrowser.mjs",
+        "scripts/liveQaJourneyHarness.ts",
         "scripts/liveQaSignedIn.test.ts",
         "scripts/liveQaWorkflows.test.ts",
-        "docs/plans/OPS-live-qa-journeys.md"
+        "docs/plans/OPS-live-qa-journeys.md",
+        "docs/plans/assignments.json"
       ],
-      "note": "Owner-approved Nov 24 (D-389, D-393): live demo-account journeys prove the LAUNCH-live-qa gaps through sandbox requests only, never a payment or provider call. Reopened Nov 25 under D-373 (6): PR #1558 merged as f25eb09c7 with the pre-D-393 public walk-in routing and no dispatched journeys acceptance. Continue from current main on the fresh sandbox branch; preserve #1558's implementation and tests as history. Finish the packet's remaining work: remove public opportunity reads/writes, use a validated company/job link through the deployed demo sandbox, assert the current transition/ledger contracts with cleanup on failure, then record one successful workflow_dispatch journeys run and its exact release/captures. No navigation-only run substitutes. LAUNCH-live-qa remains dependent on this row and PR #1540 must not land before that evidence exists. Read every endpoint before writing a step; the two demo identities, workflow concurrency, masked secrets, no admin or real recipient, and all D-389/D-393 limits remain.",
+      "note": "Owner-approved Nov 24 (D-389, D-393). PR #1558 merged as f25eb09c7 with pre-D-393 public walk-in routing and no dispatched acceptance; that history and PR #1672's published helper-only state are retained. GPT-6.1 Sol · 42fc continues the sandbox repair on agent/queue/ops-live-qa-journeys-sandbox after official takeover ec3014d30 on Nov 26; the packet retains prior holder receipts. D-407 explicitly supersedes f8bf's unpublished-work blocker: continue from published history and leave other checkouts untouched. Under D-373 (6), this existing row stays todo on the fresh acceptance carrier after that script merge, preserving its FIFO position and dependencies so an implementation merge cannot prematurely release LAUNCH-live-qa. Normal picker claim is required on the fresh branch. Completion needs one successful workflow_dispatch live-qa.yml mode=journeys run proving demo-only sandbox routing, current keyed ledger and privacy/transition contracts, failure cleanup, tested web/API SHAs and inspected 1280/390 captures, with sanitized evidence recorded in the packet. Navigation-only runs and fixture tests do not substitute. PR #1540 must not land before that evidence exists. The two demo identities, shared workflow concurrency, masked secrets, no admin or real recipient, no payment/provider call and all D-389/D-393 limits remain. Checked through D-407: reviewer-password proof still uses only the existing protected workflow secrets; no authentication or sales-switch change. Implementation and live acceptance remain UNVERIFIED; this session dispatched no live journeys.",
       "epic": "D-212"
     },
     {
