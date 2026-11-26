@@ -8902,7 +8902,7 @@
       "lane": "d178-release",
       "branch": "agent/queue/d178-release",
       "status": "todo",
-      "syncedTo": "D-407",
+      "syncedTo": "D-410",
       "epic": "D-178",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
@@ -8916,7 +8916,7 @@
         "SKIPPY-redteam",
         "D-178.mcp-grant"
       ],
-      "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201)."
+      "note": "Packet section 5 row 6 and section 8. No real payment; Chargebee test site only (D-065). Turning the switch on in production waits for the owner (D-201). D-410 (owner, Nov 26): section 8 is proven on skipwait.me in the D-393 sandbox with the two demo accounts (allow-list = demo seeker); no second container."
     },
     {
       "id": "D-179-ats-validation",
