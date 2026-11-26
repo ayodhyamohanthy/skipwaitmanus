@@ -28,6 +28,6 @@ platform and raise bugs ... instead of users signing and never coming back".
   touches production settings.
 
 ## Status
-- QA-auto-issues: todo — registered by Claude Code · 530c, Nov 26 2026 (D-409).
+- QA-auto-issues: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/qa-auto-issues. `scripts/qa-file-bugs.mjs` + `scripts/qaFileBugs.test.ts` (10 cases, red first); `live-qa.yml` gains the 6-hour schedule, job-only `issues: write` and the filing step; 20 workflow-scanning suites (481 tests) pass. Live proof is the first scheduled run after landing.
 - PICKER-bug-issues: todo — registered by Claude Code · 530c, Nov 26 2026 (D-409).
 - QA-ai-explorer: todo — registered by Claude Code · 530c, Nov 26 2026 (D-409); scheduled task created in session.
