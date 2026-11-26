@@ -1,6 +1,6 @@
 # PICKER-blocked-wait-fallthrough
 
-Tier 2 · lane `picker-blocked-wait` · branch `agent/queue/picker-blocked-wait-fallthrough` · epic D-212
+Tier 2 · lane `picker-blocked-wait` · branch `agent/queue/picker-blocked-wait-fallthrough-build-902e` · epic D-212
 
 ## Why
 
@@ -42,9 +42,9 @@ Run the new focused suite, related picker suites (`scripts/nextTask.test.ts`, `s
 
 ## Status
 
-PICKER-blocked-wait-fallthrough: in progress — GPT-6.1 Sol · 3cfd — 2026-11-25 — branch agent/queue/picker-blocked-wait-fallthrough
+PICKER-blocked-wait-fallthrough: requeued for implementation — PR #1663 merged as `bf5d91a46` after adding packet status notes only; source fix and tests remain owed. Fresh implementation branch `agent/queue/picker-blocked-wait-fallthrough-build-902e`.
 
-Preflight receipt: main `f425721febbf76479722b63c9574779dcd33fa40`; claim `fbd269f42f33c0fbbf8f4b8b1d60ebf76d09e9fa`. Read `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `AGENTS.md`, this packet, and relevant `docs/DECISIONS.md` entries through D-405; D-370 retains required CI with no review or model gate. Previous repo-only outcomes: PR #1654 reconciled completed Group registration; PR #1661 registered this fix. This is the first task-branch status update; picker implementation and focused test proof remain owed.
+Preflight receipt: current main `bf5d91a467ee12daa92004f4593fed895db3b1ee`; session `GPT-6.1 Sol · 902e`. Read `AGENTS.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, this packet, and decisions D-400–D-403, D-405 and D-406. D-406 affects auth tasks only; D-370 keeps required CI without a review/model gate. Previous repo-only outcome: PR #1663 merged the prior branch with packet status notes only; PR #1661 registered this implementation task. Both the official `--claim` and read-only `--as` reproduced WAIT at blocked `D-048-K-admin-money` before `aheadPick()`. The implementation and focused regression proof remain owed.
 
 Registration history (PR #1661):
 
