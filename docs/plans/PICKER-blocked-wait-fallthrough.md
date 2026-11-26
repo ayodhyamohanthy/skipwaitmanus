@@ -1,6 +1,6 @@
 # PICKER-blocked-wait-fallthrough
 
-Tier 2 · lane `picker-blocked-wait` · branch `agent/queue/picker-blocked-wait-fallthrough` · epic D-212
+Tier 2 · lane `picker-blocked-wait` · branch `agent/queue/picker-blocked-wait-fallthrough-build-902e` · epic D-212
 
 ## Why
 
@@ -41,5 +41,11 @@ No `nextTaskText.mjs` changes unless a focused test proves the existing output i
 Run the new focused suite, related picker suites (`scripts/nextTask.test.ts`, `scripts/nextTaskParallelEligibility.test.ts`, `scripts/nextTaskClaimTaskCli.test.ts`, and `scripts/nextTaskLandingWaitFallthrough.test.ts`), `pnpm check`, assignment validation, and `git diff --check`. Required CI on the exact PR head is the landing gate. No production verification or deployment is applicable to the picker-only change.
 
 ## Status
+
+PICKER-blocked-wait-fallthrough: requeued for implementation — PR #1663 merged as `bf5d91a46` after adding packet status notes only; source fix and tests remain owed. Fresh implementation branch `agent/queue/picker-blocked-wait-fallthrough-build-902e`.
+
+Preflight receipt: current main `bf5d91a467ee12daa92004f4593fed895db3b1ee`; session `GPT-6.1 Sol · 902e`. Read `AGENTS.md`, `docs/BRIEF.md`, `docs/PRD.md`, `docs/BUILD_CONTINUITY.md`, `COLLABORATION.md`, this packet, and decisions D-400–D-403, D-405 and D-406. D-406 affects auth tasks only; D-370 keeps required CI without a review/model gate. Previous repo-only outcome: PR #1663 merged the prior branch with packet status notes only; PR #1661 registered this implementation task. Both the official `--claim` and read-only `--as` reproduced WAIT at blocked `D-048-K-admin-money` before `aheadPick()`. The implementation and focused regression proof remain owed.
+
+Registration history (PR #1661):
 
 Registered as a D-399 follow-up after a real current-main `--claim` and `--as` reproduction. Registration base: `8951b1518faa6089a86c29a2eaae78bb93d47951`; decisions read through D-405. No picker source or test code has been changed in the registration PR. The normal picker claim must assign the implementation row after this registration lands.
