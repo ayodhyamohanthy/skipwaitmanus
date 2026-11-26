@@ -79,6 +79,6 @@ REPORT
 - **UNVERIFIED / pending:** saved-task settings and duplicate check in the correct cloud environment; first observed completed run with durable report, artifact/capture review, and issue links or zero-finding evidence.
 
 ## Status
-- QA-auto-issues: todo — registered by Claude Code · 530c, Nov 26 2026 (D-409).
+- QA-auto-issues: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/qa-auto-issues. `scripts/qa-file-bugs.mjs` + `scripts/qaFileBugs.test.ts` (10 cases, red first); `live-qa.yml` gains the 6-hour schedule, job-only `issues: write` and the filing step; 20 workflow-scanning suites (481 tests) pass. Live proof is the first scheduled run after landing.
 - PICKER-bug-issues: todo — registered by Claude Code · 530c, Nov 26 2026 (D-409).
 - QA-ai-explorer: in progress — GPT-6.1 Sol · 6445 — 2026-11-26 — branch `agent/queue/qa-ai-explorer`; prompt and setup checklist documented, schedule readback and first completed run UNVERIFIED and pending (D-407).
