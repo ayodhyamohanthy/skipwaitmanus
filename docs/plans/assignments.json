@@ -9662,9 +9662,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-contracts",
-      "branch": "agent/queue/group-contracts",
+      "branch": "agent/queue/group-contracts-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-recipients"
       ],
@@ -9680,7 +9680,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts."
+      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts. D-200/D-373(6)/D-407 carrier reconciliation: PR #1629 merged preparation documentation only. Section 6.1 shared schemas, transitions, disabled flag/config contracts and exact DDL blueprint remain undelivered. Fresh implementation carrier preserves prior history and all original acceptance; no implementation acceptance claimed."
     },
     {
       "id": "GROUP-provider",
@@ -9711,9 +9711,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-migration",
-      "branch": "agent/queue/group-migration",
+      "branch": "agent/queue/group-migration-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-contracts"
       ],
@@ -9724,7 +9724,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates."
+      "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates. D-200/D-373(6)/D-407 carrier reconciliation: PR #1630 merged preparation documentation only. SQL, real-MySQL apply-twice/parity proof and production checksum acceptance remain unverified. Fresh implementation carrier preserves prior history; exact upstream DDL precedes SQL and production migration acceptance precedes GROUP-schema landing."
     },
     {
       "id": "GROUP-schema",
