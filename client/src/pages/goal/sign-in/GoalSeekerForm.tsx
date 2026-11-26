@@ -66,7 +66,7 @@ export function GoalSeekerForm({ returnTo, emailLinkEnabled = EMAIL_SIGN_IN_LINK
   if (method === "email") {
     return (
       <div className="grid gap-3">
-        <GoalSeekerEmailCode returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} onUsePassword={() => setMethod("password")} />
+        <GoalSeekerEmailCode returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} passkeysEnabled={passkeys.enabled} onUsePassword={() => setMethod("password")} />
         <SeekerAlternatives returnTo={returnTo} enabled={passkeys.enabled} />
       </div>
     );
