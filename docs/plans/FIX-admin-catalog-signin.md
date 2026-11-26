@@ -13,4 +13,4 @@ permission or catalog behaviour change. Test red first in `client/src/pages/goal
 
 ## Status
 
-- FIX-admin-catalog-signin: todo — registered by Claude Code · 530c, Nov 26 2026 (D-408 (3)).
+- FIX-admin-catalog-signin: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/fix-admin-catalog-signin. Red first (3 of 4 cases failed on main); fix in GoalAdminCatalogSync.tsx; 238 admin-money and goal-UI tests pass, tsc clean, token audit OK.
