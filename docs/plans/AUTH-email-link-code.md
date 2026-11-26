@@ -22,8 +22,9 @@ open occasionally. Security is unchanged: whoever reads the inbox can already re
    autofill). Body: the code, then a one-click link, then "If you did not request it, ignore this email". Same
    code store as today (`server/workEmailOtp.ts`): HMAC-hashed code, 10 minutes, single use, attempt cap,
    lockout, per-address, per-IP and global send limits. No new table, column or migration.
-2. **Link safety.** Link: `https://skipwait.me/sign-in#email-link=<base64url JSON {e, c, p}>` where `p` is
-   `s` (seeker) or `r` (referrer). The fragment never reaches the server, logs or a Referer header. `/sign-in`
+2. **Link safety.** Link: `https://skipwait.me/sign-in#email-link&e=<email>&c=<code>&p=<plane>`, with values
+   URL-encoded by `URLSearchParams`; `p` is `s` (seeker) or `r` (referrer). The fragment never reaches the server,
+   logs or a Referer header. `/sign-in`
    reads it, removes it from the address bar at once (`history.replaceState`), and shows one screen: "Sign in as
    <email>" with one black **Sign in** button. Only that click posts the code, so mail scanners that open links
    spend nothing. Expired, used or malformed: a plain message and "Send a new link" back to the form.
@@ -54,4 +55,6 @@ open occasionally. Security is unchanged: whoever reads the inbox can already re
 ## Status
 
 - AUTH-email-link-code: in progress — Claude Code · 530c — 2026-11-25 — branch agent/queue/auth-email-link-code. Built behind `EMAIL_SIGN_IN_LINK_ENABLED = false`: shared link helper, sign-in email with link (code first in the subject), seeker send/verify routes with the D-081 work-email refusal, /sign-in link confirm screen, seeker email-first form with password one tap away. Also touches `server/workEmailOtp.test.ts` (one send-argument pin now includes `seeker: true`).
-- AUTH-email-link-release: in progress — GPT-6.1 Sol · 3553 — 2026-11-26 — branch agent/queue/auth-email-link-release. Switch and release-on test enabled; live inbox acceptance (send, link, code) and 1280/390 captures remain pending.
+- AUTH-email-link-release: in progress — GPT-6.1 Sol · 3553 — 2026-11-26 — branch agent/queue/auth-email-link-release. Switch and release-on test enabled; live inbox acceptance (send, link, code) and exact-release 1280/390 captures remain pending.
+  - Bounded integration repair: the email-first form again mounts the existing native passkey autofill with `username webauthn` only when the existing server availability enables it. The original saved-passkey assertion is preserved; an added enabled/disabled regression also pins the autofill component and referrer exclusion. Password-specific tests select the visible password fallback; the retired-code server fixture explicitly selects the switch-off contract. No passkey implementation, sign-in method, route, schema or configuration change.
+  - Local evidence: original passkey pin and new enabled regression reproduced red before repair; after repair, 12 focused files / 164 tests, typecheck, build, design-token audit, migration lint and deploy-trigger check pass. Required GitHub CI and real-inbox/exact-release acceptance remain separate and unresolved; this row is not done.
