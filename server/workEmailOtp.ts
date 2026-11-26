@@ -226,7 +226,7 @@ function signInLinkOrigin(): string {
 }
 
 /**
- * D-406: the sign-in email. Switch off: exactly today's code email. Switch on: the same subject (code first, for
+ * D-406: the sign-in email. Switch off: exactly today's code email. Switch on: the sign-in subject (code first, for
  * lock-screen preview and phone autofill) plus a one-click link whose fragment holds the email and code; /sign-in
  * spends the code only when the person presses Sign in. The D-245 step-up keeps calling otpEmailMessage, no link.
  */
@@ -235,7 +235,7 @@ export function signInEmailMessage(input: WorkEmailOtpDeliveryInput, options: { 
   if (!(options.enabled ?? EMAIL_SIGN_IN_LINK_ENABLED)) return base;
   const link = emailSignInLink(options.origin ?? signInLinkOrigin(), { email: input.to, code: input.code, plane: input.seeker ? "s" : "r" });
   return {
-    subject: base.subject,
+    subject: `${input.code} is your skipwait.me sign-in code`,
     text: `Your skipwait.me sign-in code is ${input.code}. It expires in 10 minutes and works once.\n\nOr sign in with one click:\n${link}\n\nIf you did not request it, ignore this email - nothing changes.`,
     html: `<p>Your skipwait.me sign-in code is <strong style="font-size:20px;letter-spacing:3px">${input.code}</strong>.</p>`
       + `<p>Or sign in with one click as ${escapeHtml(input.to)}:</p>`
