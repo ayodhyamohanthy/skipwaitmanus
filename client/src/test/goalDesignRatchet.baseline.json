@@ -280,12 +280,6 @@
       "decision": "D-332"
     },
     {
-      "file": "client/src/pages/Skippy.tsx",
-      "kitImport": false,
-      "surfaceSwitch": true,
-      "decision": "D-332"
-    },
-    {
       "file": "client/src/pages/TalentDiscovery.tsx",
       "kitImport": false,
       "surfaceSwitch": true,
