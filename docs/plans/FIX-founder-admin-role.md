@@ -30,4 +30,4 @@ with the stage and error name and no email or message.
 
 ## Status
 
-- FIX-founder-admin-role: todo — registered by Claude Code · 530c, Nov 26 2026.
+- FIX-founder-admin-role: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/fix-founder-admin-role. Red first: `server/founderAdminRole.test.ts` (2 of 5 failed on main) and the 502 step test in `server/_core/workosAuth.test.ts`; 9 sign-in suites (122 tests) and `tsc` pass.
