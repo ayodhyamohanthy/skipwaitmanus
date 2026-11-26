@@ -6885,7 +6885,7 @@
       "lane": "design-core",
       "branch": "agent/queue/d048-k-kit",
       "status": "owner",
-      "syncedTo": "D-405",
+      "syncedTo": "D-409",
       "dependsOn": [
         "D-048-K-home",
         "D-048-K-sign-in",
