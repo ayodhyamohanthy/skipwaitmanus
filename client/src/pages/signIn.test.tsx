@@ -48,9 +48,10 @@ describe("SignIn", () => {
     }
   });
 
-  // D-049 (owner, Oct 18 2026): the seeker email method is a password; the password field is for seekers only.
-  it("the password field is for seekers only (D-049)", () => {
+  // D-406 retains D-049's password fallback for seekers only.
+  it("the password fallback is for seekers only (D-049, D-406)", () => {
     render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(screen.getByLabelText("Password")).toBeTruthy();
     expect(document.querySelector("input[type=password]")).toBeTruthy();
     expect(screen.queryByLabelText("Six-digit code")).toBeNull();
@@ -119,6 +120,7 @@ describe("SignIn", () => {
     vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?reason=use_password_sign_in" });
     render(<SignIn />);
     expect(screen.getByRole("status").textContent).toBe(USE_PASSWORD_SIGN_IN_COPY);
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(screen.getByLabelText("Password")).toBeTruthy();
     cleanup();
     vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=use_password_sign_in" });
