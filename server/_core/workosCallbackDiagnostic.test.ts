@@ -4,17 +4,17 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { authenticationCodeOf } from "./workosAuth";
+import { workosRefusalReasonOf } from "./workosAuth";
 
 const authError = (fields: Record<string, unknown>) => Object.assign(Object.assign(new Error("Pick an org for founder@skipwait.me"), { name: "AuthenticationException" }), fields);
 
-describe("authenticationCodeOf", () => {
+describe("workosRefusalReasonOf", () => {
   it.each(["email_verification_required", "organization_selection_required", "mfa_enrollment", "radar_email_challenge"])("returns %s from the exception code", code => {
-    expect(authenticationCodeOf(authError({ code }))).toBe(code);
+    expect(workosRefusalReasonOf(authError({ code }))).toBe(code);
   });
 
   it("reads sso_required from rawData.error, where WorkOS puts it", () => {
-    expect(authenticationCodeOf(authError({ rawData: { error: "sso_required", error_description: "x@y.com must use SSO" } }))).toBe("sso_required");
+    expect(workosRefusalReasonOf(authError({ rawData: { error: "sso_required", error_description: "x@y.com must use SSO" } }))).toBe("sso_required");
   });
 
   it.each([
@@ -25,7 +25,7 @@ describe("authenticationCodeOf", () => {
     ["no code at all", authError({})],
     ["a value that is not an Error", { name: "AuthenticationException", code: "sso_required" }],
   ])("returns nothing for %s", (_name, error) => {
-    expect(authenticationCodeOf(error)).toBeNull();
+    expect(workosRefusalReasonOf(error)).toBeNull();
   });
 });
 
