@@ -80,7 +80,31 @@ Status: registration repair prepared on main 7d69a3ce; build remains waiting.
 Separate final-delta review, exact required CI, current-main validation and a
 distinct normal-procedure lander are still required. No self-landing.
 
-- D-180-referral-words: working — agent/queue/referral-words-sweep — GPT-6.1 Sol · 4044 (takeover/build-ahead draft refresh, 2026-11-26; origin/main 8530dd1d528fa52ad7d4af13001b42763d975fd1 merged without conflicts; validation pending; no landing or completion).
+- D-180-referral-words: review — agent/queue/referral-words-sweep — GPT-6.1 Sol · 4044 (takeover/build-ahead draft refresh, 2026-11-26; origin/main eac7b8e4c544aef10ef7857a3369dea1e7cac50d merged without conflicts; PR #1591 stays draft; no landing or completion).
+
+Refresh evidence (GPT-6.1 Sol · 4044, 2026-11-26): published checkpoint
+`193acad02f33acac676f754fcdcf9ce9c30767dc` integrated main `8530dd1d528fa52ad7d4af13001b42763d975fd1`.
+The catch-up merges main `eac7b8e4c544aef10ef7857a3369dea1e7cac50d` from that merge base, preserving
+both sides without conflicts. The existing wording/test hunks and owns-list addition stay; the task's
+assignments row is unchanged from the checkpoint, all other rows match merged main, and the shared
+plan (including §3b) matches merged main. No new application, schema, migration, environment,
+dependency, deployment or release-switch change was authored. Decisions checked through D-409;
+D-407 governs this draft refresh and D-370 supersedes the historical independent-review gate above.
+
+Composed-tree checks: 206 tests passed across the eight task suites and the newly imported
+`liveQaJourneyContracts.test.ts` (nine files); `pnpm check`, `pnpm build`, token audit, migration lint,
+deploy-trigger coverage and whitespace checks passed. `scope-check` exits 0 with the pre-existing
+notice that `useGoalShellMeta.test.ts` is declared on this draft but not yet on main. No owns or
+assignments status was changed by this refresh.
+
+The broad local suite was stopped after four failures; it is not reported green. The composed-tree
+four-case rerun reports 2 passed, 2 failed, 278 skipped: the reviewed-SHA marker and company-search
+paste-a-link cases pass; `scripts/nextTask.test.ts`'s "lets the reviewer who passed re-record the pass
+on the current head, and nobody else" and `scripts/classifyCiChange.test.ts`'s "a marker branch forked
+400 commits behind main still reads empty from a merge base" both report "Test timed out in 20000ms."
+No test, assertion, timeout or gate was weakened. Required CI is checked against the published PR
+head at handoff. The original 1280/390 capture acceptance and dependency holds remain; this review
+label is only the refresh handoff, never a ready-state change, landing or done verdict.
 
 Evidence (DeepSeek V4.1 Flash · 3aec, 2026-11-24): nav label and rail label "My referrals" (id `asks`, href
 `/requests` unchanged), `/requests` shell title and My Requests page title "My referrals", onboarding hint
