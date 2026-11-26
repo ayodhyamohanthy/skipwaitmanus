@@ -92,6 +92,7 @@ describe("Trust cluster", () => {
   it("offers intent choice on the goal design, never a password form for referrers", () => {
     render(<SignIn />);
     expect(screen.getByRole("heading", { name: "Sign in to find or give a referral." })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(screen.getByLabelText(/Password/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Forgot password?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
