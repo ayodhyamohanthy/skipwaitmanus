@@ -3,6 +3,8 @@
 > **Read [`docs/BRIEF.md`](docs/BRIEF.md) first** — the one-page brief every AI model starts from (D-073). The full rules follow; they win any conflict with the brief.
 >
 > **Owner says `build`, `resume`, `continue` or `next`?** Continue current work, never restart an old plan. First follow [the current-instruction preflight](./docs/BUILD_CONTINUITY.md) (D-225): fetch current main, read latest instructions and decisions plus the previous repo-only outcome, check goal alignment and ownership, then use `node scripts/next-task.mjs --claim "<your model name>"`. Read its assignment against those decisions before implementation; stale or conflicting context holds only the affected task. Claude handles intelligence/reasoning; other tools develop. Keep the picker's exact session-tagged name for later flags. The picker is not proof that the preflight was read.
+>
+> **Super administrator (D-400, FOUNDER-LOCKED).** `ayodhya@skipwait.me` (founder) is the permanent super administrator, with superior access over every administrator; `admin@skipwait.me` is the delegable administrator. No administrator, route, script or job may remove, suspend or demote the super administrator. The founder address lives only in `server/_core/adminIdentity.ts` and is never configurable. Rule: AGENTS.md "Super administrator rule".
 
 Kit version: v4 · 7 Oct 2026 · skipwait.me
 **Kit v4 is no longer binding (D-048, Oct 18 2026).** `docs/DECISIONS.md` is the single source of truth for owner decisions and `AGENTS.md` holds the working rules; this kit is a reference for SkipWait's web + mobile (PWA) design, logic, states and rules.

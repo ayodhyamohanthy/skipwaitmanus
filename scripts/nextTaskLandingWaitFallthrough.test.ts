@@ -93,14 +93,19 @@ describe("PICKER-landing-wait-fallthrough", () => {
       .toMatchObject({ kind: "wait", landing: true, holder: HOLDER, task: "Z", reason: expect.stringContaining(HOLDER) });
   });
 
-  it("D-314/D-315: a same-files task is built naming the overlap, a dependent only ahead, a same-lane task stays held", () => {
+  it("D-314/D-315/D-399: a same-files task is built naming the overlap, a dependent only ahead, a same-lane task too", () => {
     const opts = { branches: [built("L"), slotHeld()] as [string, Branch][], prs: [pr("L")] as [string, string][], prCi: [greenPr("L")] as [string, string][] };
     const F = task("F", { lane: "f", owns: ["scripts/l.mjs"] });
     const D = task("D", { dependsOn: ["L"] });
     const S = task("S", { lane: "l", owns: [] });
-    expect(pick([task("L"), D, S, F], opts)).toMatchObject({ kind: "build", task: { id: "F" }, overlaps: ["L"] });
-    expect(pick([task("L"), D, S], opts)).toMatchObject({ kind: "build", task: { id: "D" }, ahead: ["L"] });
-    expect(pick([task("L"), S], opts)).toMatchObject({ kind: "wait", landing: true, holder: HOLDER });
+    // D-399: the same-lane S is free now and comes first (oldest first); without it F is built naming the overlap.
+    expect(pick([task("L"), D, S, F], opts)).toMatchObject({ kind: "build", task: { id: "S" } });
+    expect(pick([task("L"), D, F], opts)).toMatchObject({ kind: "build", task: { id: "F" }, overlaps: ["L"] });
+    // Free work comes before work ahead of a dependency: S first, and D is built ahead only when nothing else is free.
+    expect(pick([task("L"), D, S], opts)).toMatchObject({ kind: "build", task: { id: "S" } });
+    expect(pick([task("L"), D], opts)).toMatchObject({ kind: "build", task: { id: "D" }, ahead: ["L"] });
+    // D-399: a busy lane no longer holds a build; the landing still waits for the slot and is never handed.
+    expect(pick([task("L"), S], opts)).toMatchObject({ kind: "build", task: { id: "S" } });
   });
 
   it("D-315: work with no declared owns is handed out too; it names no overlap", () => {

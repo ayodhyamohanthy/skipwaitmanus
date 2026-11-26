@@ -53,6 +53,17 @@ describe("admin users directory", () => {
     expect((await request(app).post("/api/admin/users/9/suspend").send({ suspended: true })).status).toBe(403);
   });
 
+  it("D-400: answers 403 when the target is the founder, audits the denied attempt and records no suspension", async () => {
+    const activities: unknown[] = [];
+    const app = buildApp(baseDeps({ recordActivity: async (entry: unknown) => { activities.push(entry); }, setUserSuspended: async () => { const error = new Error("The founder's account cannot be suspended"); error.name = "FounderProtectedError"; throw error; } }));
+    const response = await request(app).post("/api/admin/users/2/suspend").send({ suspended: true });
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe("The founder's account cannot be suspended");
+    // The refused attempt is audited as denied; no suspension is recorded.
+    expect(activities).toEqual([expect.objectContaining({ action: "workflow.request_completed", outcome: "denied", resourceId: "/api/admin/users/:id/suspend" })]);
+    expect(activities).not.toContainEqual(expect.objectContaining({ action: "admin.user_suspended" }));
+  });
+
   it("suspends a user, records admin.user_suspended, and returns the updated user", async () => {
     const seen: Array<[number, boolean]> = [];
     const activities: Array<{ action: string; resourceId?: string | number; metadata?: Record<string, unknown> }> = [];

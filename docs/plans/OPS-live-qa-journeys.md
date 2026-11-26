@@ -1,6 +1,6 @@
 # OPS-live-qa-journeys: signed-in live QA proves the money, privacy and transition rows with the two demo accounts (D-389)
 
-Tier 1 · lane `live-qa-journeys` · branch `agent/queue/ops-live-qa-journeys` · epic D-212 · depends on `OPS-live-qa-hardening`, `QA-sandbox-requests` (D-393)
+Tier 1 · lane `live-qa-journeys` · branch `agent/queue/ops-live-qa-journeys-sandbox` · epic D-212 · depends on `OPS-live-qa-hardening`, `QA-sandbox-requests` (D-393)
 
 ## Why
 
@@ -57,11 +57,45 @@ contract (`journeys` only on dispatch, concurrency group).
 Focused tests and `pnpm check` green; required CI green. Then one dispatched `journeys` run, linked here,
 and `LAUNCH-live-qa` updates its BUGFREE_GATE rows with that run's evidence.
 
+## Remaining work after PR #1558 (November 25, D-373 (6))
+
+[PR #1558](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1558) merged as
+`f25eb09c7cc66a9dec83bae6c0b1d614f77d2173`, but its own description and the conflict record below say its
+public walk-in routing predates D-393 and the dispatched acceptance has not run. On checked main `5a076a29a`,
+`runJourneys` still reads `/api/opportunities/mine`, publishes a walk-in with `POST /api/opportunities`, and
+routes creations by `opportunityId` (`scripts/live-qa-journeys.mjs:188-209`). That is not sandbox-only QA.
+Do not dispatch that version as proof of this packet.
+
+The merged work is retained. D-373 (6) restores this existing row to the fresh branch above, with the same
+tier, lane, dependencies, scope and FIFO position, so the picker no longer mistakes the implementation merge
+for completed acceptance. The normally claimed builder finishes these existing D-389/D-393 requirements:
+
+1. Route the demo seeker's requests through the deployed sandbox using a validated directory company and job
+   link. Remove the public opportunity lookup, publish and close paths. Keep the identity checks before every
+   mutation, and add a fixture assertion that no `/api/opportunities` write is possible.
+2. Read the actual request, claim, accept, decline, withdrawal, document and ledger contracts before adapting
+   the steps. Preserve the privacy and cross-user denials. Check each response status before taking its ids;
+   do not infer success from an HTTP 200 alone or replace runtime responses with fixture values.
+3. Assert first-visibility spend, pre-pickup return and the retained charge on an employee decline through the
+   keyed rows. D-393's unlimited sandbox may top up its free allowance, so explain any such grant from the
+   ledger instead of assuming the aggregate wallet must decrease by exactly one. Never spend a purchased
+   referral, buy allowance or alter real-account rules to make the run pass.
+4. Withdraw or close only the requests the run created, including on a failed intermediate step; report any
+   cleanup failure. Preserve the manual-only trigger, shared concurrency group, redaction and two demo accounts.
+5. After protected landing and exact-release checks, dispatch `live-qa.yml` with `mode=journeys`. Record the
+   successful run, tested web/API SHAs, sanitized step/ledger results, cleanup and inspected 1280/390 captures
+   here. A navigation-only run or green fixture suite leaves this acceptance **UNVERIFIED**. If a live step
+   fails, report it and preserve the evidence before considering another attempt.
+
+`LAUNCH-live-qa` keeps this row as its dependency. Its PR #1540 stays unlanded until the qualifying run is
+recorded, as D-390 already requires. This reconciliation authorizes no production setting, new account,
+payment, public post, price or login change.
+
 ## Status
 
-- OPS-live-qa-journeys: in progress — DeepSeek V4.1 Flash · e9e1 — 2026-11-24 — branch agent/queue/ops-live-qa-journeys
+- OPS-live-qa-journeys: remaining implementation and live acceptance queued — GPT-6.1 Sol · 32d8 — 2026-11-25 — fresh branch `agent/queue/ops-live-qa-journeys-sandbox`, normal picker claim required. PR #1558's implementation is retained; no qualifying sandbox journeys run is linked. Reconciled under D-373 (6), D-389, D-390 and D-393 against main `5a076a29a`.
 
-### Build notes (DeepSeek V4.1 Flash · e9e1, 2026-11-24)
+### Historical build notes (DeepSeek V4.1 Flash · e9e1, 2026-11-24; routing superseded by D-393)
 
 - `mode` input on `.github/workflows/live-qa.yml`: `navigate` (default) or `journeys`. The journeys step runs only on
   `workflow_dispatch`, shares the `live-qa` concurrency group, and the passwords are masked before either script.
