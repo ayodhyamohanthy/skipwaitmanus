@@ -38,6 +38,8 @@ catch (error) { if (error.code !== "ERR_MODULE_NOT_FOUND") throw error; }
 // D-200 (owner, Oct 24): no step waits for one model or session; Claude Code sessions build too.
 
 export const IDLE_MS = 2 * 60 * 60 * 1000;
+/** D-407 (4): a built-ahead draft at least this many commits behind main is handed out to be kept current. */
+export const REFRESH_BEHIND = 20;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
 export const RECLAIM_MS = 90 * 60 * 1000;
 export const STATUSES = ["todo", "in-review", "done", "architect", "owner"];
@@ -966,7 +968,7 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
+function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
   // PICKER-claim-task (D-353 (2)): `--task <id>` restricts the pick to that one task; anything it cannot be handed is refused.
   const target = only ? tasks.find(t => t.id === only) ?? null : null;
   if (only && !target) return { kind: "ineligible", task: null, id: only, reason: `no task ${only} in docs/plans/assignments.json` };
@@ -1271,6 +1273,20 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
         continue;
       }
       return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", parked: why };
+    }
+    // D-407 (4) (owner, Nov 26: no WAIT while tasks are pending): with nothing left to build, most unfinished rows are
+    // already built ahead as drafts, so keep a quiet one current, in queue order: merge main and make its required CI
+    // green on its own branch. Only rows the stages above withhold qualify (a dependency not done, an owner row or a
+    // standing block); nothing lands from here and no block, owner call or out-of-sync row (D-202) is touched.
+    const behindOf = v => { const n = prBehind.get(v.work); return Number.isSafeInteger(n) && n >= 0 ? n : null; };
+    const withheld = v => unmetOf(v).length > 0 || v.task.status === "owner" || v.blockWaitingForEvidence;
+    for (const v of view) {
+      if ((only && v.task.id !== only) || v.done || !v.pr || !v.info || !withheld(v) || avoid.has(v.task.id) || staleOf(v) || !quiet(workAt(v))) continue;
+      const behind = behindOf(v);
+      const red = v.ci === "red";
+      if (!red && !(behind !== null && behind >= REFRESH_BEHIND)) continue;
+      const refresh = red ? `its draft's required CI is red${behind ? ` and it is ${behind} commits behind main` : ""}` : `its draft is ${behind} commits behind main`;
+      return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), refresh };
     }
     return null;
   };

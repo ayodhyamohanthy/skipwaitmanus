@@ -8,7 +8,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 
 ## Rules you must not break
 - **Frozen to Nov 17 (D-059; P0s, new data or the owner's newer word only, e.g. D-132):** D-004, D-005, D-006, D-010, D-012(3), D-019, D-023, D-026, D-030 with D-049/D-057, D-031, D-039, D-041, D-042, D-044, D-055.
-- **Login (D-030, D-049, D-057).** Seekers: Google, Microsoft, GitHub, LinkedIn, Slack, personal email + password (no code; sign-up emails link to set password, D-078), on skipwait.me, no authkit.app. Referrers: work-email code only on every visit/surface; never password/social (D-081); use `referrerSignInHref()` (`client/src/lib/referrerSignIn.ts`), never `SignInButton`/`openSignIn`. Seeker passkeys unbuilt (D-172/D-209); no referrer passkey, no Apple (D-333). Pinned by `client/src/pages/loginRule.test.tsx` and `signIn.test.tsx`.
+- **Login (D-030, D-049, D-057, D-406).** Seekers: email link+code (D-406, switch off until released), Google, Microsoft, GitHub, LinkedIn, Slack, email + password; skipwait.me only. Referrers: work-email code (+link, D-406) only on every visit/surface; never password/social (D-081); use `referrerSignInHref()` (`client/src/lib/referrerSignIn.ts`), never `SignInButton`/`openSignIn`. Passkeys: seekers; referrers on the work-email account only (D-408); no Apple (D-333). Pinned by `client/src/pages/loginRule.test.tsx` and `signIn.test.tsx`.
 - **Identity.** One canonical person plus verified login aliases: match the exact alias first, never link or merge on an unverified email, never combine two people's credits, asks or referrals; a suspension or sign-out covers every alias.
 - **Money.**
   - Never choose an option that spends the owner's money (D-031). Referrers are never paid; basic referring is free (D-055). Referrer priority plans (D-219 (7)) charge nothing until their routing is designed and tested.
@@ -48,4 +48,6 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 
 ## Group Plan (Oct 31)
 
-Group bulk plans/referrals via candidate emails: 10% institution discount, verified-payment activation and emails. On-behalf consent, discount interaction and all holds remain: [packet](plans/GROUP-bulk-oct31.md). Not built or live.
+Group Plan: bulk referrals, later single seats, institution-only 10%, verified-payment activation/emails.
+[Slices](plans/GROUP-plan-split.md) preserve candidate approval; commercial terms await the owner. Build disabled;
+registration is not shipment.
