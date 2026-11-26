@@ -515,6 +515,27 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-founder-admin-role",
+      "title": "The founder (and the administrator seat) is an administrator on every verified sign-in, not only when the account was first created, and a failed WorkOS callback names its stage (D-400; owner report Nov 26)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-founder-admin-role.md",
+      "tier": 1,
+      "lane": "auth-admin-role",
+      "branch": "agent/queue/fix-founder-admin-role",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "server/db.ts",
+        "server/founderAdminRole.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosCallbackDiagnostic.test.ts",
+        "docs/plans/FIX-founder-admin-role.md"
+      ],
+      "note": "Owner report Nov 26: /admin/catalog-sync refused and Google sign-in showed 'Authentication could not be completed' (502). resolveLoginIdentity sets the role only on account creation, so a founder account created before D-400 stays 'user'. Promote-only; never demotes; provider-verified email only.",
+      "epic": "D-212"
+    },
+    {
       "id": "DEVICE-SIGNIN-seeker-release",
       "title": "Release seeker passkey/biometric sign-in after a real phone and laptop check: PASSKEY_SIGNIN_ENABLED true, captures at 1280 and 390 (D-408 (1))",
       "row": "D-172",
@@ -559,6 +580,68 @@
       ],
       "note": "Owner D-408, superseding D-333 (a). Referrer surfaces never offer personal email, social or password.",
       "epic": "D-172"
+    },
+    {
+      "id": "QA-auto-issues",
+      "title": "Live QA runs every 6 hours and files one deduplicated bug issue per failing route or step, closing it when a later run passes (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 2,
+      "lane": "qa-auto-issues",
+      "branch": "agent/queue/qa-auto-issues",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/live-qa.yml",
+        "scripts/qa-file-bugs.mjs",
+        "scripts/qaFileBugs.test.ts",
+        "scripts/liveQaWorkflows.test.ts",
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-bug-issues",
+      "title": "The picker hands open automated bug issues to agents as fix work ahead of new features (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 2,
+      "lane": "picker-bug-issues",
+      "branch": "agent/queue/picker-bug-issues",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [
+        "QA-auto-issues"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/queue-gate.mjs",
+        "scripts/nextTaskBugIssues.test.ts",
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-ai-explorer",
+      "title": "A daily AI exploratory tester walks skipwait.me like a seeker and referrer and files UX and functional bugs (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 3,
+      "lane": "qa-ai-explorer",
+      "branch": "agent/queue/qa-ai-explorer",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
     },
     {
       "id": "AUTH-workos-refresh-scope",
