@@ -123,7 +123,7 @@ describe("work email OTP delivery", () => {
     const sendEmail = vi.fn(async () => ({ sent: true, reason: "sent" }));
     const service = createWorkEmailOtpService({ sendEmail });
     await expect(service.sendCode("asha@gmail.com", { ip: "1.2.3.4", seeker: true })).resolves.toEqual({ sent: true, reason: "sent" });
-    expect(sendEmail).toHaveBeenCalledWith({ to: "asha@gmail.com", code: expect.stringMatching(/^\d{6}$/) });
+    expect(sendEmail).toHaveBeenCalledWith({ to: "asha@gmail.com", code: expect.stringMatching(/^\d{6}$/), seeker: true });
     expect(insert).toHaveBeenCalledOnce();
     sendEmail.mockClear(); insert.mockClear();
     await expect(service.sendCode("asha@gmail.com", { ip: "1.2.3.4" })).resolves.toEqual({ sent: false, reason: "invalid_email" });

@@ -48,3 +48,27 @@ describe("live QA workflow", () => {
     expect(LIVE_QA).toMatch(/options: \[both, seeker, referrer\]/);
   });
 });
+
+// QA-auto-issues (D-409): scheduled every 6 hours, and failures become bug issues from this job only.
+describe("live QA files its own bugs (D-409)", () => {
+  it("also runs on a 6-hour schedule, never on push or pull_request", () => {
+    expect(LIVE_QA).toMatch(/schedule:\n\s+- cron: "17 \*\/6 \* \* \*"/);
+    expect(LIVE_QA).toContain("github.event_name == 'schedule'");
+    expect(LIVE_QA).not.toMatch(/^\s+(push|pull_request|pull_request_target):/m);
+  });
+
+  it("grants issues: write to the live-qa job only, keeping the workflow token read-only", () => {
+    expect(LIVE_QA).toMatch(/^permissions:\n  contents: read\n/m);
+    expect(LIVE_QA).toMatch(/    permissions:\n      contents: read\n      issues: write/);
+  });
+
+  it("files bugs after every navigate run, even a failing one, with the run link and no secret", () => {
+    const step = LIVE_QA.slice(LIVE_QA.indexOf("name: File bugs for failures"), LIVE_QA.indexOf("name: Upload screenshots and summary"));
+    expect(step).toContain("always()");
+    expect(step).toContain("inputs.mode != 'journeys'");
+    expect(step).toContain("node scripts/qa-file-bugs.mjs live-qa/summary.json");
+    expect(step).toContain("GH_TOKEN: ${{ github.token }}");
+    expect(step).not.toMatch(/secrets\./);
+    expect(LIVE_QA.indexOf("node scripts/live-qa-signed-in.mjs")).toBeLessThan(LIVE_QA.indexOf("node scripts/qa-file-bugs.mjs"));
+  });
+});
