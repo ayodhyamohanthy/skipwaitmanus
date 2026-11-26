@@ -9466,7 +9466,7 @@
     },
     {
       "id": "PICKER-blocked-wait-fallthrough",
-      "title": "A blocked WAIT falls through to eligible D-399 build-ahead work without releasing its lane",
+      "title": "Protect production-default D-399 build-ahead past evidence-blocked rows, preserving lane holds and honest WAITs",
       "row": "D-212",
       "packet": "docs/plans/PICKER-blocked-wait-fallthrough.md",
       "tier": 2,
@@ -9475,11 +9475,12 @@
       "status": "todo",
       "syncedTo": "D-406",
       "dependsOn": [],
-      "note": "Requeued under D-373 (6): PR #1663 merged the prior task branch but changed only packet status notes; picker source and regression tests remain owed. Fresh implementation branch agent/queue/picker-blocked-wait-fallthrough-build-902e. Reproduced on current main bf5d91a46: --claim and --as returned WAIT at blocked D-048-K-admin-money before the D-399 aheadPick pass. D-406 was checked and does not affect this picker task.",
+      "note": "Implementation complete on branch, GPT-6.1 Sol · 4e55, 2026-11-26; registry stays todo for primary PR handling. Added 14 production-default characterizations and one CLI preview at 0c14c9be8/main c6c63a627; no source defect demonstrated or source change. Five suites: 225 passed/1 existing core timeout; isolated core retry 183/183 passed, so every requested suite has a current pass. pnpm check, assignment validation and diff check pass. PR #1661 registration/#1663 status-only merge/#1671 requeue observations retain a qualified diagnosis. D-406 checked. Commit/push, protected PR and required CI pending; no landed/deployed claim.",
       "epic": "D-212",
       "owns": [
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskBlockedWaitFallthrough.test.ts",
+        "scripts/nextTaskClaimTaskCli.test.ts",
         "docs/plans/PICKER-blocked-wait-fallthrough.md",
         "docs/plans/assignments.json"
       ]
