@@ -75,6 +75,8 @@ describe("referrer action route list (§4.4 pin)", () => {
       "get /api/referrer/slack-webhook",
       "delete /api/referrer/slack-webhook",
       "get /api/referrer-fast-track/me",
+      "put /api/referrer-fast-track/me/screen-name",
+      "post /api/referrer-fast-track/me/resume",
       "get /api/referrer-impact/me",
       "get /api/referrer/impact-summary",
       "get /api/referrer/home-bundle",

@@ -335,3 +335,41 @@ describe("SKIPPY-6 send request route", () => {
     expect(requests).toHaveLength(0);
   });
 });
+
+describe("D-178.mcp-grant: an MCP proposal approved through its grant", () => {
+  const mcpRow = (overrides: Row = {}) => approvalRow({ provider: "mcp", attachmentIds: "[41]", idempotencyKey: "mcp-key-1", ...overrides });
+
+  it("sends once under a look-up and draft grant (OAuth default) and labels the ask as the assistant's", async () => {
+    tables.seekerAgentGrants = [grantRow({ canSend: false })];
+    tables.assistantApprovals = [mcpRow()];
+    const { module, deps, created } = await loadApprover();
+    const result = await module.decideAssistantApprovalWithAgentSend(7, 21, "approved", {}, deps);
+    expect(result).toMatchObject({ id: 21, status: "approved", requestId: 501 });
+    expect(created).toHaveLength(1);
+    expect(created[0].input).toMatchObject({ attachmentIds: [41], idempotencyKey: "mcp-key-1" });
+    expect(tables.askOrigins[0]).toMatchObject({ referralRequestId: 501, channel: "agent", agentGrantId: 11 });
+  });
+  it("a hosted job-board link with no company domain goes to the strict employer check, not a refusal", async () => {
+    tables.seekerAgentGrants = [grantRow({ canSend: false })];
+    tables.assistantApprovals = [mcpRow({ companyDomain: null, targetRoleUrl: "https://boards.greenhouse.io/acme/jobs/1" })];
+    const { module, deps, created } = await loadApprover();
+    await module.decideAssistantApprovalWithAgentSend(7, 21, "approved", {}, deps);
+    expect(created).toHaveLength(1);
+    expect(created[0].input.selectedCompany).toBeUndefined();
+  });
+  it("a grant revoked after the proposal stops the send and spends nothing", async () => {
+    tables.seekerAgentGrants = [grantRow({ canSend: false, revokedAt: new Date(NOW.getTime() - HOUR) })];
+    tables.assistantApprovals = [mcpRow()];
+    const { module, deps, created } = await loadApprover();
+    await expect(module.decideAssistantApprovalWithAgentSend(7, 21, "approved", {}, deps)).rejects.toMatchObject({ code: "grant" });
+    expect(created).toHaveLength(0);
+    expect(tables.assistantApprovals[0].status).toBe("pending");
+  });
+  it("a grant that lost its draft scope stops the send", async () => {
+    tables.seekerAgentGrants = [grantRow({ canSend: false, canDraft: false })];
+    tables.assistantApprovals = [mcpRow()];
+    const { module, deps, created } = await loadApprover();
+    await expect(module.decideAssistantApprovalWithAgentSend(7, 21, "approved", {}, deps)).rejects.toMatchObject({ code: "grant" });
+    expect(created).toHaveLength(0);
+  });
+});

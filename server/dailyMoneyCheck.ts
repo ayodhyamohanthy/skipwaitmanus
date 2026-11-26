@@ -621,7 +621,10 @@ export function compareProviderPayments(input: { providerPayments: ProviderPayme
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const delivery = await sendTransactionalEmail({ to: MONEY_CHECK_RECIPIENT, subject: input.subject, text: input.text });
-    try { await sendTransactionalEmail({ to: "ayodhya@mail.instinct.com", subject: input.subject, text: input.text }); } catch { /* copy is best effort */ }
+    // Copies (D-400 adds the administrator mailbox); best effort, the primary decides success.
+    for (const copy of ["ayodhya@mail.instinct.com", "admin@skipwait.me"]) {
+      try { await sendTransactionalEmail({ to: copy, subject: input.subject, text: input.text }); } catch { /* copy is best effort */ }
+    }
     if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Money check email delivery is not configured" : "Money check email delivery failed");
     return true;
   } catch (error) {
