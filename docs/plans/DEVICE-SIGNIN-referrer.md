@@ -27,4 +27,4 @@ The seeker passkey build is on main (PR #697, `server/_core/passkeyLogin.ts`, `P
 ## Status
 
 - DEVICE-SIGNIN-seeker-release: todo — registered by Claude Code · 530c, Nov 26 2026 (D-408).
-- DEVICE-SIGNIN-referrer-passkeys: todo — registered by Claude Code · 530c, Nov 26 2026 (D-408).
+- DEVICE-SIGNIN-referrer-passkeys: in progress — GPT-6.1 Sol · 8cd5 — 2026-11-26 — branch `agent/queue/device-signin-referrer-passkeys` (build-ahead; dependency `DEVICE-SIGNIN-seeker-release` remains unfinished).
