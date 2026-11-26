@@ -408,7 +408,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         console.error("[workos-callback]", { stage, code:errorName, correlationId });
         event("failure", { reason: "provider_error" });
         const bootstrapDiagnostic = process.env.ENABLE_ADMIN_BOOTSTRAP === "true" && state === "skipwait-admin-bootstrap" ? ` (${stage}:${errorName}; ${correlationId})` : "";
-        res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
+        // FIX-founder-admin-role: name the step and error type (never the message, email, code or token) so a failed
+        // sign-in can be reported and matched to the server log.
+        const safeName = /^[A-Za-z][A-Za-z0-9_]{0,59}$/.test(errorName) ? errorName : "Error";
+        res.status(502).send(`Authentication could not be completed (step ${stage}, ${safeName}). Please try again.${bootstrapDiagnostic}`);
       }
     });
     // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.
