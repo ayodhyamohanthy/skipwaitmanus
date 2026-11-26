@@ -96,7 +96,7 @@ payment, public post, price or login change.
 
 ## Status
 
-- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 42fc — 2026-11-26 — official takeover `ec3014d306812248a4803eeb3a24fd74790abe80` on `agent/queue/ops-live-qa-journeys-sandbox`. D-407 explicitly supersedes f8bf's unpublished-work blocker: continue from the published history, preserving it and leaving other checkouts untouched. Implementation and dispatched live acceptance remain **UNVERIFIED**. Preserve `agent/queue/ops-live-qa-journeys-acceptance-2431` as the future acceptance carrier until the script repair merges; the task remains `todo` under D-373 (6), so the implementation merge cannot prematurely release `LAUNCH-live-qa`. No claim on the acceptance branch is asserted.
+- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · f38b — 2026-11-26 — branch `agent/queue/ops-live-qa-journeys-acceptance-2431`. Official claim `8e21c3662` follows main `eac7b8e4c` (PR #1672 helper-only merge). Checked D-389/D-390/D-393 and D-406–D-409. L4 sandbox runner repair and dispatched live acceptance remain **UNVERIFIED**; the two safety regressions reproduced public opportunity calls and missing failure cleanup (worker-reported 19 passed / 2 failed). Preserve historical receipts below.
 
 ### Current takeover and integration read receipt (November 26, 2026; GPT-6.1 Sol · 42fc)
 
