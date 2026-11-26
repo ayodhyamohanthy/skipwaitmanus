@@ -422,7 +422,7 @@
       "packet": "docs/plans/OPS-live-qa-journeys.md",
       "tier": 1,
       "lane": "live-qa-journeys",
-      "branch": "agent/queue/ops-live-qa-journeys-sandbox",
+      "branch": "agent/queue/ops-live-qa-journeys-acceptance-2431",
       "status": "todo",
       "syncedTo": "D-407",
       "dependsOn": [
@@ -435,11 +435,16 @@
         "scripts/live-qa-signed-in.mjs",
         "scripts/live-qa-journeys.mjs",
         "scripts/liveQaJourneys.test.ts",
+        "scripts/liveQaJourneyContracts.mjs",
+        "scripts/liveQaJourneyContracts.test.ts",
+        "scripts/liveQaJourneyBrowser.mjs",
+        "scripts/liveQaJourneyHarness.ts",
         "scripts/liveQaSignedIn.test.ts",
         "scripts/liveQaWorkflows.test.ts",
-        "docs/plans/OPS-live-qa-journeys.md"
+        "docs/plans/OPS-live-qa-journeys.md",
+        "docs/plans/assignments.json"
       ],
-      "note": "Owner-approved Nov 24 (D-389, D-393): live demo-account journeys prove the LAUNCH-live-qa gaps through sandbox requests only, never a payment or provider call. Reopened Nov 25 under D-373 (6): PR #1558 merged as f25eb09c7 with the pre-D-393 public walk-in routing and no dispatched journeys acceptance. Continue from current main on the fresh sandbox branch; preserve #1558's implementation and tests as history. Finish the packet's remaining work: remove public opportunity reads/writes, use a validated company/job link through the deployed demo sandbox, assert the current transition/ledger contracts with cleanup on failure, then record one successful workflow_dispatch journeys run and its exact release/captures. No navigation-only run substitutes. LAUNCH-live-qa remains dependent on this row and PR #1540 must not land before that evidence exists. Read every endpoint before writing a step; the two demo identities, workflow concurrency, masked secrets, no admin or real recipient, and all D-389/D-393 limits remain.",
+      "note": "Owner-approved Nov 24 (D-389, D-393). PR #1558 merged as f25eb09c7 with pre-D-393 public walk-in routing and no dispatched acceptance; that history and PR #1672's published helper-only state are retained. GPT-6.1 Sol · 42fc continues the sandbox repair on agent/queue/ops-live-qa-journeys-sandbox after official takeover ec3014d30 on Nov 26; the packet retains prior holder receipts. D-407 explicitly supersedes f8bf's unpublished-work blocker: continue from published history and leave other checkouts untouched. Under D-373 (6), this existing row stays todo on the fresh acceptance carrier after that script merge, preserving its FIFO position and dependencies so an implementation merge cannot prematurely release LAUNCH-live-qa. Normal picker claim is required on the fresh branch. Completion needs one successful workflow_dispatch live-qa.yml mode=journeys run proving demo-only sandbox routing, current keyed ledger and privacy/transition contracts, failure cleanup, tested web/API SHAs and inspected 1280/390 captures, with sanitized evidence recorded in the packet. Navigation-only runs and fixture tests do not substitute. PR #1540 must not land before that evidence exists. The two demo identities, shared workflow concurrency, masked secrets, no admin or real recipient, no payment/provider call and all D-389/D-393 limits remain. Checked through D-407: reviewer-password proof still uses only the existing protected workflow secrets; no authentication or sales-switch change. Implementation and live acceptance remain UNVERIFIED; this session dispatched no live journeys.",
       "epic": "D-212"
     },
     {
@@ -488,6 +493,154 @@
         "docs/BUGFREE_GATE.md"
       ],
       "note": "Owner D-406. Flip only after the build row lands; live proof with a real inbox (send, link, code), captures at 1280 and 390.",
+      "epic": "D-212"
+    },
+    {
+      "id": "FIX-admin-catalog-signin",
+      "title": "/admin/catalog-sync offers Sign in as administrator when the dry run answers 401/403, instead of an error and a reload loop (owner report Nov 26, D-408 (3))",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-admin-catalog-signin.md",
+      "tier": 2,
+      "lane": "admin-catalog-signin",
+      "branch": "agent/queue/fix-admin-catalog-signin",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/admin-money/GoalAdminCatalogSync.tsx",
+        "client/src/pages/goal/admin-money/adminCatalogSignIn.goal.test.tsx",
+        "docs/plans/FIX-admin-catalog-signin.md"
+      ],
+      "note": "Unblocks the owner's BANDED-release step (the catalog dry run). Client copy and state only.",
+      "epic": "D-212"
+    },
+    {
+      "id": "FIX-founder-admin-role",
+      "title": "The founder (and the administrator seat) is an administrator on every verified sign-in, not only when the account was first created, and a failed WorkOS callback names its stage (D-400; owner report Nov 26)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-founder-admin-role.md",
+      "tier": 1,
+      "lane": "auth-admin-role",
+      "branch": "agent/queue/fix-founder-admin-role",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "server/db.ts",
+        "server/founderAdminRole.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosCallbackDiagnostic.test.ts",
+        "docs/plans/FIX-founder-admin-role.md"
+      ],
+      "note": "Owner report Nov 26: /admin/catalog-sync refused and Google sign-in showed 'Authentication could not be completed' (502). resolveLoginIdentity sets the role only on account creation, so a founder account created before D-400 stays 'user'. Promote-only; never demotes; provider-verified email only.",
+      "epic": "D-212"
+    },
+    {
+      "id": "DEVICE-SIGNIN-seeker-release",
+      "title": "Release seeker passkey/biometric sign-in after a real phone and laptop check: PASSKEY_SIGNIN_ENABLED true, captures at 1280 and 390 (D-408 (1))",
+      "row": "D-172",
+      "packet": "docs/plans/DEVICE-SIGNIN-referrer.md",
+      "tier": 1,
+      "lane": "auth-device",
+      "branch": "agent/queue/device-signin-seeker-release",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "server/_core/passkeyLogin.ts",
+        "server/_core/passkeyLogin.test.ts",
+        "client/src/components/goal/GoalPasskeySignIn.tsx",
+        "docs/plans/DEVICE-SIGNIN-referrer.md",
+        "docs/BUGFREE_GATE.md"
+      ],
+      "note": "Owner D-408. Build is on main (PR #697). Real-device proof required before the flip.",
+      "epic": "D-172"
+    },
+    {
+      "id": "DEVICE-SIGNIN-referrer-passkeys",
+      "title": "Referrer passkeys bound to the work-email account: enrol only in a work-email-code session, valid while the work email was verified in the last 30 days, behind a switch that starts off (D-408 (2))",
+      "row": "D-172",
+      "packet": "docs/plans/DEVICE-SIGNIN-referrer.md",
+      "tier": 1,
+      "lane": "auth-device-referrer",
+      "branch": "agent/queue/device-signin-referrer-passkeys",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [
+        "DEVICE-SIGNIN-seeker-release"
+      ],
+      "owns": [
+        "server/_core/passkeyLogin.ts",
+        "server/_core/passkeyReferrer.ts",
+        "server/_core/passkeyReferrer.test.ts",
+        "client/src/pages/goal/sign-in/GoalReferrerCodeForm.tsx",
+        "client/src/pages/loginRule.test.tsx",
+        "client/src/pages/signIn.test.tsx",
+        "docs/plans/DEVICE-SIGNIN-referrer.md"
+      ],
+      "note": "Owner D-408, superseding D-333 (a). Referrer surfaces never offer personal email, social or password.",
+      "epic": "D-172"
+    },
+    {
+      "id": "QA-auto-issues",
+      "title": "Live QA runs every 6 hours and files one deduplicated bug issue per failing route or step, closing it when a later run passes (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 2,
+      "lane": "qa-auto-issues",
+      "branch": "agent/queue/qa-auto-issues",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        ".github/workflows/live-qa.yml",
+        "scripts/qa-file-bugs.mjs",
+        "scripts/qaFileBugs.test.ts",
+        "scripts/liveQaWorkflows.test.ts",
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-bug-issues",
+      "title": "The picker hands open automated bug issues to agents as fix work ahead of new features (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 2,
+      "lane": "picker-bug-issues",
+      "branch": "agent/queue/picker-bug-issues",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [
+        "QA-auto-issues"
+      ],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/queue-gate.mjs",
+        "scripts/nextTaskBugIssues.test.ts",
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-ai-explorer",
+      "title": "A daily AI exploratory tester walks skipwait.me like a seeker and referrer and files UX and functional bugs (D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-automated-testers.md",
+      "tier": 3,
+      "lane": "qa-ai-explorer",
+      "branch": "agent/queue/qa-ai-explorer",
+      "status": "todo",
+      "syncedTo": "D-409",
+      "dependsOn": [],
+      "owns": [
+        "docs/plans/QA-automated-testers.md"
+      ],
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
       "epic": "D-212"
     },
     {
@@ -9473,9 +9626,9 @@
       "lane": "picker-blocked-wait-fallthrough",
       "branch": "agent/queue/picker-blocked-wait-fallthrough-build-902e",
       "status": "done",
-      "syncedTo": "D-407",
+      "syncedTo": "D-409",
       "dependsOn": [],
-      "note": "Implementation complete on branch; final protected CI/PR pending. GPT-6.1 Sol · 4e55, 2026-11-26: published a7043ffa8 integrated with main d9c69998f in the pending automatic merge. Serial six-suite run passed 235/235 in 46.37s; pnpm check passed. D-407 quiet withheld-draft refresh fallback preserves these running-CI/no-behind characterizations; no task source repair demonstrated or added. Earlier five-suite run had 225 passes/1 core timeout, followed by 183/183 core retry; distinct from latest integrated pass. PR #1661/#1663/#1671 diagnosis remains qualified. Done in this PR only; merge commit/push and required CI pending, no landed/deployed claim.",
+      "note": "Locally validated, ready for protected PR; required CI pending. GPT-6.1 Sol · 8cdf, 2026-11-26: takeover eb098e93b preserves a7043ffa8 tests and predecessor main merges; validation used the automatic, conflict-free merge of main eac7b8e4c, uncommitted at validation time. Exact serial six-suite run passed 235/235 in 120.95s; pnpm check passed in 181.84s; registry 472 tasks/380 decisions, zero errors and every other row preserved. Scope check exited 0 with its existing full-edit-rights notice for the CLI test. Packet checked through D-409; D-407 fallback preserved, D-408/D-409 leave this contract unchanged. No source defect demonstrated or repair added. Done is branch-prepared only; protected PR and required CI remain with primary, no landed/deployed claim.",
       "epic": "D-212",
       "owns": [
         "scripts/nextTaskCore.mjs",
@@ -9663,9 +9816,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-contracts",
-      "branch": "agent/queue/group-contracts",
+      "branch": "agent/queue/group-contracts-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-recipients"
       ],
@@ -9681,7 +9834,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts."
+      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts. D-200/D-373(6)/D-407 carrier reconciliation: PR #1629 merged preparation documentation only. Section 6.1 shared schemas, transitions, disabled flag/config contracts and exact DDL blueprint remain undelivered. Fresh implementation carrier preserves prior history and all original acceptance; no implementation acceptance claimed."
     },
     {
       "id": "GROUP-provider",
@@ -9712,9 +9865,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-migration",
-      "branch": "agent/queue/group-migration",
+      "branch": "agent/queue/group-migration-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-contracts"
       ],
@@ -9725,7 +9878,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates."
+      "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates. D-200/D-373(6)/D-407 carrier reconciliation: PR #1630 merged preparation documentation only. SQL, real-MySQL apply-twice/parity proof and production checksum acceptance remain unverified. Fresh implementation carrier preserves prior history; exact upstream DDL precedes SQL and production migration acceptance precedes GROUP-schema landing."
     },
     {
       "id": "GROUP-schema",
