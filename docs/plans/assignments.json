@@ -9485,6 +9485,27 @@
       ]
     },
     {
+      "id": "PICKER-refresh-drafts",
+      "title": "With nothing left to build, the picker hands out keeping a quiet built-ahead draft current (merge main, make CI green, never land) instead of WAIT (D-407 (4))",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-refresh-drafts.md",
+      "tier": 2,
+      "lane": "picker-refresh-drafts",
+      "branch": "agent/queue/picker-refresh-drafts",
+      "status": "todo",
+      "syncedTo": "D-407",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskRefreshDrafts.test.ts",
+        "docs/plans/PICKER-refresh-drafts.md"
+      ],
+      "note": "Owner, Nov 26: agents must not get WAIT while tasks are pending. Picker-only; no landing, block, review, red-main or owner rule is relaxed.",
+      "epic": "D-212"
+    },
+    {
       "id": "SYNC-auto-pull",
       "title": "A clone pulls within about 30 seconds of any change on GitHub (a watcher replaces the 15-minute timer, on macOS and Linux) and fast-forwards branches that are strictly behind (owner, Nov 25)",
       "row": "SYNC",
