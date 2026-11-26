@@ -14,6 +14,15 @@ it("demo test billing defaults off and reaches the server through the Worker", (
   expect(workerPassthroughKeys()).toContain("DEMO_TEST_BILLING_ENABLED");
 });
 
+it("group flags default off; only server keys reach the container", () => {
+  const example = readFileSync(join(ROOT, ".env.example"), "utf8");
+  const forwarded = workerPassthroughKeys();
+  for (const key of ["GROUP_PLAN_ENABLED", "GROUP_DELEGATED_SEND_ENABLED", "VITE_GROUP_PLAN"]) {
+    expect(example).toMatch(new RegExp(`^${key}=false$`, "m"));
+    expect(forwarded.includes(key)).toBe(key !== "VITE_GROUP_PLAN");
+  }
+});
+
 // Ambient toolchain keys that are never application config.
 const AMBIENT = /^(CI|GITHUB_|NPM_|PATH|HOME|PWD|SHELL|TERM|LANG|TZ|VITEST_|NODE_OPTIONS|DOTENV_)/;
 
