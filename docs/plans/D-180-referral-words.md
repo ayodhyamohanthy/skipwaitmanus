@@ -76,9 +76,16 @@ including a verified referrer's narrow bottom bar. Measurements are not proof.
 The old conversation-label routing above is historical: CONV-report-entry
 now owns SeekerConversation.tsx; this registration does not edit it.
 
-Status: registration repair prepared on main 7d69a3ce; build remains waiting.
-Separate final-delta review, exact required CI, current-main validation and a
-distinct normal-procedure lander are still required. No self-landing.
+Historical status (registration repair on main 7d69a3ce): build remained waiting.
+The separate final-delta review and distinct normal-procedure lander requirements
+are superseded by D-370.
+
+Current status (D-370/D-371/D-407): exact required CI and main CI must be green
+before landing; no independent review, review stage, model dependency or distinct
+lander is required. This row remains held from landing by its dependencies.
+Under picker/D-407 rules, PR #1591 remains draft until the other eligibility and
+dependency conditions are met. This refresh itself does not land the row, mark
+it done or change its readiness.
 
 - D-180-referral-words: review — agent/queue/referral-words-sweep — GPT-6.1 Sol · 4044 (takeover/build-ahead draft refresh, 2026-11-26; origin/main eac7b8e4c544aef10ef7857a3369dea1e7cac50d merged without conflicts; PR #1591 stays draft; no landing or completion).
 
