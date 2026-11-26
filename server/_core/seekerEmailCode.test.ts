@@ -8,11 +8,11 @@ vi.mock("./sdk", () => ({ sdk: { createSessionToken: m.createSessionToken }, SES
 vi.mock("./cookies", () => ({ getSessionCookieOptions: () => ({}) }));
 vi.mock("./trustedClientIp", () => ({ resolveTrustedClientIp: () => "203.0.113.9" }));
 import { OtpLockedError } from "../otpPolicy";
-import { registerSeekerEmailCodeRoutes, SEEKER_CODE_RETIRED_MESSAGE, SEEKER_CODE_VERIFY_UNTIL } from "./seekerEmailCode";
+import { registerSeekerEmailCodeRoutes, SEEKER_CODE_RETIRED_MESSAGE, SEEKER_CODE_VERIFY_UNTIL, SEEKER_USE_WORK_EMAIL_MESSAGE } from "./seekerEmailCode";
 
 // Before the cutoff an already-emailed code still signs in (cached app versions); after it, nothing does.
 const BEFORE_CUTOFF = () => SEEKER_CODE_VERIFY_UNTIL.getTime() - 60_000;
-const app = (now: () => number = BEFORE_CUTOFF) => { const a = express(); a.use(express.json()); a.use(express.urlencoded({ extended: true })); registerSeekerEmailCodeRoutes(a, { now }); return a; };
+const app = (now: () => number = BEFORE_CUTOFF) => { const a = express(); a.use(express.json()); a.use(express.urlencoded({ extended: true })); registerSeekerEmailCodeRoutes(a, { now, enabled: false }); return a; };
 /** A verify call from skipwait.me itself, as a cached app version sends it. */
 const verify = (server: express.Express, body: object) => request(server).post("/api/auth/workos/email-code/verify").set("Sec-Fetch-Site", "same-origin").send(body);
 beforeEach(() => {
@@ -88,5 +88,75 @@ describe("the retired seeker email code (D-049, D-078 ruling 1)", () => {
     m.resolve.mockRejectedValueOnce(new Error("ACCOUNT_NOT_ACTIVE"));
     expect((await verify(app(), { email: "asha@gmail.com", code: "482913" })).status).toBe(403);
     expect(m.createSessionToken).not.toHaveBeenCalled();
+  });
+});
+
+// D-406 (owner, Nov 25 2026): with the switch on, anyone enters an email and gets one email with a code and a link.
+describe("email link + code sign-in for seekers (D-406)", () => {
+  const AFTER_CUTOFF = () => SEEKER_CODE_VERIFY_UNTIL.getTime() + 86_400_000;
+  const standing = vi.fn(async (_email: string) => "unknown" as const);
+  const onApp = (overrides: { standing?: typeof standing } = {}) => {
+    const a = express(); a.use(express.json());
+    registerSeekerEmailCodeRoutes(a, { now: AFTER_CUTOFF, enabled: true, standing: overrides.standing ?? standing });
+    return a;
+  };
+  const send = (server: express.Express, body: object) => request(server).post("/api/auth/workos/email-code/send").set("Sec-Fetch-Site", "same-origin").send(body);
+  beforeEach(() => standing.mockClear());
+
+  it("sends one code email on the seeker plane and says so", async () => {
+    const res = await send(onApp(), { email: " Asha@Gmail.com " });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ sent: true });
+    expect(m.sendCode).toHaveBeenCalledWith("asha@gmail.com", expect.objectContaining({ seeker: true }));
+    expect(res.headers["set-cookie"]).toBeUndefined();
+  });
+
+  it("refuses a cross-site send before emailing anything", async () => {
+    const res = await request(onApp()).post("/api/auth/workos/email-code/send").set("Origin", "https://evil.example").send({ email: "asha@gmail.com" });
+    expect(res.status).toBe(403);
+    expect(m.sendCode).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed address with 400 and sends nothing", async () => {
+    const res = await send(onApp(), { email: "nope" });
+    expect(res.status).toBe(400);
+    expect(m.sendCode).not.toHaveBeenCalled();
+  });
+
+  it("sends a referrer's work email to the work-email code instead, on send and on verify (D-081)", async () => {
+    const referrer = vi.fn(async () => "referrer_work_email" as const);
+    const sent = await send(onApp({ standing: referrer }), { email: "ref@acme.com" });
+    expect(sent.status).toBe(403);
+    expect(sent.body).toEqual({ error: SEEKER_USE_WORK_EMAIL_MESSAGE, code: "use_work_email_code" });
+    const verified = await verify(onApp({ standing: referrer }), { email: "ref@acme.com", code: "482913" });
+    expect(verified.status).toBe(403);
+    expect(m.sendCode).not.toHaveBeenCalled();
+    expect(m.verifyCode).not.toHaveBeenCalled();
+    expect(verified.headers["set-cookie"]).toBeUndefined();
+  });
+
+  it("answers a rate limit with 429 and Retry-After", async () => {
+    m.sendCode.mockResolvedValue({ sent: false, reason: "rate_limited", retryAfterSeconds: 30 });
+    const res = await send(onApp(), { email: "asha@gmail.com" });
+    expect(res.status).toBe(429);
+    expect(res.headers["retry-after"]).toBe("30");
+  });
+
+  it("answers a delivery failure plainly, never as sent", async () => {
+    m.sendCode.mockResolvedValue({ sent: false, reason: "delivery_failed" });
+    const res = await send(onApp(), { email: "asha@gmail.com" });
+    expect(res.status).toBe(502);
+    expect(res.body.sent).toBeUndefined();
+  });
+
+  it("verify signs in after the old cutoff while the switch is on, and a wrong code still fails", async () => {
+    const ok = await verify(onApp(), { email: "asha@gmail.com", code: "482913" });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toEqual({ signedIn: true });
+    expect(ok.headers["set-cookie"]?.[0]).toContain("tok");
+    m.verifyCode.mockResolvedValue(false);
+    const wrong = await verify(onApp(), { email: "asha@gmail.com", code: "000000" });
+    expect(wrong.status).toBe(400);
+    expect(wrong.headers["set-cookie"]).toBeUndefined();
   });
 });

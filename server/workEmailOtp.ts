@@ -3,9 +3,11 @@ import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
 import { getDb, isWorkEmailDomain } from "./db";
 import { sendTransactionalEmail } from "./emailDelivery";
+import { EMAIL_SIGN_IN_LINK_ENABLED, emailSignInLink } from "../shared/emailSignIn";
 import { resolve4, resolveMx } from "node:dns/promises";
 
-export type WorkEmailOtpDeliveryInput = { to: string; code: string };
+/** `seeker` names the plane that asked, so a D-406 sign-in link finishes on the right verify endpoint. */
+export type WorkEmailOtpDeliveryInput = { to: string; code: string; seeker?: boolean };
 export type WorkEmailOtpSendResult = { sent: boolean; reason: "sent" | "not_configured" | "delivery_failed" | "rate_limited" | "invalid_email" | "invalid_domain"; retryAfterSeconds?: number };
 
 import { workEmailStorageKeys } from "./workEmailKey";
@@ -145,7 +147,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
         throw error;
       }
       const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-      const delivery = await sendEmail({ to: email, code }).catch(() => ({ sent: false, reason: "delivery_failed" }));
+      const delivery = await sendEmail({ to: email, code, ...(context.seeker ? { seeker: true } : {}) }).catch(() => ({ sent: false, reason: "delivery_failed" }));
       if (!delivery.sent) return { sent: false, reason: delivery.reason === "not_configured" ? "not_configured" : "delivery_failed" };
       await db.insert(workEmailOtpCodes).values({ email: workEmailStorageKeys(email).write, codeHash: hashCode(email, code), expiresAt: new Date(now() + CODE_TTL_MS), attempts: 0, createdAt: new Date(now()) });
       return { sent: true, reason: "sent" };
@@ -214,4 +216,31 @@ export function otpEmailMessage(code: string): { subject: string; text: string }
     text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.`,
   };
 }
-export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, ...otpEmailMessage(code) }) });
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[char] ?? char);
+
+/** The origin the D-406 link points at: PUBLIC_BASE_URL when it is an http(s) origin, otherwise the canonical site. */
+function signInLinkOrigin(): string {
+  const configured = (process.env.PUBLIC_BASE_URL ?? "").trim();
+  return /^https?:\/\/[^\s/]+\/?$/.test(configured) ? configured : "https://skipwait.me";
+}
+
+/**
+ * D-406: the sign-in email. Switch off: exactly today's code email. Switch on: the sign-in subject (code first, for
+ * lock-screen preview and phone autofill) plus a one-click link whose fragment holds the email and code; /sign-in
+ * spends the code only when the person presses Sign in. The D-245 step-up keeps calling otpEmailMessage, no link.
+ */
+export function signInEmailMessage(input: WorkEmailOtpDeliveryInput, options: { enabled?: boolean; origin?: string } = {}): { subject: string; text: string; html?: string } {
+  const base = otpEmailMessage(input.code);
+  if (!(options.enabled ?? EMAIL_SIGN_IN_LINK_ENABLED)) return base;
+  const link = emailSignInLink(options.origin ?? signInLinkOrigin(), { email: input.to, code: input.code, plane: input.seeker ? "s" : "r" });
+  return {
+    subject: `${input.code} is your skipwait.me sign-in code`,
+    text: `Your skipwait.me sign-in code is ${input.code}. It expires in 10 minutes and works once.\n\nOr sign in with one click:\n${link}\n\nIf you did not request it, ignore this email - nothing changes.`,
+    html: `<p>Your skipwait.me sign-in code is <strong style="font-size:20px;letter-spacing:3px">${input.code}</strong>.</p>`
+      + `<p>Or sign in with one click as ${escapeHtml(input.to)}:</p>`
+      + `<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 18px;background:#0a0a0a;color:#ffffff;border-radius:8px;text-decoration:none">Sign in to skipwait.me</a></p>`
+      + `<p style="color:#555">The code and link expire in 10 minutes and work once. If you did not request this, ignore this email - nothing changes.</p>`,
+  };
+}
+export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async input => sendTransactionalEmail({ to: input.to, ...signInEmailMessage(input) }) });
