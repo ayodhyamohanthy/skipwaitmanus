@@ -28,7 +28,7 @@ describe("D-406 sign-in email", () => {
 
   it("keeps the code first in the subject and adds a seeker link whose fragment holds the same email and code", () => {
     const message = signInEmailMessage({ to: "ana@gmail.com", code: "123456", seeker: true }, { enabled: true, origin: "https://skipwait.me" });
-    expect(message.subject.startsWith("123456 ")).toBe(true);
+    expect(message.subject).toBe("123456 is your skipwait.me sign-in code");
     expect(message.text).toContain("123456");
     const url = new URL(linkIn(message.text));
     expect(url.origin + url.pathname).toBe("https://skipwait.me/sign-in");
@@ -39,6 +39,7 @@ describe("D-406 sign-in email", () => {
 
   it("gives a referrer's work-email code the referrer plane", () => {
     const message = signInEmailMessage({ to: "ref@acme.com", code: "654321" }, { enabled: true, origin: "https://skipwait.me" });
+    expect(message.subject).toBe("654321 is your skipwait.me sign-in code");
     expect(parseEmailSignInHash(new URL(linkIn(message.text)).hash)?.plane).toBe("r");
   });
 

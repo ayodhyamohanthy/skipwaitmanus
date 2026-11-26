@@ -179,7 +179,7 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
     const account = (await db.select().from(users).where(eq(users.id, knownAlias.canonicalUserId)).limit(1))[0];
     const person = (await db.select().from(canonicalPeople).where(eq(canonicalPeople.id, knownAlias.canonicalPersonId)).limit(1))[0];
     if (!account || !person || account.suspended || person.suspended) throw new Error(person?.reviewReason ? "IDENTITY_REVIEW_REQUIRED" : "ACCOUNT_NOT_ACTIVE");
-    return { ...account, suspended: false, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
+    return withAdministratorRole(db, { ...account, suspended: false, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter }, email, input.emailVerified);
   }
   const result = await db.transaction(async tx => {
     // Provider subject is the strongest key. It always resolves before email.
@@ -266,7 +266,18 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
     return { account: account! };
   });
   if ("blocked" in result) throw new Error(result.blocked);
-  return result.account;
+  return withAdministratorRole(db, result.account, email, input.emailVerified);
+}
+
+/**
+ * FIX-founder-admin-role (D-400): a provider-verified administrator email (the founder, or the configured seat,
+ * decided only by server/_core/adminIdentity.ts) is an administrator on every sign-in, not only when its account was
+ * created. Promote only: an existing administrator is never demoted and an unverified email never promotes.
+ */
+async function withAdministratorRole<T extends { id: number; role: "user" | "admin" }>(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, account: T, email: string, emailVerified: boolean): Promise<T> {
+  if (account.role === "admin" || !emailVerified || !isAdministratorEmail(email)) return account;
+  await db.update(users).set({ role: "admin" }).where(eq(users.id, account.id));
+  return { ...account, role: "admin" };
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {if(!user.openId)throw new Error("User openId is required for upsert");const db=await getDb();if(!db)return;const current=await db.select({role:users.role}).from(users).where(eq(users.openId,user.openId)).limit(1);const role=resolveSyncedUserRole({openId:user.openId,email:user.email,requestedRole:user.role,existingRole:current[0]?.role,loginMethod:user.loginMethod});await db.insert(users).values({...user,role,lastSignedIn:user.lastSignedIn??new Date()}).onDuplicateKeyUpdate({set:{name:user.name??null,email:user.email??null,loginMethod:user.loginMethod??null,lastSignedIn:user.lastSignedIn??new Date(),role}});}
