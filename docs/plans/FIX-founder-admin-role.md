@@ -31,3 +31,4 @@ with the stage and error name and no email or message.
 ## Status
 
 - FIX-founder-admin-role: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/fix-founder-admin-role. Red first: `server/founderAdminRole.test.ts` (2 of 5 failed on main) and the 502 step test in `server/_core/workosAuth.test.ts`; 9 sign-in suites (122 tests) and `tsc` pass.
+- FIX-founder-admin-role follow-up — Claude Code · 530c — 2026-11-26: the owner's Google sign-in still failed live with "(step authenticate, AuthenticationException)". WorkOS raises that only for a fixed set of reasons (email_verification_required, organization_selection_required, mfa_*, radar_*, sso_required); the 502 now names that reason so the right handling can be built.
