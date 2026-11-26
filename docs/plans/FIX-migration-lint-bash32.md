@@ -10,4 +10,4 @@ destructive statement and a bare `CREATE TABLE` each fail with their message.
 
 ## Status
 
-- FIX-migration-lint-bash32: todo — registered by Claude Code · 530c, Nov 26 2026.
+- FIX-migration-lint-bash32: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/fix-migration-lint-bash32. `scripts/lintDeployMigrations.test.ts` 7/7 (red first: the no-`declare -A` case); the real 57 migrations still lint clean.
